@@ -812,6 +812,7 @@ export interface ReviewTaskDetailVO {
   gradeResultId?: string
   suggestedScore?: number
   aiDiagnostic?: string
+  commentText?: string
   status?: string
 }
 

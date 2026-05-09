@@ -165,6 +165,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamPageTemplatePayload,
@@ -302,10 +303,11 @@ async function loadTemplate(): Promise<void> {
   }
 }
 
-function handleExamChange(value: string | undefined): void {
-  selectedExamId.value = value
-  void router.replace({ query: value ? { examId: value } : {} })
-  if (value) {
+function handleExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]): void {
+  const next = value != null ? String(value) : undefined
+  selectedExamId.value = next
+  void router.replace({ query: next ? { examId: next } : {} })
+  if (next) {
     void loadTemplate()
   } else {
     clearTemplate()

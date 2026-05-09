@@ -344,6 +344,7 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamPageTemplatePayload,
@@ -432,8 +433,6 @@ const totalScore = computed(() =>
   questions.reduce((sum, row) => sum + (Number(row.fullScore) || 0), 0).toFixed(2),
 )
 
-const uploadedPageCount = computed(() => pages.filter((p) => !!p.templateFileId).length)
-const savedQuestionCount = computed(() => questions.filter((q) => !!q.questionTemplateId).length)
 
 const pageColumns: ColumnType<PageRow>[] = [
   { title: '页号', key: 'pageNo', width: 100 },
@@ -540,10 +539,11 @@ async function loadTemplate(): Promise<void> {
   }
 }
 
-function handleExamChange(value: string | undefined): void {
-  selectedExamId.value = value
-  void router.replace({ query: value ? { examId: value } : {} })
-  if (value) {
+function handleExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]): void {
+  const next = value != null ? String(value) : undefined
+  selectedExamId.value = next
+  void router.replace({ query: next ? { examId: next } : {} })
+  if (next) {
     void loadTemplate()
   } else {
     clearTemplate()
@@ -773,7 +773,7 @@ const answerFormRules: Record<string, Rule[]> = {
   ],
 }
 
-function openAnswerModal(row: QuestionRow): void {
+function openAnswerModal(row: Record<string, any>): void {
   if (!row.questionTemplateId) {
     message.warning('请先保存模板，待题目获得 ID 后再录入标准答案')
     return

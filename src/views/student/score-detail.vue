@@ -88,39 +88,39 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'questionNo'">
-                <UiTag tone="blue" size="sm">{{ record.questionNo || '-' }}</UiTag>
+                <UiTag tone="blue" size="sm">{{ asQuestion(record).questionNo || '-' }}</UiTag>
               </template>
               <template v-else-if="column.key === 'questionType'">
-                <span>{{ record.questionType || '-' }}</span>
+                <span>{{ asQuestion(record).questionType || '-' }}</span>
               </template>
               <template v-else-if="column.key === 'fullScore'">
-                <span class="score-cell">{{ record.fullScore?.toFixed(2) ?? '-' }}</span>
+                <span class="score-cell">{{ asQuestion(record).fullScore?.toFixed(2) ?? '-' }}</span>
               </template>
               <template v-else-if="column.key === 'finalScore'">
                 <span
-                  v-if="record.finalScore != null"
+                  v-if="asQuestion(record).finalScore != null"
                   class="score-cell score-cell--strong"
-                  :class="getScoreToneClass(record)"
+                  :class="getScoreToneClass(asQuestion(record))"
                 >
-                  {{ record.finalScore.toFixed(2) }}
+                  {{ asQuestion(record).finalScore!.toFixed(2) }}
                 </span>
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'objectiveResult'">
-                <UiTag v-if="record.objectiveResult === 'CORRECT'" tone="green" size="sm">
+                <UiTag v-if="asQuestion(record).objectiveResult === 'CORRECT'" tone="green" size="sm">
                   正确
                 </UiTag>
-                <UiTag v-else-if="record.objectiveResult === 'WRONG'" tone="red" size="sm">
+                <UiTag v-else-if="asQuestion(record).objectiveResult === 'WRONG'" tone="red" size="sm">
                   错误
                 </UiTag>
-                <UiTag v-else-if="record.objectiveResult === 'PARTIAL'" tone="orange" size="sm">
+                <UiTag v-else-if="asQuestion(record).objectiveResult === 'PARTIAL'" tone="orange" size="sm">
                   部分正确
                 </UiTag>
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'gradeStatus'">
-                <UiTag :tone="getGradeStatusTone(record.gradeStatus)" size="sm">
-                  {{ formatGradeStatus(record.gradeStatus) }}
+                <UiTag :tone="getGradeStatusTone(asQuestion(record).gradeStatus)" size="sm">
+                  {{ formatGradeStatus(asQuestion(record).gradeStatus) }}
                 </UiTag>
               </template>
             </template>
@@ -137,7 +137,6 @@ import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -198,6 +197,11 @@ function isPartial(q: StudentQuestionScoreVO) {
   return q.finalScore != null && q.fullScore != null
 }
 
+/** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为真实 VO */
+function asQuestion(record: Record<string, any>): StudentQuestionScoreVO {
+  return record as StudentQuestionScoreVO
+}
+
 function getScoreToneClass(record: StudentQuestionScoreVO): string {
   if (isFullMark(record)) return 'score-cell--full'
   if (isZero(record)) return 'score-cell--zero'
@@ -254,12 +258,6 @@ async function loadDetail() {
     loading.value = false
   }
 }
-
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
-
 
 function goAppeal(id: string) {
   router.push({ name: 'StudentAppeal', query: { examId: id } })

@@ -288,6 +288,7 @@
 <script lang="ts" setup>
 import type { UploadProps } from 'ant-design-vue'
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateVO, ScanAttentionItemVO } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindItemPayload } from '@/apis/mark/exam-mark-scanner'
@@ -434,9 +435,9 @@ const candidateOptions = computed(() =>
   })),
 )
 
-function filterCandidate(input: string, option: Record<string, any>): boolean {
+function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   const kw = input.trim().toLowerCase()
-  if (!kw) return true
+  if (!kw || !option) return true
   const raw = option.raw as ExamCandidateVO
   return (
     (raw.studentName ?? '').toLowerCase().includes(kw)

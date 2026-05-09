@@ -78,9 +78,11 @@
                   <a-image
                     v-if="sliceImageUrl"
                     :src="sliceImageUrl"
-                    :preview="{ mask: '点击查看原图' }"
+                    :preview="{}"
                     class="slice-image"
-                  />
+                  >
+                    <template #previewMask>点击查看原图</template>
+                  </a-image>
                   <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
                 </a-spin>
               </div>
@@ -157,7 +159,6 @@ import { getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import { useUserStore } from '@/stores/modules/user'
 
 defineOptions({ name: 'TeacherReviewTaskDetail' })
 
@@ -180,12 +181,9 @@ const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
 
 const route = useRoute()
 const router = useRouter()
-const userStore = useUserStore()
 
 const examId = computed(() => (route.query.examId ? String(route.query.examId) : ''))
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
-const currentUserId = computed(() => userStore.userInfo.userId || '')
-
 const hasParams = computed(() => !!examId.value && !!taskId.value)
 
 const detail = ref<ReviewTaskDetailVO | null>(null)
@@ -263,10 +261,6 @@ async function loadTask(): Promise<void> {
 function formatTime(value?: string): string {
   if (!value) return '-'
   return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
-
-function goBack(): void {
-  void router.push({ name: 'TeacherReviewAssignment', query: { examId: examId.value } })
 }
 
 function goWorkspace(): void {

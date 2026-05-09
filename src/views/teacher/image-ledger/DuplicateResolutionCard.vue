@@ -28,7 +28,7 @@
           <a-button
             type="link" size="small"
             :disabled="record.resolutionStatus !== 'PENDING'"
-            @click="$emit('resolve', toRow(record))"
+            @click="$emit('resolve', record as ExamPaperDuplicateResolutionVO)"
           >
             处置
           </a-button>

@@ -50,9 +50,11 @@
                   <a-image
                     v-if="sliceImageUrl"
                     :src="sliceImageUrl"
-                    :preview="{ mask: '点击查看原图' }"
+                    :preview="{}"
                     class="slice-image"
-                  />
+                  >
+                    <template #previewMask>点击查看原图</template>
+                  </a-image>
                   <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
                 </a-spin>
               </div>

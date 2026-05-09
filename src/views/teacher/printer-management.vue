@@ -90,23 +90,23 @@
             </template>
             <template v-else-if="column.key === 'action'">
               <div class="operations-cell">
-                <a class="op-link" @click="handleViewDetail(record)">详情</a>
-                <a class="op-link" @click="handleEdit(record)">编辑</a>
+                <a class="op-link" @click="handleViewDetail(asDevice(record))">详情</a>
+                <a class="op-link" @click="handleEdit(asDevice(record))">编辑</a>
                 <a
                   v-if="record.interfaceMode === 'HTTP_PUSH'"
                   class="op-link"
-                  @click="handleResetToken(record)"
+                  @click="handleResetToken(asDevice(record))"
                 >
                   重置 token
                 </a>
                 <a
                   v-if="record.interfaceMode === 'SANE_PULL'"
                   class="op-link"
-                  @click="handleOpenSaneTrigger(record)"
+                  @click="handleOpenSaneTrigger(asDevice(record))"
                 >
                   采集
                 </a>
-                <a class="op-link op-link--danger" @click="handleDelete(record)">删除</a>
+                <a class="op-link op-link--danger" @click="handleDelete(asDevice(record))">删除</a>
               </div>
             </template>
           </template>
@@ -175,7 +175,10 @@
           </a-col>
           <a-col :span="12">
             <a-form-item name="scannerIp" label="设备 IP">
-              <a-input v-model:value="formData.scannerIp" placeholder="可空，HTTP 推送时事件上报会刷新" />
+              <a-input
+                v-model:value="formData.scannerIp"
+                placeholder="可空，HTTP 推送时事件上报会刷新"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -274,7 +277,10 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item name="manufacturer" label="厂商">
-              <a-input v-model:value="formData.manufacturer" placeholder="如 EPSON / Canon / 富士通" />
+              <a-input
+                v-model:value="formData.manufacturer"
+                placeholder="如 EPSON / Canon / 富士通"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -339,7 +345,8 @@
         </a-descriptions-item>
       </a-descriptions>
       <p style="margin-top: 12px" class="text-muted">
-        在扫描仪/复合机后台填入上述 URL 与 Authorization 头；其余字段（examId、scanStartTime 等）按表单字段提交。
+        在扫描仪/复合机后台填入上述 URL 与 Authorization 头；其余字段（examId、scanStartTime
+        等）按表单字段提交。
       </p>
     </a-modal>
 
@@ -353,7 +360,9 @@
     >
       <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
         <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
-        <a-descriptions-item label="设备业务ID">{{ detailInfo.scannerDeviceId }}</a-descriptions-item>
+        <a-descriptions-item label="设备业务ID">{{
+          detailInfo.scannerDeviceId
+        }}</a-descriptions-item>
         <a-descriptions-item label="站点ID">{{ detailInfo.scannerStationId }}</a-descriptions-item>
         <a-descriptions-item label="设备状态">
           <a-tag :color="statusColorOf(detailInfo.status)">
@@ -485,10 +494,7 @@
           />
         </a-form-item>
         <a-form-item label="批次外部编号（可选）">
-          <a-input
-            v-model:value="saneFormData.batchExternalNo"
-            placeholder="留空由服务端生成"
-          />
+          <a-input v-model:value="saneFormData.batchExternalNo" placeholder="留空由服务端生成" />
         </a-form-item>
         <a-form-item label="临时分辨率覆盖（可选）">
           <a-input-number
@@ -506,9 +512,9 @@
 
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type {
-  ClassInfoDto,
-} from '@/apis/edu/class'
+import type { DefaultOptionType } from 'ant-design-vue/es/select'
+import type { ClassInfoDto } from '@/apis/edu/class'
+import { getAllClasses } from '@/apis/edu/class'
 import type {
   ExamScannerDeviceCreatePayload,
   ExamScannerDeviceDetailVO,
@@ -522,12 +528,6 @@ import type {
   ScannerDuplexModeCode,
   ScannerInterfaceModeCode,
 } from '@/apis/mark/exam-mark-scanner'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { getAllClasses } from '@/apis/edu/class'
 import {
   createScannerDevice,
   deleteScannerDevice,
@@ -542,6 +542,11 @@ import {
   triggerSaneScan,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -621,6 +626,10 @@ function interfaceModeLabelOf(mode?: string): string {
 function interfaceModeColorOf(mode?: string): string {
   if (!mode) return 'default'
   return SCANNER_INTERFACE_MODE_COLOR[mode as ScannerInterfaceModeCode] ?? 'default'
+}
+
+function asDevice(record: Record<string, any>): ExamScannerDeviceVO {
+  return record as ExamScannerDeviceVO
 }
 
 async function loadDevices(): Promise<void> {
@@ -854,8 +863,7 @@ const showDetailModal = ref(false)
 const detailInfo = ref<ExamScannerDeviceDetailVO | null>(null)
 
 async function handleViewDetail(record: ExamScannerDeviceVO): Promise<void> {
-  const result = await getScannerDeviceDetail(record.id)
-  detailInfo.value = result
+  detailInfo.value = await getScannerDeviceDetail(record.id)
   showDetailModal.value = true
 }
 
@@ -924,10 +932,7 @@ async function handleSaneSubmit(): Promise<void> {
       batchExternalNo: saneFormData.batchExternalNo,
       resolutionOverride: saneFormData.resolutionOverride,
     })
-    message.success(
-      `采集完成：批次 ${result.scanBatchId}，共 ${result.pageCount ?? 0} 页`,
-      4,
-    )
+    message.success(`采集完成：批次 ${result.scanBatchId}，共 ${result.pageCount ?? 0} 页`, 4)
     showSaneModal.value = false
     await loadDevices()
   } finally {
@@ -952,7 +957,7 @@ async function loadExamList(): Promise<void> {
       pageNum: 1,
       pageSize: 200,
       status: 'ACTIVE',
-      createUserId: isAdminView ? null : (userStore.userInfo.userId || undefined),
+      createUserId: isAdminView ? null : userStore.userInfo.userId || undefined,
     })
     examList.value = result.list ?? []
   } finally {
@@ -960,12 +965,16 @@ async function loadExamList(): Promise<void> {
   }
 }
 
-function filterClassOption(input: string, option?: { label?: string, value?: string }): boolean {
-  return String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+function filterClassOption(input: string, option?: DefaultOptionType): boolean {
+  return String(option?.label ?? '')
+    .toLowerCase()
+    .includes(input.toLowerCase())
 }
 
-function filterExamOption(input: string, option?: { label?: string, value?: string }): boolean {
-  return String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+function filterExamOption(input: string, option?: DefaultOptionType): boolean {
+  return String(option?.label ?? '')
+    .toLowerCase()
+    .includes(input.toLowerCase())
 }
 
 onMounted(() => {
@@ -1027,7 +1036,7 @@ onMounted(() => {
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
 .token-row {

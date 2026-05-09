@@ -17,11 +17,11 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'correctionType'">
-          {{ record.correctionType ? GRADE_CORRECTION_TYPE_LABEL[record.correctionType] : '-' }}
+          {{ correctionTypeLabel(record as ExamGradeCorrectionRecordVO) }}
         </template>
         <template v-else-if="column.key === 'correctionStatus'">
-          <a-tag :color="GRADE_CORRECTION_STATUS_COLOR[record.correctionStatus || 'PENDING']">
-            {{ GRADE_CORRECTION_STATUS_LABEL[record.correctionStatus || 'PENDING'] }}
+          <a-tag :color="correctionStatusColor(record as ExamGradeCorrectionRecordVO)">
+            {{ correctionStatusLabel(record as ExamGradeCorrectionRecordVO) }}
           </a-tag>
         </template>
         <template v-else-if="column.key === 'effectiveTime'">{{ fmt(record.effectiveTime) }}</template>
@@ -77,7 +77,11 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamGradeCorrectionRecordVO } from '@/apis/mark/grade-review'
+import type {
+  ExamGradeCorrectionRecordVO,
+  GradeCorrectionStatusCode,
+  GradeCorrectionTypeCode,
+} from '@/apis/mark/grade-review'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -190,6 +194,21 @@ async function submit(): Promise<void> {
   } finally {
     submitting.value = false
   }
+}
+
+function correctionTypeLabel(row: ExamGradeCorrectionRecordVO): string {
+  const code: GradeCorrectionTypeCode | undefined = row.correctionType
+  return code ? (GRADE_CORRECTION_TYPE_LABEL[code] ?? code) : '-'
+}
+
+function correctionStatusLabel(row: ExamGradeCorrectionRecordVO): string {
+  const code: GradeCorrectionStatusCode = row.correctionStatus || 'PENDING'
+  return GRADE_CORRECTION_STATUS_LABEL[code] ?? code
+}
+
+function correctionStatusColor(row: ExamGradeCorrectionRecordVO): string {
+  const code: GradeCorrectionStatusCode = row.correctionStatus || 'PENDING'
+  return GRADE_CORRECTION_STATUS_COLOR[code] ?? 'default'
 }
 
 function fmt(v?: string): string {

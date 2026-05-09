@@ -343,19 +343,13 @@ const unreadAnnouncementCount = computed(
 const unreadTotal = computed(() => globalUnreadCount.totalUnreadCount.value)
 
 const lastRefreshAt = ref<Date | null>(null)
-const lastRefreshTimeText = computed(() =>
-  lastRefreshAt.value ? dayjs(lastRefreshAt.value).format('HH:mm:ss') : '--',
-)
-const lastRefreshDateText = computed(() =>
-  lastRefreshAt.value ? dayjs(lastRefreshAt.value).format('YYYY-MM-DD') : '尚未刷新',
-)
 
 const activeTab = ref<'inbox' | 'announcement'>('inbox')
 
 // ─── 站内信 ──────────────────────────────────
 const messages = ref<InboxMessageListItemDTO[]>([])
 const loadingMessages = ref(false)
-const inboxFilter = reactive<{ keyword?: string, isRead?: boolean }>({})
+const inboxFilter = reactive<{ keyword?: string, isRead?: string }>({})
 const messagePageState = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const messagePagination = computed(() => ({
   current: messagePageState.pageNum,
@@ -371,8 +365,8 @@ const messagePagination = computed(() => ({
 }))
 
 const readStatusOptions = [
-  { value: false, label: '未读' },
-  { value: true, label: '已读' },
+  { value: 'false', label: '未读' },
+  { value: 'true', label: '已读' },
 ]
 
 async function loadMessages(page = messagePageState.pageNum) {
@@ -381,7 +375,7 @@ async function loadMessages(page = messagePageState.pageNum) {
     const result = await getInboxMessages({
       folder: MessageFolderEnum.INBOX,
       keyword: inboxFilter.keyword?.trim() || undefined,
-      isRead: inboxFilter.isRead,
+      isRead: inboxFilter.isRead != null ? inboxFilter.isRead === 'true' : undefined,
       pageNum: page,
       pageSize: messagePageState.pageSize,
     })

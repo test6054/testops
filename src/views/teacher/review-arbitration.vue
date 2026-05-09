@@ -96,8 +96,8 @@
               </template>
               <template v-else-if="column.key === 'actions'">
                 <a-space>
-                  <UiButton size="sm" @click="goWorkspace(record)">仲裁批阅</UiButton>
-                  <UiButton size="sm" variant="ghost" @click="goDetail(record)">详情</UiButton>
+                  <UiButton size="sm" @click="goWorkspace(asTask(record))">仲裁批阅</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="goDetail(asTask(record))">详情</UiButton>
                 </a-space>
               </template>
             </template>
@@ -172,6 +172,10 @@ async function loadTasks(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+function asTask(record: Record<string, any>): ReviewTaskItemVO {
+  return record as ReviewTaskItemVO
 }
 
 function goWorkspace(record: ReviewTaskItemVO): void {

@@ -137,7 +137,7 @@
                     ok-text="领取"
                     cancel-text="取消"
                     :disabled="claiming"
-                    @confirm="handleClaim(record)"
+                    @confirm="handleClaim(asTask(record))"
                   >
                     <UiButton
                       size="sm"
@@ -149,11 +149,11 @@
                   <UiButton
                     v-if="record.status === 'IN_PROGRESS'"
                     size="sm"
-                    @click="goWorkspace(record)"
+                    @click="goWorkspace(asTask(record))"
                   >
                     进入批阅
                   </UiButton>
-                  <UiButton size="sm" variant="ghost" @click="goDetail(record)">详情</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="goDetail(asTask(record))">详情</UiButton>
                 </a-space>
               </template>
             </template>
@@ -231,8 +231,7 @@ const statusOptions = (Object.keys(STATUS_LABEL) as ReviewTaskStatusCode[]).map(
 
 const tasks = ref<ReviewTaskItemVO[]>([])
 const loading = ref(false)
-
-const summaryTags = computed(() => {
+computed(() => {
   const counter: Record<ReviewTaskStatusCode, number> = {
     PENDING: 0,
     IN_PROGRESS: 0,
@@ -249,7 +248,6 @@ const summaryTags = computed(() => {
     count: counter[code],
   }))
 })
-
 const columns: ColumnType<ReviewTaskItemVO>[] = [
   { title: '匿名号', key: 'anonymousNo', width: 140 },
   { title: '题号', key: 'questionNo', width: 100 },
@@ -292,6 +290,10 @@ function resetFilter(): void {
 // ─── 领取任务 ─────────────────────────────
 const claiming = ref(false)
 const claimingTaskId = ref<string | null>(null)
+
+function asTask(record: Record<string, any>): ReviewTaskItemVO {
+  return record as ReviewTaskItemVO
+}
 
 async function handleClaim(record: ReviewTaskItemVO): Promise<void> {
   if (!selectedExamId.value) return

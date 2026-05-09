@@ -37,8 +37,8 @@
           {{ fmtNum(record.avgScore) }} / {{ fmtNum(record.fullScore) }}
         </template>
         <template v-else-if="column.key === 'correctRatio'">
-          <a-typography-text :type="getCorrectRatioType(record)">
-            {{ correctRatio(record) }}
+          <a-typography-text :type="getCorrectRatioType(asAnalysis(record))">
+            {{ correctRatio(asAnalysis(record)) }}
           </a-typography-text>
         </template>
         <template v-else-if="column.key === 'snapshotTime'">
@@ -146,6 +146,10 @@ function fmtNum(v?: number): string {
 function fmtTime(v?: string): string {
   if (!v) return '-'
   return dayjs(v).format('YYYY-MM-DD HH:mm')
+}
+
+function asAnalysis(record: Record<string, any>): ExamQuestionAnalysisRecordVO {
+  return record as ExamQuestionAnalysisRecordVO
 }
 
 function correctRatio(r: ExamQuestionAnalysisRecordVO): string {

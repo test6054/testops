@@ -92,14 +92,14 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'examName'">
-              <button type="button" class="link-cell" @click="goDetail(record)">
+              <button type="button" class="link-cell" @click="goDetail(asExam(record))">
                 {{ record.examName || '未命名考试' }}
               </button>
               <div v-if="record.examNo" class="link-cell__sub">编号：{{ record.examNo }}</div>
             </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag :tone="EXAM_STATUS_TONE[record.status]" size="sm">
-                {{ record.statusMessage || EXAM_STATUS_LABEL[record.status] }}
+              <UiTag :tone="examStatusTone(asExam(record))" size="sm">
+                {{ examStatusLabel(asExam(record)) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'examWindow'">
@@ -115,12 +115,12 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
-                <UiButton size="sm" variant="ghost" @click="goDetail(record)">详情</UiButton>
+                <UiButton size="sm" variant="ghost" @click="goDetail(asExam(record))">详情</UiButton>
                 <UiButton
                   v-if="record.status !== 'CLOSED'"
                   size="sm"
                   variant="ghost"
-                  @click="goTemplate(record)"
+                  @click="goTemplate(asExam(record))"
                 >
                   配置模板
                 </UiButton>
@@ -128,7 +128,7 @@
                   v-if="record.status !== 'CLOSED'"
                   size="sm"
                   variant="ghost"
-                  @click="goRoster(record)"
+                  @click="goRoster(asExam(record))"
                 >
                   考生名册
                 </UiButton>
@@ -269,6 +269,18 @@ const recentCount = computed(() => {
     return dayjs(e.createTime).isAfter(threshold)
   }).length
 })
+
+function asExam(record: Record<string, any>): ExamSummaryVO {
+  return record as ExamSummaryVO
+}
+
+function examStatusTone(row: ExamSummaryVO): 'green' | 'gray' {
+  return EXAM_STATUS_TONE[row.status] ?? 'gray'
+}
+
+function examStatusLabel(row: ExamSummaryVO): string {
+  return row.statusMessage || EXAM_STATUS_LABEL[row.status] || row.status
+}
 
 function formatTime(value?: string): string {
   if (!value) return '-'

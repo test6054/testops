@@ -333,7 +333,7 @@ service.interceptors.response.use(
       const isPublicApi = url.includes('/public/')
 
       if (isAuthRequest || isLogoutRequest || isPublicApi) {
-        const backendMsg = response?.data?.msg || response?.data?.message
+        const backendMsg = response?.data?.msg
         if (backendMsg) {
           const authError: InterceptorError = new Error(backendMsg)
           authError.code = response?.data?.code || statusCode

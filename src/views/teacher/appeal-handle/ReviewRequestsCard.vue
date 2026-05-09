@@ -24,32 +24,32 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'requestStatus'">
-          <a-tag :color="REVIEW_REQUEST_STATUS_COLOR[record.requestStatus || 'PENDING']">
-            {{ REVIEW_REQUEST_STATUS_LABEL[record.requestStatus || 'PENDING'] }}
+          <a-tag :color="REVIEW_REQUEST_STATUS_COLOR[asRequest(record).requestStatus || 'PENDING']">
+            {{ REVIEW_REQUEST_STATUS_LABEL[asRequest(record).requestStatus || 'PENDING'] }}
           </a-tag>
         </template>
         <template v-else-if="column.key === 'questionIds'">
-          <span class="ellipsis">{{ record.questionIds || '-' }}</span>
+          <span class="ellipsis">{{ asRequest(record).questionIds || '-' }}</span>
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{ fmt(record.createTime) }}
+          {{ fmt(asRequest(record).createTime) }}
         </template>
         <template v-else-if="column.key === 'reviewTime'">
-          {{ fmt(record.reviewTime) }}
+          {{ fmt(asRequest(record).reviewTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-space>
             <a-button
               type="link" size="small"
-              :disabled="record.requestStatus === 'APPROVED' || record.requestStatus === 'REJECTED' || record.requestStatus === 'CORRECTED'"
-              @click="openHandleModal(record, 'APPROVED')"
+              :disabled="asRequest(record).requestStatus === 'APPROVED' || asRequest(record).requestStatus === 'REJECTED' || asRequest(record).requestStatus === 'CORRECTED'"
+              @click="openHandleModal(asRequest(record), 'APPROVED')"
             >
               通过
             </a-button>
             <a-button
               type="link" size="small" danger
-              :disabled="record.requestStatus === 'APPROVED' || record.requestStatus === 'REJECTED' || record.requestStatus === 'CORRECTED'"
-              @click="openHandleModal(record, 'REJECTED')"
+              :disabled="asRequest(record).requestStatus === 'APPROVED' || asRequest(record).requestStatus === 'REJECTED' || asRequest(record).requestStatus === 'CORRECTED'"
+              @click="openHandleModal(asRequest(record), 'REJECTED')"
             >
               驳回
             </a-button>
@@ -191,6 +191,11 @@ async function submitHandle(): Promise<void> {
   } finally {
     handling.value = false
   }
+}
+
+/** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为真实 VO */
+function asRequest(record: Record<string, any>): ExamGradeReviewRequestVO {
+  return record as ExamGradeReviewRequestVO
 }
 
 function fmt(v?: string): string {

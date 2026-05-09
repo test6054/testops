@@ -63,7 +63,7 @@
               </div>
               <div v-if="userInfo.studentDetails" class="info-grid__row">
                 <span class="info-grid__label">学号</span>
-                <span class="info-grid__value">{{ userInfo.studentDetails.studentNo || '-' }}</span>
+                <span class="info-grid__value">{{ userInfo.studentDetails.studentNumber || '-' }}</span>
               </div>
               <div v-if="userInfo.studentDetails" class="info-grid__row">
                 <span class="info-grid__label">班级</span>
@@ -75,7 +75,7 @@
               </div>
               <div v-if="userInfo.teacherDetails" class="info-grid__row">
                 <span class="info-grid__label">工号</span>
-                <span class="info-grid__value">{{ userInfo.teacherDetails.workNo || '-' }}</span>
+                <span class="info-grid__value">{{ userInfo.teacherDetails.teacherNumber || '-' }}</span>
               </div>
               <div class="info-grid__row">
                 <span class="info-grid__label">账户状态</span>
@@ -190,18 +190,13 @@ const refreshing = ref(false)
 
 const userInfo = computed(() => userStore.userInfo)
 const tenantName = computed(() => userInfo.value.tenantName || userInfo.value.schoolName || '')
-const displayName = computed(() => userInfo.value.nickName || userInfo.value.userName || '当前用户')
+const displayName = computed(() => userInfo.value.nickName || '当前用户')
 
 const roleLabel = computed(() => userInfo.value.roleDisplayName || userInfo.value.roleKey || '用户')
 
 const isStudent = computed(() => userInfo.value.roleKey === 'SCH_STU')
 const isTenantAdmin = computed(() => userInfo.value.isTenantAdmin === true)
 
-const accountSubject = computed(() => {
-  if (isStudent.value) return '学生个人账户'
-  if (isTenantAdmin.value) return '租户管理账户'
-  return '阅卷教学账户'
-})
 
 const unreadTotal = computed(() => globalUnreadCount.totalUnreadCount.value)
 

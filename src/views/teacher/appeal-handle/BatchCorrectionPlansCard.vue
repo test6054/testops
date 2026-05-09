@@ -18,11 +18,11 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'correctionType'">
-          {{ record.correctionType ? GRADE_CORRECTION_TYPE_LABEL[record.correctionType] : '-' }}
+          {{ correctionTypeLabel(record as ExamBatchGradeCorrectionPlanVO) }}
         </template>
         <template v-else-if="column.key === 'approvalStatus'">
-          <a-tag :color="BATCH_CORRECTION_STATUS_COLOR[record.approvalStatus || 'DRAFT']">
-            {{ BATCH_CORRECTION_STATUS_LABEL[record.approvalStatus || 'DRAFT'] }}
+          <a-tag :color="approvalStatusColor(record as ExamBatchGradeCorrectionPlanVO)">
+            {{ approvalStatusLabel(record as ExamBatchGradeCorrectionPlanVO) }}
           </a-tag>
         </template>
         <template v-else-if="column.key === 'approvedTime'">{{ fmt(record.approvedTime) }}</template>
@@ -38,6 +38,7 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   BatchCorrectionApprovalStatusCode,
   ExamBatchGradeCorrectionPlanVO,
+  GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -89,6 +90,21 @@ async function reload(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+function correctionTypeLabel(row: ExamBatchGradeCorrectionPlanVO): string {
+  const code: GradeCorrectionTypeCode | undefined = row.correctionType
+  return code ? (GRADE_CORRECTION_TYPE_LABEL[code] ?? code) : '-'
+}
+
+function approvalStatusLabel(row: ExamBatchGradeCorrectionPlanVO): string {
+  const code: BatchCorrectionApprovalStatusCode = row.approvalStatus || 'DRAFT'
+  return BATCH_CORRECTION_STATUS_LABEL[code] ?? code
+}
+
+function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): string {
+  const code: BatchCorrectionApprovalStatusCode = row.approvalStatus || 'DRAFT'
+  return BATCH_CORRECTION_STATUS_COLOR[code] ?? 'default'
 }
 
 function fmt(v?: string): string {
