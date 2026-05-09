@@ -155,15 +155,19 @@
                 <div class="progress-detail">{{ record.approved }} / {{ record.total }} 已通过</div>
               </template>
               <template v-else-if="column.key === 'pending'">
-                <UiTag v-if="record.pending > 0" tone="orange" size="sm">{{
-                  record.pending
-                }}</UiTag>
+                <UiTag v-if="record.pending > 0" tone="orange" size="sm">
+                  {{
+                    record.pending
+                  }}
+                </UiTag>
                 <span v-else class="muted">0</span>
               </template>
               <template v-else-if="column.key === 'inProgress'">
-                <UiTag v-if="record.inProgress > 0" tone="blue" size="sm">{{
-                  record.inProgress
-                }}</UiTag>
+                <UiTag v-if="record.inProgress > 0" tone="blue" size="sm">
+                  {{
+                    record.inProgress
+                  }}
+                </UiTag>
                 <span v-else class="muted">0</span>
               </template>
               <template v-else-if="column.key === 'rejected'">
@@ -184,15 +188,15 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { MarkingProgressVO, ReviewTaskItemVO } from '@/apis/mark/exam'
-import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 

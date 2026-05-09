@@ -121,9 +121,7 @@
               </template>
               <template v-else-if="column.key === 'sourceInfo'">
                 <div class="source-cell">
-                  <span v-if="record.sourceType"
-                    ><b>{{ record.sourceType }}</b></span
-                  >
+                  <span v-if="record.sourceType"><b>{{ record.sourceType }}</b></span>
                   <span v-if="record.sourceId" class="muted">#{{ record.sourceId }}</span>
                 </div>
               </template>
@@ -136,9 +134,11 @@
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'status'">
-                <UiTag :tone="record.status ? 'orange' : 'gray'" size="sm">{{
-                  record.status || '-'
-                }}</UiTag>
+                <UiTag :tone="record.status ? 'orange' : 'gray'" size="sm">
+                  {{
+                    record.status || '-'
+                  }}
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'diagnostic'">
                 <a-typography-text :content="record.diagnostic" :ellipsis="{ tooltip: true }" />
@@ -243,31 +243,43 @@
     <!-- 详情弹窗 -->
     <a-modal v-model:open="detailModalOpen" title="异常详情" :footer="null" width="640px">
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
-        <a-descriptions-item label="异常类型">{{
-          detailRecord.attentionType || '-'
-        }}</a-descriptions-item>
+        <a-descriptions-item label="异常类型">
+          {{
+            detailRecord.attentionType || '-'
+          }}
+        </a-descriptions-item>
         <a-descriptions-item label="状态">{{ detailRecord.status || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="来源类型">{{
-          detailRecord.sourceType || '-'
-        }}</a-descriptions-item>
+        <a-descriptions-item label="来源类型">
+          {{
+            detailRecord.sourceType || '-'
+          }}
+        </a-descriptions-item>
         <a-descriptions-item label="来源ID">{{ detailRecord.sourceId || '-' }}</a-descriptions-item>
         <a-descriptions-item label="考试ID">{{ detailRecord.examId || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="扫描批次ID">{{
-          detailRecord.scanBatchId || '-'
-        }}</a-descriptions-item>
-        <a-descriptions-item label="试卷实例ID">{{
-          detailRecord.paperInstanceId || '-'
-        }}</a-descriptions-item>
+        <a-descriptions-item label="扫描批次ID">
+          {{
+            detailRecord.scanBatchId || '-'
+          }}
+        </a-descriptions-item>
+        <a-descriptions-item label="试卷实例ID">
+          {{
+            detailRecord.paperInstanceId || '-'
+          }}
+        </a-descriptions-item>
         <a-descriptions-item label="页ID">{{ detailRecord.pageId || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="题目模板ID">{{
-          detailRecord.questionTemplateId || '-'
-        }}</a-descriptions-item>
+        <a-descriptions-item label="题目模板ID">
+          {{
+            detailRecord.questionTemplateId || '-'
+          }}
+        </a-descriptions-item>
         <a-descriptions-item label="诊断">
           <pre class="diagnostic-pre">{{ detailRecord.diagnostic || '-' }}</pre>
         </a-descriptions-item>
-        <a-descriptions-item label="更新时间">{{
-          formatTime(detailRecord.updateTime)
-        }}</a-descriptions-item>
+        <a-descriptions-item label="更新时间">
+          {{
+            formatTime(detailRecord.updateTime)
+          }}
+        </a-descriptions-item>
       </a-descriptions>
     </a-modal>
   </GiPageLayout>
@@ -278,9 +290,7 @@ import type { UploadProps } from 'ant-design-vue'
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateVO, ScanAttentionItemVO } from '@/apis/mark/exam'
-import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindItemPayload } from '@/apis/mark/exam-mark-scanner'
-import { batchBindPapers, submitRepairAction } from '@/apis/mark/exam-mark-scanner'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -290,8 +300,10 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
+import { batchBindPapers, submitRepairAction } from '@/apis/mark/exam-mark-scanner'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -422,19 +434,13 @@ const candidateOptions = computed(() =>
   })),
 )
 
-interface CandidateOption {
-  value: string
-  label: string
-  raw: ExamCandidateVO
-}
-
-function filterCandidate(input: string, option: CandidateOption): boolean {
+function filterCandidate(input: string, option: Record<string, any>): boolean {
   const kw = input.trim().toLowerCase()
   if (!kw) return true
-  const raw = option.raw
+  const raw = option.raw as ExamCandidateVO
   return (
-    (raw.studentName ?? '').toLowerCase().includes(kw) ||
-    (raw.studentNo ?? '').toLowerCase().includes(kw)
+    (raw.studentName ?? '').toLowerCase().includes(kw)
+    || (raw.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 

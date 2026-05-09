@@ -43,15 +43,21 @@
             <span>关联 ID 与评语</span>
           </template>
           <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" :label-style="labelStyle" size="small">
-            <a-descriptions-item label="题目模板ID">{{
-              detail.questionTemplateId || '-'
-            }}</a-descriptions-item>
-            <a-descriptions-item label="试卷实例ID">{{
-              detail.paperInstanceId || '-'
-            }}</a-descriptions-item>
-            <a-descriptions-item label="批改结果ID">{{
-              detail.gradeResultId || '-'
-            }}</a-descriptions-item>
+            <a-descriptions-item label="题目模板ID">
+              {{
+                detail.questionTemplateId || '-'
+              }}
+            </a-descriptions-item>
+            <a-descriptions-item label="试卷实例ID">
+              {{
+                detail.paperInstanceId || '-'
+              }}
+            </a-descriptions-item>
+            <a-descriptions-item label="批改结果ID">
+              {{
+                detail.gradeResultId || '-'
+              }}
+            </a-descriptions-item>
             <a-descriptions-item label="评语" :span="3">
               <a-typography-text v-if="detail.commentText" :content="detail.commentText" />
               <span v-else class="muted">-</span>
@@ -116,9 +122,7 @@
                       </template>
                       <template #description>
                         <div class="annotation-meta">
-                          <span v-if="item.anchorText" class="muted"
-                            >锚点：{{ item.anchorText }}</span
-                          >
+                          <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
                           <span class="muted">{{ formatTime(item.createTime) }}</span>
                         </div>
                       </template>
@@ -136,9 +140,7 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AnnotationVO, ReviewTaskDetailVO } from '@/apis/mark/exam'
-import { getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -148,10 +150,12 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import { getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useUserStore } from '@/stores/modules/user'
 

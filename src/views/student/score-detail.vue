@@ -11,9 +11,9 @@
             {{ FINAL_SCORE_STATUS_LABEL[detail.finalScoreStatus] }}
           </UiTag>
           <UiTag v-else tone="gray" size="md">未生成</UiTag>
-          <UiTag v-if="detail?.reviewWindowStatus === 'ACTIVE'" tone="orange" size="md"
-            >复核进行中</UiTag
-          >
+          <UiTag v-if="detail?.reviewWindowStatus === 'ACTIVE'" tone="orange" size="md">
+            复核进行中
+          </UiTag>
           <UiTag v-if="detail" tone="blue" size="md">
             {{
               detail.finalScoreStatus === 'PUBLISHED' && detail.totalScore != null
@@ -107,15 +107,15 @@
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'objectiveResult'">
-                <UiTag v-if="record.objectiveResult === 'CORRECT'" tone="green" size="sm"
-                  >正确</UiTag
-                >
-                <UiTag v-else-if="record.objectiveResult === 'WRONG'" tone="red" size="sm"
-                  >错误</UiTag
-                >
-                <UiTag v-else-if="record.objectiveResult === 'PARTIAL'" tone="orange" size="sm"
-                  >部分正确</UiTag
-                >
+                <UiTag v-if="record.objectiveResult === 'CORRECT'" tone="green" size="sm">
+                  正确
+                </UiTag>
+                <UiTag v-else-if="record.objectiveResult === 'WRONG'" tone="red" size="sm">
+                  错误
+                </UiTag>
+                <UiTag v-else-if="record.objectiveResult === 'PARTIAL'" tone="orange" size="sm">
+                  部分正确
+                </UiTag>
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'gradeStatus'">
@@ -133,12 +133,6 @@
 
 <script lang="ts" setup>
 import type { StudentQuestionScoreVO, StudentScoreDetailVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  getMyScoreDetail,
-} from '@/apis/mark/student-exam'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -146,8 +140,14 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  getMyScoreDetail,
+} from '@/apis/mark/student-exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiAlertStrip, UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'StudentScoreDetail' })
@@ -181,39 +181,10 @@ const questionColumns = [
   { title: '批改状态', key: 'gradeStatus', dataIndex: 'gradeStatus' },
 ]
 
-const scoreRateText = computed(() => {
-  const total = detail.value?.totalScore
-  const full = detail.value?.fullScore
-  if (
-    detail.value?.finalScoreStatus !== 'PUBLISHED' ||
-    total == null ||
-    full == null ||
-    full <= 0
-  ) {
-    return '--'
-  }
-  return `${((total / full) * 100).toFixed(1)}%`
-})
-
-const reviewWindowText = computed(() => {
-  const status = detail.value?.reviewWindowStatus
-  if (status === 'ACTIVE') return '开放中'
-  if (status === 'CLOSED') return '已关闭'
-  if (status === 'DRAFT') return '未启用'
-  return '未开放'
-})
-
-const reviewWindowDesc = computed(() => {
-  const d = detail.value
-  if (!d || d.reviewWindowStatus !== 'ACTIVE') return '暂不接受复核申请'
-  return `${formatTime(d.reviewWindowOpenTime)} 至 ${formatTime(d.reviewWindowCloseTime)}`
-})
-
 const correctCount = computed(() => (detail.value?.questions ?? []).filter(isFullMark).length)
 const partialCount = computed(
   () =>
-    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q))
-      .length,
+    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q)).length,
 )
 const zeroCount = computed(() => (detail.value?.questions ?? []).filter(isZero).length)
 
@@ -289,9 +260,6 @@ function formatTime(value?: string): string {
   return dayjs(value).format('YYYY-MM-DD HH:mm')
 }
 
-function goBack() {
-  router.push({ name: 'StudentScore' })
-}
 
 function goAppeal(id: string) {
   router.push({ name: 'StudentAppeal', query: { examId: id } })

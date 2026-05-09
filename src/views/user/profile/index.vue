@@ -71,9 +71,7 @@
               </div>
               <div v-if="userInfo.studentDetails?.enrollmentYear" class="info-grid__row">
                 <span class="info-grid__label">入学年级</span>
-                <span class="info-grid__value"
-                  >{{ userInfo.studentDetails.enrollmentYear }} 级</span
-                >
+                <span class="info-grid__value">{{ userInfo.studentDetails.enrollmentYear }} 级</span>
               </div>
               <div v-if="userInfo.teacherDetails" class="info-grid__row">
                 <span class="info-grid__label">工号</span>
@@ -176,8 +174,8 @@ import { message, Modal } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiTag } from '@/components/ui-guide/ui'
 import { globalUnreadCount } from '@/composables/useUnreadCount'
 import { useAuthStore, useUserStore } from '@/stores'
@@ -247,7 +245,7 @@ function handleLogout() {
     okType: 'danger',
     onOk: async () => {
       await authStore.logout()
-      router.push({ name: 'Login' })
+      await router.push({ name: 'Login' })
     },
   })
 }

@@ -64,9 +64,9 @@
 
 <script lang="ts" setup>
 import type { RouteRecordRaw } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import { debounce } from 'lodash-es'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useDevice } from '@/hooks'
 import { useRouteStore } from '@/stores'
 import { getToken } from '@/utils/auth'

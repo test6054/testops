@@ -174,9 +174,7 @@
                       </template>
                       <template #description>
                         <div class="annotation-meta">
-                          <span v-if="item.anchorText" class="muted"
-                            >锚点：{{ item.anchorText }}</span
-                          >
+                          <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
                           <span class="muted">{{ formatTime(item.createTime) }}</span>
                         </div>
                       </template>
@@ -195,7 +193,6 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationVO, ReviewTaskDetailVO } from '@/apis/mark/exam'
-import { confirmQuestionGrade, getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
@@ -207,8 +204,9 @@ import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import { confirmQuestionGrade, getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherReviewWorkspace' })
@@ -307,9 +305,9 @@ async function loadTask(): Promise<void> {
     await loadAnnotations()
     // 默认填充建议分
     if (
-      gradeForm.finalScore === undefined &&
-      detail.value?.suggestedScore !== undefined &&
-      detail.value?.suggestedScore !== null
+      gradeForm.finalScore === undefined
+      && detail.value?.suggestedScore !== undefined
+      && detail.value?.suggestedScore !== null
     ) {
       gradeForm.finalScore = detail.value.suggestedScore
     }

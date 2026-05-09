@@ -119,9 +119,9 @@
           <div v-if="previewLoaded" class="preview-section">
             <a-descriptions :column="{ xs: 1, sm: 2, md: 4 }" size="small">
               <a-descriptions-item label="待聚合事件">
-                <a-typography-text strong type="warning"
-                  >{{ previewData?.eventCount ?? 0 }} 条</a-typography-text
-                >
+                <a-typography-text strong type="warning">
+                  {{ previewData?.eventCount ?? 0 }} 条
+                </a-typography-text>
               </a-descriptions-item>
               <a-descriptions-item label="覆盖文件数">
                 {{ previewData?.fileCount ?? 0 }} 份
@@ -195,10 +195,10 @@
                   size="sm"
                 >
                   {{
-                    record.statusMessage ||
-                    BATCH_STATUS_LABEL[record.status as ScanBatchStatusCode] ||
-                    record.status ||
-                    '-'
+                    record.statusMessage
+                      || BATCH_STATUS_LABEL[record.status as ScanBatchStatusCode]
+                      || record.status
+                      || '-'
                   }}
                 </UiTag>
               </template>
@@ -265,13 +265,6 @@ import type {
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
-import {
-  createScanBatchByCondition,
-  getMarkingProgress,
-  listScannerDevices,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -284,8 +277,15 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import {
+  createScanBatchByCondition,
+  getMarkingProgress,
+  listScannerDevices,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+} from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -388,10 +388,10 @@ const batchFormRules: Record<string, Rule[]> = {
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value &&
-    batchForm.scannerDeviceIds.length > 0 &&
-    !!batchForm.scanWindow &&
-    batchForm.scanWindow.length === 2,
+    !!selectedExamId.value
+    && batchForm.scannerDeviceIds.length > 0
+    && !!batchForm.scanWindow
+    && batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -493,7 +493,7 @@ async function handleCreateBatch(): Promise<void> {
 const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })

@@ -4,9 +4,9 @@
       <PageHeader title="我的成绩">
         <template #tags>
           <UiTag tone="blue" size="md">{{ exams.length }} 场考试</UiTag>
-          <UiTag v-if="publishedCount > 0" tone="green" size="md"
-            >已发布 {{ publishedCount }}</UiTag
-          >
+          <UiTag v-if="publishedCount > 0" tone="green" size="md">
+            已发布 {{ publishedCount }}
+          </UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
@@ -194,12 +194,6 @@
 
 <script lang="ts" setup>
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-} from '@/apis/mark/student-exam'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
@@ -210,8 +204,14 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+} from '@/apis/mark/student-exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'StudentScore' })
@@ -227,11 +227,6 @@ const latestPublished = computed<StudentExamItemVO | null>(() => {
 const publishedCount = computed(
   () => exams.value.filter((e) => e.finalScoreStatus === 'PUBLISHED').length,
 )
-const confirmedCount = computed(
-  () => exams.value.filter((e) => e.finalScoreStatus === 'CONFIRMED').length,
-)
-const reviewableCount = computed(() => exams.value.filter(canSubmitReview).length)
-
 async function loadExams() {
   loading.value = true
   try {

@@ -4,9 +4,9 @@
       <PageHeader title="考生名册">
         <template #tags>
           <UiTag v-if="selectedExamId" tone="blue" size="md">{{ candidates.length }} 名考生</UiTag>
-          <UiTag v-if="selectedExamId && pendingCount > 0" tone="orange" size="md"
-            >待保存 {{ pendingCount }}</UiTag
-          >
+          <UiTag v-if="selectedExamId && pendingCount > 0" tone="orange" size="md">
+            待保存 {{ pendingCount }}
+          </UiTag>
         </template>
         <template #actions>
           <a-select
@@ -160,7 +160,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateRosterPayload, ExamSummaryVO } from '@/apis/mark/exam'
-import { getExamDetail, listExamCandidates, pageExams, saveExamScope } from '@/apis/mark/exam'
 import ImportOutlined from '@ant-design/icons-vue/ImportOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
@@ -169,8 +168,9 @@ import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import { getExamDetail, listExamCandidates, pageExams, saveExamScope } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherCandidateRoster' })
@@ -196,7 +196,7 @@ function nextRowKey(): string {
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const classIds = ref<string[]>([])
@@ -206,7 +206,6 @@ const newClassIdInput = ref('')
 const loading = ref(false)
 const saving = ref(false)
 
-const persistedCount = computed(() => candidates.filter((c) => c.candidateRosterId).length)
 const pendingCount = computed(() => candidates.filter((c) => !c.candidateRosterId).length)
 
 const columns: ColumnType<CandidateRow>[] = [

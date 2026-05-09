@@ -4,9 +4,9 @@
       <PageHeader title="历次考试">
         <template #tags>
           <UiTag tone="blue" size="md">{{ exams.length }} 场</UiTag>
-          <UiTag v-if="publishedCount > 0" tone="green" size="md"
-            >已发布 {{ publishedCount }}</UiTag
-          >
+          <UiTag v-if="publishedCount > 0" tone="green" size="md">
+            已发布 {{ publishedCount }}
+          </UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
@@ -57,45 +57,46 @@
           size="middle"
           class="history-table"
         >
-          <template #bodyCell="{ column, record }">
+          <template #bodyCell="{ column, record: _row }">
+            <!-- 类型安全绑定：使用后端真实 VO 类型 -->
             <template v-if="column.key === 'examName'">
-              <button type="button" class="link-cell" @click="goDetail(record.examId)">
-                {{ record.examName || '未命名考试' }}
+              <button type="button" class="link-cell" @click="goDetail(asRow(_row).examId)">
+                {{ asRow(_row).examName || '未命名考试' }}
               </button>
-              <div v-if="record.examNo" class="link-cell__sub">编号：{{ record.examNo }}</div>
+              <div v-if="asRow(_row).examNo" class="link-cell__sub">编号：{{ asRow(_row).examNo }}</div>
             </template>
             <template v-else-if="column.key === 'finalScoreStatus'">
               <UiTag
-                v-if="record.finalScoreStatus"
-                :tone="FINAL_SCORE_STATUS_TONE[record.finalScoreStatus]"
+                v-if="asRow(_row).finalScoreStatus"
+                :tone="FINAL_SCORE_STATUS_TONE[asRow(_row).finalScoreStatus!]"
                 size="sm"
               >
-                {{ FINAL_SCORE_STATUS_LABEL[record.finalScoreStatus] }}
+                {{ FINAL_SCORE_STATUS_LABEL[asRow(_row).finalScoreStatus!] }}
               </UiTag>
               <UiTag v-else tone="gray" size="sm">未生成</UiTag>
             </template>
             <template v-else-if="column.key === 'finalScore'">
               <span
-                v-if="record.finalScoreStatus === 'PUBLISHED' && record.finalScore != null"
+                v-if="asRow(_row).finalScoreStatus === 'PUBLISHED' && asRow(_row).finalScore != null"
                 class="score-cell"
               >
-                {{ record.finalScore.toFixed(2) }}
+                {{ asRow(_row).finalScore!.toFixed(2) }}
               </span>
               <span v-else class="muted">--</span>
             </template>
             <template v-else-if="column.key === 'examStartTime'">
-              {{ formatTime(record.examStartTime) }}
+              {{ formatTime(asRow(_row).examStartTime) }}
             </template>
             <template v-else-if="column.key === 'publishedTime'">
-              {{ formatTime(record.publishedTime) }}
+              {{ formatTime(asRow(_row).publishedTime) }}
             </template>
             <template v-else-if="column.key === 'reviewWindowStatus'">
-              <UiTag v-if="record.reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm"
-                >开放中</UiTag
-              >
-              <UiTag v-else-if="record.reviewWindowStatus === 'CLOSED'" tone="gray" size="sm"
-                >已关闭</UiTag
-              >
+              <UiTag v-if="asRow(_row).reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm">
+                开放中
+              </UiTag>
+              <UiTag v-else-if="asRow(_row).reviewWindowStatus === 'CLOSED'" tone="gray" size="sm">
+                已关闭
+              </UiTag>
               <span v-else class="muted">未开放</span>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -103,16 +104,16 @@
                 <UiButton
                   size="sm"
                   variant="ghost"
-                  :disabled="record.finalScoreStatus !== 'PUBLISHED'"
-                  @click="goDetail(record.examId)"
+                  :disabled="asRow(_row).finalScoreStatus !== 'PUBLISHED'"
+                  @click="goDetail(asRow(_row).examId)"
                 >
                   查看详情
                 </UiButton>
                 <UiButton
                   size="sm"
                   variant="ghost"
-                  :disabled="!canSubmitReview(record)"
-                  @click="goAppeal(record.examId)"
+                  :disabled="!canSubmitReview(asRow(_row))"
+                  @click="goAppeal(asRow(_row).examId)"
                 >
                   提交复核
                 </UiButton>
@@ -127,12 +128,6 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode, StudentExamItemVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-} from '@/apis/mark/student-exam'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -140,8 +135,14 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+} from '@/apis/mark/student-exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'StudentExamHistory' })
@@ -152,7 +153,7 @@ const exams = ref<StudentExamItemVO[]>([])
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
-const statusOptions: Array<{ value: FinalScoreStatusCode; label: string }> = [
+const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
   { value: 'PENDING', label: '待计算' },
   { value: 'CALCULATED', label: '已计算' },
   { value: 'CONFIRMED', label: '已确认' },
@@ -197,18 +198,11 @@ const filteredExams = computed<StudentExamItemVO[]>(() => {
 const publishedCount = computed(
   () => exams.value.filter((e) => e.finalScoreStatus === 'PUBLISHED').length,
 )
-const confirmedCount = computed(
-  () => exams.value.filter((e) => e.finalScoreStatus === 'CONFIRMED').length,
-)
-const pendingCount = computed(
-  () =>
-    exams.value.filter(
-      (e) => e.finalScoreStatus === 'PENDING' || e.finalScoreStatus === 'CALCULATED',
-    ).length,
-)
-const latestExam = computed<StudentExamItemVO | null>(() => exams.value[0] ?? null)
-const latestExamName = computed(() => latestExam.value?.examName || '暂无')
-const latestExamTimeText = computed(() => formatTime(latestExam.value?.examStartTime))
+
+/** 将 a-table slot 的 Record<string, any> 安全转换为后端真实 VO 类型 */
+function asRow(row: Record<string, any>): StudentExamItemVO {
+  return row as unknown as StudentExamItemVO
+}
 
 async function loadExams() {
   loading.value = true

@@ -3,9 +3,7 @@
     <div class="score-publish-page">
       <PageHeader title="成绩发布">
         <template #tags>
-          <UiTag v-if="selectedExamId" tone="blue" size="md"
-            >{{ pagination.total ?? 0 }} 名考生</UiTag
-          >
+          <UiTag v-if="selectedExamId" tone="blue" size="md">{{ pagination.total ?? 0 }} 名考生</UiTag>
         </template>
         <template #actions>
           <a-select
@@ -267,6 +265,13 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
+import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   deanonymizePaper,
   FINAL_SCORE_STATUS_LABEL,
@@ -275,15 +280,8 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 

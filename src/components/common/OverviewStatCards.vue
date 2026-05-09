@@ -43,7 +43,7 @@ withDefaults(
   },
 )
 
-const toneMap: Record<Tone, { bg: string; icon: string; value: string }> = {
+const toneMap: Record<Tone, { bg: string, icon: string, value: string }> = {
   blue: {
     bg: 'var(--ant-color-primary-bg)',
     icon: 'var(--ant-color-primary)',

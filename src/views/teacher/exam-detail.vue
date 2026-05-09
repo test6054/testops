@@ -7,9 +7,9 @@
             {{ detail.statusMessage || EXAM_STATUS_LABEL[detail.status] }}
           </UiTag>
           <UiTag v-if="detail?.examNo" tone="gray" size="md">编号 {{ detail.examNo }}</UiTag>
-          <UiTag v-if="detail" tone="blue" size="md"
-            >{{ detail.candidateCount }} 人 · {{ detail.questionCount }} 题</UiTag
-          >
+          <UiTag v-if="detail" tone="blue" size="md">
+            {{ detail.candidateCount }} 人 · {{ detail.questionCount }} 题
+          </UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadDetail">
@@ -20,12 +20,12 @@
             <template #icon><FileOutlined /></template>
             试卷模板
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!examId" @click="goAnswerSheetTemplate"
-            >答题卡</UiButton
-          >
-          <UiButton size="sm" variant="outline" :disabled="!examId" @click="goRoster"
-            >考生名册</UiButton
-          >
+          <UiButton size="sm" variant="outline" :disabled="!examId" @click="goAnswerSheetTemplate">
+            答题卡
+          </UiButton>
+          <UiButton size="sm" variant="outline" :disabled="!examId" @click="goRoster">
+            考生名册
+          </UiButton>
         </template>
       </PageHeader>
 
@@ -42,32 +42,46 @@
               </template>
               <a-descriptions :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
                 <a-descriptions-item label="考试名称">{{ detail.examName }}</a-descriptions-item>
-                <a-descriptions-item label="考试编号">{{
-                  detail.examNo || '-'
-                }}</a-descriptions-item>
+                <a-descriptions-item label="考试编号">
+                  {{
+                    detail.examNo || '-'
+                  }}
+                </a-descriptions-item>
                 <a-descriptions-item label="状态">
                   <UiTag :tone="EXAM_STATUS_TONE[detail.status]" size="sm">
                     {{ detail.statusMessage || EXAM_STATUS_LABEL[detail.status] }}
                   </UiTag>
                 </a-descriptions-item>
-                <a-descriptions-item label="批改策略">{{
-                  detail.gradingStrategy || '默认'
-                }}</a-descriptions-item>
-                <a-descriptions-item label="开始时间">{{
-                  formatTime(detail.examStartTime)
-                }}</a-descriptions-item>
-                <a-descriptions-item label="结束时间">{{
-                  formatTime(detail.examEndTime)
-                }}</a-descriptions-item>
-                <a-descriptions-item label="创建时间">{{
-                  formatTime(detail.createTime)
-                }}</a-descriptions-item>
-                <a-descriptions-item label="更新时间">{{
-                  formatTime(detail.updateTime)
-                }}</a-descriptions-item>
-                <a-descriptions-item label="备注" :span="2">{{
-                  detail.remark || '-'
-                }}</a-descriptions-item>
+                <a-descriptions-item label="批改策略">
+                  {{
+                    detail.gradingStrategy || '默认'
+                  }}
+                </a-descriptions-item>
+                <a-descriptions-item label="开始时间">
+                  {{
+                    formatTime(detail.examStartTime)
+                  }}
+                </a-descriptions-item>
+                <a-descriptions-item label="结束时间">
+                  {{
+                    formatTime(detail.examEndTime)
+                  }}
+                </a-descriptions-item>
+                <a-descriptions-item label="创建时间">
+                  {{
+                    formatTime(detail.createTime)
+                  }}
+                </a-descriptions-item>
+                <a-descriptions-item label="更新时间">
+                  {{
+                    formatTime(detail.updateTime)
+                  }}
+                </a-descriptions-item>
+                <a-descriptions-item label="备注" :span="2">
+                  {{
+                    detail.remark || '-'
+                  }}
+                </a-descriptions-item>
               </a-descriptions>
             </UiCard>
 
@@ -87,12 +101,16 @@
               </UiEmpty>
               <a-descriptions v-else :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
                 <a-descriptions-item label="模板ID">{{ detail.templateId }}</a-descriptions-item>
-                <a-descriptions-item label="模板名称">{{
-                  detail.templateName || '-'
-                }}</a-descriptions-item>
-                <a-descriptions-item label="总页数">{{
-                  detail.totalPages ?? '-'
-                }}</a-descriptions-item>
+                <a-descriptions-item label="模板名称">
+                  {{
+                    detail.templateName || '-'
+                  }}
+                </a-descriptions-item>
+                <a-descriptions-item label="总页数">
+                  {{
+                    detail.totalPages ?? '-'
+                  }}
+                </a-descriptions-item>
               </a-descriptions>
             </UiCard>
           </a-col>
@@ -146,9 +164,7 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
@@ -157,9 +173,11 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherExamDetail' })

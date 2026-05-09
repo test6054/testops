@@ -3,12 +3,12 @@
     <div class="ledger-page">
       <PageHeader title="影像账本">
         <template #tags>
-          <UiTag v-if="ledger?.ledgerStatus" :tone="ledgerStatusTone" size="md">{{
-            ledgerStatusLabel
-          }}</UiTag>
-          <UiTag v-if="ledger" tone="blue" size="md"
-            >已扫 {{ ledger.scannedPageCount ?? 0 }} / {{ ledger.expectedPageCount ?? 0 }} 页</UiTag
-          >
+          <UiTag v-if="ledger?.ledgerStatus" :tone="ledgerStatusTone" size="md">
+            {{
+              ledgerStatusLabel
+            }}
+          </UiTag>
+          <UiTag v-if="ledger" tone="blue" size="md">已扫 {{ ledger.scannedPageCount ?? 0 }} / {{ ledger.expectedPageCount ?? 0 }} 页</UiTag>
         </template>
         <template #actions>
           <a-select
@@ -51,12 +51,8 @@
           <div class="ledger-page__attention-body">
             <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
             <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
-            <span v-if="attentionContext.scanBatchId"
-              >扫描批次：{{ attentionContext.scanBatchId }}</span
-            >
-            <span v-if="attentionContext.paperInstanceId"
-              >试卷实例：{{ attentionContext.paperInstanceId }}</span
-            >
+            <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
+            <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
             <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
             <UiButton
               v-if="attentionContext.pageId"
@@ -120,17 +116,17 @@ import type {
   ImageLedgerDetailVO,
   OverrideTargetType,
 } from '@/apis/mark/image-ledger'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   executeImageLedgerBalance,
   getImageLedgerDetail,
   LEDGER_STATUS_LABEL,
 } from '@/apis/mark/image-ledger'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
@@ -250,7 +246,7 @@ function openRepair(pageId: string): void {
 const overrideOpen = ref(false)
 const overrideTargetType = ref<OverrideTargetType>('PAGE')
 const overrideTargetId = ref<string>('')
-function openOverride(payload: { targetType: OverrideTargetType; targetId: string }): void {
+function openOverride(payload: { targetType: OverrideTargetType, targetId: string }): void {
   overrideTargetType.value = payload.targetType
   overrideTargetId.value = payload.targetId
   overrideOpen.value = true

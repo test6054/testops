@@ -67,9 +67,9 @@
                   :options="readStatusOptions"
                   @change="loadMessages(1)"
                 />
-                <UiButton size="sm" :loading="loadingMessages" @click="loadMessages(1)"
-                  >查询</UiButton
-                >
+                <UiButton size="sm" :loading="loadingMessages" @click="loadMessages(1)">
+                  查询
+                </UiButton>
                 <UiButton
                   v-if="unreadInboxCount > 0"
                   size="sm"
@@ -107,20 +107,20 @@
                     </template>
                     <template #description>
                       <div class="msg-item__meta">
-                        <UiTag tone="blue" size="sm">{{
-                          formatMessageType(item.messageType)
-                        }}</UiTag>
-                        <span
-                          >发自 {{ item.senderInfo?.nickName || item.senderUserId || '系统' }}</span
-                        >
+                        <UiTag tone="blue" size="sm">
+                          {{
+                            formatMessageType(item.messageType)
+                          }}
+                        </UiTag>
+                        <span>发自 {{ item.senderInfo?.nickName || item.senderUserId || '系统' }}</span>
                         <span>{{ formatTime(item.sendTime) }}</span>
                       </div>
                     </template>
                   </a-list-item-meta>
                   <template #actions>
-                    <UiButton size="sm" variant="ghost" @click="openMessageDetail(item)"
-                      >查看</UiButton
-                    >
+                    <UiButton size="sm" variant="ghost" @click="openMessageDetail(item)">
+                      查看
+                    </UiButton>
                     <UiButton
                       v-if="!item.isRead"
                       size="sm"
@@ -172,9 +172,9 @@
                 >
                   仅未读
                 </a-checkbox>
-                <UiButton size="sm" :loading="loadingAnnouncements" @click="loadAnnouncements(1)"
-                  >查询</UiButton
-                >
+                <UiButton size="sm" :loading="loadingAnnouncements" @click="loadAnnouncements(1)">
+                  查询
+                </UiButton>
                 <UiButton
                   v-if="unreadAnnouncementCount > 0"
                   size="sm"
@@ -225,9 +225,9 @@
                     </template>
                   </a-list-item-meta>
                   <template #actions>
-                    <UiButton size="sm" variant="ghost" @click="openAnnouncementDetail(item)"
-                      >查看</UiButton
-                    >
+                    <UiButton size="sm" variant="ghost" @click="openAnnouncementDetail(item)">
+                      查看
+                    </UiButton>
                   </template>
                 </a-list-item>
               </template>
@@ -248,10 +248,8 @@
         <div v-if="messageDetail" class="msg-detail">
           <div class="msg-detail__meta">
             <UiTag tone="blue" size="sm">{{ formatMessageType(messageDetail.messageType) }}</UiTag>
-            <span
-              >发自
-              {{ messageDetail.senderInfo?.nickName || messageDetail.senderUserId || '系统' }}</span
-            >
+            <span>发自
+              {{ messageDetail.senderInfo?.nickName || messageDetail.senderUserId || '系统' }}</span>
             <span>{{ formatTime(messageDetail.sendTime) }}</span>
           </div>
           <a-divider />
@@ -309,6 +307,12 @@ import type {
   InboxMessageListItemDTO,
   SystemAnnouncementResponse,
 } from '@/apis/edu/message'
+import BellOutlined from '@ant-design/icons-vue/BellOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -321,14 +325,8 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
-import BellOutlined from '@ant-design/icons-vue/BellOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { globalUnreadCount } from '@/composables/useUnreadCount'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
@@ -357,7 +355,7 @@ const activeTab = ref<'inbox' | 'announcement'>('inbox')
 // ─── 站内信 ──────────────────────────────────
 const messages = ref<InboxMessageListItemDTO[]>([])
 const loadingMessages = ref(false)
-const inboxFilter = reactive<{ keyword?: string; isRead?: boolean }>({})
+const inboxFilter = reactive<{ keyword?: string, isRead?: boolean }>({})
 const messagePageState = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const messagePagination = computed(() => ({
   current: messagePageState.pageNum,

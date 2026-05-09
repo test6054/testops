@@ -4,9 +4,9 @@
       <PageHeader title="批改审计" back-route="/admin/dashboard">
         <template #tags>
           <UiTag tone="blue" size="md">考试维度</UiTag>
-          <UiTag v-if="selectedExamId" tone="green" size="md"
-            >日志 {{ operationLogs.length }} · 事件 {{ incidents.length }}</UiTag
-          >
+          <UiTag v-if="selectedExamId" tone="green" size="md">
+            日志 {{ operationLogs.length }} · 事件 {{ incidents.length }}
+          </UiTag>
         </template>
         <template #actions>
           <a-select
@@ -42,9 +42,11 @@
         <template #title>
           <FileSearchOutlined />
           <span>审计内容</span>
-          <UiBadge tone="blue">{{
-            activeTab === 'logs' ? '审计日志' : activeTab === 'incidents' ? '重大事件' : '诊断样本'
-          }}</UiBadge>
+          <UiBadge tone="blue">
+            {{
+              activeTab === 'logs' ? '审计日志' : activeTab === 'incidents' ? '重大事件' : '诊断样本'
+            }}
+          </UiBadge>
         </template>
 
         <a-tabs v-model:active-key="activeTab" class="audit-tabs" @change="onTabChange">
@@ -77,39 +79,39 @@
               class="audit-table"
               :pagination="{ pageSize: 20, showSizeChanger: true }"
             >
-              <template #bodyCell="{ column, record }">
+              <template #bodyCell="{ column, record: _row }">
                 <template v-if="column.key === 'operationType'">
                   <UiTag tone="blue" size="sm">
                     {{
-                      OPERATION_TYPE_LABEL[record.operationType || ''] ||
-                      record.operationType ||
-                      '-'
+                      OPERATION_TYPE_LABEL[asLogRow(_row).operationType || '']
+                        || asLogRow(_row).operationType
+                        || '-'
                     }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'targetType'">
                   <span>
                     {{
-                      AUDIT_TARGET_TYPE_LABEL[record.targetType || ''] || record.targetType || '-'
+                      AUDIT_TARGET_TYPE_LABEL[asLogRow(_row).targetType || ''] || asLogRow(_row).targetType || '-'
                     }}
                   </span>
                 </template>
                 <template v-else-if="column.key === 'createTime'">
-                  {{ formatTime(record.createTime) }}
+                  {{ formatTime(asLogRow(_row).createTime) }}
                 </template>
                 <template v-else-if="column.key === 'beforeAfter'">
                   <a-typography-paragraph
-                    v-if="record.beforeValue || record.afterValue"
+                    v-if="asLogRow(_row).beforeValue || asLogRow(_row).afterValue"
                     :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
                     copyable
                   >
-                    {{ formatBeforeAfter(record) }}
+                    {{ formatBeforeAfter(asLogRow(_row)) }}
                   </a-typography-paragraph>
                   <span v-else class="muted">-</span>
                 </template>
                 <template v-else-if="column.key === 'reason'">
-                  <a-tooltip :title="record.reason">
-                    <span>{{ record.reason || '-' }}</span>
+                  <a-tooltip :title="asLogRow(_row).reason">
+                    <span>{{ asLogRow(_row).reason || '-' }}</span>
                   </a-tooltip>
                 </template>
               </template>
@@ -121,9 +123,9 @@
             <div class="filter-bar">
               <a-space wrap>
                 <a-checkbox v-model:checked="incidentFilter.unresolvedOnly">仅未解决</a-checkbox>
-                <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents"
-                  >查询</UiButton
-                >
+                <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents">
+                  查询
+                </UiButton>
                 <span class="muted">共 {{ incidents.length }} 条</span>
               </a-space>
             </div>
@@ -139,43 +141,43 @@
               class="audit-table"
               :pagination="{ pageSize: 20 }"
             >
-              <template #bodyCell="{ column, record }">
+              <template #bodyCell="{ column, record: _row }">
                 <template v-if="column.key === 'incidentLevel'">
                   <UiTag
-                    v-if="record.incidentLevel"
-                    :tone="INCIDENT_LEVEL_TONE[record.incidentLevel]"
+                    v-if="asIncidentRow(_row).incidentLevel"
+                    :tone="INCIDENT_LEVEL_TONE[asIncidentRow(_row).incidentLevel!]"
                     size="sm"
                   >
-                    {{ INCIDENT_LEVEL_LABEL[record.incidentLevel] }}
+                    {{ INCIDENT_LEVEL_LABEL[asIncidentRow(_row).incidentLevel!] }}
                   </UiTag>
                   <span v-else class="muted">-</span>
                 </template>
                 <template v-else-if="column.key === 'resolved'">
-                  <UiTag :tone="record.resolved ? 'green' : 'orange'" size="sm">
-                    {{ record.resolved ? '已解决' : '未解决' }}
+                  <UiTag :tone="asIncidentRow(_row).resolved ? 'green' : 'orange'" size="sm">
+                    {{ asIncidentRow(_row).resolved ? '已解决' : '未解决' }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'createTime'">
-                  {{ formatTime(record.createTime) }}
+                  {{ formatTime(asIncidentRow(_row).createTime) }}
                 </template>
                 <template v-else-if="column.key === 'resolvedTime'">
-                  {{ formatTime(record.resolvedTime) }}
+                  {{ formatTime(asIncidentRow(_row).resolvedTime) }}
                 </template>
                 <template v-else-if="column.key === 'detail'">
                   <a-typography-paragraph
-                    v-if="record.detail"
+                    v-if="asIncidentRow(_row).detail"
                     :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
                   >
-                    {{ record.detail }}
+                    {{ asIncidentRow(_row).detail }}
                   </a-typography-paragraph>
                   <span v-else class="muted">-</span>
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiButton
-                    v-if="!record.resolved"
+                    v-if="!asIncidentRow(_row).resolved"
                     size="sm"
                     variant="outline"
-                    @click="openResolveModal(record)"
+                    @click="openResolveModal(asIncidentRow(_row))"
                   >
                     解决事件
                   </UiButton>
@@ -195,9 +197,9 @@
                   allow-clear
                   style="width: 220px"
                 />
-                <UiButton size="sm" :loading="sampleLoading" @click="loadDiagnosticSamples"
-                  >查询</UiButton
-                >
+                <UiButton size="sm" :loading="sampleLoading" @click="loadDiagnosticSamples">
+                  查询
+                </UiButton>
                 <span class="muted">共 {{ diagnosticSamples.length }} 条</span>
               </a-space>
             </div>
@@ -220,9 +222,9 @@
                 <template v-if="column.key === 'sampleType'">
                   <UiTag tone="purple" size="sm">
                     {{
-                      DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || ''] ||
-                      record.sampleType ||
-                      '-'
+                      DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || '']
+                        || record.sampleType
+                        || '-'
                     }}
                   </UiTag>
                 </template>
@@ -285,6 +287,12 @@
 
 <script lang="ts" setup>
 import type { DiagnosticSampleVO, OperationLogVO } from '@/apis/mark/admin-audit'
+import type { IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -294,22 +302,13 @@ import {
   OPERATION_TYPE_LABEL,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
-import type { IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'AdminAuditTrail' })
-
-const router = useRouter()
 
 const {
   examOptions,
@@ -373,8 +372,13 @@ const resolving = ref(false)
 const resolvingIncident = ref<IncidentRecordVO | null>(null)
 const resolveNote = ref('')
 
-const unresolvedCount = computed(() => incidents.value.filter((i) => !i.resolved).length)
-const resolvedCount = computed(() => incidents.value.filter((i) => i.resolved).length)
+/** 将 a-table slot 的 Record<string, any> 安全转换为后端真实 VO 类型 */
+function asLogRow(row: Record<string, any>): OperationLogVO {
+  return row as unknown as OperationLogVO
+}
+function asIncidentRow(row: Record<string, any>): IncidentRecordVO {
+  return row as unknown as IncidentRecordVO
+}
 
 async function loadIncidents() {
   if (!selectedExamId.value) return
@@ -492,9 +496,6 @@ function formatBeforeAfter(record: OperationLogVO): string {
   return `before: ${before}\nafter:  ${after}`
 }
 
-function goDashboard() {
-  router.push({ name: 'AdminDashboard' })
-}
 
 onMounted(async () => {
   await initExams()
