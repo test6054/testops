@@ -1,11 +1,7 @@
 <template>
   <span
     class="ui-badge"
-    :class="[
-      `ui-badge--${props.variant}`,
-      `ui-badge--${props.tone}`,
-      `ui-badge--${props.size}`,
-    ]"
+    :class="[`ui-badge--${props.variant}`, `ui-badge--${props.tone}`, `ui-badge--${props.size}`]"
     v-bind="$attrs"
   >
     <slot />
@@ -17,15 +13,18 @@ import type { BadgeTone, UiComponentSize } from './types'
 
 defineOptions({ name: 'UiBadge' })
 
-const props = withDefaults(defineProps<{
-  variant?: BadgeVariant
-  tone?: BadgeTone
-  size?: UiComponentSize
-}>(), {
-  variant: 'outline',
-  tone: 'gray',
-  size: 'md',
-})
+const props = withDefaults(
+  defineProps<{
+    variant?: BadgeVariant
+    tone?: BadgeTone
+    size?: UiComponentSize
+  }>(),
+  {
+    variant: 'outline',
+    tone: 'gray',
+    size: 'md',
+  },
+)
 
 type BadgeVariant = 'solid' | 'outline' | 'soft'
 </script>
@@ -44,12 +43,12 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
   border: 1px solid var(--badge-border);
   border-radius: var(--dp-radius-control-inner, 4px);
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1;
   transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .ui-badge--sm {

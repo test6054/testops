@@ -77,8 +77,6 @@ type StatusType = 'gray' | 'blue' | 'orange' | 'yellow' | 'green' | 'red' | stri
     cursor: pointer;
 
     &:hover {
-      box-shadow: var(--dp-shadow-soft, 0 4px 12px rgba(0, 0, 0, 0.1));
-      transform: translateY(-2px);
       border-color: var(--dp-border-strong, #d0d5dd);
     }
   }

@@ -43,11 +43,7 @@
                   <ArrowDownOutlined />
                 </template>
               </UiButton>
-              <UiActionLink
-                danger
-                :disabled="!canRemoveItem"
-                @click="removeItem(index)"
-              >
+              <UiActionLink danger :disabled="!canRemoveItem" @click="removeItem(index)">
                 <template #icon>
                   <DeleteOutlined />
                 </template>
@@ -75,7 +71,13 @@
         </slot>
       </div>
 
-      <UiButton class="dp-form-list__add" variant="outline" block :disabled="!canAdd" @click="addItem">
+      <UiButton
+        class="dp-form-list__add"
+        variant="outline"
+        block
+        :disabled="!canAdd"
+        @click="addItem"
+      >
         <template #icon>
           <PlusOutlined class="dp-form-list__add-icon" />
         </template>
@@ -86,7 +88,12 @@
 </template>
 
 <script generic="T extends Record<string, unknown> = Record<string, unknown>" lang="ts" setup>
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+} from '@ant-design/icons-vue'
 import { cloneDeep } from 'lodash-es'
 import { computed } from 'vue'
 import UiButton from './Button.vue'
@@ -126,7 +133,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   add: [item: T, index: number]
   remove: [item: T, index: number]
-  reorder: [payload: { from: number, to: number }]
+  reorder: [payload: { from: number; to: number }]
 }>()
 
 const list = computed(() => modelValue.value || [])
@@ -226,7 +233,7 @@ const moveItem = (index: number, offset: number) => {
 
 .dp-form-list__card {
   border: 1px solid var(--ant-color-border, var(--dp-border, #e5e7eb));
-  border-radius: var(--dp-radius-lg, 12px);
+  border-radius: var(--dp-radius-lg, 8px);
   background: linear-gradient(
     180deg,
     var(--ant-color-primary-bg, var(--dp-surface-subtle, #f8fafc)) 0%,
@@ -285,7 +292,7 @@ const moveItem = (index: number, offset: number) => {
 
 .dp-form-list__empty {
   border: 1px dashed var(--ant-color-border, var(--dp-border, #e5e7eb));
-  border-radius: var(--dp-radius-lg, 12px);
+  border-radius: var(--dp-radius-lg, 8px);
   background: var(--ant-color-fill-tertiary, var(--dp-gray-50, #f8fafc));
   padding: 16px;
 }
@@ -294,7 +301,7 @@ const moveItem = (index: number, offset: number) => {
   width: 100%;
   border-style: dashed;
   border-color: var(--ant-color-border, currentColor);
-  border-radius: var(--dp-radius-lg, 12px);
+  border-radius: var(--dp-radius-lg, 8px);
   background: linear-gradient(
     90deg,
     var(--ant-color-primary-bg, var(--dp-surface-subtle, #f8fafc)) 0%,

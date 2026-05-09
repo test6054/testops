@@ -17,7 +17,7 @@
 </template>
 
 <script lang="ts" setup>
-import {computed} from 'vue'
+import { computed } from 'vue'
 
 type Tone = 'blue' | 'cyan' | 'orange' | 'pink' | 'green' | 'purple'
 
@@ -29,26 +29,53 @@ interface ToneColors {
 
 type Size = 'default' | 'compact'
 
-const props = withDefaults(defineProps<{
-  label: string
-  value: string | number
-  unit?: string
-  subValue?: string
-  tone?: Tone
-  size?: Size
-}>(), {
-  tone: 'blue',
-  size: 'default',
-})
+const props = withDefaults(
+  defineProps<{
+    label: string
+    value: string | number
+    unit?: string
+    subValue?: string
+    tone?: Tone
+    size?: Size
+  }>(),
+  {
+    tone: 'blue',
+    size: 'default',
+  },
+)
 
 /** 色调配置映射 */
 const TONE_MAP: Record<Tone, ToneColors> = {
-  blue: { color: 'var(--ant-color-primary)', bg: 'var(--ant-color-primary-bg)', dot: 'var(--ant-color-primary-hover)' },
-  cyan: { color: 'var(--ant-color-primary-hover)', bg: 'var(--ant-color-primary-bg-hover)', dot: 'var(--ant-color-primary-border-hover)' },
-  orange: { color: 'var(--ant-color-warning)', bg: 'var(--ant-color-warning-bg)', dot: 'var(--ant-color-warning-hover)' },
-  pink: { color: 'var(--ant-color-error)', bg: 'var(--ant-color-error-bg)', dot: 'var(--ant-color-error-hover)' },
-  green: { color: 'var(--ant-color-success)', bg: 'var(--ant-color-success-bg)', dot: 'var(--ant-color-success-hover)' },
-  purple: { color: 'var(--ant-color-primary-hover)', bg: 'var(--ant-color-primary-bg)', dot: 'var(--ant-color-primary-border-hover)' },
+  blue: {
+    color: 'var(--ant-color-primary)',
+    bg: 'var(--ant-color-primary-bg)',
+    dot: 'var(--ant-color-primary-hover)',
+  },
+  cyan: {
+    color: 'var(--ant-color-primary-hover)',
+    bg: 'var(--ant-color-primary-bg-hover)',
+    dot: 'var(--ant-color-primary-border-hover)',
+  },
+  orange: {
+    color: 'var(--ant-color-warning)',
+    bg: 'var(--ant-color-warning-bg)',
+    dot: 'var(--ant-color-warning-hover)',
+  },
+  pink: {
+    color: 'var(--ant-color-error)',
+    bg: 'var(--ant-color-error-bg)',
+    dot: 'var(--ant-color-error-hover)',
+  },
+  green: {
+    color: 'var(--ant-color-success)',
+    bg: 'var(--ant-color-success-bg)',
+    dot: 'var(--ant-color-success-hover)',
+  },
+  purple: {
+    color: 'var(--ant-color-primary-hover)',
+    bg: 'var(--ant-color-primary-bg)',
+    dot: 'var(--ant-color-primary-border-hover)',
+  },
 }
 
 const toneColor = computed(() => TONE_MAP[props.tone].color)
@@ -66,12 +93,15 @@ const toneDot = computed(() => TONE_MAP[props.tone].dot)
   padding: 14px 16px;
   background: var(--ant-color-bg-container);
   box-shadow: var(--dp-shadow-card);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .dp-statcard--compact {
   padding: 10px 14px;
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
 }
 
 .dp-statcard--compact .dp-statcard__label {
@@ -102,9 +132,7 @@ const toneDot = computed(() => TONE_MAP[props.tone].dot)
 }
 
 .dp-statcard:hover {
-  transform: translateY(-2px);
-  border-color: var(--ant-color-primary-border);
-  box-shadow: var(--dp-shadow-sm);
+  border-color: var(--dp-border-strong, #e2e8f0);
 }
 
 .dp-statcard__content {

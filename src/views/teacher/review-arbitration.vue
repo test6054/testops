@@ -1,47 +1,36 @@
 <template>
   <GiPageLayout>
     <div class="arbitration-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="arbitration-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="arbitration-page__hero">
-            <div class="arbitration-page__hero-main">
-              <div class="arbitration-page__title-row">
-                <h1 class="arbitration-page__title">仲裁复核</h1>
-                <UiTag tone="purple" size="md">驳回仲裁</UiTag>
-                <UiTag :tone="tasks.length > 0 ? 'red' : 'green'" size="md">
-                  {{ tasks.length > 0 ? `${tasks.length} 条待仲裁` : '暂无驳回' }}
-                </UiTag>
-              </div>
-            </div>
-            <div class="arbitration-page__hero-actions">
-              <a-select
-                :value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试"
-                :options="examOptions"
-                :loading="examLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="onExamChange"
-              />
-              <UiButton
-                variant="outline"
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="loading"
-                @click="loadTasks"
-              >
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="仲裁复核">
+        <template #tags>
+          <UiTag :tone="tasks.length > 0 ? 'red' : 'green'" size="md">
+            {{ tasks.length > 0 ? `${tasks.length} 条待仲裁` : '暂无驳回' }}
+          </UiTag>
+        </template>
+        <template #actions>
+          <a-select
+            :value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="onExamChange"
+          />
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="loadTasks"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <UiEmpty
         v-if="!selectedExamId"
@@ -94,7 +83,11 @@
               <template v-else-if="column.key === 'assignedTeacherUserId'">
                 <span v-if="record.assignedTeacherUserId">
                   <UserOutlined class="mini-icon" />
-                  {{ record.assignedTeacherUserId === currentUserId ? '我' : record.assignedTeacherUserId }}
+                  {{
+                    record.assignedTeacherUserId === currentUserId
+                      ? '我'
+                      : record.assignedTeacherUserId
+                  }}
                 </span>
                 <span v-else class="muted">未指派</span>
               </template>
@@ -118,6 +111,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam'
+import { listReviewTasks } from '@/apis/mark/exam'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
@@ -125,9 +119,9 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { listReviewTasks } from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -172,12 +166,10 @@ async function loadTasks(): Promise<void> {
       examId: selectedExamId.value,
       status: 'REJECTED',
     })
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '驳回任务加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -202,8 +194,7 @@ function goDetail(record: ReviewTaskItemVO): void {
 watch(selectedExamId, (value) => {
   if (value) {
     void loadTasks()
-  }
-  else {
+  } else {
     tasks.value = []
   }
 })
@@ -224,45 +215,6 @@ onMounted(async () => {
   padding: 8px 10px;
   min-height: 100vh;
 }
-
-.hero-spin {
-  width: 100%;
-}
-
-.arbitration-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.arbitration-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.arbitration-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
 
 .arbitration-table {
   :deep(.ant-table-thead > tr > th) {

@@ -29,15 +29,18 @@ defineOptions({
   name: 'UiPillSteps',
 })
 
-const props = withDefaults(defineProps<{
-  steps?: UiStepItem[]
-  current?: number
-  clickable?: boolean
-}>(), {
-  steps: () => [],
-  current: 0,
-  clickable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    steps?: UiStepItem[]
+    current?: number
+    clickable?: boolean
+  }>(),
+  {
+    steps: () => [],
+    current: 0,
+    clickable: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', index: number, step: UiStepItem): void
@@ -47,7 +50,9 @@ const normalizedSteps = computed(() => {
   return props.steps.map((step, index) => ({
     ...step,
     key: step.key || `step-${index}`,
-    status: step.status || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+    status:
+      step.status ||
+      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 
@@ -149,7 +154,6 @@ function handleClick(step: UiStepItem, index: number) {
 }
 
 .ui-pill-steps__item--clickable:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: var(--dp-border-strong, #e2e8f0);
 }
 </style>

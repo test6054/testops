@@ -7,7 +7,7 @@
 .ant-picker {
   border-radius: var(--dp-radius-control-inner, 6px) !important;
   border-color: var(--dp-border-strong, #e2e8f0) !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
   
   &:hover {
     border-color: var(--dp-border-hover) !important;

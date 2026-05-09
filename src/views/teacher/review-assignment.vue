@@ -1,58 +1,34 @@
 <template>
   <GiPageLayout>
     <div class="review-assignment-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="review-assignment-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="review-assignment-page__hero">
-            <div class="review-assignment-page__hero-main">
-              <div class="review-assignment-page__title-row">
-                <h1 class="review-assignment-page__title">复核任务池</h1>
-                <UiTag tone="purple" size="md">匿名复核</UiTag>
-                <UiTag tone="blue" size="md">{{ tasks.length }} 条任务</UiTag>
-              </div>
-            </div>
-            <div class="review-assignment-page__hero-actions">
-              <a-select
-                :value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试"
-                :options="examOptions"
-                :loading="examLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="onExamChange"
-              />
-              <UiButton
-                variant="outline"
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="loading"
-                @click="loadTasks"
-              >
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
-
-          <div v-if="selectedExamId" class="review-assignment-page__summary-grid">
-            <div
-              v-for="item in summaryTags"
-              :key="item.code"
-              class="workspace-summary"
-              :class="{ 'workspace-summary--accent': item.code === 'PENDING' }"
-            >
-              <span class="workspace-summary__label">{{ item.label }}</span>
-              <strong class="workspace-summary__value">{{ item.count }}</strong>
-              <span class="workspace-summary__desc">条任务</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="复核任务池">
+        <template #tags>
+          <UiTag tone="blue" size="md">{{ tasks.length }} 条任务</UiTag>
+        </template>
+        <template #actions>
+          <a-select
+            :value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="onExamChange"
+          />
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="loadTasks"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <UiEmpty
         v-if="!selectedExamId"
@@ -132,14 +108,21 @@
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'status'">
-                <UiTag :tone="STATUS_TONE[record.status as ReviewTaskStatusCode] || 'gray'" size="sm">
+                <UiTag
+                  :tone="STATUS_TONE[record.status as ReviewTaskStatusCode] || 'gray'"
+                  size="sm"
+                >
                   {{ STATUS_LABEL[record.status as ReviewTaskStatusCode] || record.status || '-' }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'assignedTeacherUserId'">
                 <span v-if="record.assignedTeacherUserId">
                   <UserOutlined class="mini-icon" />
-                  {{ record.assignedTeacherUserId === currentUserId ? '我' : record.assignedTeacherUserId }}
+                  {{
+                    record.assignedTeacherUserId === currentUserId
+                      ? '我'
+                      : record.assignedTeacherUserId
+                  }}
                 </span>
                 <span v-else class="muted">未指派</span>
               </template>
@@ -184,6 +167,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam'
+import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
@@ -192,9 +176,9 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -240,7 +224,7 @@ const filterForm = reactive<{
   questionTemplateId: '',
 })
 
-const statusOptions = (Object.keys(STATUS_LABEL) as ReviewTaskStatusCode[]).map(code => ({
+const statusOptions = (Object.keys(STATUS_LABEL) as ReviewTaskStatusCode[]).map((code) => ({
   label: STATUS_LABEL[code],
   value: code,
 }))
@@ -259,7 +243,7 @@ const summaryTags = computed(() => {
     const code = task.status as ReviewTaskStatusCode
     if (code in counter) counter[code]++
   })
-  return (Object.keys(counter) as ReviewTaskStatusCode[]).map(code => ({
+  return (Object.keys(counter) as ReviewTaskStatusCode[]).map((code) => ({
     code,
     label: STATUS_LABEL[code],
     count: counter[code],
@@ -291,12 +275,10 @@ async function loadTasks(): Promise<void> {
       status: filterForm.status,
       questionTemplateId: filterForm.questionTemplateId?.trim() || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '复核任务加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -322,12 +304,10 @@ async function handleClaim(record: ReviewTaskItemVO): Promise<void> {
     })
     message.success('任务领取成功，已进入复核中')
     await loadTasks()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '任务领取失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     claiming.value = false
     claimingTaskId.value = null
   }
@@ -354,8 +334,7 @@ function goDetail(record: ReviewTaskItemVO): void {
 watch(selectedExamId, (value) => {
   if (value) {
     void loadTasks()
-  }
-  else {
+  } else {
     tasks.value = []
   }
 })
@@ -375,85 +354,6 @@ onMounted(async () => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.review-assignment-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.review-assignment-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.review-assignment-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-
-.review-assignment-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
 }
 
 .review-table {

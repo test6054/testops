@@ -18,7 +18,10 @@
       </div>
     </div>
     <!-- 卡片内容 -->
-    <div class="dp-card__body" :class="{ 'dp-card__body--no-header': !$slots.title && !title && !$slots.extra }">
+    <div
+      class="dp-card__body"
+      :class="{ 'dp-card__body--no-header': !$slots.title && !title && !$slots.extra }"
+    >
       <slot />
     </div>
   </div>
@@ -32,35 +35,42 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  /** 卡片标题（也可使用 #title 插槽） */
-  title?: string
-  /** 是否显示 hover 效果 */
-  hoverable?: boolean
-  /** 是否显示边框 */
-  bordered?: boolean
-  /** 是否显示头部 */
-  showHeader?: boolean
-  /** 紧凑模式 */
-  compact?: boolean
-}>(), {
-  title: '',
-  hoverable: true,
-  bordered: false,
-  showHeader: true,
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    /** 卡片标题（也可使用 #title 插槽） */
+    title?: string
+    /** 是否显示 hover 效果 */
+    hoverable?: boolean
+    /** 是否显示边框 */
+    bordered?: boolean
+    /** 是否显示头部 */
+    showHeader?: boolean
+    /** 紧凑模式 */
+    compact?: boolean
+  }>(),
+  {
+    title: '',
+    hoverable: true,
+    bordered: false,
+    showHeader: true,
+    compact: false,
+  },
+)
 const slots = useSlots()
-const hasHeader = computed(() => props.showHeader && (!!slots.title || !!props.title || !!slots.extra))
+const hasHeader = computed(
+  () => props.showHeader && (!!slots.title || !!props.title || !!slots.extra),
+)
 </script>
 
 <style scoped>
 .dp-card {
   background-color: var(--dp-surface, #fff);
   border: 1px solid var(--dp-card-border, transparent);
-  border-radius: var(--dp-radius-xl, 12px);
+  border-radius: var(--dp-radius-lg, 8px);
   box-shadow: var(--dp-shadow-card);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -70,8 +80,7 @@ const hasHeader = computed(() => props.showHeader && (!!slots.title || !!props.t
 }
 
 .dp-card--hoverable:hover {
-  box-shadow: var(--dp-shadow-card-hover);
-  transform: translateY(-2px);
+  border-color: var(--dp-border-strong, #e2e8f0);
 }
 
 .dp-card__header {
@@ -87,18 +96,18 @@ const hasHeader = computed(() => props.showHeader && (!!slots.title || !!props.t
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--dp-text-primary, #0f172a);
   line-height: 1.5;
 }
 
 .dp-card__title :deep(svg),
 .dp-card__title :deep(.anticon) {
-  width: 20px;
-  height: 20px;
-  font-size: 20px;
-  color: #1d2129;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  color: var(--dp-text-secondary, #475569);
   flex-shrink: 0;
 }
 

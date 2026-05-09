@@ -7,16 +7,14 @@
   border-radius: var(--dp-radius-lg) !important;
   background: var(--ant-color-bg-container) !important;
   box-shadow: var(--dp-shadow-card);
-  transition: transform var(--dp-duration-fast) ease, box-shadow var(--dp-duration-fast) ease, border-color var(--dp-duration-fast) ease;
+  transition: border-color var(--dp-duration-fast) ease;
   padding: var(--dp-space-3) var(--dp-space-4);
 }
 
 :global(.stats-row .stat-card:hover),
 :global(.overview-stat-card:hover),
 :global(.stat-card.dp-statcard:hover) {
-  transform: translateY(-2px);
-  border-color: var(--ant-color-primary-border) !important;
-  box-shadow: var(--dp-shadow-sm);
+  border-color: var(--dp-border-strong, #e2e8f0) !important;
 }
 
 :global(.stats-row .stat-card .stat-icon),
@@ -72,11 +70,7 @@
 
   & > .ant-card-head {
     border: none;
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--ant-color-primary-bg) 50%, transparent),
-      transparent
-    );
+    background: var(--dp-surface-subtle, #f8fafc);
   }
 
   .item {

@@ -5,10 +5,10 @@
   gap: var(--dp-space-2);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  border-radius: var(--dp-radius-control, 8px);
+  border-radius: var(--dp-radius-control, 6px);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
   outline: none;
   white-space: nowrap;
   user-select: none;
@@ -50,9 +50,7 @@
 :global(.dp-btn--outline:hover) {
   background-color: var(--dp-gray-50, #f8fafc);
   color: var(--dp-gray-900, #0f172a);
-  border-color: var(--dp-border-strong, #e2e8f0);
-  transform: translateY(-1px);
-  box-shadow: var(--dp-shadow-sm);
+  border-color: var(--dp-gray-300, #cbd5e1);
 }
 
 :global(.dp-btn--ghost) {
@@ -68,8 +66,7 @@
 }
 
 :global(.dp-btn:not(:disabled):active) {
-  transform: translateY(1px);
-  box-shadow: none;
+  opacity: 0.85;
 }
 
 :global(.dp-btn:disabled) {
@@ -89,7 +86,7 @@
 
 // Ant Design Button + dp-btn 叠加（确保在 Ant Design CSS-in-JS 之上生效）
 :global(.ant-btn.dp-btn) {
-  border-radius: var(--dp-radius-control, 8px);
+  border-radius: var(--dp-radius-control, 6px);
   font-weight: 600;
   font-size: var(--dp-font-size-md);
   min-height: var(--dp-button-height-md, 36px);
@@ -114,9 +111,7 @@
 
 :global(.ant-btn.dp-btn.dp-btn--outline:hover) {
   background-color: var(--dp-gray-50, #f8fafc);
-  border-color: var(--dp-border-strong, #e2e8f0);
-  transform: translateY(-1px);
-  box-shadow: var(--dp-shadow-sm);
+  border-color: var(--dp-gray-300, #cbd5e1);
 }
 
 :global(.ant-btn.dp-btn:disabled),

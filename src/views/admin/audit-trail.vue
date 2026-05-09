@@ -1,69 +1,36 @@
 <template>
   <GiPageLayout>
     <div class="audit-trail-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="audit-trail-page__hero-card">
-        <a-spin :spinning="examLoading" class="hero-spin">
-          <div class="audit-trail-page__hero">
-            <div class="audit-trail-page__hero-main">
-              <button type="button" class="audit-trail-page__back-link" @click="goDashboard">
-                <LeftOutlined />
-                返回阅卷概览
-              </button>
-              <div class="audit-trail-page__title-row">
-                <h1 class="audit-trail-page__title">批改审计</h1>
-                <UiTag tone="blue" size="md">考试维度</UiTag>
-                <UiTag v-if="selectedExamId" tone="green" size="md">已选考试</UiTag>
-              </div>
-              <div class="audit-trail-page__meta">
-                <span>按考试维度回溯审计日志、重大事件与诊断样本，支持事件解决处置。</span>
-              </div>
-            </div>
-            <div class="audit-trail-page__hero-actions">
-              <a-select
-                v-model:value="selectedExamId"
-                placeholder="选择考试"
-                style="width: 320px"
-                :options="examOptions"
-                :loading="examLoading"
-                show-search
-                option-filter-prop="label"
-                @change="onExamChange"
-              />
-              <UiButton
-                variant="outline"
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="loading"
-                @click="reloadAll"
-              >
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
-
-          <div v-if="selectedExamId" class="audit-trail-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">审计日志</span>
-              <strong class="workspace-summary__value">{{ operationLogs.length }}</strong>
-              <span class="workspace-summary__desc">关键操作前后值与原因</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">重大事件</span>
-              <strong class="workspace-summary__value">{{ incidents.length }}</strong>
-              <span class="workspace-summary__desc">未解决 {{ unresolvedCount }} · 已解决 {{ resolvedCount }}</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">诊断样本</span>
-              <strong class="workspace-summary__value">{{ diagnosticSamples.length }}</strong>
-              <span class="workspace-summary__desc">异常案例诊断快照</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="批改审计" back-route="/admin/dashboard">
+        <template #tags>
+          <UiTag tone="blue" size="md">考试维度</UiTag>
+          <UiTag v-if="selectedExamId" tone="green" size="md"
+            >日志 {{ operationLogs.length }} · 事件 {{ incidents.length }}</UiTag
+          >
+        </template>
+        <template #actions>
+          <a-select
+            v-model:value="selectedExamId"
+            placeholder="选择考试"
+            style="width: 280px"
+            :options="examOptions"
+            :loading="examLoading"
+            show-search
+            option-filter-prop="label"
+            @change="onExamChange"
+          />
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="reloadAll"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <UiEmpty
         v-if="!selectedExamId"
@@ -75,7 +42,9 @@
         <template #title>
           <FileSearchOutlined />
           <span>审计内容</span>
-          <UiBadge tone="blue">{{ activeTab === 'logs' ? '审计日志' : activeTab === 'incidents' ? '重大事件' : '诊断样本' }}</UiBadge>
+          <UiBadge tone="blue">{{
+            activeTab === 'logs' ? '审计日志' : activeTab === 'incidents' ? '重大事件' : '诊断样本'
+          }}</UiBadge>
         </template>
 
         <a-tabs v-model:active-key="activeTab" class="audit-tabs" @change="onTabChange">
@@ -111,12 +80,18 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'operationType'">
                   <UiTag tone="blue" size="sm">
-                    {{ OPERATION_TYPE_LABEL[record.operationType || ''] || record.operationType || '-' }}
+                    {{
+                      OPERATION_TYPE_LABEL[record.operationType || ''] ||
+                      record.operationType ||
+                      '-'
+                    }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'targetType'">
                   <span>
-                    {{ AUDIT_TARGET_TYPE_LABEL[record.targetType || ''] || record.targetType || '-' }}
+                    {{
+                      AUDIT_TARGET_TYPE_LABEL[record.targetType || ''] || record.targetType || '-'
+                    }}
                   </span>
                 </template>
                 <template v-else-if="column.key === 'createTime'">
@@ -146,7 +121,9 @@
             <div class="filter-bar">
               <a-space wrap>
                 <a-checkbox v-model:checked="incidentFilter.unresolvedOnly">仅未解决</a-checkbox>
-                <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents">查询</UiButton>
+                <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents"
+                  >查询</UiButton
+                >
                 <span class="muted">共 {{ incidents.length }} 条</span>
               </a-space>
             </div>
@@ -218,12 +195,17 @@
                   allow-clear
                   style="width: 220px"
                 />
-                <UiButton size="sm" :loading="sampleLoading" @click="loadDiagnosticSamples">查询</UiButton>
+                <UiButton size="sm" :loading="sampleLoading" @click="loadDiagnosticSamples"
+                  >查询</UiButton
+                >
                 <span class="muted">共 {{ diagnosticSamples.length }} 条</span>
               </a-space>
             </div>
 
-            <UiEmpty v-if="!sampleLoading && diagnosticSamples.length === 0" description="暂无诊断样本" />
+            <UiEmpty
+              v-if="!sampleLoading && diagnosticSamples.length === 0"
+              description="暂无诊断样本"
+            />
             <a-table
               v-else
               :columns="sampleColumns"
@@ -237,7 +219,11 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'sampleType'">
                   <UiTag tone="purple" size="sm">
-                    {{ DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || ''] || record.sampleType || '-' }}
+                    {{
+                      DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || ''] ||
+                      record.sampleType ||
+                      '-'
+                    }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'createTime'">
@@ -298,33 +284,27 @@
 </template>
 
 <script lang="ts" setup>
-import type {DiagnosticSampleVO, OperationLogVO} from '@/apis/mark/admin-audit';
-import type {IncidentRecordVO} from '@/apis/mark/admin-dashboard';
+import type { DiagnosticSampleVO, OperationLogVO } from '@/apis/mark/admin-audit'
+import {
+  AUDIT_TARGET_TYPE_LABEL,
+  DIAGNOSTIC_SAMPLE_TYPE_LABEL,
+  listDiagnosticSamples,
+  listIncidents,
+  listOperationLogs,
+  OPERATION_TYPE_LABEL,
+  resolveIncident,
+} from '@/apis/mark/admin-audit'
+import type { IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  AUDIT_TARGET_TYPE_LABEL,
-  DIAGNOSTIC_SAMPLE_TYPE_LABEL,
-  
-  listDiagnosticSamples,
-  
-  listIncidents,
-  listOperationLogs,
-  OPERATION_TYPE_LABEL,
-  resolveIncident
-} from '@/apis/mark/admin-audit'
-import {
-  INCIDENT_LEVEL_LABEL,
-  INCIDENT_LEVEL_TONE
-  
-} from '@/apis/mark/admin-dashboard'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'AdminAuditTrail' })
@@ -366,12 +346,10 @@ async function loadLogs() {
       examId: selectedExamId.value,
       operationType: logFilter.operationType,
     })
-  }
-  catch (error) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : '加载审计日志失败'
     message.error(msg)
-  }
-  finally {
+  } finally {
     logLoading.value = false
   }
 }
@@ -395,8 +373,8 @@ const resolving = ref(false)
 const resolvingIncident = ref<IncidentRecordVO | null>(null)
 const resolveNote = ref('')
 
-const unresolvedCount = computed(() => incidents.value.filter(i => !i.resolved).length)
-const resolvedCount = computed(() => incidents.value.filter(i => i.resolved).length)
+const unresolvedCount = computed(() => incidents.value.filter((i) => !i.resolved).length)
+const resolvedCount = computed(() => incidents.value.filter((i) => i.resolved).length)
 
 async function loadIncidents() {
   if (!selectedExamId.value) return
@@ -406,12 +384,10 @@ async function loadIncidents() {
       examId: selectedExamId.value,
       unresolvedOnly: incidentFilter.unresolvedOnly,
     })
-  }
-  catch (error) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : '加载重大事件失败'
     message.error(msg)
-  }
-  finally {
+  } finally {
     incidentLoading.value = false
   }
 }
@@ -437,12 +413,10 @@ async function submitResolve() {
     message.success('事件已标记为解决')
     resolveModalOpen.value = false
     await loadIncidents()
-  }
-  catch (error) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : '解决事件失败'
     message.error(msg)
-  }
-  finally {
+  } finally {
     resolving.value = false
   }
 }
@@ -469,12 +443,10 @@ async function loadDiagnosticSamples() {
       examId: selectedExamId.value,
       sampleType: sampleFilter.sampleType?.trim() || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : '加载诊断样本失败'
     message.error(msg)
-  }
-  finally {
+  } finally {
     sampleLoading.value = false
   }
 }
@@ -492,11 +464,9 @@ function onTabChange(_key: string | number) {
   if (!selectedExamId.value) return
   if (activeTab.value === 'logs' && operationLogs.value.length === 0) {
     loadLogs()
-  }
-  else if (activeTab.value === 'incidents' && incidents.value.length === 0) {
+  } else if (activeTab.value === 'incidents' && incidents.value.length === 0) {
     loadIncidents()
-  }
-  else if (activeTab.value === 'diagnostic-samples' && diagnosticSamples.value.length === 0) {
+  } else if (activeTab.value === 'diagnostic-samples' && diagnosticSamples.value.length === 0) {
     loadDiagnosticSamples()
   }
 }
@@ -543,107 +513,6 @@ onMounted(async () => {
   min-height: 100vh;
 }
 
-.hero-spin {
-  width: 100%;
-}
-
-.audit-trail-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-    flex-wrap: wrap;
-  }
-}
-
-.audit-trail-page__back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  margin-bottom: 8px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--ant-color-primary);
-  font-size: 13px;
-
-  &:hover {
-    opacity: 0.8;
-  }
-}
-
-.audit-trail-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.audit-trail-page__title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-  margin: 0;
-}
-
-.audit-trail-page__meta {
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
-}
-
-.audit-trail-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
-}
-
 .audit-tabs {
   margin-top: 4px;
 }
@@ -652,7 +521,7 @@ onMounted(async () => {
   margin-bottom: 12px;
   padding: 12px 16px;
   background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
 }
 
 .audit-table {

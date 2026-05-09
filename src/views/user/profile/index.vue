@@ -1,67 +1,23 @@
 <template>
   <GiPageLayout>
     <div class="profile-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="profile-page__hero-card">
-        <div class="profile-page__hero">
-          <div class="profile-page__hero-main">
-            <p class="profile-page__eyebrow">个人中心</p>
-            <h1 class="profile-page__title">{{ displayName }}</h1>
-            <div class="profile-page__chips">
-              <div class="meta-chip">
-                <span class="meta-chip__label">用户名</span>
-                <span class="meta-chip__value">{{ userInfo.userName || '-' }}</span>
-              </div>
-              <div class="meta-chip">
-                <span class="meta-chip__label">用户 ID</span>
-                <span class="meta-chip__value">#{{ userInfo.userId || '-' }}</span>
-              </div>
-              <div v-if="tenantName" class="meta-chip">
-                <span class="meta-chip__label">租户</span>
-                <span class="meta-chip__value">{{ tenantName }}</span>
-              </div>
-            </div>
-            <div class="profile-page__badges">
-              <UiBadge tone="blue">{{ roleLabel }}</UiBadge>
-              <UiBadge :tone="userInfo.email ? 'green' : 'orange'">
-                {{ userInfo.email ? '邮箱已绑定' : '邮箱待完善' }}
-              </UiBadge>
-              <UiBadge :tone="userInfo.mobile ? 'blue' : 'red'">
-                {{ userInfo.mobile ? '手机号已绑定' : '手机号未绑定' }}
-              </UiBadge>
-            </div>
-          </div>
-
-          <div class="profile-page__hero-summary">
-            <div class="summary-pill">
-              <span class="summary-pill__label">角色</span>
-              <span class="summary-pill__value">{{ roleLabel }}</span>
-            </div>
-            <div class="summary-pill">
-              <span class="summary-pill__label">账户主体</span>
-              <span class="summary-pill__value">{{ accountSubject }}</span>
-            </div>
-            <div class="summary-pill">
-              <span class="summary-pill__label">最后登录</span>
-              <span class="summary-pill__value">{{ formatTime(userInfo.lastLoginTime) }}</span>
-            </div>
-            <div class="profile-page__hero-actions">
-              <UiButton variant="outline" size="md" :loading="refreshing" @click="refresh">
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-              <UiButton size="md" status="danger" @click="handleLogout">
-                <template #icon>
-                  <LogoutOutlined />
-                </template>
-                退出登录
-              </UiButton>
-            </div>
-          </div>
-        </div>
-      </UiPageCard>
+      <PageHeader :title="displayName">
+        <template #tags>
+          <UiTag tone="blue" size="md">{{ roleLabel }}</UiTag>
+          <UiTag tone="gray" size="md">{{ userInfo.userName || '-' }}</UiTag>
+          <UiTag v-if="tenantName" tone="gray" size="md">{{ tenantName }}</UiTag>
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" :loading="refreshing" @click="refresh">
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+          <UiButton size="sm" status="danger" @click="handleLogout">
+            <template #icon><LogoutOutlined /></template>
+            退出登录
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <a-row :gutter="16">
         <!-- 基础信息 -->
@@ -115,7 +71,9 @@
               </div>
               <div v-if="userInfo.studentDetails?.enrollmentYear" class="info-grid__row">
                 <span class="info-grid__label">入学年级</span>
-                <span class="info-grid__value">{{ userInfo.studentDetails.enrollmentYear }} 级</span>
+                <span class="info-grid__value"
+                  >{{ userInfo.studentDetails.enrollmentYear }} 级</span
+                >
               </div>
               <div v-if="userInfo.teacherDetails" class="info-grid__row">
                 <span class="info-grid__label">工号</span>
@@ -125,7 +83,7 @@
                 <span class="info-grid__label">账户状态</span>
                 <span class="info-grid__value">
                   <UiTag :tone="userInfo.status === 'active' ? 'green' : 'red'" size="sm">
-                    {{ userInfo.status === 'active' ? '正常' : (userInfo.status || '-') }}
+                    {{ userInfo.status === 'active' ? '正常' : userInfo.status || '-' }}
                   </UiTag>
                 </span>
               </div>
@@ -219,7 +177,8 @@ import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiTag } from '@/components/ui-guide/ui'
 import { globalUnreadCount } from '@/composables/useUnreadCount'
 import { useAuthStore, useUserStore } from '@/stores'
 
@@ -246,7 +205,6 @@ const accountSubject = computed(() => {
   return '阅卷教学账户'
 })
 
-
 const unreadTotal = computed(() => globalUnreadCount.totalUnreadCount.value)
 
 function formatTime(value?: string): string {
@@ -260,12 +218,10 @@ async function refresh() {
     await userStore.getInfo(true)
     await globalUnreadCount.refreshUnreadCount()
     message.success('已刷新最新信息')
-  }
-  catch (error) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : '刷新失败'
     message.error(msg)
-  }
-  finally {
+  } finally {
     refreshing.value = false
   }
 }
@@ -308,98 +264,6 @@ onMounted(() => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.profile-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-summary {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
-    flex-shrink: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 4px;
-  }
-}
-
-.profile-page__eyebrow {
-  margin: 0 0 4px;
-  font-size: 12px;
-  color: var(--ant-color-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.profile-page__title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-.profile-page__chips {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-
-.meta-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: var(--ant-color-fill-quaternary);
-  border-radius: 999px;
-  font-size: 12px;
-
-  &__label {
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    color: var(--ant-color-text);
-    font-weight: 500;
-  }
-}
-
-.profile-page__badges {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.summary-pill {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  font-size: 12px;
-
-  &__label {
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    color: var(--ant-color-text);
-    font-weight: 600;
-  }
 }
 
 .profile-page__info-card,
@@ -458,7 +322,7 @@ onMounted(() => {
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
 
   &__main {
     flex: 1;
@@ -486,12 +350,14 @@ onMounted(() => {
   padding: 12px 14px;
   background: var(--ant-color-fill-quaternary);
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
   cursor: pointer;
   text-align: left;
   font-size: 14px;
   color: var(--ant-color-text);
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
 
   &:hover {
     border-color: rgba(22, 119, 255, 0.3);

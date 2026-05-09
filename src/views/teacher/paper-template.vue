@@ -1,75 +1,39 @@
 <template>
   <GiPageLayout>
     <div class="paper-template-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="paper-template-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="paper-template-page__hero">
-            <div class="paper-template-page__hero-main">
-              <div class="paper-template-page__title-row">
-                <h1 class="paper-template-page__title">试卷模板</h1>
-                <UiTag tone="purple" size="md">页面 + 题目 全量替换</UiTag>
-                <UiTag v-if="selectedExamId" :tone="pages.length === (form.totalPages ?? -1) ? 'green' : 'orange'" size="md">
-                  {{ pages.length }} / {{ form.totalPages ?? '-' }} 页
-                </UiTag>
-              </div>
-            </div>
-            <div class="paper-template-page__hero-actions">
-              <a-select
-                v-model:value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试（仅显示已启用）"
-                :options="examOptions"
-                :loading="examOptionsLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="handleExamChange"
-              />
-              <UiButton
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="saving"
-                @click="handleSave"
-              >
-                <template #icon>
-                  <SaveOutlined />
-                </template>
-                保存模板
-              </UiButton>
-            </div>
-          </div>
+      <PageHeader title="试卷模板">
+        <template #tags>
+          <UiTag
+            v-if="selectedExamId"
+            :tone="pages.length === (form.totalPages ?? -1) ? 'green' : 'orange'"
+            size="md"
+          >
+            {{ pages.length }} / {{ form.totalPages ?? '-' }} 页
+          </UiTag>
+          <UiTag v-if="selectedExamId" tone="blue" size="md"
+            >{{ questions.length }} 题 · 总分 {{ totalScore }}</UiTag
+          >
+        </template>
+        <template #actions>
+          <a-select
+            v-model:value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examOptionsLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="handleExamChange"
+          />
+          <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
+            <template #icon><SaveOutlined /></template>
+            保存
+          </UiButton>
+        </template>
+      </PageHeader>
 
-          <div v-if="selectedExamId" class="paper-template-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">总页数</span>
-              <strong class="workspace-summary__value">{{ form.totalPages ?? '-' }}</strong>
-              <span class="workspace-summary__desc">需与页面行数一致</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已配置页面</span>
-              <strong class="workspace-summary__value">{{ pages.length }}</strong>
-              <span class="workspace-summary__desc">含已上传 {{ uploadedPageCount }} 份</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">题目数量</span>
-              <strong class="workspace-summary__value">{{ questions.length }}</strong>
-              <span class="workspace-summary__desc">已保存 {{ savedQuestionCount }} 题</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">总分</span>
-              <strong class="workspace-summary__value workspace-summary__value--green">{{ totalScore }}</strong>
-              <span class="workspace-summary__desc">全卷题目满分合计</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
-
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请选择需要维护的考试"
-        class="empty-block"
-      />
+      <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="empty-block" />
 
       <a-spin v-else :spinning="loading">
         <UiCard class="info-card">
@@ -248,10 +212,20 @@
                 />
               </template>
               <template v-else-if="column.key === 'x'">
-                <a-input-number v-model:value="record.x" :min="0" size="small" style="width: 100%" />
+                <a-input-number
+                  v-model:value="record.x"
+                  :min="0"
+                  size="small"
+                  style="width: 100%"
+                />
               </template>
               <template v-else-if="column.key === 'y'">
-                <a-input-number v-model:value="record.y" :min="0" size="small" style="width: 100%" />
+                <a-input-number
+                  v-model:value="record.y"
+                  :min="0"
+                  size="small"
+                  style="width: 100%"
+                />
               </template>
               <template v-else-if="column.key === 'width'">
                 <a-input-number
@@ -311,12 +285,7 @@
       width="640px"
       @ok="handleSaveAnswer"
     >
-      <a-form
-        ref="answerFormRef"
-        :model="answerForm"
-        layout="vertical"
-        :rules="answerFormRules"
-      >
+      <a-form ref="answerFormRef" :model="answerForm" layout="vertical" :rules="answerFormRules">
         <a-form-item label="题号">
           <a-input :value="answerContext.questionNo" disabled />
         </a-form-item>
@@ -383,6 +352,7 @@ import type {
   ExamQuestionTemplateVO,
   ExamSummaryVO,
 } from '@/apis/mark/exam'
+import { getExamTemplate, pageExams, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -393,14 +363,9 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
-import {
-  getExamTemplate,
-  pageExams,
-  saveExamTemplate,
-  saveStandardAnswer,
-} from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherPaperTemplate' })
 
@@ -450,10 +415,10 @@ function nextRowKey(prefix: string): string {
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -467,8 +432,8 @@ const totalScore = computed(() =>
   questions.reduce((sum, row) => sum + (Number(row.fullScore) || 0), 0).toFixed(2),
 )
 
-const uploadedPageCount = computed(() => pages.filter(p => !!p.templateFileId).length)
-const savedQuestionCount = computed(() => questions.filter(q => !!q.questionTemplateId).length)
+const uploadedPageCount = computed(() => pages.filter((p) => !!p.templateFileId).length)
+const savedQuestionCount = computed(() => questions.filter((q) => !!q.questionTemplateId).length)
 
 const pageColumns: ColumnType<PageRow>[] = [
   { title: '页号', key: 'pageNo', width: 100 },
@@ -502,12 +467,10 @@ async function loadExamOptions(): Promise<void> {
         label: `${item.examName}（${item.statusMessage}）`,
         value: item.examId,
       }))
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '加载考试列表失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     examOptionsLoading.value = false
   }
 }
@@ -561,15 +524,18 @@ async function loadTemplate(): Promise<void> {
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
     applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages ?? [], tpl.questions ?? [])
-  }
-  catch (error) {
+  } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
-    if (errMsg && !errMsg.includes('未找到') && !errMsg.includes('不存在') && !errMsg.includes('当前模板')) {
+    if (
+      errMsg &&
+      !errMsg.includes('未找到') &&
+      !errMsg.includes('不存在') &&
+      !errMsg.includes('当前模板')
+    ) {
       message.warning(`当前考试尚未配置完整模板：${errMsg}`)
     }
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -579,8 +545,7 @@ function handleExamChange(value: string | undefined): void {
   void router.replace({ query: value ? { examId: value } : {} })
   if (value) {
     void loadTemplate()
-  }
-  else {
+  } else {
     clearTemplate()
   }
 }
@@ -605,12 +570,10 @@ async function handleUploadPage(file: File, index: number): Promise<boolean> {
     row.templateFileId = result.id
     row.templateFileName = result.nodeName || file.name
     message.success(`第 ${row.pageNo ?? index + 1} 页文件已上传`)
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '上传失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     row.uploading = false
   }
   // 阻止 a-upload 默认行为
@@ -766,12 +729,10 @@ async function handleSave(): Promise<void> {
     })
     message.success('试卷模板已保存')
     await loadTemplate()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '保存模板失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -834,8 +795,7 @@ async function handleSaveAnswer(): Promise<void> {
   if (!answerFormRef.value) return
   try {
     await answerFormRef.value.validate()
-  }
-  catch {
+  } catch {
     return
   }
   answerSaving.value = true
@@ -852,12 +812,10 @@ async function handleSaveAnswer(): Promise<void> {
     })
     message.success('标准答案已保存')
     answerModalOpen.value = false
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '保存标准答案失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     answerSaving.value = false
   }
 }
@@ -890,89 +848,6 @@ onMounted(async () => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.paper-template-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.paper-template-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.paper-template-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-
-.paper-template-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-
-    &--green {
-      color: var(--ant-color-success);
-    }
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
 }
 
 .info-card {

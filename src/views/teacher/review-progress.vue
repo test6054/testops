@@ -1,76 +1,36 @@
 <template>
   <GiPageLayout>
     <div class="progress-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="progress-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="progress-page__hero">
-            <div class="progress-page__hero-main">
-              <div class="progress-page__title-row">
-                <h1 class="progress-page__title">复核进度看板</h1>
-                <UiTag tone="purple" size="md">实时进度</UiTag>
-                <UiTag v-if="selectedExamId" :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="md">
-                  已确认 {{ confirmedPercent }}%
-                </UiTag>
-              </div>
-            </div>
-            <div class="progress-page__hero-actions">
-              <a-select
-                :value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试"
-                :options="examOptions"
-                :loading="examLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="onExamChange"
-              />
-              <UiButton
-                variant="outline"
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="loading"
-                @click="loadAll"
-              >
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
-
-          <div v-if="selectedExamId" class="progress-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">已确认 / 总数</span>
-              <strong class="workspace-summary__value">
-                {{ progress?.confirmedQuestionGradeCount ?? 0 }} / {{ progress?.totalQuestionGradeCount ?? 0 }}
-              </strong>
-              <span class="workspace-summary__desc">题目给分确认</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">题目模板</span>
-              <strong class="workspace-summary__value">{{ progress?.questionCount ?? 0 }}</strong>
-              <span class="workspace-summary__desc">道</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已扫描试卷</span>
-              <strong class="workspace-summary__value">{{ progress?.paperCount ?? 0 }}</strong>
-              <span class="workspace-summary__desc">份</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">待办告警</span>
-              <strong class="workspace-summary__value">
-                {{ (progress?.scanAttentionCount ?? 0) + (progress?.openProcessingTaskCount ?? 0) }}
-              </strong>
-              <span class="workspace-summary__desc">
-                扫描异常 {{ progress?.scanAttentionCount ?? 0 }} · 未闭合 {{ progress?.openProcessingTaskCount ?? 0 }}
-              </span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="复核进度">
+        <template #tags>
+          <UiTag v-if="selectedExamId" :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="md">
+            已确认 {{ confirmedPercent }}%
+          </UiTag>
+        </template>
+        <template #actions>
+          <a-select
+            :value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="onExamChange"
+          />
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="loadAll"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <UiEmpty
         v-if="!selectedExamId"
@@ -97,7 +57,8 @@
                   <div>
                     <span class="meta-label">已确认 / 总数：</span>
                     <a-typography-text strong>
-                      {{ progress?.confirmedQuestionGradeCount ?? 0 }} / {{ progress?.totalQuestionGradeCount ?? 0 }}
+                      {{ progress?.confirmedQuestionGradeCount ?? 0 }} /
+                      {{ progress?.totalQuestionGradeCount ?? 0 }}
                     </a-typography-text>
                   </div>
                   <div>
@@ -125,7 +86,9 @@
                     </div>
                     <div class="status-value">{{ item.count }}</div>
                     <div class="status-percent">
-                      {{ totalTaskCount === 0 ? 0 : Math.round((item.count * 100) / totalTaskCount) }}%
+                      {{
+                        totalTaskCount === 0 ? 0 : Math.round((item.count * 100) / totalTaskCount)
+                      }}%
                     </div>
                   </div>
                 </a-col>
@@ -136,7 +99,9 @@
                     title="扫描异常待办"
                     :value="progress?.scanAttentionCount ?? 0"
                     suffix="条"
-                    :value-style="{ color: (progress?.scanAttentionCount ?? 0) > 0 ? '#dc2626' : undefined }"
+                    :value-style="{
+                      color: (progress?.scanAttentionCount ?? 0) > 0 ? '#dc2626' : undefined,
+                    }"
                   />
                 </a-col>
                 <a-col :xs="12" :md="8">
@@ -144,7 +109,9 @@
                     title="处理中未闭合任务"
                     :value="progress?.openProcessingTaskCount ?? 0"
                     suffix="项"
-                    :value-style="{ color: (progress?.openProcessingTaskCount ?? 0) > 0 ? '#ea580c' : undefined }"
+                    :value-style="{
+                      color: (progress?.openProcessingTaskCount ?? 0) > 0 ? '#ea580c' : undefined,
+                    }"
                   />
                 </a-col>
               </a-row>
@@ -177,20 +144,26 @@
               </template>
               <template v-else-if="column.key === 'progress'">
                 <a-progress
-                  :percent="record.total === 0 ? 0 : Math.round((record.approved * 100) / record.total)"
+                  :percent="
+                    record.total === 0 ? 0 : Math.round((record.approved * 100) / record.total)
+                  "
                   size="small"
-                  :stroke-color="record.total > 0 && record.approved >= record.total ? '#16a34a' : '#2563eb'"
+                  :stroke-color="
+                    record.total > 0 && record.approved >= record.total ? '#16a34a' : '#2563eb'
+                  "
                 />
-                <div class="progress-detail">
-                  {{ record.approved }} / {{ record.total }} 已通过
-                </div>
+                <div class="progress-detail">{{ record.approved }} / {{ record.total }} 已通过</div>
               </template>
               <template v-else-if="column.key === 'pending'">
-                <UiTag v-if="record.pending > 0" tone="orange" size="sm">{{ record.pending }}</UiTag>
+                <UiTag v-if="record.pending > 0" tone="orange" size="sm">{{
+                  record.pending
+                }}</UiTag>
                 <span v-else class="muted">0</span>
               </template>
               <template v-else-if="column.key === 'inProgress'">
-                <UiTag v-if="record.inProgress > 0" tone="blue" size="sm">{{ record.inProgress }}</UiTag>
+                <UiTag v-if="record.inProgress > 0" tone="blue" size="sm">{{
+                  record.inProgress
+                }}</UiTag>
                 <span v-else class="muted">0</span>
               </template>
               <template v-else-if="column.key === 'rejected'">
@@ -211,15 +184,16 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { MarkingProgressVO, ReviewTaskItemVO } from '@/apis/mark/exam'
+import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
-import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherReviewProgress' })
@@ -284,7 +258,7 @@ const statusBreakdown = computed(() => {
     const code = task.status as ReviewTaskStatusCode
     if (code in counter) counter[code]++
   })
-  return (Object.keys(counter) as ReviewTaskStatusCode[]).map(code => ({
+  return (Object.keys(counter) as ReviewTaskStatusCode[]).map((code) => ({
     code,
     label: STATUS_LABEL[code],
     tone: STATUS_TONE[code],
@@ -352,12 +326,10 @@ async function loadAll(): Promise<void> {
     ])
     progress.value = progressData
     tasks.value = taskList
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '复核进度加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -365,8 +337,7 @@ async function loadAll(): Promise<void> {
 watch(selectedExamId, (value) => {
   if (value) {
     void loadAll()
-  }
-  else {
+  } else {
     progress.value = null
     tasks.value = []
   }
@@ -387,85 +358,6 @@ onMounted(async () => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.progress-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.progress-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.progress-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-
-.progress-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
 }
 
 .overview-row {
@@ -504,7 +396,7 @@ onMounted(async () => {
   align-items: flex-start;
   gap: 8px;
   padding: 16px;
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
   background: var(--ant-color-fill-quaternary);
   border: 1px solid var(--ant-color-border-secondary);
 }

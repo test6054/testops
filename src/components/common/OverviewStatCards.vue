@@ -33,25 +33,52 @@ import type { StatItem, Tone } from './types'
 
 type Size = 'default' | 'compact'
 
-withDefaults(defineProps<{
-  items: StatItem[]
-  size?: Size
-}>(), {
-  size: 'default',
-})
+withDefaults(
+  defineProps<{
+    items: StatItem[]
+    size?: Size
+  }>(),
+  {
+    size: 'default',
+  },
+)
 
-const toneMap: Record<Tone, { bg: string, icon: string, value: string }> = {
-  blue: { bg: 'var(--ant-color-primary-bg)', icon: 'var(--ant-color-primary)', value: 'var(--ant-color-text)' },
+const toneMap: Record<Tone, { bg: string; icon: string; value: string }> = {
+  blue: {
+    bg: 'var(--ant-color-primary-bg)',
+    icon: 'var(--ant-color-primary)',
+    value: 'var(--ant-color-text)',
+  },
   cyan: {
     bg: 'var(--ant-color-success-bg-hover)',
     icon: 'var(--ant-color-success-hover)',
     value: 'var(--ant-color-text)',
   },
-  orange: { bg: 'var(--ant-color-warning-bg)', icon: 'var(--ant-color-warning)', value: 'var(--ant-color-text)' },
-  pink: { bg: 'var(--ant-color-error-bg)', icon: 'var(--ant-color-error)', value: 'var(--ant-color-text)' },
-  green: { bg: 'var(--ant-color-success-bg)', icon: 'var(--ant-color-success)', value: 'var(--ant-color-text)' },
-  red: { bg: 'var(--ant-color-error-bg)', icon: 'var(--ant-color-error)', value: 'var(--ant-color-text)' },
-  purple: { bg: 'var(--ant-color-primary-bg)', icon: 'var(--ant-color-primary-hover)', value: 'var(--ant-color-text)' },
+  orange: {
+    bg: 'var(--ant-color-warning-bg)',
+    icon: 'var(--ant-color-warning)',
+    value: 'var(--ant-color-text)',
+  },
+  pink: {
+    bg: 'var(--ant-color-error-bg)',
+    icon: 'var(--ant-color-error)',
+    value: 'var(--ant-color-text)',
+  },
+  green: {
+    bg: 'var(--ant-color-success-bg)',
+    icon: 'var(--ant-color-success)',
+    value: 'var(--ant-color-text)',
+  },
+  red: {
+    bg: 'var(--ant-color-error-bg)',
+    icon: 'var(--ant-color-error)',
+    value: 'var(--ant-color-text)',
+  },
+  purple: {
+    bg: 'var(--ant-color-primary-bg)',
+    icon: 'var(--ant-color-primary-hover)',
+    value: 'var(--ant-color-text)',
+  },
 }
 
 // 安全获取tone样式，防止undefined错误
@@ -77,7 +104,10 @@ const getToneStyle = (tone?: Tone) => {
   padding: 14px 16px;
   background: var(--ant-color-bg-container);
   box-shadow: var(--dp-shadow-sm);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
   cursor: default;
 }
 
@@ -86,9 +116,7 @@ const getToneStyle = (tone?: Tone) => {
 }
 
 .dp-statcard:hover {
-  transform: translateY(-2px);
-  border-color: var(--ant-color-primary-border);
-  box-shadow: var(--dp-shadow-card);
+  border-color: var(--dp-border-strong, #e2e8f0);
 }
 
 .dp-statcard__content {
@@ -137,7 +165,7 @@ const getToneStyle = (tone?: Tone) => {
 /* compact 模式 */
 .dp-stat-grid--compact .dp-statcard {
   padding: 10px 14px;
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
 }
 
 .dp-stat-grid--compact .dp-statcard__label {

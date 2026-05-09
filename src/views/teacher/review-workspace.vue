@@ -1,74 +1,33 @@
 <template>
   <GiPageLayout>
     <div class="workspace-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="workspace-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="workspace-page__hero">
-            <div class="workspace-page__hero-main">
-              <div class="workspace-page__title-row">
-                <h1 class="workspace-page__title">匿名批阅工作台</h1>
-                <UiTag tone="purple" size="md">匿名 · AI 辅助</UiTag>
-                <UiTag
-                  v-if="detail?.status"
-                  :tone="STATUS_TONE[detail.status as ReviewTaskStatusCode] || 'gray'"
-                  size="md"
-                >
-                  {{ STATUS_LABEL[detail.status as ReviewTaskStatusCode] || detail.status }}
-                </UiTag>
-              </div>
-            </div>
-            <div class="workspace-page__hero-actions">
-              <UiButton variant="outline" size="md" @click="goBack">
-                <template #icon>
-                  <LeftOutlined />
-                </template>
-                返回任务池
-              </UiButton>
-              <UiButton
-                variant="outline"
-                size="md"
-                :disabled="!canSubmit"
-                :loading="loading"
-                @click="loadTask"
-              >
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
-
-          <div v-if="detail" class="workspace-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">匿名号</span>
-              <strong class="workspace-summary__value">{{ detail.anonymousNo || '-' }}</strong>
-              <span class="workspace-summary__desc">屏蔽考生身份</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">题号 / 题型</span>
-              <strong class="workspace-summary__value">
-                {{ detail.questionNo || '-' }}
-                <span class="workspace-summary__sub">{{ detail.questionType || '-' }}</span>
-              </strong>
-              <span class="workspace-summary__desc">满分 {{ detail.fullScore ?? '-' }} 分</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">AI 建议分</span>
-              <strong class="workspace-summary__value workspace-summary__value--green">
-                {{ detail.suggestedScore != null ? detail.suggestedScore : '-' }}
-              </strong>
-              <span class="workspace-summary__desc">仅供参考</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">批注历史</span>
-              <strong class="workspace-summary__value">{{ annotations.length }}</strong>
-              <span class="workspace-summary__desc">已记录条</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="批阅工作台" back-route="/teacher/review-assignment">
+        <template #tags>
+          <UiTag
+            v-if="detail?.status"
+            :tone="STATUS_TONE[detail.status as ReviewTaskStatusCode] || 'gray'"
+            size="md"
+          >
+            {{ STATUS_LABEL[detail.status as ReviewTaskStatusCode] || detail.status }}
+          </UiTag>
+          <UiTag v-if="detail?.anonymousNo" tone="gray" size="md">{{ detail.anonymousNo }}</UiTag>
+          <UiTag v-if="detail?.questionNo" tone="blue" size="md">
+            题{{ detail.questionNo }} · 满分{{ detail.fullScore ?? '-' }}
+          </UiTag>
+        </template>
+        <template #actions>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!canSubmit"
+            :loading="loading"
+            @click="loadTask"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <UiEmpty
         v-if="!examId || !taskId"
@@ -131,14 +90,14 @@
                 type="info"
                 show-icon
                 message="当前任务状态不允许提交批改（仅 PENDING / IN_PROGRESS 可提交）。"
-                style="margin-bottom: 12px;"
+                style="margin-bottom: 12px"
               />
               <a-alert
                 v-else-if="!detail?.gradeResultId"
                 type="warning"
                 show-icon
                 message="任务缺少批改结果ID（gradeResultId），暂无法提交。"
-                style="margin-bottom: 12px;"
+                style="margin-bottom: 12px"
               />
 
               <a-form
@@ -215,7 +174,9 @@
                       </template>
                       <template #description>
                         <div class="annotation-meta">
-                          <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
+                          <span v-if="item.anchorText" class="muted"
+                            >锚点：{{ item.anchorText }}</span
+                          >
                           <span class="muted">{{ formatTime(item.createTime) }}</span>
                         </div>
                       </template>
@@ -234,11 +195,11 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationVO, ReviewTaskDetailVO } from '@/apis/mark/exam'
+import { confirmQuestionGrade, getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
@@ -246,13 +207,9 @@ import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import {
-  confirmQuestionGrade,
-  getReviewTaskDetail,
-  listAnnotations,
-} from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherReviewWorkspace' })
 
@@ -300,12 +257,10 @@ async function loadSliceImage(fileId: string): Promise<void> {
   sliceLoading.value = true
   try {
     sliceImageUrl.value = await getImageBlobUrl(fileId)
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '切片图像加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     sliceLoading.value = false
   }
 }
@@ -329,8 +284,7 @@ async function loadAnnotations(): Promise<void> {
       questionTemplateId: detail.value.questionTemplateId,
       gradeResultId: detail.value.gradeResultId,
     })
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '批注记录加载失败'
     message.error(errMsg)
   }
@@ -353,18 +307,16 @@ async function loadTask(): Promise<void> {
     await loadAnnotations()
     // 默认填充建议分
     if (
-      gradeForm.finalScore === undefined
-      && detail.value?.suggestedScore !== undefined
-      && detail.value?.suggestedScore !== null
+      gradeForm.finalScore === undefined &&
+      detail.value?.suggestedScore !== undefined &&
+      detail.value?.suggestedScore !== null
     ) {
       gradeForm.finalScore = detail.value.suggestedScore
     }
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '任务详情加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -411,8 +363,7 @@ async function handleSubmit(): Promise<void> {
   if (!gradeFormRef.value) return
   try {
     await gradeFormRef.value.validate()
-  }
-  catch {
+  } catch {
     return
   }
   submitting.value = true
@@ -428,12 +379,10 @@ async function handleSubmit(): Promise<void> {
     message.success('题目批改已确认并关闭任务')
     // 刷新任务与批注
     await loadTask()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '确认批改失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -478,96 +427,6 @@ onBeforeUnmount(() => {
   min-height: 100vh;
 }
 
-.hero-spin {
-  width: 100%;
-}
-
-.workspace-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.workspace-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.workspace-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-
-.workspace-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-
-    &--green {
-      color: var(--ant-color-success);
-    }
-  }
-
-  &__sub {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--ant-color-text-secondary);
-    margin-left: 6px;
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
-}
-
 .workspace-row {
   row-gap: 16px;
 }
@@ -586,7 +445,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
   padding: 16px;
 }
 
@@ -606,7 +465,7 @@ onBeforeUnmount(() => {
   color: var(--ant-color-text);
   background: var(--ant-color-fill-quaternary);
   padding: 12px;
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
 }
 
 .hint {

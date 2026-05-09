@@ -19,19 +19,22 @@ import { computed } from 'vue'
 
 defineOptions({ name: 'UiTag' })
 
-const props = withDefaults(defineProps<{
-  tone?: BadgeTone
-  empty?: boolean
-  size?: UiComponentSize
-  variant?: 'soft' | 'outline'
-}>(), {
-  tone: 'gray',
-  empty: false,
-  size: 'md',
-  variant: 'soft',
-})
+const props = withDefaults(
+  defineProps<{
+    tone?: BadgeTone
+    empty?: boolean
+    size?: UiComponentSize
+    variant?: 'soft' | 'outline'
+  }>(),
+  {
+    tone: 'gray',
+    empty: false,
+    size: 'md',
+    variant: 'soft',
+  },
+)
 
-const resolvedTone = computed<BadgeTone>(() => props.empty ? 'gray' : props.tone)
+const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.tone))
 </script>
 
 <style scoped>
@@ -49,29 +52,32 @@ const resolvedTone = computed<BadgeTone>(() => props.empty ? 'gray' : props.tone
   border-radius: var(--dp-radius-sm, 6px);
   border: 1px solid transparent;
   color: var(--tag-text);
-  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--dp-font-family), sans-serif;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .ui-tag--sm {
-  min-height: 24px;
-  padding: 0 10px;
+  min-height: 22px;
+  padding: 0 8px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ui-tag--md {
-  min-height: 28px;
-  padding: 0 12px;
+  min-height: 26px;
+  padding: 0 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ui-tag--lg {
-  min-height: 32px;
-  padding: 0 14px;
+  min-height: 30px;
+  padding: 0 12px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ui-tag--soft {

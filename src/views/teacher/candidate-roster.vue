@@ -1,75 +1,33 @@
 <template>
   <GiPageLayout>
     <div class="roster-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="roster-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="roster-page__hero">
-            <div class="roster-page__hero-main">
-              <div class="roster-page__title-row">
-                <h1 class="roster-page__title">考生名册</h1>
-                <UiTag tone="purple" size="md">班级范围 · 名册维护</UiTag>
-                <UiTag v-if="selectedExamId" tone="blue" size="md">
-                  {{ candidates.length }} 名考生
-                </UiTag>
-              </div>
-            </div>
-            <div class="roster-page__hero-actions">
-              <a-select
-                v-model:value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试（仅显示已启用）"
-                :options="examOptions"
-                :loading="examOptionsLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="handleExamChange"
-              />
-              <UiButton
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="saving"
-                @click="handleSave"
-              >
-                <template #icon>
-                  <SaveOutlined />
-                </template>
-                保存名册
-              </UiButton>
-            </div>
-          </div>
+      <PageHeader title="考生名册">
+        <template #tags>
+          <UiTag v-if="selectedExamId" tone="blue" size="md">{{ candidates.length }} 名考生</UiTag>
+          <UiTag v-if="selectedExamId && pendingCount > 0" tone="orange" size="md"
+            >待保存 {{ pendingCount }}</UiTag
+          >
+        </template>
+        <template #actions>
+          <a-select
+            v-model:value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examOptionsLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="handleExamChange"
+          />
+          <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
+            <template #icon><SaveOutlined /></template>
+            保存
+          </UiButton>
+        </template>
+      </PageHeader>
 
-          <div v-if="selectedExamId" class="roster-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">考生总数</span>
-              <strong class="workspace-summary__value">{{ candidates.length }}</strong>
-              <span class="workspace-summary__desc">本场考试名册</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">班级范围</span>
-              <strong class="workspace-summary__value">{{ classIds.length }}</strong>
-              <span class="workspace-summary__desc">个班级</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已存在</span>
-              <strong class="workspace-summary__value">{{ persistedCount }}</strong>
-              <span class="workspace-summary__desc">已落库考生</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">待保存</span>
-              <strong class="workspace-summary__value">{{ pendingCount }}</strong>
-              <span class="workspace-summary__desc">本次新增</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
-
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请选择需要维护的考试"
-        class="empty-block"
-      />
+      <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="empty-block" />
 
       <a-spin v-else :spinning="loading">
         <UiCard class="info-card">
@@ -139,11 +97,7 @@
           >
             <template #bodyCell="{ column, record, index }">
               <template v-if="column.key === 'studentNo'">
-                <a-input
-                  v-model:value="record.studentNo"
-                  placeholder="学号（必填）"
-                  size="small"
-                />
+                <a-input v-model:value="record.studentNo" placeholder="学号（必填）" size="small" />
               </template>
               <template v-else-if="column.key === 'studentName'">
                 <a-input
@@ -160,11 +114,7 @@
                 />
               </template>
               <template v-else-if="column.key === 'classId'">
-                <a-input
-                  v-model:value="record.classId"
-                  placeholder="班级ID（可选）"
-                  size="small"
-                />
+                <a-input v-model:value="record.classId" placeholder="班级ID（可选）" size="small" />
               </template>
               <template v-else-if="column.key === 'serverStatus'">
                 <UiTag v-if="record.candidateRosterId" tone="green" size="sm">已存在</UiTag>
@@ -178,9 +128,7 @@
             </template>
           </a-table>
 
-          <div class="roster-summary">
-            共 {{ candidates.length }} 名考生
-          </div>
+          <div class="roster-summary">共 {{ candidates.length }} 名考生</div>
         </UiCard>
       </a-spin>
     </div>
@@ -212,6 +160,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateRosterPayload, ExamSummaryVO } from '@/apis/mark/exam'
+import { getExamDetail, listExamCandidates, pageExams, saveExamScope } from '@/apis/mark/exam'
 import ImportOutlined from '@ant-design/icons-vue/ImportOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
@@ -220,14 +169,9 @@ import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  getExamDetail,
-  listExamCandidates,
-  pageExams,
-  saveExamScope,
-} from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherCandidateRoster' })
 
@@ -252,7 +196,7 @@ function nextRowKey(): string {
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const classIds = ref<string[]>([])
@@ -262,8 +206,8 @@ const newClassIdInput = ref('')
 const loading = ref(false)
 const saving = ref(false)
 
-const persistedCount = computed(() => candidates.filter(c => c.candidateRosterId).length)
-const pendingCount = computed(() => candidates.filter(c => !c.candidateRosterId).length)
+const persistedCount = computed(() => candidates.filter((c) => c.candidateRosterId).length)
+const pendingCount = computed(() => candidates.filter((c) => !c.candidateRosterId).length)
 
 const columns: ColumnType<CandidateRow>[] = [
   { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 200 },
@@ -284,12 +228,10 @@ async function loadExamOptions(): Promise<void> {
         label: `${item.examName}（${item.statusMessage}）`,
         value: item.examId,
       }))
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '加载考试列表失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     examOptionsLoading.value = false
   }
 }
@@ -314,12 +256,10 @@ async function loadRoster(): Promise<void> {
         classId: item.classId ?? '',
       })
     })
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '加载名册失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -329,8 +269,7 @@ function handleExamChange(value: string | undefined): void {
   void router.replace({ query: value ? { examId: value } : {} })
   if (value) {
     void loadRoster()
-  }
-  else {
+  } else {
     classIds.value = []
     candidates.splice(0, candidates.length)
   }
@@ -353,7 +292,7 @@ function addClassId(): void {
 }
 
 function removeClassId(classId: string): void {
-  classIds.value = classIds.value.filter(id => id !== classId)
+  classIds.value = classIds.value.filter((id) => id !== classId)
 }
 
 function addCandidate(): void {
@@ -381,13 +320,13 @@ function openBatchModal(): void {
 function handleBatchImport(): void {
   const lines = batchText.value
     .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
 
   let added = 0
   let skipped = 0
   for (const line of lines) {
-    const cells = line.split(/[,\t]/).map(s => s.trim())
+    const cells = line.split(/[,\t]/).map((s) => s.trim())
     const [studentNo, studentName, classId, studentUserId] = cells
     if (!studentNo || !studentName || !studentUserId) {
       skipped += 1
@@ -412,8 +351,7 @@ function handleBatchImport(): void {
   }
   if (added > 0) {
     message.success(`已追加 ${added} 名考生${skipped ? `（${skipped} 行格式错误已跳过）` : ''}`)
-  }
-  else {
+  } else {
     message.warning('没有有效行被追加')
   }
   batchModalOpen.value = false
@@ -468,12 +406,10 @@ async function handleSave(): Promise<void> {
     })
     message.success('名册已保存')
     await loadRoster()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '保存名册失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -506,84 +442,6 @@ onMounted(async () => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.roster-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.roster-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.roster-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-.roster-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
 }
 
 .info-card {

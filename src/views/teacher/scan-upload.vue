@@ -1,86 +1,39 @@
 <template>
   <GiPageLayout>
     <div class="scan-batch-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="scan-batch-page__hero-card">
-        <a-spin :spinning="globalLoading" class="hero-spin">
-          <div class="scan-batch-page__hero">
-            <div class="scan-batch-page__hero-main">
-              <div class="scan-batch-page__title-row">
-                <h1 class="scan-batch-page__title">扫描批次创建工作台</h1>
-                <UiTag tone="purple" size="md">设备 + 时间窗 → 聚合批次</UiTag>
-                <UiTag v-if="selectedExamId" :tone="pendingEventTotal > 0 ? 'orange' : 'green'" size="md">
-                  待聚合 {{ pendingEventTotal }} 条
-                </UiTag>
-              </div>
-            </div>
-            <div class="scan-batch-page__hero-actions">
-              <a-select
-                :value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试"
-                :options="examOptions"
-                :loading="examLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="onExamChange"
-              />
-              <UiButton
-                variant="outline"
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="globalLoading"
-                @click="loadAllForExam"
-              >
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
+      <PageHeader title="扫描批次">
+        <template #tags>
+          <UiTag v-if="selectedExamId" :tone="pendingEventTotal > 0 ? 'orange' : 'green'" size="md">
+            待聚合 {{ pendingEventTotal }}
+          </UiTag>
+          <UiTag v-if="selectedExamId" tone="blue" size="md">{{ batchTotal }} 批次</UiTag>
+        </template>
+        <template #actions>
+          <a-select
+            :value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="onExamChange"
+          />
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="globalLoading"
+            @click="loadAllForExam"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
-          <div v-if="selectedExamId" class="scan-batch-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">已注册扫描设备</span>
-              <strong class="workspace-summary__value">{{ devices.length }}</strong>
-              <span class="workspace-summary__desc">扫描端导入后自动建立</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">待聚合事件</span>
-              <strong
-                class="workspace-summary__value"
-                :class="{ 'workspace-summary__value--orange': pendingEventTotal > 0 }"
-              >
-                {{ pendingEventTotal }}
-              </strong>
-              <span class="workspace-summary__desc">尚未聚合到批次</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已创建批次</span>
-              <strong class="workspace-summary__value">{{ batchTotal }}</strong>
-              <span class="workspace-summary__desc">本考试聚合批次</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">处理中未闭合</span>
-              <strong
-                class="workspace-summary__value"
-                :class="{ 'workspace-summary__value--orange': hasOpenProcessing }"
-              >
-                {{ progress?.openProcessingTaskCount ?? 0 }}
-              </strong>
-              <span class="workspace-summary__desc">含识别等待处理</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
-
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请先选择需要管理的考试"
-        class="empty-block"
-      />
+      <UiEmpty v-if="!selectedExamId" description="请先选择需要管理的考试" class="empty-block" />
 
       <template v-else>
         <a-alert
@@ -96,12 +49,7 @@
             <span>按扫描仪和时间窗口创建批次</span>
           </template>
 
-          <a-form
-            ref="formRef"
-            :model="batchForm"
-            :rules="batchFormRules"
-            layout="vertical"
-          >
+          <a-form ref="formRef" :model="batchForm" :rules="batchFormRules" layout="vertical">
             <a-row :gutter="16">
               <a-col :xs="24" :md="12">
                 <a-form-item label="扫描仪（多选，至少 1 台）" name="scannerDeviceIds" required>
@@ -171,7 +119,9 @@
           <div v-if="previewLoaded" class="preview-section">
             <a-descriptions :column="{ xs: 1, sm: 2, md: 4 }" size="small">
               <a-descriptions-item label="待聚合事件">
-                <a-typography-text strong type="warning">{{ previewData?.eventCount ?? 0 }} 条</a-typography-text>
+                <a-typography-text strong type="warning"
+                  >{{ previewData?.eventCount ?? 0 }} 条</a-typography-text
+                >
               </a-descriptions-item>
               <a-descriptions-item label="覆盖文件数">
                 {{ previewData?.fileCount ?? 0 }} 份
@@ -232,7 +182,10 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'batchNo'">
                 <a-typography-text strong :content="record.batchNo || '-'" />
-                <div v-if="record.batchExternalNo && record.batchExternalNo !== record.batchNo" class="muted">
+                <div
+                  v-if="record.batchExternalNo && record.batchExternalNo !== record.batchNo"
+                  class="muted"
+                >
                   外部编号：{{ record.batchExternalNo }}
                 </div>
               </template>
@@ -241,7 +194,12 @@
                   :tone="BATCH_STATUS_TONE[record.status as ScanBatchStatusCode] || 'gray'"
                   size="sm"
                 >
-                  {{ record.statusMessage || BATCH_STATUS_LABEL[record.status as ScanBatchStatusCode] || record.status || '-' }}
+                  {{
+                    record.statusMessage ||
+                    BATCH_STATUS_LABEL[record.status as ScanBatchStatusCode] ||
+                    record.status ||
+                    '-'
+                  }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'scanWindow'">
@@ -307,6 +265,13 @@ import type {
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
+import {
+  createScanBatchByCondition,
+  getMarkingProgress,
+  listScannerDevices,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+} from '@/apis/mark/exam'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -319,15 +284,9 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createScanBatchByCondition,
-  getMarkingProgress,
-  listScannerDevices,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherScanUpload' })
@@ -373,12 +332,10 @@ async function loadProgress(): Promise<void> {
   progressLoading.value = true
   try {
     progress.value = await getMarkingProgress(selectedExamId.value)
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '阅卷进度加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     progressLoading.value = false
   }
 }
@@ -389,8 +346,8 @@ const devicesLoading = ref(false)
 
 const deviceSelectOptions = computed(() =>
   devices.value
-    .filter(d => !!d.scannerDeviceId)
-    .map(d => ({
+    .filter((d) => !!d.scannerDeviceId)
+    .map((d) => ({
       value: d.scannerDeviceId!,
       label: d.scannerIp
         ? `${d.deviceName || d.scannerDeviceId} (${d.scannerIp})`
@@ -402,12 +359,10 @@ async function loadDevices(): Promise<void> {
   devicesLoading.value = true
   try {
     devices.value = await listScannerDevices()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '扫描设备列表加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     devicesLoading.value = false
   }
 }
@@ -425,16 +380,18 @@ const batchForm = reactive<{
 })
 
 const batchFormRules: Record<string, Rule[]> = {
-  scannerDeviceIds: [{ required: true, type: 'array', min: 1, message: '至少选择 1 台扫描仪', trigger: 'change' }],
+  scannerDeviceIds: [
+    { required: true, type: 'array', min: 1, message: '至少选择 1 台扫描仪', trigger: 'change' },
+  ],
   scanWindow: [{ required: true, type: 'array', message: '请选择扫描时间窗口', trigger: 'change' }],
 }
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value
-    && batchForm.scannerDeviceIds.length > 0
-    && !!batchForm.scanWindow
-    && batchForm.scanWindow.length === 2,
+    !!selectedExamId.value &&
+    batchForm.scannerDeviceIds.length > 0 &&
+    !!batchForm.scanWindow &&
+    batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -447,7 +404,13 @@ const previewLoading = ref(false)
 const previewTimeSpan = ref('-')
 
 const deviceBreakdownColumns: ColumnType[] = [
-  { title: '设备ID', dataIndex: 'scannerDeviceId', key: 'scannerDeviceId', width: 200, ellipsis: true },
+  {
+    title: '设备ID',
+    dataIndex: 'scannerDeviceId',
+    key: 'scannerDeviceId',
+    width: 200,
+    ellipsis: true,
+  },
   { title: 'IP', dataIndex: 'scannerIp', key: 'scannerIp', width: 160 },
   { title: '事件数', dataIndex: 'eventCount', key: 'eventCount', width: 100 },
   { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 100 },
@@ -457,8 +420,7 @@ async function previewPendingEvents(): Promise<void> {
   if (!formRef.value || !selectedExamId.value || !batchForm.scanWindow) return
   try {
     await formRef.value.validate(['scannerDeviceIds', 'scanWindow'])
-  }
-  catch {
+  } catch {
     return
   }
   previewLoading.value = true
@@ -475,19 +437,15 @@ async function previewPendingEvents(): Promise<void> {
     pendingEventTotal.value = result.eventCount ?? 0
     // 时间跨度
     if (result.scanStartTime && result.scanEndTime) {
-      previewTimeSpan.value
-        = `${dayjs(result.scanStartTime).format('YYYY-MM-DD HH:mm')} ~ ${dayjs(result.scanEndTime).format('YYYY-MM-DD HH:mm')}`
-    }
-    else {
+      previewTimeSpan.value = `${dayjs(result.scanStartTime).format('YYYY-MM-DD HH:mm')} ~ ${dayjs(result.scanEndTime).format('YYYY-MM-DD HH:mm')}`
+    } else {
       previewTimeSpan.value = '-'
     }
     previewLoaded.value = true
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '聚合预览查询失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     previewLoading.value = false
   }
 }
@@ -499,8 +457,7 @@ async function handleCreateBatch(): Promise<void> {
   if (!selectedExamId.value || !formRef.value) return
   try {
     await formRef.value.validate()
-  }
-  catch {
+  } catch {
     return
   }
   if (!batchForm.scanWindow) return
@@ -524,12 +481,10 @@ async function handleCreateBatch(): Promise<void> {
     batchForm.batchExternalNo = ''
     await loadBatches(1)
     await loadProgress()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '扫描批次创建失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     creating.value = false
   }
 }
@@ -538,7 +493,7 @@ async function handleCreateBatch(): Promise<void> {
 const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -546,7 +501,13 @@ const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
 const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '批次号', key: 'batchNo', width: 240 },
   { title: '状态', key: 'status', width: 110 },
-  { title: '主扫描设备', dataIndex: 'scannerDeviceId', key: 'scannerDeviceId', width: 150, ellipsis: true },
+  {
+    title: '主扫描设备',
+    dataIndex: 'scannerDeviceId',
+    key: 'scannerDeviceId',
+    width: 150,
+    ellipsis: true,
+  },
   { title: '扫描时间窗', key: 'scanWindow', width: 220 },
   { title: '事件数', key: 'eventCount', width: 90 },
   { title: '文件数', key: 'fileCount', width: 90 },
@@ -566,12 +527,10 @@ async function loadBatches(pageNum?: number): Promise<void> {
     const result = await pageScannerBatches(payload)
     batches.value = result.list ?? []
     batchTotal.value = result.total ?? 0
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '扫描批次列表加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     batchLoading.value = false
   }
 }
@@ -617,8 +576,7 @@ async function loadAllForExam(): Promise<void> {
 watch(selectedExamId, (value) => {
   if (value) {
     void loadAllForExam()
-  }
-  else {
+  } else {
     progress.value = null
     batches.value = []
     batchTotal.value = 0
@@ -640,89 +598,6 @@ onMounted(async () => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.scan-batch-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.scan-batch-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.scan-batch-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-
-.scan-batch-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-
-    &--orange {
-      color: var(--ant-color-warning);
-    }
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
 }
 
 .info-card {

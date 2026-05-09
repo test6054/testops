@@ -53,25 +53,28 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  label: string
-  value: string | number
-  unit?: string
-  helper?: string
-  trend?: string
-  trendTone?: TrendTone
-  tone?: BadgeTone
-  clickable?: boolean
-  compact?: boolean
-}>(), {
-  unit: '',
-  helper: '',
-  trend: '',
-  trendTone: 'default',
-  tone: 'blue',
-  clickable: false,
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    label: string
+    value: string | number
+    unit?: string
+    helper?: string
+    trend?: string
+    trendTone?: TrendTone
+    tone?: BadgeTone
+    clickable?: boolean
+    compact?: boolean
+  }>(),
+  {
+    unit: '',
+    helper: '',
+    trend: '',
+    trendTone: 'default',
+    tone: 'blue',
+    clickable: false,
+    compact: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'click', evt: MouseEvent): void
@@ -114,11 +117,7 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card--clickable:hover {
-  transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--metric-text) 20%, #dbe3ef);
-  box-shadow:
-    0 14px 28px rgba(15, 23, 42, 0.08),
-    0 2px 6px rgba(15, 23, 42, 0.06);
 }
 
 .ui-metric-card--compact {

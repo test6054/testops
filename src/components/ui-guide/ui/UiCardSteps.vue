@@ -21,9 +21,7 @@
             <path d="M5 12l5 5L19 7" />
           </svg>
         </div>
-        <div v-else-if="step.status === 'running'" class="ui-card-steps__badge">
-          进行中
-        </div>
+        <div v-else-if="step.status === 'running'" class="ui-card-steps__badge">进行中</div>
       </div>
       <div v-if="index < normalizedSteps.length - 1" class="ui-card-steps__connector">
         <svg viewBox="0 0 24 24" fill="currentColor">
@@ -42,17 +40,20 @@ defineOptions({
   name: 'UiCardSteps',
 })
 
-const props = withDefaults(defineProps<{
-  steps?: UiStepItem[]
-  current?: number
-  compact?: boolean
-  clickable?: boolean
-}>(), {
-  steps: () => [],
-  current: 0,
-  compact: false,
-  clickable: false,
-})
+const props = withDefaults(
+  defineProps<{
+    steps?: UiStepItem[]
+    current?: number
+    compact?: boolean
+    clickable?: boolean
+  }>(),
+  {
+    steps: () => [],
+    current: 0,
+    compact: false,
+    clickable: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'change', index: number, step: UiStepItem): void
@@ -62,7 +63,9 @@ const normalizedSteps = computed(() => {
   return props.steps.map((step, index) => ({
     ...step,
     key: step.key || `step-${index}`,
-    status: step.status || (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
+    status:
+      step.status ||
+      (index < props.current ? 'completed' : index === props.current ? 'running' : 'pending'),
   }))
 })
 
@@ -239,7 +242,6 @@ function handleClick(step: UiStepItem, index: number) {
 }
 
 .ui-card-steps__item--clickable:hover .ui-card-steps__card {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--dp-border-strong, #e2e8f0);
 }
 </style>

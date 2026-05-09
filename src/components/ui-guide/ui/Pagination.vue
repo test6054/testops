@@ -76,7 +76,7 @@ const handleShowSizeChange = (page: number, size: number) => {
 .ui-pagination :deep(.ant-pagination-next) {
   min-width: 32px;
   height: 32px;
-  border-radius: var(--dp-radius-control, 8px);
+  border-radius: var(--dp-radius-control, 6px);
   border-color: transparent;
   background: transparent;
   transition: all 0.15s ease;

@@ -48,28 +48,31 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  open: boolean
-  title?: string
-  width?: number
-  closable?: boolean
-  maskClosable?: boolean
-  confirmLoading?: boolean
-  okText?: string
-  cancelText?: string
-  hideFooter?: boolean
-  hideCancel?: boolean
-}>(), {
-  title: '',
-  width: 520,
-  closable: true,
-  maskClosable: true,
-  confirmLoading: false,
-  okText: '确定',
-  cancelText: '取消',
-  hideFooter: false,
-  hideCancel: false,
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean
+    title?: string
+    width?: number
+    closable?: boolean
+    maskClosable?: boolean
+    confirmLoading?: boolean
+    okText?: string
+    cancelText?: string
+    hideFooter?: boolean
+    hideCancel?: boolean
+  }>(),
+  {
+    title: '',
+    width: 520,
+    closable: true,
+    maskClosable: true,
+    confirmLoading: false,
+    okText: '确定',
+    cancelText: '取消',
+    hideFooter: false,
+    hideCancel: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
@@ -126,7 +129,9 @@ const handleOk = () => {
   background: transparent;
   color: var(--dp-text-secondary, #475569);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .ui-dialog__close:hover {
@@ -150,7 +155,7 @@ const handleOk = () => {
 .ui-dialog-wrap {
   .ant-modal-content {
     padding: 0 !important;
-    border-radius: var(--dp-radius-overlay, 16px) !important;
+    border-radius: var(--dp-radius-overlay, 8px) !important;
     overflow: hidden !important;
     box-shadow: var(--dp-shadow-modal) !important;
     border: 1px solid var(--dp-border, #f1f5f9);
@@ -163,10 +168,9 @@ const handleOk = () => {
   .ant-modal-body {
     padding: 0 !important;
   }
-  
+
   .ant-modal-mask {
     background-color: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(4px);
   }
 }
 </style>

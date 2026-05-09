@@ -27,13 +27,8 @@
 
 // echarts 提示
 .echarts-tooltip-diy {
-  background: linear-gradient(
-    304.17deg,
-    color-mix(in srgb, var(--ant-color-bg-container) 60%, transparent) -6.04%,
-    color-mix(in srgb, var(--ant-color-fill-quaternary) 60%, transparent) 85.2%
-  ) !important;
+  background: var(--ant-color-bg-container) !important;
   border: none !important;
-  backdrop-filter: blur(10px) !important;
   /* Note: backdrop-filter has minimal browser support */
 
   border-radius: var(--ant-border-radius) !important;
@@ -83,8 +78,8 @@
 .ant-tabs {
   .ant-tabs-tab {
     padding: 10px 16px !important;
-    border-radius: var(--dp-radius-control, 8px) var(--dp-radius-control, 8px) 0 0 !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-radius: var(--dp-radius-control, 6px) var(--dp-radius-control, 6px) 0 0 !important;
+    transition: color 0.15s ease !important;
     font-weight: 500;
     color: var(--dp-text-secondary, #475569);
 
@@ -108,7 +103,7 @@
 // ─── Drawer 现代化 ───
 .ant-drawer-content-wrapper {
   .ant-drawer-content {
-    border-radius: var(--dp-radius-xl, 16px) 0 0 var(--dp-radius-xl, 16px);
+    border-radius: var(--dp-radius-lg, 8px) 0 0 var(--dp-radius-lg, 8px);
   }
 
   .ant-drawer-header {
@@ -118,7 +113,7 @@
 
   .ant-drawer-title {
     font-size: 16px !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     color: var(--dp-text-primary, #0f172a) !important;
   }
 
@@ -134,20 +129,19 @@
 
 .ant-drawer-mask {
   background-color: rgba(15, 23, 42, 0.4) !important;
-  backdrop-filter: blur(4px);
 }
 
 // ─── Dropdown 通用现代化 ───
 .ant-dropdown {
   .ant-dropdown-menu {
     padding: 6px !important;
-    border-radius: var(--dp-radius-lg, 12px) !important;
-    box-shadow: var(--dp-shadow-card) !important;
+    border-radius: var(--dp-radius-md, 6px) !important;
+    box-shadow: var(--dp-shadow-md) !important;
     border: 1px solid var(--dp-border, #f1f5f9);
 
     .ant-dropdown-menu-item {
       padding: 8px 12px !important;
-      border-radius: var(--dp-radius-md, 8px) !important;
+      border-radius: var(--dp-radius-sm, 4px) !important;
       font-size: 14px;
       color: var(--dp-text-primary, #0f172a);
       transition: all 0.15s ease;
@@ -169,9 +163,9 @@
 // ─── Popover / Popconfirm 现代化 ───
 .ant-popover {
   .ant-popover-inner {
-    border-radius: var(--dp-radius-lg, 12px) !important;
-    box-shadow: var(--dp-shadow-card) !important;
-    padding: 12px 16px !important;
+    border-radius: var(--dp-radius-md, 6px) !important;
+    box-shadow: var(--dp-shadow-md) !important;
+    padding: 16px 20px !important;
     border: 1px solid var(--dp-border, #f1f5f9);
   }
 
@@ -191,7 +185,7 @@
 
   .ant-popconfirm-buttons {
     .ant-btn {
-      border-radius: var(--dp-radius-control, 8px);
+      border-radius: var(--dp-radius-control, 6px);
     }
   }
 }
@@ -199,21 +193,21 @@
 // ─── Notification / Message 现代化 ───
 .ant-notification {
   .ant-notification-notice {
-    border-radius: var(--dp-radius-lg, 12px) !important;
-    box-shadow: var(--dp-shadow-card) !important;
+    border-radius: var(--dp-radius-md, 6px) !important;
+    box-shadow: var(--dp-shadow-md) !important;
     border: 1px solid var(--dp-border, #f1f5f9);
     padding: 16px 20px !important;
   }
 
   .ant-notification-notice-message {
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     color: var(--dp-text-primary, #0f172a);
   }
 }
 
 .ant-message {
   .ant-message-notice-content {
-    border-radius: var(--dp-radius-control, 8px) !important;
+    border-radius: var(--dp-radius-control, 6px) !important;
     box-shadow: var(--dp-shadow-md) !important;
     padding: 10px 16px !important;
     font-weight: 500;
@@ -230,7 +224,7 @@
     padding: 0 12px !important;
     height: 40px !important;
     line-height: 40px !important;
-    border-radius: var(--dp-radius-md, 8px) !important;
+    border-radius: var(--dp-radius-md, 6px) !important;
     color: var(--dp-text-secondary, #475569);
     font-weight: 500;
     transition: all 0.15s ease;
@@ -257,7 +251,7 @@
       padding: 0 12px !important;
       height: 40px !important;
       line-height: 40px !important;
-      border-radius: var(--dp-radius-md, 8px) !important;
+      border-radius: var(--dp-radius-sm, 4px) !important;
       color: var(--dp-text-secondary, #475569);
       font-weight: 600;
       transition: all 0.15s ease;
@@ -281,14 +275,14 @@
 // 侧边栏菜单弹出层（折叠态下拉）
 .ant-menu-submenu-popup {
   .ant-menu {
-    border-radius: var(--dp-radius-lg, 12px) !important;
-    box-shadow: var(--dp-shadow-card) !important;
+    border-radius: var(--dp-radius-md, 6px) !important;
+    box-shadow: var(--dp-shadow-md) !important;
     padding: 6px !important;
     border: 1px solid var(--dp-border, #f1f5f9);
   }
 
   .ant-menu-item {
-    border-radius: var(--dp-radius-md, 8px) !important;
+    border-radius: var(--dp-radius-md, 6px) !important;
     margin: 2px 0 !important;
     transition: all 0.15s ease;
 

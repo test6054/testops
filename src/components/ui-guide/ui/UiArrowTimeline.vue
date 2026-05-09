@@ -14,11 +14,7 @@
       @click="stage.status !== 'pending' && handleStageClick(stage)"
     >
       <div class="ui-arrow-timeline__chevron">
-        <svg
-          class="ui-arrow-timeline__shape"
-          viewBox="0 0 200 80"
-          preserveAspectRatio="none"
-        >
+        <svg class="ui-arrow-timeline__shape" viewBox="0 0 200 80" preserveAspectRatio="none">
           <!-- 第一个元素：左边平头 -->
           <path
             v-if="index === 0 && index === normalizedStages.length - 1"
@@ -94,15 +90,18 @@ defineOptions({
   name: 'UiArrowTimeline',
 })
 
-const props = withDefaults(defineProps<{
-  stages?: UiArrowTimelineStage[]
-  activeKey?: string
-  compact?: boolean
-}>(), {
-  stages: () => [],
-  activeKey: '',
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    stages?: UiArrowTimelineStage[]
+    activeKey?: string
+    compact?: boolean
+  }>(),
+  {
+    stages: () => [],
+    activeKey: '',
+    compact: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'select', stage: UiArrowTimelineStage): void
@@ -137,7 +136,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline__stage:hover:not(.ui-arrow-timeline__stage--disabled) {
-  transform: translateY(-1px);
+  filter: brightness(0.97);
 }
 
 .ui-arrow-timeline__stage--disabled {
@@ -461,7 +460,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   }
 
   .ui-arrow-timeline__shape-bg {
-    d: path("M 4 4 L 196 4 L 196 76 L 4 76 Z");
+    d: path('M 4 4 L 196 4 L 196 76 L 4 76 Z');
   }
 
   .ui-arrow-timeline__body {

@@ -1,53 +1,20 @@
 <template>
   <GiPageLayout>
     <div class="overview-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="overview-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="overview-page__hero">
-            <div class="overview-page__hero-main">
-              <div class="overview-page__title-row">
-                <h1 class="overview-page__title">阅卷总览</h1>
-                <UiTag tone="blue" size="md">{{ exams.length }} 场考试</UiTag>
-                <UiTag v-if="filteredExams.length !== exams.length" tone="purple" size="md">
-                  筛选后 {{ filteredExams.length }} 场
-                </UiTag>
-              </div>
-            </div>
-            <div class="overview-page__hero-actions">
-              <UiButton variant="outline" size="md" :loading="loading" @click="loadExams">
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
-
-          <div class="overview-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">考试总数</span>
-              <strong class="workspace-summary__value">{{ exams.length }}</strong>
-              <span class="workspace-summary__desc">本租户最近 200 场</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">进行中</span>
-              <strong class="workspace-summary__value">{{ activeCount }}</strong>
-              <span class="workspace-summary__desc">ACTIVE 状态</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已关闭</span>
-              <strong class="workspace-summary__value">{{ closedCount }}</strong>
-              <span class="workspace-summary__desc">CLOSED 状态</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">近 7 天考试</span>
-              <strong class="workspace-summary__value">{{ recentCount }}</strong>
-              <span class="workspace-summary__desc">考试时间在近 7 天内</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="阅卷总览">
+        <template #tags>
+          <UiTag tone="blue" size="md">{{ exams.length }} 场考试</UiTag>
+          <UiTag v-if="filteredExams.length !== exams.length" tone="purple" size="md">
+            筛选后 {{ filteredExams.length }} 场
+          </UiTag>
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <!-- 筛选 -->
       <UiCard class="overview-page__filter-card">
@@ -123,12 +90,24 @@
               <a-divider class="divider" />
 
               <div class="quick-actions">
-                <UiButton size="sm" variant="ghost" @click="goScanMonitor(exam.examId)">扫描监控</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goScanAttention(exam.examId)">扫描异常</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goReviewProgress(exam.examId)">复核进度</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goReviewAssignment(exam.examId)">复核任务池</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goArbitration(exam.examId)">仲裁复核</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goScoreFinalize(exam.examId)">成绩确认</UiButton>
+                <UiButton size="sm" variant="ghost" @click="goScanMonitor(exam.examId)"
+                  >扫描监控</UiButton
+                >
+                <UiButton size="sm" variant="ghost" @click="goScanAttention(exam.examId)"
+                  >扫描异常</UiButton
+                >
+                <UiButton size="sm" variant="ghost" @click="goReviewProgress(exam.examId)"
+                  >复核进度</UiButton
+                >
+                <UiButton size="sm" variant="ghost" @click="goReviewAssignment(exam.examId)"
+                  >复核任务池</UiButton
+                >
+                <UiButton size="sm" variant="ghost" @click="goArbitration(exam.examId)"
+                  >仲裁复核</UiButton
+                >
+                <UiButton size="sm" variant="ghost" @click="goScoreFinalize(exam.examId)"
+                  >成绩确认</UiButton
+                >
               </div>
             </UiCard>
           </a-col>
@@ -140,23 +119,20 @@
 
 <script lang="ts" setup>
 import type { ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  pageExams,
-} from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -177,14 +153,16 @@ const filteredExams = computed(() => {
   })
 })
 
-const activeCount = computed(() => exams.value.filter(e => e.status === 'ACTIVE').length)
-const closedCount = computed(() => exams.value.filter(e => e.status === 'CLOSED').length)
+const activeCount = computed(() => exams.value.filter((e) => e.status === 'ACTIVE').length)
+const closedCount = computed(() => exams.value.filter((e) => e.status === 'CLOSED').length)
 const recentCount = computed(() => {
   const now = dayjs()
   const weekStart = now.subtract(7, 'day')
   return exams.value.filter((e) => {
     const startTime = e.examStartTime ? dayjs(e.examStartTime) : null
-    return Boolean(startTime && startTime.isAfter(weekStart) && startTime.isBefore(now.add(7, 'day')))
+    return Boolean(
+      startTime && startTime.isAfter(weekStart) && startTime.isBefore(now.add(7, 'day')),
+    )
   }).length
 })
 
@@ -198,12 +176,10 @@ async function loadExams(): Promise<void> {
   try {
     const result = await pageExams({ pageNum: 1, pageSize: 200 })
     exams.value = result.list ?? []
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -244,84 +220,6 @@ onMounted(() => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.overview-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-}
-
-.overview-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.overview-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-
-.overview-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
 }
 
 .exam-grid {

@@ -1,45 +1,36 @@
 <template>
   <GiPageLayout>
     <div class="score-finalize-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="score-finalize-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="score-finalize-page__hero">
-            <div class="score-finalize-page__hero-main">
-              <div class="score-finalize-page__title-row">
-                <h1 class="score-finalize-page__title">最终成绩确认</h1>
-                <UiTag tone="purple" size="md">确认 → 发布 → 通知</UiTag>
-                <UiTag v-if="selectedExamId" tone="blue" size="md">{{ pagination.total ?? 0 }} 名考生</UiTag>
-              </div>
-            </div>
-            <div class="score-finalize-page__hero-actions">
-              <a-select
-                :value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试"
-                :options="examOptions"
-                :loading="examLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="onExamChange"
-              />
-              <UiButton
-                variant="outline"
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="loading"
-                @click="loadCandidates"
-              >
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="成绩确认">
+        <template #tags>
+          <UiTag v-if="selectedExamId" tone="blue" size="md"
+            >{{ pagination.total ?? 0 }} 名考生</UiTag
+          >
+        </template>
+        <template #actions>
+          <a-select
+            :value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="onExamChange"
+          />
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="loadCandidates"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <UiEmpty
         v-if="!selectedExamId"
@@ -110,10 +101,18 @@
               </template>
               <template v-else-if="column.key === 'finalScoreStatus'">
                 <UiTag
-                  :tone="record.finalScoreStatus ? FINAL_SCORE_STATUS_TONE[record.finalScoreStatus as FinalScoreStatusCode] : 'gray'"
+                  :tone="
+                    record.finalScoreStatus
+                      ? FINAL_SCORE_STATUS_TONE[record.finalScoreStatus as FinalScoreStatusCode]
+                      : 'gray'
+                  "
                   size="sm"
                 >
-                  {{ record.finalScoreStatus ? FINAL_SCORE_STATUS_LABEL[record.finalScoreStatus as FinalScoreStatusCode] : '未生成' }}
+                  {{
+                    record.finalScoreStatus
+                      ? FINAL_SCORE_STATUS_LABEL[record.finalScoreStatus as FinalScoreStatusCode]
+                      : '未生成'
+                  }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'confirmedTime'">
@@ -161,12 +160,7 @@
     </div>
 
     <!-- 成绩明细 Drawer -->
-    <a-drawer
-      v-model:open="detailOpen"
-      title="试卷成绩明细"
-      width="640"
-      :destroy-on-close="true"
-    >
+    <a-drawer v-model:open="detailOpen" title="试卷成绩明细" width="640" :destroy-on-close="true">
       <a-spin :spinning="detailLoading" tip="加载明细中...">
         <UiEmpty v-if="!paperScore" description="暂无成绩明细" />
         <div v-else>
@@ -187,10 +181,18 @@
             </a-descriptions-item>
             <a-descriptions-item label="最终状态" :span="2">
               <UiTag
-                :tone="paperScore.finalScoreStatus ? FINAL_SCORE_STATUS_TONE[paperScore.finalScoreStatus as FinalScoreStatusCode] : 'gray'"
+                :tone="
+                  paperScore.finalScoreStatus
+                    ? FINAL_SCORE_STATUS_TONE[paperScore.finalScoreStatus as FinalScoreStatusCode]
+                    : 'gray'
+                "
                 size="sm"
               >
-                {{ paperScore.finalScoreStatus ? FINAL_SCORE_STATUS_LABEL[paperScore.finalScoreStatus as FinalScoreStatusCode] : '未生成' }}
+                {{
+                  paperScore.finalScoreStatus
+                    ? FINAL_SCORE_STATUS_LABEL[paperScore.finalScoreStatus as FinalScoreStatusCode]
+                    : '未生成'
+                }}
               </UiTag>
             </a-descriptions-item>
           </a-descriptions>
@@ -220,7 +222,9 @@
       <template #footer>
         <a-space>
           <UiButton
-            v-if="detailCandidate?.paperInstanceId && detailCandidate?.finalScoreStatus === 'PUBLISHED'"
+            v-if="
+              detailCandidate?.paperInstanceId && detailCandidate?.finalScoreStatus === 'PUBLISHED'
+            "
             variant="outline"
             size="sm"
             @click="handleDeanonymize"
@@ -249,7 +253,7 @@
           type="info"
           show-icon
           message="后端将以题目确认得分重新汇总作为最终总分。确认后状态进入「已确认」，需要进一步「发布」才会通知学生。"
-          style="margin-bottom: 12px;"
+          style="margin-bottom: 12px"
         />
         <a-form-item label="考生">
           <a-input
@@ -264,9 +268,7 @@
           />
         </a-form-item>
         <a-form-item>
-          <a-checkbox v-model:checked="confirmAndPublish">
-            确认后立即发布并通知学生
-          </a-checkbox>
+          <a-checkbox v-model:checked="confirmAndPublish"> 确认后立即发布并通知学生 </a-checkbox>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -285,7 +287,7 @@
           type="warning"
           show-icon
           message="撤回后学生侧不再可见该成绩，撤回原因会落入审计日志。"
-          style="margin-bottom: 12px;"
+          style="margin-bottom: 12px"
         />
         <a-form-item label="考生">
           <a-input
@@ -316,13 +318,6 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { onMounted, reactive, ref, watch } from 'vue'
 import {
   confirmFinalScore,
   deanonymizePaper,
@@ -332,8 +327,16 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { onMounted, reactive, ref, watch } from 'vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherScoreFinalize' })
@@ -354,10 +357,12 @@ function toCandidate(record: unknown): ExamScoreSummaryItemVO {
   return record as ExamScoreSummaryItemVO
 }
 
-const finalStatusOptions = (Object.keys(FINAL_SCORE_STATUS_LABEL) as FinalScoreStatusCode[]).map(code => ({
-  label: FINAL_SCORE_STATUS_LABEL[code],
-  value: code,
-}))
+const finalStatusOptions = (Object.keys(FINAL_SCORE_STATUS_LABEL) as FinalScoreStatusCode[]).map(
+  (code) => ({
+    label: FINAL_SCORE_STATUS_LABEL[code],
+    value: code,
+  }),
+)
 
 const {
   examOptions,
@@ -409,12 +414,10 @@ async function loadCandidates(): Promise<void> {
     })
     candidates.value = result.list || []
     pagination.total = result.total ?? 0
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '成绩汇总加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -486,12 +489,10 @@ async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
   paperScore.value = null
   try {
     paperScore.value = await getPaperScore(selectedExamId.value, record.paperInstanceId)
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '成绩明细加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -506,8 +507,7 @@ async function handleDeanonymize(): Promise<void> {
       reason: '成绩确认明细查看考生身份',
     })
     message.success(`解匿名成功：${result.studentName || ''}（${result.studentNo || ''}）`)
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '解匿名失败'
     message.error(errMsg)
   }
@@ -529,8 +529,7 @@ async function openConfirmModal(record: ExamScoreSummaryItemVO): Promise<void> {
   try {
     const score = await getPaperScore(selectedExamId.value, record.paperInstanceId)
     confirmComputedScore.value = score.totalScore ?? 0
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '试卷计算总分加载失败'
     message.warning(errMsg)
   }
@@ -546,18 +545,15 @@ async function handleConfirm(): Promise<void> {
     if (confirmAndPublish.value) {
       await publishFinalScore({ examId, paperInstanceId })
       message.success('成绩已确认并发布，学生通知已下发')
-    }
-    else {
+    } else {
       message.success('成绩已确认（CONFIRMED），可在列表点击「发布」推进到 PUBLISHED')
     }
     confirmOpen.value = false
     await loadCandidates()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '成绩确认失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     confirming.value = false
   }
 }
@@ -572,8 +568,7 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
     })
     message.success('成绩已发布，学生通知已下发')
     await loadCandidates()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '成绩发布失败'
     message.error(errMsg)
   }
@@ -608,12 +603,10 @@ async function handleWithdraw(): Promise<void> {
     message.success('成绩已撤回')
     withdrawOpen.value = false
     await loadCandidates()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '成绩撤回失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     withdrawing.value = false
   }
 }
@@ -623,8 +616,7 @@ watch(selectedExamId, (value) => {
   pagination.current = 1
   if (value) {
     void loadCandidates()
-  }
-  else {
+  } else {
     candidates.value = []
     pagination.total = 0
   }
@@ -651,45 +643,6 @@ onMounted(async () => {
   padding: 8px 10px;
   min-height: 100vh;
 }
-
-.hero-spin {
-  width: 100%;
-}
-
-.score-finalize-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.score-finalize-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.score-finalize-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
 
 .score-finalize-table {
   :deep(.ant-table-thead > tr > th) {

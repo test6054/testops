@@ -51,6 +51,7 @@
 :root {
   --dp-font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei',
     'Helvetica Neue', Helvetica, Arial, sans-serif;
+  // 系统字体栈优先，不指定 Inter 等 AI 偏好字体
   --font-family-code: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', monospace;
 
   --dp-font-size-xs: 12px;
@@ -85,15 +86,15 @@
   --dp-border-strong: #e2e8f0;
   --dp-border-hover: var(--ant-color-primary-border-hover);
 
-  --dp-radius-xs: 6px;
-  --dp-radius-control: 8px;
-  --dp-radius-control-inner: 6px;
-  --dp-radius-panel: 12px;
-  --dp-radius-overlay: 12px;
-  --dp-radius-sm: 6px;
-  --dp-radius-md: 8px;
-  --dp-radius-lg: 12px;
-  --dp-radius-xl: 16px;
+  --dp-radius-xs: 4px;
+  --dp-radius-control: 6px;
+  --dp-radius-control-inner: 4px;
+  --dp-radius-panel: 8px;
+  --dp-radius-overlay: 8px;
+  --dp-radius-sm: 4px;
+  --dp-radius-md: 6px;
+  --dp-radius-lg: 8px;
+  --dp-radius-xl: 10px;
   --dp-radius-full: 999px;
 
   --dp-control-height-sm: 32px;
@@ -104,14 +105,14 @@
   --dp-button-height-lg: 44px;
 
   --dp-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --dp-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --dp-shadow-md: 0 4px 24px rgba(15, 23, 42, 0.02), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --dp-shadow-card: 0 8px 32px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --dp-shadow-card-hover: 0 16px 48px rgba(15, 23, 42, 0.05), 0 2px 4px rgba(15, 23, 42, 0.04);
-  --dp-shadow-soft: 0 6px 16px rgba(15, 23, 42, 0.05);
-  --dp-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
-  --dp-shadow-dropdown: 0 18px 40px rgba(15, 23, 42, 0.12);
-  --dp-shadow-modal: 0 24px 60px rgba(15, 23, 42, 0.18);
+  --dp-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --dp-shadow-md: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-card-hover: 0 2px 8px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-soft: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --dp-shadow-lg: 0 4px 16px rgba(15, 23, 42, 0.10);
+  --dp-shadow-dropdown: 0 4px 16px rgba(15, 23, 42, 0.12);
+  --dp-shadow-modal: 0 8px 32px rgba(15, 23, 42, 0.16);
 
   --dp-z-sticky: 1020;
   --dp-z-fixed: 1030;

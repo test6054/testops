@@ -1,47 +1,36 @@
 <template>
   <GiPageLayout>
     <div class="scan-attention-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="scan-attention-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="scan-attention-page__hero">
-            <div class="scan-attention-page__hero-main">
-              <div class="scan-attention-page__title-row">
-                <h1 class="scan-attention-page__title">扫描异常待办</h1>
-                <UiTag tone="purple" size="md">身份绑定 · 识别失败 · 质量告警</UiTag>
-                <UiTag :tone="attentions.length > 0 ? 'red' : 'green'" size="md">
-                  {{ attentions.length > 0 ? `${attentions.length} 条未闭合` : '当前无异常' }}
-                </UiTag>
-              </div>
-            </div>
-            <div class="scan-attention-page__hero-actions">
-              <a-select
-                :value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试"
-                :options="examOptions"
-                :loading="examLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="onExamChange"
-              />
-              <UiButton
-                variant="outline"
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="loading"
-                @click="loadAttentions"
-              >
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="扫描异常待办">
+        <template #tags>
+          <UiTag :tone="attentions.length > 0 ? 'red' : 'green'" size="md">
+            {{ attentions.length > 0 ? `${attentions.length} 条未闭合` : '当前无异常' }}
+          </UiTag>
+        </template>
+        <template #actions>
+          <a-select
+            :value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="onExamChange"
+          />
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="loadAttentions"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <UiEmpty
         v-if="!selectedExamId"
@@ -132,16 +121,24 @@
               </template>
               <template v-else-if="column.key === 'sourceInfo'">
                 <div class="source-cell">
-                  <span v-if="record.sourceType"><b>{{ record.sourceType }}</b></span>
+                  <span v-if="record.sourceType"
+                    ><b>{{ record.sourceType }}</b></span
+                  >
                   <span v-if="record.sourceId" class="muted">#{{ record.sourceId }}</span>
                 </div>
               </template>
               <template v-else-if="column.key === 'paperInstanceId'">
-                <a-typography-text v-if="record.paperInstanceId" copyable :content="record.paperInstanceId" />
+                <a-typography-text
+                  v-if="record.paperInstanceId"
+                  copyable
+                  :content="record.paperInstanceId"
+                />
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'status'">
-                <UiTag :tone="record.status ? 'orange' : 'gray'" size="sm">{{ record.status || '-' }}</UiTag>
+                <UiTag :tone="record.status ? 'orange' : 'gray'" size="sm">{{
+                  record.status || '-'
+                }}</UiTag>
               </template>
               <template v-else-if="column.key === 'diagnostic'">
                 <a-typography-text :content="record.diagnostic" :ellipsis="{ tooltip: true }" />
@@ -159,13 +156,7 @@
                   >
                     身份绑定
                   </UiButton>
-                  <UiButton
-                    v-else
-                    size="sm"
-                    @click="openLedger(record)"
-                  >
-                    处置入口
-                  </UiButton>
+                  <UiButton v-else size="sm" @click="openLedger(record)"> 处置入口 </UiButton>
                   <a-upload
                     v-if="record.pageId && record.attentionType === 'QUALITY_BLOCK'"
                     :show-upload-list="false"
@@ -195,17 +186,12 @@
       width="600px"
       @ok="handleBind"
     >
-      <a-form
-        ref="bindFormRef"
-        :model="bindForm"
-        :rules="bindFormRules"
-        layout="vertical"
-      >
+      <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
         <a-alert
           type="warning"
           show-icon
           message="请从考生名册中选择正确的考生并提交绑定。绑定后将自动完成该试卷实例与考生的身份关联。"
-          style="margin-bottom: 12px;"
+          style="margin-bottom: 12px"
         />
         <a-form-item label="扫描批次ID">
           <a-input :value="bindForm.scanBatchId" disabled />
@@ -234,12 +220,20 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="答卷状态（可选）">
-              <a-input v-model:value="bindForm.attemptStatus" placeholder="如 NORMAL / ABSENT" :maxlength="32" />
+              <a-input
+                v-model:value="bindForm.attemptStatus"
+                placeholder="如 NORMAL / ABSENT"
+                :maxlength="32"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="答卷编号（可选）">
-              <a-input v-model:value="bindForm.attemptNo" placeholder="多试卷时区分" :maxlength="32" />
+              <a-input
+                v-model:value="bindForm.attemptNo"
+                placeholder="多试卷时区分"
+                :maxlength="32"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -249,19 +243,31 @@
     <!-- 详情弹窗 -->
     <a-modal v-model:open="detailModalOpen" title="异常详情" :footer="null" width="640px">
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
-        <a-descriptions-item label="异常类型">{{ detailRecord.attentionType || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="异常类型">{{
+          detailRecord.attentionType || '-'
+        }}</a-descriptions-item>
         <a-descriptions-item label="状态">{{ detailRecord.status || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="来源类型">{{ detailRecord.sourceType || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="来源类型">{{
+          detailRecord.sourceType || '-'
+        }}</a-descriptions-item>
         <a-descriptions-item label="来源ID">{{ detailRecord.sourceId || '-' }}</a-descriptions-item>
         <a-descriptions-item label="考试ID">{{ detailRecord.examId || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="扫描批次ID">{{ detailRecord.scanBatchId || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="试卷实例ID">{{ detailRecord.paperInstanceId || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="扫描批次ID">{{
+          detailRecord.scanBatchId || '-'
+        }}</a-descriptions-item>
+        <a-descriptions-item label="试卷实例ID">{{
+          detailRecord.paperInstanceId || '-'
+        }}</a-descriptions-item>
         <a-descriptions-item label="页ID">{{ detailRecord.pageId || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="题目模板ID">{{ detailRecord.questionTemplateId || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="题目模板ID">{{
+          detailRecord.questionTemplateId || '-'
+        }}</a-descriptions-item>
         <a-descriptions-item label="诊断">
           <pre class="diagnostic-pre">{{ detailRecord.diagnostic || '-' }}</pre>
         </a-descriptions-item>
-        <a-descriptions-item label="更新时间">{{ formatTime(detailRecord.updateTime) }}</a-descriptions-item>
+        <a-descriptions-item label="更新时间">{{
+          formatTime(detailRecord.updateTime)
+        }}</a-descriptions-item>
       </a-descriptions>
     </a-modal>
   </GiPageLayout>
@@ -272,7 +278,9 @@ import type { UploadProps } from 'ant-design-vue'
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateVO, ScanAttentionItemVO } from '@/apis/mark/exam'
+import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindItemPayload } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers, submitRepairAction } from '@/apis/mark/exam-mark-scanner'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -281,11 +289,10 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
-import { batchBindPapers, submitRepairAction } from '@/apis/mark/exam-mark-scanner'
 import { uploadFile } from '@/apis/edu/file-management'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherScanAttention' })
@@ -357,12 +364,10 @@ async function loadAttentions(): Promise<void> {
       scanBatchId: filterForm.scanBatchId?.trim() || undefined,
       paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '异常列表加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -410,22 +415,26 @@ const candidates = ref<ExamCandidateVO[]>([])
 const candidatesLoading = ref(false)
 
 const candidateOptions = computed(() =>
-  candidates.value.map(item => ({
+  candidates.value.map((item) => ({
     value: item.candidateRosterId,
     label: `${item.studentName}（${item.studentNo}）`,
     raw: item,
   })),
 )
 
-interface CandidateOption { value: string, label: string, raw: ExamCandidateVO }
+interface CandidateOption {
+  value: string
+  label: string
+  raw: ExamCandidateVO
+}
 
 function filterCandidate(input: string, option: CandidateOption): boolean {
   const kw = input.trim().toLowerCase()
   if (!kw) return true
   const raw = option.raw
   return (
-    (raw.studentName ?? '').toLowerCase().includes(kw)
-    || (raw.studentNo ?? '').toLowerCase().includes(kw)
+    (raw.studentName ?? '').toLowerCase().includes(kw) ||
+    (raw.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
@@ -435,12 +444,10 @@ async function ensureCandidatesLoaded(): Promise<void> {
   candidatesLoading.value = true
   try {
     candidates.value = await listExamCandidates(selectedExamId.value)
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '考生名册加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     candidatesLoading.value = false
   }
 }
@@ -481,8 +488,7 @@ async function handleBind(): Promise<void> {
   if (!bindFormRef.value) return
   try {
     await bindFormRef.value.validate()
-  }
-  catch {
+  } catch {
     return
   }
   binding.value = true
@@ -499,12 +505,10 @@ async function handleBind(): Promise<void> {
     message.success('试卷身份绑定成功')
     bindModalOpen.value = false
     await loadAttentions()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '试卷身份绑定失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     binding.value = false
   }
 }
@@ -538,7 +542,8 @@ async function handleBatchBind(): Promise<void> {
     return
   }
   const selected = attentions.value.filter(
-    (item) => selectedRowKeys.value.includes(rowKey(item)) && item.paperInstanceId && item.scanBatchId,
+    (item) =>
+      selectedRowKeys.value.includes(rowKey(item)) && item.paperInstanceId && item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择有试卷实例的异常项')
@@ -568,15 +573,15 @@ async function handleBatchBind(): Promise<void> {
       scanBatchId: selected[0].scanBatchId!,
       items,
     })
-    message.success(`批量绑定：成功 ${result.successCount ?? 0} 条，失败 ${result.failureCount ?? 0} 条`)
+    message.success(
+      `批量绑定：成功 ${result.successCount ?? 0} 条，失败 ${result.failureCount ?? 0} 条`,
+    )
     selectedRowKeys.value = []
     await loadAttentions()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '批量绑定失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     batchBinding.value = false
   }
 }
@@ -602,12 +607,10 @@ function handleRepairUpload(record: ScanAttentionItemVO): UploadProps['beforeUpl
       })
       message.success('异常页已替换，后端将重新创建 OCR 识别任务')
       await loadAttentions()
-    }
-    catch (error) {
+    } catch (error) {
       const errMsg = error instanceof Error ? error.message : '替换页修复失败'
       message.error(errMsg)
-    }
-    finally {
+    } finally {
       repairSubmitting.value = false
     }
     return false
@@ -620,8 +623,7 @@ watch(selectedExamId, (value) => {
   candidates.value = []
   if (value) {
     void loadAttentions()
-  }
-  else {
+  } else {
     attentions.value = []
   }
 })
@@ -641,44 +643,6 @@ onMounted(async () => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.scan-attention-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.scan-attention-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.scan-attention-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
 }
 
 .scan-attention-table {

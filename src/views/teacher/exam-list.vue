@@ -1,58 +1,23 @@
 <template>
   <GiPageLayout>
     <div class="exam-list-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="exam-list-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="exam-list-page__hero">
-            <div class="exam-list-page__hero-main">
-              <div class="exam-list-page__title-row">
-                <h1 class="exam-list-page__title">考试列表</h1>
-                <UiTag tone="blue" size="md">{{ pagination.total ?? 0 }} 场</UiTag>
-                <UiTag v-if="isAdminView" tone="purple" size="md">管理员视角</UiTag>
-                <UiTag v-else tone="gray" size="md">仅看本人创建</UiTag>
-              </div>
-            </div>
-            <div class="exam-list-page__hero-actions">
-              <UiButton variant="outline" size="md" :loading="loading" @click="loadExams">
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新
-              </UiButton>
-              <UiButton size="md" @click="openCreateModal">
-                <template #icon>
-                  <PlusOutlined />
-                </template>
-                新建考试
-              </UiButton>
-            </div>
-          </div>
-
-          <div class="exam-list-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">考试总数</span>
-              <strong class="workspace-summary__value">{{ pagination.total ?? 0 }}</strong>
-              <span class="workspace-summary__desc">本次查询结果</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">活跃考试</span>
-              <strong class="workspace-summary__value">{{ activeCount }}</strong>
-              <span class="workspace-summary__desc">当前页面 ACTIVE</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已关闭</span>
-              <strong class="workspace-summary__value">{{ closedCount }}</strong>
-              <span class="workspace-summary__desc">当前页面 CLOSED</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">近 30 天新增</span>
-              <strong class="workspace-summary__value">{{ recentCount }}</strong>
-              <span class="workspace-summary__desc">基于创建时间</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="考试列表">
+        <template #tags>
+          <UiTag tone="blue" size="md">{{ pagination.total ?? 0 }} 场</UiTag>
+          <UiTag v-if="isAdminView" tone="purple" size="md">管理员视角</UiTag>
+          <UiTag v-else tone="gray" size="md">仅看本人创建</UiTag>
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+          <UiButton size="sm" @click="openCreateModal">
+            <template #icon><PlusOutlined /></template>
+            新建考试
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <!-- 筛选 -->
       <UiCard class="exam-list-page__filter-card">
@@ -61,7 +26,12 @@
           <span>筛选条件</span>
         </template>
 
-        <a-form layout="inline" :model="filterForm" class="filter-form" @submit.prevent="handleSearch">
+        <a-form
+          layout="inline"
+          :model="filterForm"
+          class="filter-form"
+          @submit.prevent="handleSearch"
+        >
           <a-form-item label="状态">
             <a-select
               v-model:value="filterForm.status"
@@ -179,12 +149,7 @@
       width="560px"
       @ok="handleCreate"
     >
-      <a-form
-        ref="createFormRef"
-        :model="createForm"
-        :rules="createFormRules"
-        layout="vertical"
-      >
+      <a-form ref="createFormRef" :model="createForm" :rules="createFormRules" layout="vertical">
         <a-form-item label="考试名称" name="examName">
           <a-input
             v-model:value="createForm.examName"
@@ -235,6 +200,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -243,14 +209,9 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createExam,
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  pageExams,
-} from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -276,7 +237,7 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -299,8 +260,8 @@ const columns: ColumnType<ExamSummaryVO>[] = [
   { title: '操作', key: 'actions', width: 220, fixed: 'right' },
 ]
 
-const activeCount = computed(() => dataSource.value.filter(e => e.status === 'ACTIVE').length)
-const closedCount = computed(() => dataSource.value.filter(e => e.status === 'CLOSED').length)
+const activeCount = computed(() => dataSource.value.filter((e) => e.status === 'ACTIVE').length)
+const closedCount = computed(() => dataSource.value.filter((e) => e.status === 'CLOSED').length)
 const recentCount = computed(() => {
   const threshold = dayjs().subtract(30, 'day')
   return dataSource.value.filter((e) => {
@@ -329,12 +290,10 @@ async function loadExams(): Promise<void> {
     })
     dataSource.value = result.list ?? []
     pagination.total = result.total ?? 0
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -411,8 +370,7 @@ async function handleCreate(): Promise<void> {
   if (!createFormRef.value) return
   try {
     await createFormRef.value.validate()
-  }
-  catch {
+  } catch {
     return
   }
   creating.value = true
@@ -430,12 +388,10 @@ async function handleCreate(): Promise<void> {
     createModalOpen.value = false
     pagination.current = 1
     await loadExams()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '创建考试失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     creating.value = false
   }
 }
@@ -452,84 +408,6 @@ onMounted(() => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.exam-list-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-}
-
-.exam-list-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.exam-list-page__title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-  margin: 0;
-}
-
-
-.exam-list-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
 }
 
 .filter-form {

@@ -5,11 +5,7 @@
         <div class="header-content">
           <!-- 添加 Logo 到顶部，因为左侧菜单已隐藏 -->
           <Logo :collapsed="false"></Logo>
-          <nav
-            v-if="isDesktop && groupedTopMenus.length > 0"
-            class="top-nav"
-            aria-label="顶部导航"
-          >
+          <nav v-if="isDesktop && groupedTopMenus.length > 0" class="top-nav" aria-label="顶部导航">
             <template v-for="entry in groupedTopMenus" :key="entry.key">
               <a-dropdown
                 v-if="entry.type === 'group'"
@@ -29,10 +25,7 @@
                 </button>
                 <template #overlay>
                   <a-menu :selected-keys="activeMenu" @click="handleGroupMenuClick">
-                    <a-menu-item
-                      v-for="child in entry.items"
-                      :key="child.path || child.name"
-                    >
+                    <a-menu-item v-for="child in entry.items" :key="child.path || child.name">
                       <template #icon>
                         <MenuIcon :icon="getRouteIcon(child)" />
                       </template>
@@ -71,9 +64,9 @@
 
 <script lang="ts" setup>
 import type { RouteRecordRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { debounce } from 'lodash-es'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { useDevice } from '@/hooks'
 import { useRouteStore } from '@/stores'
 import { getToken } from '@/utils/auth'
@@ -407,7 +400,7 @@ onMounted(() => {
 .top-nav-dropdown.ant-dropdown {
   .ant-dropdown-menu {
     padding: 6px !important;
-    border-radius: var(--dp-radius-lg, 12px) !important;
+    border-radius: var(--dp-radius-lg, 8px) !important;
     box-shadow:
       0 6px 24px 0 rgba(0, 0, 0, 0.1),
       0 2px 8px 0 rgba(0, 0, 0, 0.06) !important;
@@ -419,7 +412,7 @@ onMounted(() => {
       line-height: 42px !important;
       margin: 2px 0 !important;
       padding: 0 14px !important;
-      border-radius: var(--dp-radius-md, 8px) !important;
+      border-radius: var(--dp-radius-md, 6px) !important;
       font-size: 15px !important;
       font-weight: 600 !important;
       color: var(--ant-color-text) !important;

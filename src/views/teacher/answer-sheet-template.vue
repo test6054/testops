@@ -1,75 +1,35 @@
 <template>
   <GiPageLayout>
     <div class="sheet-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="sheet-page__hero-card">
-        <a-spin :spinning="loading" class="hero-spin">
-          <div class="sheet-page__hero">
-            <div class="sheet-page__hero-main">
-              <div class="sheet-page__title-row">
-                <h1 class="sheet-page__title">答题卡模板</h1>
-                <UiTag tone="purple" size="md">页面文件 · 版面尺寸</UiTag>
-                <UiTag v-if="selectedExamId && hasQuestions" tone="blue" size="md">
-                  {{ serverQuestions.length }} 道题目
-                </UiTag>
-              </div>
-            </div>
-            <div class="sheet-page__hero-actions">
-              <a-select
-                v-model:value="selectedExamId"
-                style="width: 320px"
-                placeholder="选择考试（仅显示已启用）"
-                :options="examOptions"
-                :loading="examOptionsLoading"
-                show-search
-                option-filter-prop="label"
-                allow-clear
-                @change="handleExamChange"
-              />
-              <UiButton
-                size="md"
-                :disabled="!selectedExamId"
-                :loading="saving"
-                @click="handleSave"
-              >
-                <template #icon>
-                  <SaveOutlined />
-                </template>
-                保存页面配置
-              </UiButton>
-            </div>
-          </div>
+      <PageHeader title="答题卡模板">
+        <template #tags>
+          <UiTag v-if="selectedExamId && hasQuestions" tone="blue" size="md">
+            {{ serverQuestions.length }} 道题目
+          </UiTag>
+          <UiTag v-if="selectedExamId" tone="gray" size="md"
+            >{{ pages.length }} / {{ form.totalPages ?? '-' }} 页</UiTag
+          >
+        </template>
+        <template #actions>
+          <a-select
+            v-model:value="selectedExamId"
+            style="width: 280px"
+            placeholder="选择考试"
+            :options="examOptions"
+            :loading="examOptionsLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="handleExamChange"
+          />
+          <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
+            <template #icon><SaveOutlined /></template>
+            保存
+          </UiButton>
+        </template>
+      </PageHeader>
 
-          <div v-if="selectedExamId" class="sheet-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">总页数</span>
-              <strong class="workspace-summary__value">{{ form.totalPages ?? '-' }}</strong>
-              <span class="workspace-summary__desc">模板总页</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已配置</span>
-              <strong class="workspace-summary__value">{{ pages.length }}</strong>
-              <span class="workspace-summary__desc">已配置页面</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已上传</span>
-              <strong class="workspace-summary__value">{{ uploadedCount }}</strong>
-              <span class="workspace-summary__desc">模板文件</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">题目</span>
-              <strong class="workspace-summary__value">{{ serverQuestions.length }}</strong>
-              <span class="workspace-summary__desc">保存时保留</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
-
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请选择需要维护的考试"
-        class="empty-block"
-      />
+      <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="empty-block" />
 
       <a-spin v-else :spinning="loading">
         <a-alert
@@ -119,9 +79,7 @@
           <template #title>
             <FileImageOutlined />
             <span>页面文件配置</span>
-            <UiBadge tone="blue">
-              {{ pages.length }} / {{ form.totalPages ?? '-' }}
-            </UiBadge>
+            <UiBadge tone="blue"> {{ pages.length }} / {{ form.totalPages ?? '-' }} </UiBadge>
           </template>
           <template #extra>
             <UiButton size="sm" variant="outline" @click="addPage">
@@ -196,9 +154,7 @@
                 />
               </template>
               <template v-else-if="column.key === 'pageActions'">
-                <UiButton size="sm" variant="ghost" @click="removePage(index)">
-                  删除
-                </UiButton>
+                <UiButton size="sm" variant="ghost" @click="removePage(index)"> 删除 </UiButton>
               </template>
             </template>
           </a-table>
@@ -217,6 +173,7 @@ import type {
   ExamQuestionTemplateVO,
   ExamSummaryVO,
 } from '@/apis/mark/exam'
+import { getExamTemplate, pageExams, saveExamTemplate } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -226,13 +183,9 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
-import {
-  getExamTemplate,
-  pageExams,
-  saveExamTemplate,
-} from '@/apis/mark/exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherAnswerSheetTemplate' })
 
@@ -258,10 +211,10 @@ function nextRowKey(): string {
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -270,7 +223,7 @@ const pages = reactive<PageRow[]>([])
 /** 服务器端已有题目，保存时原样带回，避免被全量替换为空 */
 const serverQuestions = ref<ExamQuestionTemplateVO[]>([])
 const hasQuestions = computed(() => serverQuestions.value.length > 0)
-const uploadedCount = computed(() => pages.filter(p => !!p.templateFileId).length)
+const uploadedCount = computed(() => pages.filter((p) => !!p.templateFileId).length)
 
 const loading = ref(false)
 const saving = ref(false)
@@ -293,12 +246,10 @@ async function loadExamOptions(): Promise<void> {
         label: `${item.examName}（${item.statusMessage}）`,
         value: item.examId,
       }))
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '加载考试列表失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     examOptionsLoading.value = false
   }
 }
@@ -337,15 +288,18 @@ async function loadTemplate(): Promise<void> {
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
     applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages ?? [], tpl.questions ?? [])
-  }
-  catch (error) {
+  } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
-    if (errMsg && !errMsg.includes('未找到') && !errMsg.includes('不存在') && !errMsg.includes('当前模板')) {
+    if (
+      errMsg &&
+      !errMsg.includes('未找到') &&
+      !errMsg.includes('不存在') &&
+      !errMsg.includes('当前模板')
+    ) {
       message.warning(`当前考试尚未配置完整模板：${errMsg}`)
     }
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -355,8 +309,7 @@ function handleExamChange(value: string | undefined): void {
   void router.replace({ query: value ? { examId: value } : {} })
   if (value) {
     void loadTemplate()
-  }
-  else {
+  } else {
     clearTemplate()
   }
 }
@@ -388,12 +341,10 @@ async function handleUploadPage(file: File, index: number): Promise<boolean> {
     row.templateFileId = result.id
     row.templateFileName = result.nodeName || file.name
     message.success(`第 ${row.pageNo ?? index + 1} 页文件已上传`)
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '上传失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     row.uploading = false
   }
   return false
@@ -455,7 +406,7 @@ function buildPagesPayload(): ExamPageTemplatePayload[] | null {
 }
 
 function buildQuestionsPayload(): ExamQuestionTemplatePayload[] {
-  return serverQuestions.value.map(q => ({
+  return serverQuestions.value.map((q) => ({
     questionNo: q.questionNo,
     questionType: q.questionType,
     fullScore: typeof q.fullScore === 'number' ? q.fullScore : Number(q.fullScore),
@@ -494,12 +445,10 @@ async function handleSave(): Promise<void> {
     })
     message.success('页面配置已保存（题目结构保持不变）')
     await loadTemplate()
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '保存失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -532,85 +481,6 @@ onMounted(async () => {
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
-}
-
-.hero-spin {
-  width: 100%;
-}
-
-.sheet-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-}
-
-.sheet-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.sheet-page__title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-}
-
-
-.sheet-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
 }
 
 .info-card {

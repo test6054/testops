@@ -1,62 +1,29 @@
 <template>
   <GiPageLayout>
     <div class="appeal-page">
-      <!-- Hero -->
-      <UiPageCard :show-header="false" class="appeal-page__hero-card">
-        <a-spin :spinning="loadingExams" class="hero-spin">
-          <div class="appeal-page__hero">
-            <div class="appeal-page__hero-main">
-              <div class="appeal-page__title-row">
-                <h1 class="appeal-page__title">复核申请</h1>
-                <UiTag tone="blue" size="md">{{ appealableExams.length }} 场可申请</UiTag>
-                <UiTag v-if="pendingRequestCount > 0" tone="orange" size="md">
-                  待处理 {{ pendingRequestCount }}
-                </UiTag>
-              </div>
-              <div class="appeal-page__meta">
-                <span>对最近公示期内的成绩提交复核申请，并查看处理进度。一次加载，避免按考试反复查询。</span>
-              </div>
-            </div>
-            <div class="appeal-page__hero-actions">
-              <UiButton variant="outline" size="md" :loading="loadingExams || loadingRequests" @click="reloadAll">
-                <template #icon>
-                  <ReloadOutlined />
-                </template>
-                刷新数据
-              </UiButton>
-              <UiButton size="md" :disabled="!selectedAppealableExam" @click="openSubmitModal">
-                <template #icon>
-                  <FormOutlined />
-                </template>
-                提交复核申请
-              </UiButton>
-            </div>
-          </div>
-
-          <div class="appeal-page__summary-grid">
-            <div class="workspace-summary workspace-summary--accent">
-              <span class="workspace-summary__label">可发起复核</span>
-              <strong class="workspace-summary__value">{{ appealableExams.length }}</strong>
-              <span class="workspace-summary__desc">已发布且窗口开放</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已提交申请</span>
-              <strong class="workspace-summary__value">{{ requests.length }}</strong>
-              <span class="workspace-summary__desc">所有考试合计</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">待处理</span>
-              <strong class="workspace-summary__value">{{ pendingRequestCount }}</strong>
-              <span class="workspace-summary__desc">PENDING / IN_REVIEW</span>
-            </div>
-            <div class="workspace-summary">
-              <span class="workspace-summary__label">已处理</span>
-              <strong class="workspace-summary__value">{{ resolvedRequestCount }}</strong>
-              <span class="workspace-summary__desc">通过 / 驳回 / 已更正</span>
-            </div>
-          </div>
-        </a-spin>
-      </UiPageCard>
+      <PageHeader title="复核申请">
+        <template #tags>
+          <UiTag tone="blue" size="md">{{ appealableExams.length }} 场可申请</UiTag>
+          <UiTag v-if="pendingRequestCount > 0" tone="orange" size="md"
+            >待处理 {{ pendingRequestCount }}</UiTag
+          >
+        </template>
+        <template #actions>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="loadingExams || loadingRequests"
+            @click="reloadAll"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+          <UiButton size="sm" :disabled="!selectedAppealableExam" @click="openSubmitModal">
+            <template #icon><FormOutlined /></template>
+            提交复核申请
+          </UiButton>
+        </template>
+      </PageHeader>
 
       <!-- 选择考试 -->
       <UiCard class="appeal-page__select-card">
@@ -91,7 +58,9 @@
               <div class="exam-pick-item__meta">
                 <span class="meta-item">编号：{{ exam.examNo || '-' }}</span>
                 <span class="meta-item">
-                  本次得分：<strong class="score-text">{{ exam.finalScore?.toFixed(2) ?? '-' }}</strong>
+                  本次得分：<strong class="score-text">{{
+                    exam.finalScore?.toFixed(2) ?? '-'
+                  }}</strong>
                 </span>
                 <span class="meta-item">
                   <ClockCircleOutlined />
@@ -215,7 +184,11 @@
           </div>
         </a-form-item>
         <a-form-item label="申请原因类型" required>
-          <a-select v-model:value="form.reasonType" placeholder="请选择原因类型" :options="reasonTypeOptions" />
+          <a-select
+            v-model:value="form.reasonType"
+            placeholder="请选择原因类型"
+            :options="reasonTypeOptions"
+          />
         </a-form-item>
         <a-form-item label="申请理由" required>
           <a-textarea
@@ -238,8 +211,18 @@
 </template>
 
 <script lang="ts" setup>
-import type {GradeReviewRequestStatusCode, StudentGradeReviewRequestItemVO} from '@/apis/mark/grade-review';
-import type {StudentExamItemVO} from '@/apis/mark/student-exam';
+import type {
+  GradeReviewRequestStatusCode,
+  StudentGradeReviewRequestItemVO,
+} from '@/apis/mark/grade-review'
+import {
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
+import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
@@ -249,21 +232,9 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest
-} from '@/apis/mark/grade-review'
-import {
-  canSubmitReview,
-  listMyExams
-  
-} from '@/apis/mark/student-exam'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiPageCard, UiTag } from '@/components/ui-guide/ui'
+import PageHeader from '@/components/common/PageHeader.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'StudentAppeal' })
 
@@ -292,7 +263,7 @@ const reasonTypeOptions = [
   { value: 'OTHER', label: '其他' },
 ]
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -303,7 +274,7 @@ const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string 
 const appealableExams = computed<StudentExamItemVO[]>(() => exams.value.filter(canSubmitReview))
 
 const examFilterOptions = computed(() =>
-  exams.value.map(e => ({
+  exams.value.map((e) => ({
     value: e.examId,
     label: e.examNo ? `${e.examName ?? '未命名考试'} (${e.examNo})` : (e.examName ?? '未命名考试'),
   })),
@@ -311,7 +282,7 @@ const examFilterOptions = computed(() =>
 
 const selectedAppealableExam = computed<StudentExamItemVO | null>(() => {
   if (!selectedExamId.value) return null
-  return appealableExams.value.find(e => e.examId === selectedExamId.value) ?? null
+  return appealableExams.value.find((e) => e.examId === selectedExamId.value) ?? null
 })
 
 const filteredRequests = computed<StudentGradeReviewRequestItemVO[]>(() => {
@@ -322,10 +293,18 @@ const filteredRequests = computed<StudentGradeReviewRequestItemVO[]>(() => {
 })
 
 const pendingRequestCount = computed(
-  () => requests.value.filter(r => r.requestStatus === 'PENDING' || r.requestStatus === 'IN_REVIEW').length,
+  () =>
+    requests.value.filter((r) => r.requestStatus === 'PENDING' || r.requestStatus === 'IN_REVIEW')
+      .length,
 )
 const resolvedRequestCount = computed(
-  () => requests.value.filter(r => r.requestStatus === 'APPROVED' || r.requestStatus === 'REJECTED' || r.requestStatus === 'CORRECTED').length,
+  () =>
+    requests.value.filter(
+      (r) =>
+        r.requestStatus === 'APPROVED' ||
+        r.requestStatus === 'REJECTED' ||
+        r.requestStatus === 'CORRECTED',
+    ).length,
 )
 
 const columns = [
@@ -344,19 +323,16 @@ async function loadExams() {
     exams.value = await listMyExams()
     if (!selectedExamId.value && appealableExams.value.length > 0) {
       const queryExamId = typeof route.query.examId === 'string' ? route.query.examId : undefined
-      if (queryExamId && appealableExams.value.some(e => e.examId === queryExamId)) {
+      if (queryExamId && appealableExams.value.some((e) => e.examId === queryExamId)) {
         selectedExamId.value = queryExamId
-      }
-      else {
+      } else {
         selectedExamId.value = appealableExams.value[0].examId
       }
     }
-  }
-  catch (error) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : '加载考试失败'
     message.error(msg)
-  }
-  finally {
+  } finally {
     loadingExams.value = false
   }
 }
@@ -372,12 +348,10 @@ async function loadRequests() {
     requests.value = await listMyReviewRequests({
       requestStatus: filterStatus.value,
     })
-  }
-  catch (error) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : '加载复核申请失败'
     message.error(msg)
-  }
-  finally {
+  } finally {
     loadingRequests.value = false
   }
 }
@@ -394,7 +368,7 @@ function formatTime(value?: string): string {
 
 function formatReasonType(value?: string): string {
   if (!value) return '-'
-  const found = reasonTypeOptions.find(o => o.value === value)
+  const found = reasonTypeOptions.find((o) => o.value === value)
   return found?.label ?? value
 }
 
@@ -419,7 +393,7 @@ async function submit() {
   try {
     const questionIdsArray = form.questionIds
       .split(',')
-      .map(s => s.trim())
+      .map((s) => s.trim())
       .filter(Boolean)
     await submitReviewRequest({
       examId: selectedAppealableExam.value.examId,
@@ -431,21 +405,22 @@ async function submit() {
     message.success('复核申请已提交')
     submitModalOpen.value = false
     await loadRequests()
-  }
-  catch (error) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : '提交复核申请失败'
     message.error(msg)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
 
-watch(() => route.query.examId, (val) => {
-  if (typeof val === 'string' && appealableExams.value.some(e => e.examId === val)) {
-    selectedExamId.value = val
-  }
-})
+watch(
+  () => route.query.examId,
+  (val) => {
+    if (typeof val === 'string' && appealableExams.value.some((e) => e.examId === val)) {
+      selectedExamId.value = val
+    }
+  },
+)
 
 onMounted(async () => {
   await loadExams()
@@ -462,88 +437,6 @@ onMounted(async () => {
   min-height: 100vh;
 }
 
-.hero-spin {
-  width: 100%;
-}
-
-.appeal-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 16px;
-
-  &-main {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-}
-
-.appeal-page__title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-
-.appeal-page__title {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ant-color-text);
-  margin: 0;
-}
-
-.appeal-page__meta {
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
-}
-
-.appeal-page__summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
-}
-
-.workspace-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 20px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
-
-  &--accent {
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.06) 0%, rgba(22, 119, 255, 0.02) 100%);
-    border-color: rgba(22, 119, 255, 0.18);
-  }
-
-  &__label {
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ant-color-text);
-  }
-
-  &__desc {
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-  }
-}
-
 .exam-pick-list {
   display: flex;
   flex-direction: column;
@@ -556,10 +449,13 @@ onMounted(async () => {
   gap: 14px;
   padding: 14px 16px;
   border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 8px);
+  border-radius: var(--dp-radius-md, 6px);
   cursor: pointer;
   background: #fff;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
     border-color: rgba(22, 119, 255, 0.3);
