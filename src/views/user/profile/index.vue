@@ -7,7 +7,6 @@
           <div class="profile-page__hero-main">
             <p class="profile-page__eyebrow">个人中心</p>
             <h1 class="profile-page__title">{{ displayName }}</h1>
-            <p class="profile-page__desc">{{ profileDesc }}</p>
             <div class="profile-page__chips">
               <div class="meta-chip">
                 <span class="meta-chip__label">用户名</span>
@@ -247,11 +246,6 @@ const accountSubject = computed(() => {
   return '阅卷教学账户'
 })
 
-const profileDesc = computed(() => {
-  if (isStudent.value) return '查看个人信息、绑定状态与登录安全设置；阅卷端只展示与成绩相关的能力。'
-  if (isTenantAdmin.value) return '租户管理员的账户与登录安全设置入口。'
-  return '阅卷教师的账户信息与登录安全设置入口。'
-})
 
 const unreadTotal = computed(() => globalUnreadCount.totalUnreadCount.value)
 
@@ -355,12 +349,6 @@ onMounted(() => {
   font-size: 24px;
   font-weight: 700;
   color: var(--ant-color-text);
-}
-
-.profile-page__desc {
-  margin: 8px 0 12px;
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
 }
 
 .profile-page__chips {

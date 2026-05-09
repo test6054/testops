@@ -13,9 +13,6 @@
                   {{ candidates.length }} 名考生
                 </UiTag>
               </div>
-              <p class="roster-page__desc">
-                维护考试范围内的班级集合与考生名单。保存即全量替换，启用考试前必须至少有一名考生。
-              </p>
             </div>
             <div class="roster-page__hero-actions">
               <a-select
@@ -548,12 +545,6 @@ onMounted(async () => {
   font-size: 22px;
   font-weight: 700;
   color: var(--ant-color-text);
-}
-
-.roster-page__desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
 }
 
 .roster-page__summary-grid {

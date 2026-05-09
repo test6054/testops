@@ -13,9 +13,6 @@
                   {{ attentions.length > 0 ? `${attentions.length} 条未闭合` : '当前无异常' }}
                 </UiTag>
               </div>
-              <p class="scan-attention-page__desc">
-                扫描阶段未闭合事项：身份绑定冲突、识别失败、质量告警等。教师可对存在试卷实例的异常做身份绑定。
-              </p>
             </div>
             <div class="scan-attention-page__hero-actions">
               <a-select
@@ -682,12 +679,6 @@ onMounted(async () => {
   font-size: 22px;
   font-weight: 700;
   color: var(--ant-color-text);
-}
-
-.scan-attention-page__desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
 }
 
 .scan-attention-table {

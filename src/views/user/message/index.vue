@@ -10,9 +10,6 @@
               <UiTag tone="blue" size="md">站内信 + 系统公告</UiTag>
               <UiTag v-if="unreadTotal > 0" tone="red" size="md">未读 {{ unreadTotal }}</UiTag>
             </div>
-            <p class="message-page__desc">
-              查看个人站内信与全租户系统公告，可标记单条已读或一键标记全部已读。
-            </p>
           </div>
           <div class="message-page__hero-actions">
             <UiButton
@@ -716,12 +713,6 @@ onMounted(async () => {
   font-weight: 700;
   color: var(--ant-color-text);
   margin: 0;
-}
-
-.message-page__desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
 }
 
 .message-page__summary-grid {
