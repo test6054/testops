@@ -1,0 +1,34 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 教育: 稳重的高校蓝 (AntD Primary Blue) -->
+    <linearGradient id="gradEdu" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4096ff" />
+      <stop offset="100%" stop-color="#0958d9" />
+    </linearGradient>
+
+    <!-- 产业: 科技感青色 (AntD Cyan) -->
+    <linearGradient id="gradInd" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#36cfc9" />
+      <stop offset="100%" stop-color="#08979c" />
+    </linearGradient>
+
+    <!-- OBE成果: 深度靛蓝色 (AntD Indigo) -->
+    <linearGradient id="gradOBE" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2f54eb" />
+      <stop offset="100%" stop-color="#597ef7" />
+    </linearGradient>
+  </defs>
+
+  <!-- 产教融合: 相互渗透与叠底 (Glassmorphism) -->
+  <g opacity="0.9">
+    <!-- 产业端 (右下角) -->
+    <rect x="60" y="58" width="48" height="48" rx="14" transform="rotate(45 84 82)" fill="url(#gradInd)" />
+    <!-- 教育端 (左下角) -->
+    <rect x="20" y="58" width="48" height="48" rx="14" transform="rotate(45 44 82)" fill="url(#gradEdu)" />
+    <!-- OBE导向 (顶部) -->
+    <rect x="40" y="22" width="48" height="48" rx="14" transform="rotate(45 64 46)" fill="url(#gradOBE)" />
+  </g>
+
+  <!-- 核心: 能力生长向上的箭头 (CQI 持续改进) -->
+  <path d="M 64 56 L 76 68 L 68 68 L 68 84 L 60 84 L 60 68 L 52 68 Z" fill="#ffffff" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" />
+</svg>

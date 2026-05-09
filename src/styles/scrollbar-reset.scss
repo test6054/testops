@@ -1,0 +1,22 @@
+/* 美化滚动条 */
+
+/* 标准属性（Firefox 64+, Chrome 121+） */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ant-color-border-secondary) transparent;
+}
+
+/* WebKit 内核（Chrome, Safari, Edge） */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: var(--ant-border-radius);
+  background-color: var(--ant-color-border-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ant-color-fill);
+}

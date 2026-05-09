@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <link href="/favicon.svg" rel="shortcut icon" />
+  <meta content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0" name="viewport" />
+
+  <title>阅卷中心 | 纸质试卷在线批改</title>
+  <meta name="description" content="阅卷中心是面向高校的纸质试卷在线扫描批改平台，覆盖扫描登记、识别、匿名批阅、成绩确认与发布全流程。" />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei';
+      background-color: #f5f7fd;
+      color: #4E5969;
+    }
+    #app {
+      width: 100vw;
+      height: 100vh;
+      overflow: auto;
+    }
+    .init-box {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .init-spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(22, 119, 255, 0.2);
+      border-top-color: #1677ff;
+      border-radius: 50%;
+      animation: init-spin 0.9s linear infinite;
+    }
+    .init-text {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    @keyframes init-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <section class="init-box">
+      <div class="init-spinner"></div>
+      <div class="init-text">阅卷中心加载中...</div>
+    </section>
+  </div>
+
+  <script src="/src/main.ts" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<template>
+  <UiDialog
+    :open="props.open"
+    :title="props.title"
+    :width="props.width"
+    :confirm-loading="props.confirmLoading"
+    :ok-text="props.okText"
+    :cancel-text="props.cancelText"
+    @update:open="(value) => emit('update:open', value)"
+    @cancel="emit('cancel')"
+  >
+    <div class="ui-tree-selection-dialog">
+      <div
+        v-if="$slots.aside"
+        class="ui-tree-selection-dialog__aside"
+        :style="{ width: props.asideWidth }"
+      >
+        <slot name="aside" />
+      </div>
+
+      <div class="ui-tree-selection-dialog__main">
+        <UiSearchBox
+          v-model="keyword"
+          :placeholder="props.searchPlaceholder"
+          @search="handleSearch"
+          @clear="handleClear"
+        />
+
+        <div v-if="$slots['content-top'] || props.showStats" class="ui-tree-selection-dialog__top">
+          <slot name="content-top">
+            <div class="ui-tree-selection-dialog__stats">
+              <span>{{ props.selectionLabel }}</span>
+              <strong>{{ props.selectedCount }}</strong>
+              <span>{{ props.selectionSuffix }}</span>
+            </div>
+          </slot>
+        </div>
+
+        <div class="ui-tree-selection-dialog__body">
+          <slot name="content-body-before" />
+
+          <a-spin :spinning="props.loading" style="width: 100%">
+            <a-tree
+              v-if="props.treeData.length"
+              class="ui-tree-selection-dialog__tree"
+              :tree-data="props.treeData"
+              :checked-keys="props.checkedKeys as any"
+              :selected-keys="props.selectedKeys"
+              :default-expand-all="props.defaultExpandAll"
+              :default-expanded-keys="props.defaultExpandedKeys"
+              :checkable="props.checkable"
+              :selectable="props.selectable"
+              :field-names="props.fieldNames"
+              v-bind="props.treeProps"
+              @check="handleCheck"
+              @select="handleSelect"
+            >
+              <template #title="nodeData">
+                <slot name="node-title" v-bind="nodeData">
+                  {{ resolveNodeTitle(nodeData) }}
+                </slot>
+              </template>
+            </a-tree>
+
+            <UiEmpty
+              v-else
+              :title="props.emptyTitle"
+              :description="props.emptyDescription"
+            />
+          </a-spin>
+
+          <slot name="content-body-after" />
+        </div>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="ui-tree-selection-dialog__footer">
+        <div class="ui-tree-selection-dialog__footer-left">
+          <slot name="footer-left" />
+        </div>
+
+        <div class="ui-tree-selection-dialog__footer-right">
+          <UiButton variant="outline" @click="emit('cancel')">
+            {{ props.cancelText }}
+          </UiButton>
+          <UiButton :loading="props.confirmLoading" :disabled="props.confirmDisabled" @click="emit('confirm')">
+            {{ props.okText }}
+          </UiButton>
+        </div>
+      </div>
+    </template>
+  </UiDialog>
+</template>
+
+<script lang="ts" setup>
+import type { UiTreeNode } from './types'
+import { computed } from 'vue'
+import UiButton from './Button.vue'
+import UiEmpty from './Empty.vue'
+import UiSearchBox from './SearchBox.vue'
+import UiDialog from './UiDialog.vue'
+
+defineOptions({
+  name: 'UiTreeSelectionDialog',
+})
+
+const keyword = defineModel<string>('keyword', { default: '' })
+
+const props = withDefaults(defineProps<{
+  open: boolean
+  title: string
+  width?: number
+  asideWidth?: string
+  searchPlaceholder?: string
+  loading?: boolean
+  treeData?: UiTreeNode[]
+  checkedKeys?: unknown
+  selectedKeys?: Array<string | number>
+  defaultExpandAll?: boolean
+  defaultExpandedKeys?: Array<string | number>
+  checkable?: boolean
+  selectable?: boolean
+  fieldNames?: { title: string, key: string, children: string }
+  treeProps?: Record<string, unknown>
+  showStats?: boolean
+  selectedCount?: number
+  selectionLabel?: string
+  selectionSuffix?: string
+  confirmLoading?: boolean
+  confirmDisabled?: boolean
+  okText?: string
+  cancelText?: string
+  emptyTitle?: string
+  emptyDescription?: string
+}>(), {
+  width: 1080,
+  asideWidth: '320px',
+  searchPlaceholder: '请输入关键词搜索',
+  loading: false,
+  treeData: () => [],
+  checkedKeys: undefined,
+  selectedKeys: () => [],
+  defaultExpandAll: false,
+  defaultExpandedKeys: () => [],
+  checkable: true,
+  selectable: true,
+  fieldNames: () => ({
+    title: 'title',
+    key: 'key',
+    children: 'children',
+  }),
+  treeProps: () => ({}),
+  showStats: true,
+  selectedCount: 0,
+  selectionLabel: '已选择',
+  selectionSuffix: '项',
+  confirmLoading: false,
+  confirmDisabled: false,
+  okText: '确定',
+  cancelText: '取消',
+  emptyTitle: '暂无数据',
+  emptyDescription: '当前没有可选择内容。',
+})
+
+const emit = defineEmits<{
+  (e: 'update:open', value: boolean): void
+  (e: 'search', value: string): void
+  (e: 'clear'): void
+  (e: 'check', checkedKeys: unknown, info: unknown): void
+  (e: 'select', selectedKeys: Array<string | number>, info: unknown): void
+  (e: 'confirm'): void
+  (e: 'cancel'): void
+}>()
+
+const titleField = computed(() => props.fieldNames.title || 'title')
+
+const resolveNodeTitle = (nodeData: UiTreeNode) => {
+  const value = Reflect.get(nodeData, titleField.value)
+  return typeof value === 'string' || typeof value === 'number'
+    ? String(value)
+    : ''
+}
+
+const handleSearch = () => {
+  emit('search', keyword.value)
+}
+
+const handleClear = () => {
+  emit('clear')
+}
+
+const handleCheck = (checkedKeys: unknown, info: unknown) => {
+  emit('check', checkedKeys, info)
+}
+
+const handleSelect = (selectedKeys: Array<string | number>, info: unknown) => {
+  emit('select', selectedKeys, info)
+}
+</script>
+
+<style scoped>
+.ui-tree-selection-dialog {
+  display: flex;
+  gap: 18px;
+  min-height: 520px;
+}
+
+.ui-tree-selection-dialog__aside {
+  flex-shrink: 0;
+}
+
+.ui-tree-selection-dialog__main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ui-tree-selection-dialog__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ui-tree-selection-dialog__stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--dp-text-secondary, #475569);
+}
+
+.ui-tree-selection-dialog__stats strong {
+  font-size: 16px;
+  color: var(--dp-text-primary, #0f172a);
+}
+
+.ui-tree-selection-dialog__body {
+  min-height: 0;
+  flex: 1;
+  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-panel, 8px);
+  background: var(--dp-surface, #fff);
+  padding: 16px;
+  overflow: auto;
+}
+
+.ui-tree-selection-dialog__tree :deep(.ant-tree-list-holder-inner) {
+  gap: 2px;
+}
+
+.ui-tree-selection-dialog__tree :deep(.ant-tree-node-content-wrapper) {
+  border-radius: var(--dp-radius-control-inner, 4px);
+}
+
+.ui-tree-selection-dialog__tree :deep(.ant-tree-node-content-wrapper:hover) {
+  background: var(--dp-blue-50, #eff6ff);
+}
+
+.ui-tree-selection-dialog__footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ui-tree-selection-dialog__footer-left {
+  min-width: 0;
+  flex: 1;
+}
+
+.ui-tree-selection-dialog__footer-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+</style>

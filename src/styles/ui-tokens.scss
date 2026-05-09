@@ -1,0 +1,175 @@
+// Ant Design Vue 4.x 默认主题 CSS 变量声明
+// 用途：帮助 WebStorm 解析 --ant-* 自定义属性，运行时由 Ant Design Vue ConfigProvider 注入实际值覆盖
+:root {
+  --ant-border-radius: 8px;
+  --ant-padding: 16px;
+  --ant-font-family-code: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', monospace;
+  --ant-color-primary: #2563eb;
+  --ant-color-primary-hover: #3b82f6;
+  --ant-color-primary-active: #1d4ed8;
+  --ant-color-primary-bg: #eff6ff;
+  --ant-color-primary-bg-hover: #dbeafe;
+  --ant-color-primary-border: #bfdbfe;
+  --ant-color-primary-border-hover: #93c5fd;
+  --ant-color-success: #22c55e;
+  --ant-color-success-hover: #4ade80;
+  --ant-color-success-bg: #f0fdf4;
+  --ant-color-success-bg-hover: #dcfce7;
+  --ant-color-success-border: #bbf7d0;
+  --ant-color-warning: #f59e0b;
+  --ant-color-warning-hover: #fbbf24;
+  --ant-color-warning-bg: #fef3c7;
+  --ant-color-warning-bg-hover: #fde68a;
+  --ant-color-error: #ef4444;
+  --ant-color-error-hover: #f87171;
+  --ant-color-error-bg: #fef2f2;
+  --ant-color-error-bg-hover: #fee2e2;
+  --ant-color-error-border: #fecaca;
+  --ant-color-error-border-hover: #fca5a5;
+  --ant-color-info: #2563eb;
+  --ant-color-link: #2563eb;
+  --ant-color-text: #0f172a;
+  --ant-color-text-secondary: #475569;
+  --ant-color-text-tertiary: #64748b;
+  --ant-color-text-quaternary: #94a3b8;
+  --ant-color-white: #ffffff;
+  --ant-color-border: #e2e8f0;
+  --ant-color-border-secondary: #f1f5f9;
+  --ant-color-split: #f1f5f9;
+  --ant-color-fill: #e2e8f0;
+  --ant-color-fill-secondary: #f1f5f9;
+  --ant-color-fill-tertiary: #f8fafc;
+  --ant-color-fill-quaternary: #f8fafc;
+  --ant-color-bg-container: #ffffff;
+  --ant-color-bg-elevated: #ffffff;
+  --ant-color-bg-layout: #f8fafc;
+  --ant-control-item-bg-hover: #f8fafc;
+  --ant-control-item-bg-active: #eff6ff;
+}
+
+// 项目自定义 Design Tokens
+:root {
+  --dp-font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei',
+    'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-family-code: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', monospace;
+
+  --dp-font-size-xs: 12px;
+  --dp-font-size-sm: 13px;
+  --dp-font-size-md: 14px;
+  --dp-font-size-lg: 16px;
+  --dp-font-size-xl: 18px;
+  --dp-font-size-2xl: 20px;
+  --dp-font-size-3xl: 24px;
+
+  --dp-line-height-tight: 1.25;
+  --dp-line-height-normal: 1.5;
+  --dp-line-height-relaxed: 1.75;
+
+  --dp-space-0: 0;
+  --dp-space-1: 4px;
+  --dp-space-2: 8px;
+  --dp-space-3: 12px;
+  --dp-space-4: 16px;
+  --dp-space-5: 20px;
+  --dp-space-6: 24px;
+  --dp-space-7: 28px;
+  --dp-space-8: 32px;
+  --dp-space-10: 40px;
+
+  --dp-bg-muted: var(--ant-color-bg-layout);
+  --dp-surface: var(--ant-color-bg-container);
+  --dp-surface-subtle: #f8fafc;
+  --dp-bg-control: #f1f5f9;
+  --dp-bg-control-disabled: #eef2f7;
+  --dp-border: #f1f5f9;
+  --dp-border-strong: #e2e8f0;
+  --dp-border-hover: var(--ant-color-primary-border-hover);
+
+  --dp-radius-xs: 6px;
+  --dp-radius-control: 8px;
+  --dp-radius-control-inner: 6px;
+  --dp-radius-panel: 12px;
+  --dp-radius-overlay: 12px;
+  --dp-radius-sm: 6px;
+  --dp-radius-md: 8px;
+  --dp-radius-lg: 12px;
+  --dp-radius-xl: 16px;
+  --dp-radius-full: 999px;
+
+  --dp-control-height-sm: 32px;
+  --dp-control-height-md: 36px;
+  --dp-control-height-lg: 44px;
+  --dp-button-height-sm: 32px;
+  --dp-button-height-md: 36px;
+  --dp-button-height-lg: 44px;
+
+  --dp-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-md: 0 4px 24px rgba(15, 23, 42, 0.02), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-card: 0 8px 32px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --dp-shadow-card-hover: 0 16px 48px rgba(15, 23, 42, 0.05), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --dp-shadow-soft: 0 6px 16px rgba(15, 23, 42, 0.05);
+  --dp-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --dp-shadow-dropdown: 0 18px 40px rgba(15, 23, 42, 0.12);
+  --dp-shadow-modal: 0 24px 60px rgba(15, 23, 42, 0.18);
+
+  --dp-z-sticky: 1020;
+  --dp-z-fixed: 1030;
+  --dp-z-dropdown: 1040;
+  --dp-z-modal-backdrop: 1040;
+  --dp-z-modal: 1100;
+  --dp-z-popover: 1060;
+  --dp-z-tooltip: 1080;
+
+  --dp-table-header-bg: #f8fafc;
+
+  --dp-text-primary: var(--ant-color-text);
+  --dp-text-secondary: var(--ant-color-text-secondary);
+  --dp-text-muted: var(--ant-color-text-tertiary);
+
+  --dp-gray-50: #f8fafc;
+  --dp-gray-100: #f3f4f6;
+  --dp-gray-200: #e5e7eb;
+  --dp-gray-300: #cbd5e1;
+  --dp-gray-600: #475569;
+  --dp-gray-900: #0f172a;
+
+  --dp-blue-50: var(--ant-color-primary-bg);
+  --dp-blue-100: var(--ant-color-primary-bg-hover);
+  --dp-blue-200: var(--ant-color-primary-border);
+  --dp-blue-600: var(--ant-color-primary);
+  --dp-blue-700: var(--ant-color-primary-active);
+
+  --dp-green-50: var(--ant-color-success-bg);
+  --dp-green-100: var(--ant-color-success-bg-hover);
+  --dp-green-200: var(--ant-color-success-border);
+  --dp-green-300: #86efac;
+  --dp-green-500: var(--ant-color-success);
+  --dp-green-700: #15803d;
+
+  --dp-orange-50: #fff7ed;
+  --dp-orange-200: #fed7aa;
+  --dp-orange-500: var(--ant-color-warning);
+  --dp-orange-700: #c2410c;
+
+  --dp-red-50: var(--ant-color-error-bg);
+  --dp-red-100: var(--ant-color-error-bg-hover);
+  --dp-red-200: var(--ant-color-error-border);
+  --dp-red-500: var(--ant-color-error);
+  --dp-red-700: #b91c1c;
+
+  --dp-yellow-50: #fefce8;
+  --dp-yellow-200: #fef08a;
+  --dp-yellow-500: #eab308;
+  --dp-yellow-700: #a16207;
+
+  --dp-purple-50: #f5f3ff;
+  --dp-purple-200: #ddd6fe;
+  --dp-purple-700: #7c3aed;
+
+  --dp-focus-ring: rgba(22, 119, 255, 0.18);
+
+  --dp-duration-fast: 150ms;
+  --dp-duration-normal: 200ms;
+  --dp-duration-slow: 300ms;
+}

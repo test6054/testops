@@ -1,0 +1,310 @@
+// Ant Design Tooltip 浅色背景样式
+.ant-tooltip-inner {
+  background-color: var(--ant-color-bg-container) !important;
+  color: var(--ant-color-text) !important;
+  box-shadow: var(--dp-shadow-sm) !important;
+  border: 1px solid var(--ant-color-border-secondary) !important;
+}
+
+// Tooltip 箭头样式
+.ant-tooltip-arrow {
+  &::before {
+    background-color: var(--ant-color-bg-container) !important;
+    border-color: var(--ant-color-border-secondary) !important;
+  }
+}
+
+// Ant Table 多选选中态统一为淡灰蓝，避免局部页面出现过重的蓝底
+.ant-table-wrapper {
+  .ant-table-tbody > tr.ant-table-row-selected > td {
+    background: var(--dp-gray-50, #f8fafc) !important;
+  }
+
+  .ant-table-tbody > tr.ant-table-row-selected:hover > td {
+    background: var(--dp-gray-100, #f1f5f9) !important;
+  }
+}
+
+// echarts 提示
+.echarts-tooltip-diy {
+  background: linear-gradient(
+    304.17deg,
+    color-mix(in srgb, var(--ant-color-bg-container) 60%, transparent) -6.04%,
+    color-mix(in srgb, var(--ant-color-fill-quaternary) 60%, transparent) 85.2%
+  ) !important;
+  border: none !important;
+  backdrop-filter: blur(10px) !important;
+  /* Note: backdrop-filter has minimal browser support */
+
+  border-radius: var(--ant-border-radius) !important;
+
+  .content-panel {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 9px;
+    background: color-mix(in srgb, var(--ant-color-bg-container) 80%, transparent);
+    width: 164px;
+    height: 32px;
+    line-height: 32px;
+    box-shadow: var(--dp-shadow-card);
+    border-radius: var(--dp-radius-xs);
+    margin-bottom: 4px;
+  }
+
+  .tooltip-title {
+    margin: 0 0 10px 0;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .tooltip-title,
+  .tooltip-value {
+    font-size: 13px;
+    line-height: 15px;
+    display: flex;
+    align-items: center;
+    text-align: right;
+    color: var(--ant-color-text);
+    font-weight: bold;
+  }
+
+  .tooltip-item-icon {
+    display: inline-block;
+    margin-right: 8px;
+    width: 10px;
+    height: 10px;
+    border-radius: var(--dp-radius-full);
+  }
+}
+
+// ─── Tabs 现代化 ───
+.ant-tabs {
+  .ant-tabs-tab {
+    padding: 10px 16px !important;
+    border-radius: var(--dp-radius-control, 8px) var(--dp-radius-control, 8px) 0 0 !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    font-weight: 500;
+    color: var(--dp-text-secondary, #475569);
+
+    &:hover {
+      color: var(--dp-text-primary, #0f172a);
+    }
+
+    &.ant-tabs-tab-active .ant-tabs-tab-btn {
+      color: var(--dp-blue-600, #2563eb) !important;
+      font-weight: 600;
+    }
+  }
+
+  .ant-tabs-ink-bar {
+    background: var(--dp-blue-600, #2563eb) !important;
+    border-radius: 2px !important;
+    height: 3px !important;
+  }
+}
+
+// ─── Drawer 现代化 ───
+.ant-drawer-content-wrapper {
+  .ant-drawer-content {
+    border-radius: var(--dp-radius-xl, 16px) 0 0 var(--dp-radius-xl, 16px);
+  }
+
+  .ant-drawer-header {
+    border-bottom: 1px solid var(--dp-border, #f1f5f9) !important;
+    padding: 16px 20px !important;
+  }
+
+  .ant-drawer-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    color: var(--dp-text-primary, #0f172a) !important;
+  }
+
+  .ant-drawer-body {
+    padding: 20px !important;
+  }
+
+  .ant-drawer-footer {
+    border-top: 1px solid var(--dp-border, #f1f5f9) !important;
+    padding: 12px 20px !important;
+  }
+}
+
+.ant-drawer-mask {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(4px);
+}
+
+// ─── Dropdown 通用现代化 ───
+.ant-dropdown {
+  .ant-dropdown-menu {
+    padding: 6px !important;
+    border-radius: var(--dp-radius-lg, 12px) !important;
+    box-shadow: var(--dp-shadow-card) !important;
+    border: 1px solid var(--dp-border, #f1f5f9);
+
+    .ant-dropdown-menu-item {
+      padding: 8px 12px !important;
+      border-radius: var(--dp-radius-md, 8px) !important;
+      font-size: 14px;
+      color: var(--dp-text-primary, #0f172a);
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: var(--dp-gray-50, #f8fafc) !important;
+        color: var(--dp-blue-600, #2563eb);
+      }
+
+      &.ant-dropdown-menu-item-selected {
+        background: var(--dp-blue-50, #eff6ff) !important;
+        color: var(--dp-blue-700, #1d4ed8);
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+// ─── Popover / Popconfirm 现代化 ───
+.ant-popover {
+  .ant-popover-inner {
+    border-radius: var(--dp-radius-lg, 12px) !important;
+    box-shadow: var(--dp-shadow-card) !important;
+    padding: 12px 16px !important;
+    border: 1px solid var(--dp-border, #f1f5f9);
+  }
+
+  .ant-popover-title {
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+    border-bottom: 1px solid var(--dp-border, #f1f5f9);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+}
+
+.ant-popconfirm {
+  .ant-popconfirm-message {
+    font-size: 14px;
+  }
+
+  .ant-popconfirm-buttons {
+    .ant-btn {
+      border-radius: var(--dp-radius-control, 8px);
+    }
+  }
+}
+
+// ─── Notification / Message 现代化 ───
+.ant-notification {
+  .ant-notification-notice {
+    border-radius: var(--dp-radius-lg, 12px) !important;
+    box-shadow: var(--dp-shadow-card) !important;
+    border: 1px solid var(--dp-border, #f1f5f9);
+    padding: 16px 20px !important;
+  }
+
+  .ant-notification-notice-message {
+    font-weight: 700 !important;
+    color: var(--dp-text-primary, #0f172a);
+  }
+}
+
+.ant-message {
+  .ant-message-notice-content {
+    border-radius: var(--dp-radius-control, 8px) !important;
+    box-shadow: var(--dp-shadow-md) !important;
+    padding: 10px 16px !important;
+    font-weight: 500;
+  }
+}
+
+// ─── 侧边栏菜单现代化 ───
+.ant-menu.ant-menu-vertical,
+.ant-menu.ant-menu-inline {
+  border-inline-end: none !important;
+
+  .ant-menu-item {
+    margin: 2px 8px !important;
+    padding: 0 12px !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    border-radius: var(--dp-radius-md, 8px) !important;
+    color: var(--dp-text-secondary, #475569);
+    font-weight: 500;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--dp-gray-50, #f8fafc) !important;
+      color: var(--dp-text-primary, #0f172a) !important;
+    }
+
+    &.ant-menu-item-selected {
+      background: var(--dp-blue-50, #eff6ff) !important;
+      color: var(--dp-blue-700, #1d4ed8) !important;
+      font-weight: 600;
+
+      &::after {
+        display: none !important;
+      }
+    }
+  }
+
+  .ant-menu-submenu {
+    .ant-menu-submenu-title {
+      margin: 2px 8px !important;
+      padding: 0 12px !important;
+      height: 40px !important;
+      line-height: 40px !important;
+      border-radius: var(--dp-radius-md, 8px) !important;
+      color: var(--dp-text-secondary, #475569);
+      font-weight: 600;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: var(--dp-gray-50, #f8fafc) !important;
+        color: var(--dp-text-primary, #0f172a) !important;
+      }
+    }
+
+    &.ant-menu-submenu-selected > .ant-menu-submenu-title {
+      color: var(--dp-blue-700, #1d4ed8) !important;
+    }
+
+    .ant-menu-sub.ant-menu-inline {
+      background: transparent !important;
+    }
+  }
+}
+
+// 侧边栏菜单弹出层（折叠态下拉）
+.ant-menu-submenu-popup {
+  .ant-menu {
+    border-radius: var(--dp-radius-lg, 12px) !important;
+    box-shadow: var(--dp-shadow-card) !important;
+    padding: 6px !important;
+    border: 1px solid var(--dp-border, #f1f5f9);
+  }
+
+  .ant-menu-item {
+    border-radius: var(--dp-radius-md, 8px) !important;
+    margin: 2px 0 !important;
+    transition: all 0.15s ease;
+
+    &:hover {
+      background: var(--dp-gray-50, #f8fafc) !important;
+    }
+
+    &.ant-menu-item-selected {
+      background: var(--dp-blue-50, #eff6ff) !important;
+      color: var(--dp-blue-700, #1d4ed8) !important;
+      font-weight: 600;
+    }
+  }
+}
+
+// 隐藏 AiEditor 底部版权信息 (aie-footer 是自定义元素)
+aie-footer {
+  display: none !important;
+}

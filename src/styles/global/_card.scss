@@ -1,0 +1,195 @@
+@use '../var.scss' as *;
+
+:global(.stats-row .stat-card),
+:global(.overview-stat-card),
+:global(.stat-card.dp-statcard) {
+  border: 1px solid var(--ant-color-border) !important;
+  border-radius: var(--dp-radius-lg) !important;
+  background: var(--ant-color-bg-container) !important;
+  box-shadow: var(--dp-shadow-card);
+  transition: transform var(--dp-duration-fast) ease, box-shadow var(--dp-duration-fast) ease, border-color var(--dp-duration-fast) ease;
+  padding: var(--dp-space-3) var(--dp-space-4);
+}
+
+:global(.stats-row .stat-card:hover),
+:global(.overview-stat-card:hover),
+:global(.stat-card.dp-statcard:hover) {
+  transform: translateY(-2px);
+  border-color: var(--ant-color-primary-border) !important;
+  box-shadow: var(--dp-shadow-sm);
+}
+
+:global(.stats-row .stat-card .stat-icon),
+:global(.overview-stat-card__icon) {
+  font-size: var(--dp-font-size-2xl);
+}
+
+:global(.stats-row .stat-card .stat-icon-wrapper) {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--dp-radius-lg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-primary);
+}
+
+:global(.stats-row .stat-card.success .stat-icon-wrapper) {
+  background: var(--ant-color-success-bg);
+  color: var(--ant-color-success);
+}
+
+:global(.stats-row .stat-card.warning .stat-icon-wrapper) {
+  background: var(--ant-color-warning-bg);
+  color: var(--ant-color-warning);
+}
+
+:global(.stats-row .stat-card.info .stat-icon-wrapper) {
+  background: var(--ant-color-primary-bg-hover);
+  color: var(--ant-color-primary-hover);
+}
+
+// 通用卡片
+.general-card {
+  border: none;
+
+  & > .ant-card-head {
+    height: auto;
+    padding: $padding;
+    border: none;
+  }
+
+  & > .ant-card-body {
+    padding: 0 $padding $padding $padding;
+  }
+}
+
+// 渐变卡片
+.gradient-card {
+  border-radius: var(--dp-radius-md);
+  border: 1px solid var(--ant-color-border-secondary);
+
+  & > .ant-card-head {
+    border: none;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ant-color-primary-bg) 50%, transparent),
+      transparent
+    );
+  }
+
+  .item {
+    align-items: center;
+    display: flex;
+    margin-bottom: 20px;
+
+    .icon-wrapper {
+      align-items: center;
+      background: var(--ant-color-fill-quaternary);
+      border-radius: var(--dp-radius-full);
+      display: flex;
+      height: 48px;
+      justify-content: center;
+      width: 48px;
+    }
+
+    .info {
+      flex: 1 1;
+      margin: 0 16px;
+
+      &-top {
+        margin-bottom: 4px;
+
+        .label {
+          font-weight: 500;
+          line-height: 22px;
+          margin-right: 12px;
+        }
+
+        .bind {
+          font-size: 12px;
+          font-weight: 500;
+          line-height: 20px;
+        }
+      }
+
+      &-desc {
+        color: var(--ant-color-text-tertiary);
+        font-size: 12px;
+        font-weight: 400;
+        line-height: 20px;
+
+        .value {
+          color: var(--ant-color-text-secondary);
+        }
+      }
+    }
+
+    .btn-wrapper {
+      align-self: flex-start;
+
+      .btn {
+        height: 28px;
+        width: 56px;
+
+        &:hover {
+          -webkit-box-shadow: var(--dp-shadow-sm);
+          box-shadow: var(--dp-shadow-sm);
+          border-color: var(--ant-color-primary-hover);
+        }
+      }
+    }
+  }
+
+  .detail {
+    display: flex;
+    font-size: 12px;
+    justify-content: flex-start;
+    margin: -5px 0 0 64px;
+
+    .sub-text-wrapper {
+      width: 100%;
+      border-left: 2px solid var(--ant-color-fill);
+      padding-left: 12px;
+
+      .sub-text {
+        color: var(--ant-color-text-secondary);
+        font-weight: 400;
+        line-height: 20px;
+        margin-bottom: 8px;
+
+        &-value {
+          background: var(--ant-color-fill-quaternary);
+          padding: 1px 5px;
+          margin: 0 5px;
+          border-radius: var(--ant-border-radius-xs);
+        }
+      }
+
+      .ant-typography-link.link {
+        font-size: 12px;
+        padding: 0;
+      }
+    }
+  }
+}
+
+// 通用描述
+.general-description {
+  position: relative;
+
+  .ant-descriptions-title {
+    padding-left: 10px;
+  }
+
+  .ant-descriptions-title::before {
+    content: '';
+    width: 4px;
+    height: 22px;
+    position: absolute;
+    left: 0;
+    background-color: var(--ant-color-primary-hover);
+    border-radius: 0 var(--dp-radius-xs) var(--dp-radius-xs) 0;
+  }
+}

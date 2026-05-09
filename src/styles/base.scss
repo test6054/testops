@@ -1,0 +1,56 @@
+@use './var.scss' as *;
+
+body {
+  --margin: 16px; // 通用外边距（与 var.scss $margin 保持一致）
+  --padding: 16px; // 通用内边距
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+html {
+  font-size: 14px;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: var(--ant-color-text-secondary);
+  background-color: var(--ant-color-bg-container);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+
+  // 全局字体配置 - 优先使用系统字体，支持中文
+  font-family: var(--dp-font-family);
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  //min-height: 100vh; // 改为最小高度，允许内容超出时自动扩展
+  overflow: auto;
+}
+
+ul {
+  list-style: none !important;
+  margin-bottom: 0;
+}
+
+a,
+a:focus,
+a:hover {
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}

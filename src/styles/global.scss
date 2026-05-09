@@ -1,0 +1,22 @@
+/* 全局样式（按职责拆分为子模块） */
+
+// 原子工具类：间距、尺寸、文本截断、背景、hover 等
+@use './global/utilities';
+
+// 页面布局：gi_page、gi_table_page、gi_card、detail 等
+@use './global/layouts';
+
+// DP Button 系统
+@use './global/button';
+
+// 卡片组件：stat-card、general-card、gradient-card 等
+@use './global/card';
+
+// 分配区域：dp-assign-*
+@use './global/assign';
+
+// 第三方组件覆盖：Tooltip、ECharts、AiEditor
+@use './global/overrides';
+
+// 全局字体设置已移至主题样式文件，确保在 Ant Design Vue 主题 CSS 之后加载
+@use './global/inputs';
