@@ -9,10 +9,10 @@
 import http from '@/config/axios'
 
 /** 教学分析类型 */
-export type TeachingAnalysisTypeCode = 'TEACHING_IMPROVEMENT' | 'CLASS_WEAKNESS'
+export type TeachingAnalysisTypeCode = 'TEACHING_IMPROVEMENT' | 'CLASS_WEAKNESS' | 'STUDENT_LEARNING_PROFILE'
 
 /** 分析范围类型 */
-export type AnalysisScopeTypeCode = 'EXAM' | 'CLASS'
+export type AnalysisScopeTypeCode = 'EXAM' | 'CLASS' | 'STUDENT' | 'COURSE' | 'SCHOOL'
 
 /** AI 分析状态 */
 export type AiAnalysisStatusCode = 'PENDING' | 'SUCCESS' | 'FAILED' | 'BLOCKED'
@@ -21,12 +21,14 @@ export type AiAnalysisStatusCode = 'PENDING' | 'SUCCESS' | 'FAILED' | 'BLOCKED'
 export const TEACHING_ANALYSIS_TYPE_LABEL: Record<TeachingAnalysisTypeCode, string> = {
   TEACHING_IMPROVEMENT: '教学改进建议',
   CLASS_WEAKNESS: '班级薄弱题型',
+  STUDENT_LEARNING_PROFILE: '学生个体学情',
 }
 
 /** 教学分析类型徽标颜色 */
 export const TEACHING_ANALYSIS_TYPE_COLOR: Record<TeachingAnalysisTypeCode, string> = {
   TEACHING_IMPROVEMENT: 'blue',
   CLASS_WEAKNESS: 'orange',
+  STUDENT_LEARNING_PROFILE: 'purple',
 }
 
 /** AI 分析状态文案映射 */
@@ -116,6 +118,37 @@ export function getLatestClassWeaknessAnalysis(params: {
 }): Promise<ExamTeachingAnalysisRecordVO | null> {
   return http.get<ExamTeachingAnalysisRecordVO | null>(
     '/api/exam/teaching-analysis/class-weakness/latest',
+    { params },
+  )
+}
+
+/**
+ * 生成学生个体学情分析
+ * POST /api/exam/teaching-analysis/student-profile/generate?examId=&studentUserId=
+ */
+export function generateStudentLearningProfile(params: {
+  examId: string
+  studentUserId: string
+}): Promise<ExamTeachingAnalysisRecordVO> {
+  const search = new URLSearchParams({
+    examId: params.examId,
+    studentUserId: params.studentUserId,
+  }).toString()
+  return http.post<ExamTeachingAnalysisRecordVO>(
+    `/api/exam/teaching-analysis/student-profile/generate?${search}`,
+  )
+}
+
+/**
+ * 查询最新学生个体学情分析
+ * GET /api/exam/teaching-analysis/student-profile/latest
+ */
+export function getLatestStudentLearningProfile(params: {
+  examId: string
+  studentUserId: string
+}): Promise<ExamTeachingAnalysisRecordVO | null> {
+  return http.get<ExamTeachingAnalysisRecordVO | null>(
+    '/api/exam/teaching-analysis/student-profile/latest',
     { params },
   )
 }

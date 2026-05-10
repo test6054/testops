@@ -39,6 +39,8 @@
         <RejudgePlanCard :exam-id="selectedExamId" :reload-token="rejudgeToken" />
         <TeachingImprovementCard :exam-id="selectedExamId" :reload-token="improvementToken" />
         <ClassWeaknessCard :exam-id="selectedExamId" :reload-token="weaknessToken" />
+        <ErrorCauseClusterCard :exam-id="selectedExamId" :reload-token="errorCauseToken" />
+        <StudentLearningProfileCard :exam-id="selectedExamId" :reload-token="profileToken" />
       </div>
     </div>
   </GiPageLayout>
@@ -52,8 +54,10 @@ import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
+import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
 import QuestionAnalysisCard from './statistics/QuestionAnalysisCard.vue'
 import RejudgePlanCard from './statistics/RejudgePlanCard.vue'
+import StudentLearningProfileCard from './statistics/StudentLearningProfileCard.vue'
 import TeachingImprovementCard from './statistics/TeachingImprovementCard.vue'
 
 defineOptions({ name: 'TeacherStatistics' })
@@ -70,12 +74,16 @@ const qaToken = ref(0)
 const rejudgeToken = ref(0)
 const improvementToken = ref(0)
 const weaknessToken = ref(0)
+const errorCauseToken = ref(0)
+const profileToken = ref(0)
 
 function reloadAll(): void {
   qaToken.value += 1
   rejudgeToken.value += 1
   improvementToken.value += 1
   weaknessToken.value += 1
+  errorCauseToken.value += 1
+  profileToken.value += 1
 }
 
 function reloadRejudge(): void {

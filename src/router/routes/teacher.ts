@@ -3,6 +3,7 @@
  *
  * 阅卷端教师工作台包含四大主链路：
  *   ① 考试管理：考试列表、试卷模板、答题卡模板、考生名册
+ *   ⑤ 制卷管理：试卷母版、印刷包管理
  *   ② 扫描与识别：扫描录入、异常待办、影像账本
  *   ③ 批阅流程：分派批阅、匿名批阅、进度看板、仲裁裁定
  *   ④ 成绩与发布：成绩确认、成绩发布、复核处理、成绩统计
@@ -116,6 +117,40 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
 
+      // ─── 制卷管理 ─────────────────────────────────────────
+      {
+        path: 'paper-master',
+        name: 'TeacherPaperMaster',
+        component: () => import('@/views/teacher/paper-master.vue'),
+        meta: {
+          title: '试卷母版',
+          roles: TEACHER_ROLES,
+          icon: 'file-pdf',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'paper-making',
+          menuGroupTitle: '制卷管理',
+          menuGroupIcon: 'printer',
+          menuGroupOrder: 2,
+        },
+      },
+      {
+        path: 'print-package',
+        name: 'TeacherPrintPackage',
+        component: () => import('@/views/teacher/print-package.vue'),
+        meta: {
+          title: '印刷包管理',
+          roles: TEACHER_ROLES,
+          icon: 'container',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'paper-making',
+          menuGroupTitle: '制卷管理',
+          menuGroupIcon: 'printer',
+          menuGroupOrder: 2,
+        },
+      },
+
       // ─── 扫描与识别 ───────────────────────────────────────
       {
         path: 'scan-upload',
@@ -129,7 +164,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 2,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -145,7 +180,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 2,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -161,7 +196,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 2,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -177,7 +212,24 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 2,
+          menuGroupOrder: 3,
+        },
+      },
+
+      {
+        path: 'ocr-settings',
+        name: 'TeacherOcrSettings',
+        component: () => import('@/views/teacher/ocr-settings.vue'),
+        meta: {
+          title: 'OCR 配置',
+          roles: TEACHER_ROLES,
+          icon: 'file-search',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'scan',
+          menuGroupTitle: '扫描与识别',
+          menuGroupIcon: 'scan',
+          menuGroupOrder: 3,
         },
       },
 
@@ -194,7 +246,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 3,
+          menuGroupOrder: 4,
         },
       },
       {
@@ -209,7 +261,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 3,
+          menuGroupOrder: 4,
         },
       },
       {
@@ -225,7 +277,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 3,
+          menuGroupOrder: 4,
         },
       },
       {
@@ -240,7 +292,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 3,
+          menuGroupOrder: 4,
         },
       },
       {
@@ -269,7 +321,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 4,
+          menuGroupOrder: 5,
         },
       },
       {
@@ -284,7 +336,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 4,
+          menuGroupOrder: 5,
         },
       },
       {
@@ -300,7 +352,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 4,
+          menuGroupOrder: 5,
         },
       },
       {
@@ -316,7 +368,37 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 4,
+          menuGroupOrder: 5,
+        },
+      },
+
+      // ─── 考后归档 ─────────────────────────────────────────
+      {
+        path: 'archive-list',
+        name: 'TeacherArchiveList',
+        component: () => import('@/views/teacher/archive/archive-list.vue'),
+        meta: {
+          title: '归档列表',
+          roles: TEACHER_ROLES,
+          icon: 'inbox',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'archive',
+          menuGroupTitle: '考后归档',
+          menuGroupIcon: 'safety-certificate',
+          menuGroupOrder: 6,
+        },
+      },
+      {
+        path: 'archive/:archiveId/detail',
+        name: 'TeacherArchiveDetail',
+        component: () => import('@/views/teacher/archive/archive-detail.vue'),
+        meta: {
+          title: '归档详情',
+          roles: TEACHER_ROLES,
+          icon: 'eye',
+          hideInMenu: true,
+          noCache: true,
         },
       },
     ],
