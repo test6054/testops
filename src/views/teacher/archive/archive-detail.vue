@@ -67,15 +67,21 @@
               </span>
             </span>
           </a-descriptions-item>
-          <a-descriptions-item label="原始扫描">{{
-            archive.originalScanCount ?? 0
-          }}</a-descriptions-item>
-          <a-descriptions-item label="批改切片">{{
-            archive.markedSliceCount ?? 0
-          }}</a-descriptions-item>
-          <a-descriptions-item label="答案细则">{{
-            archive.answerBookletCount ?? 0
-          }}</a-descriptions-item>
+          <a-descriptions-item label="原始扫描">
+            {{
+              archive.originalScanCount ?? 0
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="批改切片">
+            {{
+              archive.markedSliceCount ?? 0
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="答案细则">
+            {{
+              archive.answerBookletCount ?? 0
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="清单数">{{ archive.itemCount ?? 0 }}</a-descriptions-item>
           <a-descriptions-item label="ZIP 大小">
             {{ archive.archiveFileSize ? formatBytes(Number(archive.archiveFileSize)) : '-' }}
@@ -163,9 +169,11 @@
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'category'">
-                  <UiTag tone="blue" size="sm">{{
-                    record.itemCategoryMessage || record.itemCategory
-                  }}</UiTag>
+                  <UiTag tone="blue" size="sm">
+                    {{
+                      record.itemCategoryMessage || record.itemCategory
+                    }}
+                  </UiTag>
                 </template>
                 <template v-else-if="column.key === 'student'">
                   <span v-if="record.studentNo">
@@ -224,9 +232,9 @@
         <a-form-item label="鉴定决议">
           <a-radio-group v-model:value="appraiseForm.decision">
             <a-radio value="RETAIN">{{ ARCHIVE_APPRAISAL_LABEL.RETAIN }}（延长保管）</a-radio>
-            <a-radio value="DESTROY"
-              >{{ ARCHIVE_APPRAISAL_LABEL.DESTROY }}（进入销毁审批流）</a-radio
-            >
+            <a-radio value="DESTROY">
+              {{ ARCHIVE_APPRAISAL_LABEL.DESTROY }}（进入销毁审批流）
+            </a-radio>
           </a-radio-group>
         </a-form-item>
         <template v-if="appraiseForm.decision === 'RETAIN'">
@@ -304,19 +312,17 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
+import type {ArchiveAppraisalDecisionCode, ArchiveDestructionDecisionCode, ArchiveEventVO, ArchiveItemVO, ArchivePackageVO, ArchivePackagingPhase} from '@/apis/mark/archive';
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import PageHeader from '@/components/common/PageHeader.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   appraiseArchive,
   approveDestruction,
@@ -325,18 +331,21 @@ import {
   ARCHIVE_PHASE_LABEL,
   ARCHIVE_STATUS_LABEL,
   ARCHIVE_STATUS_TONE,
-  type ArchiveAppraisalDecisionCode,
-  type ArchiveDestructionDecisionCode,
-  type ArchiveEventVO,
-  type ArchiveItemVO,
-  type ArchivePackageVO,
-  type ArchivePackagingPhase,
+  
+  
+  
+  
+  
+  
   executeDestruction,
   getArchiveDetail,
   packageArchive,
   requestAppraisal,
-  requestDestruction,
+  requestDestruction
 } from '@/apis/mark/archive'
+import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherArchiveDetail' })
 
@@ -384,8 +393,8 @@ const itemColumns = [
 const showProgressCard = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'PACKAGING' ||
-    archive.value.archiveStatus === 'PACKAGING_FAILED'
+    archive.value.archiveStatus === 'PACKAGING'
+    || archive.value.archiveStatus === 'PACKAGING_FAILED'
   )
 })
 
@@ -407,20 +416,20 @@ const canPackage = computed(() => {
 const canRequestDestruction = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'APPRAISAL_DECIDED' &&
-    archive.value.appraisalDecision === 'DESTROY'
+    archive.value.archiveStatus === 'APPRAISAL_DECIDED'
+    && archive.value.appraisalDecision === 'DESTROY'
   )
 })
 
 const hasAnyAction = computed(() => {
   if (!archive.value) return false
   return (
-    canPackage.value ||
-    archive.value.archiveStatus === 'ACTIVE' ||
-    archive.value.archiveStatus === 'APPRAISAL_PENDING' ||
-    canRequestDestruction.value ||
-    archive.value.archiveStatus === 'DESTRUCTION_PENDING' ||
-    archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
+    canPackage.value
+    || archive.value.archiveStatus === 'ACTIVE'
+    || archive.value.archiveStatus === 'APPRAISAL_PENDING'
+    || canRequestDestruction.value
+    || archive.value.archiveStatus === 'DESTRUCTION_PENDING'
+    || archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
   )
 })
 

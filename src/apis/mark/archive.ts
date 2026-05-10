@@ -13,18 +13,18 @@ import http from '@/config/axios'
 // ─── 状态枚举与文案 ───────────────────────────────────────────
 
 /** 归档包状态编码 - 对应后端 ArchivePackageStatus */
-export type ArchivePackageStatusCode =
-  | 'DRAFT'
-  | 'PACKAGING'
-  | 'PACKAGING_FAILED'
-  | 'STORED'
-  | 'ACTIVE'
-  | 'APPRAISAL_PENDING'
-  | 'APPRAISAL_DECIDED'
-  | 'DESTRUCTION_PENDING'
-  | 'DESTRUCTION_APPROVED'
-  | 'DESTRUCTION_REJECTED'
-  | 'DESTROYED'
+export type ArchivePackageStatusCode
+  = | 'DRAFT'
+    | 'PACKAGING'
+    | 'PACKAGING_FAILED'
+    | 'STORED'
+    | 'ACTIVE'
+    | 'APPRAISAL_PENDING'
+    | 'APPRAISAL_DECIDED'
+    | 'DESTRUCTION_PENDING'
+    | 'DESTRUCTION_APPROVED'
+    | 'DESTRUCTION_REJECTED'
+    | 'DESTROYED'
 
 export const ARCHIVE_STATUS_LABEL: Record<ArchivePackageStatusCode, string> = {
   DRAFT: '草稿',
@@ -58,14 +58,14 @@ export const ARCHIVE_STATUS_TONE: Record<
 }
 
 /** 异步打包阶段编码 */
-export type ArchivePackagingPhase =
-  | 'QUEUED'
-  | 'AGGREGATING'
-  | 'WRITING_ZIP'
-  | 'UPLOADING_PARTS'
-  | 'FINALIZING'
-  | 'COMPLETED'
-  | 'FAILED'
+export type ArchivePackagingPhase
+  = | 'QUEUED'
+    | 'AGGREGATING'
+    | 'WRITING_ZIP'
+    | 'UPLOADING_PARTS'
+    | 'FINALIZING'
+    | 'COMPLETED'
+    | 'FAILED'
 
 export const ARCHIVE_PHASE_LABEL: Record<ArchivePackagingPhase, string> = {
   QUEUED: '已入队',
@@ -110,11 +110,6 @@ export interface ArchiveCreatePayload {
 export interface ArchiveQueryPayload {
   examId?: string
   archiveStatus?: ArchivePackageStatusCode
-}
-
-/** 归档详情请求 - 仅承载 archiveId */
-export interface ArchiveDetailPayload {
-  archiveId: string
 }
 
 /** 鉴定决议请求 - 对应 ArchiveAppraisalRequest */

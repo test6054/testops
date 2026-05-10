@@ -29,7 +29,7 @@
       <UiEmpty v-if="!selectedExamId" description="请选择考试以查看印刷包" class="empty-block" />
 
       <a-spin v-else :spinning="loading">
-        <UiEmpty v-if="!loading && packageList.length === 0" description="该考试暂无印刷包，点击"一键生成"创建" />
+        <UiEmpty v-if="!loading && packageList.length === 0" description="该考试暂无印刷包，点击“一键生成”创建" />
 
         <div v-else class="package-list">
           <UiCard v-for="pkg in packageList" :key="pkg.printPackageId" class="package-card">
@@ -63,7 +63,7 @@
           <a-pagination
             v-if="pagination.total > pagination.pageSize"
             v-model:current="pagination.pageNum"
-            v-model:pageSize="pagination.pageSize"
+            v-model:page-size="pagination.pageSize"
             :total="pagination.total"
             show-size-changer
             :page-size-options="['10', '20', '50']"
@@ -147,17 +147,18 @@
 </template>
 
 <script lang="ts" setup>
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/paper-master'
-import { generatePrintPackage, getPrintPackage, pagePrintPackages } from '@/apis/mark/paper-master'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
+import { pageExams } from '@/apis/mark/exam'
+import { generatePrintPackage, getPrintPackage, pagePrintPackages } from '@/apis/mark/paper-master'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -212,11 +213,13 @@ async function loadPackageList() {
   }
 }
 
-function handleExamChange(val: string | undefined) {
+function handleExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]) {
+  const examId = value != null ? String(value) : undefined
   pagination.pageNum = 1
-  if (val) {
+  if (examId) {
     loadPackageList()
-  } else {
+  }
+  else {
     packageList.value = []
     pagination.total = 0
   }

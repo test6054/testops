@@ -65,9 +65,11 @@
               <a-list-item>
                 <div class="diagnosis-item">
                   <div class="diagnosis-header">
-                    <a-tag :color="masteryColor(item.masteryLevel)">{{
-                      masteryLabel(item.masteryLevel)
-                    }}</a-tag>
+                    <a-tag :color="masteryColor(item.masteryLevel)">
+                      {{
+                        masteryLabel(item.masteryLevel)
+                      }}
+                    </a-tag>
                     <span class="diagnosis-type">{{ item.questionType ?? '未知题型' }}</span>
                     <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
                   </div>
@@ -114,20 +116,20 @@ import type {
   AiAnalysisStatusCode,
   ExamTeachingAnalysisRecordVO,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'StudentLearningProfileCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 interface DiagnosisItem {
   questionType?: string

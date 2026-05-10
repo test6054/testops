@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type {MarkOcrConfigVO, MarkOcrHealthStatusCode, MarkOcrProviderTypeCode, MarkOcrRecognizeVO} from '@/apis/mark/ocr';
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -13,12 +14,8 @@ import {
   MARK_OCR_HEALTH_STATUS_LABEL,
   MARK_OCR_PROVIDER_DESCRIPTION,
   MARK_OCR_PROVIDER_LABEL,
-  type MarkOcrConfigVO,
-  type MarkOcrHealthStatusCode,
-  type MarkOcrProviderTypeCode,
-  type MarkOcrRecognizeVO,
   recognizeMarkOcr,
-  saveMarkOcrConfig,
+  saveMarkOcrConfig
 } from '@/apis/mark/ocr'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'

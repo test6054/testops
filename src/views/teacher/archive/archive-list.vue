@@ -7,9 +7,9 @@
       >
         <template #tags>
           <UiTag tone="blue" size="md">{{ archives.length }} 个归档</UiTag>
-          <UiTag v-if="filterForm.examId" tone="purple" size="md"
-            >考试 #{{ filterForm.examId }}</UiTag
-          >
+          <UiTag v-if="filterForm.examId" tone="purple" size="md">
+            考试 #{{ filterForm.examId }}
+          </UiTag>
         </template>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadArchives">
@@ -85,8 +85,8 @@
             </template>
             <template v-else-if="column.key === 'examId'"> 考试 #{{ record.examId }} </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag :tone="ARCHIVE_STATUS_TONE[record.archiveStatus] || 'gray'" size="sm">
-                {{ record.archiveStatusMessage || ARCHIVE_STATUS_LABEL[record.archiveStatus] }}
+              <UiTag :tone="ARCHIVE_STATUS_TONE[asArchive(record).archiveStatus] || 'gray'" size="sm">
+                {{ record.archiveStatusMessage || ARCHIVE_STATUS_LABEL[asArchive(record).archiveStatus] }}
               </UiTag>
               <div
                 v-if="record.archiveStatus === 'PACKAGING' && record.packagingPhase"
@@ -128,7 +128,7 @@
                     record.archiveStatus === 'DRAFT' || record.archiveStatus === 'PACKAGING_FAILED'
                   "
                   size="sm"
-                  @click="confirmPackage(record)"
+                  @click="confirmPackage(asArchive(record))"
                 >
                   打包入队
                 </UiButton>
@@ -196,29 +196,27 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
+import type {ArchivePackageStatusCode, ArchivePackageVO, ArchivePackagingPhase} from '@/apis/mark/archive';
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import PageHeader from '@/components/common/PageHeader.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_PHASE_LABEL,
   ARCHIVE_STATUS_LABEL,
   ARCHIVE_STATUS_TONE,
-  type ArchivePackageStatusCode,
-  type ArchivePackageVO,
-  type ArchivePackagingPhase,
   createArchive,
   listArchives,
   packageArchive,
 } from '@/apis/mark/archive'
+import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherArchiveList' })
 
@@ -309,9 +307,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans &&
-    !createForm.includeMarkedSlices &&
-    !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans
+    && !createForm.includeMarkedSlices
+    && !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return
@@ -374,6 +372,11 @@ function formatBytes(bytes: number): string {
     i += 1
   }
   return `${size.toFixed(size >= 100 || i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+/** 模板类型桥接：将 a-table slot 的 Record<string, any> 显式转为真实 VO */
+function asArchive(record: Record<string, any>): ArchivePackageVO {
+  return record as ArchivePackageVO
 }
 
 watch(

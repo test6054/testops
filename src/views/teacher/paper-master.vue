@@ -233,15 +233,14 @@
 </template>
 
 <script lang="ts" setup>
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type {
   PaperMasterIdentityAreaPayload,
   PaperMasterObjectiveAreaPayload,
   PaperMasterVO,
 } from '@/apis/mark/paper-master'
-import { getPaperMaster, savePaperMaster } from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -252,6 +251,8 @@ import message from 'ant-design-vue/es/message'
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
+import { pageExams } from '@/apis/mark/exam'
+import { getPaperMaster, savePaperMaster } from '@/apis/mark/paper-master'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -263,7 +264,7 @@ const route = useRoute()
 // ─── 考试选择器 ──────────────────────────────────────────────────────
 
 const selectedExamId = ref<string | undefined>(undefined)
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 
 async function loadExamOptions() {
@@ -439,9 +440,11 @@ function clearForm() {
   masterData.value = null
 }
 
-function handleExamChange(val: string | undefined) {
-  if (val) {
-    loadMasterData()
+function handleExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]): void {
+  const next = value != null ? String(value) : undefined
+  selectedExamId.value = next
+  if (next) {
+    void loadMasterData()
   } else {
     clearForm()
   }
