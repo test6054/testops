@@ -8,6 +8,7 @@ export {
     commonRoutes,
     constantRoutes,
     errorRoutes,
+    qualityRoutes,
     studentRoutes,
     teacherRoutes,
 } from './routes/index'

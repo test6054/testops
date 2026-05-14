@@ -102,18 +102,16 @@ export function generateCourseTrend(params: {
 
 /**
  * 生成班级维度的跨考试趋势分析
- * POST /api/exam/cross-exam-analysis/trend/class?courseId=&classId=&examIds=&examIds=
+ * POST /api/exam/cross-exam-analysis/trend/class
  */
 export function generateClassTrend(params: {
   courseId: string
   classId: string
   examIds: string[]
 }): Promise<CrossExamTrendAnalysisVO> {
-  const search = `courseId=${encodeURIComponent(params.courseId)}`
-    + `&classId=${encodeURIComponent(params.classId)}`
-    + `&${buildExamIdsParam(params.examIds)}`
   return http.post<CrossExamTrendAnalysisVO>(
-    `/api/exam/cross-exam-analysis/trend/class?${search}`,
+    '/api/exam/cross-exam-analysis/trend/class',
+    params,
   )
 }
 
@@ -141,12 +139,9 @@ export function generateClassGrowth(params: {
   classId: string
   examIds: string[]
 }): Promise<SemesterAbilityGrowthVO> {
-  const search = `semesterCode=${encodeURIComponent(params.semesterCode)}`
-    + `&courseId=${encodeURIComponent(params.courseId)}`
-    + `&classId=${encodeURIComponent(params.classId)}`
-    + `&${buildExamIdsParam(params.examIds)}`
   return http.post<SemesterAbilityGrowthVO>(
-    `/api/exam/cross-exam-analysis/growth/class?${search}`,
+    '/api/exam/cross-exam-analysis/growth/class',
+    params,
   )
 }
 
@@ -174,13 +169,9 @@ export function generateAchievement(params: {
   semesterCode?: string
   examIds: string[]
 }): Promise<CourseObjectiveAchievementVO> {
-  const segments = [`courseId=${encodeURIComponent(params.courseId)}`]
-  if (params.semesterCode) {
-    segments.push(`semesterCode=${encodeURIComponent(params.semesterCode)}`)
-  }
-  segments.push(buildExamIdsParam(params.examIds))
   return http.post<CourseObjectiveAchievementVO>(
-    `/api/exam/cross-exam-analysis/achievement/generate?${segments.join('&')}`,
+    '/api/exam/cross-exam-analysis/achievement/generate',
+    params,
   )
 }
 

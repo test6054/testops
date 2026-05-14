@@ -63,7 +63,9 @@
               <button type="button" class="link-cell" @click="goDetail(asRow(_row).examId)">
                 {{ asRow(_row).examName || '未命名考试' }}
               </button>
-              <div v-if="asRow(_row).examNo" class="link-cell__sub">编号：{{ asRow(_row).examNo }}</div>
+              <div v-if="asRow(_row).examNo" class="link-cell__sub">
+                编号：{{ asRow(_row).examNo }}
+              </div>
             </template>
             <template v-else-if="column.key === 'finalScoreStatus'">
               <UiTag
@@ -77,7 +79,9 @@
             </template>
             <template v-else-if="column.key === 'finalScore'">
               <span
-                v-if="asRow(_row).finalScoreStatus === 'PUBLISHED' && asRow(_row).finalScore != null"
+                v-if="
+                  asRow(_row).finalScoreStatus === 'PUBLISHED' && asRow(_row).finalScore != null
+                "
                 class="score-cell"
               >
                 {{ asRow(_row).finalScore!.toFixed(2) }}
@@ -128,6 +132,12 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode, StudentExamItemVO } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+} from '@/apis/mark/student-exam'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -135,12 +145,6 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-} from '@/apis/mark/student-exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -153,7 +157,7 @@ const exams = ref<StudentExamItemVO[]>([])
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
-const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
+const statusOptions: Array<{ value: FinalScoreStatusCode; label: string }> = [
   { value: 'PENDING', label: '待计算' },
   { value: 'CALCULATED', label: '已计算' },
   { value: 'CONFIRMED', label: '已确认' },
@@ -200,7 +204,7 @@ const publishedCount = computed(
 )
 
 /** 将 a-table slot 的 Record<string, any> 安全转换为后端真实 VO 类型 */
-function asRow(row: Record<string, any>): StudentExamItemVO {
+function asRow(row: Record<string, unknown>): StudentExamItemVO {
   return row as unknown as StudentExamItemVO
 }
 

@@ -71,12 +71,8 @@ export interface ExperienceEffectivenessEvalVO {
   updateTime?: string
 }
 
-function buildExamIdsParam(examIds: string[]): string {
-  return examIds.map((id) => `examIds=${encodeURIComponent(id)}`).join('&')
-}
-
 /**
- * 生成校级质量分析
+ * 生成校级质量分析（POST + body，参数 ≥ 3 个，按 nybc-practice 风格使用 DTO）
  * POST /api/exam/school-quality/analysis/generate
  */
 export function generateQualityAnalysis(params: {
@@ -86,13 +82,9 @@ export function generateQualityAnalysis(params: {
   semesterCode?: string
   examIds: string[]
 }): Promise<SchoolQualityAnalysisVO> {
-  const segments = [`analysisDimension=${encodeURIComponent(params.analysisDimension)}`]
-  if (params.dimensionId) segments.push(`dimensionId=${encodeURIComponent(params.dimensionId)}`)
-  if (params.dimensionName) segments.push(`dimensionName=${encodeURIComponent(params.dimensionName)}`)
-  if (params.semesterCode) segments.push(`semesterCode=${encodeURIComponent(params.semesterCode)}`)
-  segments.push(buildExamIdsParam(params.examIds))
   return http.post<SchoolQualityAnalysisVO>(
-    `/api/exam/school-quality/analysis/generate?${segments.join('&')}`,
+    '/api/exam/school-quality/analysis/generate',
+    params,
   )
 }
 

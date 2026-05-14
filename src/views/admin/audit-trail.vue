@@ -44,7 +44,11 @@
           <span>审计内容</span>
           <UiBadge tone="blue">
             {{
-              activeTab === 'logs' ? '审计日志' : activeTab === 'incidents' ? '重大事件' : '诊断样本'
+              activeTab === 'logs'
+                ? '审计日志'
+                : activeTab === 'incidents'
+                  ? '重大事件'
+                  : '诊断样本'
             }}
           </UiBadge>
         </template>
@@ -83,16 +87,18 @@
                 <template v-if="column.key === 'operationType'">
                   <UiTag tone="blue" size="sm">
                     {{
-                      OPERATION_TYPE_LABEL[asLogRow(_row).operationType || '']
-                        || asLogRow(_row).operationType
-                        || '-'
+                      OPERATION_TYPE_LABEL[asLogRow(_row).operationType || ''] ||
+                      asLogRow(_row).operationType ||
+                      '-'
                     }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'targetType'">
                   <span>
                     {{
-                      AUDIT_TARGET_TYPE_LABEL[asLogRow(_row).targetType || ''] || asLogRow(_row).targetType || '-'
+                      AUDIT_TARGET_TYPE_LABEL[asLogRow(_row).targetType || ''] ||
+                      asLogRow(_row).targetType ||
+                      '-'
                     }}
                   </span>
                 </template>
@@ -222,9 +228,9 @@
                 <template v-if="column.key === 'sampleType'">
                   <UiTag tone="purple" size="sm">
                     {{
-                      DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || '']
-                        || record.sampleType
-                        || '-'
+                      DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || ''] ||
+                      record.sampleType ||
+                      '-'
                     }}
                   </UiTag>
                 </template>
@@ -287,12 +293,6 @@
 
 <script lang="ts" setup>
 import type { DiagnosticSampleVO, OperationLogVO } from '@/apis/mark/admin-audit'
-import type { IncidentRecordVO } from '@/apis/mark/admin-dashboard'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -302,7 +302,13 @@ import {
   OPERATION_TYPE_LABEL,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
+import type { IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -373,10 +379,10 @@ const resolvingIncident = ref<IncidentRecordVO | null>(null)
 const resolveNote = ref('')
 
 /** 将 a-table slot 的 Record<string, any> 安全转换为后端真实 VO 类型 */
-function asLogRow(row: Record<string, any>): OperationLogVO {
+function asLogRow(row: Record<string, unknown>): OperationLogVO {
   return row as unknown as OperationLogVO
 }
-function asIncidentRow(row: Record<string, any>): IncidentRecordVO {
+function asIncidentRow(row: Record<string, unknown>): IncidentRecordVO {
   return row as unknown as IncidentRecordVO
 }
 
@@ -495,7 +501,6 @@ function formatBeforeAfter(record: OperationLogVO): string {
   const after = record.afterValue || '∅'
   return `before: ${before}\nafter:  ${after}`
 }
-
 
 onMounted(async () => {
   await initExams()

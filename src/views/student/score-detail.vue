@@ -94,7 +94,9 @@
                 <span>{{ asQuestion(record).questionType || '-' }}</span>
               </template>
               <template v-else-if="column.key === 'fullScore'">
-                <span class="score-cell">{{ asQuestion(record).fullScore?.toFixed(2) ?? '-' }}</span>
+                <span class="score-cell">{{
+                  asQuestion(record).fullScore?.toFixed(2) ?? '-'
+                }}</span>
               </template>
               <template v-else-if="column.key === 'finalScore'">
                 <span
@@ -107,13 +109,25 @@
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'objectiveResult'">
-                <UiTag v-if="asQuestion(record).objectiveResult === 'CORRECT'" tone="green" size="sm">
+                <UiTag
+                  v-if="asQuestion(record).objectiveResult === 'CORRECT'"
+                  tone="green"
+                  size="sm"
+                >
                   正确
                 </UiTag>
-                <UiTag v-else-if="asQuestion(record).objectiveResult === 'WRONG'" tone="red" size="sm">
+                <UiTag
+                  v-else-if="asQuestion(record).objectiveResult === 'WRONG'"
+                  tone="red"
+                  size="sm"
+                >
                   错误
                 </UiTag>
-                <UiTag v-else-if="asQuestion(record).objectiveResult === 'PARTIAL'" tone="orange" size="sm">
+                <UiTag
+                  v-else-if="asQuestion(record).objectiveResult === 'PARTIAL'"
+                  tone="orange"
+                  size="sm"
+                >
                   部分正确
                 </UiTag>
                 <span v-else class="muted">-</span>
@@ -133,18 +147,18 @@
 
 <script lang="ts" setup>
 import type { StudentQuestionScoreVO, StudentScoreDetailVO } from '@/apis/mark/student-exam'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   canSubmitReview,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
   getMyScoreDetail,
 } from '@/apis/mark/student-exam'
+import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiAlertStrip, UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -183,7 +197,8 @@ const questionColumns = [
 const correctCount = computed(() => (detail.value?.questions ?? []).filter(isFullMark).length)
 const partialCount = computed(
   () =>
-    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q)).length,
+    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q))
+      .length,
 )
 const zeroCount = computed(() => (detail.value?.questions ?? []).filter(isZero).length)
 
@@ -198,8 +213,8 @@ function isPartial(q: StudentQuestionScoreVO) {
 }
 
 /** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为真实 VO */
-function asQuestion(record: Record<string, any>): StudentQuestionScoreVO {
-  return record as StudentQuestionScoreVO
+function asQuestion(record: Record<string, unknown>): StudentQuestionScoreVO {
+  return record as unknown as StudentQuestionScoreVO
 }
 
 function getScoreToneClass(record: StudentQuestionScoreVO): string {

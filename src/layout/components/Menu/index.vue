@@ -57,8 +57,8 @@ const router = useRouter()
 const appStore = useAppStore()
 const routeStore = useRouteStore()
 
-// 顶层容器路由前缀（各角色布局）
-const ROLE_LAYOUT_PREFIXES = ['/admin', '/teacher', '/student'] as const
+// 顶层容器路由前缀（各角色布局 / 工作台）
+const ROLE_LAYOUT_PREFIXES = ['/admin', '/teacher', '/student', '/quality'] as const
 
 // 根据当前路径匹配所在的角色容器前缀
 const activeLayoutPrefix = computed(() => {

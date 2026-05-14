@@ -177,15 +177,25 @@ export function submitReviewRequest(
 }
 
 /**
- * 查询复核申请列表
- * GET /api/exam/grade-review/request/list?examId=&studentUserId=&requestStatus=
+ * 复核申请列表查询请求 - 对应 GradeReviewRequestListQuery
  */
-export function listReviewRequests(params: {
+export interface GradeReviewRequestListQueryPayload {
   examId: string
   studentUserId?: string
   requestStatus?: GradeReviewRequestStatusCode
-}): Promise<ExamGradeReviewRequestVO[]> {
-  return http.get<ExamGradeReviewRequestVO[]>('/api/exam/grade-review/request/list', { params })
+}
+
+/**
+ * 查询复核申请列表
+ * POST /api/exam/grade-review/request/list
+ *
+ * 2026-05-14：按 AGENTS.md "API 超过 2 个参数必须转 DTO" 约束，
+ * 后端由 GET + @RequestParam(examId, studentUserId, requestStatus) 重构为 POST + GradeReviewRequestListQuery。
+ */
+export function listReviewRequests(
+  payload: GradeReviewRequestListQueryPayload,
+): Promise<ExamGradeReviewRequestVO[]> {
+  return http.post<ExamGradeReviewRequestVO[]>('/api/exam/grade-review/request/list', payload)
 }
 
 /** 学生“我的复核申请”列表项 - 对应 StudentGradeReviewRequestItemResponse */

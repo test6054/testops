@@ -85,8 +85,14 @@
             </template>
             <template v-else-if="column.key === 'examId'"> 考试 #{{ record.examId }} </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag :tone="ARCHIVE_STATUS_TONE[asArchive(record).archiveStatus] || 'gray'" size="sm">
-                {{ record.archiveStatusMessage || ARCHIVE_STATUS_LABEL[asArchive(record).archiveStatus] }}
+              <UiTag
+                :tone="ARCHIVE_STATUS_TONE[asArchive(record).archiveStatus] || 'gray'"
+                size="sm"
+              >
+                {{
+                  record.archiveStatusMessage ||
+                  ARCHIVE_STATUS_LABEL[asArchive(record).archiveStatus]
+                }}
               </UiTag>
               <div
                 v-if="record.archiveStatus === 'PACKAGING' && record.packagingPhase"
@@ -196,7 +202,19 @@
 </template>
 
 <script lang="ts" setup>
-import type {ArchivePackageStatusCode, ArchivePackageVO, ArchivePackagingPhase} from '@/apis/mark/archive';
+import type {
+  ArchivePackageStatusCode,
+  ArchivePackageVO,
+  ArchivePackagingPhase,
+} from '@/apis/mark/archive'
+import {
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  createArchive,
+  listArchives,
+  packageArchive,
+} from '@/apis/mark/archive'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -206,14 +224,6 @@ import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
-  ARCHIVE_STATUS_TONE,
-  createArchive,
-  listArchives,
-  packageArchive,
-} from '@/apis/mark/archive'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -307,9 +317,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans
-    && !createForm.includeMarkedSlices
-    && !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans &&
+    !createForm.includeMarkedSlices &&
+    !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return
@@ -375,8 +385,8 @@ function formatBytes(bytes: number): string {
 }
 
 /** 模板类型桥接：将 a-table slot 的 Record<string, any> 显式转为真实 VO */
-function asArchive(record: Record<string, any>): ArchivePackageVO {
-  return record as ArchivePackageVO
+function asArchive(record: Record<string, unknown>): ArchivePackageVO {
+  return record as unknown as ArchivePackageVO
 }
 
 watch(

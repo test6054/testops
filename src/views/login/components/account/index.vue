@@ -85,8 +85,8 @@ import {
   UiPasswordInput,
 } from '@/components/ui-guide/ui'
 import { STORAGE_REMEMBERED_USERNAME } from '@/constants/storage-keys'
-import { useAuthStore, useTenantStore, useUserStore } from '@/stores'
 import { getDefaultRoute } from '@/router/permission'
+import { useAuthStore, useTenantStore, useUserStore } from '@/stores'
 import { ErrorType, standardizeError } from '@/utils/error-handler'
 import { getSafeRedirect } from '@/utils/redirect-validator'
 

@@ -353,6 +353,7 @@ import type {
   ExamQuestionTemplateVO,
   ExamSummaryVO,
 } from '@/apis/mark/exam'
+import { getExamTemplate, pageExams, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -363,7 +364,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
-import { getExamTemplate, pageExams, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -416,10 +416,10 @@ function nextRowKey(prefix: string): string {
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -432,7 +432,6 @@ const saving = ref(false)
 const totalScore = computed(() =>
   questions.reduce((sum, row) => sum + (Number(row.fullScore) || 0), 0).toFixed(2),
 )
-
 
 const pageColumns: ColumnType<PageRow>[] = [
   { title: '页号', key: 'pageNo', width: 100 },
@@ -527,10 +526,10 @@ async function loadTemplate(): Promise<void> {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
     if (
-      errMsg
-      && !errMsg.includes('未找到')
-      && !errMsg.includes('不存在')
-      && !errMsg.includes('当前模板')
+      errMsg &&
+      !errMsg.includes('未找到') &&
+      !errMsg.includes('不存在') &&
+      !errMsg.includes('当前模板')
     ) {
       message.warning(`当前考试尚未配置完整模板：${errMsg}`)
     }
@@ -539,7 +538,10 @@ async function loadTemplate(): Promise<void> {
   }
 }
 
-function handleExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]): void {
+function handleExamChange(
+  value: SelectValue,
+  _option: DefaultOptionType | DefaultOptionType[],
+): void {
   const next = value != null ? String(value) : undefined
   selectedExamId.value = next
   void router.replace({ query: next ? { examId: next } : {} })
@@ -773,7 +775,7 @@ const answerFormRules: Record<string, Rule[]> = {
   ],
 }
 
-function openAnswerModal(row: Record<string, any>): void {
+function openAnswerModal(row: ExamQuestionTemplateVO): void {
   if (!row.questionTemplateId) {
     message.warning('请先保存模板，待题目获得 ID 后再录入标准答案')
     return

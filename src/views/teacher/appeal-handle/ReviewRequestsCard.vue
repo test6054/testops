@@ -9,8 +9,12 @@
     <template #extra>
       <a-space>
         <a-select
-          v-model:value="statusFilter" style="width: 160px" placeholder="全部状态"
-          allow-clear :options="statusOptions" @change="reload"
+          v-model:value="statusFilter"
+          style="width: 160px"
+          placeholder="全部状态"
+          allow-clear
+          :options="statusOptions"
+          @change="reload"
         />
         <a-button :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新
@@ -19,7 +23,11 @@
     </template>
 
     <a-table
-      :columns="columns" :data-source="rows" :loading="loading" row-key="id" size="small"
+      :columns="columns"
+      :data-source="rows"
+      :loading="loading"
+      row-key="id"
+      size="small"
       :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
     >
       <template #bodyCell="{ column, record }">
@@ -40,15 +48,26 @@
         <template v-else-if="column.key === 'actions'">
           <a-space>
             <a-button
-              type="link" size="small"
-              :disabled="asRequest(record).requestStatus === 'APPROVED' || asRequest(record).requestStatus === 'REJECTED' || asRequest(record).requestStatus === 'CORRECTED'"
+              type="link"
+              size="small"
+              :disabled="
+                asRequest(record).requestStatus === 'APPROVED' ||
+                asRequest(record).requestStatus === 'REJECTED' ||
+                asRequest(record).requestStatus === 'CORRECTED'
+              "
               @click="openHandleModal(asRequest(record), 'APPROVED')"
             >
               通过
             </a-button>
             <a-button
-              type="link" size="small" danger
-              :disabled="asRequest(record).requestStatus === 'APPROVED' || asRequest(record).requestStatus === 'REJECTED' || asRequest(record).requestStatus === 'CORRECTED'"
+              type="link"
+              size="small"
+              danger
+              :disabled="
+                asRequest(record).requestStatus === 'APPROVED' ||
+                asRequest(record).requestStatus === 'REJECTED' ||
+                asRequest(record).requestStatus === 'CORRECTED'
+              "
               @click="openHandleModal(asRequest(record), 'REJECTED')"
             >
               驳回
@@ -59,14 +78,23 @@
     </a-table>
 
     <a-modal
-      v-model:open="handleOpen" :title="handleTitle" :confirm-loading="handling"
-      :mask-closable="false" width="520px" @ok="submitHandle"
+      v-model:open="handleOpen"
+      :title="handleTitle"
+      :confirm-loading="handling"
+      :mask-closable="false"
+      width="520px"
+      @ok="submitHandle"
     >
       <a-form layout="vertical">
         <a-alert
           :type="conclusionDraft === 'APPROVED' ? 'success' : 'warning'"
-          show-icon style="margin-bottom: 12px"
-          :message="conclusionDraft === 'APPROVED' ? '通过后允许进入成绩更正流程。' : '驳回后申请关闭，无法恢复。'"
+          show-icon
+          style="margin-bottom: 12px"
+          :message="
+            conclusionDraft === 'APPROVED'
+              ? '通过后允许进入成绩更正流程。'
+              : '驳回后申请关闭，无法恢复。'
+          "
         />
         <a-form-item label="申请ID">
           <a-input :value="targetRequest?.id ?? ''" disabled />
@@ -79,7 +107,10 @@
         </a-form-item>
         <a-form-item label="复核备注">
           <a-textarea
-            v-model:value="reviewNote" :rows="3" :max-length="200" show-count
+            v-model:value="reviewNote"
+            :rows="3"
+            :max-length="200"
+            show-count
             placeholder="选填，作为审计记录"
           />
         </a-form-item>
@@ -95,27 +126,29 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import {
   handleReviewRequest,
   listReviewRequests,
   REVIEW_REQUEST_STATUS_COLOR,
   REVIEW_REQUEST_STATUS_LABEL,
 } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
 const rows = ref<ExamGradeReviewRequestVO[]>([])
 const loading = ref(false)
 const statusFilter = ref<GradeReviewRequestStatusCode | undefined>(undefined)
 
-const statusOptions = (Object.keys(REVIEW_REQUEST_STATUS_LABEL) as GradeReviewRequestStatusCode[]).map(c => ({
+const statusOptions = (
+  Object.keys(REVIEW_REQUEST_STATUS_LABEL) as GradeReviewRequestStatusCode[]
+).map((c) => ({
   label: REVIEW_REQUEST_STATUS_LABEL[c],
   value: c,
 }))
@@ -133,8 +166,10 @@ const columns: ColumnType<ExamGradeReviewRequestVO>[] = [
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
 ]
 
-const pendingCount = computed(() =>
-  rows.value.filter(r => r.requestStatus === 'PENDING' || r.requestStatus === 'IN_REVIEW').length,
+const pendingCount = computed(
+  () =>
+    rows.value.filter((r) => r.requestStatus === 'PENDING' || r.requestStatus === 'IN_REVIEW')
+      .length,
 )
 
 const handleOpen = ref(false)
@@ -194,8 +229,8 @@ async function submitHandle(): Promise<void> {
 }
 
 /** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为真实 VO */
-function asRequest(record: Record<string, any>): ExamGradeReviewRequestVO {
-  return record as ExamGradeReviewRequestVO
+function asRequest(record: Record<string, unknown>): ExamGradeReviewRequestVO {
+  return record as unknown as ExamGradeReviewRequestVO
 }
 
 function fmt(v?: string): string {
@@ -203,9 +238,13 @@ function fmt(v?: string): string {
   return dayjs(v).format('YYYY-MM-DD HH:mm')
 }
 
-watch(() => [props.examId, props.reloadToken], () => {
-  if (props.examId) void reload()
-}, { immediate: true })
+watch(
+  () => [props.examId, props.reloadToken],
+  () => {
+    if (props.examId) void reload()
+  },
+  { immediate: true },
+)
 </script>
 
 <style lang="scss" scoped>

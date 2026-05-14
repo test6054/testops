@@ -153,7 +153,9 @@
                   >
                     进入批阅
                   </UiButton>
-                  <UiButton size="sm" variant="ghost" @click="goDetail(asTask(record))">详情</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="goDetail(asTask(record))"
+                    >详情</UiButton
+                  >
                 </a-space>
               </template>
             </template>
@@ -167,6 +169,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam'
+import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
@@ -175,7 +178,6 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -291,8 +293,8 @@ function resetFilter(): void {
 const claiming = ref(false)
 const claimingTaskId = ref<string | null>(null)
 
-function asTask(record: Record<string, any>): ReviewTaskItemVO {
-  return record as ReviewTaskItemVO
+function asTask(record: Record<string, unknown>): ReviewTaskItemVO {
+  return record as unknown as ReviewTaskItemVO
 }
 
 async function handleClaim(record: ReviewTaskItemVO): Promise<void> {

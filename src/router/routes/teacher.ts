@@ -310,6 +310,22 @@ export const teacherRoutes: RouteRecordRaw[] = [
 
       // ─── 成绩与发布 ───────────────────────────────────────
       {
+        path: 'absence-confirm',
+        name: 'TeacherAbsenceConfirm',
+        component: () => import('@/views/teacher/absence-confirm.vue'),
+        meta: {
+          title: '缺考确认',
+          roles: TEACHER_ROLES,
+          icon: 'user-delete',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'score',
+          menuGroupTitle: '成绩与发布',
+          menuGroupIcon: 'trophy',
+          menuGroupOrder: 5,
+        },
+      },
+      {
         path: 'score-finalize',
         name: 'TeacherScoreFinalize',
         component: () => import('@/views/teacher/score-finalize.vue'),
@@ -371,6 +387,22 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroupOrder: 5,
         },
       },
+      {
+        path: 'exam-exports',
+        name: 'TeacherExamExports',
+        component: () => import('@/views/common/exam-export-tasks.vue'),
+        meta: {
+          title: '导出任务',
+          roles: TEACHER_ROLES,
+          icon: 'cloud-download',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'score',
+          menuGroupTitle: '成绩与发布',
+          menuGroupIcon: 'trophy',
+          menuGroupOrder: 5,
+        },
+      },
 
       // ─── 考后归档 ─────────────────────────────────────────
       {
@@ -397,6 +429,67 @@ export const teacherRoutes: RouteRecordRaw[] = [
           title: '归档详情',
           roles: TEACHER_ROLES,
           icon: 'eye',
+          hideInMenu: true,
+          noCache: true,
+        },
+      },
+
+      // ─── 阅卷任务（MarkingOrganization 主链） ─────────────────
+      {
+        path: 'marking-task-pool',
+        name: 'TeacherMarkingTaskPool',
+        component: () => import('@/views/teacher/marking-task-pool.vue'),
+        meta: {
+          title: '阅卷任务池',
+          roles: TEACHER_ROLES,
+          icon: 'cluster',
+          hideInMenu: false,
+          menuGroup: 'marking-task',
+          menuGroupTitle: '阅卷任务',
+          menuGroupIcon: 'highlight',
+          menuGroupOrder: 5,
+        },
+      },
+      {
+        path: 'marking-spot-check',
+        name: 'TeacherMarkingSpotCheck',
+        component: () => import('@/views/teacher/marking-spot-check.vue'),
+        meta: {
+          title: '抽检处理',
+          roles: TEACHER_ROLES,
+          icon: 'aim',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'marking-task',
+          menuGroupTitle: '阅卷任务',
+          menuGroupIcon: 'highlight',
+          menuGroupOrder: 5,
+        },
+      },
+      {
+        path: 'grading-experience',
+        name: 'TeacherGradingExperience',
+        component: () => import('@/views/teacher/grading-experience-hub.vue'),
+        meta: {
+          title: '批改经验库',
+          roles: TEACHER_ROLES,
+          icon: 'bulb',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'marking-task',
+          menuGroupTitle: '阅卷任务',
+          menuGroupIcon: 'highlight',
+          menuGroupOrder: 5,
+        },
+      },
+      {
+        path: 'marking-task/:taskId',
+        name: 'TeacherMarkingTaskDetail',
+        component: () => import('@/views/teacher/marking-task-detail.vue'),
+        meta: {
+          title: '阅卷工作台',
+          roles: TEACHER_ROLES,
+          icon: 'highlight',
           hideInMenu: true,
           noCache: true,
         },

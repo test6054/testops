@@ -90,24 +90,24 @@
               <a-divider class="divider" />
 
               <div class="quick-actions">
-                <UiButton size="sm" variant="ghost" @click="goScanMonitor(exam.examId)"
-                  >扫描监控</UiButton
-                >
-                <UiButton size="sm" variant="ghost" @click="goScanAttention(exam.examId)"
-                  >扫描异常</UiButton
-                >
-                <UiButton size="sm" variant="ghost" @click="goReviewProgress(exam.examId)"
-                  >复核进度</UiButton
-                >
-                <UiButton size="sm" variant="ghost" @click="goReviewAssignment(exam.examId)"
-                  >复核任务池</UiButton
-                >
-                <UiButton size="sm" variant="ghost" @click="goArbitration(exam.examId)"
-                  >仲裁复核</UiButton
-                >
-                <UiButton size="sm" variant="ghost" @click="goScoreFinalize(exam.examId)"
-                  >成绩确认</UiButton
-                >
+                <UiButton size="sm" variant="ghost" @click="goScanMonitor(exam.examId)">
+                  扫描监控
+                </UiButton>
+                <UiButton size="sm" variant="ghost" @click="goScanAttention(exam.examId)">
+                  扫描异常
+                </UiButton>
+                <UiButton size="sm" variant="ghost" @click="goReviewProgress(exam.examId)">
+                  复核进度
+                </UiButton>
+                <UiButton size="sm" variant="ghost" @click="goReviewAssignment(exam.examId)">
+                  复核任务池
+                </UiButton>
+                <UiButton size="sm" variant="ghost" @click="goArbitration(exam.examId)">
+                  仲裁复核
+                </UiButton>
+                <UiButton size="sm" variant="ghost" @click="goScoreFinalize(exam.examId)">
+                  成绩确认
+                </UiButton>
               </div>
             </UiCard>
           </a-col>
@@ -126,8 +126,8 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherMarkingOverview' })

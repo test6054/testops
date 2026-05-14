@@ -96,14 +96,14 @@ export interface StudentWrongBookItemVO {
 
 /**
  * 查询学生错题本
- * GET /api/exam/question-analysis/wrong-book
+ * POST /api/exam/question-analysis/wrong-book
  */
 export function getStudentWrongBook(params: {
   examId: string
   questionTemplateId?: string
   wrongOnly?: boolean
 }): Promise<StudentWrongBookItemVO[]> {
-  return http.get<StudentWrongBookItemVO[]>('/api/exam/question-analysis/wrong-book', { params })
+  return http.post<StudentWrongBookItemVO[]>('/api/exam/question-analysis/wrong-book', params)
 }
 
 // ─── 答案确认生效 ─────────────────────────────────

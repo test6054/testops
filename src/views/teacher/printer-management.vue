@@ -360,9 +360,9 @@
     >
       <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
         <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
-        <a-descriptions-item label="设备业务ID">{{
-          detailInfo.scannerDeviceId
-        }}</a-descriptions-item>
+        <a-descriptions-item label="设备业务ID">
+          {{ detailInfo.scannerDeviceId }}
+        </a-descriptions-item>
         <a-descriptions-item label="站点ID">{{ detailInfo.scannerStationId }}</a-descriptions-item>
         <a-descriptions-item label="设备状态">
           <a-tag :color="statusColorOf(detailInfo.status)">
@@ -628,8 +628,8 @@ function interfaceModeColorOf(mode?: string): string {
   return SCANNER_INTERFACE_MODE_COLOR[mode as ScannerInterfaceModeCode] ?? 'default'
 }
 
-function asDevice(record: Record<string, any>): ExamScannerDeviceVO {
-  return record as ExamScannerDeviceVO
+function asDevice(record: Record<string, unknown>): ExamScannerDeviceVO {
+  return record as unknown as ExamScannerDeviceVO
 }
 
 async function loadDevices(): Promise<void> {

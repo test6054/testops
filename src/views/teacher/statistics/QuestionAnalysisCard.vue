@@ -46,7 +46,9 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-button
-            type="link" size="small" :loading="generatingId === record.questionTemplateId"
+            type="link"
+            size="small"
+            :loading="generatingId === record.questionTemplateId"
             :disabled="!record.questionTemplateId"
             @click="handleGenerateOne(record.questionTemplateId)"
           >
@@ -61,19 +63,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { ref, watch } from 'vue'
 import {
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
   listQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { ref, watch } from 'vue'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
 const rows = ref<ExamQuestionAnalysisRecordVO[]>([])
@@ -148,8 +150,8 @@ function fmtTime(v?: string): string {
   return dayjs(v).format('YYYY-MM-DD HH:mm')
 }
 
-function asAnalysis(record: Record<string, any>): ExamQuestionAnalysisRecordVO {
-  return record as ExamQuestionAnalysisRecordVO
+function asAnalysis(record: Record<string, unknown>): ExamQuestionAnalysisRecordVO {
+  return record as unknown as ExamQuestionAnalysisRecordVO
 }
 
 function correctRatio(r: ExamQuestionAnalysisRecordVO): string {
@@ -168,7 +170,11 @@ function getCorrectRatioType(r: ExamQuestionAnalysisRecordVO): 'danger' | 'warni
   return undefined
 }
 
-watch(() => [props.examId, props.reloadToken], () => {
-  if (props.examId) void reload()
-}, { immediate: true })
+watch(
+  () => [props.examId, props.reloadToken],
+  () => {
+    if (props.examId) void reload()
+  },
+  { immediate: true },
+)
 </script>

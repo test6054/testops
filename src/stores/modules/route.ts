@@ -1,13 +1,13 @@
-import type {Ref} from 'vue'
-import type {RouteRecordRaw} from 'vue-router'
-import {cloneDeep, omit} from 'lodash-es'
-import {defineStore} from 'pinia'
-import {ref, watch} from 'vue'
+import type { Ref } from 'vue'
+import { ref, watch } from 'vue'
+import type { RouteRecordRaw } from 'vue-router'
+import { cloneDeep, omit } from 'lodash-es'
+import { defineStore } from 'pinia'
 import XEUtils from 'xe-utils'
-import {adminRoutes, commonRoutes, studentRoutes, teacherRoutes} from '@/router/routes'
-import {RoleEnum} from '@/types/enums'
-import {useAuthStore} from './auth'
-import {useUserStore} from './user'
+import { adminRoutes, commonRoutes, qualityRoutes, studentRoutes, teacherRoutes } from '@/router/routes'
+import { RoleEnum } from '@/types/enums'
+import { useAuthStore } from './auth'
+import { useUserStore } from './user'
 
 /** 判断路由层级是否大于 2 */
 export const isMultipleRoute = (route: RouteRecordRaw) => {
@@ -69,9 +69,11 @@ const storeSetup = (): RouteStoreState => {
     let roleRoutes: RouteRecordRaw[]
 
     if (userRole === RoleEnum.SUPER_ADMIN) {
-      roleRoutes = [...adminRoutes, ...commonRoutes]
+      // 超管同时拥有：系统管理 + 阅卷工作台 + 教学质量评价工作台
+      roleRoutes = [...adminRoutes, ...teacherRoutes, ...qualityRoutes, ...commonRoutes]
     } else if ([RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER].includes(userRole as RoleEnum)) {
-      roleRoutes = [...teacherRoutes, ...commonRoutes]
+      // 教师角色：阅卷工作台 + 教学质量评价工作台（OBE 主链责任人）
+      roleRoutes = [...teacherRoutes, ...qualityRoutes, ...commonRoutes]
     } else if (userRole === RoleEnum.SCH_STU) {
       roleRoutes = [...studentRoutes, ...commonRoutes]
     } else {

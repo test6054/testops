@@ -61,17 +61,17 @@
 
 <script lang="ts" setup>
 import type { TenantPublicInfo } from '@/apis/auth'
+import { getCaptchaConfig, getTenantsByStudentNo } from '@/apis/auth'
 import type { SchoolItem } from '@/components/SchoolAutocomplete.vue'
+import SchoolAutocomplete from '@/components/SchoolAutocomplete.vue'
 import message from 'ant-design-vue/es/message'
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCaptchaConfig, getTenantsByStudentNo } from '@/apis/auth'
 import AjCaptcha from '@/components/AjCaptcha/index.vue'
-import SchoolAutocomplete from '@/components/SchoolAutocomplete.vue'
 import { UiButton, UiFormField, UiInput, UiPasswordInput } from '@/components/ui-guide/ui'
 import { resetAuthState } from '@/config/axios/auth-state'
-import { useAuthStore, useUserStore } from '@/stores'
 import { getDefaultRoute } from '@/router/permission'
+import { useAuthStore, useUserStore } from '@/stores'
 import { ErrorType, standardizeError } from '@/utils/error-handler'
 import { getSafeRedirect } from '@/utils/redirect-validator'
 
@@ -79,7 +79,7 @@ import { getSafeRedirect } from '@/utils/redirect-validator'
 const props = defineProps<{
   subdomainMode?: boolean
   subdomainTenant?: TenantPublicInfo | null
-  prefillData?: { studentNo: string, password: string }
+  prefillData?: { studentNo: string; password: string }
 }>()
 
 const router = useRouter()
