@@ -147,18 +147,18 @@
 
 <script lang="ts" setup>
 import type { StudentQuestionScoreVO, StudentScoreDetailVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  getMyScoreDetail,
-} from '@/apis/mark/student-exam'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  getMyScoreDetail,
+} from '@/apis/mark/student-exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiAlertStrip, UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -197,8 +197,7 @@ const questionColumns = [
 const correctCount = computed(() => (detail.value?.questions ?? []).filter(isFullMark).length)
 const partialCount = computed(
   () =>
-    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q))
-      .length,
+    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q)).length,
 )
 const zeroCount = computed(() => (detail.value?.questions ?? []).filter(isZero).length)
 

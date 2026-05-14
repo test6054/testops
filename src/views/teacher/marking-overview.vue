@@ -119,20 +119,20 @@
 
 <script lang="ts" setup>
 import type { ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
-const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -148,8 +148,7 @@ const filteredExams = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
   return exams.value.filter((exam) => {
     if (kw && !(exam.examName || '').toLowerCase().includes(kw)) return false
-    if (statusFilter.value && exam.status !== statusFilter.value) return false
-    return true
+    return !(statusFilter.value && exam.status !== statusFilter.value);
   })
 })
 

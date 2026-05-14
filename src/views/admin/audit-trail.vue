@@ -87,18 +87,18 @@
                 <template v-if="column.key === 'operationType'">
                   <UiTag tone="blue" size="sm">
                     {{
-                      OPERATION_TYPE_LABEL[asLogRow(_row).operationType || ''] ||
-                      asLogRow(_row).operationType ||
-                      '-'
+                      OPERATION_TYPE_LABEL[asLogRow(_row).operationType || '']
+                        || asLogRow(_row).operationType
+                        || '-'
                     }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'targetType'">
                   <span>
                     {{
-                      AUDIT_TARGET_TYPE_LABEL[asLogRow(_row).targetType || ''] ||
-                      asLogRow(_row).targetType ||
-                      '-'
+                      AUDIT_TARGET_TYPE_LABEL[asLogRow(_row).targetType || '']
+                        || asLogRow(_row).targetType
+                        || '-'
                     }}
                   </span>
                 </template>
@@ -228,9 +228,9 @@
                 <template v-if="column.key === 'sampleType'">
                   <UiTag tone="purple" size="sm">
                     {{
-                      DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || ''] ||
-                      record.sampleType ||
-                      '-'
+                      DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || '']
+                        || record.sampleType
+                        || '-'
                     }}
                   </UiTag>
                 </template>
@@ -293,6 +293,12 @@
 
 <script lang="ts" setup>
 import type { DiagnosticSampleVO, OperationLogVO } from '@/apis/mark/admin-audit'
+import type { IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -302,13 +308,7 @@ import {
   OPERATION_TYPE_LABEL,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
-import type { IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'

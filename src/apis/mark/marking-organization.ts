@@ -1,0 +1,652 @@
+/**
+ * 阅卷组织 API - 对接 edu-mark 模块 MarkingOrganizationController。
+ *
+ * 后端规则：
+ * - 路径前缀 /api/mark/organization
+ * - 写 / 查询全部为 POST + DTO body；启动/完成正评会话用 POST + @RequestParam(sessionId)
+ * - 租户 / 操作人从 UserHold 注入，前端只传业务字段
+ * - 后端 Long ID 统一以 string 表达到前端
+ *
+ * 业务阶段（任课老师 / 阅卷管理员视角）：
+ *   1. createOrganization 创建阅卷组织
+ *   2. saveQuestionGroup 编排题组（题目模板 + 题组组长 + 阅卷教师）
+ *   3. saveAllocationPolicy / saveRecyclePolicy 配置任务分配 / 回收策略
+ *   4. createTrialSession + calibrateTrialSession 走试评校准
+ *   5. createFormalSession + startFormalSession + completeFormalSession 走正评全流程
+ *   6. claimTasks / submitTask / listTasks 教师领取与提交阅卷任务
+ *   7. updateOrganizationStatus 管理员推进 / 撤销组织状态
+ *   8. getOrganization / getOrganizationById 查询组织全貌（按 examId 或 organizationId）
+ */
+import http from '@/config/axios'
+
+// ─── 状态枚举与文案 ─────────────────────────────────────────
+
+/** 阅卷组织状态编码 - 与后端 OrganizationStatus enum 对齐 */
+export type MarkingOrganizationStatusCode
+  = | 'ORG_DRAFT'
+    | 'ORG_CONFIGURED'
+    | 'TRIAL_MARKING'
+    | 'FORMAL_MARKING'
+    | 'QUALITY_REVIEW'
+    | 'CLOSED'
+
+export const MARKING_ORGANIZATION_STATUS_LABEL: Record<MarkingOrganizationStatusCode, string> = {
+  ORG_DRAFT: '草稿',
+  ORG_CONFIGURED: '已配置',
+  TRIAL_MARKING: '试评中',
+  FORMAL_MARKING: '正评中',
+  QUALITY_REVIEW: '质量复核中',
+  CLOSED: '已关闭',
+}
+
+export const MARKING_ORGANIZATION_STATUS_TONE: Record<
+  MarkingOrganizationStatusCode,
+  'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
+> = {
+  ORG_DRAFT: 'gray',
+  ORG_CONFIGURED: 'blue',
+  TRIAL_MARKING: 'orange',
+  FORMAL_MARKING: 'green',
+  QUALITY_REVIEW: 'purple',
+  CLOSED: 'red',
+}
+
+/** 题组状态编码 - 与后端 QuestionGroupStatus enum 对齐 */
+export type QuestionMarkingGroupStatusCode
+  = | 'GROUP_DRAFT'
+    | 'GROUP_CONFIGURED'
+    | 'GROUP_ACTIVE'
+    | 'GROUP_CLOSED'
+
+export const QUESTION_GROUP_STATUS_LABEL: Record<QuestionMarkingGroupStatusCode, string> = {
+  GROUP_DRAFT: '草稿',
+  GROUP_CONFIGURED: '已配置',
+  GROUP_ACTIVE: '启用',
+  GROUP_CLOSED: '已关闭',
+}
+
+export const QUESTION_GROUP_STATUS_TONE: Record<QuestionMarkingGroupStatusCode, 'gray' | 'blue' | 'green' | 'red'> = {
+  GROUP_DRAFT: 'gray',
+  GROUP_CONFIGURED: 'blue',
+  GROUP_ACTIVE: 'green',
+  GROUP_CLOSED: 'red',
+}
+
+/** 任务分配模式编码 - 与后端 AllocationMode enum 对齐 */
+export type MarkingAllocationModeCode
+  = | 'BY_QUESTION'
+    | 'BY_CLASS'
+    | 'ROUND_ROBIN'
+    | 'RANDOM'
+
+export const MARKING_ALLOCATION_MODE_LABEL: Record<MarkingAllocationModeCode, string> = {
+  BY_QUESTION: '按题目分配',
+  BY_CLASS: '按班级分配',
+  ROUND_ROBIN: '轮询分配',
+  RANDOM: '随机分配',
+}
+
+/** 任务回收 / 再分配模式编码 - 与后端 ReassignMode enum 对齐 */
+export type MarkingReassignModeCode = 'AUTO' | 'MANUAL'
+
+export const MARKING_REASSIGN_MODE_LABEL: Record<MarkingReassignModeCode, string> = {
+  AUTO: '自动再分配',
+  MANUAL: '手动再分配',
+}
+
+/**
+ * 匿名令牌策略编码 - 后端存储为 String 自由文本，本常量仅作为前端推荐选项。
+ * 后端 ExamTaskAllocationPolicy.anonymousTokenPolicy 字段不使用 enum，接受任意纯文本，
+ * 但前端表单限定为以下语义明确的三种策略，避免随意输入。
+ */
+export type AnonymousTokenPolicyCode = 'NONE' | 'PER_EXAM' | 'PER_GROUP'
+
+export const ANONYMOUS_TOKEN_POLICY_LABEL: Record<AnonymousTokenPolicyCode, string> = {
+  NONE: '不匿名',
+  PER_EXAM: '考试级匿名',
+  PER_GROUP: '题组级匿名',
+}
+
+/** 阅卷任务状态编码 - 与后端 MarkingTaskStatus enum 对齐 */
+export type MarkingTaskStatusCode
+  = | 'ALLOCATED'
+    | 'IN_PROGRESS'
+    | 'SUBMITTED'
+    | 'FINALIZED'
+    | 'RECYCLED'
+
+export const MARKING_TASK_STATUS_LABEL: Record<MarkingTaskStatusCode, string> = {
+  ALLOCATED: '已分配',
+  IN_PROGRESS: '批改中',
+  SUBMITTED: '已提交',
+  FINALIZED: '已定稿',
+  RECYCLED: '已回收',
+}
+
+export const MARKING_TASK_STATUS_TONE: Record<MarkingTaskStatusCode, 'gray' | 'blue' | 'orange' | 'green' | 'red'> = {
+  ALLOCATED: 'blue',
+  IN_PROGRESS: 'orange',
+  SUBMITTED: 'green',
+  FINALIZED: 'green',
+  RECYCLED: 'gray',
+}
+
+// ─── 请求载荷类型 ───────────────────────────────────────────
+
+/** 创建阅卷组织请求 - 对应后端 OrganizationCreateRequest */
+export interface OrganizationCreatePayload {
+  examId: string
+  leaderUserId: string
+  anonymousMode?: boolean
+  remark?: string
+}
+
+/** 阅卷组织查询请求 - 对应后端 OrganizationQueryRequest */
+export interface OrganizationQueryPayload {
+  examId: string
+}
+
+/** 阅卷组织按 ID 查询请求 - 对应后端 OrganizationQueryByIdRequest */
+export interface OrganizationQueryByIdPayload {
+  organizationId: string
+}
+
+/** 更新阅卷组织状态请求 - 对应后端 OrganizationStatusUpdateRequest */
+export interface OrganizationStatusUpdatePayload {
+  organizationId: string
+  targetStatus: MarkingOrganizationStatusCode
+}
+
+/** 保存题目阅卷小组请求 - 对应后端 QuestionGroupSaveRequest */
+export interface QuestionGroupSavePayload {
+  organizationId: string
+  groupName: string
+  questionTemplateIds: string[]
+  leaderUserId: string
+  reviewerUserIds: string[]
+}
+
+/** 保存任务分配策略请求 - 对应后端 AllocationPolicySaveRequest */
+export interface AllocationPolicySavePayload {
+  organizationId: string
+  /** 题组ID，为空时表示组织级默认策略 */
+  groupId?: string
+  allocationMode: MarkingAllocationModeCode
+  /** 每批分配任务数量 */
+  batchSize?: number
+  /** 教师最大待处理任务数 */
+  loadLimit?: number
+  anonymousTokenPolicy?: AnonymousTokenPolicyCode
+  /** 优先级规则，自由文本（JSON 或 DSL，由后端策略层解析） */
+  priorityRule?: string
+}
+
+/** 保存任务回收策略请求 - 对应后端 RecyclePolicySaveRequest */
+export interface RecyclePolicySavePayload {
+  organizationId: string
+  /** 题组ID，为空时表示组织级默认策略 */
+  groupId?: string
+  /** 超时时间（分钟） */
+  timeoutMinutes?: number
+  /** 教师最大待处理任务数 */
+  maxPendingCount?: number
+  reassignMode?: MarkingReassignModeCode
+}
+
+/** 创建试评会话请求 - 对应后端 TrialSessionCreateRequest */
+export interface TrialSessionCreatePayload {
+  organizationId: string
+  groupId: string
+}
+
+/** 试评校准请求 - 对应后端 TrialSessionCalibrateRequest */
+export interface TrialSessionCalibratePayload {
+  sessionId: string
+  calibrationResult?: string
+  discussionNotes?: string
+}
+
+/** 创建正评会话请求 - 对应后端 FormalSessionCreateRequest */
+export interface FormalSessionCreatePayload {
+  organizationId: string
+  groupId: string
+  /** 任务范围描述 */
+  taskScope?: string
+}
+
+/** 阅卷任务领取请求 - 对应后端 MarkingTaskClaimRequest */
+export interface MarkingTaskClaimPayload {
+  sessionId: string
+  groupId: string
+}
+
+/** 阅卷任务提交请求 - 对应后端 MarkingTaskSubmitRequest */
+export interface MarkingTaskSubmitPayload {
+  taskId: string
+  /** 教师给分 */
+  score: string | number
+  /** 批改批注 */
+  annotationNote?: string
+}
+
+/** 阅卷任务查询请求 - 对应后端 MarkingTaskQueryRequest */
+export interface MarkingTaskQueryPayload {
+  examId: string
+  groupId?: string
+  sessionId?: string
+  reviewerUserId?: string
+  taskStatus?: MarkingTaskStatusCode
+}
+
+// ─── 响应载荷类型 ───────────────────────────────────────────
+
+/** 题目阅卷小组详情响应 - 对应后端 QuestionMarkingGroupResponse */
+export interface QuestionMarkingGroupVO {
+  id: string
+  groupName?: string
+  questionTemplateIds?: string[]
+  leaderUserId?: string
+  groupStatus?: QuestionMarkingGroupStatusCode
+  reviewerUserIds?: string[]
+  createTime?: string
+}
+
+/** 阅卷组织详情响应 - 对应后端 MarkingOrganizationResponse */
+export interface MarkingOrganizationVO {
+  id: string
+  examId?: string
+  leaderUserId?: string
+  organizationStatus?: MarkingOrganizationStatusCode
+  anonymousMode?: boolean
+  remark?: string
+  groups?: QuestionMarkingGroupVO[]
+  createTime?: string
+  updateTime?: string
+}
+
+/** 阅卷任务详情响应 - 对应后端 MarkingTaskResponse */
+export interface MarkingTaskVO {
+  id: string
+  examId?: string
+  groupId?: string
+  sessionId?: string
+  reviewerUserId?: string
+  paperInstanceId?: string
+  questionTemplateId?: string
+  sliceId?: string
+  /** 作答切片文件ID，用于前端拉取切片图 */
+  sliceFileId?: string
+  taskStatus?: MarkingTaskStatusCode
+  /** 评阅轮次（试评轮次 / 正评轮次） */
+  reviewRound?: number
+  score?: string | number
+  annotationNote?: string
+  /** 匿名令牌值，匿名模式下代替学生身份 */
+  anonymousToken?: string
+  allocatedAt?: string
+  submittedAt?: string
+}
+
+/** 试评会话状态编码 - 与后端 TrialSessionStatus enum 对齐 */
+export type TrialSessionStatusCode
+  = | 'TRIAL_CREATED'
+    | 'TRIAL_ASSIGNED'
+    | 'TRIAL_SUBMITTED'
+    | 'CALIBRATED'
+    | 'TRIAL_CLOSED'
+
+export const TRIAL_SESSION_STATUS_LABEL: Record<TrialSessionStatusCode, string> = {
+  TRIAL_CREATED: '已创建',
+  TRIAL_ASSIGNED: '已分配样本',
+  TRIAL_SUBMITTED: '教师已提交',
+  CALIBRATED: '已校准',
+  TRIAL_CLOSED: '试评关闭',
+}
+
+export const TRIAL_SESSION_STATUS_TONE: Record<TrialSessionStatusCode, 'gray' | 'blue' | 'orange' | 'green' | 'red'> = {
+  TRIAL_CREATED: 'gray',
+  TRIAL_ASSIGNED: 'blue',
+  TRIAL_SUBMITTED: 'orange',
+  CALIBRATED: 'green',
+  TRIAL_CLOSED: 'red',
+}
+
+/** 正评会话状态编码 - 与后端 FormalSessionStatus enum 对齐 */
+export type FormalSessionStatusCode
+  = | 'SESSION_CREATED'
+    | 'SESSION_ACTIVE'
+    | 'SESSION_PAUSED'
+    | 'SESSION_COMPLETED'
+    | 'SESSION_CLOSED'
+
+export const FORMAL_SESSION_STATUS_LABEL: Record<FormalSessionStatusCode, string> = {
+  SESSION_CREATED: '已创建',
+  SESSION_ACTIVE: '进行中',
+  SESSION_PAUSED: '已暂停',
+  SESSION_COMPLETED: '已完成',
+  SESSION_CLOSED: '已关闭',
+}
+
+export const FORMAL_SESSION_STATUS_TONE: Record<FormalSessionStatusCode, 'gray' | 'green' | 'orange' | 'purple' | 'red'> = {
+  SESSION_CREATED: 'gray',
+  SESSION_ACTIVE: 'green',
+  SESSION_PAUSED: 'orange',
+  SESSION_COMPLETED: 'purple',
+  SESSION_CLOSED: 'red',
+}
+
+/** 会话列表查询请求 - 对应后端 SessionListQueryRequest */
+export interface SessionListQueryPayload {
+  organizationId: string
+  /** 题组ID，留空表示返回组织下所有题组的会话 */
+  groupId?: string
+}
+
+/** 试评会话详情响应 - 对应后端 TrialSessionResponse */
+export interface TrialSessionVO {
+  id: string
+  examId?: string
+  organizationId?: string
+  groupId?: string
+  sessionStatus?: TrialSessionStatusCode
+  /** 校准结论，JSON 格式 */
+  calibrationResult?: string
+  discussionNotes?: string
+  /** 试评关闭原因，closeTrialSession 写入 */
+  closeReason?: string
+  /** 试评进入 TRIAL_CLOSED 的时刻 */
+  closeTime?: string
+  createTime?: string
+  updateTime?: string
+}
+
+/** 正评会话详情响应 - 对应后端 FormalSessionResponse */
+export interface FormalSessionVO {
+  id: string
+  examId?: string
+  organizationId?: string
+  groupId?: string
+  sessionStatus?: FormalSessionStatusCode
+  startTime?: string
+  endTime?: string
+  /** 任务范围描述，JSON 格式 */
+  taskScope?: string
+  /** 正评暂停原因，pauseFormalSession 写入 */
+  pauseReason?: string
+  /** 正评最近一次进入 SESSION_PAUSED 的时刻 */
+  pauseTime?: string
+  /** 正评关闭原因，closeFormalSession 写入 */
+  closeReason?: string
+  /** 正评进入 SESSION_CLOSED 的时刻 */
+  closeTime?: string
+  createTime?: string
+  updateTime?: string
+}
+
+// ─── API 调用 ────────────────────────────────────────────────
+
+// ===================== 阅卷组织 =====================
+
+/**
+ * 创建阅卷组织。
+ * POST /api/mark/organization/create
+ */
+export function createOrganization(payload: OrganizationCreatePayload): Promise<MarkingOrganizationVO> {
+  return http.post<MarkingOrganizationVO>('/api/mark/organization/create', payload)
+}
+
+/**
+ * 查询阅卷组织详情。
+ * POST /api/mark/organization/detail
+ */
+export function getOrganization(payload: OrganizationQueryPayload): Promise<MarkingOrganizationVO> {
+  return http.post<MarkingOrganizationVO>('/api/mark/organization/detail', payload)
+}
+
+/**
+ * 按阅卷组织ID查询详情。
+ * POST /api/mark/organization/detailById
+ */
+export function getOrganizationById(payload: OrganizationQueryByIdPayload): Promise<MarkingOrganizationVO> {
+  return http.post<MarkingOrganizationVO>('/api/mark/organization/detailById', payload)
+}
+
+/**
+ * 更新阅卷组织状态（管理员推进 / 撤销组织阶段）。
+ * POST /api/mark/organization/updateStatus
+ */
+export function updateOrganizationStatus(payload: OrganizationStatusUpdatePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/updateStatus', payload)
+}
+
+// ===================== 题组管理 =====================
+
+/**
+ * 保存题目阅卷小组（含教师分配）；返回题组ID。
+ * POST /api/mark/organization/group/save
+ */
+export function saveQuestionGroup(payload: QuestionGroupSavePayload): Promise<string> {
+  return http.post<string>('/api/mark/organization/group/save', payload)
+}
+
+// ===================== 策略配置 =====================
+
+/**
+ * 保存任务分配策略。
+ * POST /api/mark/organization/policy/allocation/save
+ */
+export function saveAllocationPolicy(payload: AllocationPolicySavePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/policy/allocation/save', payload)
+}
+
+/**
+ * 保存任务回收策略。
+ * POST /api/mark/organization/policy/recycle/save
+ */
+export function saveRecyclePolicy(payload: RecyclePolicySavePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/policy/recycle/save', payload)
+}
+
+// ===================== 试评会话 =====================
+
+/**
+ * 创建试评会话；返回试评会话ID。
+ * POST /api/mark/organization/trial/create
+ */
+export function createTrialSession(payload: TrialSessionCreatePayload): Promise<string> {
+  return http.post<string>('/api/mark/organization/trial/create', payload)
+}
+
+/**
+ * 提交试评校准结论（含校准结果 + 讨论记录）。
+ * POST /api/mark/organization/trial/calibrate
+ */
+export function calibrateTrialSession(payload: TrialSessionCalibratePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/trial/calibrate', payload)
+}
+
+/**
+ * 查询试评会话列表（按阅卷组织，可选按题组过滤）。
+ * POST /api/mark/organization/trial/list
+ */
+export function listTrialSessions(payload: SessionListQueryPayload): Promise<TrialSessionVO[]> {
+  return http.post<TrialSessionVO[]>('/api/mark/organization/trial/list', payload)
+}
+
+// ===================== 正评会话 =====================
+
+/**
+ * 创建正评会话；返回正评会话ID。
+ * POST /api/mark/organization/formal/create
+ */
+export function createFormalSession(payload: FormalSessionCreatePayload): Promise<string> {
+  return http.post<string>('/api/mark/organization/formal/create', payload)
+}
+
+/**
+ * 启动正评会话（CAS 守门 SESSION_CREATED → SESSION_ACTIVE）。
+ * POST /api/mark/organization/formal/start?sessionId=
+ */
+export function startFormalSession(sessionId: string): Promise<boolean> {
+  return http.post<boolean>(
+    `/api/mark/organization/formal/start?sessionId=${encodeURIComponent(sessionId)}`,
+  )
+}
+
+/**
+ * 完成正评会话（CAS 守门 SESSION_ACTIVE → SESSION_COMPLETED）。
+ * POST /api/mark/organization/formal/complete?sessionId=
+ */
+export function completeFormalSession(sessionId: string): Promise<boolean> {
+  return http.post<boolean>(
+    `/api/mark/organization/formal/complete?sessionId=${encodeURIComponent(sessionId)}`,
+  )
+}
+
+/**
+ * 查询正评会话列表（按阅卷组织，可选按题组过滤）。
+ * POST /api/mark/organization/formal/list
+ */
+export function listFormalSessions(payload: SessionListQueryPayload): Promise<FormalSessionVO[]> {
+  return http.post<FormalSessionVO[]>('/api/mark/organization/formal/list', payload)
+}
+
+// ===================== 阅卷任务 =====================
+
+/**
+ * 教师领取阅卷任务（CAS 守门，按当前组织分配策略批量分配）。
+ * POST /api/mark/organization/task/claim
+ */
+export function claimMarkingTasks(payload: MarkingTaskClaimPayload): Promise<MarkingTaskVO[]> {
+  return http.post<MarkingTaskVO[]>('/api/mark/organization/task/claim', payload)
+}
+
+/**
+ * 教师提交阅卷任务（CAS 守门 reviewer_user_id + IN_PROGRESS，防止超时回收冲突）。
+ * POST /api/mark/organization/task/submit
+ */
+export function submitMarkingTask(payload: MarkingTaskSubmitPayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/task/submit', payload)
+}
+
+/**
+ * 查询阅卷任务列表。
+ * POST /api/mark/organization/task/list
+ */
+export function listMarkingTasks(payload: MarkingTaskQueryPayload): Promise<MarkingTaskVO[]> {
+  return http.post<MarkingTaskVO[]>('/api/mark/organization/task/list', payload)
+}
+
+/** 单任务详情查询请求 - 对应后端 MarkingTaskDetailQueryRequest */
+export interface MarkingTaskDetailQueryPayload {
+  taskId: string
+}
+
+/**
+ * 查询单个阅卷任务详情；仅任务领取人本人可查询。
+ * POST /api/mark/organization/task/detail
+ */
+export function getMarkingTaskDetail(payload: MarkingTaskDetailQueryPayload): Promise<MarkingTaskVO> {
+  return http.post<MarkingTaskVO>('/api/mark/organization/task/detail', payload)
+}
+
+/** 教师领取上下文查询请求 - 对应后端 TeacherClaimContextQueryRequest */
+export interface TeacherClaimContextQueryPayload {
+  examId: string
+}
+
+/** 题组级领取上下文 - 对应后端 TeacherClaimContextResponse.GroupClaimContext */
+export interface GroupClaimContextVO {
+  groupId: string
+  groupName?: string
+  organizationId: string
+  /** 该题组下当前活跃的正评会话（session_status = SESSION_ACTIVE） */
+  activeSessions: FormalSessionVO[]
+}
+
+/** 教师领取上下文响应 - 对应后端 TeacherClaimContextResponse */
+export interface TeacherClaimContextVO {
+  examId: string
+  /** 教师所属的活跃题组上下文列表 */
+  groups: GroupClaimContextVO[]
+}
+
+/**
+ * 查询教师阅卷领取上下文。
+ * 返回当前用户作为阅卷教师所属的活跃题组列表 + 每个题组下的活跃正评会话，
+ * 替代手工输入 sessionId / groupId 的下拉数据源。
+ * POST /api/mark/organization/task/claim-context
+ */
+export function getTeacherClaimContext(
+  payload: TeacherClaimContextQueryPayload,
+): Promise<TeacherClaimContextVO> {
+  return http.post<TeacherClaimContextVO>('/api/mark/organization/task/claim-context', payload)
+}
+
+// ===================== 会话生命周期 =====================
+
+/** 会话生命周期动作请求 - 对应后端 SessionLifecycleActionRequest */
+export interface SessionLifecycleActionPayload {
+  sessionId: string
+  /** 操作原因，必填，最多 500 字 */
+  reason: string
+}
+
+/**
+ * 暂停正评会话（SESSION_ACTIVE → SESSION_PAUSED）。
+ * 暂停后教师不能领取新任务、超时回收暂停倒计时。
+ * POST /api/mark/organization/formal/pause
+ */
+export function pauseFormalSession(payload: SessionLifecycleActionPayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/formal/pause', payload)
+}
+
+/**
+ * 恢复正评会话（SESSION_PAUSED → SESSION_ACTIVE）。
+ * POST /api/mark/organization/formal/resume?sessionId=
+ */
+export function resumeFormalSession(sessionId: string): Promise<boolean> {
+  return http.post<boolean>(
+    `/api/mark/organization/formal/resume?sessionId=${encodeURIComponent(sessionId)}`,
+  )
+}
+
+/**
+ * 关闭正评会话（SESSION_ACTIVE / PAUSED / COMPLETED → SESSION_CLOSED）。
+ * 终态归档，进入后任务不可修改。
+ * POST /api/mark/organization/formal/close
+ */
+export function closeFormalSession(payload: SessionLifecycleActionPayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/formal/close', payload)
+}
+
+/**
+ * 关闭试评会话（TRIAL_ASSIGNED / TRIAL_SUBMITTED / CALIBRATED → TRIAL_CLOSED）。
+ * 试评失败废弃或校准完成归档。
+ * POST /api/mark/organization/trial/close
+ */
+export function closeTrialSession(payload: SessionLifecycleActionPayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/trial/close', payload)
+}
+
+/**
+ * 软删除草稿态正评会话（仅 SESSION_CREATED 可删）。
+ * 已启动 / 暂停 / 完成的会话不可删除，必须使用 closeFormalSession 归档。
+ * POST /api/mark/organization/formal/delete?sessionId=
+ */
+export function deleteFormalSession(sessionId: string): Promise<boolean> {
+  return http.post<boolean>(
+    `/api/mark/organization/formal/delete?sessionId=${encodeURIComponent(sessionId)}`,
+  )
+}
+
+/**
+ * 软删除草稿态试评会话（仅 TRIAL_CREATED 可删）。
+ * 已分配样本 / 已提交 / 已校准的会话不可删除，必须使用 closeTrialSession 归档。
+ * POST /api/mark/organization/trial/delete?sessionId=
+ */
+export function deleteTrialSession(sessionId: string): Promise<boolean> {
+  return http.post<boolean>(
+    `/api/mark/organization/trial/delete?sessionId=${encodeURIComponent(sessionId)}`,
+  )
+}

@@ -51,9 +51,9 @@
               type="link"
               size="small"
               :disabled="
-                asRequest(record).requestStatus === 'APPROVED' ||
-                asRequest(record).requestStatus === 'REJECTED' ||
-                asRequest(record).requestStatus === 'CORRECTED'
+                asRequest(record).requestStatus === 'APPROVED'
+                  || asRequest(record).requestStatus === 'REJECTED'
+                  || asRequest(record).requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(asRequest(record), 'APPROVED')"
             >
@@ -64,9 +64,9 @@
               size="small"
               danger
               :disabled="
-                asRequest(record).requestStatus === 'APPROVED' ||
-                asRequest(record).requestStatus === 'REJECTED' ||
-                asRequest(record).requestStatus === 'CORRECTED'
+                asRequest(record).requestStatus === 'APPROVED'
+                  || asRequest(record).requestStatus === 'REJECTED'
+                  || asRequest(record).requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(asRequest(record), 'REJECTED')"
             >
@@ -126,20 +126,20 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   handleReviewRequest,
   listReviewRequests,
   REVIEW_REQUEST_STATUS_COLOR,
   REVIEW_REQUEST_STATUS_LABEL,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
 const rows = ref<ExamGradeReviewRequestVO[]>([])

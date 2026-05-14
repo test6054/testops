@@ -1,0 +1,117 @@
+<template>
+  <a-modal
+    :open="open"
+    :title="modalTitle"
+    :confirm-loading="submitting"
+    ok-text="提交"
+    cancel-text="取消"
+    :width="520"
+    @update:open="handleOpenChange"
+    @ok="confirm"
+  >
+    <a-alert :message="modalAlert" type="warning" show-icon style="margin-bottom: 12px" />
+    <a-form layout="vertical">
+      <a-form-item label="操作原因" required>
+        <a-textarea
+          v-model:value="reason"
+          :rows="4"
+          :maxlength="500"
+          placeholder="请填写操作原因，供后续运维追溯。例如：打分尺度争议临时叫停、系统升级暂停、试评交底归档等"
+          show-count
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+</template>
+
+<script lang="ts" setup>
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import {
+  closeFormalSession,
+  closeTrialSession,
+  pauseFormalSession,
+} from '@/apis/mark/marking-organization'
+
+export type LifecycleAction = 'pauseFormal' | 'closeFormal' | 'closeTrial'
+
+defineOptions({ name: 'SessionLifecycleReasonModal' })
+
+const props = defineProps<{
+  open: boolean
+  action: LifecycleAction | null
+  sessionId: string
+}>()
+
+const emit = defineEmits<{
+  'update:open': [value: boolean]
+  'success': []
+}>()
+
+const reason = ref('')
+const submitting = ref(false)
+
+watch(
+  () => props.open,
+  (next) => {
+    if (next) {
+      reason.value = ''
+    }
+  },
+)
+
+const modalTitle = computed(() => {
+  switch (props.action) {
+    case 'pauseFormal': return '暂停正评会话'
+    case 'closeFormal': return '关闭归档正评会话'
+    case 'closeTrial': return '关闭试评会话'
+    default: return '会话操作'
+  }
+})
+
+const modalAlert = computed(() => {
+  switch (props.action) {
+    case 'pauseFormal':
+      return '暂停后教师不能领取新任务，超时回收暂停倒计时；恢复后教师可继续领取。'
+    case 'closeFormal':
+      return '关闭归档为终态操作，会话及任务不可再修改，请谨慎执行。'
+    case 'closeTrial':
+      return '关闭试评会话为终态操作，关闭后该试评不可再修改，请谨慎执行。'
+    default:
+      return ''
+  }
+})
+
+function handleOpenChange(value: boolean): void {
+  emit('update:open', value)
+}
+
+async function confirm(): Promise<void> {
+  if (!props.action || !props.sessionId) return
+  const trimmed = reason.value.trim()
+  if (!trimmed) {
+    message.warning('请填写操作原因')
+    return
+  }
+  submitting.value = true
+  try {
+    if (props.action === 'pauseFormal') {
+      await pauseFormalSession({ sessionId: props.sessionId, reason: trimmed })
+      message.success('正评会话已暂停')
+    } else if (props.action === 'closeFormal') {
+      await closeFormalSession({ sessionId: props.sessionId, reason: trimmed })
+      message.success('正评会话已关闭归档')
+    } else {
+      await closeTrialSession({ sessionId: props.sessionId, reason: trimmed })
+      message.success('试评会话已关闭')
+    }
+    emit('success')
+    emit('update:open', false)
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '操作失败'
+    message.error(errMsg)
+  } finally {
+    submitting.value = false
+  }
+}
+</script>
