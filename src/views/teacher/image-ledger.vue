@@ -4,11 +4,11 @@
       <PageHeader title="影像账本">
         <template #tags>
           <UiTag v-if="ledger?.ledgerStatus" :tone="ledgerStatusTone" size="md">
-            {{
-              ledgerStatusLabel
-            }}
+            {{ ledgerStatusLabel }}
           </UiTag>
-          <UiTag v-if="ledger" tone="blue" size="md">已扫 {{ ledger.scannedPageCount ?? 0 }} / {{ ledger.expectedPageCount ?? 0 }} 页</UiTag>
+          <UiTag v-if="ledger" tone="blue" size="md">
+            已扫 {{ ledger.scannedPageCount ?? 0 }} / {{ ledger.expectedPageCount ?? 0 }} 页
+          </UiTag>
         </template>
         <template #actions>
           <a-select
@@ -51,17 +51,13 @@
           <div class="ledger-page__attention-body">
             <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
             <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
-            <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
-            <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
-            <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
-            <UiButton
-              v-if="attentionContext.pageId"
-              size="sm"
-              variant="outline"
-              @click="openRepair(attentionContext.pageId)"
+            <span v-if="attentionContext.scanBatchId"
+              >扫描批次：{{ attentionContext.scanBatchId }}</span
             >
-              直接提交修复
-            </UiButton>
+            <span v-if="attentionContext.paperInstanceId"
+              >试卷实例：{{ attentionContext.paperInstanceId }}</span
+            >
+            <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
           </div>
         </template>
       </a-alert>
@@ -79,28 +75,10 @@
           :balancing="balancing"
           @balance="handleBalance"
         />
-        <QualityMetricsCard
-          :exam-id="selectedExamId"
-          @repair="openRepair"
-          @override="openOverride"
-        />
         <DuplicateResolutionCard :exam-id="selectedExamId" @resolve="openResolve" />
       </div>
     </div>
 
-    <RepairModal
-      v-model:open="repairOpen"
-      :exam-id="selectedExamId || ''"
-      :page-id="repairPageId"
-      @submitted="onChildSubmitted"
-    />
-    <QualityOverrideModal
-      v-model:open="overrideOpen"
-      :exam-id="selectedExamId || ''"
-      :target-type="overrideTargetType"
-      :target-id="overrideTargetId"
-      @submitted="onChildSubmitted"
-    />
     <DuplicateResolveModal
       v-model:open="resolveOpen"
       :exam-id="selectedExamId || ''"
@@ -111,20 +89,16 @@
 </template>
 
 <script lang="ts" setup>
-import type {
-  ExamPaperDuplicateResolutionVO,
-  ImageLedgerDetailVO,
-  OverrideTargetType,
-} from '@/apis/mark/image-ledger'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
 import {
   executeImageLedgerBalance,
   getImageLedgerDetail,
   LEDGER_STATUS_LABEL,
 } from '@/apis/mark/image-ledger'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -132,9 +106,6 @@ import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
 import DuplicateResolveModal from './image-ledger/DuplicateResolveModal.vue'
 import LedgerSummaryCard from './image-ledger/LedgerSummaryCard.vue'
-import QualityMetricsCard from './image-ledger/QualityMetricsCard.vue'
-import QualityOverrideModal from './image-ledger/QualityOverrideModal.vue'
-import RepairModal from './image-ledger/RepairModal.vue'
 
 defineOptions({ name: 'TeacherImageLedger' })
 
@@ -183,7 +154,7 @@ const attentionContext = computed<ScanAttentionContext | null>(() => {
 
 const ledgerStatusLabel = computed(() => {
   const code = ledger.value?.ledgerStatus
-  if (!code) return '未平账'
+  if (!code) return '未对账'
   return LEDGER_STATUS_LABEL[code] || code
 })
 
@@ -191,11 +162,9 @@ const ledgerStatusTone = computed<'green' | 'red' | 'orange' | 'gray' | 'blue'>(
   switch (ledger.value?.ledgerStatus) {
     case 'BALANCED':
       return 'green'
-    case 'BLOCKED':
+    case 'INCIDENT_OPEN':
       return 'red'
-    case 'PARTIAL':
-      return 'orange'
-    case 'PENDING':
+    case 'BALANCING':
       return 'blue'
     default:
       return 'gray'
@@ -223,33 +192,14 @@ async function handleBalance(): Promise<void> {
   if (!selectedExamId.value) return
   balancing.value = true
   try {
-    ledger.value = await executeImageLedgerBalance({
-      examId: selectedExamId.value,
-      balanceScope: 'FULL',
-    })
-    message.success('全量平账已执行')
+    ledger.value = await executeImageLedgerBalance({ examId: selectedExamId.value })
+    message.success('已执行考试整体对账')
   } catch (e) {
-    const msg = e instanceof Error ? e.message : '平账失败'
+    const msg = e instanceof Error ? e.message : '对账失败'
     message.error(msg)
   } finally {
     balancing.value = false
   }
-}
-
-const repairOpen = ref(false)
-const repairPageId = ref<string>('')
-function openRepair(pageId: string): void {
-  repairPageId.value = pageId
-  repairOpen.value = true
-}
-
-const overrideOpen = ref(false)
-const overrideTargetType = ref<OverrideTargetType>('PAGE')
-const overrideTargetId = ref<string>('')
-function openOverride(payload: { targetType: OverrideTargetType, targetId: string }): void {
-  overrideTargetType.value = payload.targetType
-  overrideTargetId.value = payload.targetId
-  overrideOpen.value = true
 }
 
 const resolveOpen = ref(false)

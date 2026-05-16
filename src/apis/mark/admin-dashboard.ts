@@ -1,6 +1,6 @@
-import type { ExamStatusCode } from '@/apis/mark/exam'
+import type {ExamStatusCode} from '@/apis/mark/exam'
 
-import type { FinalScoreStatusCode } from '@/apis/mark/student-exam'
+import type {FinalScoreStatusCode} from '@/apis/mark/student-exam'
 /**
  * 阅卷管理员 Dashboard API - 对接 edu-mark 模块 MarkDashboardController。
  *
@@ -35,8 +35,6 @@ export interface DashboardGradingMetricsVO {
 /** 异常告警指标 - 对应 MarkDashboardResponse.IncidentMetrics */
 export interface DashboardIncidentMetricsVO {
   unresolvedIncidentCount: number
-  blockedPageCount: number
-  pendingRepairActionCount: number
   pendingDuplicateCount: number
 }
 

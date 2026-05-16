@@ -170,15 +170,6 @@ export type ScanAttentionTypeCode
 
 // ScanAttentionQueryPayload / ScanAttentionItemVO 定义在 @/apis/mark/exam，避免重复
 
-/** 影像修复提交请求 - 对应 RepairSubmitRequest */
-export interface RepairSubmitPayload {
-  examId: string
-  pageId: string
-  repairType: 'RESCAN' | 'ORIENTATION_FIX' | 'CROP_FIX' | 'RETURN' | string
-  afterFileId?: string
-  repairReason: string
-}
-
 // ExamCandidateVO 定义在 @/apis/mark/exam，避免重复
 
 /** 试卷身份批量绑定单项请求 - 对应 ExamPaperBatchBindItemRequest */
@@ -274,14 +265,6 @@ export function triggerSaneScan(
 }
 
 // listScanAttentions 定义在 @/apis/mark/exam，避免重复
-
-/**
- * 提交影像修复动作，替换页会由后端重建 OCR 识别任务
- * POST /api/mark/exams/quality/repair-submit
- */
-export function submitRepairAction(payload: RepairSubmitPayload): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/quality/repair-submit', payload)
-}
 
 // listExamCandidates 定义在 @/apis/mark/exam，避免重复
 

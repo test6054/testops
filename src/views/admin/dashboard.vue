@@ -87,24 +87,6 @@
                 </p>
               </div>
               <div class="metric-cell">
-                <p class="metric-cell__label">IQA 阻断页</p>
-                <p
-                  class="metric-cell__value"
-                  :class="incidentMetrics.blockedPageCount > 0 ? 'warning' : ''"
-                >
-                  {{ incidentMetrics.blockedPageCount }}
-                </p>
-              </div>
-              <div class="metric-cell">
-                <p class="metric-cell__label">待修复影像</p>
-                <p
-                  class="metric-cell__value"
-                  :class="incidentMetrics.pendingRepairActionCount > 0 ? 'warning' : ''"
-                >
-                  {{ incidentMetrics.pendingRepairActionCount }}
-                </p>
-              </div>
-              <div class="metric-cell">
                 <p class="metric-cell__label">待处置重复</p>
                 <p
                   class="metric-cell__value"
@@ -221,6 +203,11 @@ import type {
   IncidentRecordVO,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
+import {
+  INCIDENT_LEVEL_LABEL,
+  INCIDENT_LEVEL_TONE,
+  loadDashboardOverview,
+} from '@/apis/mark/admin-dashboard'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
@@ -231,11 +218,6 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  INCIDENT_LEVEL_LABEL,
-  INCIDENT_LEVEL_TONE,
-  loadDashboardOverview,
-} from '@/apis/mark/admin-dashboard'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
@@ -276,8 +258,6 @@ const incidentMetrics = computed<DashboardIncidentMetricsVO>(
   () =>
     overview.value?.incidentMetrics ?? {
       unresolvedIncidentCount: 0,
-      blockedPageCount: 0,
-      pendingRepairActionCount: 0,
       pendingDuplicateCount: 0,
     },
 )

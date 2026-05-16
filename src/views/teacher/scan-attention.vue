@@ -121,7 +121,9 @@
               </template>
               <template v-else-if="column.key === 'sourceInfo'">
                 <div class="source-cell">
-                  <span v-if="record.sourceType"><b>{{ record.sourceType }}</b></span>
+                  <span v-if="record.sourceType"
+                    ><b>{{ record.sourceType }}</b></span
+                  >
                   <span v-if="record.sourceId" class="muted">#{{ record.sourceId }}</span>
                 </div>
               </template>
@@ -135,9 +137,7 @@
               </template>
               <template v-else-if="column.key === 'status'">
                 <UiTag :tone="record.status ? 'orange' : 'gray'" size="sm">
-                  {{
-                    record.status || '-'
-                  }}
+                  {{ record.status || '-' }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'diagnostic'">
@@ -157,17 +157,6 @@
                     身份绑定
                   </UiButton>
                   <UiButton v-else size="sm" @click="openLedger(record)"> 处置入口 </UiButton>
-                  <a-upload
-                    v-if="record.pageId && record.attentionType === 'QUALITY_BLOCK'"
-                    :show-upload-list="false"
-                    :before-upload="handleRepairUpload(record)"
-                    :disabled="repairSubmitting"
-                  >
-                    <UiButton size="sm" variant="outline" :loading="repairSubmitting">
-                      <template #icon><UploadOutlined /></template>
-                      替换页
-                    </UiButton>
-                  </a-upload>
                   <UiButton size="sm" variant="ghost" @click="openDetail(record)">详情</UiButton>
                 </a-space>
               </template>
@@ -244,41 +233,29 @@
     <a-modal v-model:open="detailModalOpen" title="异常详情" :footer="null" width="640px">
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
         <a-descriptions-item label="异常类型">
-          {{
-            detailRecord.attentionType || '-'
-          }}
+          {{ detailRecord.attentionType || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">{{ detailRecord.status || '-' }}</a-descriptions-item>
         <a-descriptions-item label="来源类型">
-          {{
-            detailRecord.sourceType || '-'
-          }}
+          {{ detailRecord.sourceType || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="来源ID">{{ detailRecord.sourceId || '-' }}</a-descriptions-item>
         <a-descriptions-item label="考试ID">{{ detailRecord.examId || '-' }}</a-descriptions-item>
         <a-descriptions-item label="扫描批次ID">
-          {{
-            detailRecord.scanBatchId || '-'
-          }}
+          {{ detailRecord.scanBatchId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="试卷实例ID">
-          {{
-            detailRecord.paperInstanceId || '-'
-          }}
+          {{ detailRecord.paperInstanceId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="页ID">{{ detailRecord.pageId || '-' }}</a-descriptions-item>
         <a-descriptions-item label="题目模板ID">
-          {{
-            detailRecord.questionTemplateId || '-'
-          }}
+          {{ detailRecord.questionTemplateId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="诊断">
           <pre class="diagnostic-pre">{{ detailRecord.diagnostic || '-' }}</pre>
         </a-descriptions-item>
         <a-descriptions-item label="更新时间">
-          {{
-            formatTime(detailRecord.updateTime)
-          }}
+          {{ formatTime(detailRecord.updateTime) }}
         </a-descriptions-item>
       </a-descriptions>
     </a-modal>
@@ -286,23 +263,20 @@
 </template>
 
 <script lang="ts" setup>
-import type { UploadProps } from 'ant-design-vue'
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateVO, ScanAttentionItemVO } from '@/apis/mark/exam'
+import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindItemPayload } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { uploadFile } from '@/apis/edu/file-management'
-import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
-import { batchBindPapers, submitRepairAction } from '@/apis/mark/exam-mark-scanner'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -440,8 +414,8 @@ function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   if (!kw || !option) return true
   const raw = option.raw as ExamCandidateVO
   return (
-    (raw.studentName ?? '').toLowerCase().includes(kw)
-    || (raw.studentNo ?? '').toLowerCase().includes(kw)
+    (raw.studentName ?? '').toLowerCase().includes(kw) ||
+    (raw.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
@@ -590,37 +564,6 @@ async function handleBatchBind(): Promise<void> {
     message.error(errMsg)
   } finally {
     batchBinding.value = false
-  }
-}
-
-// ─── 替换页修复 ──────────────────────────────────
-const repairSubmitting = ref(false)
-
-function handleRepairUpload(record: ScanAttentionItemVO): UploadProps['beforeUpload'] {
-  return async (file) => {
-    if (!selectedExamId.value || !record.pageId) {
-      message.error('缺少考试或扫描页上下文')
-      return false
-    }
-    repairSubmitting.value = true
-    try {
-      const uploaded = await uploadFile(file as File, { businessType: 'MARK_SCAN_REPAIR' })
-      await submitRepairAction({
-        examId: selectedExamId.value,
-        pageId: record.pageId,
-        repairType: 'RESCAN',
-        afterFileId: uploaded.id,
-        repairReason: '人工重新扫描并替换异常扫描页',
-      })
-      message.success('异常页已替换，后端将重新创建 OCR 识别任务')
-      await loadAttentions()
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : '替换页修复失败'
-      message.error(errMsg)
-    } finally {
-      repairSubmitting.value = false
-    }
-    return false
   }
 }
 
