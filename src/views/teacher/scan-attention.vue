@@ -121,9 +121,7 @@
               </template>
               <template v-else-if="column.key === 'sourceInfo'">
                 <div class="source-cell">
-                  <span v-if="record.sourceType"
-                    ><b>{{ record.sourceType }}</b></span
-                  >
+                  <span v-if="record.sourceType"><b>{{ record.sourceType }}</b></span>
                   <span v-if="record.sourceId" class="muted">#{{ record.sourceId }}</span>
                 </div>
               </template>
@@ -267,9 +265,7 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateVO, ScanAttentionItemVO } from '@/apis/mark/exam'
-import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindItemPayload } from '@/apis/mark/exam-mark-scanner'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -277,6 +273,8 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -414,8 +412,8 @@ function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   if (!kw || !option) return true
   const raw = option.raw as ExamCandidateVO
   return (
-    (raw.studentName ?? '').toLowerCase().includes(kw) ||
-    (raw.studentNo ?? '').toLowerCase().includes(kw)
+    (raw.studentName ?? '').toLowerCase().includes(kw)
+    || (raw.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 

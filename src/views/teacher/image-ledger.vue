@@ -51,12 +51,8 @@
           <div class="ledger-page__attention-body">
             <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
             <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
-            <span v-if="attentionContext.scanBatchId"
-              >扫描批次：{{ attentionContext.scanBatchId }}</span
-            >
-            <span v-if="attentionContext.paperInstanceId"
-              >试卷实例：{{ attentionContext.paperInstanceId }}</span
-            >
+            <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
+            <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
             <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
           </div>
         </template>
@@ -90,15 +86,15 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   executeImageLedgerBalance,
   getImageLedgerDetail,
   LEDGER_STATUS_LABEL,
 } from '@/apis/mark/image-ledger'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
