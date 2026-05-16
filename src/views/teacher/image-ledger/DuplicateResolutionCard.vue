@@ -31,9 +31,9 @@
             {{
               DUPLICATE_RESOLUTION_STATUS_LABEL[
                 record.resolutionStatus as DuplicateResolutionStatusCode
-              ] ||
-              record.resolutionStatus ||
-              '-'
+              ]
+                || record.resolutionStatus
+                || '-'
             }}
           </a-tag>
         </template>
@@ -58,14 +58,14 @@ import type {
   DuplicateResolutionStatusCode,
   ExamPaperDuplicateResolutionVO,
 } from '@/apis/mark/image-ledger'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_COLOR,
   DUPLICATE_RESOLUTION_STATUS_LABEL,
   listPendingDuplicates,
 } from '@/apis/mark/image-ledger'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'DuplicateResolutionCard' })
 
