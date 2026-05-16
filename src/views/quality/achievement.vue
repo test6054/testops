@@ -128,7 +128,7 @@ const triggerButtons: Array<{ key: string, label: string, handler: () => Promise
   {
     key: 'COURSE_GOAL',
     label: '课程目标',
-    handler: () => {
+    handler: async () => {
       if (!triggerForm.qualityCourseId?.trim()) {
         message.warning(
           '课程目标计算必须填写 qualityCourseId 与 courseGoalId（在备注栏临时输入：格式 courseGoalId=...）',
@@ -136,14 +136,17 @@ const triggerButtons: Array<{ key: string, label: string, handler: () => Promise
         return Promise.reject(new Error('missing courseGoalId'))
       }
        
-      const courseGoalId
-        = (typeof window !== 'undefined'
-          ? window.prompt('请输入 courseGoalId（课程目标 ID）')
-          : '') || ''
-      if (!courseGoalId.trim()) return Promise.reject(new Error('cancelled'))
+      const courseGoalId = await promptModal({
+        title: '请输入课程目标 ID',
+        placeholder: 'courseGoalId',
+        required: true,
+        rows: 1,
+        emptyErrorMessage: '课程目标 ID 不能为空',
+      })
+      if (!courseGoalId) return Promise.reject(new Error('cancelled'))
       return achievementApi.computeCourseGoal({
         qualityCourseId: triggerForm.qualityCourseId!,
-        courseGoalId: courseGoalId.trim(),
+        courseGoalId,
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester,
       })
@@ -163,16 +166,19 @@ const triggerButtons: Array<{ key: string, label: string, handler: () => Promise
   {
     key: 'TRAINING_OBJECTIVE',
     label: '培养目标',
-    handler: () => {
-      const trainingObjectiveId
-        = (typeof window !== 'undefined'
-          ? window.prompt('请输入 trainingObjectiveId（培养目标 ID）')
-          : '') || ''
-      if (!trainingObjectiveId.trim()) return Promise.reject(new Error('cancelled'))
+    handler: async () => {
+      const trainingObjectiveId = await promptModal({
+        title: '请输入培养目标 ID',
+        placeholder: 'trainingObjectiveId',
+        required: true,
+        rows: 1,
+        emptyErrorMessage: '培养目标 ID 不能为空',
+      })
+      if (!trainingObjectiveId) return Promise.reject(new Error('cancelled'))
       return achievementApi.computeTrainingObjective({
         programId: triggerForm.programId || qualityStore.currentProgramId,
         trainingPlanId: qualityStore.currentTrainingPlanId,
-        trainingObjectiveId: trainingObjectiveId.trim(),
+        trainingObjectiveId,
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester,
       })

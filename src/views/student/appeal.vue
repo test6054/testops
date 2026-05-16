@@ -128,15 +128,15 @@
                 <strong class="exam-cell__title">{{
                   asRequestRow(_row).examName || '未命名考试'
                 }}</strong>
-                <span v-if="asRequestRow(_row).examNo" class="exam-cell__sub"
-                  >编号：{{ asRequestRow(_row).examNo }}</span
-                >
+                <span v-if="asRequestRow(_row).examNo" class="exam-cell__sub">编号：{{ asRequestRow(_row).examNo }}</span>
               </div>
             </template>
             <template v-else-if="column.key === 'reasonType'">
-              <UiTag tone="purple" size="sm">{{
-                formatReasonType(asRequestRow(_row).reasonType)
-              }}</UiTag>
+              <UiTag tone="purple" size="sm">
+                {{
+                  formatReasonType(asRequestRow(_row).reasonType)
+                }}
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'requestReason'">
               <a-tooltip :title="asRequestRow(_row).requestReason">
@@ -221,14 +221,7 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
-import {
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
@@ -238,6 +231,13 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
+import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -269,7 +269,7 @@ const reasonTypeOptions = [
   { value: 'OTHER', label: '其他' },
 ]
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },

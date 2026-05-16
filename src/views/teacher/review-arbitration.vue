@@ -97,9 +97,9 @@
               <template v-else-if="column.key === 'actions'">
                 <a-space>
                   <UiButton size="sm" @click="goWorkspace(asTask(record))">仲裁批阅</UiButton>
-                  <UiButton size="sm" variant="ghost" @click="goDetail(asTask(record))"
-                    >详情</UiButton
-                  >
+                  <UiButton size="sm" variant="ghost" @click="goDetail(asTask(record))">
+                    详情
+                  </UiButton>
                 </a-space>
               </template>
             </template>
@@ -113,7 +113,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam'
-import { listReviewTasks } from '@/apis/mark/exam'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
@@ -121,6 +120,7 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { listReviewTasks } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'

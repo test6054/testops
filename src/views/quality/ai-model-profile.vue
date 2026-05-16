@@ -207,7 +207,7 @@ async function handleHealthCheck(record: AiModelProfileVO) {
   }
 }
 
-function renderHealth(status?: string): { color: string; label: string } {
+function renderHealth(status?: string): { color: string, label: string } {
   switch (status) {
     case 'HEALTHY':
       return { color: 'green', label: '健康' }
