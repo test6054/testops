@@ -3,9 +3,9 @@
     <div class="sync-page">
       <PageHeader title="教务系统同步">
         <template #tags>
-          <UiTag v-if="syncTasks.length > 0" tone="blue" size="md"
-            >同步任务 {{ syncTasks.length }}</UiTag
-          >
+          <UiTag v-if="syncTasks.length > 0" tone="blue" size="md">
+            同步任务 {{ syncTasks.length }}
+          </UiTag>
           <UiTag v-if="passbackRecords.length > 0" tone="green" size="md">
             回写记录 {{ passbackRecords.length }}
           </UiTag>
@@ -89,8 +89,8 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'externalSystemType'">
                 {{
-                  EXTERNAL_SYSTEM_TYPE_LABEL[record.externalSystemType as ExternalSystemTypeCode] ??
-                  record.externalSystemType
+                  EXTERNAL_SYSTEM_TYPE_LABEL[record.externalSystemType as ExternalSystemTypeCode]
+                    ?? record.externalSystemType
                 }}
               </template>
               <template v-else-if="column.key === 'syncType'">
@@ -101,8 +101,8 @@
               <template v-else-if="column.key === 'taskStatus'">
                 <UiTag :tone="syncStatusTone(record.taskStatus)" size="sm">
                   {{
-                    SYNC_TASK_STATUS_LABEL[record.taskStatus as SyncTaskStatusCode] ??
-                    record.taskStatus
+                    SYNC_TASK_STATUS_LABEL[record.taskStatus as SyncTaskStatusCode]
+                      ?? record.taskStatus
                   }}
                 </UiTag>
               </template>
@@ -143,9 +143,9 @@
                   >
                     取消
                   </UiButton>
-                  <UiButton size="xs" variant="outline" @click="openTaskDetail(record)"
-                    >详情</UiButton
-                  >
+                  <UiButton size="xs" variant="outline" @click="openTaskDetail(record)">
+                    详情
+                  </UiButton>
                 </a-space>
               </template>
             </template>
@@ -206,8 +206,8 @@
               <template v-if="column.key === 'passbackStatus'">
                 <UiTag :tone="passbackStatusTone(record.passbackStatus)" size="sm">
                   {{
-                    PASSBACK_STATUS_LABEL[record.passbackStatus as PassbackStatusCode] ??
-                    record.passbackStatus
+                    PASSBACK_STATUS_LABEL[record.passbackStatus as PassbackStatusCode]
+                      ?? record.passbackStatus
                   }}
                 </UiTag>
               </template>
@@ -218,8 +218,8 @@
                   size="sm"
                 >
                   {{
-                    RECONCILE_STATUS_LABEL[record.reconcileStatus as ReconcileStatusCode] ??
-                    record.reconcileStatus
+                    RECONCILE_STATUS_LABEL[record.reconcileStatus as ReconcileStatusCode]
+                      ?? record.reconcileStatus
                   }}
                 </UiTag>
                 <span v-else class="hint-text">-</span>
@@ -285,7 +285,7 @@
           <a-textarea
             v-model:value="createForm.syncConfig"
             :rows="4"
-            placeholder='{"endpoint":"https://sis.school/api","apiKey":"xxx"}'
+            placeholder="{&quot;endpoint&quot;:&quot;https://sis.school/api&quot;,&quot;apiKey&quot;:&quot;xxx&quot;}"
           />
         </a-form-item>
       </a-form>
@@ -319,22 +319,26 @@
         <a-descriptions-item label="重试">
           {{ detailTask.retryCount ?? 0 }} / {{ detailTask.maxRetryCount ?? '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="外部课程ID">{{
-          detailTask.externalCourseId ?? '-'
-        }}</a-descriptions-item>
-        <a-descriptions-item label="外部成绩项ID">{{
-          detailTask.externalLineItemId ?? '-'
-        }}</a-descriptions-item>
+        <a-descriptions-item label="外部课程ID">
+          {{
+            detailTask.externalCourseId ?? '-'
+          }}
+        </a-descriptions-item>
+        <a-descriptions-item label="外部成绩项ID">
+          {{
+            detailTask.externalLineItemId ?? '-'
+          }}
+        </a-descriptions-item>
         <a-descriptions-item label="同步配置">
           <pre class="json-pre">{{ detailTask.syncConfig || '（空）' }}</pre>
         </a-descriptions-item>
-        <a-descriptions-item label="最后同步时间">{{
-          detailTask.lastSyncTime ?? '-'
-        }}</a-descriptions-item>
+        <a-descriptions-item label="最后同步时间">
+          {{
+            detailTask.lastSyncTime ?? '-'
+          }}
+        </a-descriptions-item>
         <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-          <span class="error-text"
-            >[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span
-          >
+          <span class="error-text">[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span>
         </a-descriptions-item>
         <a-descriptions-item label="操作" :span="1">
           <a-space>
@@ -358,7 +362,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type {
   ExternalSystemTypeCode,
   PassbackRecordVO,
@@ -368,6 +371,15 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { pageExams } from '@/apis/mark/exam'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -385,14 +397,6 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -405,7 +409,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 const loading = ref(false)
 

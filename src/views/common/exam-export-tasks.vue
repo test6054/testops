@@ -4,15 +4,15 @@
       <PageHeader title="导出任务">
         <template #tags>
           <UiTag v-if="counts.total > 0" tone="blue" size="md">总 {{ counts.total }}</UiTag>
-          <UiTag v-if="counts.pending > 0" tone="orange" size="md"
-            >待执行 {{ counts.pending }}</UiTag
-          >
-          <UiTag v-if="counts.generating > 0" tone="cyan" size="md"
-            >生成中 {{ counts.generating }}</UiTag
-          >
-          <UiTag v-if="counts.completed > 0" tone="green" size="md"
-            >已完成 {{ counts.completed }}</UiTag
-          >
+          <UiTag v-if="counts.pending > 0" tone="orange" size="md">
+            待执行 {{ counts.pending }}
+          </UiTag>
+          <UiTag v-if="counts.generating > 0" tone="purple" size="md">
+            生成中 {{ counts.generating }}
+          </UiTag>
+          <UiTag v-if="counts.completed > 0" tone="green" size="md">
+            已完成 {{ counts.completed }}
+          </UiTag>
           <UiTag v-if="counts.failed > 0" tone="red" size="md">失败 {{ counts.failed }}</UiTag>
         </template>
         <template #actions>
@@ -97,10 +97,10 @@
               {{ EXPORT_SCOPE_LABEL[record.exportScope as ExportScopeCode] ?? record.exportScope }}
             </template>
             <template v-else-if="column.key === 'taskStatus'">
-              <UiTag :tone="statusTone(record.taskStatus)" size="sm">
+              <UiTag :tone="statusTone(asTask(record).taskStatus)" size="sm">
                 {{
-                  EXPORT_STATUS_LABEL[record.taskStatus as ExportTaskStatusCode] ??
-                  record.taskStatus
+                  EXPORT_STATUS_LABEL[asTask(record).taskStatus]
+                    ?? asTask(record).taskStatus
                 }}
               </UiTag>
             </template>
@@ -120,17 +120,17 @@
             <template v-else-if="column.key === 'actions'">
               <a-space>
                 <UiButton
-                  v-if="record.taskStatus === 'COMPLETED' && record.fileId"
-                  size="xs"
-                  :loading="downloadingId === record.taskId"
-                  @click="handleDownload(record)"
+                  v-if="asTask(record).taskStatus === 'COMPLETED' && asTask(record).fileId"
+                  size="sm"
+                  :loading="downloadingId === asTask(record).taskId"
+                  @click="handleDownload(asTask(record))"
                 >
                   <template #icon><DownloadOutlined /></template>
                   下载
                 </UiButton>
-                <UiButton size="xs" variant="outline" @click="openDetailDrawer(record)"
-                  >详情</UiButton
-                >
+                <UiButton size="sm" variant="outline" @click="openDetailDrawer(asTask(record))">
+                  详情
+                </UiButton>
               </a-space>
             </template>
           </template>
@@ -202,8 +202,8 @@
         <a-descriptions-item label="状态">
           <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
             {{
-              EXPORT_STATUS_LABEL[detailTask.taskStatus as ExportTaskStatusCode] ??
-              detailTask.taskStatus
+              EXPORT_STATUS_LABEL[detailTask.taskStatus as ExportTaskStatusCode]
+                ?? detailTask.taskStatus
             }}
           </UiTag>
         </a-descriptions-item>
@@ -211,12 +211,16 @@
         <a-descriptions-item label="文件大小">
           {{ detailTask.fileSize ? formatBytes(detailTask.fileSize) : '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="开始时间">{{
-          detailTask.startedTime ?? '-'
-        }}</a-descriptions-item>
-        <a-descriptions-item label="完成时间">{{
-          detailTask.completedTime ?? '-'
-        }}</a-descriptions-item>
+        <a-descriptions-item label="开始时间">
+          {{
+            detailTask.startedTime ?? '-'
+          }}
+        </a-descriptions-item>
+        <a-descriptions-item label="完成时间">
+          {{
+            detailTask.completedTime ?? '-'
+          }}
+        </a-descriptions-item>
         <a-descriptions-item label="错误信息">
           <span v-if="detailTask.errorMessage" class="error-text">{{
             detailTask.errorMessage
@@ -231,21 +235,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type {
   ExportScopeCode,
   ExportTaskStatusCode,
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
-import {
-  createExportTask,
-  EXPORT_SCOPE_LABEL,
-  EXPORT_STATUS_COLOR,
-  EXPORT_STATUS_LABEL,
-  EXPORT_TYPE_LABEL,
-  listExportTasks,
-} from '@/apis/mark/exam-export'
+import type { BadgeTone } from '@/components/ui-guide/ui'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -254,6 +250,15 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
+import { pageExams } from '@/apis/mark/exam'
+import {
+  createExportTask,
+  EXPORT_SCOPE_LABEL,
+  EXPORT_STATUS_LABEL,
+  EXPORT_STATUS_TONE,
+  EXPORT_TYPE_LABEL,
+  listExportTasks,
+} from '@/apis/mark/exam-export'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -266,7 +271,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const tasks = ref<ExportTaskVO[]>([])
@@ -279,8 +284,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
-      (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value)
+      && (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 
@@ -305,9 +310,14 @@ const columns: ColumnType<ExportTaskVO>[] = [
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
 
-function statusTone(status?: string): string {
+function statusTone(status: ExportTaskStatusCode | undefined): BadgeTone {
   if (!status) return 'gray'
-  return EXPORT_STATUS_COLOR[status as ExportTaskStatusCode] ?? 'gray'
+  return EXPORT_STATUS_TONE[status] ?? 'gray'
+}
+
+/** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为后端真实 VO 类型 ExportTaskVO */
+function asTask(record: Record<string, unknown>): ExportTaskVO {
+  return record as unknown as ExportTaskVO
 }
 
 function formatBytes(size: number): string {
@@ -440,7 +450,8 @@ async function handleDownload(record: ExportTaskVO): Promise<void> {
     const blobResp = await downloadFile({ nodeId: record.fileId })
     const blob = blobResp.data
     if (!blob) {
-      throw new Error('未获得有效的文件流')
+      message.error('未获得有效的文件流')
+      return
     }
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')

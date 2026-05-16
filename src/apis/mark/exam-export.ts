@@ -31,8 +31,9 @@ export const EXPORT_STATUS_LABEL: Record<ExportTaskStatusCode, string> = {
   FAILED: '失败',
 }
 
-export const EXPORT_STATUS_COLOR: Record<ExportTaskStatusCode, string> = {
-  PENDING: 'default',
+/** 导出任务状态 BadgeTone 映射（用于 UiTag/UiBadge 等 ui-guide 组件） */
+export const EXPORT_STATUS_TONE: Record<ExportTaskStatusCode, 'gray' | 'blue' | 'green' | 'red'> = {
+  PENDING: 'gray',
   GENERATING: 'blue',
   COMPLETED: 'green',
   FAILED: 'red',

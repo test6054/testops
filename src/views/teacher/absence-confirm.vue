@@ -63,7 +63,7 @@
           <a-table :columns="absentColumns" :data-source="absentStudents" :pagination="false" row-key="studentUserId" size="middle">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'actions'">
-                <UiButton size="xs" @click="openConfirmModal(record.studentUserId, record.studentName)">确认缺考</UiButton>
+                <UiButton size="sm" @click="openConfirmModal(record.studentUserId, record.studentName)">确认缺考</UiButton>
               </template>
             </template>
           </a-table>
@@ -91,17 +91,17 @@
           <a-table :columns="recordColumns" :data-source="records" :loading="recordLoading" :pagination="{ pageSize: 20, showSizeChanger: false }" row-key="absenceRecordId" size="middle">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'absenceStatus'">
-                <UiTag :tone="statusTone(record.absenceStatus)" size="sm">{{ statusLabel(record.absenceStatus) }}</UiTag>
+                <UiTag :tone="statusTone(asAbsenceRecord(record).absenceStatus)" size="sm">{{ statusLabel(asAbsenceRecord(record).absenceStatus) }}</UiTag>
               </template>
               <template v-else-if="column.key === 'absenceReason'">
-                {{ record.absenceReason ? ABSENCE_REASON_LABEL[record.absenceReason as AbsenceReasonCode] ?? '-' : '-' }}
+                {{ reasonLabel(asAbsenceRecord(record).absenceReason) }}
               </template>
               <template v-else-if="column.key === 'scorePolicy'">
-                {{ record.scorePolicy ? ABSENCE_SCORE_POLICY_LABEL[record.scorePolicy as AbsenceScorePolicyCode] ?? '-' : '-' }}
+                {{ scorePolicyLabel(asAbsenceRecord(record).scorePolicy) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiButton v-if="record.absenceStatus === 'CONFIRMED'" size="xs" variant="outline" @click="openRevokeModal(record)">撤销</UiButton>
-                <UiButton v-else-if="record.absenceStatus === 'PENDING'" size="xs" @click="openConfirmModal(record.studentUserId, studentNameOf(record.studentUserId))">确认</UiButton>
+                <UiButton v-if="asAbsenceRecord(record).absenceStatus === 'CONFIRMED'" size="sm" variant="outline" @click="openRevokeModal(asAbsenceRecord(record))">撤销</UiButton>
+                <UiButton v-else-if="asAbsenceRecord(record).absenceStatus === 'PENDING'" size="sm" @click="openConfirmModal(asAbsenceRecord(record).studentUserId, studentNameOf(asAbsenceRecord(record).studentUserId))">确认</UiButton>
                 <span v-else class="hint-text">-</span>
               </template>
             </template>
@@ -179,8 +179,8 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
-  ABSENCE_STATUS_COLOR,
   ABSENCE_STATUS_LABEL,
+  ABSENCE_STATUS_TONE,
   confirmAbsence,
   listAbsenceRecords,
   reconcileAttendance,
@@ -190,6 +190,7 @@ import { listExamCandidates, pageExams } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 defineOptions({ name: 'TeacherAbsenceConfirm' })
 
@@ -267,14 +268,29 @@ function studentNameOf(studentUserId: string): string {
   return c ? `${c.studentName}（${c.studentNo}）` : studentUserId
 }
 
-function statusLabel(status?: AbsenceStatusCode): string {
+function statusLabel(status: AbsenceStatusCode | undefined): string {
   if (!status) return '-'
   return ABSENCE_STATUS_LABEL[status] ?? status
 }
 
-function statusTone(status?: AbsenceStatusCode): string {
+function statusTone(status: AbsenceStatusCode | undefined): BadgeTone {
   if (!status) return 'gray'
-  return ABSENCE_STATUS_COLOR[status] ?? 'gray'
+  return ABSENCE_STATUS_TONE[status] ?? 'gray'
+}
+
+function reasonLabel(reason: AbsenceReasonCode | undefined): string {
+  if (!reason) return '-'
+  return ABSENCE_REASON_LABEL[reason] ?? '-'
+}
+
+function scorePolicyLabel(policy: AbsenceScorePolicyCode | undefined): string {
+  if (!policy) return '-'
+  return ABSENCE_SCORE_POLICY_LABEL[policy] ?? '-'
+}
+
+/** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为后端真实 VO 类型 AbsenceRecordVO */
+function asAbsenceRecord(record: Record<string, unknown>): AbsenceRecordVO {
+  return record as unknown as AbsenceRecordVO
 }
 
 async function loadExamOptions(): Promise<void> {
@@ -370,13 +386,16 @@ function openConfirmModal(studentUserId: string, displayName: string): void {
 
 async function handleConfirm(): Promise<void> {
   if (!selectedExamId.value || !confirmValid.value) return
+  const reason = confirmForm.absenceReason
+  const policy = confirmForm.scorePolicy
+  if (!reason || !policy) return
   confirming.value = true
   try {
     await confirmAbsence({
       examId: selectedExamId.value,
       studentUserId: confirmForm.studentUserId,
-      absenceReason: confirmForm.absenceReason as AbsenceReasonCode,
-      scorePolicy: confirmForm.scorePolicy as AbsenceScorePolicyCode,
+      absenceReason: reason,
+      scorePolicy: policy,
     })
     message.success('已确认缺考')
     confirmModalOpen.value = false

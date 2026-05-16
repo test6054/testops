@@ -12,9 +12,9 @@
  *   置为停用。
  */
 import type { AiModelProfileSavePayload, AiModelProfileVO } from '@/apis/quality'
-import { aiModelProfileApi } from '@/apis/quality'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { aiModelProfileApi } from '@/apis/quality'
 
 const list = ref<AiModelProfileVO[]>([])
 const loading = ref(false)

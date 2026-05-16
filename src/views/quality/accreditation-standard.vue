@@ -6,7 +6,6 @@
  * 权限：通常由系统管理员或平台运维维护；该页面只做 CRUD。
  */
 import type {
-  AccreditationCategory,
   AccreditationStandardQueryPayload,
   AccreditationStandardSavePayload,
   AccreditationStandardVO,
@@ -50,6 +49,36 @@ const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([valu
   label,
 }))
 
+/**
+ * 启用状态筛选本地中间值：ant-design-vue 的 SelectValue 不接受 boolean，
+ * 这里用字符串枚举选项，通过 syncEnabledFilter 写回真实 DTO query.enabled（boolean | undefined）。
+ */
+type EnabledFilterChoice = 'enabled' | 'disabled' | undefined
+const enabledFilter = ref<EnabledFilterChoice>(undefined)
+const enabledFilterOptions = [
+  { value: 'enabled', label: '启用' },
+  { value: 'disabled', label: '停用' },
+]
+function syncEnabledFilter() {
+  query.enabled
+    = enabledFilter.value === 'enabled'
+      ? true
+      : enabledFilter.value === 'disabled'
+        ? false
+        : undefined
+}
+
+/**
+ * 表格认证类型列的标签渲染。
+ * 真实 VO.accreditationType 是 string，ACCREDITATION_TYPE_LABEL 是 Record<AccreditationType, string>。
+ * 通过类型注解将字典宽化为 Record<string, string> 安全读取，未匹配返回原值，
+ * 不使用 as / 反射 / 泛型推断。
+ */
+function accreditationTypeLabel(value: string): string {
+  const dict: Record<string, string> = ACCREDITATION_TYPE_LABEL
+  return dict[value] || value
+}
+
 async function loadList() {
   loading.value = true
   try {
@@ -74,6 +103,7 @@ function resetQuery() {
   query.pageNum = 1
   query.accreditationType = undefined
   query.enabled = undefined
+  enabledFilter.value = undefined
   query.keyword = ''
   loadList()
 }
@@ -148,14 +178,13 @@ onMounted(() => loadList())
             :options="accreditationOptions"
           />
           <a-select
-            v-model:value="query.enabled"
+            v-model:value="enabledFilter"
             placeholder="状态"
             allow-clear
             style="width: 120px"
-          >
-            <a-select-option :value="true">启用</a-select-option>
-            <a-select-option :value="false">停用</a-select-option>
-          </a-select>
+            :options="enabledFilterOptions"
+            @change="syncEnabledFilter"
+          />
           <a-input v-model:value="query.keyword" placeholder="编码/名称" style="width: 200px" @press-enter="loadList" />
           <a-button type="primary" @click="loadList">查询</a-button>
           <a-button @click="resetQuery">重置</a-button>
@@ -181,7 +210,7 @@ onMounted(() => loadList())
         <a-table-column title="名称" data-index="standardName" />
         <a-table-column title="认证类型" data-index="accreditationType" width="180">
           <template #default="{ text }">
-            {{ ACCREDITATION_TYPE_LABEL[text as AccreditationCategory] || text }}
+            {{ accreditationTypeLabel(text) }}
           </template>
         </a-table-column>
         <a-table-column title="标准年份" data-index="standardYear" width="100" />

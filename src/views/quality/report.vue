@@ -15,6 +15,9 @@ import type {
   ReportType,
   ReportVO,
 } from '@/apis/quality'
+import { LoadingOutlined } from '@ant-design/icons-vue'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   REPORT_EXPORT_STATUS_COLOR,
   REPORT_EXPORT_STATUS_LABEL,
@@ -23,9 +26,6 @@ import {
   REPORT_TYPE_LABEL,
   reportApi,
 } from '@/apis/quality'
-import { LoadingOutlined } from '@ant-design/icons-vue'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const qualityStore = useQualityStore()
@@ -285,12 +285,13 @@ async function handleExport(record: ReportVO) {
       message.success('已触发异步导出，后台生成中')
       // 立即把本行标为 PENDING，UI 先展示「待导出」徽标，避免等 5s 才感知
       const idx = list.value.findIndex((item) => item.id === record.id)
-      if (idx >= 0)
+      if (idx >= 0) {
         list.value[idx] = {
           ...list.value[idx],
           exportStatus: 'PENDING',
           exportErrorMessage: undefined,
         }
+}
       void pollExportStatus(record.id)
     },
   })
@@ -461,9 +462,9 @@ onMounted(loadList)
               </a-button>
               <a-button
                 v-if="
-                  record.status === 'SUBMITTED' ||
-                  record.status === 'CONFIRMED' ||
-                  record.status === 'ARCHIVED'
+                  record.status === 'SUBMITTED'
+                    || record.status === 'CONFIRMED'
+                    || record.status === 'ARCHIVED'
                 "
                 type="link"
                 size="small"

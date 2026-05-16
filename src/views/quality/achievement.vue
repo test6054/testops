@@ -14,6 +14,9 @@ import type {
   AchievementStatus,
   AchievementTargetType,
 } from '@/apis/quality'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -22,9 +25,6 @@ import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   achievementApi,
 } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useQualityStore } from '@/stores/modules/quality'
 import { promptModal } from './_helpers'
 
@@ -124,7 +124,7 @@ function resetQuery() {
  *  - compute-civic-goal-aggregate     课程思政独立汇总
  *  - compute-complex-engineering-aggregate  复杂工程问题专项
  */
-const triggerButtons: Array<{ key: string; label: string; handler: () => Promise<unknown> }> = [
+const triggerButtons: Array<{ key: string, label: string, handler: () => Promise<unknown> }> = [
   {
     key: 'COURSE_GOAL',
     label: '课程目标',
@@ -135,9 +135,9 @@ const triggerButtons: Array<{ key: string; label: string; handler: () => Promise
         )
         return Promise.reject(new Error('missing courseGoalId'))
       }
-      // eslint-disable-next-line no-alert
-      const courseGoalId =
-        (typeof window !== 'undefined'
+       
+      const courseGoalId
+        = (typeof window !== 'undefined'
           ? window.prompt('请输入 courseGoalId（课程目标 ID）')
           : '') || ''
       if (!courseGoalId.trim()) return Promise.reject(new Error('cancelled'))
@@ -164,9 +164,8 @@ const triggerButtons: Array<{ key: string; label: string; handler: () => Promise
     key: 'TRAINING_OBJECTIVE',
     label: '培养目标',
     handler: () => {
-      // eslint-disable-next-line no-alert
-      const trainingObjectiveId =
-        (typeof window !== 'undefined'
+      const trainingObjectiveId
+        = (typeof window !== 'undefined'
           ? window.prompt('请输入 trainingObjectiveId（培养目标 ID）')
           : '') || ''
       if (!trainingObjectiveId.trim()) return Promise.reject(new Error('cancelled'))
@@ -236,10 +235,11 @@ async function handleTrigger(key: string, handler: () => Promise<unknown>) {
   } catch (err) {
     // 计算被用户取消（如未填 courseGoalId）静默忽略
     if (
-      err instanceof Error &&
-      (err.message === 'cancelled' || err.message === 'missing courseGoalId')
-    )
+      err instanceof Error
+      && (err.message === 'cancelled' || err.message === 'missing courseGoalId')
+    ) {
       return
+}
     throw err
   } finally {
     triggerLoading.value = ''
@@ -255,11 +255,13 @@ const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> 
   ARCHIVED: [],
 }
 
-function nextStatuses(current: AchievementAuditStatus) {
+function nextStatuses(current: AchievementAuditStatus | undefined): AchievementAuditStatus[] {
+  if (!current) return []
   return auditTransitMap[current] || []
 }
 
-function statusLabel(status: AchievementAuditStatus) {
+function statusLabel(status: AchievementAuditStatus | undefined): string {
+  if (!status) return '-'
   return ACHIEVEMENT_AUDIT_STATUS_LABEL[status]
 }
 
@@ -453,14 +455,13 @@ onMounted(async () => {
             <span
               :style="{
                 color:
-                  record.thresholdValue != null &&
-                  record.finalValue != null &&
-                  Number(record.finalValue) < Number(record.thresholdValue)
+                  record.thresholdValue != null
+                  && record.finalValue != null
+                  && Number(record.finalValue) < Number(record.thresholdValue)
                     ? '#ff4d4f'
                     : '#52c41a',
               }"
-              >{{ formatValue(record.finalValue) }}</span
-            >
+            >{{ formatValue(record.finalValue) }}</span>
             <span style="color: #999"> / {{ formatValue(record.thresholdValue) }}</span>
           </template>
         </a-table-column>

@@ -43,6 +43,49 @@ const reviewForm = reactive<{ decision: ManualReviewDecision, reviewRemark: stri
   reviewRemark: '',
 })
 
+/**
+ * 表格标签 helper：遵循后端真实 DTO 字段类型，避免模板内 as / 反射 / 泛型推断。
+ * - targetType 必填字面量联合，直接索引。
+ * - achievementStatus / auditStatus 可选字面量联合，需 if 守护 fallback。
+ * - auditStatusFrom / auditStatusTo 后端真实类型是 string，通过类型注解将字典宽化为
+ *   Record<string, string> 安全读取，未匹配返回原值 / 默认 tag color。
+ */
+function targetTypeLabel(value: AchievementTargetType): string {
+  return ACHIEVEMENT_TARGET_TYPE_LABEL[value] ?? value
+}
+
+function achievementStatusLabel(status: AchievementStatus | undefined): string {
+  if (!status) return '-'
+  return ACHIEVEMENT_STATUS_LABEL[status] ?? status
+}
+
+function achievementStatusColor(status: AchievementStatus | undefined): string {
+  if (!status) return 'default'
+  return ACHIEVEMENT_STATUS_COLOR[status] ?? 'default'
+}
+
+function auditStatusLabel(status: AchievementAuditStatus | undefined): string {
+  if (!status) return '-'
+  return ACHIEVEMENT_AUDIT_STATUS_LABEL[status] ?? status
+}
+
+function auditStatusColor(status: AchievementAuditStatus | undefined): string {
+  if (!status) return 'default'
+  return ACHIEVEMENT_AUDIT_STATUS_COLOR[status] ?? 'default'
+}
+
+function auditStatusLabelLoose(value: string | undefined): string {
+  if (!value) return '-'
+  const dict: Record<string, string> = ACHIEVEMENT_AUDIT_STATUS_LABEL
+  return dict[value] ?? value
+}
+
+function auditStatusColorLoose(value: string | undefined): string {
+  if (!value) return 'default'
+  const dict: Record<string, string> = ACHIEVEMENT_AUDIT_STATUS_COLOR
+  return dict[value] ?? 'default'
+}
+
 const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
   DRAFT: ['SUBMITTED'],
   CALCULATED: ['SUBMITTED'],
@@ -53,8 +96,9 @@ const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> 
 }
 
 const nextStatuses = computed<AchievementAuditStatus[]>(() => {
-  if (!result.value) return []
-  return auditTransitMap[result.value.auditStatus] || []
+  const status = result.value?.auditStatus
+  if (!status) return []
+  return auditTransitMap[status] || []
 })
 
 async function loadAll() {
@@ -79,8 +123,10 @@ async function loadAll() {
 
 async function handleTransit(to: AchievementAuditStatus) {
   if (!result.value) return
+  const fromStatus = result.value.auditStatus
+  if (!fromStatus) return
   const remark = await promptModal({
-    title: `${ACHIEVEMENT_AUDIT_STATUS_LABEL[result.value.auditStatus]} → ${ACHIEVEMENT_AUDIT_STATUS_LABEL[to]}`,
+    title: `${ACHIEVEMENT_AUDIT_STATUS_LABEL[fromStatus]} → ${ACHIEVEMENT_AUDIT_STATUS_LABEL[to]}`,
     placeholder: '审核备注（驳回时必填）',
     required: to === 'RETURNED',
     okType: to === 'RETURNED' ? 'danger' : 'primary',
@@ -134,7 +180,7 @@ onMounted(loadAll)
         </template>
         <a-descriptions v-if="result" :column="3" size="small" bordered>
           <a-descriptions-item label="目标类型">
-            {{ ACHIEVEMENT_TARGET_TYPE_LABEL[result.targetType as AchievementTargetType] }}
+            {{ targetTypeLabel(result.targetType) }}
           </a-descriptions-item>
           <a-descriptions-item label="目标 ID">
             {{ result.targetId }}
@@ -170,14 +216,14 @@ onMounted(loadAll)
             {{ result.sampleValid ?? '-' }} / {{ result.sampleTotal ?? '-' }}
           </a-descriptions-item>
           <a-descriptions-item label="达成结论">
-            <a-tag v-if="result.achievementStatus" :color="ACHIEVEMENT_STATUS_COLOR[result.achievementStatus as AchievementStatus]">
-              {{ ACHIEVEMENT_STATUS_LABEL[result.achievementStatus as AchievementStatus] }}
+            <a-tag v-if="result.achievementStatus" :color="achievementStatusColor(result.achievementStatus)">
+              {{ achievementStatusLabel(result.achievementStatus) }}
             </a-tag>
             <span v-else>-</span>
           </a-descriptions-item>
           <a-descriptions-item label="审核状态">
-            <a-tag :color="ACHIEVEMENT_AUDIT_STATUS_COLOR[result.auditStatus as AchievementAuditStatus]">
-              {{ ACHIEVEMENT_AUDIT_STATUS_LABEL[result.auditStatus as AchievementAuditStatus] }}
+            <a-tag :color="auditStatusColor(result.auditStatus)">
+              {{ auditStatusLabel(result.auditStatus) }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="计算时间">
@@ -231,16 +277,16 @@ onMounted(loadAll)
             <a-timeline-item
               v-for="audit in audits"
               :key="audit.id"
-              :color="audit.auditStatusTo && ACHIEVEMENT_AUDIT_STATUS_COLOR[audit.auditStatusTo as AchievementAuditStatus] === 'red' ? 'red' : 'blue'"
+              :color="auditStatusColorLoose(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
             >
               <p>
                 <a-tag>{{ audit.auditEvent }}</a-tag>
                 <strong v-if="audit.auditStatusFrom">
-                  {{ ACHIEVEMENT_AUDIT_STATUS_LABEL[audit.auditStatusFrom as AchievementAuditStatus] }}
+                  {{ auditStatusLabelLoose(audit.auditStatusFrom) }}
                 </strong>
                 <span v-if="audit.auditStatusFrom && audit.auditStatusTo"> → </span>
                 <strong v-if="audit.auditStatusTo">
-                  {{ ACHIEVEMENT_AUDIT_STATUS_LABEL[audit.auditStatusTo as AchievementAuditStatus] }}
+                  {{ auditStatusLabelLoose(audit.auditStatusTo) }}
                 </strong>
               </p>
               <p style="color: var(--ant-color-text-secondary); font-size: 13px">

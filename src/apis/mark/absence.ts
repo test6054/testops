@@ -31,6 +31,13 @@ export const ABSENCE_STATUS_COLOR: Record<AbsenceStatusCode, string> = {
   REVOKED: 'default',
 }
 
+/** 缺考状态 BadgeTone 映射（用于 UiTag/UiBadge 等 ui-guide 组件） */
+export const ABSENCE_STATUS_TONE: Record<AbsenceStatusCode, 'orange' | 'red' | 'gray'> = {
+  PENDING: 'orange',
+  CONFIRMED: 'red',
+  REVOKED: 'gray',
+}
+
 /** 缺考原因编码 */
 export type AbsenceReasonCode = 'ABSENT' | 'LEAVE' | 'WITHDRAW' | 'PAPER_LOST' | 'OTHER'
 
