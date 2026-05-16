@@ -15,17 +15,17 @@ import type {
   ReportType,
   ReportVO,
 } from '@/apis/quality'
-import { LoadingOutlined } from '@ant-design/icons-vue'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   REPORT_EXPORT_STATUS_COLOR,
   REPORT_EXPORT_STATUS_LABEL,
-  REPORT_TYPE_LABEL,
   REPORT_STATUS_COLOR,
   REPORT_STATUS_LABEL,
+  REPORT_TYPE_LABEL,
   reportApi,
 } from '@/apis/quality'
+import { LoadingOutlined } from '@ant-design/icons-vue'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const qualityStore = useQualityStore()
@@ -64,8 +64,14 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions = Object.entries(REPORT_TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const statusOptions = Object.entries(REPORT_STATUS_LABEL).map(([value, label]) => ({ value, label }))
+const reportTypeOptions = Object.entries(REPORT_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const statusOptions = Object.entries(REPORT_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const transitMap: Record<ReportStatus, ReportStatus[]> = {
   DRAFT: ['SUBMITTED'],
@@ -90,8 +96,7 @@ async function loadList() {
     })
     list.value = page.list
     total.value = page.total
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -104,7 +109,14 @@ function handlePageChange(page: number, pageSize: number) {
 
 function resetQuery() {
   query.pageNum = 1
-  Object.assign(query, { reportType: undefined, qualityCourseId: '', schoolYear: '', semester: '', status: undefined, keyword: '' })
+  Object.assign(query, {
+    reportType: undefined,
+    qualityCourseId: '',
+    schoolYear: '',
+    semester: '',
+    status: undefined,
+    keyword: '',
+  })
   loadList()
 }
 
@@ -146,8 +158,7 @@ async function openEdit(record: ReportVO) {
       excelFileId: detail.excelFileId,
     })
     editorVisible.value = true
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -177,15 +188,13 @@ async function submitEditor() {
     if (editorMode.value === 'create') {
       await reportApi.create(payload)
       message.success('已创建报告草稿')
-    }
-    else {
+    } else {
       await reportApi.update(payload)
       message.success('已保存修改')
     }
     editorVisible.value = false
     await loadList()
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -231,11 +240,10 @@ async function pollExportStatus(id: string) {
   pollingExportIds.value.add(id)
   try {
     for (let attempt = 0; attempt < EXPORT_POLL_MAX_ATTEMPTS; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, EXPORT_POLL_INTERVAL_MS))
+      await new Promise((resolve) => setTimeout(resolve, EXPORT_POLL_INTERVAL_MS))
       const detail = await reportApi.detail(id)
-      const idx = list.value.findIndex(item => item.id === id)
-      if (idx >= 0)
-        list.value[idx] = detail
+      const idx = list.value.findIndex((item) => item.id === id)
+      if (idx >= 0) list.value[idx] = detail
       const exportStatus = detail.exportStatus
       if (exportStatus === 'COMPLETED') {
         message.success(`报告 #${id} 三格式导出完成`)
@@ -244,15 +252,17 @@ async function pollExportStatus(id: string) {
       if (exportStatus === 'FAILED') {
         Modal.error({
           title: `报告 #${id} 导出失败`,
-          content: detail.exportErrorMessage || '后端未返回失败原因，请运维基于 Skywalking 链路排查。',
+          content:
+            detail.exportErrorMessage || '后端未返回失败原因，请运维基于 Skywalking 链路排查。',
           width: 640,
         })
         return
       }
     }
-    message.warning(`报告 #${id} 导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请稍后手工刷新列表查看最新状态。`)
-  }
-  finally {
+    message.warning(
+      `报告 #${id} 导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请稍后手工刷新列表查看最新状态。`,
+    )
+  } finally {
     pollingExportIds.value.delete(id)
   }
 }
@@ -260,21 +270,27 @@ async function pollExportStatus(id: string) {
 async function handleExport(record: ReportVO) {
   const currentExport = record.exportStatus ?? 'IDLE'
   if (currentExport === 'PENDING' || currentExport === 'PROCESSING') {
-    message.info(`报告 #${record.id} 当前处于「${REPORT_EXPORT_STATUS_LABEL[currentExport]}」，请等待完成`)
-    if (!pollingExportIds.value.has(record.id))
-      void pollExportStatus(record.id)
+    message.info(
+      `报告 #${record.id} 当前处于「${REPORT_EXPORT_STATUS_LABEL[currentExport]}」，请等待完成`,
+    )
+    if (!pollingExportIds.value.has(record.id)) void pollExportStatus(record.id)
     return
   }
   Modal.confirm({
     title: `导出 ${record.title}？`,
-    content: '后端会异步生成 Word / PDF / Excel 三格式并上传 edu-storage；前端每 5 秒轮询一次状态，附件列会在完成后自动更新。',
+    content:
+      '后端会异步生成 Word / PDF / Excel 三格式并上传 edu-storage；前端每 5 秒轮询一次状态，附件列会在完成后自动更新。',
     onOk: async () => {
       await reportApi.export(record.id)
       message.success('已触发异步导出，后台生成中')
       // 立即把本行标为 PENDING，UI 先展示「待导出」徽标，避免等 5s 才感知
-      const idx = list.value.findIndex(item => item.id === record.id)
+      const idx = list.value.findIndex((item) => item.id === record.id)
       if (idx >= 0)
-        list.value[idx] = { ...list.value[idx], exportStatus: 'PENDING', exportErrorMessage: undefined }
+        list.value[idx] = {
+          ...list.value[idx],
+          exportStatus: 'PENDING',
+          exportErrorMessage: undefined,
+        }
       void pollExportStatus(record.id)
     },
   })
@@ -305,8 +321,7 @@ async function openDetail(record: ReportVO) {
   detailLoading.value = true
   try {
     detailRecord.value = await reportApi.detail(record.id)
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -319,25 +334,43 @@ onMounted(loadList)
     <a-card title="质量评价报告" :bordered="false">
       <template #extra>
         <a-space>
-          <a-select v-model:value="query.reportType" placeholder="类型" style="width: 120px" allow-clear>
-            <a-select-option v-for="item in reportTypeOptions" :key="item.value" :value="item.value">
+          <a-select
+            v-model:value="query.reportType"
+            placeholder="类型"
+            style="width: 120px"
+            allow-clear
+          >
+            <a-select-option
+              v-for="item in reportTypeOptions"
+              :key="item.value"
+              :value="item.value"
+            >
               {{ item.label }}
             </a-select-option>
           </a-select>
-          <a-input v-model:value="query.qualityCourseId" placeholder="课程 ID" style="width: 120px" />
+          <a-input
+            v-model:value="query.qualityCourseId"
+            placeholder="课程 ID"
+            style="width: 120px"
+          />
           <a-input v-model:value="query.schoolYear" placeholder="学年" style="width: 110px" />
           <a-input v-model:value="query.semester" placeholder="学期" style="width: 70px" />
-          <a-select v-model:value="query.status" placeholder="状态" style="width: 110px" allow-clear :options="statusOptions" />
-          <a-input v-model:value="query.keyword" placeholder="关键字" style="width: 160px" @press-enter="loadList" />
-          <a-button type="primary" @click="loadList">
-            查询
-          </a-button>
-          <a-button @click="resetQuery">
-            重置
-          </a-button>
-          <a-button type="primary" @click="openCreate">
-            新建报告
-          </a-button>
+          <a-select
+            v-model:value="query.status"
+            placeholder="状态"
+            style="width: 110px"
+            allow-clear
+            :options="statusOptions"
+          />
+          <a-input
+            v-model:value="query.keyword"
+            placeholder="关键字"
+            style="width: 160px"
+            @press-enter="loadList"
+          />
+          <a-button type="primary" @click="loadList"> 查询 </a-button>
+          <a-button @click="resetQuery"> 重置 </a-button>
+          <a-button type="primary" @click="openCreate"> 新建报告 </a-button>
         </a-space>
       </template>
 
@@ -383,15 +416,9 @@ onMounted(loadList)
         <a-table-column title="附件" width="260">
           <template #default="{ record }">
             <a-space size="small" wrap>
-              <a-tag v-if="record.wordFileId" color="blue">
-                Word
-              </a-tag>
-              <a-tag v-if="record.pdfFileId" color="orange">
-                PDF
-              </a-tag>
-              <a-tag v-if="record.excelFileId" color="green">
-                Excel
-              </a-tag>
+              <a-tag v-if="record.wordFileId" color="blue"> Word </a-tag>
+              <a-tag v-if="record.pdfFileId" color="orange"> PDF </a-tag>
+              <a-tag v-if="record.excelFileId" color="green"> Excel </a-tag>
               <a-tag
                 v-if="record.exportStatus && record.exportStatus !== 'COMPLETED'"
                 :color="REPORT_EXPORT_STATUS_COLOR[record.exportStatus as ReportExportStatus]"
@@ -401,10 +428,11 @@ onMounted(loadList)
                 </template>
                 {{ REPORT_EXPORT_STATUS_LABEL[record.exportStatus as ReportExportStatus] }}
               </a-tag>
-              <a-tooltip v-if="record.exportStatus === 'FAILED' && record.exportErrorMessage" :title="record.exportErrorMessage">
-                <a-tag color="red">
-                  错误详情
-                </a-tag>
+              <a-tooltip
+                v-if="record.exportStatus === 'FAILED' && record.exportErrorMessage"
+                :title="record.exportErrorMessage"
+              >
+                <a-tag color="red"> 错误详情 </a-tag>
               </a-tooltip>
             </a-space>
           </template>
@@ -412,10 +440,13 @@ onMounted(loadList)
         <a-table-column title="操作" width="320" fixed="right">
           <template #default="{ record }">
             <a-space wrap>
-              <a-button type="link" size="small" @click="openDetail(record)">
-                详情
-              </a-button>
-              <a-button type="link" size="small" :disabled="record.status === 'ARCHIVED'" @click="openEdit(record)">
+              <a-button type="link" size="small" @click="openDetail(record)"> 详情 </a-button>
+              <a-button
+                type="link"
+                size="small"
+                :disabled="record.status === 'ARCHIVED'"
+                @click="openEdit(record)"
+              >
                 编辑
               </a-button>
               <a-button
@@ -429,14 +460,24 @@ onMounted(loadList)
                 → {{ REPORT_STATUS_LABEL[to] }}
               </a-button>
               <a-button
-                v-if="record.status === 'SUBMITTED' || record.status === 'CONFIRMED' || record.status === 'ARCHIVED'"
+                v-if="
+                  record.status === 'SUBMITTED' ||
+                  record.status === 'CONFIRMED' ||
+                  record.status === 'ARCHIVED'
+                "
                 type="link"
                 size="small"
                 @click="handleExport(record)"
               >
                 导出三格式
               </a-button>
-              <a-button v-if="record.status === 'DRAFT'" type="link" size="small" danger @click="handleDelete(record)">
+              <a-button
+                v-if="record.status === 'DRAFT'"
+                type="link"
+                size="small"
+                danger
+                @click="handleDelete(record)"
+              >
                 删除
               </a-button>
             </a-space>
@@ -456,13 +497,20 @@ onMounted(loadList)
         <a-row :gutter="12">
           <a-col :span="16">
             <a-form-item label="标题" required>
-              <a-input v-model:value="editor.title" placeholder="例：2024-2025 学年第 1 学期《程序设计基础》课程评价报告" />
+              <a-input
+                v-model:value="editor.title"
+                placeholder="例：2024-2025 学年第 1 学期《程序设计基础》课程评价报告"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="类型" required>
               <a-select v-model:value="editor.reportType">
-                <a-select-option v-for="item in reportTypeOptions" :key="item.value" :value="item.value">
+                <a-select-option
+                  v-for="item in reportTypeOptions"
+                  :key="item.value"
+                  :value="item.value"
+                >
                   {{ item.label }}
                 </a-select-option>
               </a-select>
@@ -504,17 +552,16 @@ onMounted(loadList)
           </a-col>
         </a-row>
         <a-form-item label="正文 (Markdown)">
-          <a-textarea v-model:value="editor.bodyMarkdown" :rows="12" placeholder="支持 Markdown；AI 任务生成后会自动回填" />
+          <a-textarea
+            v-model:value="editor.bodyMarkdown"
+            :rows="12"
+            placeholder="支持 Markdown；AI 任务生成后会自动回填"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <a-drawer
-      v-model:open="detailVisible"
-      title="报告详情"
-      width="720"
-      :loading="detailLoading"
-    >
+    <a-drawer v-model:open="detailVisible" title="报告详情" width="720" :loading="detailLoading">
       <a-descriptions v-if="detailRecord" :column="2" size="small" bordered>
         <a-descriptions-item label="报告 ID">
           {{ detailRecord.id }}
@@ -563,7 +610,9 @@ onMounted(loadList)
           {{ detailRecord.exportFinishedAt }}
         </a-descriptions-item>
         <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出错误">
-          <pre style="white-space: pre-wrap; word-break: break-word; color: #ff4d4f; margin: 0">{{ detailRecord.exportErrorMessage }}</pre>
+          <pre style="white-space: pre-wrap; word-break: break-word; color: #ff4d4f; margin: 0">{{
+            detailRecord.exportErrorMessage
+          }}</pre>
         </a-descriptions-item>
         <a-descriptions-item v-if="detailRecord.confirmedAt" label="确认时间">
           {{ detailRecord.confirmedAt }}
@@ -576,14 +625,18 @@ onMounted(loadList)
         </a-descriptions-item>
       </a-descriptions>
       <a-divider>正文预览</a-divider>
-      <pre v-if="detailRecord?.bodyMarkdown" class="md-preview">{{ detailRecord.bodyMarkdown }}</pre>
+      <pre v-if="detailRecord?.bodyMarkdown" class="md-preview">{{
+        detailRecord.bodyMarkdown
+      }}</pre>
       <a-empty v-else description="尚无正文" />
     </a-drawer>
   </div>
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.page {
+  padding: 16px;
+}
 .md-preview {
   white-space: pre-wrap;
   word-break: break-word;

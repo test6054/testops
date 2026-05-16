@@ -4,9 +4,15 @@
       <PageHeader title="导出任务">
         <template #tags>
           <UiTag v-if="counts.total > 0" tone="blue" size="md">总 {{ counts.total }}</UiTag>
-          <UiTag v-if="counts.pending > 0" tone="orange" size="md">待执行 {{ counts.pending }}</UiTag>
-          <UiTag v-if="counts.generating > 0" tone="cyan" size="md">生成中 {{ counts.generating }}</UiTag>
-          <UiTag v-if="counts.completed > 0" tone="green" size="md">已完成 {{ counts.completed }}</UiTag>
+          <UiTag v-if="counts.pending > 0" tone="orange" size="md"
+            >待执行 {{ counts.pending }}</UiTag
+          >
+          <UiTag v-if="counts.generating > 0" tone="cyan" size="md"
+            >生成中 {{ counts.generating }}</UiTag
+          >
+          <UiTag v-if="counts.completed > 0" tone="green" size="md"
+            >已完成 {{ counts.completed }}</UiTag
+          >
           <UiTag v-if="counts.failed > 0" tone="red" size="md">失败 {{ counts.failed }}</UiTag>
         </template>
         <template #actions>
@@ -25,7 +31,13 @@
             <template #icon><PlusOutlined /></template>
             创建导出任务
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!selectedExamId" :loading="loading" @click="loadTasks">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="loadTasks"
+          >
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
@@ -48,7 +60,11 @@
               style="width: 160px"
               allow-clear
             >
-              <a-select-option v-for="(label, code) in EXPORT_STATUS_LABEL" :key="code" :value="code">
+              <a-select-option
+                v-for="(label, code) in EXPORT_STATUS_LABEL"
+                :key="code"
+                :value="code"
+              >
                 {{ label }}
               </a-select-option>
             </a-select>
@@ -82,7 +98,10 @@
             </template>
             <template v-else-if="column.key === 'taskStatus'">
               <UiTag :tone="statusTone(record.taskStatus)" size="sm">
-                {{ EXPORT_STATUS_LABEL[record.taskStatus as ExportTaskStatusCode] ?? record.taskStatus }}
+                {{
+                  EXPORT_STATUS_LABEL[record.taskStatus as ExportTaskStatusCode] ??
+                  record.taskStatus
+                }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'fileSize'">
@@ -90,7 +109,11 @@
             </template>
             <template v-else-if="column.key === 'errorMessage'">
               <a-tooltip v-if="record.errorMessage" :title="record.errorMessage">
-                <span class="error-text">{{ record.errorMessage.length > 24 ? record.errorMessage.slice(0, 24) + '…' : record.errorMessage }}</span>
+                <span class="error-text">{{
+                  record.errorMessage.length > 24
+                    ? `${record.errorMessage.slice(0, 24)}…`
+                    : record.errorMessage
+                }}</span>
               </a-tooltip>
               <span v-else class="hint-text">-</span>
             </template>
@@ -105,7 +128,9 @@
                   <template #icon><DownloadOutlined /></template>
                   下载
                 </UiButton>
-                <UiButton size="xs" variant="outline" @click="openDetailDrawer(record)">详情</UiButton>
+                <UiButton size="xs" variant="outline" @click="openDetailDrawer(record)"
+                  >详情</UiButton
+                >
               </a-space>
             </template>
           </template>
@@ -146,7 +171,8 @@
             :placeholder="scopePayloadPlaceholder"
           />
           <div class="hint-text" style="margin-top: 4px">
-            示例：CLASS 范围填 {&quot;classIds&quot;:[&quot;101&quot;]}；STUDENT 范围填 {&quot;studentUserIds&quot;:[&quot;1001&quot;]}；EXAM 范围可留空。
+            示例：CLASS 范围填 {&quot;classIds&quot;:[&quot;101&quot;]}；STUDENT 范围填
+            {&quot;studentUserIds&quot;:[&quot;1001&quot;]}；EXAM 范围可留空。
           </div>
         </a-form-item>
       </a-form>
@@ -166,24 +192,35 @@
           {{ EXPORT_TYPE_LABEL[detailTask.exportType as ExportTypeCode] ?? detailTask.exportType }}
         </a-descriptions-item>
         <a-descriptions-item label="范围">
-          {{ EXPORT_SCOPE_LABEL[detailTask.exportScope as ExportScopeCode] ?? detailTask.exportScope }}
+          {{
+            EXPORT_SCOPE_LABEL[detailTask.exportScope as ExportScopeCode] ?? detailTask.exportScope
+          }}
         </a-descriptions-item>
         <a-descriptions-item label="范围条件">
           <pre class="scope-pre">{{ detailTask.scopePayload || '（空）' }}</pre>
         </a-descriptions-item>
         <a-descriptions-item label="状态">
           <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
-            {{ EXPORT_STATUS_LABEL[detailTask.taskStatus as ExportTaskStatusCode] ?? detailTask.taskStatus }}
+            {{
+              EXPORT_STATUS_LABEL[detailTask.taskStatus as ExportTaskStatusCode] ??
+              detailTask.taskStatus
+            }}
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="文件名">{{ detailTask.fileName ?? '-' }}</a-descriptions-item>
         <a-descriptions-item label="文件大小">
           {{ detailTask.fileSize ? formatBytes(detailTask.fileSize) : '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="开始时间">{{ detailTask.startedTime ?? '-' }}</a-descriptions-item>
-        <a-descriptions-item label="完成时间">{{ detailTask.completedTime ?? '-' }}</a-descriptions-item>
+        <a-descriptions-item label="开始时间">{{
+          detailTask.startedTime ?? '-'
+        }}</a-descriptions-item>
+        <a-descriptions-item label="完成时间">{{
+          detailTask.completedTime ?? '-'
+        }}</a-descriptions-item>
         <a-descriptions-item label="错误信息">
-          <span v-if="detailTask.errorMessage" class="error-text">{{ detailTask.errorMessage }}</span>
+          <span v-if="detailTask.errorMessage" class="error-text">{{
+            detailTask.errorMessage
+          }}</span>
           <span v-else class="hint-text">-</span>
         </a-descriptions-item>
       </a-descriptions>
@@ -193,13 +230,22 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   ExportScopeCode,
   ExportTaskStatusCode,
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import {
+  createExportTask,
+  EXPORT_SCOPE_LABEL,
+  EXPORT_STATUS_COLOR,
+  EXPORT_STATUS_LABEL,
+  EXPORT_TYPE_LABEL,
+  listExportTasks,
+} from '@/apis/mark/exam-export'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -207,15 +253,6 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  EXPORT_SCOPE_LABEL,
-  EXPORT_STATUS_COLOR,
-  EXPORT_STATUS_LABEL,
-  EXPORT_TYPE_LABEL,
-  createExportTask,
-  listExportTasks,
-} from '@/apis/mark/exam-export'
-import { pageExams } from '@/apis/mark/exam'
 import { downloadFile } from '@/apis/edu/file-management'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
@@ -229,7 +266,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const tasks = ref<ExportTaskVO[]>([])
@@ -242,8 +279,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value)
-      && (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
+      (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 
@@ -335,8 +372,8 @@ const createForm = reactive<{
   scopePayload: '',
 })
 
-const createValid = computed(
-  () => Boolean(selectedExamId.value && createForm.exportType && createForm.exportScope),
+const createValid = computed(() =>
+  Boolean(selectedExamId.value && createForm.exportType && createForm.exportScope),
 )
 
 const scopePayloadPlaceholder = computed(() => {

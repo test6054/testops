@@ -14,9 +14,6 @@ import type {
   AchievementStatus,
   AchievementTargetType,
 } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -25,6 +22,9 @@ import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   achievementApi,
 } from '@/apis/quality'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQualityStore } from '@/stores/modules/quality'
 import { promptModal } from './_helpers'
 
@@ -57,12 +57,23 @@ const triggerForm = reactive({
   programId: qualityStore.currentProgramId,
 })
 
-const targetTypeOptions = Object.entries(ACHIEVEMENT_TARGET_TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const auditStatusOptions = Object.entries(ACHIEVEMENT_AUDIT_STATUS_LABEL).map(([value, label]) => ({ value, label }))
-const achievementStatusOptions = Object.entries(ACHIEVEMENT_STATUS_LABEL).map(([value, label]) => ({ value, label }))
+const targetTypeOptions = Object.entries(ACHIEVEMENT_TARGET_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const auditStatusOptions = Object.entries(ACHIEVEMENT_AUDIT_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const achievementStatusOptions = Object.entries(ACHIEVEMENT_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const trainingPlanRequired = computed(() => !qualityStore.currentTrainingPlanId)
-const programRequired = computed(() => !qualityStore.currentProgramId && !triggerForm.programId.trim())
+const programRequired = computed(
+  () => !qualityStore.currentProgramId && !triggerForm.programId.trim(),
+)
 
 async function loadList() {
   if (!qualityStore.currentTrainingPlanId) return
@@ -81,8 +92,7 @@ async function loadList() {
     })
     list.value = page.list
     total.value = page.total
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -114,17 +124,22 @@ function resetQuery() {
  *  - compute-civic-goal-aggregate     课程思政独立汇总
  *  - compute-complex-engineering-aggregate  复杂工程问题专项
  */
-const triggerButtons: Array<{ key: string, label: string, handler: () => Promise<unknown> }> = [
+const triggerButtons: Array<{ key: string; label: string; handler: () => Promise<unknown> }> = [
   {
     key: 'COURSE_GOAL',
     label: '课程目标',
     handler: () => {
       if (!triggerForm.qualityCourseId?.trim()) {
-        message.warning('课程目标计算必须填写 qualityCourseId 与 courseGoalId（在备注栏临时输入：格式 courseGoalId=...）')
+        message.warning(
+          '课程目标计算必须填写 qualityCourseId 与 courseGoalId（在备注栏临时输入：格式 courseGoalId=...）',
+        )
         return Promise.reject(new Error('missing courseGoalId'))
       }
       // eslint-disable-next-line no-alert
-      const courseGoalId = (typeof window !== 'undefined' ? window.prompt('请输入 courseGoalId（课程目标 ID）') : '') || ''
+      const courseGoalId =
+        (typeof window !== 'undefined'
+          ? window.prompt('请输入 courseGoalId（课程目标 ID）')
+          : '') || ''
       if (!courseGoalId.trim()) return Promise.reject(new Error('cancelled'))
       return achievementApi.computeCourseGoal({
         qualityCourseId: triggerForm.qualityCourseId!,
@@ -137,18 +152,23 @@ const triggerButtons: Array<{ key: string, label: string, handler: () => Promise
   {
     key: 'REQUIREMENT',
     label: '毕业要求 / 观测点',
-    handler: () => achievementApi.computeRequirement({
-      programId: triggerForm.programId || qualityStore.currentProgramId,
-      trainingPlanId: qualityStore.currentTrainingPlanId,
-      schoolYear: triggerForm.schoolYear,
-      semester: triggerForm.semester,
-    }),
+    handler: () =>
+      achievementApi.computeRequirement({
+        programId: triggerForm.programId || qualityStore.currentProgramId,
+        trainingPlanId: qualityStore.currentTrainingPlanId,
+        schoolYear: triggerForm.schoolYear,
+        semester: triggerForm.semester,
+      }),
   },
   {
     key: 'TRAINING_OBJECTIVE',
     label: '培养目标',
     handler: () => {
-      const trainingObjectiveId = (typeof window !== 'undefined' ? window.prompt('请输入 trainingObjectiveId（培养目标 ID）') : '') || ''
+      // eslint-disable-next-line no-alert
+      const trainingObjectiveId =
+        (typeof window !== 'undefined'
+          ? window.prompt('请输入 trainingObjectiveId（培养目标 ID）')
+          : '') || ''
       if (!trainingObjectiveId.trim()) return Promise.reject(new Error('cancelled'))
       return achievementApi.computeTrainingObjective({
         programId: triggerForm.programId || qualityStore.currentProgramId,
@@ -162,32 +182,35 @@ const triggerButtons: Array<{ key: string, label: string, handler: () => Promise
   {
     key: 'PROGRAM',
     label: '专业汇总',
-    handler: () => achievementApi.computeProgram({
-      trainingPlanId: qualityStore.currentTrainingPlanId,
-      programId: triggerForm.programId || qualityStore.currentProgramId,
-      schoolYear: triggerForm.schoolYear,
-      semester: triggerForm.semester,
-    }),
+    handler: () =>
+      achievementApi.computeProgram({
+        trainingPlanId: qualityStore.currentTrainingPlanId,
+        programId: triggerForm.programId || qualityStore.currentProgramId,
+        schoolYear: triggerForm.schoolYear,
+        semester: triggerForm.semester,
+      }),
   },
   {
     key: 'CIVIC_GOAL_AGGREGATE',
     label: '课程思政',
-    handler: () => achievementApi.computeCivicGoalAggregate({
-      programId: triggerForm.programId || qualityStore.currentProgramId,
-      trainingPlanId: qualityStore.currentTrainingPlanId,
-      schoolYear: triggerForm.schoolYear,
-      semester: triggerForm.semester,
-    }),
+    handler: () =>
+      achievementApi.computeCivicGoalAggregate({
+        programId: triggerForm.programId || qualityStore.currentProgramId,
+        trainingPlanId: qualityStore.currentTrainingPlanId,
+        schoolYear: triggerForm.schoolYear,
+        semester: triggerForm.semester,
+      }),
   },
   {
     key: 'COMPLEX_ENGINEERING',
     label: '复杂工程',
-    handler: () => achievementApi.computeComplexEngineeringAggregate({
-      programId: triggerForm.programId || qualityStore.currentProgramId,
-      trainingPlanId: qualityStore.currentTrainingPlanId,
-      schoolYear: triggerForm.schoolYear,
-      semester: triggerForm.semester,
-    }),
+    handler: () =>
+      achievementApi.computeComplexEngineeringAggregate({
+        programId: triggerForm.programId || qualityStore.currentProgramId,
+        trainingPlanId: qualityStore.currentTrainingPlanId,
+        schoolYear: triggerForm.schoolYear,
+        semester: triggerForm.semester,
+      }),
   },
 ]
 
@@ -210,13 +233,15 @@ async function handleTrigger(key: string, handler: () => Promise<unknown>) {
         : 0
     message.success(count > 0 ? `计算完成，生成 / 更新 ${count} 条结果` : '计算完成')
     await loadList()
-  }
-  catch (err) {
+  } catch (err) {
     // 计算被用户取消（如未填 courseGoalId）静默忽略
-    if (err instanceof Error && (err.message === 'cancelled' || err.message === 'missing courseGoalId')) return
+    if (
+      err instanceof Error &&
+      (err.message === 'cancelled' || err.message === 'missing courseGoalId')
+    )
+      return
     throw err
-  }
-  finally {
+  } finally {
     triggerLoading.value = ''
   }
 }
@@ -267,12 +292,15 @@ function goDetail(record: AchievementResultVO) {
   })
 }
 
-watch(() => qualityStore.currentTrainingPlanId, (value) => {
-  triggerForm.trainingPlanId = value
-  query.trainingPlanId = value
-  triggerForm.programId = qualityStore.currentProgramId
-  loadList()
-})
+watch(
+  () => qualityStore.currentTrainingPlanId,
+  (value) => {
+    triggerForm.trainingPlanId = value
+    query.trainingPlanId = value
+    triggerForm.programId = qualityStore.currentProgramId
+    loadList()
+  },
+)
 
 onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -301,22 +329,35 @@ onMounted(async () => {
     <a-card title="触发达成度计算" :bordered="false" class="trigger-card">
       <a-form layout="inline" :model="triggerForm">
         <a-form-item label="课程">
-          <a-input v-model:value="triggerForm.qualityCourseId" placeholder="quality_course_id（可选）" style="width: 200px" />
+          <a-input
+            v-model:value="triggerForm.qualityCourseId"
+            placeholder="quality_course_id（可选）"
+            style="width: 200px"
+          />
         </a-form-item>
         <a-form-item label="专业">
-          <a-input v-model:value="triggerForm.programId" placeholder="program_id（可选）" style="width: 140px" />
+          <a-input
+            v-model:value="triggerForm.programId"
+            placeholder="program_id（可选）"
+            style="width: 140px"
+          />
         </a-form-item>
         <a-form-item label="学年">
-          <a-input v-model:value="triggerForm.schoolYear" placeholder="例：2024-2025" style="width: 140px" />
+          <a-input
+            v-model:value="triggerForm.schoolYear"
+            placeholder="例：2024-2025"
+            style="width: 140px"
+          />
         </a-form-item>
         <a-form-item label="学期">
-          <a-select v-model:value="triggerForm.semester" placeholder="学期" style="width: 100px" allow-clear>
-            <a-select-option value="1">
-              1
-            </a-select-option>
-            <a-select-option value="2">
-              2
-            </a-select-option>
+          <a-select
+            v-model:value="triggerForm.semester"
+            placeholder="学期"
+            style="width: 100px"
+            allow-clear
+          >
+            <a-select-option value="1"> 1 </a-select-option>
+            <a-select-option value="2"> 2 </a-select-option>
           </a-select>
         </a-form-item>
       </a-form>
@@ -360,16 +401,16 @@ onMounted(async () => {
             allow-clear
             :options="achievementStatusOptions"
           />
-          <a-input v-model:value="query.qualityCourseId" placeholder="课程 ID" style="width: 120px" />
+          <a-input
+            v-model:value="query.qualityCourseId"
+            placeholder="课程 ID"
+            style="width: 120px"
+          />
           <a-input v-model:value="query.classId" placeholder="班级 ID" style="width: 120px" />
           <a-input v-model:value="query.schoolYear" placeholder="学年" style="width: 110px" />
           <a-input v-model:value="query.semester" placeholder="学期" style="width: 70px" />
-          <a-button type="primary" @click="loadList">
-            查询
-          </a-button>
-          <a-button @click="resetQuery">
-            重置
-          </a-button>
+          <a-button type="primary" @click="loadList"> 查询 </a-button>
+          <a-button @click="resetQuery"> 重置 </a-button>
         </a-space>
       </template>
 
@@ -412,12 +453,14 @@ onMounted(async () => {
             <span
               :style="{
                 color:
-                  record.thresholdValue != null && record.finalValue != null
-                  && Number(record.finalValue) < Number(record.thresholdValue)
+                  record.thresholdValue != null &&
+                  record.finalValue != null &&
+                  Number(record.finalValue) < Number(record.thresholdValue)
                     ? '#ff4d4f'
                     : '#52c41a',
               }"
-            >{{ formatValue(record.finalValue) }}</span>
+              >{{ formatValue(record.finalValue) }}</span
+            >
             <span style="color: #999"> / {{ formatValue(record.thresholdValue) }}</span>
           </template>
         </a-table-column>
@@ -444,9 +487,7 @@ onMounted(async () => {
         <a-table-column title="操作" width="260" fixed="right">
           <template #default="{ record }">
             <a-space wrap>
-              <a-button type="link" size="small" @click="goDetail(record)">
-                详情
-              </a-button>
+              <a-button type="link" size="small" @click="goDetail(record)"> 详情 </a-button>
               <a-button
                 v-for="to in nextStatuses(record.auditStatus)"
                 :key="to"

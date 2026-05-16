@@ -99,24 +99,38 @@
               description="点击「立即快照」实时计算并保存。"
             />
             <a-descriptions v-else :column="3" bordered size="small">
-              <a-descriptions-item label="总任务数"><b>{{ progress.totalTasks ?? 0 }}</b></a-descriptions-item>
-              <a-descriptions-item label="已分配">{{ progress.allocatedTasks ?? 0 }}</a-descriptions-item>
-              <a-descriptions-item label="进行中">{{ progress.inProgressTasks ?? 0 }}</a-descriptions-item>
-              <a-descriptions-item label="已提交">{{ progress.submittedTasks ?? 0 }}</a-descriptions-item>
+              <a-descriptions-item label="总任务数"
+                ><b>{{ progress.totalTasks ?? 0 }}</b></a-descriptions-item
+              >
+              <a-descriptions-item label="已分配">{{
+                progress.allocatedTasks ?? 0
+              }}</a-descriptions-item>
+              <a-descriptions-item label="进行中">{{
+                progress.inProgressTasks ?? 0
+              }}</a-descriptions-item>
+              <a-descriptions-item label="已提交">{{
+                progress.submittedTasks ?? 0
+              }}</a-descriptions-item>
               <a-descriptions-item label="已定稿">
                 <b style="color: #389e0d">{{ progress.finalizedTasks ?? 0 }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="已回收">
                 <b style="color: #d4380d">{{ progress.recycledTasks ?? 0 }}</b>
               </a-descriptions-item>
-              <a-descriptions-item label="完成率">{{ progress.completionRate?.toFixed?.(2) ?? '-' }}%</a-descriptions-item>
-              <a-descriptions-item label="预估剩余">{{ progress.estimatedRemainingMinutes ?? '-' }} 分钟</a-descriptions-item>
+              <a-descriptions-item label="完成率"
+                >{{ progress.completionRate?.toFixed?.(2) ?? '-' }}%</a-descriptions-item
+              >
+              <a-descriptions-item label="预估剩余"
+                >{{ progress.estimatedRemainingMinutes ?? '-' }} 分钟</a-descriptions-item
+              >
               <a-descriptions-item label="风险等级">
                 <UiTag :tone="riskTone(progress.riskLevel ?? 'NORMAL')" size="sm">
                   {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel ?? 'NORMAL'] }}
                 </UiTag>
               </a-descriptions-item>
-              <a-descriptions-item label="快照时间" :span="2">{{ progress.snapshotTime ?? '-' }}</a-descriptions-item>
+              <a-descriptions-item label="快照时间" :span="2">{{
+                progress.snapshotTime ?? '-'
+              }}</a-descriptions-item>
               <a-descriptions-item v-if="progress.riskDetail" label="风险详情" :span="3">
                 <pre class="json-pre">{{ progress.riskDetail }}</pre>
               </a-descriptions-item>
@@ -184,11 +198,25 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'metricStatus'">
                   <UiTag :tone="metricStatusTone(record.metricStatus)" size="sm">
-                    {{ REVIEWER_METRIC_STATUS_LABEL[record.metricStatus as ReviewerMetricStatusCode] ?? record.metricStatus }}
+                    {{
+                      REVIEWER_METRIC_STATUS_LABEL[
+                        record.metricStatus as ReviewerMetricStatusCode
+                      ] ?? record.metricStatus
+                    }}
                   </UiTag>
                 </template>
-                <template v-else-if="['avgScore', 'scoreStddev', 'consistencyRate', 'scoreBias'].includes(column.key as string)">
-                  {{ formatDecimal(record[column.key as keyof typeof record] as unknown as number | undefined) }}
+                <template
+                  v-else-if="
+                    ['avgScore', 'scoreStddev', 'consistencyRate', 'scoreBias'].includes(
+                      column.key as string,
+                    )
+                  "
+                >
+                  {{
+                    formatDecimal(
+                      record[column.key as keyof typeof record] as unknown as number | undefined,
+                    )
+                  }}
                 </template>
               </template>
             </a-table>
@@ -292,11 +320,7 @@
                   cancel-text="取消"
                   @confirm="handleReprocess"
                 >
-                  <UiButton
-                    variant="danger"
-                    :loading="reprocessing"
-                    :disabled="!reprocessValid"
-                  >
+                  <UiButton variant="danger" :loading="reprocessing" :disabled="!reprocessValid">
                     <template #icon><WarningOutlined /></template>
                     触发重处理
                   </UiButton>
@@ -312,6 +336,8 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   BatchReprocessScopeCode,
   ProgressMonitorRecordVO,
@@ -319,7 +345,18 @@ import type {
   ReviewerMetricStatusCode,
   ReviewerQualityMetricVO,
 } from '@/apis/mark/marking-quality'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import {
+  createSpotCheckTasks,
+  getLatestProgress,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_LABEL,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_LABEL,
+  takeProgressSnapshot,
+} from '@/apis/mark/marking-quality'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -330,19 +367,6 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  PROGRESS_RISK_LEVEL_COLOR,
-  PROGRESS_RISK_LEVEL_LABEL,
-  REVIEWER_METRIC_STATUS_COLOR,
-  REVIEWER_METRIC_STATUS_LABEL,
-  createSpotCheckTasks,
-  getLatestProgress,
-  listReviewerMetrics,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
-import { pageExams } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -358,10 +382,8 @@ const selectedExamId = ref<string | undefined>(
 const organizationIdInput = ref<string>(
   route.query.organizationId ? String(route.query.organizationId) : '',
 )
-const groupIdInput = ref<string>(
-  route.query.groupId ? String(route.query.groupId) : '',
-)
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const groupIdInput = ref<string>(route.query.groupId ? String(route.query.groupId) : '')
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const activeTab = ref<'progress' | 'reviewer' | 'spotcheck' | 'reprocess'>('progress')
@@ -507,10 +529,8 @@ const reprocessForm = reactive<{
   scope: 'FAILED_ONLY',
 })
 
-const reprocessValid = computed(
-  () => Boolean(selectedExamId.value
-    && reprocessForm.scanBatchId.trim()
-    && reprocessForm.reason.trim()),
+const reprocessValid = computed(() =>
+  Boolean(selectedExamId.value && reprocessForm.scanBatchId.trim() && reprocessForm.reason.trim()),
 )
 
 async function handleReprocess(): Promise<void> {

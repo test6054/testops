@@ -3,7 +3,9 @@
     <div class="sync-page">
       <PageHeader title="教务系统同步">
         <template #tags>
-          <UiTag v-if="syncTasks.length > 0" tone="blue" size="md">同步任务 {{ syncTasks.length }}</UiTag>
+          <UiTag v-if="syncTasks.length > 0" tone="blue" size="md"
+            >同步任务 {{ syncTasks.length }}</UiTag
+          >
           <UiTag v-if="passbackRecords.length > 0" tone="green" size="md">
             回写记录 {{ passbackRecords.length }}
           </UiTag>
@@ -24,14 +26,24 @@
             <template #icon><PlusOutlined /></template>
             新建同步任务
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!selectedExamId" :loading="loading" @click="loadAll">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!selectedExamId"
+            :loading="loading"
+            @click="loadAll"
+          >
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
         </template>
       </PageHeader>
 
-      <UiEmpty v-if="!selectedExamId" description="请先选择一场已发布成绩的考试" class="empty-block" />
+      <UiEmpty
+        v-if="!selectedExamId"
+        description="请先选择一场已发布成绩的考试"
+        class="empty-block"
+      />
 
       <template v-else>
         <a-alert
@@ -56,7 +68,11 @@
               allow-clear
               @change="loadSyncTasks"
             >
-              <a-select-option v-for="(label, code) in SYNC_TASK_STATUS_LABEL" :key="code" :value="code">
+              <a-select-option
+                v-for="(label, code) in SYNC_TASK_STATUS_LABEL"
+                :key="code"
+                :value="code"
+              >
                 {{ label }}
               </a-select-option>
             </a-select>
@@ -72,14 +88,22 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'externalSystemType'">
-                {{ EXTERNAL_SYSTEM_TYPE_LABEL[record.externalSystemType as ExternalSystemTypeCode] ?? record.externalSystemType }}
+                {{
+                  EXTERNAL_SYSTEM_TYPE_LABEL[record.externalSystemType as ExternalSystemTypeCode] ??
+                  record.externalSystemType
+                }}
               </template>
               <template v-else-if="column.key === 'syncType'">
-                {{ SYNC_TYPE_LABEL[record.syncType as TeachingAffairsSyncTypeCode] ?? record.syncType }}
+                {{
+                  SYNC_TYPE_LABEL[record.syncType as TeachingAffairsSyncTypeCode] ?? record.syncType
+                }}
               </template>
               <template v-else-if="column.key === 'taskStatus'">
                 <UiTag :tone="syncStatusTone(record.taskStatus)" size="sm">
-                  {{ SYNC_TASK_STATUS_LABEL[record.taskStatus as SyncTaskStatusCode] ?? record.taskStatus }}
+                  {{
+                    SYNC_TASK_STATUS_LABEL[record.taskStatus as SyncTaskStatusCode] ??
+                    record.taskStatus
+                  }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'retry'">
@@ -119,7 +143,9 @@
                   >
                     取消
                   </UiButton>
-                  <UiButton size="xs" variant="outline" @click="openTaskDetail(record)">详情</UiButton>
+                  <UiButton size="xs" variant="outline" @click="openTaskDetail(record)"
+                    >详情</UiButton
+                  >
                 </a-space>
               </template>
             </template>
@@ -148,11 +174,20 @@
                 allow-clear
                 @change="loadPassbackRecords"
               >
-                <a-select-option v-for="(label, code) in PASSBACK_STATUS_LABEL" :key="code" :value="code">
+                <a-select-option
+                  v-for="(label, code) in PASSBACK_STATUS_LABEL"
+                  :key="code"
+                  :value="code"
+                >
                   {{ label }}
                 </a-select-option>
               </a-select>
-              <UiButton size="sm" variant="outline" :loading="passbackLoading" @click="loadPassbackRecords">
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="passbackLoading"
+                @click="loadPassbackRecords"
+              >
                 <template #icon><ReloadOutlined /></template>
                 刷新
               </UiButton>
@@ -170,12 +205,22 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'passbackStatus'">
                 <UiTag :tone="passbackStatusTone(record.passbackStatus)" size="sm">
-                  {{ PASSBACK_STATUS_LABEL[record.passbackStatus as PassbackStatusCode] ?? record.passbackStatus }}
+                  {{
+                    PASSBACK_STATUS_LABEL[record.passbackStatus as PassbackStatusCode] ??
+                    record.passbackStatus
+                  }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'reconcileStatus'">
-                <UiTag v-if="record.reconcileStatus" :tone="reconcileStatusTone(record.reconcileStatus)" size="sm">
-                  {{ RECONCILE_STATUS_LABEL[record.reconcileStatus as ReconcileStatusCode] ?? record.reconcileStatus }}
+                <UiTag
+                  v-if="record.reconcileStatus"
+                  :tone="reconcileStatusTone(record.reconcileStatus)"
+                  size="sm"
+                >
+                  {{
+                    RECONCILE_STATUS_LABEL[record.reconcileStatus as ReconcileStatusCode] ??
+                    record.reconcileStatus
+                  }}
                 </UiTag>
                 <span v-else class="hint-text">-</span>
               </template>
@@ -205,7 +250,11 @@
       <a-form layout="vertical">
         <a-form-item label="外部系统类型" required>
           <a-radio-group v-model:value="createForm.externalSystemType">
-            <a-radio-button v-for="(label, code) in EXTERNAL_SYSTEM_TYPE_LABEL" :key="code" :value="code">
+            <a-radio-button
+              v-for="(label, code) in EXTERNAL_SYSTEM_TYPE_LABEL"
+              :key="code"
+              :value="code"
+            >
               {{ label }}
             </a-radio-button>
           </a-radio-group>
@@ -221,10 +270,16 @@
           </div>
         </a-form-item>
         <a-form-item label="外部课程ID">
-          <a-input v-model:value="createForm.externalCourseId" placeholder="如教务系统中的课程编号" />
+          <a-input
+            v-model:value="createForm.externalCourseId"
+            placeholder="如教务系统中的课程编号"
+          />
         </a-form-item>
         <a-form-item label="外部成绩项ID">
-          <a-input v-model:value="createForm.externalLineItemId" placeholder="如成绩册中的成绩项 GUID" />
+          <a-input
+            v-model:value="createForm.externalLineItemId"
+            placeholder="如成绩册中的成绩项 GUID"
+          />
         </a-form-item>
         <a-form-item label="同步配置 JSON">
           <a-textarea
@@ -247,7 +302,11 @@
         <a-descriptions-item label="任务ID">{{ detailTask.id }}</a-descriptions-item>
         <a-descriptions-item label="考试ID">{{ detailTask.examId }}</a-descriptions-item>
         <a-descriptions-item label="外部系统">
-          {{ detailTask.externalSystemType ? EXTERNAL_SYSTEM_TYPE_LABEL[detailTask.externalSystemType] : '-' }}
+          {{
+            detailTask.externalSystemType
+              ? EXTERNAL_SYSTEM_TYPE_LABEL[detailTask.externalSystemType]
+              : '-'
+          }}
         </a-descriptions-item>
         <a-descriptions-item label="同步类型">
           {{ detailTask.syncType ? SYNC_TYPE_LABEL[detailTask.syncType] : '-' }}
@@ -260,14 +319,22 @@
         <a-descriptions-item label="重试">
           {{ detailTask.retryCount ?? 0 }} / {{ detailTask.maxRetryCount ?? '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="外部课程ID">{{ detailTask.externalCourseId ?? '-' }}</a-descriptions-item>
-        <a-descriptions-item label="外部成绩项ID">{{ detailTask.externalLineItemId ?? '-' }}</a-descriptions-item>
+        <a-descriptions-item label="外部课程ID">{{
+          detailTask.externalCourseId ?? '-'
+        }}</a-descriptions-item>
+        <a-descriptions-item label="外部成绩项ID">{{
+          detailTask.externalLineItemId ?? '-'
+        }}</a-descriptions-item>
         <a-descriptions-item label="同步配置">
           <pre class="json-pre">{{ detailTask.syncConfig || '（空）' }}</pre>
         </a-descriptions-item>
-        <a-descriptions-item label="最后同步时间">{{ detailTask.lastSyncTime ?? '-' }}</a-descriptions-item>
+        <a-descriptions-item label="最后同步时间">{{
+          detailTask.lastSyncTime ?? '-'
+        }}</a-descriptions-item>
         <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-          <span class="error-text">[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span>
+          <span class="error-text"
+            >[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span
+          >
         </a-descriptions-item>
         <a-descriptions-item label="操作" :span="1">
           <a-space>
@@ -290,6 +357,8 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   ExternalSystemTypeCode,
   PassbackRecordVO,
@@ -299,7 +368,23 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
+import {
+  cancelSyncTask,
+  createSyncTask,
+  executeGradePassback,
+  EXTERNAL_SYSTEM_TYPE_LABEL,
+  listPassbackRecords,
+  listSyncTasks,
+  PASSBACK_STATUS_COLOR,
+  PASSBACK_STATUS_LABEL,
+  RECONCILE_STATUS_COLOR,
+  RECONCILE_STATUS_LABEL,
+  reconcilePassback,
+  retrySyncTask,
+  SYNC_TASK_STATUS_COLOR,
+  SYNC_TASK_STATUS_LABEL,
+  SYNC_TYPE_LABEL,
+} from '@/apis/mark/teaching-affairs-sync'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -308,24 +393,6 @@ import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  EXTERNAL_SYSTEM_TYPE_LABEL,
-  PASSBACK_STATUS_COLOR,
-  PASSBACK_STATUS_LABEL,
-  RECONCILE_STATUS_COLOR,
-  RECONCILE_STATUS_LABEL,
-  SYNC_TASK_STATUS_COLOR,
-  SYNC_TASK_STATUS_LABEL,
-  SYNC_TYPE_LABEL,
-  cancelSyncTask,
-  createSyncTask,
-  executeGradePassback,
-  listPassbackRecords,
-  listSyncTasks,
-  reconcilePassback,
-  retrySyncTask,
-} from '@/apis/mark/teaching-affairs-sync'
-import { pageExams } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -338,7 +405,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 const loading = ref(false)
 
@@ -385,7 +452,11 @@ function canCancel(status?: SyncTaskStatusCode): boolean {
   return status === 'PENDING' || status === 'SYNCING'
 }
 
-async function withTaskAction(record: SyncTaskVO, action: () => Promise<void>, hint: string): Promise<void> {
+async function withTaskAction(
+  record: SyncTaskVO,
+  action: () => Promise<void>,
+  hint: string,
+): Promise<void> {
   if (!record.id) return
   actionLoadingId.value = record.id
   try {
@@ -429,8 +500,8 @@ const createForm = reactive<{
   syncConfig: '',
 })
 
-const createValid = computed(
-  () => Boolean(selectedExamId.value && createForm.externalSystemType && createForm.syncType),
+const createValid = computed(() =>
+  Boolean(selectedExamId.value && createForm.externalSystemType && createForm.syncType),
 )
 
 function openCreateModal(): void {

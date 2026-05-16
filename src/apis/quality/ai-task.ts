@@ -86,12 +86,16 @@ export interface AiResultVO {
   updateTime?: string
 }
 
-/** AI 模型配置 VO - 严格对齐后端 AiModelProfileVO */
+/**
+ * AI 模型配置 VO - 对齐后端 AiModelProfileVO。
+ *
+ * 业务规则：同一租户全局只能有一条 enabled=true 记录。
+ * abilityCode / defaultProfile 字段已废弃，不再从后端下行。
+ */
 export interface AiModelProfileVO {
   id: string
   profileName: string
   providerType: string
-  abilityCode: AiTaskType
   modelName: string
   apiHost?: string
   /** API Key 不下行；后端响应隐藏明文，仅保留 apiKeyConfigured 标志 */
@@ -100,7 +104,6 @@ export interface AiModelProfileVO {
   maxTokens?: number
   connectTimeoutSecs?: number
   readTimeoutSecs?: number
-  defaultProfile?: boolean
   enabled?: boolean
   healthStatus?: string
   lastHealthCheckAt?: string
@@ -171,21 +174,25 @@ export interface AiResultValidationUpdatePayload {
   sensitiveCheckDetail?: string
 }
 
-/** AI 模型配置查询请求 */
+/**
+ * AI 模型配置查询请求 - 对齐后端 AiModelProfileQueryRequest。
+ * 后端仅支持 enabledOnly 过滤，不再接收 abilityCode / defaultProfile / keyword 。
+ */
 export interface AiModelProfileQueryPayload {
-  abilityCode?: AiTaskType
-  providerType?: string
-  enabled?: boolean
-  defaultProfile?: boolean
-  keyword?: string
+  /** true 仅返回当前启用的唯一配置 */
+  enabledOnly?: boolean
 }
 
-/** AI 模型配置保存请求 - 严格对齐后端 AiModelProfileSaveRequest */
+/**
+ * AI 模型配置保存请求 - 对齐后端 AiModelProfileSaveRequest。
+ *
+ * 业务规则：提交 enabled=true 后端会按 tenantId advisory lock 串行化并将
+ * 同租户其他配置置为停用；apiKey 留空表示保留原密钥。
+ */
 export interface AiModelProfileSavePayload {
   id?: string
   profileName: string
   providerType: string
-  abilityCode: AiTaskType
   modelName: string
   apiHost?: string
   apiKey?: string
@@ -193,47 +200,42 @@ export interface AiModelProfileSavePayload {
   maxTokens?: number
   connectTimeoutSecs?: number
   readTimeoutSecs?: number
-  defaultProfile?: boolean
   enabled?: boolean
 }
 
-/** 健康检查请求 */
+/**
+ * 健康检查请求 - 对齐后端 AiModelProfileHealthCheckRequest。
+ * 后端仅接收 profileId；abilityCode / promptOverride 字段不参与模型选择。
+ */
 export interface AiModelProfileHealthCheckPayload {
-  id?: string
-  modelProfileId?: string
-  abilityCode?: AiTaskType
-  promptOverride?: string
+  profileId: string
 }
 
-/** 健康检查响应 */
+/** 健康检查响应 - 对齐后端 AiModelProfileHealthCheckVO */
 export interface AiModelProfileHealthCheckVO {
-  ok: boolean
-  latencyMs?: number
-  errorMessage?: string
-  modelName?: string
-  providerType?: string
+  profileId: string
+  /** UNKNOWN / HEALTHY / FAILED */
+  healthStatus: string
+  /** 健康检查诊断消息 */
+  healthMessage?: string
+  /** 模型原始返回摘要（截断后） */
+  responseSummary?: string
 }
 
 export const aiTaskApi = {
-  page: (data: AiTaskQueryPayload) =>
-    http.post<PageResult<AiTaskVO>>(`${TASK}/page`, data),
-  detail: (id: string) =>
-    http.post<AiTaskVO>(`${TASK}/detail`, { id }),
+  page: (data: AiTaskQueryPayload) => http.post<PageResult<AiTaskVO>>(`${TASK}/page`, data),
+  detail: (id: string) => http.post<AiTaskVO>(`${TASK}/detail`, { id }),
   submit: (data: AiTaskSubmitPayload) =>
     http.post<AiTaskSubmitResponseVO>(`${TRIGGER}/submit`, data),
-  runNow: (id: string) =>
-    http.post<void>(`${TRIGGER}/run-now`, { id }),
-  cancel: (id: string, reason?: string) =>
-    http.post<void>(`${TASK}/cancel`, { id, reason }),
+  runNow: (id: string) => http.post<void>(`${TRIGGER}/run-now`, { id }),
+  cancel: (id: string, reason?: string) => http.post<void>(`${TASK}/cancel`, { id, reason }),
 }
 
 export const aiResultApi = {
   /** 创建 AI 结果（任务执行链路内部调用，前端审计场景一般不直接触发） */
-  create: (data: AiResultSavePayload) =>
-    http.post<string>(`${RESULT}/create`, data),
+  create: (data: AiResultSavePayload) => http.post<string>(`${RESULT}/create`, data),
   /** 查询 AI 结果详情 */
-  detail: (id: string) =>
-    http.post<AiResultVO>(`${RESULT}/detail`, { id }),
+  detail: (id: string) => http.post<AiResultVO>(`${RESULT}/detail`, { id }),
   /** 按 AI 任务查询结果；尚未生成时后端返回 null */
   getByTask: (aiTaskId: string) =>
     http.post<AiResultVO | null>(`${RESULT}/get-by-task`, { id: aiTaskId }),
@@ -247,8 +249,7 @@ export const aiModelProfileApi = {
   list: (data?: AiModelProfileQueryPayload) =>
     http.post<AiModelProfileVO[]>(`${MODEL}/list`, data || {}),
   /** 新建或更新 */
-  save: (data: AiModelProfileSavePayload) =>
-    http.post<string>(`${MODEL}/save`, data),
+  save: (data: AiModelProfileSavePayload) => http.post<string>(`${MODEL}/save`, data),
   /** 健康检查 */
   healthCheck: (data: AiModelProfileHealthCheckPayload) =>
     http.post<AiModelProfileHealthCheckVO>(`${MODEL}/health-check`, data),
