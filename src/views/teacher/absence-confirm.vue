@@ -3,9 +3,15 @@
     <div class="absence-page">
       <PageHeader title="缺考确认">
         <template #tags>
-          <UiTag v-if="reconcileVO" tone="blue" size="md">应考 {{ reconcileVO.expectedCount }}</UiTag>
-          <UiTag v-if="reconcileVO" tone="green" size="md">已绑定 {{ reconcileVO.attendedCount }}</UiTag>
-          <UiTag v-if="reconcileVO" tone="orange" size="md">缺考 {{ reconcileVO.absentCount }}</UiTag>
+          <UiTag v-if="reconcileVO" tone="blue" size="md"
+            >应考 {{ reconcileVO.expectedCount }}</UiTag
+          >
+          <UiTag v-if="reconcileVO" tone="green" size="md"
+            >已绑定 {{ reconcileVO.attendedCount }}</UiTag
+          >
+          <UiTag v-if="reconcileVO" tone="orange" size="md"
+            >缺考 {{ reconcileVO.absentCount }}</UiTag
+          >
         </template>
         <template #actions>
           <a-select
@@ -19,11 +25,22 @@
             allow-clear
             @change="handleExamChange"
           />
-          <UiButton size="sm" :disabled="!selectedExamId" :loading="reconciling" @click="handleReconcile(false)">
+          <UiButton
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="reconciling"
+            @click="handleReconcile(false)"
+          >
             <template #icon><SyncOutlined /></template>
             出勤核对
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!selectedExamId" :loading="reconciling" @click="handleReconcile(true)">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!selectedExamId"
+            :loading="reconciling"
+            @click="handleReconcile(true)"
+          >
             <template #icon><PlusOutlined /></template>
             核对并新建 PENDING
           </UiButton>
@@ -47,10 +64,18 @@
             description="点击「出勤核对」对比应考名单与已绑定试卷。选择「核对并新建 PENDING」会同时为缺考学生创建待确认记录。"
           />
           <a-descriptions v-else :column="4" bordered size="small">
-            <a-descriptions-item label="应考人数"><b>{{ reconcileVO.expectedCount }}</b></a-descriptions-item>
-            <a-descriptions-item label="已绑定试卷"><b style="color: #389e0d">{{ reconcileVO.attendedCount }}</b></a-descriptions-item>
-            <a-descriptions-item label="缺考人数"><b style="color: #d4380d">{{ reconcileVO.absentCount }}</b></a-descriptions-item>
-            <a-descriptions-item label="本次新建 PENDING"><b>{{ reconcileVO.createdPendingCount }}</b></a-descriptions-item>
+            <a-descriptions-item label="应考人数"
+              ><b>{{ reconcileVO.expectedCount }}</b></a-descriptions-item
+            >
+            <a-descriptions-item label="已绑定试卷"
+              ><b style="color: #389e0d">{{ reconcileVO.attendedCount }}</b></a-descriptions-item
+            >
+            <a-descriptions-item label="缺考人数"
+              ><b style="color: #d4380d">{{ reconcileVO.absentCount }}</b></a-descriptions-item
+            >
+            <a-descriptions-item label="本次新建 PENDING"
+              ><b>{{ reconcileVO.createdPendingCount }}</b></a-descriptions-item
+            >
           </a-descriptions>
         </UiCard>
 
@@ -60,10 +85,20 @@
             <span>核对检出的缺考学生</span>
             <UiBadge tone="orange">{{ absentStudents.length }}</UiBadge>
           </template>
-          <a-table :columns="absentColumns" :data-source="absentStudents" :pagination="false" row-key="studentUserId" size="middle">
+          <a-table
+            :columns="absentColumns"
+            :data-source="absentStudents"
+            :pagination="false"
+            row-key="studentUserId"
+            size="middle"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'actions'">
-                <UiButton size="sm" @click="openConfirmModal(record.studentUserId, record.studentName)">确认缺考</UiButton>
+                <UiButton
+                  size="sm"
+                  @click="openConfirmModal(record.studentUserId, record.studentName)"
+                  >确认缺考</UiButton
+                >
               </template>
             </template>
           </a-table>
@@ -77,7 +112,13 @@
           </template>
           <template #extra>
             <a-space>
-              <a-select v-model:value="statusFilter" placeholder="状态过滤" style="width: 160px" allow-clear @change="loadRecords">
+              <a-select
+                v-model:value="statusFilter"
+                placeholder="状态过滤"
+                style="width: 160px"
+                allow-clear
+                @change="loadRecords"
+              >
                 <a-select-option value="PENDING">待确认</a-select-option>
                 <a-select-option value="CONFIRMED">已确认</a-select-option>
                 <a-select-option value="REVOKED">已撤销</a-select-option>
@@ -88,20 +129,45 @@
               </UiButton>
             </a-space>
           </template>
-          <a-table :columns="recordColumns" :data-source="records" :loading="recordLoading" :pagination="{ pageSize: 20, showSizeChanger: false }" row-key="absenceRecordId" size="middle">
-            <template #bodyCell="{ column, record }">
+          <a-table
+            :columns="recordColumns"
+            :data-source="records"
+            :loading="recordLoading"
+            :pagination="{ pageSize: 20, showSizeChanger: false }"
+            row-key="absenceRecordId"
+            size="middle"
+          >
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'absenceStatus'">
-                <UiTag :tone="statusTone(asAbsenceRecord(record).absenceStatus)" size="sm">{{ statusLabel(asAbsenceRecord(record).absenceStatus) }}</UiTag>
+                <UiTag :tone="statusTone(records[index].absenceStatus)" size="sm">{{
+                  statusLabel(records[index].absenceStatus)
+                }}</UiTag>
               </template>
               <template v-else-if="column.key === 'absenceReason'">
-                {{ reasonLabel(asAbsenceRecord(record).absenceReason) }}
+                {{ reasonLabel(records[index].absenceReason) }}
               </template>
               <template v-else-if="column.key === 'scorePolicy'">
-                {{ scorePolicyLabel(asAbsenceRecord(record).scorePolicy) }}
+                {{ scorePolicyLabel(records[index].scorePolicy) }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiButton v-if="asAbsenceRecord(record).absenceStatus === 'CONFIRMED'" size="sm" variant="outline" @click="openRevokeModal(asAbsenceRecord(record))">撤销</UiButton>
-                <UiButton v-else-if="asAbsenceRecord(record).absenceStatus === 'PENDING'" size="sm" @click="openConfirmModal(asAbsenceRecord(record).studentUserId, studentNameOf(asAbsenceRecord(record).studentUserId))">确认</UiButton>
+                <UiButton
+                  v-if="records[index].absenceStatus === 'CONFIRMED'"
+                  size="sm"
+                  variant="outline"
+                  @click="openRevokeModal(records[index])"
+                  >撤销</UiButton
+                >
+                <UiButton
+                  v-else-if="records[index].absenceStatus === 'PENDING'"
+                  size="sm"
+                  @click="
+                    openConfirmModal(
+                      records[index].studentUserId,
+                      studentNameOf(records[index].studentUserId),
+                    )
+                  "
+                  >确认</UiButton
+                >
                 <span v-else class="hint-text">-</span>
               </template>
             </template>
@@ -125,12 +191,22 @@
         </a-form-item>
         <a-form-item label="缺考原因" required>
           <a-select v-model:value="confirmForm.absenceReason" placeholder="选择缺考原因">
-            <a-select-option v-for="(label, code) in ABSENCE_REASON_LABEL" :key="code" :value="code">{{ label }}</a-select-option>
+            <a-select-option
+              v-for="(label, code) in ABSENCE_REASON_LABEL"
+              :key="code"
+              :value="code"
+              >{{ label }}</a-select-option
+            >
           </a-select>
         </a-form-item>
         <a-form-item label="成绩处理策略" required>
           <a-select v-model:value="confirmForm.scorePolicy" placeholder="选择成绩处理策略">
-            <a-select-option v-for="(label, code) in ABSENCE_SCORE_POLICY_LABEL" :key="code" :value="code">{{ label }}</a-select-option>
+            <a-select-option
+              v-for="(label, code) in ABSENCE_SCORE_POLICY_LABEL"
+              :key="code"
+              :value="code"
+              >{{ label }}</a-select-option
+            >
           </a-select>
         </a-form-item>
       </a-form>
@@ -150,7 +226,11 @@
           <a-input :value="revokeTargetName" disabled />
         </a-form-item>
         <a-form-item label="撤销原因" required>
-          <a-textarea v-model:value="revokeForm.revokeReason" :rows="4" placeholder="请描述撤销原因（必填）" />
+          <a-textarea
+            v-model:value="revokeForm.revokeReason"
+            :rows="4"
+            placeholder="请描述撤销原因（必填）"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -166,16 +246,6 @@ import type {
   AbsenceStatusCode,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
-import type { ExamCandidateVO, ExamSummaryVO } from '@/apis/mark/exam'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -186,11 +256,21 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
+import type { ExamCandidateVO, ExamSummaryVO } from '@/apis/mark/exam'
 import { listExamCandidates, pageExams } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 defineOptions({ name: 'TeacherAbsenceConfirm' })
 
@@ -207,7 +287,7 @@ interface AbsentStudentRow {
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const candidates = ref<ExamCandidateVO[]>([])
@@ -286,11 +366,6 @@ function reasonLabel(reason: AbsenceReasonCode | undefined): string {
 function scorePolicyLabel(policy: AbsenceScorePolicyCode | undefined): string {
   if (!policy) return '-'
   return ABSENCE_SCORE_POLICY_LABEL[policy] ?? '-'
-}
-
-/** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为后端真实 VO 类型 AbsenceRecordVO */
-function asAbsenceRecord(record: Record<string, unknown>): AbsenceRecordVO {
-  return record as unknown as AbsenceRecordVO
 }
 
 async function loadExamOptions(): Promise<void> {
@@ -372,8 +447,8 @@ const confirmForm = reactive<{
   scorePolicy: undefined,
 })
 
-const confirmValid = computed(
-  () => Boolean(confirmForm.studentUserId && confirmForm.absenceReason && confirmForm.scorePolicy),
+const confirmValid = computed(() =>
+  Boolean(confirmForm.studentUserId && confirmForm.absenceReason && confirmForm.scorePolicy),
 )
 
 function openConfirmModal(studentUserId: string, displayName: string): void {
@@ -412,7 +487,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })

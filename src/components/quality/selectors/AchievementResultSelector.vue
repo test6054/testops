@@ -4,15 +4,20 @@
   常用过滤：targetType / auditStatus / trainingPlanId / qualityCourseId / schoolYear
 -->
 <script setup lang="ts">
-import type { AchievementAuditStatus, AchievementResultVO, AchievementTargetType } from '@/apis/quality'
-import { message, Tag } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import type {
+  AchievementAuditStatus,
+  AchievementResultVO,
+  AchievementTargetType,
+} from '@/apis/quality'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   achievementApi,
 } from '@/apis/quality'
+import type { SelectValue } from 'ant-design-vue/es/select'
+import { message, Tag } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: '请选择达成度结果',
@@ -23,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  'change': [value: string | null, option?: AchievementResultVO]
+  change: [value: string | null, option?: AchievementResultVO]
 }>()
 
 const AuditStatusTag = Tag
@@ -47,14 +52,27 @@ interface Props {
 const options = ref<AchievementResultVO[]>([])
 const loading = ref(false)
 const searchText = ref('')
-const internalValue = ref<string | null>(props.value ?? null)
-
-watch(() => props.value, (v) => {
-  internalValue.value = v ?? null
-})
+// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
+const internalValue = ref<string | undefined>(props.value ?? undefined)
 
 watch(
-  () => [props.targetType, props.auditStatus, props.trainingPlanId, props.qualityCourseId, props.classId, props.programId, props.schoolYear, props.semester],
+  () => props.value,
+  (v) => {
+    internalValue.value = v ?? undefined
+  },
+)
+
+watch(
+  () => [
+    props.targetType,
+    props.auditStatus,
+    props.trainingPlanId,
+    props.qualityCourseId,
+    props.classId,
+    props.programId,
+    props.schoolYear,
+    props.semester,
+  ],
   () => loadOptions(),
 )
 
@@ -101,7 +119,7 @@ const filteredOptions = computed(() => {
       opt.schoolYear,
       opt.semester,
       targetTypeLabel,
-    ].some(v => v != null && String(v).toLowerCase().includes(lower))
+    ].some((v) => v != null && String(v).toLowerCase().includes(lower))
   })
 })
 
@@ -109,11 +127,12 @@ function handleSearch(val: string) {
   searchText.value = val
 }
 
-function handleChange(val: string | null) {
-  internalValue.value = val
-  const option = options.value.find(o => o.id === val)
-  emit('update:value', val)
-  emit('change', val, option)
+function handleChange(val: SelectValue) {
+  const next: string | null = typeof val === 'string' ? val : null
+  internalValue.value = next ?? undefined
+  const option = options.value.find((o) => o.id === next)
+  emit('update:value', next)
+  emit('change', next, option)
 }
 
 function labelOf(opt: AchievementResultVO) {
@@ -152,7 +171,8 @@ defineExpose({ reload: loadOptions })
         · 课程 #{{ opt.qualityCourseId }}
       </span>
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
+        >)
       </span>
       <AuditStatusTag
         v-if="opt.auditStatus"

@@ -11,6 +11,7 @@
  *   - ≤ 2 参数的简单查询保留 GET + @RequestParam（symmetry-mark 模块约定）
  *   - searchSimilar 因 3 参数已强制 POST + SimilarQuestionSearchRequest
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 // ─── 状态枚举 ─────────────────────────────────
@@ -41,7 +42,7 @@ export const AI_ANALYSIS_STATUS_LABEL: Record<AiAnalysisStatusCode, string> = {
   BLOCKED: '已阻断',
 }
 
-export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, string> = {
+export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, BadgeTone> = {
   PENDING: 'blue',
   SUCCESS: 'green',
   FAILED: 'red',
@@ -57,8 +58,8 @@ export const EXPERIENCE_CASE_STATUS_LABEL: Record<ExperienceCaseStatusCode, stri
   DEPRECATED: '已废弃',
 }
 
-export const EXPERIENCE_CASE_STATUS_COLOR: Record<ExperienceCaseStatusCode, string> = {
-  DRAFT: 'default',
+export const EXPERIENCE_CASE_STATUS_COLOR: Record<ExperienceCaseStatusCode, BadgeTone> = {
+  DRAFT: 'gray',
   CONFIRMED: 'green',
   DEPRECATED: 'red',
 }

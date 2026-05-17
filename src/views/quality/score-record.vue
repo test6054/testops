@@ -14,8 +14,6 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   SCORE_BATCH_STATUS_COLOR,
@@ -23,6 +21,8 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -60,11 +60,19 @@ const recordsLoading = ref(false)
 const validFilter = ref<boolean | undefined>(undefined)
 const assessmentItems = ref<AssessmentItemVO[]>([])
 
-const assessmentItemMap = computed(() => new Map(assessmentItems.value.map(a => [a.id, a])))
+const assessmentItemMap = computed(() => new Map(assessmentItems.value.map((a) => [a.id, a])))
+const validFilterSelect = computed({
+  get(): string | undefined {
+    return validFilter.value === undefined ? undefined : String(validFilter.value)
+  },
+  set(v: string | undefined): void {
+    validFilter.value = v === undefined ? undefined : v === 'true'
+  },
+})
 
 const filteredRecords = computed(() => {
   if (validFilter.value === undefined) return records.value
-  return records.value.filter(r => Boolean(r.validFlag) === validFilter.value)
+  return records.value.filter((r) => Boolean(r.validFlag) === validFilter.value)
 })
 
 async function loadRecords() {
@@ -74,7 +82,7 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    records.value = await scoreRecordApi.listByBatch(selectedBatch.value.id) || []
+    records.value = (await scoreRecordApi.listByBatch(selectedBatch.value.id)) || []
   } finally {
     recordsLoading.value = false
   }
@@ -85,7 +93,8 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value = await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId) || []
+  assessmentItems.value =
+    (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
 }
 
 /* ========== 明细编辑 ========== */
@@ -199,11 +208,9 @@ async function submitBatchCreate() {
   let parsed: ScoreRecordSavePayload[]
   try {
     const raw = JSON.parse(text)
-    if (!Array.isArray(raw))
-      throw new Error('根节点必须是数组')
+    if (!Array.isArray(raw)) throw new Error('根节点必须是数组')
     parsed = raw.map((item, idx) => {
-      if (!item.assessmentItemId)
-        throw new Error(`第 ${idx + 1} 行缺少 assessmentItemId`)
+      if (!item.assessmentItemId) throw new Error(`第 ${idx + 1} 行缺少 assessmentItemId`)
       if (item.rawScore == null || item.fullScore == null)
         throw new Error(`第 ${idx + 1} 行缺少 rawScore / fullScore`)
       return {
@@ -212,8 +219,7 @@ async function submitBatchCreate() {
         ...item,
       } as ScoreRecordSavePayload
     })
-  }
-  catch (err) {
+  } catch (err) {
     message.error(`JSON 解析失败：${(err as Error).message}`)
     return
   }
@@ -223,8 +229,7 @@ async function submitBatchCreate() {
     message.success(`已批量创建 ${parsed.length} 条明细`)
     batchCreateVisible.value = false
     await loadRecords()
-  }
-  finally {
+  } finally {
     batchCreateSubmitting.value = false
   }
 }
@@ -250,30 +255,36 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value = await scoreRecordApi.listValidByItem(
-      validByItemId.value,
-      qualityStore.currentQualityCourseId,
-    ) || []
-  }
-  finally {
+    validByItemRecords.value =
+      (await scoreRecordApi.listValidByItem(
+        validByItemId.value,
+        qualityStore.currentQualityCourseId,
+      )) || []
+  } finally {
     validByItemLoading.value = false
   }
 }
 
 /* ========== 上下文联动 ========== */
 
-watch(() => qualityStore.currentQualityCourseId, async () => {
-  selectedBatch.value = null
-  records.value = []
-  await Promise.all([loadBatches(), loadAssessmentItems()])
-})
+watch(
+  () => qualityStore.currentQualityCourseId,
+  async () => {
+    selectedBatch.value = null
+    records.value = []
+    await Promise.all([loadBatches(), loadAssessmentItems()])
+  },
+)
 
-watch(() => qualityStore.currentTrainingPlanId, () => {
-  selectedBatch.value = null
-  batches.value = []
-  records.value = []
-  assessmentItems.value = []
-})
+watch(
+  () => qualityStore.currentTrainingPlanId,
+  () => {
+    selectedBatch.value = null
+    batches.value = []
+    records.value = []
+    assessmentItems.value = []
+  },
+)
 
 watch(selectedBatch, () => loadRecords())
 
@@ -335,18 +346,26 @@ function handleCourseChange(courseId: string | null) {
             row-key="id"
             size="middle"
             :pagination="false"
-            :row-class-name="(r: ScoreBatchVO) => (selectedBatch?.id === r.id ? 'row-selected' : '')"
-            :custom-row="(record: ScoreBatchVO) => ({
-              onClick: () => (selectedBatch = record),
-              style: 'cursor: pointer',
-            })"
+            :row-class-name="
+              (r: ScoreBatchVO) => (selectedBatch?.id === r.id ? 'row-selected' : '')
+            "
+            :custom-row="
+              (record: ScoreBatchVO) => ({
+                onClick: () => (selectedBatch = record),
+                style: 'cursor: pointer',
+              })
+            "
           >
             <a-table-column title="编码" data-index="batchCode" width="120" />
             <a-table-column title="名称" data-index="batchName" />
             <a-table-column title="状态" data-index="status" width="100">
               <template #default="{ text }">
-                <a-tag :color="SCORE_BATCH_STATUS_COLOR[text as keyof typeof SCORE_BATCH_STATUS_COLOR]">
-                  {{ SCORE_BATCH_STATUS_LABEL[text as keyof typeof SCORE_BATCH_STATUS_LABEL] || text }}
+                <a-tag
+                  :color="SCORE_BATCH_STATUS_COLOR[text as keyof typeof SCORE_BATCH_STATUS_COLOR]"
+                >
+                  {{
+                    SCORE_BATCH_STATUS_LABEL[text as keyof typeof SCORE_BATCH_STATUS_LABEL] || text
+                  }}
                 </a-tag>
               </template>
             </a-table-column>
@@ -363,19 +382,18 @@ function handleCourseChange(courseId: string | null) {
           </template>
           <template #extra>
             <a-space>
-              <a-select v-model:value="validFilter" placeholder="有效性筛选" allow-clear style="width: 140px">
-                <a-select-option :value="true">仅有效</a-select-option>
-                <a-select-option :value="false">仅无效</a-select-option>
+              <a-select
+                v-model:value="validFilterSelect"
+                placeholder="有效性筛选"
+                allow-clear
+                style="width: 140px"
+              >
+                <a-select-option value="true">仅有效</a-select-option>
+                <a-select-option value="false">仅无效</a-select-option>
               </a-select>
-              <a-button type="primary" size="small" @click="openCreate">
-                新增明细
-              </a-button>
-              <a-button size="small" @click="openBatchCreate">
-                批量录入
-              </a-button>
-              <a-button size="small" @click="openValidByItem">
-                按考核环节查有效
-              </a-button>
+              <a-button type="primary" size="small" @click="openCreate"> 新增明细 </a-button>
+              <a-button size="small" @click="openBatchCreate"> 批量录入 </a-button>
+              <a-button size="small" @click="openValidByItem"> 按考核环节查有效 </a-button>
             </a-space>
           </template>
 
@@ -415,7 +433,9 @@ function handleCourseChange(courseId: string | null) {
               <template #default="{ record }">
                 <a-space>
                   <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-                  <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+                  <a-button type="link" size="small" danger @click="handleDelete(record)"
+                    >删除</a-button
+                  >
                 </a-space>
               </template>
             </a-table-column>
@@ -477,7 +497,7 @@ function handleCourseChange(courseId: string | null) {
           <a-textarea
             v-model:value="editor.rubricBreakdown"
             :rows="3"
-            placeholder="{&quot;rubricItemId&quot;: score, ...}"
+            placeholder='{"rubricItemId": score, ...}'
             :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
           />
         </a-form-item>
@@ -572,11 +592,25 @@ function handleCourseChange(courseId: string | null) {
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
-.filter-label { color: var(--ant-color-text-secondary); }
-:deep(.row-selected) td { background-color: var(--ant-color-primary-bg) !important; }
-.font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.text-xs { font-size: 12px; }
-.text-gray-500 { color: rgba(0, 0, 0, 0.45); }
-.mr-1 { margin-right: 4px; }
+.page {
+  padding: 16px;
+}
+.filter-label {
+  color: var(--ant-color-text-secondary);
+}
+:deep(.row-selected) td {
+  background-color: var(--ant-color-primary-bg) !important;
+}
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.text-xs {
+  font-size: 12px;
+}
+.text-gray-500 {
+  color: rgba(0, 0, 0, 0.45);
+}
+.mr-1 {
+  margin-right: 4px;
+}
 </style>

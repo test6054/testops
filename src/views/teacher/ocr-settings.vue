@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type {MarkOcrConfigVO, MarkOcrHealthStatusCode, MarkOcrProviderTypeCode, MarkOcrRecognizeVO} from '@/apis/mark/ocr';
-import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
+import type {
+  MarkOcrConfigVO,
+  MarkOcrHealthStatusCode,
+  MarkOcrProviderTypeCode,
+  MarkOcrRecognizeVO,
+} from '@/apis/mark/ocr'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
@@ -15,8 +14,14 @@ import {
   MARK_OCR_PROVIDER_DESCRIPTION,
   MARK_OCR_PROVIDER_LABEL,
   recognizeMarkOcr,
-  saveMarkOcrConfig
+  saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -47,12 +52,11 @@ const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
 const configForm = ref<ConfigFormState>({ providerType: 'PADDLE', enabled: false })
 const debugForm = ref<DebugFormState>({})
 
-const providerOptions = (Object.keys(MARK_OCR_PROVIDER_LABEL) as MarkOcrProviderTypeCode[]).map(
-  (value) => ({
-    value,
-    label: MARK_OCR_PROVIDER_LABEL[value],
-  }),
-)
+// 直接从后端真实枚举 LABEL 对象派生 select options，零 as 断言。
+const providerOptions = Object.entries(MARK_OCR_PROVIDER_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 const configRules: Record<string, Rule[]> = {
   providerType: [{ required: true, message: '请选择 OCR 渠道', trigger: 'change' }],
   enabled: [{ required: true, type: 'boolean', message: '请选择启用状态', trigger: 'change' }],

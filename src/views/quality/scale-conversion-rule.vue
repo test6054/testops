@@ -12,9 +12,9 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
+import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 
 const list = ref<ScaleConversionRuleVO[]>([])
 const total = ref(0)
@@ -26,17 +26,29 @@ const query = reactive<ScaleConversionRuleQueryPayload>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType, label: string }[] = (Object.keys(SCALE_TYPE_LABEL) as ScaleType[]).map(value => ({
+const scaleTypeOptions: { value: ScaleType; label: string }[] = (
+  Object.keys(SCALE_TYPE_LABEL) as ScaleType[]
+).map((value) => ({
   value,
   label: SCALE_TYPE_LABEL[value],
 }))
+
+// a-select 的 v-model 类型 SelectValue 不支持 boolean，桥接为字符串。
+const queryEnabledSelect = computed({
+  get(): string | undefined {
+    return query.enabled === undefined ? undefined : String(query.enabled)
+  },
+  set(v: string | undefined): void {
+    query.enabled = v === undefined ? undefined : v === 'true'
+  },
+})
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
 const editor = reactive<ScaleConversionRuleSavePayload>({
   ruleCode: '',
   ruleName: '',
-  scaleType: 'LIKERT_5',
+  scaleType: 'FIVE_LEVEL',
   conversionMap: '',
   description: '',
   enabled: true,
@@ -82,7 +94,7 @@ function openCreate() {
     id: undefined,
     ruleCode: '',
     ruleName: '',
-    scaleType: 'LIKERT_5',
+    scaleType: 'FIVE_LEVEL',
     conversionMap: JSON.stringify({ 1: 0, 2: 0.25, 3: 0.5, 4: 0.75, 5: 1 }, null, 2),
     description: '',
     enabled: true,
@@ -149,10 +161,21 @@ onMounted(() => loadList())
     <a-card title="量表换算规则" :bordered="false">
       <template #extra>
         <a-space wrap>
-          <a-select v-model:value="query.scaleType" placeholder="量表类型" allow-clear style="width: 180px" :options="scaleTypeOptions" />
-          <a-select v-model:value="query.enabled" placeholder="状态" allow-clear style="width: 120px">
-            <a-select-option :value="true">启用</a-select-option>
-            <a-select-option :value="false">停用</a-select-option>
+          <a-select
+            v-model:value="query.scaleType"
+            placeholder="量表类型"
+            allow-clear
+            style="width: 180px"
+            :options="scaleTypeOptions"
+          />
+          <a-select
+            v-model:value="queryEnabledSelect"
+            placeholder="状态"
+            allow-clear
+            style="width: 120px"
+          >
+            <a-select-option value="true">启用</a-select-option>
+            <a-select-option value="false">停用</a-select-option>
           </a-select>
           <a-button type="primary" @click="loadList">查询</a-button>
           <a-button @click="resetQuery">重置</a-button>
@@ -178,7 +201,7 @@ onMounted(() => loadList())
         <a-table-column title="名称" data-index="ruleName" />
         <a-table-column title="量表类型" data-index="scaleType" width="140">
           <template #default="{ text }">
-            {{ scaleTypeOptions.find(o => o.value === text)?.label || text }}
+            {{ scaleTypeOptions.find((o) => o.value === text)?.label || text }}
           </template>
         </a-table-column>
         <a-table-column title="说明" data-index="description" />
@@ -193,7 +216,9 @@ onMounted(() => loadList())
           <template #default="{ record }">
             <a-space>
               <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+              <a-button type="link" size="small" danger @click="handleDelete(record)"
+                >删除</a-button
+              >
             </a-space>
           </template>
         </a-table-column>
@@ -228,8 +253,17 @@ onMounted(() => loadList())
         <a-form-item label="名称" required>
           <a-input v-model:value="editor.ruleName" />
         </a-form-item>
-        <a-form-item label="换算映射（JSON）" required :validate-status="editorJsonValid ? 'success' : 'error'" :help="editorJsonValid ? '' : '请输入合法 JSON，键为原始量表值，值为 0~1 分值'">
-          <a-textarea v-model:value="editor.conversionMap" :rows="8" :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }" />
+        <a-form-item
+          label="换算映射（JSON）"
+          required
+          :validate-status="editorJsonValid ? 'success' : 'error'"
+          :help="editorJsonValid ? '' : '请输入合法 JSON，键为原始量表值，值为 0~1 分值'"
+        >
+          <a-textarea
+            v-model:value="editor.conversionMap"
+            :rows="8"
+            :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
+          />
         </a-form-item>
         <a-form-item label="说明">
           <a-textarea v-model:value="editor.description" :rows="3" />
@@ -240,5 +274,7 @@ onMounted(() => loadList())
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.page {
+  padding: 16px;
+}
 </style>

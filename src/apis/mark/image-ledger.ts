@@ -10,6 +10,7 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 // ─── 影像账本详情与对账 ─────────────────────────────────
@@ -43,8 +44,8 @@ export const LEDGER_STATUS_LABEL: Record<string, string> = {
   INCIDENT_OPEN: '存在异常',
 }
 
-/** 账本状态徽标颜色 */
-export const LEDGER_STATUS_COLOR: Record<string, string> = {
+/** 账本状态徽标颜色（统一 BadgeTone） */
+export const LEDGER_STATUS_COLOR: Record<string, BadgeTone> = {
   BALANCING: 'blue',
   BALANCED: 'green',
   INCIDENT_OPEN: 'red',
@@ -86,8 +87,8 @@ export const DUPLICATE_RESOLUTION_STATUS_LABEL: Record<DuplicateResolutionStatus
   RESOLVED: '已处置',
 }
 
-/** 重复处置状态徽标颜色 */
-export const DUPLICATE_RESOLUTION_STATUS_COLOR: Record<DuplicateResolutionStatusCode, string> = {
+/** 重复处置状态徽标颜色（统一 BadgeTone） */
+export const DUPLICATE_RESOLUTION_STATUS_COLOR: Record<DuplicateResolutionStatusCode, BadgeTone> = {
   PENDING: 'orange',
   RESOLVED: 'green',
 }

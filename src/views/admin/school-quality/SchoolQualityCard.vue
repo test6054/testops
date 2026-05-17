@@ -4,19 +4,38 @@
       <a-form layout="inline" :model="form" size="small">
         <a-form-item label="分析维度">
           <a-select v-model:value="form.analysisDimension" style="width: 140px">
-            <a-select-option v-for="(label, code) in SCHOOL_QUALITY_DIMENSION_LABEL" :key="code" :value="code">
+            <a-select-option
+              v-for="(label, code) in SCHOOL_QUALITY_DIMENSION_LABEL"
+              :key="code"
+              :value="code"
+            >
               {{ label }}
             </a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item label="维度ID">
-          <a-input v-model:value="form.dimensionId" placeholder="可选" allow-clear style="width: 140px" />
+          <a-input
+            v-model:value="form.dimensionId"
+            placeholder="可选"
+            allow-clear
+            style="width: 140px"
+          />
         </a-form-item>
         <a-form-item label="维度名称">
-          <a-input v-model:value="form.dimensionName" placeholder="可选，例如 软件工程" allow-clear style="width: 160px" />
+          <a-input
+            v-model:value="form.dimensionName"
+            placeholder="可选，例如 软件工程"
+            allow-clear
+            style="width: 160px"
+          />
         </a-form-item>
         <a-form-item label="学期">
-          <a-input v-model:value="form.semesterCode" placeholder="可选" allow-clear style="width: 140px" />
+          <a-input
+            v-model:value="form.semesterCode"
+            placeholder="可选"
+            allow-clear
+            style="width: 140px"
+          />
         </a-form-item>
         <a-form-item label="考试ID列表" style="flex: 1; min-width: 320px">
           <a-input
@@ -70,12 +89,16 @@
 
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'] }}
+            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
+              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="维度">
-            {{ record.analysisDimension ? SCHOOL_QUALITY_DIMENSION_LABEL[record.analysisDimension] : '-' }}
+            {{
+              record.analysisDimension
+                ? SCHOOL_QUALITY_DIMENSION_LABEL[record.analysisDimension]
+                : '-'
+            }}
             <span v-if="record.dimensionName"> / {{ record.dimensionName }}</span>
           </a-descriptions-item>
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
@@ -129,25 +152,28 @@ import type {
   SchoolQualityAnalysisVO,
   SchoolQualityDimensionCode,
 } from '@/apis/mark/school-quality'
-import type { AiAnalysisStatusCode } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
 } from '@/apis/mark/school-quality'
-import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-} from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref } from 'vue'
+import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 
 defineOptions({ name: 'SchoolQualityCard' })
 
-const form = reactive({
-  analysisDimension: 'COURSE' as SchoolQualityDimensionCode,
+interface SchoolQualityForm {
+  analysisDimension: SchoolQualityDimensionCode
+  dimensionId: string
+  dimensionName: string
+  semesterCode: string
+  examIdsText: string
+}
+const form = reactive<SchoolQualityForm>({
+  analysisDimension: 'COURSE',
   dimensionId: '',
   dimensionName: '',
   semesterCode: '',
@@ -234,10 +260,22 @@ function scoreStyle(score?: number): Record<string, string> {
 </script>
 
 <style lang="scss" scoped>
-.ai-form { margin-bottom: 16px; }
-.ai-record { display: flex; flex-direction: column; gap: 12px; }
-.ai-summary { margin: 0; }
-.ai-items { display: flex; flex-direction: column; gap: 8px; }
+.ai-form {
+  margin-bottom: 16px;
+}
+.ai-record {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-summary {
+  margin: 0;
+}
+.ai-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .metric-row {
   background: var(--gi-color-bg-2, #f5f5f5);
   padding: 12px 8px;
@@ -252,5 +290,7 @@ function scoreStyle(score?: number): Record<string, string> {
   word-break: break-all;
   background: var(--gi-color-bg-2, #f5f5f5);
 }
-.text-muted { color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45)); }
+.text-muted {
+  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+}
 </style>

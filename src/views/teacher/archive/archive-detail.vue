@@ -68,19 +68,13 @@
             </span>
           </a-descriptions-item>
           <a-descriptions-item label="原始扫描">
-            {{
-              archive.originalScanCount ?? 0
-            }}
+            {{ archive.originalScanCount ?? 0 }}
           </a-descriptions-item>
           <a-descriptions-item label="批改切片">
-            {{
-              archive.markedSliceCount ?? 0
-            }}
+            {{ archive.markedSliceCount ?? 0 }}
           </a-descriptions-item>
           <a-descriptions-item label="答案细则">
-            {{
-              archive.answerBookletCount ?? 0
-            }}
+            {{ archive.answerBookletCount ?? 0 }}
           </a-descriptions-item>
           <a-descriptions-item label="清单数">{{ archive.itemCount ?? 0 }}</a-descriptions-item>
           <a-descriptions-item label="ZIP 大小">
@@ -170,9 +164,7 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'category'">
                   <UiTag tone="blue" size="sm">
-                    {{
-                      record.itemCategoryMessage || record.itemCategory
-                    }}
+                    {{ record.itemCategoryMessage || record.itemCategory }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'student'">
@@ -312,7 +304,28 @@
 </template>
 
 <script lang="ts" setup>
-import type {ArchiveAppraisalDecisionCode, ArchiveDestructionDecisionCode, ArchiveEventVO, ArchiveItemVO, ArchivePackageVO, ArchivePackagingPhase} from '@/apis/mark/archive';
+import type {
+  ArchiveAppraisalDecisionCode,
+  ArchiveDestructionDecisionCode,
+  ArchiveEventVO,
+  ArchiveItemVO,
+  ArchivePackageVO,
+  ArchivePackagingPhase,
+} from '@/apis/mark/archive'
+import {
+  appraiseArchive,
+  approveDestruction,
+  ARCHIVE_APPRAISAL_LABEL,
+  ARCHIVE_DESTRUCTION_LABEL,
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  executeDestruction,
+  getArchiveDetail,
+  packageArchive,
+  requestAppraisal,
+  requestDestruction,
+} from '@/apis/mark/archive'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -323,26 +336,6 @@ import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  appraiseArchive,
-  approveDestruction,
-  ARCHIVE_APPRAISAL_LABEL,
-  ARCHIVE_DESTRUCTION_LABEL,
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
-  ARCHIVE_STATUS_TONE,
-  
-  
-  
-  
-  
-  
-  executeDestruction,
-  getArchiveDetail,
-  packageArchive,
-  requestAppraisal,
-  requestDestruction
-} from '@/apis/mark/archive'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -364,10 +357,16 @@ const appraiseModalOpen = ref(false)
 const destructionRequestModalOpen = ref(false)
 const approveDestructionModalOpen = ref(false)
 
-const appraiseForm = reactive({
-  decision: 'RETAIN' as ArchiveAppraisalDecisionCode,
+interface AppraiseForm {
+  decision: ArchiveAppraisalDecisionCode
+  permanentRetention: boolean
+  retentionExtensionYears: number | undefined
+  remark: string
+}
+const appraiseForm = reactive<AppraiseForm>({
+  decision: 'RETAIN',
   permanentRetention: false,
-  retentionExtensionYears: undefined as number | undefined,
+  retentionExtensionYears: undefined,
   remark: '',
 })
 
@@ -375,8 +374,12 @@ const destructionRequestForm = reactive({
   reason: '',
 })
 
-const approveDestructionForm = reactive({
-  decision: 'APPROVED' as ArchiveDestructionDecisionCode,
+interface ApproveDestructionForm {
+  decision: ArchiveDestructionDecisionCode
+  remark: string
+}
+const approveDestructionForm = reactive<ApproveDestructionForm>({
+  decision: 'APPROVED',
   remark: '',
 })
 
@@ -393,8 +396,8 @@ const itemColumns = [
 const showProgressCard = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'PACKAGING'
-    || archive.value.archiveStatus === 'PACKAGING_FAILED'
+    archive.value.archiveStatus === 'PACKAGING' ||
+    archive.value.archiveStatus === 'PACKAGING_FAILED'
   )
 })
 
@@ -416,20 +419,20 @@ const canPackage = computed(() => {
 const canRequestDestruction = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'APPRAISAL_DECIDED'
-    && archive.value.appraisalDecision === 'DESTROY'
+    archive.value.archiveStatus === 'APPRAISAL_DECIDED' &&
+    archive.value.appraisalDecision === 'DESTROY'
   )
 })
 
 const hasAnyAction = computed(() => {
   if (!archive.value) return false
   return (
-    canPackage.value
-    || archive.value.archiveStatus === 'ACTIVE'
-    || archive.value.archiveStatus === 'APPRAISAL_PENDING'
-    || canRequestDestruction.value
-    || archive.value.archiveStatus === 'DESTRUCTION_PENDING'
-    || archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
+    canPackage.value ||
+    archive.value.archiveStatus === 'ACTIVE' ||
+    archive.value.archiveStatus === 'APPRAISAL_PENDING' ||
+    canRequestDestruction.value ||
+    archive.value.archiveStatus === 'DESTRUCTION_PENDING' ||
+    archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
   )
 })
 

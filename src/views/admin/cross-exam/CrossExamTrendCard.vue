@@ -10,10 +10,20 @@
     <div class="ai-form">
       <a-form layout="inline" :model="form" size="small">
         <a-form-item label="课程ID">
-          <a-input v-model:value="form.courseId" placeholder="请输入课程ID" allow-clear style="width: 160px" />
+          <a-input
+            v-model:value="form.courseId"
+            placeholder="请输入课程ID"
+            allow-clear
+            style="width: 160px"
+          />
         </a-form-item>
         <a-form-item v-if="scopeMode === 'CLASS'" label="班级ID">
-          <a-input v-model:value="form.classId" placeholder="请输入班级ID" allow-clear style="width: 160px" />
+          <a-input
+            v-model:value="form.classId"
+            placeholder="请输入班级ID"
+            allow-clear
+            style="width: 160px"
+          />
         </a-form-item>
         <a-form-item label="考试ID列表" style="flex: 1; min-width: 320px">
           <a-input
@@ -40,8 +50,8 @@
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'] }}
+            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
+              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="维度">{{ record.scopeType ?? '-' }}</a-descriptions-item>
@@ -49,7 +59,9 @@
           <a-descriptions-item label="课程ID">{{ record.courseId ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="班级ID">{{ record.classId ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间" :span="2">{{ fmt(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间" :span="2">{{
+            fmt(record.createTime)
+          }}</a-descriptions-item>
           <a-descriptions-item label="trace ID">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -94,20 +106,16 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisVO } from '@/apis/mark/cross-exam-analysis'
-import type { AiAnalysisStatusCode } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref } from 'vue'
 import {
   generateClassTrend,
   generateCourseTrend,
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
-import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-} from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref } from 'vue'
+import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 
 defineOptions({ name: 'CrossExamTrendCard' })
 
@@ -174,9 +182,10 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    record.value = scopeMode.value === 'COURSE'
-      ? await generateCourseTrend({ courseId, examIds })
-      : await generateClassTrend({ courseId, classId: form.classId.trim(), examIds })
+    record.value =
+      scopeMode.value === 'COURSE'
+        ? await generateCourseTrend({ courseId, examIds })
+        : await generateClassTrend({ courseId, classId: form.classId.trim(), examIds })
     message.success('已生成趋势分析')
   } catch (e) {
     message.error(e instanceof Error ? e.message : '生成失败')
@@ -197,10 +206,22 @@ function formatItem(item: unknown): string {
 </script>
 
 <style lang="scss" scoped>
-.ai-form { margin-bottom: 16px; }
-.ai-record { display: flex; flex-direction: column; gap: 12px; }
-.ai-summary { margin: 0; }
-.ai-items { display: flex; flex-direction: column; gap: 8px; }
+.ai-form {
+  margin-bottom: 16px;
+}
+.ai-record {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-summary {
+  margin: 0;
+}
+.ai-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .raw-json {
   margin: 0;
   padding: 8px;
@@ -210,5 +231,7 @@ function formatItem(item: unknown): string {
   word-break: break-all;
   background: var(--gi-color-bg-2, #f5f5f5);
 }
-.text-muted { color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45)); }
+.text-muted {
+  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+}
 </style>

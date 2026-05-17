@@ -1,3 +1,4 @@
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 export type MarkOcrProviderTypeCode = 'TENCENT' | 'BAIDU' | 'PADDLE'
@@ -22,8 +23,8 @@ export const MARK_OCR_HEALTH_STATUS_LABEL: Record<MarkOcrHealthStatusCode, strin
   FAILED: '异常',
 }
 
-export const MARK_OCR_HEALTH_STATUS_COLOR: Record<MarkOcrHealthStatusCode, string> = {
-  UNKNOWN: 'default',
+export const MARK_OCR_HEALTH_STATUS_COLOR: Record<MarkOcrHealthStatusCode, BadgeTone> = {
+  UNKNOWN: 'gray',
   HEALTHY: 'green',
   FAILED: 'red',
 }

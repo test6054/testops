@@ -3,10 +3,20 @@
     <div class="ai-form">
       <a-form layout="inline" :model="form" size="small">
         <a-form-item label="课程ID">
-          <a-input v-model:value="form.courseId" placeholder="请输入课程ID" allow-clear style="width: 160px" />
+          <a-input
+            v-model:value="form.courseId"
+            placeholder="请输入课程ID"
+            allow-clear
+            style="width: 160px"
+          />
         </a-form-item>
         <a-form-item label="学期编码">
-          <a-input v-model:value="form.semesterCode" placeholder="可选，例如 2026-S1" allow-clear style="width: 160px" />
+          <a-input
+            v-model:value="form.semesterCode"
+            placeholder="可选，例如 2026-S1"
+            allow-clear
+            style="width: 160px"
+          />
         </a-form-item>
         <a-form-item label="考试ID列表" style="flex: 1; min-width: 320px">
           <a-input
@@ -51,13 +61,15 @@
 
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'] }}
+            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
+              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="课程ID">{{ record.courseId ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间" :span="2">{{ fmt(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间" :span="2">{{
+            fmt(record.createTime)
+          }}</a-descriptions-item>
           <a-descriptions-item label="trace ID">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -102,19 +114,12 @@
 
 <script lang="ts" setup>
 import type { CourseObjectiveAchievementVO } from '@/apis/mark/cross-exam-analysis'
-import type { AiAnalysisStatusCode } from '@/apis/mark/teaching-analysis'
+import { generateAchievement, listAchievements } from '@/apis/mark/cross-exam-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
-import {
-  generateAchievement,
-  listAchievements,
-} from '@/apis/mark/cross-exam-analysis'
-import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-} from '@/apis/mark/teaching-analysis'
+import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 
 defineOptions({ name: 'CourseAchievementCard' })
 
@@ -209,10 +214,22 @@ function achievementStyle(rate?: number): Record<string, string> {
 </script>
 
 <style lang="scss" scoped>
-.ai-form { margin-bottom: 16px; }
-.ai-record { display: flex; flex-direction: column; gap: 12px; }
-.ai-summary { margin: 0; }
-.ai-items { display: flex; flex-direction: column; gap: 8px; }
+.ai-form {
+  margin-bottom: 16px;
+}
+.ai-record {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-summary {
+  margin: 0;
+}
+.ai-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .metric-row {
   background: var(--gi-color-bg-2, #f5f5f5);
   padding: 12px 8px;
@@ -227,5 +244,7 @@ function achievementStyle(rate?: number): Record<string, string> {
   word-break: break-all;
   background: var(--gi-color-bg-2, #f5f5f5);
 }
-.text-muted { color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45)); }
+.text-muted {
+  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+}
 </style>

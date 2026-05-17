@@ -30,20 +30,20 @@
       size="small"
       :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
     >
-      <template #bodyCell="{ column, record }">
+      <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'requestStatus'">
-          <a-tag :color="REVIEW_REQUEST_STATUS_COLOR[asRequest(record).requestStatus || 'PENDING']">
-            {{ REVIEW_REQUEST_STATUS_LABEL[asRequest(record).requestStatus || 'PENDING'] }}
+          <a-tag :color="requestStatusColor(rows[index].requestStatus)">
+            {{ requestStatusLabel(rows[index].requestStatus) }}
           </a-tag>
         </template>
         <template v-else-if="column.key === 'questionIds'">
-          <span class="ellipsis">{{ asRequest(record).questionIds || '-' }}</span>
+          <span class="ellipsis">{{ rows[index].questionIds || '-' }}</span>
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{ fmt(asRequest(record).createTime) }}
+          {{ fmt(rows[index].createTime) }}
         </template>
         <template v-else-if="column.key === 'reviewTime'">
-          {{ fmt(asRequest(record).reviewTime) }}
+          {{ fmt(rows[index].reviewTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-space>
@@ -51,11 +51,11 @@
               type="link"
               size="small"
               :disabled="
-                asRequest(record).requestStatus === 'APPROVED'
-                  || asRequest(record).requestStatus === 'REJECTED'
-                  || asRequest(record).requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
-              @click="openHandleModal(asRequest(record), 'APPROVED')"
+              @click="openHandleModal(rows[index], 'APPROVED')"
             >
               通过
             </a-button>
@@ -64,11 +64,11 @@
               size="small"
               danger
               :disabled="
-                asRequest(record).requestStatus === 'APPROVED'
-                  || asRequest(record).requestStatus === 'REJECTED'
-                  || asRequest(record).requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
-              @click="openHandleModal(asRequest(record), 'REJECTED')"
+              @click="openHandleModal(rows[index], 'REJECTED')"
             >
               驳回
             </a-button>
@@ -126,31 +126,31 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import {
   handleReviewRequest,
   listReviewRequests,
   REVIEW_REQUEST_STATUS_COLOR,
   REVIEW_REQUEST_STATUS_LABEL,
 } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
 const rows = ref<ExamGradeReviewRequestVO[]>([])
 const loading = ref(false)
 const statusFilter = ref<GradeReviewRequestStatusCode | undefined>(undefined)
 
-const statusOptions = (
-  Object.keys(REVIEW_REQUEST_STATUS_LABEL) as GradeReviewRequestStatusCode[]
-).map((c) => ({
-  label: REVIEW_REQUEST_STATUS_LABEL[c],
-  value: c,
+// 从后端枚举 LABEL 对象直接派生 select options。
+const statusOptions = Object.entries(REVIEW_REQUEST_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
 }))
 
 const columns: ColumnType<ExamGradeReviewRequestVO>[] = [
@@ -228,14 +228,18 @@ async function submitHandle(): Promise<void> {
   }
 }
 
-/** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为真实 VO */
-function asRequest(record: Record<string, unknown>): ExamGradeReviewRequestVO {
-  return record as unknown as ExamGradeReviewRequestVO
-}
-
 function fmt(v?: string): string {
   if (!v) return '-'
   return dayjs(v).format('YYYY-MM-DD HH:mm')
+}
+
+// 严格 typed helper：rows[index].requestStatus 是 GradeReviewRequestStatusCode | undefined，避免 slot record:any 索引。
+function requestStatusColor(status?: GradeReviewRequestStatusCode): BadgeTone {
+  return REVIEW_REQUEST_STATUS_COLOR[status ?? 'PENDING']
+}
+
+function requestStatusLabel(status?: GradeReviewRequestStatusCode): string {
+  return REVIEW_REQUEST_STATUS_LABEL[status ?? 'PENDING']
 }
 
 watch(

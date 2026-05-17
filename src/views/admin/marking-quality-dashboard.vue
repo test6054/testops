@@ -4,7 +4,7 @@
       <PageHeader title="阅卷质量监控">
         <template #tags>
           <UiTag v-if="selectedExamId" tone="blue" size="md">考试 #{{ selectedExamId }}</UiTag>
-          <UiTag v-if="selectedExamId && progress" tone="cyan" size="md">
+          <UiTag v-if="selectedExamId && progress" tone="blue" size="md">
             完成率 {{ progress.completionRate?.toFixed?.(2) ?? '-' }}%
           </UiTag>
           <UiTag
@@ -103,19 +103,13 @@
                 <b>{{ progress.totalTasks ?? 0 }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="已分配">
-                {{
-                  progress.allocatedTasks ?? 0
-                }}
+                {{ progress.allocatedTasks ?? 0 }}
               </a-descriptions-item>
               <a-descriptions-item label="进行中">
-                {{
-                  progress.inProgressTasks ?? 0
-                }}
+                {{ progress.inProgressTasks ?? 0 }}
               </a-descriptions-item>
               <a-descriptions-item label="已提交">
-                {{
-                  progress.submittedTasks ?? 0
-                }}
+                {{ progress.submittedTasks ?? 0 }}
               </a-descriptions-item>
               <a-descriptions-item label="已定稿">
                 <b style="color: #389e0d">{{ progress.finalizedTasks ?? 0 }}</b>
@@ -135,9 +129,7 @@
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="快照时间" :span="2">
-                {{
-                  progress.snapshotTime ?? '-'
-                }}
+                {{ progress.snapshotTime ?? '-' }}
               </a-descriptions-item>
               <a-descriptions-item v-if="progress.riskDetail" label="风险详情" :span="3">
                 <pre class="json-pre">{{ progress.riskDetail }}</pre>
@@ -203,29 +195,24 @@
               row-key="id"
               size="middle"
             >
-              <template #bodyCell="{ column, record }">
+              <template #bodyCell="{ column, index }">
                 <template v-if="column.key === 'metricStatus'">
-                  <UiTag :tone="metricStatusTone(record.metricStatus)" size="sm">
-                    {{
-                      REVIEWER_METRIC_STATUS_LABEL[
-                        record.metricStatus as ReviewerMetricStatusCode
-                      ] ?? record.metricStatus
-                    }}
+                  <UiTag :tone="metricStatusTone(reviewerMetrics[index].metricStatus)" size="sm">
+                    {{ metricStatusLabel(reviewerMetrics[index].metricStatus) }}
                   </UiTag>
                 </template>
-                <template
-                  v-else-if="
-                    ['avgScore', 'scoreStddev', 'consistencyRate', 'scoreBias'].includes(
-                      column.key as string,
-                    )
-                  "
-                >
-                  {{
-                    formatDecimal(
-                      record[column.key as keyof typeof record] as unknown as number | undefined,
-                    )
-                  }}
-                </template>
+                <template v-else-if="column.key === 'avgScore'">{{
+                  formatDecimal(reviewerMetrics[index].avgScore)
+                }}</template>
+                <template v-else-if="column.key === 'scoreStddev'">{{
+                  formatDecimal(reviewerMetrics[index].scoreStddev)
+                }}</template>
+                <template v-else-if="column.key === 'consistencyRate'">{{
+                  formatDecimal(reviewerMetrics[index].consistencyRate)
+                }}</template>
+                <template v-else-if="column.key === 'scoreBias'">{{
+                  formatDecimal(reviewerMetrics[index].scoreBias)
+                }}</template>
               </template>
             </a-table>
           </UiCard>
@@ -263,6 +250,7 @@
                   :min="1"
                   :max="100"
                   style="width: 100%"
+                  placeholder="请输入 1~100 之间的抽检比例"
                 />
               </a-form-item>
               <a-form-item label="目标教师用户ID（可选）">
@@ -328,7 +316,11 @@
                   cancel-text="取消"
                   @confirm="handleReprocess"
                 >
-                  <UiButton variant="danger" :loading="reprocessing" :disabled="!reprocessValid">
+                  <UiButton
+                    variant="destructive"
+                    :loading="reprocessing"
+                    :disabled="!reprocessValid"
+                  >
                     <template #icon><WarningOutlined /></template>
                     触发重处理
                   </UiButton>
@@ -345,6 +337,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   BatchReprocessScopeCode,
   ProgressMonitorRecordVO,
@@ -352,17 +345,6 @@ import type {
   ReviewerMetricStatusCode,
   ReviewerQualityMetricVO,
 } from '@/apis/mark/marking-quality'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
 import {
   createSpotCheckTasks,
   getLatestProgress,
@@ -375,9 +357,20 @@ import {
   REVIEWER_METRIC_STATUS_LABEL,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
 
@@ -391,7 +384,7 @@ const organizationIdInput = ref<string>(
   route.query.organizationId ? String(route.query.organizationId) : '',
 )
 const groupIdInput = ref<string>(route.query.groupId ? String(route.query.groupId) : '')
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const activeTab = ref<'progress' | 'reviewer' | 'spotcheck' | 'reprocess'>('progress')
@@ -497,8 +490,9 @@ async function handleRefreshMetrics(): Promise<void> {
 // ─── 抽检 ─────────────────────────────────────
 
 const creatingSpot = ref(false)
+// a-input-number v-model:value 不接受 null，使用 number | undefined 描述未填状态。
 const spotForm = reactive<{
-  sampleRate: number | null
+  sampleRate: number | undefined
   targetReviewerUserId: string
 }>({
   sampleRate: 10,
@@ -561,15 +555,19 @@ async function handleReprocess(): Promise<void> {
   }
 }
 
-// ─── 共用工具 ─────────────────────────────────
-
-function metricStatusTone(status?: ReviewerMetricStatusCode): string {
-  if (!status) return 'gray'
-  return REVIEWER_METRIC_STATUS_COLOR[status] ?? 'gray'
+// ─── 共用工具 ─────────────────────────────
+function metricStatusTone(status?: ReviewerMetricStatusCode): BadgeTone {
+  if (!status) return 'blue'
+  return REVIEWER_METRIC_STATUS_COLOR[status] ?? 'blue'
 }
 
-function riskTone(level: ProgressRiskLevelCode): string {
-  return PROGRESS_RISK_LEVEL_COLOR[level] ?? 'gray'
+function metricStatusLabel(status?: ReviewerMetricStatusCode): string {
+  if (!status) return '-'
+  return REVIEWER_METRIC_STATUS_LABEL[status] ?? status
+}
+
+function riskTone(level: ProgressRiskLevelCode): BadgeTone {
+  return PROGRESS_RISK_LEVEL_COLOR[level] ?? 'blue'
 }
 
 function formatDecimal(value: number | undefined): string {

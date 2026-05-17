@@ -5,9 +5,10 @@
 -->
 <script setup lang="ts">
 import type { TrainingPlanVO } from '@/apis/quality'
+import { trainingPlanApi } from '@/apis/quality'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
-import { trainingPlanApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -34,16 +35,20 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  'change': [value: string | null, option?: TrainingPlanVO]
+  change: [value: string | null, option?: TrainingPlanVO]
 }>()
 
 const options = ref<TrainingPlanVO[]>([])
 const loading = ref(false)
-const internalValue = ref<string | null>(props.value ?? null)
+// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
+const internalValue = ref<string | undefined>(props.value ?? undefined)
 
-watch(() => props.value, (v) => {
-  internalValue.value = v ?? null
-})
+watch(
+  () => props.value,
+  (v) => {
+    internalValue.value = v ?? undefined
+  },
+)
 
 watch(
   () => props.programId,
@@ -69,11 +74,12 @@ async function loadOptions() {
   }
 }
 
-function handleChange(val: string | null) {
-  internalValue.value = val
-  const option = options.value.find(o => o.id === val)
-  emit('update:value', val)
-  emit('change', val, option)
+function handleChange(val: SelectValue) {
+  const next: string | null = typeof val === 'string' ? val : null
+  internalValue.value = next ?? undefined
+  const option = options.value.find((o) => o.id === next)
+  emit('update:value', next)
+  emit('change', next, option)
 }
 
 onMounted(() => {

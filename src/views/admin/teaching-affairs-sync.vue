@@ -86,64 +86,67 @@
             row-key="id"
             size="middle"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'externalSystemType'">
                 {{
-                  EXTERNAL_SYSTEM_TYPE_LABEL[record.externalSystemType as ExternalSystemTypeCode]
-                    ?? record.externalSystemType
+                  syncTasks[index].externalSystemType
+                    ? EXTERNAL_SYSTEM_TYPE_LABEL[syncTasks[index].externalSystemType!]
+                    : '-'
                 }}
               </template>
               <template v-else-if="column.key === 'syncType'">
-                {{
-                  SYNC_TYPE_LABEL[record.syncType as TeachingAffairsSyncTypeCode] ?? record.syncType
-                }}
+                {{ syncTasks[index].syncType ? SYNC_TYPE_LABEL[syncTasks[index].syncType!] : '-' }}
               </template>
               <template v-else-if="column.key === 'taskStatus'">
-                <UiTag :tone="syncStatusTone(record.taskStatus)" size="sm">
+                <UiTag :tone="syncStatusTone(syncTasks[index].taskStatus)" size="sm">
                   {{
-                    SYNC_TASK_STATUS_LABEL[record.taskStatus as SyncTaskStatusCode]
-                      ?? record.taskStatus
+                    syncTasks[index].taskStatus
+                      ? SYNC_TASK_STATUS_LABEL[syncTasks[index].taskStatus!]
+                      : '-'
                   }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'retry'">
-                {{ record.retryCount ?? 0 }} / {{ record.maxRetryCount ?? '-' }}
+                {{ syncTasks[index].retryCount ?? 0 }} / {{ syncTasks[index].maxRetryCount ?? '-' }}
               </template>
               <template v-else-if="column.key === 'lastError'">
-                <a-tooltip v-if="record.lastErrorMessage" :title="record.lastErrorMessage">
-                  <span class="error-text">{{ record.lastErrorCode ?? 'ERROR' }}</span>
+                <a-tooltip
+                  v-if="syncTasks[index].lastErrorMessage"
+                  :title="syncTasks[index].lastErrorMessage"
+                >
+                  <span class="error-text">{{ syncTasks[index].lastErrorCode ?? 'ERROR' }}</span>
                 </a-tooltip>
                 <span v-else class="hint-text">-</span>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <a-space>
                   <UiButton
-                    v-if="canExecute(record.taskStatus)"
-                    size="xs"
-                    :loading="actionLoadingId === record.id"
-                    @click="handleExecute(record)"
+                    v-if="canExecute(syncTasks[index].taskStatus)"
+                    size="sm"
+                    :loading="actionLoadingId === syncTasks[index].id"
+                    @click="handleExecute(syncTasks[index])"
                   >
                     执行回写
                   </UiButton>
                   <UiButton
-                    v-if="canRetry(record.taskStatus)"
-                    size="xs"
+                    v-if="canRetry(syncTasks[index].taskStatus)"
+                    size="sm"
                     variant="outline"
-                    :loading="actionLoadingId === record.id"
-                    @click="handleRetry(record)"
+                    :loading="actionLoadingId === syncTasks[index].id"
+                    @click="handleRetry(syncTasks[index])"
                   >
                     重试
                   </UiButton>
                   <UiButton
-                    v-if="canCancel(record.taskStatus)"
-                    size="xs"
+                    v-if="canCancel(syncTasks[index].taskStatus)"
+                    size="sm"
                     variant="outline"
-                    :loading="actionLoadingId === record.id"
-                    @click="handleCancel(record)"
+                    :loading="actionLoadingId === syncTasks[index].id"
+                    @click="handleCancel(syncTasks[index])"
                   >
                     取消
                   </UiButton>
-                  <UiButton size="xs" variant="outline" @click="openTaskDetail(record)">
+                  <UiButton size="sm" variant="outline" @click="openTaskDetail(syncTasks[index])">
                     详情
                   </UiButton>
                 </a-space>
@@ -156,7 +159,7 @@
           <template #title>
             <FileSyncOutlined />
             <span>回写记录</span>
-            <UiBadge tone="cyan">{{ passbackRecords.length }}</UiBadge>
+            <UiBadge tone="blue">{{ passbackRecords.length }}</UiBadge>
           </template>
           <template #extra>
             <a-space>
@@ -202,31 +205,34 @@
             row-key="id"
             size="middle"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'passbackStatus'">
-                <UiTag :tone="passbackStatusTone(record.passbackStatus)" size="sm">
+                <UiTag :tone="passbackStatusTone(passbackRecords[index].passbackStatus)" size="sm">
                   {{
-                    PASSBACK_STATUS_LABEL[record.passbackStatus as PassbackStatusCode]
-                      ?? record.passbackStatus
+                    passbackRecords[index].passbackStatus
+                      ? PASSBACK_STATUS_LABEL[passbackRecords[index].passbackStatus!]
+                      : '-'
                   }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'reconcileStatus'">
                 <UiTag
-                  v-if="record.reconcileStatus"
-                  :tone="reconcileStatusTone(record.reconcileStatus)"
+                  v-if="passbackRecords[index].reconcileStatus"
+                  :tone="reconcileStatusTone(passbackRecords[index].reconcileStatus)"
                   size="sm"
                 >
-                  {{
-                    RECONCILE_STATUS_LABEL[record.reconcileStatus as ReconcileStatusCode]
-                      ?? record.reconcileStatus
-                  }}
+                  {{ RECONCILE_STATUS_LABEL[passbackRecords[index].reconcileStatus!] }}
                 </UiTag>
                 <span v-else class="hint-text">-</span>
               </template>
               <template v-else-if="column.key === 'errorMessage'">
-                <a-tooltip v-if="record.errorMessage" :title="record.errorMessage">
-                  <span class="error-text">{{ ellipsis(record.errorMessage, 40) }}</span>
+                <a-tooltip
+                  v-if="passbackRecords[index].errorMessage"
+                  :title="passbackRecords[index].errorMessage"
+                >
+                  <span class="error-text">{{
+                    ellipsis(passbackRecords[index].errorMessage, 40)
+                  }}</span>
                 </a-tooltip>
                 <span v-else class="hint-text">-</span>
               </template>
@@ -285,7 +291,7 @@
           <a-textarea
             v-model:value="createForm.syncConfig"
             :rows="4"
-            placeholder="{&quot;endpoint&quot;:&quot;https://sis.school/api&quot;,&quot;apiKey&quot;:&quot;xxx&quot;}"
+            placeholder='{"endpoint":"https://sis.school/api","apiKey":"xxx"}'
           />
         </a-form-item>
       </a-form>
@@ -320,25 +326,21 @@
           {{ detailTask.retryCount ?? 0 }} / {{ detailTask.maxRetryCount ?? '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="外部课程ID">
-          {{
-            detailTask.externalCourseId ?? '-'
-          }}
+          {{ detailTask.externalCourseId ?? '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="外部成绩项ID">
-          {{
-            detailTask.externalLineItemId ?? '-'
-          }}
+          {{ detailTask.externalLineItemId ?? '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="同步配置">
           <pre class="json-pre">{{ detailTask.syncConfig || '（空）' }}</pre>
         </a-descriptions-item>
         <a-descriptions-item label="最后同步时间">
-          {{
-            detailTask.lastSyncTime ?? '-'
-          }}
+          {{ detailTask.lastSyncTime ?? '-' }}
         </a-descriptions-item>
         <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-          <span class="error-text">[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span>
+          <span class="error-text"
+            >[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span
+          >
         </a-descriptions-item>
         <a-descriptions-item label="操作" :span="1">
           <a-space>
@@ -362,6 +364,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   ExternalSystemTypeCode,
   PassbackRecordVO,
@@ -371,15 +374,6 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -397,6 +391,15 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -409,7 +412,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 const loading = ref(false)
 
@@ -601,19 +604,19 @@ async function loadPassbackRecords(): Promise<void> {
 
 // ─── 共用 ─────────────────────────────────
 
-function syncStatusTone(status?: SyncTaskStatusCode): string {
+function syncStatusTone(status?: SyncTaskStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return SYNC_TASK_STATUS_COLOR[status] ?? 'gray'
+  return SYNC_TASK_STATUS_COLOR[status]
 }
 
-function passbackStatusTone(status?: PassbackStatusCode): string {
+function passbackStatusTone(status?: PassbackStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return PASSBACK_STATUS_COLOR[status] ?? 'gray'
+  return PASSBACK_STATUS_COLOR[status]
 }
 
-function reconcileStatusTone(status?: ReconcileStatusCode): string {
+function reconcileStatusTone(status?: ReconcileStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return RECONCILE_STATUS_COLOR[status] ?? 'gray'
+  return RECONCILE_STATUS_COLOR[status]
 }
 
 function ellipsis(text: string | undefined, len = 40): string {

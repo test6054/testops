@@ -156,17 +156,13 @@
               </template>
               <template v-else-if="column.key === 'pending'">
                 <UiTag v-if="record.pending > 0" tone="orange" size="sm">
-                  {{
-                    record.pending
-                  }}
+                  {{ record.pending }}
                 </UiTag>
                 <span v-else class="muted">0</span>
               </template>
               <template v-else-if="column.key === 'inProgress'">
                 <UiTag v-if="record.inProgress > 0" tone="blue" size="sm">
-                  {{
-                    record.inProgress
-                  }}
+                  {{ record.inProgress }}
                 </UiTag>
                 <span v-else class="muted">0</span>
               </template>
@@ -188,13 +184,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { MarkingProgressVO, ReviewTaskItemVO } from '@/apis/mark/exam'
+import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
-import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -259,10 +255,20 @@ const statusBreakdown = computed(() => {
     REJECTED: 0,
   }
   tasks.value.forEach((task) => {
-    const code = task.status as ReviewTaskStatusCode
-    if (code in counter) counter[code]++
+    // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄，零 as。
+    const status = task.status
+    if (
+      status === 'PENDING' ||
+      status === 'IN_PROGRESS' ||
+      status === 'APPROVED' ||
+      status === 'REJECTED'
+    ) {
+      counter[status]++
+    }
   })
-  return (Object.keys(counter) as ReviewTaskStatusCode[]).map((code) => ({
+  // 显式列出全部枚举值，避免 Object.keys + as 推断。
+  const codes: ReviewTaskStatusCode[] = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED']
+  return codes.map((code) => ({
     code,
     label: STATUS_LABEL[code],
     tone: STATUS_TONE[code],
@@ -287,7 +293,8 @@ const questionRows = computed<QuestionRow[]>(() => {
     }
     const row = map.get(id)!
     row.total++
-    switch (task.status as ReviewTaskStatusCode) {
+    // task.status 是 string，switch + 字面值 case 已是安全比较，零 as。
+    switch (task.status) {
       case 'PENDING':
         row.pending++
         break

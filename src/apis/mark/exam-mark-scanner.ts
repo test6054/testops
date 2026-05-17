@@ -6,6 +6,7 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 /** 接入模式编码 - 对应后端 ScannerInterfaceMode 枚举 */
@@ -17,8 +18,8 @@ export const SCANNER_INTERFACE_MODE_LABEL: Record<ScannerInterfaceModeCode, stri
   SANE_PULL: 'SANE 主动采集',
 }
 
-/** 接入模式徽标颜色（antd 兼容） */
-export const SCANNER_INTERFACE_MODE_COLOR: Record<ScannerInterfaceModeCode, string> = {
+/** 接入模式徽标颜色（统一 BadgeTone） */
+export const SCANNER_INTERFACE_MODE_COLOR: Record<ScannerInterfaceModeCode, BadgeTone> = {
   HTTP_PUSH: 'blue',
   SANE_PULL: 'green',
 }
@@ -33,8 +34,8 @@ export const SCANNER_DEVICE_STATUS_LABEL: Record<ScannerDeviceStatusCode, string
   DISABLED: '禁用',
 }
 
-/** 设备状态颜色 */
-export const SCANNER_DEVICE_STATUS_COLOR: Record<ScannerDeviceStatusCode, string> = {
+/** 设备状态颜色（统一 BadgeTone） */
+export const SCANNER_DEVICE_STATUS_COLOR: Record<ScannerDeviceStatusCode, BadgeTone> = {
   ACTIVE: 'green',
   INACTIVE: 'orange',
   DISABLED: 'red',

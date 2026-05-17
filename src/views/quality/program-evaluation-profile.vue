@@ -12,16 +12,17 @@ import type {
   ProgramEvaluationProfileSavePayload,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
-import type { MajorVO } from '@/apis/quality/user-catalog'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   EVALUATION_METHOD_LABEL,
   programEvaluationProfileApi,
 } from '@/apis/quality'
+import type { MajorVO } from '@/apis/quality/user-catalog'
 import { majorCatalogApi } from '@/apis/quality/user-catalog'
+import type { SelectValue } from 'ant-design-vue/es/select'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 
 const list = ref<ProgramEvaluationProfileVO[]>([])
 const total = ref(0)
@@ -37,8 +38,14 @@ const query = reactive<ProgramEvaluationProfileQueryPayload>({
   keyword: '',
 })
 
-const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const evaluationMethodOptions = Object.entries(EVALUATION_METHOD_LABEL).map(([value, label]) => ({ value, label }))
+const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const evaluationMethodOptions = Object.entries(EVALUATION_METHOD_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 const evaluationCycleOptions = [
   { value: 'SEMESTER', label: '按学期' },
   { value: 'YEAR', label: '按学年' },
@@ -132,8 +139,11 @@ function openEdit(record: ProgramEvaluationProfileVO) {
   editorVisible.value = true
 }
 
-function onProgramChange(programId: string) {
-  const major = programs.value.find(p => p.id === programId)
+// a-select v-model:value 是 SelectValue（string|number|undefined|array），
+// 这里业务模板 ID 是字符串，select 清空时为 undefined，需要在 handler 中显式 narrow。
+function onProgramChange(value: SelectValue) {
+  if (typeof value !== 'string') return
+  const major = programs.value.find((p) => p.id === value)
   if (major) editor.programName = major.majorName
 }
 
@@ -176,8 +186,19 @@ onMounted(async () => {
     <a-card title="专业评价口径" :bordered="false">
       <template #extra>
         <a-space wrap>
-          <a-select v-model:value="query.accreditationType" placeholder="认证类型" allow-clear style="width: 200px" :options="accreditationOptions" />
-          <a-input v-model:value="query.keyword" placeholder="专业名称" style="width: 200px" @press-enter="loadList" />
+          <a-select
+            v-model:value="query.accreditationType"
+            placeholder="认证类型"
+            allow-clear
+            style="width: 200px"
+            :options="accreditationOptions"
+          />
+          <a-input
+            v-model:value="query.keyword"
+            placeholder="专业名称"
+            style="width: 200px"
+            @press-enter="loadList"
+          />
           <a-button type="primary" @click="loadList">查询</a-button>
           <a-button @click="resetQuery">重置</a-button>
           <a-button type="primary" @click="openCreate">新建评价口径</a-button>
@@ -212,7 +233,7 @@ onMounted(async () => {
         </a-table-column>
         <a-table-column title="评价周期" data-index="evaluationCycle" width="120">
           <template #default="{ text }">
-            {{ evaluationCycleOptions.find(o => o.value === text)?.label || text }}
+            {{ evaluationCycleOptions.find((o) => o.value === text)?.label || text }}
           </template>
         </a-table-column>
         <a-table-column title="启用" data-index="enabled" width="80">
@@ -226,7 +247,9 @@ onMounted(async () => {
           <template #default="{ record }">
             <a-space>
               <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+              <a-button type="link" size="small" danger @click="handleDelete(record)"
+                >删除</a-button
+              >
             </a-space>
           </template>
         </a-table-column>
@@ -251,7 +274,12 @@ onMounted(async () => {
                 option-filter-prop="label"
                 @change="onProgramChange"
               >
-                <a-select-option v-for="p in programs" :key="p.id" :value="p.id" :label="p.majorName">
+                <a-select-option
+                  v-for="p in programs"
+                  :key="p.id"
+                  :value="p.id"
+                  :label="p.majorName"
+                >
                   {{ p.majorName }}
                 </a-select-option>
               </a-select>
@@ -271,7 +299,10 @@ onMounted(async () => {
           </a-col>
           <a-col :span="8">
             <a-form-item label="认证级别">
-              <a-input v-model:value="editor.accreditationLevel" placeholder="如 LEVEL_2 / LEVEL_3" />
+              <a-input
+                v-model:value="editor.accreditationLevel"
+                placeholder="如 LEVEL_2 / LEVEL_3"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -281,7 +312,12 @@ onMounted(async () => {
           </a-col>
         </a-row>
         <a-form-item label="关联认证标准">
-          <a-select v-model:value="editor.standardId" allow-clear show-search option-filter-prop="label">
+          <a-select
+            v-model:value="editor.standardId"
+            allow-clear
+            show-search
+            option-filter-prop="label"
+          >
             <a-select-option
               v-for="s in standards"
               :key="s.id"
@@ -295,7 +331,10 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="评价方法" required>
-              <a-select v-model:value="editor.evaluationMethod" :options="evaluationMethodOptions" />
+              <a-select
+                v-model:value="editor.evaluationMethod"
+                :options="evaluationMethodOptions"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -305,10 +344,18 @@ onMounted(async () => {
           </a-col>
         </a-row>
         <a-form-item label="样本范围">
-          <a-textarea v-model:value="editor.sampleScope" :rows="2" placeholder="如：全体毕业生 + 用人单位 + 校友" />
+          <a-textarea
+            v-model:value="editor.sampleScope"
+            :rows="2"
+            placeholder="如：全体毕业生 + 用人单位 + 校友"
+          />
         </a-form-item>
         <a-form-item label="责任链">
-          <a-textarea v-model:value="editor.reviewChain" :rows="2" placeholder="校院两级审核责任链描述" />
+          <a-textarea
+            v-model:value="editor.reviewChain"
+            :rows="2"
+            placeholder="校院两级审核责任链描述"
+          />
         </a-form-item>
         <a-form-item label="归档策略">
           <a-textarea v-model:value="editor.archivePolicy" :rows="2" />
@@ -320,5 +367,7 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.page {
+  padding: 16px;
+}
 </style>

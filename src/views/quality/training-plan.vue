@@ -2,10 +2,14 @@
 /**
  * 培养方案主数据 CRUD
  */
-import type { TrainingPlanQueryPayload, TrainingPlanSavePayload, TrainingPlanVO } from '@/apis/quality'
+import type {
+  TrainingPlanQueryPayload,
+  TrainingPlanSavePayload,
+  TrainingPlanVO,
+} from '@/apis/quality'
+import { trainingPlanApi } from '@/apis/quality'
 import { message, Modal } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { trainingPlanApi } from '@/apis/quality'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const qualityStore = useQualityStore()
@@ -26,18 +30,17 @@ const query = reactive<TrainingPlanQueryPayload>({
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
+// editor 严格对齐后端 TrainingPlanSaveRequest：后端未定义 versionNo / durationYears / remark。
 const editor = reactive<TrainingPlanSavePayload>({
   programId: '',
   planCode: '',
   planName: '',
   schoolYear: '',
   gradeLevel: '',
-  versionNo: '',
-  durationYears: 4,
+  description: '',
   accreditationProfileId: '',
   storageFileId: '',
   enabled: true,
-  remark: '',
 })
 const submitting = ref(false)
 
@@ -54,8 +57,7 @@ async function loadList() {
     })
     list.value = page.list
     total.value = page.total
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -68,13 +70,31 @@ function handlePageChange(page: number, pageSize: number) {
 
 function resetQuery() {
   query.pageNum = 1
-  Object.assign(query, { programId: '', schoolYear: '', gradeLevel: '', confirmationStatus: undefined, enabled: undefined, keyword: '' })
+  Object.assign(query, {
+    programId: '',
+    schoolYear: '',
+    gradeLevel: '',
+    confirmationStatus: undefined,
+    enabled: undefined,
+    keyword: '',
+  })
   loadList()
 }
 
 function openCreate() {
   editorMode.value = 'create'
-  Object.assign(editor, { id: undefined, programId: '', planCode: '', planName: '', schoolYear: '', gradeLevel: '', versionNo: '', durationYears: 4, accreditationProfileId: '', storageFileId: '', enabled: true, remark: '' })
+  Object.assign(editor, {
+    id: undefined,
+    programId: '',
+    planCode: '',
+    planName: '',
+    schoolYear: '',
+    gradeLevel: '',
+    description: '',
+    accreditationProfileId: '',
+    storageFileId: '',
+    enabled: true,
+  })
   editorVisible.value = true
 }
 
@@ -85,7 +105,12 @@ function openEdit(record: TrainingPlanVO) {
 }
 
 async function submitEditor() {
-  if (!editor.programId.trim() || !editor.planCode.trim() || !editor.planName.trim() || !editor.schoolYear.trim()) {
+  if (
+    !editor.programId.trim() ||
+    !editor.planCode.trim() ||
+    !editor.planName.trim() ||
+    !editor.schoolYear.trim()
+  ) {
     message.error('请填写专业 / 编码 / 名称 / 学年')
     return
   }
@@ -94,16 +119,14 @@ async function submitEditor() {
     if (editorMode.value === 'create') {
       await trainingPlanApi.create(editor)
       message.success('已创建培养方案')
-    }
-    else {
+    } else {
       await trainingPlanApi.update(editor)
       message.success('已更新培养方案')
     }
     editorVisible.value = false
     await loadList()
     await qualityStore.loadTrainingPlanOptions()
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -149,16 +172,15 @@ onMounted(loadList)
           <a-input v-model:value="query.programId" placeholder="专业 ID" style="width: 120px" />
           <a-input v-model:value="query.schoolYear" placeholder="学年" style="width: 110px" />
           <a-input v-model:value="query.gradeLevel" placeholder="年级" style="width: 100px" />
-          <a-input v-model:value="query.keyword" placeholder="关键字" style="width: 160px" @press-enter="loadList" />
-          <a-button type="primary" @click="loadList">
-            查询
-          </a-button>
-          <a-button @click="resetQuery">
-            重置
-          </a-button>
-          <a-button type="primary" @click="openCreate">
-            新建
-          </a-button>
+          <a-input
+            v-model:value="query.keyword"
+            placeholder="关键字"
+            style="width: 160px"
+            @press-enter="loadList"
+          />
+          <a-button type="primary" @click="loadList"> 查询 </a-button>
+          <a-button @click="resetQuery"> 重置 </a-button>
+          <a-button type="primary" @click="openCreate"> 新建 </a-button>
         </a-space>
       </template>
 
@@ -181,12 +203,7 @@ onMounted(loadList)
         <a-table-column title="专业 ID" data-index="programId" width="100" />
         <a-table-column title="学年" data-index="schoolYear" width="110" />
         <a-table-column title="年级" data-index="gradeLevel" width="100" />
-        <a-table-column title="版本" data-index="versionNo" width="100" />
-        <a-table-column title="学制" data-index="durationYears" width="80">
-          <template #default="{ text }">
-            {{ text ? `${text} 年` : '-' }}
-          </template>
-        </a-table-column>
+        <a-table-column title="描述" data-index="description" />
         <a-table-column title="状态" data-index="enabled" width="80">
           <template #default="{ text }">
             <a-tag :color="text ? 'green' : 'default'">
@@ -207,10 +224,13 @@ onMounted(loadList)
               <a-button type="link" size="small" @click="selectAsCurrent(record)">
                 设为当前
               </a-button>
-              <a-button type="link" size="small" @click="openEdit(record)">
-                编辑
-              </a-button>
-              <a-button v-if="record.confirmationStatus !== 'CONFIRMED'" type="link" size="small" @click="handleConfirm(record)">
+              <a-button type="link" size="small" @click="openEdit(record)"> 编辑 </a-button>
+              <a-button
+                v-if="record.confirmationStatus !== 'CONFIRMED'"
+                type="link"
+                size="small"
+                @click="handleConfirm(record)"
+              >
                 确认
               </a-button>
               <a-button type="link" size="small" danger @click="handleDelete(record)">
@@ -274,5 +294,7 @@ onMounted(loadList)
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.page {
+  padding: 16px;
+}
 </style>

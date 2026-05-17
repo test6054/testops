@@ -3,10 +3,16 @@
     <div class="organization-detail-page">
       <PageHeader title="阅卷组织详情" back-route="/admin/marking-organization">
         <template #tags>
-          <UiTag v-if="organization?.organizationStatus" :tone="STATUS_TONE[organization.organizationStatus]" size="md">
+          <UiTag
+            v-if="organization?.organizationStatus"
+            :tone="STATUS_TONE[organization.organizationStatus]"
+            size="md"
+          >
             {{ STATUS_LABEL[organization.organizationStatus] }}
           </UiTag>
-          <UiTag v-if="organization" tone="blue" size="md">题组 {{ organization.groups?.length ?? 0 }}</UiTag>
+          <UiTag v-if="organization" tone="blue" size="md"
+            >题组 {{ organization.groups?.length ?? 0 }}</UiTag
+          >
           <UiTag v-if="organization?.anonymousMode" tone="green" size="md">匿名阅卷</UiTag>
         </template>
         <template #actions>
@@ -43,7 +49,11 @@
                   {{ organization.leaderUserId || '-' }}
                 </a-descriptions-item>
                 <a-descriptions-item label="组织状态">
-                  <UiTag v-if="organization.organizationStatus" :tone="STATUS_TONE[organization.organizationStatus]" size="sm">
+                  <UiTag
+                    v-if="organization.organizationStatus"
+                    :tone="STATUS_TONE[organization.organizationStatus]"
+                    size="sm"
+                  >
                     {{ STATUS_LABEL[organization.organizationStatus] }}
                   </UiTag>
                 </a-descriptions-item>
@@ -52,7 +62,9 @@
                     {{ organization.anonymousMode ? '启用' : '关闭' }}
                   </UiTag>
                 </a-descriptions-item>
-                <a-descriptions-item label="题组数量">{{ organization.groups?.length ?? 0 }} 组</a-descriptions-item>
+                <a-descriptions-item label="题组数量"
+                  >{{ organization.groups?.length ?? 0 }} 组</a-descriptions-item
+                >
                 <a-descriptions-item label="备注" :span="3">
                   {{ organization.remark || '-' }}
                 </a-descriptions-item>
@@ -76,23 +88,29 @@
                 :pagination="false"
                 class="group-table"
               >
-                <template #bodyCell="{ column, record }">
+                <template #bodyCell="{ column, index }">
                   <template v-if="column.key === 'groupName'">
-                    <a-typography-text strong>{{ record.groupName || '-' }}</a-typography-text>
+                    <a-typography-text strong>{{
+                      groups[index].groupName || '-'
+                    }}</a-typography-text>
                   </template>
                   <template v-else-if="column.key === 'questionTemplateIds'">
-                    <UiTag tone="blue" size="sm">{{ record.questionTemplateIds?.length ?? 0 }} 题</UiTag>
+                    <UiTag tone="blue" size="sm"
+                      >{{ groups[index].questionTemplateIds?.length ?? 0 }} 题</UiTag
+                    >
                   </template>
                   <template v-else-if="column.key === 'reviewerUserIds'">
-                    <UiTag tone="purple" size="sm">{{ record.reviewerUserIds?.length ?? 0 }} 人</UiTag>
+                    <UiTag tone="purple" size="sm"
+                      >{{ groups[index].reviewerUserIds?.length ?? 0 }} 人</UiTag
+                    >
                   </template>
                   <template v-else-if="column.key === 'groupStatus'">
-                    <UiTag :tone="GROUP_STATUS_TONE[record.groupStatus as QuestionMarkingGroupStatusCode] || 'gray'" size="sm">
-                      {{ GROUP_STATUS_LABEL[record.groupStatus as QuestionMarkingGroupStatusCode] || record.groupStatus || '-' }}
+                    <UiTag :tone="groupStatusTone(groups[index].groupStatus)" size="sm">
+                      {{ groupStatusLabel(groups[index].groupStatus) }}
                     </UiTag>
                   </template>
                   <template v-else-if="column.key === 'createTime'">
-                    {{ formatTime(record.createTime) }}
+                    {{ formatTime(groups[index].createTime) }}
                   </template>
                 </template>
               </a-table>
@@ -112,19 +130,40 @@
                       />
                     </a-form-item>
                     <a-form-item label="分配模式" required>
-                      <a-select v-model:value="policyForm.allocationMode" :options="ALLOCATION_MODE_OPTIONS" />
+                      <a-select
+                        v-model:value="policyForm.allocationMode"
+                        :options="ALLOCATION_MODE_OPTIONS"
+                      />
                     </a-form-item>
                     <a-form-item label="每批分配任务数">
-                      <a-input-number v-model:value="policyForm.batchSize" :min="1" :max="500" style="width: 100%" />
+                      <a-input-number
+                        v-model:value="policyForm.batchSize"
+                        :min="1"
+                        :max="500"
+                        style="width: 100%"
+                      />
                     </a-form-item>
                     <a-form-item label="教师最大待处理任务数">
-                      <a-input-number v-model:value="policyForm.loadLimit" :min="1" :max="500" style="width: 100%" />
+                      <a-input-number
+                        v-model:value="policyForm.loadLimit"
+                        :min="1"
+                        :max="500"
+                        style="width: 100%"
+                      />
                     </a-form-item>
                     <a-form-item label="匿名令牌策略">
-                      <a-select v-model:value="policyForm.anonymousTokenPolicy" :options="ANONYMOUS_TOKEN_OPTIONS" allow-clear />
+                      <a-select
+                        v-model:value="policyForm.anonymousTokenPolicy"
+                        :options="ANONYMOUS_TOKEN_OPTIONS"
+                        allow-clear
+                      />
                     </a-form-item>
                     <a-form-item label="优先级规则（JSON / DSL）">
-                      <a-textarea v-model:value="policyForm.priorityRule" :rows="2" placeholder="可选，由后端策略层解析" />
+                      <a-textarea
+                        v-model:value="policyForm.priorityRule"
+                        :rows="2"
+                        placeholder="可选，由后端策略层解析"
+                      />
                     </a-form-item>
                     <UiButton :loading="savingAllocation" @click="submitAllocation">
                       <template #icon><SaveOutlined /></template>
@@ -143,13 +182,27 @@
                       />
                     </a-form-item>
                     <a-form-item label="超时时间（分钟）">
-                      <a-input-number v-model:value="policyForm.timeoutMinutes" :min="1" :max="1440" style="width: 100%" />
+                      <a-input-number
+                        v-model:value="policyForm.timeoutMinutes"
+                        :min="1"
+                        :max="1440"
+                        style="width: 100%"
+                      />
                     </a-form-item>
                     <a-form-item label="教师最大待处理任务数">
-                      <a-input-number v-model:value="policyForm.maxPendingCount" :min="1" :max="500" style="width: 100%" />
+                      <a-input-number
+                        v-model:value="policyForm.maxPendingCount"
+                        :min="1"
+                        :max="500"
+                        style="width: 100%"
+                      />
                     </a-form-item>
                     <a-form-item label="再分配模式">
-                      <a-select v-model:value="policyForm.reassignMode" :options="REASSIGN_MODE_OPTIONS" allow-clear />
+                      <a-select
+                        v-model:value="policyForm.reassignMode"
+                        :options="REASSIGN_MODE_OPTIONS"
+                        allow-clear
+                      />
                     </a-form-item>
                     <UiButton :loading="savingRecycle" @click="submitRecycle">
                       <template #icon><SaveOutlined /></template>
@@ -169,7 +222,11 @@
               />
               <a-form layout="vertical" class="status-form">
                 <a-form-item label="当前状态">
-                  <UiTag v-if="organization.organizationStatus" :tone="STATUS_TONE[organization.organizationStatus]" size="md">
+                  <UiTag
+                    v-if="organization.organizationStatus"
+                    :tone="STATUS_TONE[organization.organizationStatus]"
+                    size="md"
+                  >
                     {{ STATUS_LABEL[organization.organizationStatus] }}
                   </UiTag>
                 </a-form-item>
@@ -181,7 +238,11 @@
                     :options="statusTransitionOptions"
                   />
                 </a-form-item>
-                <UiButton :disabled="!targetStatus" :loading="updatingStatus" @click="submitStatusUpdate">
+                <UiButton
+                  :disabled="!targetStatus"
+                  :loading="updatingStatus"
+                  @click="submitStatusUpdate"
+                >
                   <template #icon><ArrowRightOutlined /></template>
                   推进到目标状态
                 </UiButton>
@@ -203,7 +264,11 @@
     >
       <a-form ref="groupFormRef" :model="groupForm" :rules="groupRules" layout="vertical">
         <a-form-item label="题组名称" name="groupName" required>
-          <a-input v-model:value="groupForm.groupName" placeholder="例如：第一题组（选择题）" :maxlength="50" />
+          <a-input
+            v-model:value="groupForm.groupName"
+            placeholder="例如：第一题组（选择题）"
+            :maxlength="50"
+          />
         </a-form-item>
         <a-form-item label="题组组长" name="leaderUserId" required>
           <a-select
@@ -246,6 +311,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   AllocationPolicySavePayload,
   AnonymousTokenPolicyCode,
@@ -258,6 +324,21 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySavePayload,
 } from '@/apis/mark/marking-organization'
+import {
+  ANONYMOUS_TOKEN_POLICY_LABEL,
+  getOrganizationById,
+  MARKING_ALLOCATION_MODE_LABEL,
+  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
+  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
+  MARKING_REASSIGN_MODE_LABEL,
+  QUESTION_GROUP_STATUS_LABEL as GROUP_STATUS_LABEL,
+  QUESTION_GROUP_STATUS_TONE as GROUP_STATUS_TONE,
+  saveAllocationPolicy,
+  saveQuestionGroup,
+  saveRecyclePolicy,
+  updateOrganizationStatus,
+} from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
 import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -267,22 +348,7 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { getExamTemplate } from '@/apis/mark/exam'
-import {
-  ANONYMOUS_TOKEN_POLICY_LABEL,
-  getOrganizationById,
-  QUESTION_GROUP_STATUS_LABEL as GROUP_STATUS_LABEL,
-  QUESTION_GROUP_STATUS_TONE as GROUP_STATUS_TONE,
-  MARKING_ALLOCATION_MODE_LABEL,
-  MARKING_REASSIGN_MODE_LABEL,
-  saveAllocationPolicy,
-  saveQuestionGroup,
-  saveRecyclePolicy,
-  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
-  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
-  updateOrganizationStatus,
-} from '@/apis/mark/marking-organization'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -329,7 +395,7 @@ const teacherList = ref<UserListItemDto[]>([])
 const teacherLoading = ref(false)
 
 const teacherOptions = computed(() =>
-  teacherList.value.map(item => ({
+  teacherList.value.map((item) => ({
     value: item.id,
     label: item.identifierNumber
       ? `${item.nickName || item.userName} (${item.identifierNumber})`
@@ -364,7 +430,7 @@ async function loadQuestionTemplates(): Promise<void> {
   templateLoading.value = true
   try {
     const tpl = await getExamTemplate(examId.value)
-    questionOptions.value = (tpl.questions ?? []).map(q => ({
+    questionOptions.value = (tpl.questions ?? []).map((q) => ({
       value: q.questionTemplateId,
       label: `第 ${q.questionNo} 题（${q.questionType}，满分 ${q.fullScore}）`,
     }))
@@ -400,8 +466,18 @@ const groupRules: Record<string, Rule[]> = {
     { max: 50, message: '题组名称最多 50 字', trigger: 'blur' },
   ],
   leaderUserId: [{ required: true, message: '请选择题组组长', trigger: 'change' }],
-  questionTemplateIds: [{ required: true, type: 'array', min: 1, message: '请至少选择 1 道题目', trigger: 'change' }],
-  reviewerUserIds: [{ required: true, type: 'array', min: 1, message: '请至少选择 1 名阅卷教师', trigger: 'change' }],
+  questionTemplateIds: [
+    { required: true, type: 'array', min: 1, message: '请至少选择 1 道题目', trigger: 'change' },
+  ],
+  reviewerUserIds: [
+    {
+      required: true,
+      type: 'array',
+      min: 1,
+      message: '请至少选择 1 名阅卷教师',
+      trigger: 'change',
+    },
+  ],
 }
 
 function openGroupModal(): void {
@@ -469,23 +545,22 @@ const policyForm = reactive<PolicyForm>({
 })
 
 const groupSelectOptions = computed(() => [
-  ...groups.value.map(g => ({ value: g.id, label: g.groupName || `题组 #${g.id}` })),
+  ...groups.value.map((g) => ({ value: g.id, label: g.groupName || `题组 #${g.id}` })),
 ])
 
-const ALLOCATION_MODE_OPTIONS = (Object.keys(MARKING_ALLOCATION_MODE_LABEL) as MarkingAllocationModeCode[]).map(code => ({
-  value: code,
-  label: MARKING_ALLOCATION_MODE_LABEL[code],
+// 从后端枚举 LABEL 对象直接派生 select options。
+const ALLOCATION_MODE_OPTIONS = Object.entries(MARKING_ALLOCATION_MODE_LABEL).map(
+  ([value, label]) => ({ value, label }),
+)
+
+const REASSIGN_MODE_OPTIONS = Object.entries(MARKING_REASSIGN_MODE_LABEL).map(([value, label]) => ({
+  value,
+  label,
 }))
 
-const REASSIGN_MODE_OPTIONS = (Object.keys(MARKING_REASSIGN_MODE_LABEL) as MarkingReassignModeCode[]).map(code => ({
-  value: code,
-  label: MARKING_REASSIGN_MODE_LABEL[code],
-}))
-
-const ANONYMOUS_TOKEN_OPTIONS = (Object.keys(ANONYMOUS_TOKEN_POLICY_LABEL) as AnonymousTokenPolicyCode[]).map(code => ({
-  value: code,
-  label: ANONYMOUS_TOKEN_POLICY_LABEL[code],
-}))
+const ANONYMOUS_TOKEN_OPTIONS = Object.entries(ANONYMOUS_TOKEN_POLICY_LABEL).map(
+  ([value, label]) => ({ value, label }),
+)
 
 const savingAllocation = ref(false)
 async function submitAllocation(): Promise<void> {
@@ -552,7 +627,7 @@ const STATUS_TRANSITIONS: Record<MarkingOrganizationStatusCode, MarkingOrganizat
 const statusTransitionOptions = computed(() => {
   const current = organization.value?.organizationStatus
   if (!current) return []
-  return STATUS_TRANSITIONS[current].map(code => ({
+  return STATUS_TRANSITIONS[current].map((code) => ({
     value: code,
     label: STATUS_LABEL[code],
   }))
@@ -587,6 +662,17 @@ function goSessions(): void {
 function formatTime(value?: string): string {
   if (!value) return '-'
   return dayjs(value).format('YYYY-MM-DD HH:mm')
+}
+
+// 严格 typed helper：题组 groupStatus 是 QuestionMarkingGroupStatusCode | undefined。
+function groupStatusTone(status?: QuestionMarkingGroupStatusCode): BadgeTone {
+  if (!status) return 'gray'
+  return GROUP_STATUS_TONE[status] ?? 'gray'
+}
+
+function groupStatusLabel(status?: QuestionMarkingGroupStatusCode): string {
+  if (!status) return '-'
+  return GROUP_STATUS_LABEL[status] ?? status
 }
 
 onMounted(loadOrganization)

@@ -12,26 +12,38 @@
     </template>
 
     <a-table
-      :columns="columns" :data-source="rows" :loading="loading" row-key="id" size="small"
+      :columns="columns"
+      :data-source="rows"
+      :loading="loading"
+      row-key="id"
+      size="small"
       :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
     >
-      <template #bodyCell="{ column, record }">
+      <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'correctionType'">
-          {{ correctionTypeLabel(record as ExamGradeCorrectionRecordVO) }}
+          {{ correctionTypeLabel(rows[index]) }}
         </template>
         <template v-else-if="column.key === 'correctionStatus'">
-          <a-tag :color="correctionStatusColor(record as ExamGradeCorrectionRecordVO)">
-            {{ correctionStatusLabel(record as ExamGradeCorrectionRecordVO) }}
+          <a-tag :color="correctionStatusColor(rows[index])">
+            {{ correctionStatusLabel(rows[index]) }}
           </a-tag>
         </template>
-        <template v-else-if="column.key === 'effectiveTime'">{{ fmt(record.effectiveTime) }}</template>
-        <template v-else-if="column.key === 'createTime'">{{ fmt(record.createTime) }}</template>
+        <template v-else-if="column.key === 'effectiveTime'">{{
+          fmt(rows[index].effectiveTime)
+        }}</template>
+        <template v-else-if="column.key === 'createTime'">{{
+          fmt(rows[index].createTime)
+        }}</template>
       </template>
     </a-table>
 
     <a-modal
-      v-model:open="createOpen" title="新建成绩更正" :confirm-loading="submitting"
-      :mask-closable="false" width="560px" @ok="submit"
+      v-model:open="createOpen"
+      title="新建成绩更正"
+      :confirm-loading="submitting"
+      :mask-closable="false"
+      width="560px"
+      @ok="submit"
     >
       <a-form layout="vertical" :model="form">
         <a-row :gutter="12">
@@ -50,7 +62,7 @@
           type="info"
           show-icon
           message="填写题目模板ID时按单题更正执行，题目统计会在后端同步重算；不填写题目模板ID时仅更正总分。"
-          style="margin-bottom: 12px;"
+          style="margin-bottom: 12px"
         />
         <a-row :gutter="12">
           <a-col :span="12">
@@ -60,7 +72,12 @@
           </a-col>
           <a-col :span="12">
             <a-form-item label="更正后分数" required>
-              <a-input-number v-model:value="form.afterScore" :min="0" :precision="2" style="width: 100%" />
+              <a-input-number
+                v-model:value="form.afterScore"
+                :min="0"
+                :precision="2"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -82,11 +99,6 @@ import type {
   GradeCorrectionStatusCode,
   GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { reactive, ref, watch } from 'vue'
 import {
   createCorrection,
   GRADE_CORRECTION_STATUS_COLOR,
@@ -94,10 +106,15 @@ import {
   GRADE_CORRECTION_TYPE_LABEL,
   listCorrections,
 } from '@/apis/mark/grade-review'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { reactive, ref, watch } from 'vue'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])
@@ -216,7 +233,11 @@ function fmt(v?: string): string {
   return dayjs(v).format('YYYY-MM-DD HH:mm')
 }
 
-watch(() => [props.examId, props.reloadToken], () => {
-  if (props.examId) void reload()
-}, { immediate: true })
+watch(
+  () => [props.examId, props.reloadToken],
+  () => {
+    if (props.examId) void reload()
+  },
+  { immediate: true },
+)
 </script>

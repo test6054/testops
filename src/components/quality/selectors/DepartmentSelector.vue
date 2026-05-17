@@ -5,9 +5,10 @@
 -->
 <script setup lang="ts">
 import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
-import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 
 interface Props {
   value?: string | null
@@ -26,21 +27,25 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  'change': [value: string | null, option?: TenantSchoolDepartmentDto]
+  change: [value: string | null, option?: TenantSchoolDepartmentDto]
 }>()
 
 const options = ref<TenantSchoolDepartmentDto[]>([])
 const loading = ref(false)
-const internalValue = ref<string | null>(props.value ?? null)
+// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
+const internalValue = ref<string | undefined>(props.value ?? undefined)
 
-watch(() => props.value, (v) => {
-  internalValue.value = v ?? null
-})
+watch(
+  () => props.value,
+  (v) => {
+    internalValue.value = v ?? undefined
+  },
+)
 
 async function loadOptions() {
   loading.value = true
   try {
-    options.value = await departmentCatalogApi.list() || []
+    options.value = (await departmentCatalogApi.list()) || []
   } catch (e) {
     console.error('[DepartmentSelector] 加载院系列表失败', e)
     message.error('加载院系列表失败')
@@ -49,11 +54,12 @@ async function loadOptions() {
   }
 }
 
-function handleChange(val: string | null) {
-  internalValue.value = val
-  const option = options.value.find(o => o.id === val)
-  emit('update:value', val)
-  emit('change', val, option)
+function handleChange(val: SelectValue) {
+  const next: string | null = typeof val === 'string' ? val : null
+  internalValue.value = next ?? undefined
+  const option = options.value.find((o) => o.id === next)
+  emit('update:value', next)
+  emit('change', next, option)
 }
 
 onMounted(() => {
@@ -75,12 +81,7 @@ defineExpose({ reload: loadOptions })
     option-filter-prop="label"
     @change="handleChange"
   >
-    <a-select-option
-      v-for="opt in options"
-      :key="opt.id"
-      :value="opt.id"
-      :label="opt.deptName"
-    >
+    <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.deptName">
       {{ opt.deptName }}
       <span v-if="opt.deptCode" class="text-gray-400 ml-1">({{ opt.deptCode }})</span>
     </a-select-option>

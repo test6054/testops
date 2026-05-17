@@ -12,6 +12,7 @@
  *   - 租户与操作人从 UserHold 注入
  *   - Long ID 在前端均以 string 表达
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 // ─── 状态枚举 ─────────────────────────────────
@@ -25,7 +26,7 @@ export const REVIEWER_METRIC_STATUS_LABEL: Record<ReviewerMetricStatusCode, stri
   SUSPENDED: '已暂停',
 }
 
-export const REVIEWER_METRIC_STATUS_COLOR: Record<ReviewerMetricStatusCode, string> = {
+export const REVIEWER_METRIC_STATUS_COLOR: Record<ReviewerMetricStatusCode, BadgeTone> = {
   NORMAL: 'green',
   WARNING: 'orange',
   SUSPENDED: 'red',
@@ -41,9 +42,9 @@ export const PROGRESS_RISK_LEVEL_LABEL: Record<ProgressRiskLevelCode, string> = 
   HIGH_RISK: '高风险',
 }
 
-export const PROGRESS_RISK_LEVEL_COLOR: Record<ProgressRiskLevelCode, string> = {
+export const PROGRESS_RISK_LEVEL_COLOR: Record<ProgressRiskLevelCode, BadgeTone> = {
   NORMAL: 'green',
-  LOW_RISK: 'cyan',
+  LOW_RISK: 'blue',
   MEDIUM_RISK: 'orange',
   HIGH_RISK: 'red',
 }

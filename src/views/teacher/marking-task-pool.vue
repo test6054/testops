@@ -4,7 +4,9 @@
       <PageHeader title="阅卷任务池">
         <template #tags>
           <UiTag tone="blue" size="md">我的任务 {{ tasks.length }}</UiTag>
-          <UiTag v-if="inProgressCount > 0" tone="orange" size="md">阅卷中 {{ inProgressCount }}</UiTag>
+          <UiTag v-if="inProgressCount > 0" tone="orange" size="md"
+            >阅卷中 {{ inProgressCount }}</UiTag
+          >
         </template>
         <template #actions>
           <a-select
@@ -31,16 +33,18 @@
         </template>
       </PageHeader>
 
-      <UiEmpty v-if="!selectedExamId" description="请选择考试以查看 / 领取阅卷任务" class="empty-block" />
+      <UiEmpty
+        v-if="!selectedExamId"
+        description="请选择考试以查看 / 领取阅卷任务"
+        class="empty-block"
+      />
 
       <template v-else>
         <UiCard class="claim-card">
           <template #title>
             <ThunderboltOutlined />
             <span>领取任务</span>
-            <UiBadge tone="green">
-              {{ claimContext?.groups.length ?? 0 }} 个可领取题组
-            </UiBadge>
+            <UiBadge tone="green"> {{ claimContext?.groups.length ?? 0 }} 个可领取题组 </UiBadge>
           </template>
 
           <a-spin :spinning="claimContextLoading">
@@ -153,33 +157,35 @@
             row-key="id"
             size="middle"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'id'">
-                <a-typography-text strong>#{{ record.id }}</a-typography-text>
+                <a-typography-text strong>#{{ tasks[index].id }}</a-typography-text>
               </template>
               <template v-else-if="column.key === 'taskStatus'">
-                <UiTag :tone="STATUS_TONE[record.taskStatus as MarkingTaskStatusCode] || 'gray'" size="sm">
-                  {{ STATUS_LABEL[record.taskStatus as MarkingTaskStatusCode] || record.taskStatus || '-' }}
+                <UiTag :tone="taskStatusTone(tasks[index].taskStatus)" size="sm">
+                  {{ taskStatusLabel(tasks[index].taskStatus) }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'reviewRound'">
-                <UiTag tone="blue" size="sm">第 {{ record.reviewRound || 1 }} 轮</UiTag>
+                <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound || 1 }} 轮</UiTag>
               </template>
               <template v-else-if="column.key === 'allocatedAt'">
-                {{ formatTime(record.allocatedAt) }}
+                {{ formatTime(tasks[index].allocatedAt) }}
               </template>
               <template v-else-if="column.key === 'submittedAt'">
-                {{ formatTime(record.submittedAt) }}
+                {{ formatTime(tasks[index].submittedAt) }}
               </template>
               <template v-else-if="column.key === 'score'">
-                <span v-if="record.score !== undefined && record.score !== null">{{ record.score }}</span>
+                <span v-if="tasks[index].score !== undefined && tasks[index].score !== null">{{
+                  tasks[index].score
+                }}</span>
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiButton
-                  v-if="['ALLOCATED', 'IN_PROGRESS'].includes(record.taskStatus)"
+                  v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus ?? '')"
                   size="sm"
-                  @click="goDetail(asTask(record))"
+                  @click="goDetail(tasks[index])"
                 >
                   进入批阅
                 </UiButton>
@@ -202,6 +208,13 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
+import {
+  claimMarkingTasks,
+  getTeacherClaimContext,
+  listMarkingTasks,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -211,13 +224,6 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  claimMarkingTasks,
-  getTeacherClaimContext,
-  listMarkingTasks,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -252,13 +258,14 @@ const filterForm = reactive<{
   sessionId: '',
 })
 
-const statusOptions = (Object.keys(STATUS_LABEL) as MarkingTaskStatusCode[]).map(code => ({
-  value: code,
-  label: STATUS_LABEL[code],
-}))
+// 直接从后端真实枚举 LABEL 对象派生 select options，零 as 断言。
+const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))
 
 const inProgressCount = computed(
-  () => tasks.value.filter(task => task.taskStatus === 'IN_PROGRESS' || task.taskStatus === 'ALLOCATED').length,
+  () =>
+    tasks.value.filter(
+      (task) => task.taskStatus === 'IN_PROGRESS' || task.taskStatus === 'ALLOCATED',
+    ).length,
 )
 
 const columns: ColumnType<MarkingTaskVO>[] = [
@@ -315,7 +322,7 @@ const claimContext = ref<TeacherClaimContextVO | null>(null)
 const claimContextLoading = ref(false)
 
 const claimGroupOptions = computed(() =>
-  (claimContext.value?.groups ?? []).map(g => ({
+  (claimContext.value?.groups ?? []).map((g) => ({
     value: g.groupId,
     label: g.groupName ? `${g.groupName} (#${g.groupId})` : `题组 #${g.groupId}`,
   })),
@@ -323,8 +330,8 @@ const claimGroupOptions = computed(() =>
 
 const claimSessionOptions = computed(() => {
   if (!claimForm.groupId) return []
-  const matched = claimContext.value?.groups.find(g => g.groupId === claimForm.groupId)
-  return (matched?.activeSessions ?? []).map(s => ({
+  const matched = claimContext.value?.groups.find((g) => g.groupId === claimForm.groupId)
+  return (matched?.activeSessions ?? []).map((s) => ({
     value: s.id,
     label: `会话 #${s.id}${s.startTime ? ` · 启动于 ${formatTime(s.startTime)}` : ''}`,
   }))
@@ -379,10 +386,6 @@ async function submitClaim(): Promise<void> {
   }
 }
 
-function asTask(record: Record<string, unknown>): MarkingTaskVO {
-  return record as MarkingTaskVO
-}
-
 function goDetail(task: MarkingTaskVO): void {
   if (!selectedExamId.value) return
   void router.push({
@@ -395,6 +398,44 @@ function goDetail(task: MarkingTaskVO): void {
 function formatTime(value?: string): string {
   if (!value) return '-'
   return dayjs(value).format('YYYY-MM-DD HH:mm')
+}
+
+/**
+ * 把 record.taskStatus（slot 中类型被擦除为 unknown）渲染成中文标签。
+ * - 严格对齐后端 MarkingTaskStatus enum：ALLOCATED / IN_PROGRESS / SUBMITTED / FINALIZED / RECYCLED
+ * - 通过字面值比较让 TS 自动缩窄类型，避免使用 as 断言
+ */
+function taskStatusLabel(value: unknown): string {
+  if (typeof value !== 'string') return '-'
+  if (
+    value === 'ALLOCATED' ||
+    value === 'IN_PROGRESS' ||
+    value === 'SUBMITTED' ||
+    value === 'FINALIZED' ||
+    value === 'RECYCLED'
+  ) {
+    return STATUS_LABEL[value]
+  }
+  return value || '-'
+}
+
+/**
+ * 把 record.taskStatus 渲染成 UiTag 色调。
+ * - 字面值比较 + 类型缩窄，零 as 断言
+ * - 非枚举值或非字符串统一回退到 gray
+ */
+function taskStatusTone(value: unknown): 'gray' | 'blue' | 'orange' | 'green' | 'red' {
+  if (typeof value !== 'string') return 'gray'
+  if (
+    value === 'ALLOCATED' ||
+    value === 'IN_PROGRESS' ||
+    value === 'SUBMITTED' ||
+    value === 'FINALIZED' ||
+    value === 'RECYCLED'
+  ) {
+    return STATUS_TONE[value]
+  }
+  return 'gray'
 }
 
 watch(selectedExamId, () => {

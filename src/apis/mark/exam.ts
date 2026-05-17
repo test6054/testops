@@ -6,6 +6,7 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -18,14 +19,14 @@ export const EXAM_STATUS_LABEL: Record<ExamStatusCode, string> = {
   CLOSED: '已关闭',
 }
 
-/** 考试状态徽标颜色（antd 兼容） */
-export const EXAM_STATUS_COLOR: Record<ExamStatusCode, string> = {
+/** 考试状态徽标颜色（统一 BadgeTone） */
+export const EXAM_STATUS_COLOR: Record<ExamStatusCode, BadgeTone> = {
   ACTIVE: 'green',
   CLOSED: 'red',
 }
 
 /** 考试状态 BadgeTone 映射（用于 UiTag/UiBadge） */
-export const EXAM_STATUS_TONE: Record<ExamStatusCode, 'green' | 'gray'> = {
+export const EXAM_STATUS_TONE: Record<ExamStatusCode, BadgeTone> = {
   ACTIVE: 'green',
   CLOSED: 'gray',
 }
@@ -298,10 +299,20 @@ export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
   WITHDRAWN: '已撤回',
 }
 
-/** 最终成绩状态徽标颜色 */
-export const FINAL_SCORE_STATUS_COLOR: Record<FinalScoreStatusCode, string> = {
-  PENDING: 'default',
-  CALCULATED: 'cyan',
+/** 最终成绩状态徽标颜色（统一 BadgeTone，cyan 不在 BadgeTone 中改为 blue） */
+export const FINAL_SCORE_STATUS_COLOR: Record<FinalScoreStatusCode, BadgeTone> = {
+  PENDING: 'gray',
+  CALCULATED: 'blue',
+  CONFIRMED: 'blue',
+  CORRECTED: 'orange',
+  PUBLISHED: 'green',
+  WITHDRAWN: 'red',
+}
+
+/** 最终成绩状态 BadgeTone 映射（用于 UiTag/UiBadge） */
+export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, BadgeTone> = {
+  PENDING: 'gray',
+  CALCULATED: 'blue',
   CONFIRMED: 'blue',
   CORRECTED: 'orange',
   PUBLISHED: 'green',

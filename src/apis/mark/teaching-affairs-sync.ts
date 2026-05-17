@@ -12,6 +12,7 @@
  *   - executeGradePassback / retrySyncTask / cancelSyncTask / reconcilePassback
  *     是 syncTaskId 单参数 POST，使用 query 形式
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 // ─── 状态枚举 ─────────────────────────────────
@@ -57,13 +58,13 @@ export const SYNC_TASK_STATUS_LABEL: Record<SyncTaskStatusCode, string> = {
   CANCELLED: '已取消',
 }
 
-export const SYNC_TASK_STATUS_COLOR: Record<SyncTaskStatusCode, string> = {
-  PENDING: 'default',
+export const SYNC_TASK_STATUS_COLOR: Record<SyncTaskStatusCode, BadgeTone> = {
+  PENDING: 'gray',
   SYNCING: 'blue',
   SUCCESS: 'green',
   PARTIAL_SUCCESS: 'orange',
   FAILED: 'red',
-  CANCELLED: 'default',
+  CANCELLED: 'gray',
 }
 
 /** 回写状态 - 对应 PassbackStatus */
@@ -77,8 +78,8 @@ export const PASSBACK_STATUS_LABEL: Record<PassbackStatusCode, string> = {
   WITHDRAWN: '已撤回',
 }
 
-export const PASSBACK_STATUS_COLOR: Record<PassbackStatusCode, string> = {
-  PENDING: 'default',
+export const PASSBACK_STATUS_COLOR: Record<PassbackStatusCode, BadgeTone> = {
+  PENDING: 'gray',
   SENT: 'blue',
   SUCCESS: 'green',
   FAILED: 'red',
@@ -94,7 +95,7 @@ export const RECONCILE_STATUS_LABEL: Record<ReconcileStatusCode, string> = {
   PENDING_RECONCILE: '待对账',
 }
 
-export const RECONCILE_STATUS_COLOR: Record<ReconcileStatusCode, string> = {
+export const RECONCILE_STATUS_COLOR: Record<ReconcileStatusCode, BadgeTone> = {
   MATCHED: 'green',
   MISMATCHED: 'red',
   PENDING_RECONCILE: 'orange',

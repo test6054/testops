@@ -13,9 +13,6 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import type { MajorVO } from '@/apis/quality/user-catalog'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -24,7 +21,11 @@ import {
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
+import type { MajorVO } from '@/apis/quality/user-catalog'
 import { majorCatalogApi } from '@/apis/quality/user-catalog'
+import type { SelectValue } from 'ant-design-vue/es/select'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import { promptModal } from './_helpers'
 
 const list = ref<ProfessionAlgorithmProfileVO[]>([])
@@ -44,7 +45,10 @@ const query = reactive<ProfessionAlgorithmProfileQueryPayload>({
   keyword: '',
 })
 
-const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([value, label]) => ({ value, label }))
+const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 const aggregationOptions = [
   { value: 'WEIGHTED_SUM', label: '加权平均' },
   { value: 'MINIMUM', label: '取最小值' },
@@ -106,8 +110,15 @@ async function loadDicts() {
   programs.value = majors || []
 }
 
+// a-select v-model:value 是 SelectValue（string|number|undefined|array），
+// 这里业务模板 ID 是字符串，select 清空时为 undefined，handler 内显式 narrow 后委托给应用函数。
+function onTemplateSelectChange(value: SelectValue) {
+  if (typeof value !== 'string') return
+  applyTemplateDefaults(value)
+}
+
 function applyTemplateDefaults(templateId: string) {
-  const tpl = templates.value.find(t => t.id === templateId)
+  const tpl = templates.value.find((t) => t.id === templateId)
   if (!tpl) return
   editor.accreditationType = tpl.accreditationType
   editor.standardId = tpl.standardId
@@ -161,7 +172,12 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 }
 
 async function submitEditor() {
-  if (!editor.profileCode.trim() || !editor.profileName.trim() || !editor.templateId || !editor.programId) {
+  if (
+    !editor.profileCode.trim() ||
+    !editor.profileName.trim() ||
+    !editor.templateId ||
+    !editor.programId
+  ) {
     message.error('请填写编码、名称、模板、专业')
     return
   }
@@ -241,18 +257,41 @@ onMounted(async () => {
     <a-card title="专业算法实例" :bordered="false">
       <template #extra>
         <a-space wrap>
-          <a-select v-model:value="query.programId" placeholder="专业" allow-clear style="width: 200px" show-search option-filter-prop="label">
+          <a-select
+            v-model:value="query.programId"
+            placeholder="专业"
+            allow-clear
+            style="width: 200px"
+            show-search
+            option-filter-prop="label"
+          >
             <a-select-option v-for="p in programs" :key="p.id" :value="p.id" :label="p.majorName">
               {{ p.majorName }}
             </a-select-option>
           </a-select>
-          <a-select v-model:value="query.accreditationType" placeholder="认证类型" allow-clear style="width: 180px" :options="accreditationOptions" />
-          <a-select v-model:value="query.confirmationStatus" placeholder="状态" allow-clear style="width: 120px">
+          <a-select
+            v-model:value="query.accreditationType"
+            placeholder="认证类型"
+            allow-clear
+            style="width: 180px"
+            :options="accreditationOptions"
+          />
+          <a-select
+            v-model:value="query.confirmationStatus"
+            placeholder="状态"
+            allow-clear
+            style="width: 120px"
+          >
             <a-select-option v-for="s in statusOptions" :key="s" :value="s">
               {{ CONFIRMATION_STATUS_LABEL[s] }}
             </a-select-option>
           </a-select>
-          <a-input v-model:value="query.keyword" placeholder="编码/名称" style="width: 180px" @press-enter="loadList" />
+          <a-input
+            v-model:value="query.keyword"
+            placeholder="编码/名称"
+            style="width: 180px"
+            @press-enter="loadList"
+          />
           <a-button type="primary" @click="loadList">查询</a-button>
           <a-button @click="resetQuery">重置</a-button>
           <a-button type="primary" @click="openCreate">新建实例</a-button>
@@ -277,7 +316,7 @@ onMounted(async () => {
         <a-table-column title="名称" data-index="profileName" />
         <a-table-column title="专业" data-index="programId" width="160">
           <template #default="{ text }">
-            {{ programs.find(p => p.id === text)?.majorName || text }}
+            {{ programs.find((p) => p.id === text)?.majorName || text }}
           </template>
         </a-table-column>
         <a-table-column title="认证类型" data-index="accreditationType" width="180">
@@ -320,7 +359,9 @@ onMounted(async () => {
               >
                 撤销
               </a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+              <a-button type="link" size="small" danger @click="handleDelete(record)"
+                >删除</a-button
+              >
             </a-space>
           </template>
         </a-table-column>
@@ -355,7 +396,7 @@ onMounted(async () => {
                 placeholder="选择模板会自动继承默认值"
                 show-search
                 option-filter-prop="label"
-                @change="(v: string) => applyTemplateDefaults(v)"
+                @change="onTemplateSelectChange"
               >
                 <a-select-option
                   v-for="t in templates"
@@ -376,7 +417,12 @@ onMounted(async () => {
                 show-search
                 option-filter-prop="label"
               >
-                <a-select-option v-for="p in programs" :key="p.id" :value="p.id" :label="p.majorName">
+                <a-select-option
+                  v-for="p in programs"
+                  :key="p.id"
+                  :value="p.id"
+                  :label="p.majorName"
+                >
                   {{ p.majorName }}
                 </a-select-option>
               </a-select>
@@ -391,7 +437,10 @@ onMounted(async () => {
           </a-col>
           <a-col :span="8">
             <a-form-item label="认证级别">
-              <a-input v-model:value="editor.accreditationLevel" placeholder="如 LEVEL_2 / LEVEL_3" />
+              <a-input
+                v-model:value="editor.accreditationLevel"
+                placeholder="如 LEVEL_2 / LEVEL_3"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -401,7 +450,12 @@ onMounted(async () => {
           </a-col>
         </a-row>
         <a-form-item label="关联认证标准">
-          <a-select v-model:value="editor.standardId" allow-clear show-search option-filter-prop="label">
+          <a-select
+            v-model:value="editor.standardId"
+            allow-clear
+            show-search
+            option-filter-prop="label"
+          >
             <a-select-option
               v-for="s in standards"
               :key="s.id"
@@ -417,7 +471,10 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="课程目标">
-              <a-select v-model:value="editor.courseGoalAggregation" :options="aggregationOptions" />
+              <a-select
+                v-model:value="editor.courseGoalAggregation"
+                :options="aggregationOptions"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -427,7 +484,10 @@ onMounted(async () => {
           </a-col>
           <a-col :span="8">
             <a-form-item label="毕业要求">
-              <a-select v-model:value="editor.requirementAggregation" :options="aggregationOptions" />
+              <a-select
+                v-model:value="editor.requirementAggregation"
+                :options="aggregationOptions"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -436,39 +496,79 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="6">
             <a-form-item label="直接评价权重" required>
-              <a-input-number v-model:value="editor.directWeight" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.directWeight"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="6">
             <a-form-item label="间接评价权重" required>
-              <a-input-number v-model:value="editor.indirectWeight" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.indirectWeight"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="6">
             <a-form-item label="间接最低样本">
-              <a-input-number v-model:value="editor.indirectMinValidSampleCount" :min="0" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.indirectMinValidSampleCount"
+                :min="0"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="6">
             <a-form-item label="间接覆盖率阈值">
-              <a-input-number v-model:value="editor.indirectCoverageThreshold" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.indirectCoverageThreshold"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="课程目标阈值">
-              <a-input-number v-model:value="editor.courseGoalThreshold" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.courseGoalThreshold"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="观测点阈值">
-              <a-input-number v-model:value="editor.indicatorThreshold" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.indicatorThreshold"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="毕业要求阈值">
-              <a-input-number v-model:value="editor.requirementThreshold" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.requirementThreshold"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -490,5 +590,7 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.page {
+  padding: 16px;
+}
 </style>

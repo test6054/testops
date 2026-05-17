@@ -3,12 +3,8 @@
     <div class="workspace-page">
       <PageHeader title="批阅工作台" back-route="/teacher/review-assignment">
         <template #tags>
-          <UiTag
-            v-if="detail?.status"
-            :tone="STATUS_TONE[detail.status as ReviewTaskStatusCode] || 'gray'"
-            size="md"
-          >
-            {{ STATUS_LABEL[detail.status as ReviewTaskStatusCode] || detail.status }}
+          <UiTag v-if="detail?.status" :tone="reviewStatusTone(detail.status)" size="md">
+            {{ reviewStatusLabel(detail.status) }}
           </UiTag>
           <UiTag v-if="detail?.anonymousNo" tone="gray" size="md">{{ detail.anonymousNo }}</UiTag>
           <UiTag v-if="detail?.questionNo" tone="blue" size="md">
@@ -176,7 +172,9 @@
                       </template>
                       <template #description>
                         <div class="annotation-meta">
-                          <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
+                          <span v-if="item.anchorText" class="muted"
+                            >锚点：{{ item.anchorText }}</span
+                          >
                           <span class="muted">{{ formatTime(item.createTime) }}</span>
                         </div>
                       </template>
@@ -195,6 +193,7 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationVO, ReviewTaskDetailVO } from '@/apis/mark/exam'
+import { confirmQuestionGrade, getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
@@ -206,7 +205,6 @@ import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { confirmQuestionGrade, getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -230,6 +228,36 @@ const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
   REJECTED: 'red',
 }
 
+/**
+ * 后端 ReviewTaskDetailResponse.status 是 String（宽类型），前端需在此狭化为 ReviewTaskStatusCode 才能查 LABEL/TONE。
+ * 通过字面值 === 比较让 TS 自动缩窄类型，全程零 as 断言。
+ */
+function reviewStatusTone(value: unknown): ToneCode {
+  if (typeof value !== 'string') return 'gray'
+  if (
+    value === 'PENDING' ||
+    value === 'IN_PROGRESS' ||
+    value === 'APPROVED' ||
+    value === 'REJECTED'
+  ) {
+    return STATUS_TONE[value]
+  }
+  return 'gray'
+}
+
+function reviewStatusLabel(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  if (
+    value === 'PENDING' ||
+    value === 'IN_PROGRESS' ||
+    value === 'APPROVED' ||
+    value === 'REJECTED'
+  ) {
+    return STATUS_LABEL[value]
+  }
+  return value
+}
+
 const route = useRoute()
 const router = useRouter()
 
@@ -244,7 +272,8 @@ const canSubmit = computed(() => !!examId.value && !!taskId.value)
 
 /** 当前任务是否允许提交批改（PENDING / IN_PROGRESS） */
 const canConfirm = computed(() => {
-  const status = detail.value?.status as ReviewTaskStatusCode | undefined
+  // detail.value?.status 是 string | undefined，字面值 === 比较会自动缩窄类型，无需 cast。
+  const status = detail.value?.status
   return status === 'PENDING' || status === 'IN_PROGRESS'
 })
 
@@ -307,9 +336,9 @@ async function loadTask(): Promise<void> {
     await loadAnnotations()
     // 默认填充建议分
     if (
-      gradeForm.finalScore === undefined
-      && detail.value?.suggestedScore !== undefined
-      && detail.value?.suggestedScore !== null
+      gradeForm.finalScore === undefined &&
+      detail.value?.suggestedScore !== undefined &&
+      detail.value?.suggestedScore !== null
     ) {
       gradeForm.finalScore = detail.value.suggestedScore
     }

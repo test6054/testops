@@ -7,6 +7,7 @@
  * - 租户与操作人从 UserHold 注入
  * - 后端 Long ID 统一用 string 表达到前端
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 // ─── 复核窗口策略 ─────────────────────────────────
@@ -24,9 +25,9 @@ export const REVIEW_WINDOW_STATUS_LABEL: Record<ReviewWindowPolicyStatusCode, st
   CLOSED: '已关闭',
 }
 
-/** 复核窗口状态徽标颜色 */
-export const REVIEW_WINDOW_STATUS_COLOR: Record<ReviewWindowPolicyStatusCode, string> = {
-  DRAFT: 'default',
+/** 复核窗口状态徽标颜色（统一 BadgeTone） */
+export const REVIEW_WINDOW_STATUS_COLOR: Record<ReviewWindowPolicyStatusCode, BadgeTone> = {
+  DRAFT: 'gray',
   ACTIVE: 'green',
   CLOSED: 'red',
 }
@@ -107,8 +108,8 @@ export const REVIEW_REQUEST_STATUS_LABEL: Record<GradeReviewRequestStatusCode, s
   CORRECTED: '已更正',
 }
 
-/** 复核申请状态徽标颜色（antd 兼容） */
-export const REVIEW_REQUEST_STATUS_COLOR: Record<GradeReviewRequestStatusCode, string> = {
+/** 复核申请状态徽标颜色（统一 BadgeTone） */
+export const REVIEW_REQUEST_STATUS_COLOR: Record<GradeReviewRequestStatusCode, BadgeTone> = {
   PENDING: 'orange',
   IN_REVIEW: 'blue',
   APPROVED: 'green',
@@ -117,7 +118,7 @@ export const REVIEW_REQUEST_STATUS_COLOR: Record<GradeReviewRequestStatusCode, s
 }
 
 /** 复核申请状态 BadgeTone 映射（用于 UiTag/UiBadge） */
-export const REVIEW_REQUEST_STATUS_TONE: Record<GradeReviewRequestStatusCode, 'orange' | 'blue' | 'green' | 'red' | 'purple'> = {
+export const REVIEW_REQUEST_STATUS_TONE: Record<GradeReviewRequestStatusCode, BadgeTone> = {
   PENDING: 'orange',
   IN_REVIEW: 'blue',
   APPROVED: 'green',
@@ -263,10 +264,10 @@ export const GRADE_CORRECTION_STATUS_LABEL: Record<GradeCorrectionStatusCode, st
   REJECTED: '已驳回',
 }
 
-/** 更正状态徽标颜色 */
-export const GRADE_CORRECTION_STATUS_COLOR: Record<GradeCorrectionStatusCode, string> = {
+/** 更正状态徽标颜色（统一 BadgeTone，cyan→blue） */
+export const GRADE_CORRECTION_STATUS_COLOR: Record<GradeCorrectionStatusCode, BadgeTone> = {
   PENDING: 'orange',
-  APPROVED: 'cyan',
+  APPROVED: 'blue',
   EXECUTED: 'green',
   REJECTED: 'red',
 }
@@ -346,11 +347,11 @@ export const BATCH_CORRECTION_STATUS_LABEL: Record<BatchCorrectionApprovalStatus
   REJECTED: '已驳回',
 }
 
-/** 批量更正审批状态徽标颜色 */
-export const BATCH_CORRECTION_STATUS_COLOR: Record<BatchCorrectionApprovalStatusCode, string> = {
-  DRAFT: 'default',
+/** 批量更正审批状态徽标颜色（统一 BadgeTone） */
+export const BATCH_CORRECTION_STATUS_COLOR: Record<BatchCorrectionApprovalStatusCode, BadgeTone> = {
+  DRAFT: 'gray',
   PENDING_APPROVAL: 'orange',
-  APPROVED: 'cyan',
+  APPROVED: 'blue',
   EXECUTING: 'blue',
   COMPLETED: 'green',
   REJECTED: 'red',

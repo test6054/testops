@@ -19,30 +19,18 @@
       row-key="id"
       size="small"
     >
-      <template #bodyCell="{ column, record }">
+      <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'resolutionStatus'">
-          <a-tag
-            :color="
-              DUPLICATE_RESOLUTION_STATUS_COLOR[
-                record.resolutionStatus as DuplicateResolutionStatusCode
-              ] || 'default'
-            "
-          >
-            {{
-              DUPLICATE_RESOLUTION_STATUS_LABEL[
-                record.resolutionStatus as DuplicateResolutionStatusCode
-              ]
-                || record.resolutionStatus
-                || '-'
-            }}
+          <a-tag :color="duplicateStatusColor(rows[index])">
+            {{ duplicateStatusLabel(rows[index]) }}
           </a-tag>
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-button
             type="link"
             size="small"
-            :disabled="record.resolutionStatus !== 'PENDING'"
-            @click="$emit('resolve', record as ExamPaperDuplicateResolutionVO)"
+            :disabled="rows[index].resolutionStatus !== 'PENDING'"
+            @click="$emit('resolve', rows[index])"
           >
             处置
           </a-button>
@@ -54,18 +42,15 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {
-  DuplicateResolutionStatusCode,
-  ExamPaperDuplicateResolutionVO,
-} from '@/apis/mark/image-ledger'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
+import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
 import {
   DUPLICATE_RESOLUTION_STATUS_COLOR,
   DUPLICATE_RESOLUTION_STATUS_LABEL,
   listPendingDuplicates,
 } from '@/apis/mark/image-ledger'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'DuplicateResolutionCard' })
 
@@ -95,6 +80,16 @@ const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
   { title: '状态', key: 'resolutionStatus', width: 100 },
   { title: '操作', key: 'actions', width: 100, fixed: 'right' },
 ]
+
+// helper 严格 typed 接收后端 API 对象 ExamPaperDuplicateResolutionVO。
+function duplicateStatusColor(row: ExamPaperDuplicateResolutionVO): string {
+  return row.resolutionStatus ? DUPLICATE_RESOLUTION_STATUS_COLOR[row.resolutionStatus] : 'default'
+}
+
+function duplicateStatusLabel(row: ExamPaperDuplicateResolutionVO): string {
+  if (row.resolutionStatus) return DUPLICATE_RESOLUTION_STATUS_LABEL[row.resolutionStatus]
+  return '-'
+}
 
 const pendingCount = computed(
   () => rows.value.filter((r) => r.resolutionStatus === 'PENDING').length,

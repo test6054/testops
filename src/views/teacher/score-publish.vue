@@ -3,7 +3,9 @@
     <div class="score-publish-page">
       <PageHeader title="成绩发布">
         <template #tags>
-          <UiTag v-if="selectedExamId" tone="blue" size="md">{{ pagination.total ?? 0 }} 名考生</UiTag>
+          <UiTag v-if="selectedExamId" tone="blue" size="md"
+            >{{ pagination.total ?? 0 }} 名考生</UiTag
+          >
         </template>
         <template #actions>
           <a-select
@@ -88,65 +90,61 @@
             class="score-publish-table"
             @change="handleTableChange"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'studentName'">
-                <a-typography-text strong :content="record.studentName || '-'" />
+                <a-typography-text strong :content="candidates[index].studentName || '-'" />
               </template>
               <template v-else-if="column.key === 'finalScore'">
-                <a-typography-text v-if="record.finalScore != null" strong type="success">
-                  {{ record.finalScore }} 分
+                <a-typography-text
+                  v-if="candidates[index].finalScore != null"
+                  strong
+                  type="success"
+                >
+                  {{ candidates[index].finalScore }} 分
                 </a-typography-text>
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'finalScoreStatus'">
-                <UiTag
-                  :tone="
-                    record.finalScoreStatus
-                      ? FINAL_SCORE_STATUS_TONE[record.finalScoreStatus as FinalScoreStatusCode]
-                      : 'gray'
-                  "
-                  size="sm"
-                >
-                  {{
-                    record.finalScoreStatus
-                      ? FINAL_SCORE_STATUS_LABEL[record.finalScoreStatus as FinalScoreStatusCode]
-                      : '未生成'
-                  }}
+                <UiTag :tone="finalScoreStatusTone(candidates[index].finalScoreStatus)" size="sm">
+                  {{ finalScoreStatusLabel(candidates[index].finalScoreStatus) }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'confirmedTime'">
-                {{ formatTime(record.confirmedTime) }}
+                {{ formatTime(candidates[index].confirmedTime) }}
               </template>
               <template v-else-if="column.key === 'actions'">
                 <a-space>
                   <UiButton
                     size="sm"
                     variant="ghost"
-                    :disabled="!record.paperInstanceId"
-                    @click="openDetailDrawer(toCandidate(record))"
+                    :disabled="!candidates[index].paperInstanceId"
+                    @click="openDetailDrawer(candidates[index])"
                   >
                     明细
                   </UiButton>
                   <UiButton
                     size="sm"
-                    :disabled="!canPublish(toCandidate(record))"
-                    @click="handlePublish(toCandidate(record))"
+                    :disabled="!canPublish(candidates[index])"
+                    @click="handlePublish(candidates[index])"
                   >
-                    {{ publishButtonLabel(toCandidate(record)) }}
+                    {{ publishButtonLabel(candidates[index]) }}
                   </UiButton>
                   <UiButton
                     size="sm"
                     variant="ghost"
-                    :disabled="!canWithdraw(toCandidate(record))"
-                    @click="openWithdrawModal(toCandidate(record))"
+                    :disabled="!canWithdraw(candidates[index])"
+                    @click="openWithdrawModal(candidates[index])"
                   >
                     撤回
                   </UiButton>
                   <UiButton
                     size="sm"
                     variant="ghost"
-                    :disabled="!record.paperInstanceId || record.finalScoreStatus !== 'PUBLISHED'"
-                    @click="handleDeanonymize(toCandidate(record))"
+                    :disabled="
+                      !candidates[index].paperInstanceId ||
+                      candidates[index].finalScoreStatus !== 'PUBLISHED'
+                    "
+                    @click="handleDeanonymize(candidates[index])"
                   >
                     解匿名
                   </UiButton>
@@ -179,19 +177,8 @@
               </a-typography-text>
             </a-descriptions-item>
             <a-descriptions-item label="最终状态" :span="2">
-              <UiTag
-                :tone="
-                  paperScore.finalScoreStatus
-                    ? FINAL_SCORE_STATUS_TONE[paperScore.finalScoreStatus as FinalScoreStatusCode]
-                    : 'gray'
-                "
-                size="sm"
-              >
-                {{
-                  paperScore.finalScoreStatus
-                    ? FINAL_SCORE_STATUS_LABEL[paperScore.finalScoreStatus as FinalScoreStatusCode]
-                    : '未生成'
-                }}
+              <UiTag :tone="finalScoreStatusTone(paperScore.finalScoreStatus)" size="sm">
+                {{ finalScoreStatusLabel(paperScore.finalScoreStatus) }}
               </UiTag>
             </a-descriptions-item>
           </a-descriptions>
@@ -199,18 +186,18 @@
           <h4 class="detail-section-title">题目得分明细</h4>
           <a-table
             :columns="paperItemColumns"
-            :data-source="paperScore.questions || []"
+            :data-source="paperQuestions"
             :pagination="false"
             row-key="questionTemplateId"
             size="small"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'questionNo'">
-                <UiTag tone="blue" size="sm">{{ record.questionNo || '-' }}</UiTag>
+                <UiTag tone="blue" size="sm">{{ paperQuestions[index].questionNo || '-' }}</UiTag>
               </template>
               <template v-else-if="column.key === 'finalScore'">
-                <a-typography-text v-if="record.finalScore != null" strong>
-                  {{ record.finalScore }}
+                <a-typography-text v-if="paperQuestions[index].finalScore != null" strong>
+                  {{ paperQuestions[index].finalScore }}
                 </a-typography-text>
                 <span v-else class="muted">-</span>
               </template>
@@ -265,13 +252,6 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
-import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   deanonymizePaper,
   FINAL_SCORE_STATUS_LABEL,
@@ -280,6 +260,13 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
+import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -298,17 +285,45 @@ const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, ToneCode> = {
   WITHDRAWN: 'red',
 }
 
-/** 将 a-table bodyCell slot 的 record 转为考试成绩汇总强类型 */
-function toCandidate(record: unknown): ExamScoreSummaryItemVO {
-  return record as ExamScoreSummaryItemVO
+/**
+ * 后端 ExamPaperScoreVO.finalScoreStatus 是宽类型 string，需狭化为 FinalScoreStatusCode 才能查 LABEL/TONE。
+ * 通过字面值 === 比较让 TS 自动缩窄类型，全程零 as 断言。
+ */
+function finalScoreStatusTone(value: unknown): ToneCode {
+  if (typeof value !== 'string') return 'gray'
+  if (
+    value === 'PENDING' ||
+    value === 'CALCULATED' ||
+    value === 'CONFIRMED' ||
+    value === 'CORRECTED' ||
+    value === 'PUBLISHED' ||
+    value === 'WITHDRAWN'
+  ) {
+    return FINAL_SCORE_STATUS_TONE[value]
+  }
+  return 'gray'
 }
 
-const statusOptions = (Object.keys(FINAL_SCORE_STATUS_LABEL) as FinalScoreStatusCode[]).map(
-  (code) => ({
-    label: FINAL_SCORE_STATUS_LABEL[code],
-    value: code,
-  }),
-)
+function finalScoreStatusLabel(value: unknown): string {
+  if (typeof value !== 'string') return '未生成'
+  if (
+    value === 'PENDING' ||
+    value === 'CALCULATED' ||
+    value === 'CONFIRMED' ||
+    value === 'CORRECTED' ||
+    value === 'PUBLISHED' ||
+    value === 'WITHDRAWN'
+  ) {
+    return FINAL_SCORE_STATUS_LABEL[value]
+  }
+  return '未生成'
+}
+
+// 从后端枚举 LABEL 对象直接派生 select options。
+const statusOptions = Object.entries(FINAL_SCORE_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const router = useRouter()
 
@@ -482,6 +497,9 @@ const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailCandidate = ref<ExamScoreSummaryItemVO | null>(null)
 const paperScore = ref<ExamPaperScoreVO | null>(null)
+
+// computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record:any。
+const paperQuestions = computed<ExamQuestionScoreVO[]>(() => paperScore.value?.questions ?? [])
 
 const paperItemColumns: ColumnType<ExamQuestionScoreVO>[] = [
   { title: '题号', key: 'questionNo', width: 80 },

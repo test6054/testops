@@ -20,9 +20,6 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import {
   assessmentItemApi,
   qualityCourseApi,
@@ -30,6 +27,9 @@ import {
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
 } from '@/apis/quality'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const qualityStore = useQualityStore()
@@ -86,24 +86,27 @@ const uploadForm = reactive<ScoreBatchSavePayload & { fileName?: string }>({
   fileName: '',
 })
 
-const statusOptions = Object.entries(SCORE_BATCH_STATUS_LABEL).map(([value, label]) => ({ value, label }))
+const statusOptions = Object.entries(SCORE_BATCH_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const courseSelectOptions = computed(() =>
-  courseOptions.value.map(item => ({
+  courseOptions.value.map((item) => ({
     value: item.id,
     label: `${item.courseCode} · ${item.courseName}`,
   })),
 )
 
 const uploadAssessmentItemOptions = computed(() =>
-  uploadAssessmentItems.value.map(item => ({
+  uploadAssessmentItems.value.map((item) => ({
     value: item.id,
     label: `${item.itemCode} · ${item.itemName}`,
   })),
 )
 
 const queryAssessmentItemOptions = computed(() =>
-  queryAssessmentItems.value.map(item => ({
+  queryAssessmentItems.value.map((item) => ({
     value: item.id,
     label: `${item.itemCode} · ${item.itemName}`,
   })),
@@ -131,13 +134,11 @@ async function loadUploadAssessmentItems(qualityCourseId: string | undefined) {
   uploadAssessmentLoading.value = true
   try {
     uploadAssessmentItems.value = await assessmentItemApi.listByCourse(qualityCourseId)
-  }
-  catch (e) {
+  } catch (e) {
     console.error('[score-batch] 加载上传表单考核环节列表失败', e)
     uploadAssessmentItems.value = []
     message.error('加载考核环节列表失败')
-  }
-  finally {
+  } finally {
     uploadAssessmentLoading.value = false
   }
 }
@@ -150,12 +151,10 @@ async function loadQueryAssessmentItems(qualityCourseId: string | undefined) {
   queryAssessmentLoading.value = true
   try {
     queryAssessmentItems.value = await assessmentItemApi.listByCourse(qualityCourseId)
-  }
-  catch (e) {
+  } catch (e) {
     console.error('[score-batch] 加载查询表单考核环节列表失败', e)
     queryAssessmentItems.value = []
-  }
-  finally {
+  } finally {
     queryAssessmentLoading.value = false
   }
 }
@@ -173,8 +172,7 @@ async function loadBatches() {
     })
     batches.value = page.list
     total.value = page.total
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -231,13 +229,12 @@ async function handleUpload(options: UploadRequestOption) {
     // 步骤 3：触发解析
     await scoreBatchApi.enqueueParse(batchId)
     message.success(`已提交导入 batchId=${batchId}，解析完成后可预览并确认`)
-    options.onSuccess?.({}, file)
+    // ant-design-vue customRequest 的 onSuccess 第二参为 XMLHttpRequest，可选；本地文件 IO 流程不传 xhr。
+    options.onSuccess?.({})
     await loadBatches()
-  }
-  catch (err) {
+  } catch (err) {
     options.onError?.(err as Error)
-  }
-  finally {
+  } finally {
     uploading.value = false
   }
 }
@@ -253,8 +250,7 @@ async function openPreview(record: ScoreBatchVO) {
     previewSummary.successRows = preview.successRows ?? 0
     previewSummary.errorRows = preview.errorRows ?? 0
     previewSummary.errorSummary = preview.errorSummary
-  }
-  finally {
+  } finally {
     previewLoading.value = false
   }
 }
@@ -330,7 +326,7 @@ const editor = reactive<ScoreBatchSavePayload>({
 const editorAssessmentItems = ref<AssessmentItemVO[]>([])
 
 const editorAssessmentItemOptions = computed(() =>
-  editorAssessmentItems.value.map(item => ({
+  editorAssessmentItems.value.map((item) => ({
     value: item.id,
     label: `${item.itemCode} · ${item.itemName}`,
   })),
@@ -349,8 +345,7 @@ async function openEdit(record: ScoreBatchVO) {
   editor.semester = record.semester || ''
   try {
     editorAssessmentItems.value = await assessmentItemApi.listByCourse(record.qualityCourseId)
-  }
-  catch {
+  } catch {
     editorAssessmentItems.value = []
   }
   editorVisible.value = true
@@ -377,8 +372,7 @@ async function submitEditor() {
     message.success('批次已更新')
     editorVisible.value = false
     await loadBatches()
-  }
-  finally {
+  } finally {
     editorSubmitting.value = false
   }
 }
@@ -424,26 +418,35 @@ function canReParse(status: ScoreBatchStatus) {
   return status === 'PENDING' || status === 'FAILED'
 }
 
-watch(() => qualityStore.currentTrainingPlanId, async () => {
-  await loadCourses()
-  // 切换培养方案后课程 / 考核环节列表均失效，应重置选中项
-  uploadForm.qualityCourseId = ''
-  uploadForm.assessmentItemId = ''
-  uploadAssessmentItems.value = []
-  query.qualityCourseId = ''
-  query.assessmentItemId = ''
-  queryAssessmentItems.value = []
-})
+watch(
+  () => qualityStore.currentTrainingPlanId,
+  async () => {
+    await loadCourses()
+    // 切换培养方案后课程 / 考核环节列表均失效，应重置选中项
+    uploadForm.qualityCourseId = ''
+    uploadForm.assessmentItemId = ''
+    uploadAssessmentItems.value = []
+    query.qualityCourseId = ''
+    query.assessmentItemId = ''
+    queryAssessmentItems.value = []
+  },
+)
 
-watch(() => uploadForm.qualityCourseId, async (courseId) => {
-  uploadForm.assessmentItemId = ''
-  await loadUploadAssessmentItems(courseId || undefined)
-})
+watch(
+  () => uploadForm.qualityCourseId,
+  async (courseId) => {
+    uploadForm.assessmentItemId = ''
+    await loadUploadAssessmentItems(courseId || undefined)
+  },
+)
 
-watch(() => query.qualityCourseId, async (courseId) => {
-  query.assessmentItemId = ''
-  await loadQueryAssessmentItems(courseId || undefined)
-})
+watch(
+  () => query.qualityCourseId,
+  async (courseId) => {
+    query.assessmentItemId = ''
+    await loadQueryAssessmentItems(courseId || undefined)
+  },
+)
 
 onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -481,10 +484,18 @@ onMounted(async () => {
           />
         </a-form-item>
         <a-form-item label="批次编码" required>
-          <a-input v-model:value="uploadForm.batchCode" placeholder="batch_code" style="width: 160px" />
+          <a-input
+            v-model:value="uploadForm.batchCode"
+            placeholder="batch_code"
+            style="width: 160px"
+          />
         </a-form-item>
         <a-form-item label="批次名称" required>
-          <a-input v-model:value="uploadForm.batchName" placeholder="batch_name" style="width: 200px" />
+          <a-input
+            v-model:value="uploadForm.batchName"
+            placeholder="batch_name"
+            style="width: 200px"
+          />
         </a-form-item>
         <a-form-item label="接入模式">
           <a-select
@@ -494,16 +505,16 @@ onMounted(async () => {
           />
         </a-form-item>
         <a-form-item label="学年">
-          <a-input v-model:value="uploadForm.schoolYear" placeholder="例：2024-2025" style="width: 160px" />
+          <a-input
+            v-model:value="uploadForm.schoolYear"
+            placeholder="例：2024-2025"
+            style="width: 160px"
+          />
         </a-form-item>
         <a-form-item label="学期">
           <a-select v-model:value="uploadForm.semester" style="width: 100px">
-            <a-select-option value="1">
-              1
-            </a-select-option>
-            <a-select-option value="2">
-              2
-            </a-select-option>
+            <a-select-option value="1"> 1 </a-select-option>
+            <a-select-option value="2"> 2 </a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item>
@@ -516,7 +527,10 @@ onMounted(async () => {
           >
             <a-button type="primary" :loading="uploading">
               <template #icon>
-                <span class="anticon"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor"><path d="M512 64L128 448h128v448h512V448h128L512 64z" /></svg></span>
+                <span class="anticon"
+                  ><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor">
+                    <path d="M512 64L128 448h128v448h512V448h128L512 64z" /></svg
+                ></span>
               </template>
               上传 Excel
             </a-button>
@@ -570,12 +584,8 @@ onMounted(async () => {
             style="width: 160px"
             @press-enter="loadBatches"
           />
-          <a-button type="primary" @click="loadBatches">
-            查询
-          </a-button>
-          <a-button @click="resetQuery">
-            重置
-          </a-button>
+          <a-button type="primary" @click="loadBatches"> 查询 </a-button>
+          <a-button @click="resetQuery"> 重置 </a-button>
         </a-space>
       </template>
 
@@ -612,14 +622,16 @@ onMounted(async () => {
         <a-table-column title="学期" data-index="semester" width="70" />
         <a-table-column title="接入模式" data-index="sourceMode" width="160">
           <template #default="{ text }">
-            {{ SOURCE_MODE_OPTIONS.find(o => o.value === text)?.label || text }}
+            {{ SOURCE_MODE_OPTIONS.find((o) => o.value === text)?.label || text }}
           </template>
         </a-table-column>
         <a-table-column title="行数 (成功/错误/总)" width="160">
           <template #default="{ record }">
             <span style="color: #52c41a">{{ record.successRows ?? 0 }}</span>
             /
-            <span :style="{ color: record.errorRows ? '#ff4d4f' : 'inherit' }">{{ record.errorRows ?? 0 }}</span>
+            <span :style="{ color: record.errorRows ? '#ff4d4f' : 'inherit' }">{{
+              record.errorRows ?? 0
+            }}</span>
             /
             {{ record.totalRows ?? 0 }}
           </template>
@@ -635,9 +647,7 @@ onMounted(async () => {
         <a-table-column title="操作" width="320" fixed="right">
           <template #default="{ record }">
             <a-space wrap>
-              <a-button type="link" size="small" @click="openPreview(record)">
-                预览
-              </a-button>
+              <a-button type="link" size="small" @click="openPreview(record)"> 预览 </a-button>
               <a-button
                 v-if="canValidate(record.status)"
                 type="link"
@@ -694,13 +704,14 @@ onMounted(async () => {
       </a-table>
     </a-card>
 
-    <a-modal
-      v-model:open="previewVisible"
-      title="批次明细预览"
-      width="960px"
-      :footer="null"
-    >
-      <a-descriptions v-if="previewBatch" :column="3" size="small" bordered style="margin-bottom: 12px">
+    <a-modal v-model:open="previewVisible" title="批次明细预览" width="960px" :footer="null">
+      <a-descriptions
+        v-if="previewBatch"
+        :column="3"
+        size="small"
+        bordered
+        style="margin-bottom: 12px"
+      >
         <a-descriptions-item label="批次 ID">{{ previewBatch.id }}</a-descriptions-item>
         <a-descriptions-item label="状态">
           <a-tag :color="SCORE_BATCH_STATUS_COLOR[previewBatch.status]">
@@ -710,7 +721,9 @@ onMounted(async () => {
         <a-descriptions-item label="行数">
           <span style="color: #52c41a">{{ previewSummary.successRows }}</span>
           /
-          <span :style="{ color: previewSummary.errorRows ? '#ff4d4f' : 'inherit' }">{{ previewSummary.errorRows }}</span>
+          <span :style="{ color: previewSummary.errorRows ? '#ff4d4f' : 'inherit' }">{{
+            previewSummary.errorRows
+          }}</span>
           /
           {{ previewSummary.totalRows }}
         </a-descriptions-item>
@@ -746,11 +759,7 @@ onMounted(async () => {
           <template #default="{ record }">
             <a-space direction="vertical" size="small" style="width: 100%">
               <a-space v-if="record.errorCodes?.length" wrap size="small">
-                <a-tag
-                  v-for="code in record.errorCodes"
-                  :key="code"
-                  color="orange"
-                >
+                <a-tag v-for="code in record.errorCodes" :key="code" color="orange">
                   {{ code }}
                 </a-tag>
               </a-space>
@@ -761,7 +770,11 @@ onMounted(async () => {
               >
                 {{ msg }}
               </div>
-              <span v-if="!record.errorCodes?.length && !record.errorMessages?.length" style="color: #999">-</span>
+              <span
+                v-if="!record.errorCodes?.length && !record.errorMessages?.length"
+                style="color: #999"
+                >-</span
+              >
             </a-space>
           </template>
         </a-table-column>

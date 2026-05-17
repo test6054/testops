@@ -80,51 +80,51 @@
           <a-table
             v-else
             :columns="questionColumns"
-            :data-source="detail.questions"
+            :data-source="detailQuestions"
             :pagination="false"
             row-key="questionTemplateId"
             size="middle"
             class="questions-table"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'questionNo'">
-                <UiTag tone="blue" size="sm">{{ asQuestion(record).questionNo || '-' }}</UiTag>
+                <UiTag tone="blue" size="sm">{{ detailQuestions[index].questionNo || '-' }}</UiTag>
               </template>
               <template v-else-if="column.key === 'questionType'">
-                <span>{{ asQuestion(record).questionType || '-' }}</span>
+                <span>{{ detailQuestions[index].questionType || '-' }}</span>
               </template>
               <template v-else-if="column.key === 'fullScore'">
                 <span class="score-cell">{{
-                  asQuestion(record).fullScore?.toFixed(2) ?? '-'
+                  detailQuestions[index].fullScore?.toFixed(2) ?? '-'
                 }}</span>
               </template>
               <template v-else-if="column.key === 'finalScore'">
                 <span
-                  v-if="asQuestion(record).finalScore != null"
+                  v-if="detailQuestions[index].finalScore != null"
                   class="score-cell score-cell--strong"
-                  :class="getScoreToneClass(asQuestion(record))"
+                  :class="getScoreToneClass(detailQuestions[index])"
                 >
-                  {{ asQuestion(record).finalScore!.toFixed(2) }}
+                  {{ (detailQuestions[index].finalScore ?? 0).toFixed(2) }}
                 </span>
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'objectiveResult'">
                 <UiTag
-                  v-if="asQuestion(record).objectiveResult === 'CORRECT'"
+                  v-if="detailQuestions[index].objectiveResult === 'CORRECT'"
                   tone="green"
                   size="sm"
                 >
                   正确
                 </UiTag>
                 <UiTag
-                  v-else-if="asQuestion(record).objectiveResult === 'WRONG'"
+                  v-else-if="detailQuestions[index].objectiveResult === 'WRONG'"
                   tone="red"
                   size="sm"
                 >
                   错误
                 </UiTag>
                 <UiTag
-                  v-else-if="asQuestion(record).objectiveResult === 'PARTIAL'"
+                  v-else-if="detailQuestions[index].objectiveResult === 'PARTIAL'"
                   tone="orange"
                   size="sm"
                 >
@@ -133,8 +133,8 @@
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'gradeStatus'">
-                <UiTag :tone="getGradeStatusTone(asQuestion(record).gradeStatus)" size="sm">
-                  {{ formatGradeStatus(asQuestion(record).gradeStatus) }}
+                <UiTag :tone="getGradeStatusTone(detailQuestions[index].gradeStatus)" size="sm">
+                  {{ formatGradeStatus(detailQuestions[index].gradeStatus) }}
                 </UiTag>
               </template>
             </template>
@@ -147,18 +147,18 @@
 
 <script lang="ts" setup>
 import type { StudentQuestionScoreVO, StudentScoreDetailVO } from '@/apis/mark/student-exam'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   canSubmitReview,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
   getMyScoreDetail,
 } from '@/apis/mark/student-exam'
+import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiAlertStrip, UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -171,6 +171,9 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const detail = ref<StudentScoreDetailVO | null>(null)
+
+// computed 派生强类型题目数组，模板侧用 detailQuestions[index] 取 VO，避免 a-table slot record:any。
+const detailQuestions = computed<StudentQuestionScoreVO[]>(() => detail.value?.questions ?? [])
 
 const examId = computed<string | null>(() => {
   const value = route.params.examId
@@ -197,7 +200,8 @@ const questionColumns = [
 const correctCount = computed(() => (detail.value?.questions ?? []).filter(isFullMark).length)
 const partialCount = computed(
   () =>
-    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q)).length,
+    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q))
+      .length,
 )
 const zeroCount = computed(() => (detail.value?.questions ?? []).filter(isZero).length)
 
@@ -209,11 +213,6 @@ function isZero(q: StudentQuestionScoreVO) {
 }
 function isPartial(q: StudentQuestionScoreVO) {
   return q.finalScore != null && q.fullScore != null
-}
-
-/** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为真实 VO */
-function asQuestion(record: Record<string, unknown>): StudentQuestionScoreVO {
-  return record as unknown as StudentQuestionScoreVO
 }
 
 function getScoreToneClass(record: StudentQuestionScoreVO): string {

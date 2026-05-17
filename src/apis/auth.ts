@@ -98,14 +98,14 @@ export interface WechatBindingResultDTO {
   message?: string
 }
 
-/** 微信登录状态检查响应 */
+/** 微信登录状态检查响应（后端 /api/auth/wechat/check-binding 实际返回精简版用户信息） */
 export interface WechatLoginStatusDTO {
   /** 是否需要绑定账号 */
   needBinding?: boolean
   /** 访问令牌（登录成功时返回） */
   token?: string
-  /** 用户信息（登录成功时返回） */
-  user?: UserLoginResponseDto
+  /** 用户信息（登录成功时返回，对应后端 WechatLoginResultDto.userInfo 即 WechatLoginUserInfoDto 精简版） */
+  user?: WechatLoginUserInfoDTO
   /** 微信用户信息（需要绑定时返回） */
   wechatUserInfo?: WechatUserInfoDTO
 }
@@ -395,7 +395,7 @@ export function checkWechatLoginStatus(code: string): Promise<WechatLoginStatusD
     if (result.status === 'success') {
       return {
         token: result.accessToken,
-        user: result.userInfo as unknown as UserLoginResponseDto,
+        user: result.userInfo,
       }
     }
     return {}

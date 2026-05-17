@@ -4,10 +4,11 @@
   可传 trainingPlanId / programId 过滤
 -->
 <script setup lang="ts">
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { QualityCourseVO } from '@/apis/quality'
+import { qualityCourseApi } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
-import { qualityCourseApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -32,16 +33,19 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  'change': [value: string | null, option?: QualityCourseVO]
+  change: [value: string | null, option?: QualityCourseVO]
 }>()
 
 const options = ref<QualityCourseVO[]>([])
 const loading = ref(false)
-const internalValue = ref<string | null>(props.value ?? null)
+const internalValue = ref<string | undefined>(props.value ?? undefined)
 
-watch(() => props.value, (v) => {
-  internalValue.value = v ?? null
-})
+watch(
+  () => props.value,
+  (v) => {
+    internalValue.value = v ?? undefined
+  },
+)
 
 watch(
   () => [props.trainingPlanId, props.programId, props.schoolYear, props.semester],
@@ -69,11 +73,12 @@ async function loadOptions() {
   }
 }
 
-function handleChange(val: string | null) {
-  internalValue.value = val
-  const option = options.value.find(o => o.id === val)
-  emit('update:value', val)
-  emit('change', val, option)
+function handleChange(val: SelectValue, _option: DefaultOptionType | DefaultOptionType[]) {
+  const courseId = val != null ? String(val) : null
+  internalValue.value = courseId ?? undefined
+  const matched = courseId != null ? options.value.find((o) => o.id === courseId) : undefined
+  emit('update:value', courseId)
+  emit('change', courseId, matched)
 }
 
 onMounted(() => {
@@ -104,7 +109,8 @@ defineExpose({ reload: loadOptions })
       <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.courseCode }}</span>
       {{ opt.courseName }}
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
+        >)
       </span>
     </a-select-option>
   </a-select>

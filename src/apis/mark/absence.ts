@@ -12,6 +12,7 @@
  *   - 租户与操作人从 UserHold 注入，前端只传业务字段
  *   - 后端 Long ID 统一用 string 表达到前端
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 // ─── 状态与原因枚举 ─────────────────────────────────
@@ -25,10 +26,10 @@ export const ABSENCE_STATUS_LABEL: Record<AbsenceStatusCode, string> = {
   REVOKED: '已撤销',
 }
 
-export const ABSENCE_STATUS_COLOR: Record<AbsenceStatusCode, string> = {
+export const ABSENCE_STATUS_COLOR: Record<AbsenceStatusCode, BadgeTone> = {
   PENDING: 'orange',
   CONFIRMED: 'red',
-  REVOKED: 'default',
+  REVOKED: 'gray',
 }
 
 /** 缺考状态 BadgeTone 映射（用于 UiTag/UiBadge 等 ui-guide 组件） */

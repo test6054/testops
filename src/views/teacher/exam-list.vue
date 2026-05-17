@@ -90,45 +90,49 @@
           class="exam-table"
           @change="handleTableChange"
         >
-          <template #bodyCell="{ column, record }">
+          <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'examName'">
-              <button type="button" class="link-cell" @click="goDetail(asExam(record))">
-                {{ record.examName || '未命名考试' }}
+              <button type="button" class="link-cell" @click="goDetail(dataSource[index])">
+                {{ dataSource[index].examName || '未命名考试' }}
               </button>
-              <div v-if="record.examNo" class="link-cell__sub">编号：{{ record.examNo }}</div>
+              <div v-if="dataSource[index].examNo" class="link-cell__sub">
+                编号：{{ dataSource[index].examNo }}
+              </div>
             </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag :tone="examStatusTone(asExam(record))" size="sm">
-                {{ examStatusLabel(asExam(record)) }}
+              <UiTag :tone="examStatusTone(dataSource[index])" size="sm">
+                {{ examStatusLabel(dataSource[index]) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'examWindow'">
-              <span v-if="record.examStartTime || record.examEndTime">
-                {{ formatTime(record.examStartTime) }}
+              <span v-if="dataSource[index].examStartTime || dataSource[index].examEndTime">
+                {{ formatTime(dataSource[index].examStartTime) }}
                 <span class="time-divider">~</span>
-                {{ formatTime(record.examEndTime) }}
+                {{ formatTime(dataSource[index].examEndTime) }}
               </span>
               <span v-else class="muted">未设置</span>
             </template>
             <template v-else-if="column.key === 'createTime'">
-              {{ formatTime(record.createTime) }}
+              {{ formatTime(dataSource[index].createTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
-                <UiButton size="sm" variant="ghost" @click="goDetail(asExam(record))">详情</UiButton>
+                <UiButton size="sm" variant="ghost" @click="goDetail(dataSource[index])"
+                  >详情</UiButton
+                >
                 <UiButton
-                  v-if="record.status !== 'CLOSED'"
+                  v-if="dataSource[index].status !== 'CLOSED'"
                   size="sm"
                   variant="ghost"
-                  @click="goTemplate(asExam(record))"
+                  @click="goTemplate(dataSource[index])"
                 >
                   配置模板
                 </UiButton>
                 <UiButton
-                  v-if="record.status !== 'CLOSED'"
+                  v-if="dataSource[index].status !== 'CLOSED'"
                   size="sm"
                   variant="ghost"
-                  @click="goRoster(asExam(record))"
+                  @click="goRoster(dataSource[index])"
                 >
                   考生名册
                 </UiButton>
@@ -200,6 +204,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -208,10 +213,10 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -237,7 +242,7 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -260,17 +265,14 @@ const columns: ColumnType<ExamSummaryVO>[] = [
   { title: '操作', key: 'actions', width: 220, fixed: 'right' },
 ]
 
-
-function asExam(record: Record<string, unknown>): ExamSummaryVO {
-  return record as unknown as ExamSummaryVO
+// helper 严格 typed 接收后端 API 对象 ExamSummaryVO。
+// 模板侧统一用 dataSource[index] 取同一个 VO 对象引用，避免 slot record:any。
+function examStatusTone(exam: ExamSummaryVO): BadgeTone {
+  return EXAM_STATUS_TONE[exam.status] ?? 'gray'
 }
 
-function examStatusTone(row: ExamSummaryVO): 'green' | 'gray' {
-  return EXAM_STATUS_TONE[row.status] ?? 'gray'
-}
-
-function examStatusLabel(row: ExamSummaryVO): string {
-  return row.statusMessage || EXAM_STATUS_LABEL[row.status] || row.status
+function examStatusLabel(exam: ExamSummaryVO): string {
+  return exam.statusMessage || EXAM_STATUS_LABEL[exam.status] || exam.status
 }
 
 function formatTime(value?: string): string {
@@ -320,16 +322,16 @@ function handleTableChange(next: TablePaginationConfig): void {
   void loadExams()
 }
 
-function goDetail(record: ExamSummaryVO): void {
-  void router.push({ name: 'TeacherExamDetail', params: { examId: record.examId } })
+function goDetail(exam: ExamSummaryVO): void {
+  void router.push({ name: 'TeacherExamDetail', params: { examId: exam.examId } })
 }
 
-function goTemplate(record: ExamSummaryVO): void {
-  void router.push({ name: 'TeacherPaperTemplate', query: { examId: record.examId } })
+function goTemplate(exam: ExamSummaryVO): void {
+  void router.push({ name: 'TeacherPaperTemplate', query: { examId: exam.examId } })
 }
 
-function goRoster(record: ExamSummaryVO): void {
-  void router.push({ name: 'TeacherCandidateRoster', query: { examId: record.examId } })
+function goRoster(exam: ExamSummaryVO): void {
+  void router.push({ name: 'TeacherCandidateRoster', query: { examId: exam.examId } })
 }
 
 // 创建考试弹窗

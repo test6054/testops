@@ -26,31 +26,31 @@
       size="small"
       :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
     >
-      <template #bodyCell="{ column, record }">
+      <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'difficultyIndex'">
-          {{ fmtNum(record.difficultyIndex) }}
+          {{ fmtNum(rows[index].difficultyIndex) }}
         </template>
         <template v-else-if="column.key === 'discriminationIndex'">
-          {{ fmtNum(record.discriminationIndex) }}
+          {{ fmtNum(rows[index].discriminationIndex) }}
         </template>
         <template v-else-if="column.key === 'avgScore'">
-          {{ fmtNum(record.avgScore) }} / {{ fmtNum(record.fullScore) }}
+          {{ fmtNum(rows[index].avgScore) }} / {{ fmtNum(rows[index].fullScore) }}
         </template>
         <template v-else-if="column.key === 'correctRatio'">
-          <a-typography-text :type="getCorrectRatioType(asAnalysis(record))">
-            {{ correctRatio(asAnalysis(record)) }}
+          <a-typography-text :type="getCorrectRatioType(rows[index])">
+            {{ correctRatio(rows[index]) }}
           </a-typography-text>
         </template>
         <template v-else-if="column.key === 'snapshotTime'">
-          {{ fmtTime(record.snapshotTime) }}
+          {{ fmtTime(rows[index].snapshotTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-button
             type="link"
             size="small"
-            :loading="generatingId === record.questionTemplateId"
-            :disabled="!record.questionTemplateId"
-            @click="handleGenerateOne(record.questionTemplateId)"
+            :loading="generatingId === rows[index].questionTemplateId"
+            :disabled="!rows[index].questionTemplateId"
+            @click="handleGenerateOne(rows[index].questionTemplateId)"
           >
             重新生成
           </a-button>
@@ -63,19 +63,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { ref, watch } from 'vue'
 import {
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
   listQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { ref, watch } from 'vue'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
 const rows = ref<ExamQuestionAnalysisRecordVO[]>([])
@@ -148,10 +148,6 @@ function fmtNum(v?: number): string {
 function fmtTime(v?: string): string {
   if (!v) return '-'
   return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
-
-function asAnalysis(record: Record<string, unknown>): ExamQuestionAnalysisRecordVO {
-  return record as unknown as ExamQuestionAnalysisRecordVO
 }
 
 function correctRatio(r: ExamQuestionAnalysisRecordVO): string {

@@ -6,6 +6,7 @@
  * - 部分查询接口为 GET（@RequestParam），写操作为 POST（多数 @RequestParam，无 body）
  * - 后端 Long ID 统一用 string 表达到前端
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 // ─── 题目质量分析 ─────────────────────────────────
@@ -120,9 +121,9 @@ export const EFFECTIVE_STATUS_LABEL: Record<EffectiveStatusCode, string> = {
   ACTIVE: '已生效',
 }
 
-/** 生效状态徽标颜色 */
-export const EFFECTIVE_STATUS_COLOR: Record<EffectiveStatusCode, string> = {
-  DRAFT: 'default',
+/** 生效状态徽标颜色（统一 BadgeTone） */
+export const EFFECTIVE_STATUS_COLOR: Record<EffectiveStatusCode, BadgeTone> = {
+  DRAFT: 'gray',
   ACTIVE: 'green',
 }
 
@@ -204,11 +205,11 @@ export const REJUDGE_PLAN_STATUS_LABEL: Record<RejudgePlanStatusCode, string> = 
   REJECTED: '已驳回',
 }
 
-/** 重判计划状态徽标颜色 */
-export const REJUDGE_PLAN_STATUS_COLOR: Record<RejudgePlanStatusCode, string> = {
-  DRAFT: 'default',
+/** 重判计划状态徽标颜色（统一 BadgeTone） */
+export const REJUDGE_PLAN_STATUS_COLOR: Record<RejudgePlanStatusCode, BadgeTone> = {
+  DRAFT: 'gray',
   PENDING_APPROVAL: 'orange',
-  APPROVED: 'cyan',
+  APPROVED: 'blue',
   EXECUTING: 'blue',
   COMPLETED: 'green',
   REJECTED: 'red',

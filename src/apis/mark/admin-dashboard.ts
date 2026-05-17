@@ -1,6 +1,3 @@
-import type {ExamStatusCode} from '@/apis/mark/exam'
-
-import type {FinalScoreStatusCode} from '@/apis/mark/student-exam'
 /**
  * 阅卷管理员 Dashboard API - 对接 edu-mark 模块 MarkDashboardController。
  *
@@ -10,6 +7,10 @@ import type {FinalScoreStatusCode} from '@/apis/mark/student-exam'
  * - 后端 Long ID 统一以 string 表达到前端
  * - 通用租户/用户/系统公告/存储统计能力由 edu-practice-web-vue 提供，本文件不重复
  */
+import type { ExamStatusCode } from '@/apis/mark/exam'
+import type { FinalScoreStatusCode } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+
 import http from '@/config/axios'
 
 /** 阅卷规模指标 - 对应 MarkDashboardResponse.ExamMetrics */
@@ -62,16 +63,16 @@ export const INCIDENT_LEVEL_LABEL: Record<IncidentLevelCode, string> = {
   INFO: '提示',
 }
 
-/** 重大事件级别徽标颜色（antd 兼容） */
-export const INCIDENT_LEVEL_COLOR: Record<IncidentLevelCode, string> = {
+/** 重大事件级别徽标颜色（统一 BadgeTone） */
+export const INCIDENT_LEVEL_COLOR: Record<IncidentLevelCode, BadgeTone> = {
   BLOCKING: 'red',
-  CRITICAL: 'volcano',
+  CRITICAL: 'red',
   WARNING: 'orange',
   INFO: 'blue',
 }
 
 /** 重大事件级别 BadgeTone 映射（UiTag/UiBadge） */
-export const INCIDENT_LEVEL_TONE: Record<IncidentLevelCode, 'red' | 'orange' | 'blue'> = {
+export const INCIDENT_LEVEL_TONE: Record<IncidentLevelCode, BadgeTone> = {
   BLOCKING: 'red',
   CRITICAL: 'red',
   WARNING: 'orange',

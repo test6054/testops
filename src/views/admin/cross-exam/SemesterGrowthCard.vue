@@ -3,13 +3,28 @@
     <div class="ai-form">
       <a-form layout="inline" :model="form" size="small">
         <a-form-item label="学期编码">
-          <a-input v-model:value="form.semesterCode" placeholder="例如 2026-S1" allow-clear style="width: 140px" />
+          <a-input
+            v-model:value="form.semesterCode"
+            placeholder="例如 2026-S1"
+            allow-clear
+            style="width: 140px"
+          />
         </a-form-item>
         <a-form-item label="课程ID">
-          <a-input v-model:value="form.courseId" placeholder="请输入课程ID" allow-clear style="width: 140px" />
+          <a-input
+            v-model:value="form.courseId"
+            placeholder="请输入课程ID"
+            allow-clear
+            style="width: 140px"
+          />
         </a-form-item>
         <a-form-item label="班级ID">
-          <a-input v-model:value="form.classId" placeholder="请输入班级ID" allow-clear style="width: 140px" />
+          <a-input
+            v-model:value="form.classId"
+            placeholder="请输入班级ID"
+            allow-clear
+            style="width: 140px"
+          />
         </a-form-item>
         <a-form-item label="考试ID列表" style="flex: 1; min-width: 320px">
           <a-input
@@ -36,18 +51,24 @@
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'] }}
+            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
+              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="范围">{{ record.scopeType ?? '-' }}/{{ record.scopeId ?? '-' }}</a-descriptions-item>
+          <a-descriptions-item label="范围"
+            >{{ record.scopeType ?? '-' }}/{{ record.scopeId ?? '-' }}</a-descriptions-item
+          >
           <a-descriptions-item label="考试数">{{ record.examCount ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="趋势">
-            <a-tag :color="trendColor(record.growthTrend)">{{ trendLabel(record.growthTrend) }}</a-tag>
+            <a-tag :color="trendColor(record.growthTrend)">{{
+              trendLabel(record.growthTrend)
+            }}</a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间" :span="2">{{ fmt(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间" :span="2">{{
+            fmt(record.createTime)
+          }}</a-descriptions-item>
           <a-descriptions-item label="trace ID">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -92,19 +113,12 @@
 
 <script lang="ts" setup>
 import type { SemesterAbilityGrowthVO } from '@/apis/mark/cross-exam-analysis'
-import type { AiAnalysisStatusCode } from '@/apis/mark/teaching-analysis'
+import { generateClassGrowth, listGrowth } from '@/apis/mark/cross-exam-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
-import {
-  generateClassGrowth,
-  listGrowth,
-} from '@/apis/mark/cross-exam-analysis'
-import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-} from '@/apis/mark/teaching-analysis'
+import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 
 defineOptions({ name: 'SemesterGrowthCard' })
 
@@ -193,30 +207,52 @@ function formatItem(item: unknown): string {
 
 function trendLabel(trend?: string): string {
   switch (trend) {
-    case 'IMPROVING': return '上升'
-    case 'STABLE': return '稳定'
-    case 'DECLINING': return '下降'
-    case 'FLUCTUATING': return '波动'
-    default: return trend ?? '-'
+    case 'IMPROVING':
+      return '上升'
+    case 'STABLE':
+      return '稳定'
+    case 'DECLINING':
+      return '下降'
+    case 'FLUCTUATING':
+      return '波动'
+    default:
+      return trend ?? '-'
   }
 }
 
 function trendColor(trend?: string): string {
   switch (trend) {
-    case 'IMPROVING': return 'green'
-    case 'STABLE': return 'blue'
-    case 'DECLINING': return 'red'
-    case 'FLUCTUATING': return 'orange'
-    default: return 'default'
+    case 'IMPROVING':
+      return 'green'
+    case 'STABLE':
+      return 'blue'
+    case 'DECLINING':
+      return 'red'
+    case 'FLUCTUATING':
+      return 'orange'
+    default:
+      return 'default'
   }
 }
 </script>
 
 <style lang="scss" scoped>
-.ai-form { margin-bottom: 16px; }
-.ai-record { display: flex; flex-direction: column; gap: 12px; }
-.ai-summary { margin: 0; }
-.ai-items { display: flex; flex-direction: column; gap: 8px; }
+.ai-form {
+  margin-bottom: 16px;
+}
+.ai-record {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-summary {
+  margin: 0;
+}
+.ai-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .raw-json {
   margin: 0;
   padding: 8px;
@@ -226,5 +262,7 @@ function trendColor(trend?: string): string {
   word-break: break-all;
   background: var(--gi-color-bg-2, #f5f5f5);
 }
-.text-muted { color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45)); }
+.text-muted {
+  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+}
 </style>

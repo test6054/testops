@@ -77,22 +77,19 @@
               row-key="id"
               size="middle"
             >
-              <template #bodyCell="{ column, record }">
+              <template #bodyCell="{ column, index }">
                 <template v-if="column.key === 'questionType'">
-                  {{
-                    record.questionType
-                      ? (QUESTION_TYPE_LABEL[record.questionType as QuestionTypeCode]
-                        ?? record.questionType)
-                      : '-'
-                  }}
+                  {{ questionTypeLabel(signatures[index].questionType) }}
                 </template>
                 <template v-else-if="column.key === 'questionDigest'">
-                  <a-tooltip :title="record.questionDigest">
-                    <span>{{ ellipsis(record.questionDigest, 60) }}</span>
+                  <a-tooltip :title="signatures[index].questionDigest">
+                    <span>{{ ellipsis(signatures[index].questionDigest, 60) }}</span>
                   </a-tooltip>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiButton size="xs" @click="openSimilarDrawer(record)">查找相似题</UiButton>
+                  <UiButton size="sm" @click="openSimilarDrawer(signatures[index])"
+                    >查找相似题</UiButton
+                  >
                 </template>
               </template>
             </a-table>
@@ -156,38 +153,31 @@
               row-key="id"
               size="middle"
             >
-              <template #bodyCell="{ column, record }">
+              <template #bodyCell="{ column, index }">
                 <template v-if="column.key === 'questionType'">
-                  {{
-                    record.questionType
-                      ? (QUESTION_TYPE_LABEL[record.questionType as QuestionTypeCode]
-                        ?? record.questionType)
-                      : '-'
-                  }}
+                  {{ questionTypeLabel(experiences[index].questionType) }}
                 </template>
                 <template v-else-if="column.key === 'analysisStatus'">
-                  <UiTag :tone="aiStatusTone(record.analysisStatus)" size="sm">
-                    {{
-                      AI_ANALYSIS_STATUS_LABEL[record.analysisStatus as AiAnalysisStatusCode]
-                        ?? record.analysisStatus
-                    }}
+                  <UiTag :tone="aiStatusTone(experiences[index].analysisStatus)" size="sm">
+                    {{ aiStatusLabel(experiences[index].analysisStatus) }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'caseStatus'">
-                  <UiTag :tone="caseStatusTone(record.caseStatus)" size="sm">
-                    {{
-                      EXPERIENCE_CASE_STATUS_LABEL[record.caseStatus as ExperienceCaseStatusCode]
-                        ?? record.caseStatus
-                    }}
+                  <UiTag :tone="caseStatusTone(experiences[index].caseStatus)" size="sm">
+                    {{ caseStatusLabel(experiences[index].caseStatus) }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'experienceSummary'">
-                  <a-tooltip :title="record.experienceSummary">
-                    <span>{{ ellipsis(record.experienceSummary, 80) }}</span>
+                  <a-tooltip :title="experiences[index].experienceSummary">
+                    <span>{{ ellipsis(experiences[index].experienceSummary, 80) }}</span>
                   </a-tooltip>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiButton size="xs" variant="outline" @click="openExperienceDrawer(record)">
+                  <UiButton
+                    size="sm"
+                    variant="outline"
+                    @click="openExperienceDrawer(experiences[index])"
+                  >
                     详情
                   </UiButton>
                 </template>
@@ -209,7 +199,7 @@
                 v-if="latestCluster"
                 :tone="aiStatusTone(latestCluster.analysisStatus ?? 'PENDING')"
               >
-                {{ AI_ANALYSIS_STATUS_LABEL[latestCluster.analysisStatus ?? 'PENDING'] }}
+                {{ aiStatusLabel(latestCluster.analysisStatus ?? 'PENDING') }}
               </UiBadge>
             </template>
             <template #extra>
@@ -261,7 +251,7 @@
                 </a-descriptions-item>
                 <a-descriptions-item label="分析状态">
                   <UiTag :tone="aiStatusTone(latestCluster.analysisStatus ?? 'PENDING')" size="sm">
-                    {{ AI_ANALYSIS_STATUS_LABEL[latestCluster.analysisStatus ?? 'PENDING'] }}
+                    {{ aiStatusLabel(latestCluster.analysisStatus ?? 'PENDING') }}
                   </UiTag>
                 </a-descriptions-item>
                 <a-descriptions-item label="耗时">
@@ -299,18 +289,14 @@
           description="未检索到相似题"
         />
         <a-list v-else :data-source="similarResults" item-layout="vertical">
-          <template #renderItem="{ item }">
+          <template #renderItem="{ item }: { item: QuestionSignatureVO }">
             <a-list-item>
               <a-space size="small">
                 <UiTag tone="blue" size="sm">考试 #{{ item.examId }}</UiTag>
-                <UiTag tone="cyan" size="sm">
-                  {{
-                    item.questionType
-                      ? QUESTION_TYPE_LABEL[item.questionType as QuestionTypeCode]
-                      : '-'
-                  }}
+                <UiTag tone="blue" size="sm">
+                  {{ questionTypeLabel(item.questionType) }}
                 </UiTag>
-                <UiTag tone="default" size="sm">题号 {{ item.questionNo ?? '-' }}</UiTag>
+                <UiTag tone="gray" size="sm">题号 {{ item.questionNo ?? '-' }}</UiTag>
               </a-space>
               <p class="similar-digest">{{ item.questionDigest ?? '（无摘要）' }}</p>
             </a-list-item>
@@ -329,36 +315,23 @@
       <a-descriptions v-if="detailExperience" :column="1" bordered size="small">
         <a-descriptions-item label="ID">{{ detailExperience.id }}</a-descriptions-item>
         <a-descriptions-item label="来源考试">
-          {{
-            detailExperience.sourceExamId
-          }}
+          {{ detailExperience.sourceExamId }}
         </a-descriptions-item>
         <a-descriptions-item label="题目模板">
-          {{
-            detailExperience.questionTemplateId
-          }}
+          {{ detailExperience.questionTemplateId }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">
           <UiTag :tone="caseStatusTone(detailExperience.caseStatus)" size="sm">
-            {{
-              EXPERIENCE_CASE_STATUS_LABEL[
-                detailExperience.caseStatus as ExperienceCaseStatusCode
-              ] ?? detailExperience.caseStatus
-            }}
+            {{ caseStatusLabel(detailExperience.caseStatus) }}
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="AI 状态">
           <UiTag :tone="aiStatusTone(detailExperience.analysisStatus)" size="sm">
-            {{
-              AI_ANALYSIS_STATUS_LABEL[detailExperience.analysisStatus as AiAnalysisStatusCode]
-                ?? detailExperience.analysisStatus
-            }}
+            {{ aiStatusLabel(detailExperience.analysisStatus) }}
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="AI Trace">
-          {{
-            detailExperience.aiTraceId ?? '-'
-          }}
+          {{ detailExperience.aiTraceId ?? '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="耗时">
           {{ detailExperience.latencyMs ? `${detailExperience.latencyMs} ms` : '-' }}
@@ -373,9 +346,7 @@
           <pre class="json-pre">{{ detailExperience.riskTags || '（无）' }}</pre>
         </a-descriptions-item>
         <a-descriptions-item label="适用边界">
-          {{
-            detailExperience.applicableScope ?? '-'
-          }}
+          {{ detailExperience.applicableScope ?? '-' }}
         </a-descriptions-item>
         <a-descriptions-item v-if="detailExperience.errorMessage" label="错误信息">
           <span class="error-text">{{ detailExperience.errorMessage }}</span>
@@ -388,6 +359,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   AiAnalysisStatusCode,
   AnswerClusterRecordVO,
@@ -396,15 +368,6 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -420,9 +383,18 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
 
@@ -432,7 +404,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 const activeTab = ref<'signature' | 'experience' | 'cluster'>('signature')
 
@@ -604,14 +576,30 @@ async function handleGenerateCluster(): Promise<void> {
 
 // ─── 共用 ─────────────────────────────────
 
-function aiStatusTone(status?: AiAnalysisStatusCode | string): string {
+// helper 严格只接受后端枚举类型，返回与 UiTag tone 一致的 BadgeTone，零 as 断言。
+function aiStatusTone(status?: AiAnalysisStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return AI_ANALYSIS_STATUS_COLOR[status as AiAnalysisStatusCode] ?? 'gray'
+  return AI_ANALYSIS_STATUS_COLOR[status] ?? 'gray'
 }
 
-function caseStatusTone(status?: ExperienceCaseStatusCode | string): string {
+function caseStatusTone(status?: ExperienceCaseStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return EXPERIENCE_CASE_STATUS_COLOR[status as ExperienceCaseStatusCode] ?? 'gray'
+  return EXPERIENCE_CASE_STATUS_COLOR[status] ?? 'gray'
+}
+
+function aiStatusLabel(status?: AiAnalysisStatusCode): string {
+  if (!status) return '-'
+  return AI_ANALYSIS_STATUS_LABEL[status] ?? status
+}
+
+function caseStatusLabel(status?: ExperienceCaseStatusCode): string {
+  if (!status) return '-'
+  return EXPERIENCE_CASE_STATUS_LABEL[status] ?? status
+}
+
+function questionTypeLabel(value?: QuestionTypeCode): string {
+  if (!value) return '-'
+  return QUESTION_TYPE_LABEL[value] ?? value
 }
 
 function ellipsis(text: string | undefined, len = 60): string {

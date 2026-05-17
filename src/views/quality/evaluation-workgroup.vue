@@ -3,23 +3,41 @@
  * 校院两级评价工作组管理
  *
  * 后端：/api/quality/evaluation-workgroups
- * 工作组层级：PROGRAM（专业级）/ SCHOOL（校级）/ INDUSTRY（行业企业）。
+ * 工作组层级（对应后端 WorkgroupLevelEnum）：
+ *   UNIVERSITY（学校级）/ COLLEGE（学院级）/ PROGRAM（专业级）/ INDUSTRY（行业企业专家组）。
  */
 import type {
-  EvaluationWorkgroupLevel,
   EvaluationWorkgroupQueryPayload,
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
 } from '@/apis/quality'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
 import type { MajorVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { majorCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import { message, Modal } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import {
-  evaluationWorkgroupApi,
-  WORKGROUP_LEVEL_LABEL,
-} from '@/apis/quality'
-import { majorCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
+
+/**
+ * 把后端返回的 levelCode（String）渲染成中文标签。
+ * - 严格对齐后端 WorkgroupLevelEnum：UNIVERSITY / COLLEGE / PROGRAM / INDUSTRY
+ * - 通过字面值比较让 TS 自动缩窄类型，避免使用 as 断言
+ * - 若后端落库了枚举之外的非法值，原样回显
+ */
+function workgroupLevelLabel(value: unknown): string {
+  if (typeof value !== 'string') {
+    return ''
+  }
+  if (
+    value === 'UNIVERSITY' ||
+    value === 'COLLEGE' ||
+    value === 'PROGRAM' ||
+    value === 'INDUSTRY'
+  ) {
+    return WORKGROUP_LEVEL_LABEL[value]
+  }
+  return value
+}
 
 const list = ref<EvaluationWorkgroupVO[]>([])
 const total = ref(0)
@@ -35,7 +53,10 @@ const query = reactive<EvaluationWorkgroupQueryPayload>({
   enabled: undefined,
 })
 
-const levelOptions = Object.entries(WORKGROUP_LEVEL_LABEL).map(([value, label]) => ({ value, label }))
+const levelOptions = Object.entries(WORKGROUP_LEVEL_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -58,7 +79,7 @@ async function loadList() {
     list.value = page.list
     total.value = page.total
     // 预热召集人姓名
-    const ids = Array.from(new Set(list.value.map(w => w.convenerUserId).filter(Boolean)))
+    const ids = Array.from(new Set(list.value.map((w) => w.convenerUserId).filter(Boolean)))
     for (const uid of ids) {
       if (teacherCache.value.has(uid)) continue
       try {
@@ -67,9 +88,11 @@ async function loadList() {
           pageSize: 1,
           searchText: uid,
         })
-        const t = res.list?.find(x => String(x.id) === uid)
+        const t = res.list?.find((x) => String(x.id) === uid)
         if (t) teacherCache.value.set(uid, t)
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   } finally {
     loading.value = false
@@ -77,7 +100,7 @@ async function loadList() {
 }
 
 async function loadDicts() {
-  programs.value = await majorCatalogApi.listAll() || []
+  programs.value = (await majorCatalogApi.listAll()) || []
 }
 
 function handlePageChange(p: number, ps: number) {
@@ -117,7 +140,12 @@ function openEdit(record: EvaluationWorkgroupVO) {
 }
 
 async function submitEditor() {
-  if (!editor.programId || !editor.workgroupCode.trim() || !editor.workgroupName.trim() || !editor.convenerUserId) {
+  if (
+    !editor.programId ||
+    !editor.workgroupCode.trim() ||
+    !editor.workgroupName.trim() ||
+    !editor.convenerUserId
+  ) {
     message.error('请填写专业、编码、名称、召集人')
     return
   }
@@ -147,7 +175,7 @@ async function handleDelete(record: EvaluationWorkgroupVO) {
 
 function convenerDisplay(uid: string) {
   const t = teacherCache.value.get(uid)
-  return t ? (t.nickName || t.userName) : uid
+  return t ? t.nickName || t.userName : uid
 }
 
 onMounted(async () => {
@@ -160,12 +188,25 @@ onMounted(async () => {
     <a-card title="校院两级评价工作组" :bordered="false">
       <template #extra>
         <a-space wrap>
-          <a-select v-model:value="query.programId" placeholder="专业" allow-clear style="width: 200px" show-search option-filter-prop="label">
+          <a-select
+            v-model:value="query.programId"
+            placeholder="专业"
+            allow-clear
+            style="width: 200px"
+            show-search
+            option-filter-prop="label"
+          >
             <a-select-option v-for="p in programs" :key="p.id" :value="p.id" :label="p.majorName">
               {{ p.majorName }}
             </a-select-option>
           </a-select>
-          <a-select v-model:value="query.levelCode" placeholder="层级" allow-clear style="width: 140px" :options="levelOptions" />
+          <a-select
+            v-model:value="query.levelCode"
+            placeholder="层级"
+            allow-clear
+            style="width: 140px"
+            :options="levelOptions"
+          />
           <a-button type="primary" @click="loadList">查询</a-button>
           <a-button @click="resetQuery">重置</a-button>
           <a-button type="primary" @click="openCreate">新建工作组</a-button>
@@ -190,12 +231,12 @@ onMounted(async () => {
         <a-table-column title="名称" data-index="workgroupName" />
         <a-table-column title="专业" data-index="programId" width="160">
           <template #default="{ text }">
-            {{ programs.find(p => p.id === text)?.majorName || text }}
+            {{ programs.find((p) => p.id === text)?.majorName || text }}
           </template>
         </a-table-column>
         <a-table-column title="层级" data-index="levelCode" width="100">
           <template #default="{ text }">
-            <a-tag>{{ WORKGROUP_LEVEL_LABEL[text as EvaluationWorkgroupLevel] || text }}</a-tag>
+            <a-tag>{{ workgroupLevelLabel(text) }}</a-tag>
           </template>
         </a-table-column>
         <a-table-column title="召集人" data-index="convenerUserId" width="120">
@@ -214,7 +255,9 @@ onMounted(async () => {
           <template #default="{ record }">
             <a-space>
               <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+              <a-button type="link" size="small" danger @click="handleDelete(record)"
+                >删除</a-button
+              >
             </a-space>
           </template>
         </a-table-column>
@@ -255,7 +298,11 @@ onMounted(async () => {
           <TeacherSelector v-model:value="editor.convenerUserId" width="100%" />
         </a-form-item>
         <a-form-item label="成员（JSON 数组或自由文本）">
-          <a-textarea v-model:value="editor.members" :rows="3" placeholder="例如 [&quot;张三&quot;, &quot;李四&quot;, &quot;王五&quot;]" />
+          <a-textarea
+            v-model:value="editor.members"
+            :rows="3"
+            placeholder='例如 ["张三", "李四", "王五"]'
+          />
         </a-form-item>
         <a-form-item label="职责">
           <a-textarea v-model:value="editor.responsibility" :rows="3" />
@@ -267,5 +314,7 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.page {
+  padding: 16px;
+}
 </style>

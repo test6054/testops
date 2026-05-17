@@ -76,65 +76,67 @@
           size="middle"
           class="archive-table"
         >
-          <template #bodyCell="{ column, record }">
+          <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'archiveNo'">
-              <button type="button" class="link-cell" @click="goDetail(record.archiveId)">
-                {{ record.archiveNo }}
+              <button type="button" class="link-cell" @click="goDetail(archives[index].archiveId)">
+                {{ archives[index].archiveNo }}
               </button>
-              <div class="link-cell__sub">{{ record.archiveTitle }}</div>
+              <div class="link-cell__sub">{{ archives[index].archiveTitle }}</div>
             </template>
-            <template v-else-if="column.key === 'examId'"> 考试 #{{ record.examId }} </template>
+            <template v-else-if="column.key === 'examId'">
+              考试 #{{ archives[index].examId }}
+            </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag
-                :tone="ARCHIVE_STATUS_TONE[asArchive(record).archiveStatus] || 'gray'"
-                size="sm"
-              >
+              <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
                 {{
-                  record.archiveStatusMessage
-                    || ARCHIVE_STATUS_LABEL[asArchive(record).archiveStatus]
+                  archives[index].archiveStatusMessage ||
+                  archiveStatusLabel(archives[index].archiveStatus)
                 }}
               </UiTag>
               <div
-                v-if="record.archiveStatus === 'PACKAGING' && record.packagingPhase"
+                v-if="
+                  archives[index].archiveStatus === 'PACKAGING' && archives[index].packagingPhase
+                "
                 class="phase-line"
               >
-                {{ ARCHIVE_PHASE_LABEL[record.packagingPhase as ArchivePackagingPhase] }} ·
-                {{ record.packagingProgressPercent ?? 0 }}%
+                {{ archivePhaseLabel(archives[index].packagingPhase) }} ·
+                {{ archives[index].packagingProgressPercent ?? 0 }}%
               </div>
             </template>
             <template v-else-if="column.key === 'retention'">
-              <span v-if="record.permanentRetention">永久保管</span>
+              <span v-if="archives[index].permanentRetention">永久保管</span>
               <span v-else>
-                {{ record.retentionYears ?? '-' }} 年
-                <span v-if="record.retentionUntil" class="muted">
-                  · 至 {{ record.retentionUntil }}
+                {{ archives[index].retentionYears ?? '-' }} 年
+                <span v-if="archives[index].retentionUntil" class="muted">
+                  · 至 {{ archives[index].retentionUntil }}
                 </span>
               </span>
             </template>
             <template v-else-if="column.key === 'fileSize'">
-              <span v-if="record.archiveFileSize">
-                {{ formatBytes(Number(record.archiveFileSize)) }}
+              <span v-if="archives[index].archiveFileSize">
+                {{ formatBytes(Number(archives[index].archiveFileSize)) }}
               </span>
               <span v-else class="muted">-</span>
             </template>
             <template v-else-if="column.key === 'itemCount'">
-              <span v-if="record.itemCount">{{ record.itemCount }}</span>
+              <span v-if="archives[index].itemCount">{{ archives[index].itemCount }}</span>
               <span v-else class="muted">-</span>
             </template>
             <template v-else-if="column.key === 'createTime'">
-              {{ formatTime(record.createTime) }}
+              {{ formatTime(archives[index].createTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
-                <UiButton size="sm" variant="ghost" @click="goDetail(record.archiveId)">
+                <UiButton size="sm" variant="ghost" @click="goDetail(archives[index].archiveId)">
                   详情
                 </UiButton>
                 <UiButton
                   v-if="
-                    record.archiveStatus === 'DRAFT' || record.archiveStatus === 'PACKAGING_FAILED'
+                    archives[index].archiveStatus === 'DRAFT' ||
+                    archives[index].archiveStatus === 'PACKAGING_FAILED'
                   "
                   size="sm"
-                  @click="confirmPackage(asArchive(record))"
+                  @click="confirmPackage(archives[index])"
                 >
                   打包入队
                 </UiButton>
@@ -207,6 +209,15 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
+import {
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  createArchive,
+  listArchives,
+  packageArchive,
+} from '@/apis/mark/archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -216,14 +227,6 @@ import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
-  ARCHIVE_STATUS_TONE,
-  createArchive,
-  listArchives,
-  packageArchive,
-} from '@/apis/mark/archive'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -255,9 +258,11 @@ const createForm = reactive({
   includeAnswerBooklet: true,
 })
 
-const statusOptions = (Object.keys(ARCHIVE_STATUS_LABEL) as ArchivePackageStatusCode[]).map(
-  (code) => ({ label: ARCHIVE_STATUS_LABEL[code], value: code }),
-)
+// 从后端枚举 LABEL 对象直接派生 select options。
+const statusOptions = Object.entries(ARCHIVE_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const columns = [
   { title: '归档编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 220 },
@@ -317,9 +322,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans
-    && !createForm.includeMarkedSlices
-    && !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans &&
+    !createForm.includeMarkedSlices &&
+    !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return
@@ -372,6 +377,22 @@ function formatTime(value?: string): string {
   return dayjs(value).format('YYYY-MM-DD HH:mm')
 }
 
+// 严格 typed helper：模板侧的 archives[index] 字段都是后端 VO 字面联合，避免 slot record:any。
+function archiveStatusTone(status?: ArchivePackageStatusCode): BadgeTone {
+  if (!status) return 'gray'
+  return ARCHIVE_STATUS_TONE[status] ?? 'gray'
+}
+
+function archiveStatusLabel(status?: ArchivePackageStatusCode): string {
+  if (!status) return '-'
+  return ARCHIVE_STATUS_LABEL[status] ?? status
+}
+
+function archivePhaseLabel(phase?: ArchivePackagingPhase): string {
+  if (!phase) return ''
+  return ARCHIVE_PHASE_LABEL[phase] ?? phase
+}
+
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '-'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -382,11 +403,6 @@ function formatBytes(bytes: number): string {
     i += 1
   }
   return `${size.toFixed(size >= 100 || i === 0 ? 0 : 1)} ${units[i]}`
-}
-
-/** 模板类型桥接：将 a-table slot 的 Record<string, any> 显式转为真实 VO */
-function asArchive(record: Record<string, unknown>): ArchivePackageVO {
-  return record as unknown as ArchivePackageVO
 }
 
 watch(

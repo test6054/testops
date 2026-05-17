@@ -67,46 +67,46 @@
           size="middle"
           bordered
         >
-          <template #bodyCell="{ column, record }">
+          <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'interfaceMode'">
-              <a-tag :color="interfaceModeColorOf(record.interfaceMode)">
-                {{ interfaceModeLabelOf(record.interfaceMode) }}
+              <a-tag :color="interfaceModeColorOf(devices[index].interfaceMode)">
+                {{ interfaceModeLabelOf(devices[index].interfaceMode) }}
               </a-tag>
             </template>
             <template v-else-if="column.key === 'status'">
-              <a-tag :color="statusColorOf(record.status)">
-                {{ statusLabelOf(record.status) }}
+              <a-tag :color="statusColorOf(devices[index].status)">
+                {{ statusLabelOf(devices[index].status) }}
               </a-tag>
             </template>
             <template v-else-if="column.key === 'pushTokenMasked'">
-              <span v-if="record.pushTokenMasked" class="mono">
-                {{ record.pushTokenMasked }}
+              <span v-if="devices[index].pushTokenMasked" class="mono">
+                {{ devices[index].pushTokenMasked }}
               </span>
               <span v-else class="text-muted">—</span>
             </template>
             <template v-else-if="column.key === 'lastSeenAt'">
-              <span v-if="record.lastSeenAt">{{ record.lastSeenAt }}</span>
+              <span v-if="devices[index].lastSeenAt">{{ devices[index].lastSeenAt }}</span>
               <span v-else class="text-muted">从未通讯</span>
             </template>
             <template v-else-if="column.key === 'action'">
               <div class="operations-cell">
-                <a class="op-link" @click="handleViewDetail(asDevice(record))">详情</a>
-                <a class="op-link" @click="handleEdit(asDevice(record))">编辑</a>
+                <a class="op-link" @click="handleViewDetail(devices[index])">详情</a>
+                <a class="op-link" @click="handleEdit(devices[index])">编辑</a>
                 <a
-                  v-if="record.interfaceMode === 'HTTP_PUSH'"
+                  v-if="devices[index].interfaceMode === 'HTTP_PUSH'"
                   class="op-link"
-                  @click="handleResetToken(asDevice(record))"
+                  @click="handleResetToken(devices[index])"
                 >
                   重置 token
                 </a>
                 <a
-                  v-if="record.interfaceMode === 'SANE_PULL'"
+                  v-if="devices[index].interfaceMode === 'SANE_PULL'"
                   class="op-link"
-                  @click="handleOpenSaneTrigger(asDevice(record))"
+                  @click="handleOpenSaneTrigger(devices[index])"
                 >
                   采集
                 </a>
-                <a class="op-link op-link--danger" @click="handleDelete(asDevice(record))">删除</a>
+                <a class="op-link op-link--danger" @click="handleDelete(devices[index])">删除</a>
               </div>
             </template>
           </template>
@@ -611,25 +611,22 @@ const columns = [
   { title: '操作', dataIndex: 'action', key: 'action', width: 260, fixed: 'right' as const },
 ]
 
-function statusLabelOf(status?: string): string {
+// helper 严格只接受后端枚举类型，零 as 断言。
+function statusLabelOf(status?: ScannerDeviceStatusCode): string {
   if (!status) return '—'
-  return SCANNER_DEVICE_STATUS_LABEL[status as ScannerDeviceStatusCode] ?? status
+  return SCANNER_DEVICE_STATUS_LABEL[status] ?? status
 }
-function statusColorOf(status?: string): string {
+function statusColorOf(status?: ScannerDeviceStatusCode): string {
   if (!status) return 'default'
-  return SCANNER_DEVICE_STATUS_COLOR[status as ScannerDeviceStatusCode] ?? 'default'
+  return SCANNER_DEVICE_STATUS_COLOR[status] ?? 'default'
 }
-function interfaceModeLabelOf(mode?: string): string {
+function interfaceModeLabelOf(mode?: ScannerInterfaceModeCode): string {
   if (!mode) return '—'
-  return SCANNER_INTERFACE_MODE_LABEL[mode as ScannerInterfaceModeCode] ?? mode
+  return SCANNER_INTERFACE_MODE_LABEL[mode] ?? mode
 }
-function interfaceModeColorOf(mode?: string): string {
+function interfaceModeColorOf(mode?: ScannerInterfaceModeCode): string {
   if (!mode) return 'default'
-  return SCANNER_INTERFACE_MODE_COLOR[mode as ScannerInterfaceModeCode] ?? 'default'
-}
-
-function asDevice(record: Record<string, unknown>): ExamScannerDeviceVO {
-  return record as unknown as ExamScannerDeviceVO
+  return SCANNER_INTERFACE_MODE_COLOR[mode] ?? 'default'
 }
 
 async function loadDevices(): Promise<void> {
@@ -718,20 +715,25 @@ function handleCreate(): void {
 function handleEdit(record: ExamScannerDeviceVO): void {
   formMode.value = 'edit'
   resetForm()
+  // record.X 字段已是后端严格枚举类型（如 ScannerInterfaceModeCode），默认值为枚举成员，TS 能自动合并为枚举类型，无须 as。
+  const defaultInterfaceMode: ScannerInterfaceModeCode = 'HTTP_PUSH'
+  const defaultStatus: ScannerDeviceStatusCode = 'ACTIVE'
+  const defaultColorMode: ScannerColorModeCode = 'COLOR'
+  const defaultDuplexMode: ScannerDuplexModeCode = 'SIMPLEX'
   Object.assign(formData, {
     id: record.id,
     scannerDeviceId: record.scannerDeviceId ?? '',
     scannerStationId: record.scannerStationId ?? '',
     deviceName: record.deviceName ?? '',
-    interfaceMode: (record.interfaceMode ?? 'HTTP_PUSH') as ScannerInterfaceModeCode,
+    interfaceMode: record.interfaceMode ?? defaultInterfaceMode,
     scannerIp: record.scannerIp ?? '',
-    status: (record.status ?? 'ACTIVE') as ScannerDeviceStatusCode,
+    status: record.status ?? defaultStatus,
     saneHost: record.saneHost ?? '',
     sanePort: record.sanePort ?? 6566,
     saneDeviceName: record.saneDeviceName ?? '',
     saneResolution: record.saneResolution ?? 200,
-    saneColorMode: (record.saneColorMode ?? 'COLOR') as ScannerColorModeCode,
-    saneDuplexMode: (record.saneDuplexMode ?? 'SIMPLEX') as ScannerDuplexModeCode,
+    saneColorMode: record.saneColorMode ?? defaultColorMode,
+    saneDuplexMode: record.saneDuplexMode ?? defaultDuplexMode,
     defaultExamId: record.defaultExamId ?? '',
     defaultClassIds: record.defaultClassIds ?? [],
     manufacturer: record.manufacturer ?? '',

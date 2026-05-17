@@ -1,4 +1,3 @@
-import type { CivicDimension } from './types'
 /**
  * 毕业要求观测点 + 观测点-标准映射 API
  *
@@ -36,7 +35,8 @@ export interface RequirementIndicatorSavePayload {
   description?: string
   requirementWeight: number
   thresholdValue?: number
-  civicDimensions?: string | CivicDimension[]
+  // 后端 RequirementIndicatorSaveRequest.civicDimensions 是 String：逗号分隔的 CivicDimension 代码列表。
+  civicDimensions?: string
   sortOrder?: number
 }
 

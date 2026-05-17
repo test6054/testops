@@ -91,69 +91,71 @@
             size="middle"
             class="review-table"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'anonymousNo'">
-                <a-typography-text strong :content="record.anonymousNo || '-'" />
+                <a-typography-text strong :content="tasks[index].anonymousNo || '-'" />
               </template>
               <template v-else-if="column.key === 'questionNo'">
-                <UiTag tone="blue" size="sm">{{ record.questionNo || '-' }}</UiTag>
+                <UiTag tone="blue" size="sm">{{ tasks[index].questionNo || '-' }}</UiTag>
               </template>
               <template v-else-if="column.key === 'fullScore'">
-                {{ record.fullScore ?? '-' }}
+                {{ tasks[index].fullScore ?? '-' }}
               </template>
               <template v-else-if="column.key === 'suggestedScore'">
-                <span v-if="record.suggestedScore !== undefined && record.suggestedScore !== null">
-                  {{ record.suggestedScore }}
+                <span
+                  v-if="
+                    tasks[index].suggestedScore !== undefined &&
+                    tasks[index].suggestedScore !== null
+                  "
+                >
+                  {{ tasks[index].suggestedScore }}
                 </span>
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'status'">
-                <UiTag
-                  :tone="STATUS_TONE[record.status as ReviewTaskStatusCode] || 'gray'"
-                  size="sm"
-                >
-                  {{ STATUS_LABEL[record.status as ReviewTaskStatusCode] || record.status || '-' }}
+                <UiTag :tone="reviewStatusTone(tasks[index].status)" size="sm">
+                  {{ reviewStatusLabel(tasks[index].status) }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'assignedTeacherUserId'">
-                <span v-if="record.assignedTeacherUserId">
+                <span v-if="tasks[index].assignedTeacherUserId">
                   <UserOutlined class="mini-icon" />
                   {{
-                    record.assignedTeacherUserId === currentUserId
+                    tasks[index].assignedTeacherUserId === currentUserId
                       ? '我'
-                      : record.assignedTeacherUserId
+                      : tasks[index].assignedTeacherUserId
                   }}
                 </span>
                 <span v-else class="muted">未指派</span>
               </template>
               <template v-else-if="column.key === 'updateTime'">
-                {{ formatTime(record.updateTime) }}
+                {{ formatTime(tasks[index].updateTime) }}
               </template>
               <template v-else-if="column.key === 'actions'">
                 <a-space>
                   <a-popconfirm
-                    v-if="record.status === 'PENDING'"
+                    v-if="tasks[index].status === 'PENDING'"
                     title="确认领取该任务？领取后将由你负责该题目的批改。"
                     ok-text="领取"
                     cancel-text="取消"
                     :disabled="claiming"
-                    @confirm="handleClaim(asTask(record))"
+                    @confirm="handleClaim(tasks[index])"
                   >
                     <UiButton
                       size="sm"
-                      :loading="claiming && claimingTaskId === record.reviewTaskId"
+                      :loading="claiming && claimingTaskId === tasks[index].reviewTaskId"
                     >
                       领取
                     </UiButton>
                   </a-popconfirm>
                   <UiButton
-                    v-if="record.status === 'IN_PROGRESS'"
+                    v-if="tasks[index].status === 'IN_PROGRESS'"
                     size="sm"
-                    @click="goWorkspace(asTask(record))"
+                    @click="goWorkspace(tasks[index])"
                   >
                     进入批阅
                   </UiButton>
-                  <UiButton size="sm" variant="ghost" @click="goDetail(asTask(record))">
+                  <UiButton size="sm" variant="ghost" @click="goDetail(tasks[index])">
                     详情
                   </UiButton>
                 </a-space>
@@ -169,6 +171,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam'
+import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
@@ -177,7 +180,6 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -226,10 +228,38 @@ const filterForm = reactive<{
   questionTemplateId: '',
 })
 
-const statusOptions = (Object.keys(STATUS_LABEL) as ReviewTaskStatusCode[]).map((code) => ({
-  label: STATUS_LABEL[code],
-  value: code,
-}))
+// 从后端枚举 LABEL 对象直接派生 select options。
+const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))
+
+/**
+ * 后端 ReviewTaskItemVO.status 是宽类型 string，前端需狭化为 ReviewTaskStatusCode 才能查 LABEL/TONE。
+ * 通过字面值 === 比较让 TS 自动缩窄类型，全程零 as 断言。
+ */
+function reviewStatusTone(value: unknown): ToneCode {
+  if (typeof value !== 'string') return 'gray'
+  if (
+    value === 'PENDING' ||
+    value === 'IN_PROGRESS' ||
+    value === 'APPROVED' ||
+    value === 'REJECTED'
+  ) {
+    return STATUS_TONE[value]
+  }
+  return 'gray'
+}
+
+function reviewStatusLabel(value: unknown): string {
+  if (typeof value !== 'string') return '-'
+  if (
+    value === 'PENDING' ||
+    value === 'IN_PROGRESS' ||
+    value === 'APPROVED' ||
+    value === 'REJECTED'
+  ) {
+    return STATUS_LABEL[value]
+  }
+  return value
+}
 
 const tasks = ref<ReviewTaskItemVO[]>([])
 const loading = ref(false)
@@ -241,10 +271,19 @@ computed(() => {
     REJECTED: 0,
   }
   tasks.value.forEach((task) => {
-    const code = task.status as ReviewTaskStatusCode
-    if (code in counter) counter[code]++
+    // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄。
+    const status = task.status
+    if (
+      status === 'PENDING' ||
+      status === 'IN_PROGRESS' ||
+      status === 'APPROVED' ||
+      status === 'REJECTED'
+    ) {
+      counter[status]++
+    }
   })
-  return (Object.keys(counter) as ReviewTaskStatusCode[]).map((code) => ({
+  const codes: ReviewTaskStatusCode[] = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED']
+  return codes.map((code) => ({
     code,
     label: STATUS_LABEL[code],
     count: counter[code],
@@ -292,10 +331,6 @@ function resetFilter(): void {
 // ─── 领取任务 ─────────────────────────────
 const claiming = ref(false)
 const claimingTaskId = ref<string | null>(null)
-
-function asTask(record: Record<string, unknown>): ReviewTaskItemVO {
-  return record as unknown as ReviewTaskItemVO
-}
 
 async function handleClaim(record: ReviewTaskItemVO): Promise<void> {
   if (!selectedExamId.value) return

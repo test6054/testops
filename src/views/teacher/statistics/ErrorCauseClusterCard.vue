@@ -14,18 +14,8 @@
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag
-              :color="
-                AI_ANALYSIS_STATUS_COLOR[
-                  (record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'
-                ]
-              "
-            >
-              {{
-                AI_ANALYSIS_STATUS_LABEL[
-                  (record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'
-                ]
-              }}
+            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
+              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="聚类数">{{ record.clusterCount ?? '-' }}</a-descriptions-item>
@@ -79,7 +69,6 @@ import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
-import type { AiAnalysisStatusCode } from '@/apis/mark/teaching-analysis'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'

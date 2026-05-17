@@ -4,9 +4,10 @@
 -->
 <script setup lang="ts">
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { teacherCatalogApi } from '@/apis/quality/user-catalog'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
-import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 
 interface Props {
   value?: string | null
@@ -26,19 +27,26 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  'change': [value: string | null, option?: TeacherUserInfoDto]
+  change: [value: string | null, option?: TeacherUserInfoDto]
 }>()
 
 const options = ref<TeacherUserInfoDto[]>([])
 const loading = ref(false)
 const searchText = ref('')
-const internalValue = ref<string | null>(props.value ?? null)
+// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
+const internalValue = ref<string | undefined>(props.value ?? undefined)
 
-watch(() => props.value, (v) => {
-  internalValue.value = v ?? null
-})
+watch(
+  () => props.value,
+  (v) => {
+    internalValue.value = v ?? undefined
+  },
+)
 
-watch(() => props.departmentId, () => loadOptions())
+watch(
+  () => props.departmentId,
+  () => loadOptions(),
+)
 
 async function loadOptions(keyword?: string) {
   loading.value = true
@@ -66,11 +74,12 @@ function handleSearch(val: string) {
   debounceTimer = setTimeout(() => loadOptions(val), 300)
 }
 
-function handleChange(val: string | null) {
-  internalValue.value = val
-  const option = options.value.find(o => o.id === val)
-  emit('update:value', val)
-  emit('change', val, option)
+function handleChange(val: SelectValue) {
+  const next: string | null = typeof val === 'string' ? val : null
+  internalValue.value = next ?? undefined
+  const option = options.value.find((o) => o.id === next)
+  emit('update:value', next)
+  emit('change', next, option)
 }
 
 onMounted(() => {
@@ -100,7 +109,9 @@ defineExpose({ reload: loadOptions })
       :label="opt.nickName || opt.userName"
     >
       {{ opt.nickName || opt.userName }}
-      <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 font-mono text-xs">({{ opt.teacherNumber }})</span>
+      <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 font-mono text-xs"
+        >({{ opt.teacherNumber }})</span
+      >
       <span v-if="opt.department" class="text-gray-400 ml-1">{{ opt.department }}</span>
     </a-select-option>
   </a-select>

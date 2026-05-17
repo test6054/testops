@@ -5,9 +5,10 @@
 -->
 <script setup lang="ts">
 import type { RequirementIndicatorVO } from '@/apis/quality'
+import { requirementIndicatorApi } from '@/apis/quality'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
-import { requirementIndicatorApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -27,38 +28,44 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  'change': [value: string | null, option?: RequirementIndicatorVO]
+  change: [value: string | null, option?: RequirementIndicatorVO]
 }>()
 
 const options = ref<RequirementIndicatorVO[]>([])
 const loading = ref(false)
-const internalValue = ref<string | null>(props.value ?? null)
+// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
+const internalValue = ref<string | undefined>(props.value ?? undefined)
 
 const effectiveDisabled = computed(() => props.disabled || !props.requirementId)
 const effectivePlaceholder = computed(() =>
   props.requirementId ? props.placeholder : '请先选择毕业要求',
 )
 
-watch(() => props.value, (v) => {
-  internalValue.value = v ?? null
-})
+watch(
+  () => props.value,
+  (v) => {
+    internalValue.value = v ?? undefined
+  },
+)
 
-watch(() => props.requirementId, (id) => {
-  if (id) {
-    loadOptions()
-  }
-  else {
-    options.value = []
-    internalValue.value = null
-    emit('update:value', null)
-  }
-})
+watch(
+  () => props.requirementId,
+  (id) => {
+    if (id) {
+      loadOptions()
+    } else {
+      options.value = []
+      internalValue.value = undefined
+      emit('update:value', null)
+    }
+  },
+)
 
 async function loadOptions() {
   if (!props.requirementId) return
   loading.value = true
   try {
-    options.value = await requirementIndicatorApi.listByRequirement(props.requirementId) || []
+    options.value = (await requirementIndicatorApi.listByRequirement(props.requirementId)) || []
   } catch (e) {
     console.error('[RequirementIndicatorSelector] 加载观测点列表失败', e)
     message.error('加载观测点列表失败')
@@ -67,11 +74,12 @@ async function loadOptions() {
   }
 }
 
-function handleChange(val: string | null) {
-  internalValue.value = val
-  const option = options.value.find(o => o.id === val)
-  emit('update:value', val)
-  emit('change', val, option)
+function handleChange(val: SelectValue) {
+  const next: string | null = typeof val === 'string' ? val : null
+  internalValue.value = next ?? undefined
+  const option = options.value.find((o) => o.id === next)
+  emit('update:value', next)
+  emit('change', next, option)
 }
 
 onMounted(() => {

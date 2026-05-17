@@ -28,18 +28,8 @@
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag
-              :color="
-                AI_ANALYSIS_STATUS_COLOR[
-                  (record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'
-                ]
-              "
-            >
-              {{
-                AI_ANALYSIS_STATUS_LABEL[
-                  (record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'
-                ]
-              }}
+            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
+              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="学生ID">{{ record.scopeId ?? '-' }}</a-descriptions-item>
@@ -66,9 +56,7 @@
                 <div class="diagnosis-item">
                   <div class="diagnosis-header">
                     <a-tag :color="masteryColor(item.masteryLevel)">
-                      {{
-                        masteryLabel(item.masteryLevel)
-                      }}
+                      {{ masteryLabel(item.masteryLevel) }}
                     </a-tag>
                     <span class="diagnosis-type">{{ item.questionType ?? '未知题型' }}</span>
                     <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
@@ -112,24 +100,21 @@
 </template>
 
 <script lang="ts" setup>
-import type {
-  AiAnalysisStatusCode,
-  ExamTeachingAnalysisRecordVO,
-} from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
+import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'StudentLearningProfileCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 interface DiagnosisItem {
   questionType?: string

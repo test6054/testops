@@ -179,38 +179,33 @@
             size="small"
             class="batch-table"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'batchNo'">
-                <a-typography-text strong :content="record.batchNo || '-'" />
+                <a-typography-text strong :content="batches[index].batchNo || '-'" />
                 <div
-                  v-if="record.batchExternalNo && record.batchExternalNo !== record.batchNo"
+                  v-if="
+                    batches[index].batchExternalNo &&
+                    batches[index].batchExternalNo !== batches[index].batchNo
+                  "
                   class="muted"
                 >
-                  外部编号：{{ record.batchExternalNo }}
+                  外部编号：{{ batches[index].batchExternalNo }}
                 </div>
               </template>
               <template v-else-if="column.key === 'status'">
-                <UiTag
-                  :tone="BATCH_STATUS_TONE[record.status as ScanBatchStatusCode] || 'gray'"
-                  size="sm"
-                >
-                  {{
-                    record.statusMessage
-                      || BATCH_STATUS_LABEL[record.status as ScanBatchStatusCode]
-                      || record.status
-                      || '-'
-                  }}
+                <UiTag :tone="batchStatusTone(batches[index])" size="sm">
+                  {{ batchStatusLabel(batches[index]) }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'scanWindow'">
-                <div>{{ formatTime(record.scanStartTime) }}</div>
-                <div class="muted">至 {{ formatTime(record.scanEndTime) }}</div>
+                <div>{{ formatTime(batches[index].scanStartTime) }}</div>
+                <div class="muted">至 {{ formatTime(batches[index].scanEndTime) }}</div>
               </template>
               <template v-else-if="column.key === 'eventCount'">
-                {{ record.eventCount ?? '-' }} 条
+                {{ batches[index].eventCount ?? '-' }} 条
               </template>
               <template v-else-if="column.key === 'fileCount'">
-                {{ record.sourceFileIds?.length ?? 0 }} 份
+                {{ batches[index].sourceFileIds?.length ?? 0 }} 份
               </template>
             </template>
           </a-table>
@@ -265,6 +260,13 @@ import type {
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
+import {
+  createScanBatchByCondition,
+  getMarkingProgress,
+  listScannerDevices,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+} from '@/apis/mark/exam'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -277,13 +279,6 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createScanBatchByCondition,
-  getMarkingProgress,
-  listScannerDevices,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -305,6 +300,18 @@ const BATCH_STATUS_TONE: Record<ScanBatchStatusCode, ToneCode> = {
   BLOCKED: 'red',
   BOUND: 'green',
   COMPLETED: 'green',
+}
+
+// helper 严格 typed 接收后端 API 对象 ExamScannerBatchVO。
+// ExamScannerBatchVO.status: ScanBatchStatusCode | undefined 本身已严格枚举，只需处理 undefined。
+function batchStatusTone(batch: ExamScannerBatchVO): ToneCode {
+  return batch.status ? BATCH_STATUS_TONE[batch.status] : 'gray'
+}
+
+function batchStatusLabel(batch: ExamScannerBatchVO): string {
+  if (batch.statusMessage) return batch.statusMessage
+  if (batch.status) return BATCH_STATUS_LABEL[batch.status]
+  return '-'
 }
 
 const router = useRouter()
@@ -388,10 +395,10 @@ const batchFormRules: Record<string, Rule[]> = {
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value
-    && batchForm.scannerDeviceIds.length > 0
-    && !!batchForm.scanWindow
-    && batchForm.scanWindow.length === 2,
+    !!selectedExamId.value &&
+    batchForm.scannerDeviceIds.length > 0 &&
+    !!batchForm.scanWindow &&
+    batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -493,7 +500,7 @@ async function handleCreateBatch(): Promise<void> {
 const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })

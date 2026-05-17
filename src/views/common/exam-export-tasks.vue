@@ -89,30 +89,34 @@
           row-key="taskId"
           size="middle"
         >
-          <template #bodyCell="{ column, record }">
+          <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'exportType'">
-              {{ EXPORT_TYPE_LABEL[record.exportType as ExportTypeCode] ?? record.exportType }}
+              {{ exportTypeLabel(filteredTasks[index].exportType) }}
             </template>
             <template v-else-if="column.key === 'exportScope'">
-              {{ EXPORT_SCOPE_LABEL[record.exportScope as ExportScopeCode] ?? record.exportScope }}
+              {{ exportScopeLabel(filteredTasks[index].exportScope) }}
             </template>
             <template v-else-if="column.key === 'taskStatus'">
-              <UiTag :tone="statusTone(asTask(record).taskStatus)" size="sm">
-                {{
-                  EXPORT_STATUS_LABEL[asTask(record).taskStatus]
-                    ?? asTask(record).taskStatus
-                }}
+              <UiTag :tone="statusTone(filteredTasks[index].taskStatus)" size="sm">
+                {{ exportStatusLabel(filteredTasks[index].taskStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'fileSize'">
-              {{ record.fileSize ? formatBytes(record.fileSize) : '-' }}
+              {{
+                filteredTasks[index].fileSize
+                  ? formatBytes(filteredTasks[index].fileSize ?? 0)
+                  : '-'
+              }}
             </template>
             <template v-else-if="column.key === 'errorMessage'">
-              <a-tooltip v-if="record.errorMessage" :title="record.errorMessage">
+              <a-tooltip
+                v-if="filteredTasks[index].errorMessage"
+                :title="filteredTasks[index].errorMessage"
+              >
                 <span class="error-text">{{
-                  record.errorMessage.length > 24
-                    ? `${record.errorMessage.slice(0, 24)}…`
-                    : record.errorMessage
+                  (filteredTasks[index].errorMessage ?? '').length > 24
+                    ? `${(filteredTasks[index].errorMessage ?? '').slice(0, 24)}…`
+                    : filteredTasks[index].errorMessage
                 }}</span>
               </a-tooltip>
               <span v-else class="hint-text">-</span>
@@ -120,15 +124,21 @@
             <template v-else-if="column.key === 'actions'">
               <a-space>
                 <UiButton
-                  v-if="asTask(record).taskStatus === 'COMPLETED' && asTask(record).fileId"
+                  v-if="
+                    filteredTasks[index].taskStatus === 'COMPLETED' && filteredTasks[index].fileId
+                  "
                   size="sm"
-                  :loading="downloadingId === asTask(record).taskId"
-                  @click="handleDownload(asTask(record))"
+                  :loading="downloadingId === filteredTasks[index].taskId"
+                  @click="handleDownload(filteredTasks[index])"
                 >
                   <template #icon><DownloadOutlined /></template>
                   下载
                 </UiButton>
-                <UiButton size="sm" variant="outline" @click="openDetailDrawer(asTask(record))">
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  @click="openDetailDrawer(filteredTasks[index])"
+                >
                   详情
                 </UiButton>
               </a-space>
@@ -189,22 +199,17 @@
         <a-descriptions-item label="任务ID">{{ detailTask.taskId }}</a-descriptions-item>
         <a-descriptions-item label="考试ID">{{ detailTask.examId }}</a-descriptions-item>
         <a-descriptions-item label="类型">
-          {{ EXPORT_TYPE_LABEL[detailTask.exportType as ExportTypeCode] ?? detailTask.exportType }}
+          {{ exportTypeLabel(detailTask.exportType) }}
         </a-descriptions-item>
         <a-descriptions-item label="范围">
-          {{
-            EXPORT_SCOPE_LABEL[detailTask.exportScope as ExportScopeCode] ?? detailTask.exportScope
-          }}
+          {{ exportScopeLabel(detailTask.exportScope) }}
         </a-descriptions-item>
         <a-descriptions-item label="范围条件">
           <pre class="scope-pre">{{ detailTask.scopePayload || '（空）' }}</pre>
         </a-descriptions-item>
         <a-descriptions-item label="状态">
           <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
-            {{
-              EXPORT_STATUS_LABEL[detailTask.taskStatus as ExportTaskStatusCode]
-                ?? detailTask.taskStatus
-            }}
+            {{ exportStatusLabel(detailTask.taskStatus) }}
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="文件名">{{ detailTask.fileName ?? '-' }}</a-descriptions-item>
@@ -212,14 +217,10 @@
           {{ detailTask.fileSize ? formatBytes(detailTask.fileSize) : '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="开始时间">
-          {{
-            detailTask.startedTime ?? '-'
-          }}
+          {{ detailTask.startedTime ?? '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="完成时间">
-          {{
-            detailTask.completedTime ?? '-'
-          }}
+          {{ detailTask.completedTime ?? '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="错误信息">
           <span v-if="detailTask.errorMessage" class="error-text">{{
@@ -235,22 +236,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   ExportScopeCode,
   ExportTaskStatusCode,
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
-import type { BadgeTone } from '@/components/ui-guide/ui'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
-import { pageExams } from '@/apis/mark/exam'
 import {
   createExportTask,
   EXPORT_SCOPE_LABEL,
@@ -259,9 +251,18 @@ import {
   EXPORT_TYPE_LABEL,
   listExportTasks,
 } from '@/apis/mark/exam-export'
+import type { BadgeTone } from '@/components/ui-guide/ui'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ExamExportTasks' })
 
@@ -271,7 +272,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const tasks = ref<ExportTaskVO[]>([])
@@ -284,8 +285,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value)
-      && (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
+      (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 
@@ -315,9 +316,19 @@ function statusTone(status: ExportTaskStatusCode | undefined): BadgeTone {
   return EXPORT_STATUS_TONE[status] ?? 'gray'
 }
 
-/** 模板类型桥接：将 a-table slot 的 Record<string, any> 转为后端真实 VO 类型 ExportTaskVO */
-function asTask(record: Record<string, unknown>): ExportTaskVO {
-  return record as unknown as ExportTaskVO
+function exportTypeLabel(code: ExportTypeCode | undefined): string {
+  if (!code) return '-'
+  return EXPORT_TYPE_LABEL[code] ?? code
+}
+
+function exportScopeLabel(code: ExportScopeCode | undefined): string {
+  if (!code) return '-'
+  return EXPORT_SCOPE_LABEL[code] ?? code
+}
+
+function exportStatusLabel(code: ExportTaskStatusCode | undefined): string {
+  if (!code) return '-'
+  return EXPORT_STATUS_LABEL[code] ?? code
 }
 
 function formatBytes(size: number): string {

@@ -17,11 +17,7 @@
         </template>
       </PageHeader>
 
-      <UiEmpty
-        v-if="!taskId"
-        description="缺少必要参数 taskId"
-        class="empty-block"
-      />
+      <UiEmpty v-if="!taskId" description="缺少必要参数 taskId" class="empty-block" />
 
       <a-spin v-else :spinning="loading">
         <UiEmpty v-if="!loading && !task" description="未找到匹配的阅卷任务" class="empty-block" />
@@ -53,7 +49,12 @@
                 <span>任务详情</span>
               </template>
 
-              <a-descriptions :column="{ xs: 1, sm: 2 }" size="middle" bordered class="task-descriptions">
+              <a-descriptions
+                :column="{ xs: 1, sm: 2 }"
+                size="middle"
+                bordered
+                class="task-descriptions"
+              >
                 <a-descriptions-item label="任务ID">
                   <a-typography-text copyable>{{ task.id }}</a-typography-text>
                 </a-descriptions-item>
@@ -64,26 +65,35 @@
                   <a-typography-text copyable>{{ task.groupId || '-' }}</a-typography-text>
                 </a-descriptions-item>
                 <a-descriptions-item label="题目模板ID">
-                  <a-typography-text copyable>{{ task.questionTemplateId || '-' }}</a-typography-text>
+                  <a-typography-text copyable>{{
+                    task.questionTemplateId || '-'
+                  }}</a-typography-text>
                 </a-descriptions-item>
                 <a-descriptions-item label="试卷实例ID">
                   <a-typography-text copyable>{{ task.paperInstanceId || '-' }}</a-typography-text>
                 </a-descriptions-item>
-                <a-descriptions-item label="评阅轮次">第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item>
+                <a-descriptions-item label="评阅轮次"
+                  >第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item
+                >
                 <a-descriptions-item label="任务状态">
-                  <UiTag :tone="STATUS_TONE[task.taskStatus as MarkingTaskStatusCode] || 'gray'" size="sm">
-                    {{ STATUS_LABEL[task.taskStatus as MarkingTaskStatusCode] || task.taskStatus || '-' }}
+                  <UiTag :tone="task.taskStatus ? STATUS_TONE[task.taskStatus] : 'gray'" size="sm">
+                    {{ task.taskStatus ? STATUS_LABEL[task.taskStatus] : '-' }}
                   </UiTag>
                 </a-descriptions-item>
-                <a-descriptions-item label="分配时间">{{ formatTime(task.allocatedAt) }}</a-descriptions-item>
-                <a-descriptions-item label="提交时间">{{ formatTime(task.submittedAt) }}</a-descriptions-item>
-                <a-descriptions-item v-if="task.score !== undefined && task.score !== null" label="当前给分">
+                <a-descriptions-item label="分配时间">{{
+                  formatTime(task.allocatedAt)
+                }}</a-descriptions-item>
+                <a-descriptions-item label="提交时间">{{
+                  formatTime(task.submittedAt)
+                }}</a-descriptions-item>
+                <a-descriptions-item
+                  v-if="task.score !== undefined && task.score !== null"
+                  label="当前给分"
+                >
                   <a-typography-text strong>{{ task.score }}</a-typography-text>
                 </a-descriptions-item>
                 <a-descriptions-item v-if="task.annotationNote" label="既有批注" :span="2">
-                  <a-typography-paragraph
-                    :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
-                  >
+                  <a-typography-paragraph :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }">
                     {{ task.annotationNote }}
                   </a-typography-paragraph>
                 </a-descriptions-item>
@@ -154,7 +164,13 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { MarkingTaskStatusCode, MarkingTaskVO } from '@/apis/mark/marking-organization'
+import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
+import {
+  getMarkingTaskDetail,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+  submitMarkingTask,
+} from '@/apis/mark/marking-organization'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
@@ -164,12 +180,6 @@ import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import {
-  getMarkingTaskDetail,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-  submitMarkingTask,
-} from '@/apis/mark/marking-organization'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -184,7 +194,8 @@ const task = ref<MarkingTaskVO | null>(null)
 const loading = ref(false)
 
 const canSubmit = computed(() => {
-  const status = task.value?.taskStatus as MarkingTaskStatusCode | undefined
+  // task.value?.taskStatus 本身就是 MarkingTaskStatusCode | undefined，无需任何 cast。
+  const status = task.value?.taskStatus
   return status === 'ALLOCATED' || status === 'IN_PROGRESS'
 })
 
@@ -236,7 +247,7 @@ function releaseSliceImage(): void {
 }
 
 const formRef = ref<FormInstance>()
-const form = reactive<{ score?: number, annotationNote?: string }>({
+const form = reactive<{ score?: number; annotationNote?: string }>({
   score: undefined,
   annotationNote: '',
 })

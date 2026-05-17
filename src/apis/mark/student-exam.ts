@@ -7,6 +7,7 @@
  * - 后端 Long ID 统一以 string 表达到前端
  * - 仅在 finalScoreStatus = PUBLISHED 时返回成绩与逐题明细
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 /** 最终成绩状态编码 */
@@ -28,18 +29,18 @@ export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
   WITHDRAWN: '已撤回',
 }
 
-/** 最终成绩状态徽标颜色（antd 兼容值，保留旧用法） */
-export const FINAL_SCORE_STATUS_COLOR: Record<FinalScoreStatusCode, string> = {
-  PENDING: 'default',
+/** 最终成绩状态徽标颜色（统一 BadgeTone，考虑 cyan 不在 BadgeTone 中改为 blue） */
+export const FINAL_SCORE_STATUS_COLOR: Record<FinalScoreStatusCode, BadgeTone> = {
+  PENDING: 'gray',
   CALCULATED: 'blue',
-  CONFIRMED: 'cyan',
+  CONFIRMED: 'blue',
   CORRECTED: 'purple',
   PUBLISHED: 'green',
   WITHDRAWN: 'red',
 }
 
 /** 最终成绩状态 BadgeTone 映射（用于 UiTag/UiBadge 等 ui-guide 组件） */
-export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple' | 'yellow'> = {
+export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, BadgeTone> = {
   PENDING: 'gray',
   CALCULATED: 'blue',
   CONFIRMED: 'blue',

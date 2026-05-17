@@ -6,6 +6,7 @@
  * - 写操作（生成）为 POST + @RequestParam，查询为 GET
  * - 后端 Long ID 统一用 string 表达到前端
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 /** 教学分析类型 */
@@ -25,7 +26,7 @@ export const TEACHING_ANALYSIS_TYPE_LABEL: Record<TeachingAnalysisTypeCode, stri
 }
 
 /** 教学分析类型徽标颜色 */
-export const TEACHING_ANALYSIS_TYPE_COLOR: Record<TeachingAnalysisTypeCode, string> = {
+export const TEACHING_ANALYSIS_TYPE_COLOR: Record<TeachingAnalysisTypeCode, BadgeTone> = {
   TEACHING_IMPROVEMENT: 'blue',
   CLASS_WEAKNESS: 'orange',
   STUDENT_LEARNING_PROFILE: 'purple',
@@ -40,11 +41,11 @@ export const AI_ANALYSIS_STATUS_LABEL: Record<AiAnalysisStatusCode, string> = {
 }
 
 /** AI 分析状态徽标颜色 */
-export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, string> = {
+export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, BadgeTone> = {
   PENDING: 'orange',
   SUCCESS: 'green',
   FAILED: 'red',
-  BLOCKED: 'volcano',
+  BLOCKED: 'red',
 }
 
 /** AI 教学分析记录 - 对应 ExamTeachingAnalysisRecord */

@@ -52,11 +52,7 @@
 
           <a-form-item>
             <a-space>
-              <UiButton
-                :loading="submitting"
-                :disabled="!valid"
-                @click="handleSubmit"
-              >
+              <UiButton :loading="submitting" :disabled="!valid" @click="handleSubmit">
                 <template #icon><CheckCircleOutlined /></template>
                 提交处理
               </UiButton>
@@ -74,12 +70,12 @@
 
 <script lang="ts" setup>
 import type { SpotCheckConclusionCode } from '@/apis/mark/marking-quality'
+import { handleSpotCheck } from '@/apis/mark/marking-quality'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { handleSpotCheck } from '@/apis/mark/marking-quality'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard } from '@/components/ui-guide/ui'
@@ -91,17 +87,18 @@ const router = useRouter()
 
 const submitting = ref(false)
 
+// a-input-number v-model:value 不接受 null，未填状态统一用 undefined。
 interface SpotCheckForm {
   spotCheckId: string
   conclusion: SpotCheckConclusionCode
-  suggestedScore: number | null
+  suggestedScore: number | undefined
   handleNote: string
 }
 
 const form = reactive<SpotCheckForm>({
   spotCheckId: '',
   conclusion: 'PASSED',
-  suggestedScore: null,
+  suggestedScore: undefined,
   handleNote: '',
 })
 
@@ -114,7 +111,7 @@ async function handleSubmit(): Promise<void> {
     await handleSpotCheck({
       spotCheckId: form.spotCheckId.trim(),
       conclusion: form.conclusion,
-      suggestedScore: form.suggestedScore ?? undefined,
+      suggestedScore: form.suggestedScore,
       handleNote: form.handleNote.trim() || undefined,
     })
     message.success('已提交抽检处理结论')
@@ -129,7 +126,7 @@ async function handleSubmit(): Promise<void> {
 function resetForm(): void {
   form.spotCheckId = ''
   form.conclusion = 'PASSED'
-  form.suggestedScore = null
+  form.suggestedScore = undefined
   form.handleNote = ''
   void router.replace({ query: {} })
 }

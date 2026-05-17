@@ -12,7 +12,9 @@
           <template #icon><ReloadOutlined /></template>查看最新
         </a-button>
         <a-button
-          type="primary" :loading="generating" :disabled="!classIdInput"
+          type="primary"
+          :loading="generating"
+          :disabled="!classIdInput"
           @click="handleGenerate"
         >
           重新生成
@@ -26,8 +28,8 @@
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[(record.analysisStatus as AiAnalysisStatusCode) || 'PENDING'] }}
+            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
+              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="班级ID">{{ record.scopeId ?? '-' }}</a-descriptions-item>
@@ -52,7 +54,11 @@
             <template #renderItem="{ item, index }">
               <a-list-item>
                 <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
-                <a-typography-paragraph :content="formatItem(item)" :copyable="true" style="margin: 0 0 0 8px; flex: 1" />
+                <a-typography-paragraph
+                  :content="formatItem(item)"
+                  :copyable="true"
+                  style="margin: 0 0 0 8px; flex: 1"
+                />
               </a-list-item>
             </template>
           </a-list>
@@ -72,24 +78,21 @@
 </template>
 
 <script lang="ts" setup>
-import type {
-  AiAnalysisStatusCode,
-  ExamTeachingAnalysisRecordVO,
-} from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
+import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'ClassWeaknessCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
@@ -150,17 +153,30 @@ function formatItem(item: unknown): string {
   return JSON.stringify(item, null, 2)
 }
 
-watch(() => [props.examId, props.reloadToken], () => {
-  // 切换考试或外部刷新时清空当前结果，等待用户重新指定班级
-  hasQueried.value = false
-  record.value = null
-})
+watch(
+  () => [props.examId, props.reloadToken],
+  () => {
+    // 切换考试或外部刷新时清空当前结果，等待用户重新指定班级
+    hasQueried.value = false
+    record.value = null
+  },
+)
 </script>
 
 <style lang="scss" scoped>
-.ai-record { display: flex; flex-direction: column; gap: 12px; }
-.ai-summary { margin: 0; }
-.ai-items { display: flex; flex-direction: column; gap: 8px; }
+.ai-record {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-summary {
+  margin: 0;
+}
+.ai-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .raw-json {
   margin: 0;
   padding: 8px;
@@ -170,5 +186,7 @@ watch(() => [props.examId, props.reloadToken], () => {
   word-break: break-all;
   background: var(--gi-color-bg-2, #f5f5f5);
 }
-.text-muted { color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45)); }
+.text-muted {
+  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+}
 </style>

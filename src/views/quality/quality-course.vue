@@ -2,10 +2,14 @@
 /**
  * 质量评价课程主数据 CRUD
  */
-import type { QualityCourseQueryPayload, QualityCourseSavePayload, QualityCourseVO } from '@/apis/quality'
+import type {
+  QualityCourseQueryPayload,
+  QualityCourseSavePayload,
+  QualityCourseVO,
+} from '@/apis/quality'
+import { qualityCourseApi } from '@/apis/quality'
 import { message, Modal } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
-import { qualityCourseApi } from '@/apis/quality'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const qualityStore = useQualityStore()
@@ -28,6 +32,8 @@ const query = reactive<QualityCourseQueryPayload>({
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
+// editor 严格对齐后端 QualityCourseSaveRequest：未定义 credit / totalHours / remark，
+// 学分 / 学时字段在后端叫creditValue / creditHours。
 const editor = reactive<QualityCourseSavePayload>({
   trainingPlanId: '',
   programId: '',
@@ -35,16 +41,16 @@ const editor = reactive<QualityCourseSavePayload>({
   courseCode: '',
   courseName: '',
   courseCategory: '',
+  courseNature: '',
   schoolYear: '',
   semester: '',
   teacherUserId: '',
   classId: '',
-  credit: 2,
-  totalHours: 32,
+  creditValue: 2,
+  creditHours: 32,
   civicObjective: '',
   syllabusFileId: '',
   enabled: true,
-  remark: '',
 })
 const submitting = ref(false)
 
@@ -64,8 +70,7 @@ async function loadList() {
     })
     list.value = page.list
     total.value = page.total
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -78,7 +83,15 @@ function handlePageChange(page: number, pageSize: number) {
 
 function resetQuery() {
   query.pageNum = 1
-  Object.assign(query, { programId: '', schoolYear: '', semester: '', teacherUserId: '', classId: '', enabled: undefined, keyword: '' })
+  Object.assign(query, {
+    programId: '',
+    schoolYear: '',
+    semester: '',
+    teacherUserId: '',
+    classId: '',
+    enabled: undefined,
+    keyword: '',
+  })
   loadList()
 }
 
@@ -92,16 +105,16 @@ function openCreate() {
     courseCode: '',
     courseName: '',
     courseCategory: '',
+    courseNature: '',
     schoolYear: '',
     semester: '',
     teacherUserId: '',
     classId: '',
-    credit: 2,
-    totalHours: 32,
+    creditValue: 2,
+    creditHours: 32,
     civicObjective: '',
     syllabusFileId: '',
     enabled: true,
-    remark: '',
   })
   editorVisible.value = true
 }
@@ -113,7 +126,13 @@ function openEdit(record: QualityCourseVO) {
 }
 
 async function submitEditor() {
-  if (!editor.trainingPlanId || !editor.programId || !editor.courseId || !editor.courseCode || !editor.courseName) {
+  if (
+    !editor.trainingPlanId ||
+    !editor.programId ||
+    !editor.courseId ||
+    !editor.courseCode ||
+    !editor.courseName
+  ) {
     message.error('请填写培养方案 / 专业 / 课程主键 / 编码 / 名称')
     return
   }
@@ -124,8 +143,7 @@ async function submitEditor() {
     message.success('已保存')
     editorVisible.value = false
     await loadList()
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -143,11 +161,18 @@ async function handleDelete(record: QualityCourseVO) {
 }
 
 function selectAsCurrent(record: QualityCourseVO) {
-  qualityStore.setCurrent({ qualityCourseId: record.id, schoolYear: record.schoolYear, semester: record.semester })
+  qualityStore.setCurrent({
+    qualityCourseId: record.id,
+    schoolYear: record.schoolYear,
+    semester: record.semester,
+  })
   message.success(`已切换当前课程为 ${record.courseCode}`)
 }
 
-watch(() => qualityStore.currentTrainingPlanId, () => loadList())
+watch(
+  () => qualityStore.currentTrainingPlanId,
+  () => loadList(),
+)
 onMounted(loadList)
 </script>
 
@@ -159,16 +184,25 @@ onMounted(loadList)
           <a-input v-model:value="query.programId" placeholder="专业 ID" style="width: 110px" />
           <a-input v-model:value="query.schoolYear" placeholder="学年" style="width: 110px" />
           <a-input v-model:value="query.semester" placeholder="学期" style="width: 70px" />
-          <a-input v-model:value="query.teacherUserId" placeholder="教师 user_id" style="width: 130px" />
+          <a-input
+            v-model:value="query.teacherUserId"
+            placeholder="教师 user_id"
+            style="width: 130px"
+          />
           <a-input v-model:value="query.classId" placeholder="班级 ID" style="width: 110px" />
-          <a-input v-model:value="query.keyword" placeholder="关键字" style="width: 140px" @press-enter="loadList" />
-          <a-button type="primary" @click="loadList">
-            查询
-          </a-button>
-          <a-button @click="resetQuery">
-            重置
-          </a-button>
-          <a-button type="primary" :disabled="!qualityStore.currentTrainingPlanId" @click="openCreate">
+          <a-input
+            v-model:value="query.keyword"
+            placeholder="关键字"
+            style="width: 140px"
+            @press-enter="loadList"
+          />
+          <a-button type="primary" @click="loadList"> 查询 </a-button>
+          <a-button @click="resetQuery"> 重置 </a-button>
+          <a-button
+            type="primary"
+            :disabled="!qualityStore.currentTrainingPlanId"
+            @click="openCreate"
+          >
             新建课程
           </a-button>
         </a-space>
@@ -215,9 +249,7 @@ onMounted(loadList)
               <a-button type="link" size="small" @click="selectAsCurrent(record)">
                 设为当前课程
               </a-button>
-              <a-button type="link" size="small" @click="openEdit(record)">
-                编辑
-              </a-button>
+              <a-button type="link" size="small" @click="openEdit(record)"> 编辑 </a-button>
               <a-button type="link" size="small" danger @click="handleDelete(record)">
                 删除
               </a-button>
@@ -288,7 +320,12 @@ onMounted(loadList)
           </a-col>
           <a-col :span="4">
             <a-form-item label="学分">
-              <a-input-number v-model:value="editor.creditValue" :min="0" :step="0.5" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.creditValue"
+                :min="0"
+                :step="0.5"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="4">
@@ -312,5 +349,7 @@ onMounted(loadList)
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.page {
+  padding: 16px;
+}
 </style>

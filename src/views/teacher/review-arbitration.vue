@@ -67,37 +67,37 @@
             size="middle"
             class="arbitration-table"
           >
-            <template #bodyCell="{ column, record }">
+            <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'anonymousNo'">
-                <a-typography-text strong :content="record.anonymousNo || '-'" />
+                <a-typography-text strong :content="tasks[index].anonymousNo || '-'" />
               </template>
               <template v-else-if="column.key === 'questionNo'">
-                <UiTag tone="blue" size="sm">{{ record.questionNo || '-' }}</UiTag>
+                <UiTag tone="blue" size="sm">{{ tasks[index].questionNo || '-' }}</UiTag>
               </template>
               <template v-else-if="column.key === 'fullScore'">
-                {{ record.fullScore ?? '-' }}
+                {{ tasks[index].fullScore ?? '-' }}
               </template>
               <template v-else-if="column.key === 'suggestedScore'">
-                {{ record.suggestedScore ?? '-' }}
+                {{ tasks[index].suggestedScore ?? '-' }}
               </template>
               <template v-else-if="column.key === 'assignedTeacherUserId'">
-                <span v-if="record.assignedTeacherUserId">
+                <span v-if="tasks[index].assignedTeacherUserId">
                   <UserOutlined class="mini-icon" />
                   {{
-                    record.assignedTeacherUserId === currentUserId
+                    tasks[index].assignedTeacherUserId === currentUserId
                       ? '我'
-                      : record.assignedTeacherUserId
+                      : tasks[index].assignedTeacherUserId
                   }}
                 </span>
                 <span v-else class="muted">未指派</span>
               </template>
               <template v-else-if="column.key === 'updateTime'">
-                {{ formatTime(record.updateTime) }}
+                {{ formatTime(tasks[index].updateTime) }}
               </template>
               <template v-else-if="column.key === 'actions'">
                 <a-space>
-                  <UiButton size="sm" @click="goWorkspace(asTask(record))">仲裁批阅</UiButton>
-                  <UiButton size="sm" variant="ghost" @click="goDetail(asTask(record))">
+                  <UiButton size="sm" @click="goWorkspace(tasks[index])">仲裁批阅</UiButton>
+                  <UiButton size="sm" variant="ghost" @click="goDetail(tasks[index])">
                     详情
                   </UiButton>
                 </a-space>
@@ -113,6 +113,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam'
+import { listReviewTasks } from '@/apis/mark/exam'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
@@ -120,7 +121,6 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { listReviewTasks } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -174,10 +174,6 @@ async function loadTasks(): Promise<void> {
   } finally {
     loading.value = false
   }
-}
-
-function asTask(record: Record<string, unknown>): ReviewTaskItemVO {
-  return record as unknown as ReviewTaskItemVO
 }
 
 function goWorkspace(record: ReviewTaskItemVO): void {

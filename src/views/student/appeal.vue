@@ -122,46 +122,46 @@
           class="requests-table"
           :pagination="{ pageSize: 10, showSizeChanger: true }"
         >
-          <template #bodyCell="{ column, record: _row }">
+          <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'examName'">
               <div class="exam-cell">
                 <strong class="exam-cell__title">{{
-                  asRequestRow(_row).examName || '未命名考试'
+                  filteredRequests[index].examName || '未命名考试'
                 }}</strong>
-                <span v-if="asRequestRow(_row).examNo" class="exam-cell__sub">编号：{{ asRequestRow(_row).examNo }}</span>
+                <span v-if="filteredRequests[index].examNo" class="exam-cell__sub"
+                  >编号：{{ filteredRequests[index].examNo }}</span
+                >
               </div>
             </template>
             <template v-else-if="column.key === 'reasonType'">
               <UiTag tone="purple" size="sm">
-                {{
-                  formatReasonType(asRequestRow(_row).reasonType)
-                }}
+                {{ formatReasonType(filteredRequests[index].reasonType) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'requestReason'">
-              <a-tooltip :title="asRequestRow(_row).requestReason">
-                <div class="reason-cell">{{ asRequestRow(_row).requestReason || '-' }}</div>
+              <a-tooltip :title="filteredRequests[index].requestReason">
+                <div class="reason-cell">{{ filteredRequests[index].requestReason || '-' }}</div>
               </a-tooltip>
             </template>
             <template v-else-if="column.key === 'requestStatus'">
               <UiTag
-                v-if="asRequestRow(_row).requestStatus"
-                :tone="REVIEW_REQUEST_STATUS_TONE[asRequestRow(_row).requestStatus!]"
+                v-if="filteredRequests[index].requestStatus"
+                :tone="requestStatusTone(filteredRequests[index].requestStatus)"
                 size="sm"
               >
-                {{ REVIEW_REQUEST_STATUS_LABEL[asRequestRow(_row).requestStatus!] }}
+                {{ requestStatusLabel(filteredRequests[index].requestStatus) }}
               </UiTag>
               <span v-else class="muted">-</span>
             </template>
             <template v-else-if="column.key === 'createTime'">
-              {{ formatTime(asRequestRow(_row).createTime) }}
+              {{ formatTime(filteredRequests[index].createTime) }}
             </template>
             <template v-else-if="column.key === 'reviewTime'">
-              {{ formatTime(asRequestRow(_row).reviewTime) }}
+              {{ formatTime(filteredRequests[index].reviewTime) }}
             </template>
             <template v-else-if="column.key === 'reviewNote'">
-              <a-tooltip :title="asRequestRow(_row).reviewNote">
-                <div class="reason-cell">{{ asRequestRow(_row).reviewNote || '-' }}</div>
+              <a-tooltip :title="filteredRequests[index].reviewNote">
+                <div class="reason-cell">{{ filteredRequests[index].reviewNote || '-' }}</div>
               </a-tooltip>
             </template>
           </template>
@@ -221,7 +221,15 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
+import {
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
@@ -231,13 +239,6 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -269,7 +270,7 @@ const reasonTypeOptions = [
   { value: 'OTHER', label: '其他' },
 ]
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -302,11 +303,6 @@ const pendingRequestCount = computed(
     requests.value.filter((r) => r.requestStatus === 'PENDING' || r.requestStatus === 'IN_REVIEW')
       .length,
 )
-
-/** 将 a-table slot 的 Record<string, any> 安全转换为后端真实 VO 类型 */
-function asRequestRow(row: Record<string, unknown>): StudentGradeReviewRequestItemVO {
-  return row as unknown as StudentGradeReviewRequestItemVO
-}
 
 const columns = [
   { title: '考试', key: 'examName', dataIndex: 'examName', width: 240 },
@@ -365,6 +361,17 @@ async function reloadAll() {
 function formatTime(value?: string): string {
   if (!value) return '-'
   return dayjs(value).format('YYYY-MM-DD HH:mm')
+}
+
+// 严格 typed helper：filteredRequests[index].requestStatus 是 GradeReviewRequestStatusCode | undefined。
+function requestStatusTone(status?: GradeReviewRequestStatusCode): BadgeTone {
+  if (!status) return 'gray'
+  return REVIEW_REQUEST_STATUS_TONE[status] ?? 'gray'
+}
+
+function requestStatusLabel(status?: GradeReviewRequestStatusCode): string {
+  if (!status) return '-'
+  return REVIEW_REQUEST_STATUS_LABEL[status] ?? status
 }
 
 function formatReasonType(value?: string): string {
