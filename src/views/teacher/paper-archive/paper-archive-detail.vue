@@ -37,7 +37,7 @@
           <a-descriptions-item label="保管期限">
             <span v-if="set.permanentRetention">永久保管</span>
             <span v-else
-              >{{ set.retentionYears ?? '-' }} 年（至 {{ set.retentionUntil || '-' }}）</span
+            >{{ set.retentionYears ?? '-' }} 年（至 {{ set.retentionUntil || '-' }}）</span
             >
           </a-descriptions-item>
           <a-descriptions-item label="创建时间">
@@ -590,7 +590,8 @@ async function submitUpload(): Promise<void> {
       businessType: 'paper-archive-scan',
     })
     if (!node?.id) {
-      throw new Error('edu-storage 返回的文件节点为空，无法注册档案项')
+      message.error('edu-storage 返回的文件节点为空，无法注册档案项')
+      return
     }
     uploadProgress.value = 50
 

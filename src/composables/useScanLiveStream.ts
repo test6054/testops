@@ -15,8 +15,8 @@
  * - 缓冲区上限 maxEvents（默认 200），按 createTime + eventId 倒序保留最新 N 条。
  */
 import type { Ref } from 'vue'
-import { computed, ref } from 'vue'
 import type { ScanLiveEventVO, ScanLiveSubscribeFilter } from '@/apis/mark/scan-live'
+import { computed, ref } from 'vue'
 import { listRecentScanEvents, subscribeScanLive } from '@/apis/mark/scan-live'
 import mittBus from '@/utils/mitt'
 

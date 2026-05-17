@@ -243,6 +243,12 @@
 
 <script setup lang="ts">
 import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/paper-archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { message, Modal } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   activatePaperArchiveSet,
   createPaperArchiveSet,
@@ -250,12 +256,6 @@ import {
   PAPER_ARCHIVE_SET_STATUS_LABEL,
   PAPER_ARCHIVE_SET_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
-import { message, Modal } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'

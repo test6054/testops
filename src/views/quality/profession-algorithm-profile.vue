@@ -14,6 +14,9 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -22,10 +25,7 @@ import {
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
-import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import { promptModal } from './_helpers'
 
 const list = ref<ProfessionAlgorithmProfileVO[]>([])
@@ -173,10 +173,10 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim() ||
-    !editor.profileName.trim() ||
-    !editor.templateId ||
-    !editor.programId
+    !editor.profileCode.trim()
+    || !editor.profileName.trim()
+    || !editor.templateId
+    || !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return

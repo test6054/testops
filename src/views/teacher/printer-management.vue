@@ -514,7 +514,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
-import { getAllClasses } from '@/apis/edu/class'
 import type {
   ExamScannerDeviceCreatePayload,
   ExamScannerDeviceDetailVO,
@@ -528,6 +527,12 @@ import type {
   ScannerDuplexModeCode,
   ScannerInterfaceModeCode,
 } from '@/apis/mark/exam-mark-scanner'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { getAllClasses } from '@/apis/edu/class'
 import {
   createScannerDevice,
   deleteScannerDevice,
@@ -542,11 +547,6 @@ import {
   triggerSaneScan,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 

@@ -135,30 +135,42 @@
         <a-descriptions v-if="currentEvent" :column="1" size="small" bordered>
           <a-descriptions-item label="事件ID">{{ currentEvent.eventId }}</a-descriptions-item>
           <a-descriptions-item label="考试ID">{{ currentEvent.examId || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="工位机">{{
-            currentEvent.scannerStationId || '-'
-          }}</a-descriptions-item>
-          <a-descriptions-item label="扫描设备">{{
-            currentEvent.scannerDeviceId || '-'
-          }}</a-descriptions-item>
-          <a-descriptions-item label="设备IP">{{
-            currentEvent.scannerIp || '-'
-          }}</a-descriptions-item>
+          <a-descriptions-item label="工位机">
+            {{
+              currentEvent.scannerStationId || '-'
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="扫描设备">
+            {{
+              currentEvent.scannerDeviceId || '-'
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="设备IP">
+            {{
+              currentEvent.scannerIp || '-'
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="页数">{{ currentEvent.pageCount ?? 0 }}</a-descriptions-item>
           <a-descriptions-item label="状态">
             <UiTag :tone="currentEvent.status === 'BATCHED' ? 'green' : 'orange'" size="sm">
               {{ currentEvent.status || '-' }}
             </UiTag>
           </a-descriptions-item>
-          <a-descriptions-item label="扫描批次ID">{{
-            currentEvent.scanBatchId || '-'
-          }}</a-descriptions-item>
-          <a-descriptions-item label="扫描端报告ID">{{
-            currentEvent.reportId || '-'
-          }}</a-descriptions-item>
-          <a-descriptions-item label="扫描端批次号">{{
-            currentEvent.batchExternalNo || '-'
-          }}</a-descriptions-item>
+          <a-descriptions-item label="扫描批次ID">
+            {{
+              currentEvent.scanBatchId || '-'
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="扫描端报告ID">
+            {{
+              currentEvent.reportId || '-'
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="扫描端批次号">
+            {{
+              currentEvent.batchExternalNo || '-'
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="来源文件">
             <span v-if="!currentEvent.sourceFileIds?.length" class="muted">-</span>
             <a-space v-else wrap>
@@ -172,15 +184,21 @@
               </UiTag>
             </a-space>
           </a-descriptions-item>
-          <a-descriptions-item label="扫描开始时间">{{
-            formatTime(currentEvent.scanStartTime)
-          }}</a-descriptions-item>
-          <a-descriptions-item label="扫描结束时间">{{
-            formatTime(currentEvent.scanEndTime)
-          }}</a-descriptions-item>
-          <a-descriptions-item label="入库时间">{{
-            formatTime(currentEvent.createTime)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="扫描开始时间">
+            {{
+              formatTime(currentEvent.scanStartTime)
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="扫描结束时间">
+            {{
+              formatTime(currentEvent.scanEndTime)
+            }}
+          </a-descriptions-item>
+          <a-descriptions-item label="入库时间">
+            {{
+              formatTime(currentEvent.createTime)
+            }}
+          </a-descriptions-item>
         </a-descriptions>
       </a-drawer>
     </div>

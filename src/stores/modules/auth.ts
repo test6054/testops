@@ -5,11 +5,11 @@ import type {
   PhoneLoginRequest,
   StudentLoginRequest,
 } from '@/apis/auth'
-import * as authApi from '@/apis/auth'
 import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import * as authApi from '@/apis/auth'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
   STORAGE_REFRESH_TOKEN,
@@ -204,13 +204,13 @@ export const useAuthStore = defineStore(
       const storedRefreshToken = localStorage.getItem(STORAGE_REFRESH_TOKEN)
       const storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
       const parsedExpiresAt = storedTokenExpiresAt ? Number.parseInt(storedTokenExpiresAt) : null
-      const normalizedExpiresAt =
-        parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
+      const normalizedExpiresAt
+        = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
 
-      const hasChanged =
-        token.value !== storedToken ||
-        refreshToken.value !== storedRefreshToken ||
-        tokenExpiresAt.value !== normalizedExpiresAt
+      const hasChanged
+        = token.value !== storedToken
+          || refreshToken.value !== storedRefreshToken
+          || tokenExpiresAt.value !== normalizedExpiresAt
 
       if (!hasChanged) {
         return false
@@ -295,7 +295,7 @@ export const useAuthStore = defineStore(
         if (!refreshToken.value) return false
 
         const maxRetries = 3
-        let lastError: { code?: string; response?: { status: number } } | null = null
+        let lastError: { code?: string, response?: { status: number } } | null = null
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           let attemptedRefreshToken: string | null = null
@@ -330,7 +330,7 @@ export const useAuthStore = defineStore(
             }
             return true
           } catch (error: unknown) {
-            const err = error as { response?: { status: number }; code?: string; message?: string }
+            const err = error as { response?: { status: number }, code?: string, message?: string }
             lastError = err
 
             const syncedFromOtherContext = syncTokenStateFromStorage()
@@ -339,9 +339,9 @@ export const useAuthStore = defineStore(
             }
 
             if (
-              attemptedRefreshToken &&
-              refreshToken.value &&
-              refreshToken.value !== attemptedRefreshToken
+              attemptedRefreshToken
+              && refreshToken.value
+              && refreshToken.value !== attemptedRefreshToken
             ) {
               continue
             }
@@ -356,8 +356,8 @@ export const useAuthStore = defineStore(
         }
 
         if (
-          lastError?.code === 'NETWORK_ERROR' ||
-          (lastError?.response !== undefined && lastError.response.status >= 500)
+          lastError?.code === 'NETWORK_ERROR'
+          || (lastError?.response !== undefined && lastError.response.status >= 500)
         ) {
           return false
         }
@@ -461,7 +461,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const phoneLoginMethod = async (req: { phone: string; captcha: string }) => {
+    const phoneLoginMethod = async (req: { phone: string, captcha: string }) => {
       try {
         isLoading.value = true
         const phoneLoginReq: PhoneLoginRequest = {
@@ -496,7 +496,7 @@ export const useAuthStore = defineStore(
      * 邮箱验证码登录
      * 登录后需调用方通过 userStore.getInfo() 获取完整用户信息
      */
-    const emailLogin = async (req: { email: string; captcha: string }) => {
+    const emailLogin = async (req: { email: string, captcha: string }) => {
       try {
         isLoading.value = true
         const loginReq: LoginRequest = {
@@ -651,10 +651,10 @@ export const useAuthStore = defineStore(
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) return
       if (
-        event.key !== null &&
-        event.key !== STORAGE_TOKEN &&
-        event.key !== STORAGE_REFRESH_TOKEN &&
-        event.key !== STORAGE_TOKEN_EXPIRES_AT
+        event.key !== null
+        && event.key !== STORAGE_TOKEN
+        && event.key !== STORAGE_REFRESH_TOKEN
+        && event.key !== STORAGE_TOKEN_EXPIRES_AT
       ) {
         return
       }
