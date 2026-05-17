@@ -8,11 +8,7 @@ export interface CompressOptions {
 }
 
 export default function configCompressPlugin(options: CompressOptions = {}): Plugin | Plugin[] {
-  const {
-    algorithm = 'gzip',
-    threshold = 10240,
-    deleteOriginalAssets = false,
-  } = options
+  const { algorithm = 'gzip', threshold = 10240, deleteOriginalAssets = false } = options
 
   const plugins: Plugin[] = []
 
@@ -20,7 +16,7 @@ export default function configCompressPlugin(options: CompressOptions = {}): Plu
     plugins.push(
       compression({
         threshold,
-        algorithm: 'gzip',
+        algorithms: ['gzip'],
         deleteOriginalAssets,
       }) as Plugin,
     )
@@ -30,7 +26,7 @@ export default function configCompressPlugin(options: CompressOptions = {}): Plu
     plugins.push(
       compression({
         threshold,
-        algorithm: 'brotliCompress',
+        algorithms: ['brotliCompress'],
         deleteOriginalAssets,
       }) as Plugin,
     )

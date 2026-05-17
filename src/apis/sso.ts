@@ -82,8 +82,10 @@ export interface CasAvailableClassResponse {
   id: string
   /** 班级名称 */
   className: string
-  /** 专业 */
-  major?: string
+  /** 专业 ID（关联 t_majors.id） */
+  majorId?: string
+  /** 专业名称（联表填充） */
+  majorName?: string
 }
 
 /**

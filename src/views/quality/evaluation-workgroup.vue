@@ -11,11 +11,11 @@ import type {
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
 } from '@/apis/quality'
-import type { MajorVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
+import type { MajorCategoryVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import { message, Modal } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
-import { majorCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 
 /**
@@ -29,10 +29,10 @@ function workgroupLevelLabel(value: unknown): string {
     return ''
   }
   if (
-    value === 'UNIVERSITY'
-    || value === 'COLLEGE'
-    || value === 'PROGRAM'
-    || value === 'INDUSTRY'
+    value === 'UNIVERSITY' ||
+    value === 'COLLEGE' ||
+    value === 'PROGRAM' ||
+    value === 'INDUSTRY'
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
@@ -42,7 +42,7 @@ function workgroupLevelLabel(value: unknown): string {
 const list = ref<EvaluationWorkgroupVO[]>([])
 const total = ref(0)
 const loading = ref(false)
-const programs = ref<MajorVO[]>([])
+const programs = ref<MajorCategoryVO[]>([])
 const teacherCache = ref<Map<string, TeacherUserInfoDto>>(new Map())
 
 const query = reactive<EvaluationWorkgroupQueryPayload>({
@@ -100,7 +100,7 @@ async function loadList() {
 }
 
 async function loadDicts() {
-  programs.value = (await majorCatalogApi.listAll()) || []
+  programs.value = (await majorCategoryCatalogApi.listAll()) || []
 }
 
 function handlePageChange(p: number, ps: number) {
@@ -141,10 +141,10 @@ function openEdit(record: EvaluationWorkgroupVO) {
 
 async function submitEditor() {
   if (
-    !editor.programId
-    || !editor.workgroupCode.trim()
-    || !editor.workgroupName.trim()
-    || !editor.convenerUserId
+    !editor.programId ||
+    !editor.workgroupCode.trim() ||
+    !editor.workgroupName.trim() ||
+    !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -196,8 +196,13 @@ onMounted(async () => {
             show-search
             option-filter-prop="label"
           >
-            <a-select-option v-for="p in programs" :key="p.id" :value="p.id" :label="p.majorName">
-              {{ p.majorName }}
+            <a-select-option
+              v-for="p in programs"
+              :key="p.id"
+              :value="p.id"
+              :label="p.majorCategoryName"
+            >
+              {{ p.majorCategoryName }}
             </a-select-option>
           </a-select>
           <a-select
@@ -229,9 +234,9 @@ onMounted(async () => {
       >
         <a-table-column title="编码" data-index="workgroupCode" width="140" />
         <a-table-column title="名称" data-index="workgroupName" />
-        <a-table-column title="专业" data-index="programId" width="160">
+        <a-table-column title="专业大类" data-index="programId" width="160">
           <template #default="{ text }">
-            {{ programs.find((p) => p.id === text)?.majorName || text }}
+            {{ programs.find((p) => p.id === text)?.majorCategoryName || text }}
           </template>
         </a-table-column>
         <a-table-column title="层级" data-index="levelCode" width="100">
@@ -287,10 +292,15 @@ onMounted(async () => {
         <a-form-item label="名称" required>
           <a-input v-model:value="editor.workgroupName" />
         </a-form-item>
-        <a-form-item label="专业" required>
+        <a-form-item label="专业大类" required>
           <a-select v-model:value="editor.programId" show-search option-filter-prop="label">
-            <a-select-option v-for="p in programs" :key="p.id" :value="p.id" :label="p.majorName">
-              {{ p.majorName }}
+            <a-select-option
+              v-for="p in programs"
+              :key="p.id"
+              :value="p.id"
+              :label="p.majorCategoryName"
+            >
+              {{ p.majorCategoryName }}
             </a-select-option>
           </a-select>
         </a-form-item>
@@ -301,7 +311,7 @@ onMounted(async () => {
           <a-textarea
             v-model:value="editor.members"
             :rows="3"
-            placeholder="例如 [&quot;张三&quot;, &quot;李四&quot;, &quot;王五&quot;]"
+            placeholder='例如 ["张三", "李四", "王五"]'
           />
         </a-form-item>
         <a-form-item label="职责">

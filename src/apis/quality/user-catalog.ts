@@ -1,31 +1,45 @@
 /**
  * edu-user 真源目录 API - 专供 edu-quality 前端 Selector 使用
  *
- * 设计文档：edu-user 是组织 / 人员 / 专业 / 课程 / 班级 / 学生的唯一真源。
+ * 设计文档：edu-user 是组织 / 人员 / 专业大类 / 课程 / 班级 / 学生的唯一真源。
  * 本文件封装 quality 页面下拉选择所需的只读查询端点。
  *
  * 后端端点映射：
- * - /api/course-catalog/majors/list                 GET  全局专业列表（含课程数）
- * - /api/course-catalog/courses/authorized-list     GET  租户已授权课程列表
- * - /api/course-catalog/courses/authorized-by-major POST 按专业过滤租户已授权课程
- * - /api/course-catalog/courses/list                POST super_admin 全局课程分页
- * - /api/tenant-admin/departments/list              GET  当前租户院系列表
- * - /api/tenant-admin/departments/majors            GET  当前租户班级汇总专业名（去重）
- * - /api/admin/teachers/user-list                   POST 教师用户下拉分页
+ * - /api/course-catalog/major-categories/list           GET  全局专业大类列表（含课程数）
+ * - /api/course-catalog/courses/authorized-list         GET  租户已授权课程列表
+ * - /api/course-catalog/courses/authorized-by-major-category POST 按专业大类过滤租户已授权课程
+ * - /api/course-catalog/courses/list                    POST super_admin 全局课程分页
+ * - /api/tenant-admin/departments/list                  GET  当前租户院系列表
+ * - /api/tenant-admin/departments/majors                GET  当前租户专业列表（MajorVO）
+ * - /api/admin/teachers/user-list                       POST 教师用户下拉分页
  *
  * 班级 / 学生查询复用 @/apis/edu/class.ts。
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
-/* ========== 专业（全局，由 super_admin 维护） ========== */
+/* ========== 专业大类（全局，由 super_admin 维护） ========== */
 
-export interface MajorVO {
+export interface MajorCategoryVO {
   id: string
-  majorName: string
+  majorCategoryName: string
   description?: string
   sortOrder?: number
   courseCount?: number
+  createTime?: string
+  updateTime?: string
+}
+
+/* ========== 专业（租户维度，班级所属实体） ========== */
+
+export interface MajorVO {
+  id: string
+  majorCode?: string
+  majorName: string
+  departmentId?: string
+  departmentName?: string
+  description?: string
+  status?: string
   createTime?: string
   updateTime?: string
 }
@@ -34,8 +48,8 @@ export interface MajorVO {
 
 export interface CourseListVO {
   id: string
-  majorId?: string
-  majorName?: string
+  majorCategoryId?: string
+  majorCategoryName?: string
   courseName: string
   courseCode?: string
   description?: string
@@ -47,7 +61,7 @@ export interface CourseListVO {
 export interface CourseQueryPayload extends QueryDto {
   courseName?: string
   courseCode?: string
-  majorId?: string
+  majorCategoryId?: string
 }
 
 /* ========== 院系（租户维度） ========== */
@@ -87,12 +101,12 @@ export interface TeacherQueryPayload extends QueryDto {
 
 /* ========== API 实现 ========== */
 
-export const majorCatalogApi = {
-  /** super_admin 全局专业列表（含课程数统计） */
+export const majorCategoryCatalogApi = {
+  /** super_admin 全局专业大类列表（含课程数统计） */
   listAll: () =>
-    http.get<MajorVO[]>('/api/course-catalog/majors/list'),
+    http.get<MajorCategoryVO[]>('/api/course-catalog/major-categories/list'),
   detail: (id: string) =>
-    http.post<MajorVO>('/api/course-catalog/majors/detail', { id }),
+    http.post<MajorCategoryVO>('/api/course-catalog/major-categories/detail', { id }),
 }
 
 export const courseCatalogApi = {
@@ -104,18 +118,20 @@ export const courseCatalogApi = {
   /** 当前租户已授权课程全量 */
   authorizedList: () =>
     http.get<CourseListVO[]>('/api/course-catalog/courses/authorized-list'),
-  /** 当前租户在指定专业下的已授权课程；majorId 为空时返回全部已授权课程 */
-  authorizedByMajor: (majorId?: string) =>
-    http.post<CourseListVO[]>('/api/course-catalog/courses/authorized-by-major', { id: majorId }),
+  /** 当前租户在指定专业大类下的已授权课程；majorCategoryId 为空时返回全部 */
+  authorizedByMajorCategory: (majorCategoryId?: string) =>
+    http.post<CourseListVO[]>('/api/course-catalog/courses/authorized-by-major-category', {
+      id: majorCategoryId,
+    }),
 }
 
 export const departmentCatalogApi = {
   /** 当前租户院系列表 */
   list: () =>
     http.get<TenantSchoolDepartmentDto[]>('/api/tenant-admin/departments/list'),
-  /** 当前租户班级汇总的专业名去重列表；与全局专业不同，面向班级管理 */
-  listMajorNames: () =>
-    http.get<string[]>('/api/tenant-admin/departments/majors'),
+  /** 当前租户的专业列表（MajorVO）；面向班级管理 */
+  listTenantMajors: () =>
+    http.get<MajorVO[]>('/api/tenant-admin/departments/majors'),
 }
 
 export const teacherCatalogApi = {

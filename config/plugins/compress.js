@@ -6,14 +6,14 @@ export default function configCompressPlugin(options) {
     if (algorithm === 'gzip' || algorithm === 'both') {
         plugins.push(compression({
             threshold: threshold,
-            algorithm: 'gzip',
+            algorithms: ['gzip'],
             deleteOriginalAssets: deleteOriginalAssets,
         }));
     }
     if (algorithm === 'brotli' || algorithm === 'both') {
         plugins.push(compression({
             threshold: threshold,
-            algorithm: 'brotliCompress',
+            algorithms: ['brotliCompress'],
             deleteOriginalAssets: deleteOriginalAssets,
         }));
     }

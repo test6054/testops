@@ -14,9 +14,6 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import type { MajorVO } from '@/apis/quality/user-catalog'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -25,7 +22,10 @@ import {
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
-import { majorCatalogApi } from '@/apis/quality/user-catalog'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
+import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import { promptModal } from './_helpers'
 
 const list = ref<ProfessionAlgorithmProfileVO[]>([])
@@ -33,7 +33,7 @@ const total = ref(0)
 const loading = ref(false)
 const templates = ref<ProfessionAlgorithmTemplateVO[]>([])
 const standards = ref<AccreditationStandardVO[]>([])
-const programs = ref<MajorVO[]>([])
+const programs = ref<MajorCategoryVO[]>([])
 
 const query = reactive<ProfessionAlgorithmProfileQueryPayload>({
   pageNum: 1,
@@ -103,7 +103,7 @@ async function loadDicts() {
   const [tpl, std, majors] = await Promise.all([
     professionAlgorithmTemplateApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
     accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
-    majorCatalogApi.listAll(),
+    majorCategoryCatalogApi.listAll(),
   ])
   templates.value = tpl.list || []
   standards.value = std.list || []
@@ -173,10 +173,10 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim()
-    || !editor.profileName.trim()
-    || !editor.templateId
-    || !editor.programId
+    !editor.profileCode.trim() ||
+    !editor.profileName.trim() ||
+    !editor.templateId ||
+    !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
@@ -265,8 +265,13 @@ onMounted(async () => {
             show-search
             option-filter-prop="label"
           >
-            <a-select-option v-for="p in programs" :key="p.id" :value="p.id" :label="p.majorName">
-              {{ p.majorName }}
+            <a-select-option
+              v-for="p in programs"
+              :key="p.id"
+              :value="p.id"
+              :label="p.majorCategoryName"
+            >
+              {{ p.majorCategoryName }}
             </a-select-option>
           </a-select>
           <a-select
@@ -314,9 +319,9 @@ onMounted(async () => {
       >
         <a-table-column title="编码" data-index="profileCode" width="140" />
         <a-table-column title="名称" data-index="profileName" />
-        <a-table-column title="专业" data-index="programId" width="160">
+        <a-table-column title="专业大类" data-index="programId" width="160">
           <template #default="{ text }">
-            {{ programs.find((p) => p.id === text)?.majorName || text }}
+            {{ programs.find((p) => p.id === text)?.majorCategoryName || text }}
           </template>
         </a-table-column>
         <a-table-column title="认证类型" data-index="accreditationType" width="180">
@@ -421,9 +426,9 @@ onMounted(async () => {
                   v-for="p in programs"
                   :key="p.id"
                   :value="p.id"
-                  :label="p.majorName"
+                  :label="p.majorCategoryName"
                 >
-                  {{ p.majorName }}
+                  {{ p.majorCategoryName }}
                 </a-select-option>
               </a-select>
             </a-form-item>

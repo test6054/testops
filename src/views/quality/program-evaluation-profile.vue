@@ -13,22 +13,22 @@ import type {
   ProgramEvaluationProfileSavePayload,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
-import type { MajorVO } from '@/apis/quality/user-catalog'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   EVALUATION_METHOD_LABEL,
   programEvaluationProfileApi,
 } from '@/apis/quality'
-import { majorCatalogApi } from '@/apis/quality/user-catalog'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
+import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 
 const list = ref<ProgramEvaluationProfileVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 const standards = ref<AccreditationStandardVO[]>([])
-const programs = ref<MajorVO[]>([])
+const programs = ref<MajorCategoryVO[]>([])
 
 const query = reactive<ProgramEvaluationProfileQueryPayload>({
   pageNum: 1,
@@ -91,7 +91,7 @@ async function loadList() {
 async function loadDicts() {
   const [std, majors] = await Promise.all([
     accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
-    majorCatalogApi.listAll(),
+    majorCategoryCatalogApi.listAll(),
   ])
   standards.value = std.list || []
   programs.value = majors || []
@@ -144,7 +144,7 @@ function openEdit(record: ProgramEvaluationProfileVO) {
 function onProgramChange(value: SelectValue) {
   if (typeof value !== 'string') return
   const major = programs.value.find((p) => p.id === value)
-  if (major) editor.programName = major.majorName
+  if (major) editor.programName = major.majorCategoryName
 }
 
 async function submitEditor() {
@@ -247,7 +247,9 @@ onMounted(async () => {
           <template #default="{ record }">
             <a-space>
               <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+              <a-button type="link" size="small" danger @click="handleDelete(record)"
+                >删除</a-button
+              >
             </a-space>
           </template>
         </a-table-column>
@@ -276,9 +278,9 @@ onMounted(async () => {
                   v-for="p in programs"
                   :key="p.id"
                   :value="p.id"
-                  :label="p.majorName"
+                  :label="p.majorCategoryName"
                 >
-                  {{ p.majorName }}
+                  {{ p.majorCategoryName }}
                 </a-select-option>
               </a-select>
             </a-form-item>

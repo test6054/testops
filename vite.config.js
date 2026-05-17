@@ -64,7 +64,6 @@ export default defineConfig(function (_a) { return __awaiter(void 0, [_a], void 
                         preprocessorOptions: {
                             scss: {
                                 additionalData: "@use \"@/styles/var.scss\" as *;",
-                                api: 'modern-compiler',
                             },
                         },
                     },

@@ -17,8 +17,10 @@ export interface ClassInfoDto {
   id?: string
   /** 班级名称 */
   className?: string
-  /** 专业 */
-  major?: string
+  /** 专业 ID（关联 t_majors.id） */
+  majorId?: string
+  /** 专业名称（联表填充，仅用于展示） */
+  majorName?: string
   /** 租户ID */
   tenantId?: string
   /** 部门ID */
@@ -59,8 +61,8 @@ export interface ClassInfoQuery extends QueryDto {
   className?: string
   /** 部门ID */
   departmentId?: string
-  /** 专业 */
-  major?: string
+  /** 专业 ID（关联 t_majors.id） */
+  majorId?: string
 }
 
 /** 学生分配班级请求 */
@@ -95,8 +97,10 @@ export interface ClassStudentTreeNode {
   originalId: string
   /** 父节点ID */
   parentId: string | null
-  /** 专业（班级节点专属） */
-  major?: string
+  /** 专业 ID（班级节点专属，关联 t_majors.id） */
+  majorId?: string
+  /** 专业名称（班级节点专属，联表填充） */
+  majorName?: string
   /** 学号（学生节点专属） */
   studentNumber?: string
   /** 学生数量（院系和班级节点） */
@@ -223,11 +227,3 @@ export function getAvailableStudentTree(practiceId: string): Promise<ClassStuden
   })
 }
 
-/**
- * 获取当前租户已有的专业列表（去重）
- * 用于创建班级时的专业下拉选择
- * GET /api/user/admin/classes/majors
- */
-export function getMajors(): Promise<string[]> {
-  return http.get('/api/user/admin/classes/majors')
-}

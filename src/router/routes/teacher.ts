@@ -215,6 +215,24 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroupOrder: 3,
         },
       },
+      {
+        path: 'scan-live-monitor',
+        name: 'TeacherScanLiveMonitor',
+        component: () => import('@/views/teacher/scan-live-monitor.vue'),
+        meta: {
+          title: '实时看板',
+          roles: TEACHER_ROLES,
+          icon: 'thunderbolt',
+          hideInMenu: false,
+          // 实时 SSE 看板进入即建立连接、退出即释放，不应保留状态
+          keepAlive: false,
+          noCache: true,
+          menuGroup: 'scan',
+          menuGroupTitle: '扫描与识别',
+          menuGroupIcon: 'scan',
+          menuGroupOrder: 3,
+        },
+      },
 
       {
         path: 'ocr-settings',
@@ -427,6 +445,37 @@ export const teacherRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/teacher/archive/archive-detail.vue'),
         meta: {
           title: '归档详情',
+          roles: TEACHER_ROLES,
+          icon: 'eye',
+          hideInMenu: true,
+          noCache: true,
+        },
+      },
+
+      // ─── 纸质试卷档案库 ───────────────────────────────────────
+      // 历史纸质试卷扫描入库 / tag / 检索 / OCR / 归档；独立于批改主链与考后归档主链
+      {
+        path: 'paper-archive-list',
+        name: 'TeacherPaperArchiveList',
+        component: () => import('@/views/teacher/paper-archive/paper-archive-list.vue'),
+        meta: {
+          title: '纸质档案库',
+          roles: TEACHER_ROLES,
+          icon: 'folder-open',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'archive',
+          menuGroupTitle: '考后归档',
+          menuGroupIcon: 'safety-certificate',
+          menuGroupOrder: 6,
+        },
+      },
+      {
+        path: 'paper-archive/:archiveSetId/detail',
+        name: 'TeacherPaperArchiveDetail',
+        component: () => import('@/views/teacher/paper-archive/paper-archive-detail.vue'),
+        meta: {
+          title: '纸质档案详情',
           roles: TEACHER_ROLES,
           icon: 'eye',
           hideInMenu: true,

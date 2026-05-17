@@ -1,14 +1,14 @@
 <!--
-  专业选择器（全局专业 Major）
-  数据源：GET /api/course-catalog/majors/list
-  业务含义：在 edu-quality 中，programId 指向 edu-user 的专业（Major）
+  专业大类选择器（全局专业大类 MajorCategory）
+  数据源：GET /api/course-catalog/major-categories/list
+  业务含义：在 edu-quality 中，programId 指向 edu-user 的专业大类（MajorCategory）
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { MajorVO } from '@/apis/quality/user-catalog'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
+import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
-import { majorCatalogApi } from '@/apis/quality/user-catalog'
 
 interface Props {
   value?: string | null
@@ -27,10 +27,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: MajorVO]
+  change: [value: string | null, option?: MajorCategoryVO]
 }>()
 
-const options = ref<MajorVO[]>([])
+const options = ref<MajorCategoryVO[]>([])
 const loading = ref(false)
 // a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
 const internalValue = ref<string | undefined>(props.value ?? undefined)
@@ -45,10 +45,10 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    options.value = (await majorCatalogApi.listAll()) || []
+    options.value = (await majorCategoryCatalogApi.listAll()) || []
   } catch (e) {
-    console.error('[ProgramSelector] 加载专业列表失败', e)
-    message.error('加载专业列表失败')
+    console.error('[ProgramSelector] 加载专业大类列表失败', e)
+    message.error('加载专业大类列表失败')
   } finally {
     loading.value = false
   }
@@ -81,9 +81,16 @@ defineExpose({ reload: loadOptions })
     option-filter-prop="label"
     @change="handleChange"
   >
-    <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.majorName">
-      {{ opt.majorName }}
-      <span v-if="opt.courseCount != null" class="text-gray-400 ml-1">({{ opt.courseCount }} 课)</span>
+    <a-select-option
+      v-for="opt in options"
+      :key="opt.id"
+      :value="opt.id"
+      :label="opt.majorCategoryName"
+    >
+      {{ opt.majorCategoryName }}
+      <span v-if="opt.courseCount != null" class="text-gray-400 ml-1"
+        >({{ opt.courseCount }} 课)</span
+      >
     </a-select-option>
   </a-select>
 </template>

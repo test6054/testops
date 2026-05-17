@@ -1,9 +1,10 @@
-import { fileURLToPath, URL } from 'node:url'
+import type { UserConfig } from 'vite'
 import { defineConfig, loadEnv } from 'vite'
+import { fileURLToPath, URL } from 'node:url'
 import createVitePlugins from './config/plugins'
 
-export default defineConfig(async ({ command, mode }) => {
-  const env = loadEnv(mode, process.cwd()) as ImportMetaEnv
+export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
+  const env = loadEnv(mode, process.cwd())
   process.env.NODE_ENV = mode === 'production' ? 'production' : 'development'
 
   return {
@@ -24,7 +25,6 @@ export default defineConfig(async ({ command, mode }) => {
       preprocessorOptions: {
         scss: {
           additionalData: `@use "@/styles/var.scss" as *;`,
-          api: 'modern-compiler',
         },
       },
     },
@@ -32,11 +32,7 @@ export default defineConfig(async ({ command, mode }) => {
       open: true,
       host: true,
       // 与 edu-practice-web-vue 保持一致的子域名白名单，便于学号登录与租户子域名识别
-      allowedHosts: [
-        '.shixunfang.com',
-        '.shixunfang.local',
-        '.lvh.me',
-      ],
+      allowedHosts: ['.shixunfang.com', '.shixunfang.local', '.lvh.me'],
       // 开发环境通过 Vite 代理转发到 edu-gateway
       proxy: {
         '/api': {
@@ -58,8 +54,8 @@ export default defineConfig(async ({ command, mode }) => {
           assetFileNames: 'static/[ext]/[name]-[hash].[ext]',
           manualChunks: {
             'ant-design-vue': ['ant-design-vue'],
-            'echarts': ['echarts'],
-            'vendor': ['vue', 'vue-router', 'pinia', 'axios'],
+            echarts: ['echarts'],
+            vendor: ['vue', 'vue-router', 'pinia', 'axios'],
           },
         },
       },

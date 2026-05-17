@@ -40,6 +40,11 @@ export interface SystemEvents {
   'user:logout': void
   'user:profile-update': { userInfo: UserInfo }
 
+  // 认证相关事件
+  // 触发时机：access token 通过 refresh token 自动续期成功，新 token 已写入 store/localStorage。
+  // 用途：长连接订阅方（如 SSE 看板）监听后主动断开旧连接、用新 token 重新订阅，避免在 token 过期-续期间隔出现 401。
+  'auth:token-refreshed': { tokenExpiresAt?: number }
+
   // 任务相关事件
   'task:created': { taskId: string, taskInfo: TaskInfo }
   'task:updated': { taskId: string, status: TaskStatus }

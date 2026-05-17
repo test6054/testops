@@ -117,8 +117,10 @@ interface UserDto {
     schoolName?: string
     /** 院系名称 */
     departmentName?: string
-    /** 专业 */
-    major?: string
+    /** 专业 ID（关联 t_majors.id） */
+    majorId?: string
+    /** 专业名称（联表填充） */
+    majorName?: string
     /** 学号 (关联 t_student_detail.student_number) */
     studentNumber?: string
 }

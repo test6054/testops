@@ -2,34 +2,27 @@
  * 教学质量评价跨页面上下文 Store
  *
  * 用途：
- * - 跨「专业 → 培养方案 → 毕业要求 → 质量评价课程 → 成绩 / 达成度 / 改进 / 报告 / 归档」
- *   等页面共享 当前专业、培养方案、学年、学期、质量评价课程、认证主体。
- * - 缓存常用目录数据（专业 / 院系 / 培养方案 / 毕业要求 / 质量评价课程），减少重复请求。
+ * - 跨「专业大类 → 培养方案 → 毕业要求 → 质量评价课程 → 成绩 / 达成度 / 改进 / 报告 / 归档」
+ *   等页面共享 当前专业大类、培养方案、学年、学期、质量评价课程、认证主体。
+ * - 缓存常用目录数据（专业大类 / 院系 / 培养方案 / 毕业要求 / 质量评价课程），减少重复请求。
  *
  * 设计原则：
  * - 上下文切换（setProgram / setTrainingPlan）会自动清空"下游"缓存，防止串数据。
  * - 持久化只保存少量"用户选择"字段，目录缓存只放内存。
  */
 import type { GraduationRequirementVO, QualityCourseVO, TrainingPlanVO } from '@/apis/quality'
-import type { MajorVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { graduationRequirementApi, qualityCourseApi, trainingPlanApi } from '@/apis/quality'
+import type { MajorCategoryVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import {
-  graduationRequirementApi,
-  qualityCourseApi,
-  trainingPlanApi,
-} from '@/apis/quality'
-import {
-  departmentCatalogApi,
-  majorCatalogApi,
-} from '@/apis/quality/user-catalog'
 
 export const useQualityStore = defineStore(
   'quality',
   () => {
     /* ========== 当前上下文（持久化） ========== */
 
-    /** 当前专业 ID（edu-user 的 Major） */
+    /** 当前专业大类 ID（edu-user 的 MajorCategory） */
     const currentProgramId = ref<string>('')
 
     /** 当前认证主体（专业评估配置）ID */
@@ -49,9 +42,9 @@ export const useQualityStore = defineStore(
 
     /* ========== 目录缓存（仅内存，不持久化） ========== */
 
-    /** 全局专业列表（super_admin 维护） */
-    const majorOptions = ref<MajorVO[]>([])
-    const majorLoading = ref(false)
+    /** 全局专业大类列表（super_admin 维护） */
+    const majorCategoryOptions = ref<MajorCategoryVO[]>([])
+    const majorCategoryLoading = ref(false)
 
     /** 当前租户院系列表 */
     const departmentOptions = ref<TenantSchoolDepartmentDto[]>([])
@@ -76,27 +69,27 @@ export const useQualityStore = defineStore(
     const hasCourse = computed(() => !!currentQualityCourseId.value)
 
     const currentPlan = computed<TrainingPlanVO | undefined>(() =>
-      trainingPlanOptions.value.find(item => item.id === currentTrainingPlanId.value),
+      trainingPlanOptions.value.find((item) => item.id === currentTrainingPlanId.value),
     )
 
     const currentCourse = computed<QualityCourseVO | undefined>(() =>
-      qualityCourseOptions.value.find(item => item.id === currentQualityCourseId.value),
+      qualityCourseOptions.value.find((item) => item.id === currentQualityCourseId.value),
     )
 
-    const currentProgram = computed<MajorVO | undefined>(() =>
-      majorOptions.value.find(item => item.id === currentProgramId.value),
+    const currentProgram = computed<MajorCategoryVO | undefined>(() =>
+      majorCategoryOptions.value.find((item) => item.id === currentProgramId.value),
     )
 
     /* ========== 目录加载 ========== */
 
-    async function loadMajorOptions(force = false) {
-      if (!force && majorOptions.value.length > 0) return majorOptions.value
-      majorLoading.value = true
+    async function loadMajorCategoryOptions(force = false) {
+      if (!force && majorCategoryOptions.value.length > 0) return majorCategoryOptions.value
+      majorCategoryLoading.value = true
       try {
-        majorOptions.value = await majorCatalogApi.listAll() || []
-        return majorOptions.value
+        majorCategoryOptions.value = (await majorCategoryCatalogApi.listAll()) || []
+        return majorCategoryOptions.value
       } finally {
-        majorLoading.value = false
+        majorCategoryLoading.value = false
       }
     }
 
@@ -104,14 +97,14 @@ export const useQualityStore = defineStore(
       if (!force && departmentOptions.value.length > 0) return departmentOptions.value
       departmentLoading.value = true
       try {
-        departmentOptions.value = await departmentCatalogApi.list() || []
+        departmentOptions.value = (await departmentCatalogApi.list()) || []
         return departmentOptions.value
       } finally {
         departmentLoading.value = false
       }
     }
 
-    async function loadTrainingPlanOptions(opts?: { programId?: string, keyword?: string }) {
+    async function loadTrainingPlanOptions(opts?: { programId?: string; keyword?: string }) {
       trainingPlanLoading.value = true
       try {
         const page = await trainingPlanApi.page({
@@ -136,7 +129,7 @@ export const useQualityStore = defineStore(
       }
       requirementLoading.value = true
       try {
-        requirementOptions.value = await graduationRequirementApi.listByPlan(planId) || []
+        requirementOptions.value = (await graduationRequirementApi.listByPlan(planId)) || []
         return requirementOptions.value
       } finally {
         requirementLoading.value = false
@@ -172,7 +165,7 @@ export const useQualityStore = defineStore(
 
     /* ========== 上下文切换 ========== */
 
-    /** 切换专业：清空下游 trainingPlan / course / requirement 缓存 */
+    /** 切换专业大类：清空下游 trainingPlan / course / requirement 缓存 */
     function setProgram(programId: string, accreditationProfileId?: string) {
       if (currentProgramId.value !== programId) {
         currentTrainingPlanId.value = ''
@@ -218,11 +211,13 @@ export const useQualityStore = defineStore(
       qualityCourseId?: string
     }) {
       if (options.programId !== undefined) currentProgramId.value = options.programId
-      if (options.accreditationProfileId !== undefined) currentAccreditationProfileId.value = options.accreditationProfileId
+      if (options.accreditationProfileId !== undefined)
+        currentAccreditationProfileId.value = options.accreditationProfileId
       if (options.trainingPlanId !== undefined) currentTrainingPlanId.value = options.trainingPlanId
       if (options.schoolYear !== undefined) currentSchoolYear.value = options.schoolYear
       if (options.semester !== undefined) currentSemester.value = options.semester
-      if (options.qualityCourseId !== undefined) currentQualityCourseId.value = options.qualityCourseId
+      if (options.qualityCourseId !== undefined)
+        currentQualityCourseId.value = options.qualityCourseId
     }
 
     function reset() {
@@ -232,7 +227,7 @@ export const useQualityStore = defineStore(
       currentSchoolYear.value = ''
       currentSemester.value = ''
       currentQualityCourseId.value = ''
-      majorOptions.value = []
+      majorCategoryOptions.value = []
       departmentOptions.value = []
       trainingPlanOptions.value = []
       requirementOptions.value = []
@@ -249,8 +244,8 @@ export const useQualityStore = defineStore(
       currentQualityCourseId,
 
       // 目录缓存
-      majorOptions,
-      majorLoading,
+      majorCategoryOptions,
+      majorCategoryLoading,
       departmentOptions,
       departmentLoading,
       trainingPlanOptions,
@@ -269,7 +264,7 @@ export const useQualityStore = defineStore(
       currentCourse,
 
       // actions - 目录
-      loadMajorOptions,
+      loadMajorCategoryOptions,
       loadDepartmentOptions,
       loadTrainingPlanOptions,
       loadRequirementOptions,

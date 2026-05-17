@@ -63,8 +63,8 @@ export interface AdminCreateUserRequest {
   department?: string
   /** 职称/职务 */
   title?: string
-  /** 专业（可选，学生创建时从班级信息中获取） */
-  major?: string
+  /** 专业 ID（学生创建时从班级信息中推导） */
+  majorId?: string
   // --- 企业助教特定字段 ---
   /** 所属公司ID */
   companyId?: string
@@ -134,7 +134,7 @@ export interface AssignRolesRequest {
   studentDetail?: {
     studentNumber?: string
     enrollmentYear?: number
-    major?: string
+    majorId?: string
     classId?: string
   }
   /** 教师详细信息 */
@@ -247,8 +247,10 @@ export interface UserDetailDto {
   deleted?: boolean
   /** 学号 */
   studentNumber?: string
-  /** 专业 */
-  major?: string
+  /** 专业 ID（关联 t_majors.id） */
+  majorId?: string
+  /** 专业名称（联表填充） */
+  majorName?: string
   /** 入学年份 */
   enrollmentYear?: number
   /** 预计毕业年份 */
@@ -275,8 +277,8 @@ export interface UserQueryDto extends QueryDto {
   department?: string
   /** 班级ID筛选 */
   classId?: string
-  /** 专业名称筛选 */
-  major?: string
+  /** 专业名称筛选（按专业名称精确匹配） */
+  majorName?: string
   /** 用户ID列表 */
   userList?: string[]
   /** 租户ID */
