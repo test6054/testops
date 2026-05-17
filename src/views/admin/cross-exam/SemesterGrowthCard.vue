@@ -57,7 +57,7 @@
           </a-descriptions-item>
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="范围"
-            >{{ record.scopeType ?? '-' }}/{{ record.scopeId ?? '-' }}</a-descriptions-item
+          >{{ record.scopeType ?? '-' }}/{{ record.scopeId ?? '-' }}</a-descriptions-item
           >
           <a-descriptions-item label="考试数">{{ record.examCount ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="趋势">
@@ -113,11 +113,11 @@
 
 <script lang="ts" setup>
 import type { SemesterAbilityGrowthVO } from '@/apis/mark/cross-exam-analysis'
-import { generateClassGrowth, listGrowth } from '@/apis/mark/cross-exam-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
+import { generateClassGrowth, listGrowth } from '@/apis/mark/cross-exam-analysis'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 
 defineOptions({ name: 'SemesterGrowthCard' })

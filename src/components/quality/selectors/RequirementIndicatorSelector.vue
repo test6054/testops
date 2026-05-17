@@ -4,11 +4,11 @@
   必传 requirementId
 -->
 <script setup lang="ts">
-import type { RequirementIndicatorVO } from '@/apis/quality'
-import { requirementIndicatorApi } from '@/apis/quality'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { RequirementIndicatorVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
+import { requirementIndicatorApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: RequirementIndicatorVO]
+  "change": [value: string | null, option?: RequirementIndicatorVO]
 }>()
 
 const options = ref<RequirementIndicatorVO[]>([])

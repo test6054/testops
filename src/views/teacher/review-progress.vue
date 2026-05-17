@@ -184,13 +184,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { MarkingProgressVO, ReviewTaskItemVO } from '@/apis/mark/exam'
-import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
+import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -258,10 +258,10 @@ const statusBreakdown = computed(() => {
     // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄，零 as。
     const status = task.status
     if (
-      status === 'PENDING' ||
-      status === 'IN_PROGRESS' ||
-      status === 'APPROVED' ||
-      status === 'REJECTED'
+      status === 'PENDING'
+      || status === 'IN_PROGRESS'
+      || status === 'APPROVED'
+      || status === 'REJECTED'
     ) {
       counter[status]++
     }

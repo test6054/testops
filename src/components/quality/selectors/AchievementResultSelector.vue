@@ -4,20 +4,20 @@
   常用过滤：targetType / auditStatus / trainingPlanId / qualityCourseId / schoolYear
 -->
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type {
   AchievementAuditStatus,
   AchievementResultVO,
   AchievementTargetType,
 } from '@/apis/quality'
+import { message, Tag } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   achievementApi,
 } from '@/apis/quality'
-import type { SelectValue } from 'ant-design-vue/es/select'
-import { message, Tag } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: '请选择达成度结果',
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: AchievementResultVO]
+  "change": [value: string | null, option?: AchievementResultVO]
 }>()
 
 const AuditStatusTag = Tag
@@ -171,8 +171,7 @@ defineExpose({ reload: loadOptions })
         · 课程 #{{ opt.qualityCourseId }}
       </span>
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
-        >)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
       </span>
       <AuditStatusTag
         v-if="opt.auditStatus"

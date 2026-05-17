@@ -172,9 +172,7 @@
                       </template>
                       <template #description>
                         <div class="annotation-meta">
-                          <span v-if="item.anchorText" class="muted"
-                            >锚点：{{ item.anchorText }}</span
-                          >
+                          <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
                           <span class="muted">{{ formatTime(item.createTime) }}</span>
                         </div>
                       </template>
@@ -193,7 +191,6 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationVO, ReviewTaskDetailVO } from '@/apis/mark/exam'
-import { confirmQuestionGrade, getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
@@ -205,6 +202,7 @@ import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import { confirmQuestionGrade, getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -235,10 +233,10 @@ const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
 function reviewStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_TONE[value]
   }
@@ -248,10 +246,10 @@ function reviewStatusTone(value: unknown): ToneCode {
 function reviewStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return ''
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -336,9 +334,9 @@ async function loadTask(): Promise<void> {
     await loadAnnotations()
     // 默认填充建议分
     if (
-      gradeForm.finalScore === undefined &&
-      detail.value?.suggestedScore !== undefined &&
-      detail.value?.suggestedScore !== null
+      gradeForm.finalScore === undefined
+      && detail.value?.suggestedScore !== undefined
+      && detail.value?.suggestedScore !== null
     ) {
       gradeForm.finalScore = detail.value.suggestedScore
     }
@@ -421,11 +419,6 @@ function formatTime(value?: string): string {
   if (!value) return '-'
   return dayjs(value).format('YYYY-MM-DD HH:mm')
 }
-
-function goBack(): void {
-  void router.push({ name: 'TeacherReviewAssignment', query: { examId: examId.value } })
-}
-
 // ─── 生命周期 ─────────────────────────────
 watch(
   () => [examId.value, taskId.value],

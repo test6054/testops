@@ -104,8 +104,8 @@
               <template v-else-if="column.key === 'suggestedScore'">
                 <span
                   v-if="
-                    tasks[index].suggestedScore !== undefined &&
-                    tasks[index].suggestedScore !== null
+                    tasks[index].suggestedScore !== undefined
+                      && tasks[index].suggestedScore !== null
                   "
                 >
                   {{ tasks[index].suggestedScore }}
@@ -171,7 +171,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam'
-import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
@@ -180,6 +179,7 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -238,10 +238,10 @@ const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({ va
 function reviewStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_TONE[value]
   }
@@ -251,10 +251,10 @@ function reviewStatusTone(value: unknown): ToneCode {
 function reviewStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '-'
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -274,10 +274,10 @@ computed(() => {
     // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄。
     const status = task.status
     if (
-      status === 'PENDING' ||
-      status === 'IN_PROGRESS' ||
-      status === 'APPROVED' ||
-      status === 'REJECTED'
+      status === 'PENDING'
+      || status === 'IN_PROGRESS'
+      || status === 'APPROVED'
+      || status === 'REJECTED'
     ) {
       counter[status]++
     }

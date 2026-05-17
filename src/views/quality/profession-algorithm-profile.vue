@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 /**
  * 专业算法实例
  *
@@ -13,6 +14,9 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
+import type { MajorVO } from '@/apis/quality/user-catalog'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -21,11 +25,7 @@ import {
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
-import type { MajorVO } from '@/apis/quality/user-catalog'
 import { majorCatalogApi } from '@/apis/quality/user-catalog'
-import type { SelectValue } from 'ant-design-vue/es/select'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import { promptModal } from './_helpers'
 
 const list = ref<ProfessionAlgorithmProfileVO[]>([])
@@ -173,10 +173,10 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim() ||
-    !editor.profileName.trim() ||
-    !editor.templateId ||
-    !editor.programId
+    !editor.profileCode.trim()
+    || !editor.profileName.trim()
+    || !editor.templateId
+    || !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
@@ -359,9 +359,9 @@ onMounted(async () => {
               >
                 撤销
               </a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)"
-                >删除</a-button
-              >
+              <a-button type="link" size="small" danger @click="handleDelete(record)">
+                删除
+              </a-button>
             </a-space>
           </template>
         </a-table-column>

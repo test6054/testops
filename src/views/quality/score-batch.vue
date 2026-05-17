@@ -20,6 +20,9 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import {
   assessmentItemApi,
   qualityCourseApi,
@@ -27,9 +30,6 @@ import {
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const qualityStore = useQualityStore()
@@ -527,10 +527,8 @@ onMounted(async () => {
           >
             <a-button type="primary" :loading="uploading">
               <template #icon>
-                <span class="anticon"
-                  ><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor">
-                    <path d="M512 64L128 448h128v448h512V448h128L512 64z" /></svg
-                ></span>
+                <span class="anticon"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor">
+                  <path d="M512 64L128 448h128v448h512V448h128L512 64z" /></svg></span>
               </template>
               上传 Excel
             </a-button>
@@ -773,8 +771,7 @@ onMounted(async () => {
               <span
                 v-if="!record.errorCodes?.length && !record.errorMessages?.length"
                 style="color: #999"
-                >-</span
-              >
+              >-</span>
             </a-space>
           </template>
         </a-table-column>

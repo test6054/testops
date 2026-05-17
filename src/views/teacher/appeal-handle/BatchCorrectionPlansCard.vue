@@ -33,15 +33,9 @@
             {{ approvalStatusLabel(rows[index]) }}
           </a-tag>
         </template>
-        <template v-else-if="column.key === 'approvedTime'">{{
-          fmt(rows[index].approvedTime)
-        }}</template>
-        <template v-else-if="column.key === 'executedTime'">{{
-          fmt(rows[index].executedTime)
-        }}</template>
-        <template v-else-if="column.key === 'createTime'">{{
-          fmt(rows[index].createTime)
-        }}</template>
+        <template v-else-if="column.key === 'approvedTime'">{{fmt(rows[index].approvedTime) }}</template>
+        <template v-else-if="column.key === 'executedTime'">{{fmt(rows[index].executedTime) }}</template>
+        <template v-else-if="column.key === 'createTime'">{{fmt(rows[index].createTime) }}</template>
       </template>
     </a-table>
   </a-card>
@@ -54,20 +48,20 @@ import type {
   ExamBatchGradeCorrectionPlanVO,
   GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { ref, watch } from 'vue'
 import {
   BATCH_CORRECTION_STATUS_COLOR,
   BATCH_CORRECTION_STATUS_LABEL,
   GRADE_CORRECTION_TYPE_LABEL,
   listBatchCorrectionPlans,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { ref, watch } from 'vue'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const rows = ref<ExamBatchGradeCorrectionPlanVO[]>([])
 const loading = ref(false)

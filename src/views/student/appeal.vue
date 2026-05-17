@@ -128,9 +128,7 @@
                 <strong class="exam-cell__title">{{
                   filteredRequests[index].examName || '未命名考试'
                 }}</strong>
-                <span v-if="filteredRequests[index].examNo" class="exam-cell__sub"
-                  >编号：{{ filteredRequests[index].examNo }}</span
-                >
+                <span v-if="filteredRequests[index].examNo" class="exam-cell__sub">编号：{{ filteredRequests[index].examNo }}</span>
               </div>
             </template>
             <template v-else-if="column.key === 'reasonType'">
@@ -221,14 +219,7 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
-import {
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -239,6 +230,13 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
+import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -270,7 +268,7 @@ const reasonTypeOptions = [
   { value: 'OTHER', label: '其他' },
 ]
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },

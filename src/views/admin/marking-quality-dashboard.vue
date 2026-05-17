@@ -337,7 +337,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type {
   BatchReprocessScopeCode,
   ProgressMonitorRecordVO,
@@ -345,6 +344,18 @@ import type {
   ReviewerMetricStatusCode,
   ReviewerQualityMetricVO,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { pageExams } from '@/apis/mark/exam'
 import {
   createSpotCheckTasks,
   getLatestProgress,
@@ -357,20 +368,9 @@ import {
   REVIEWER_METRIC_STATUS_LABEL,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
 
@@ -384,7 +384,7 @@ const organizationIdInput = ref<string>(
   route.query.organizationId ? String(route.query.organizationId) : '',
 )
 const groupIdInput = ref<string>(route.query.groupId ? String(route.query.groupId) : '')
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const activeTab = ref<'progress' | 'reviewer' | 'spotcheck' | 'reprocess'>('progress')

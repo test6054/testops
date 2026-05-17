@@ -4,11 +4,11 @@
   可传 programId 过滤，默认只显示 CONFIRMED 且 enabled=true 的方案
 -->
 <script setup lang="ts">
-import type { TrainingPlanVO } from '@/apis/quality'
-import { trainingPlanApi } from '@/apis/quality'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { TrainingPlanVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
+import { trainingPlanApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -35,7 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: TrainingPlanVO]
+  "change": [value: string | null, option?: TrainingPlanVO]
 }>()
 
 const options = ref<TrainingPlanVO[]>([])

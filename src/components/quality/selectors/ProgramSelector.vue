@@ -4,11 +4,11 @@
   业务含义：在 edu-quality 中，programId 指向 edu-user 的专业（Major）
 -->
 <script setup lang="ts">
-import type { MajorVO } from '@/apis/quality/user-catalog'
-import { majorCatalogApi } from '@/apis/quality/user-catalog'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { MajorVO } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
+import { majorCatalogApi } from '@/apis/quality/user-catalog'
 
 interface Props {
   value?: string | null
@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: MajorVO]
+  "change": [value: string | null, option?: MajorVO]
 }>()
 
 const options = ref<MajorVO[]>([])
@@ -83,9 +83,7 @@ defineExpose({ reload: loadOptions })
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.majorName">
       {{ opt.majorName }}
-      <span v-if="opt.courseCount != null" class="text-gray-400 ml-1"
-        >({{ opt.courseCount }} 课)</span
-      >
+      <span v-if="opt.courseCount != null" class="text-gray-400 ml-1">({{ opt.courseCount }} 课)</span>
     </a-select-option>
   </a-select>
 </template>

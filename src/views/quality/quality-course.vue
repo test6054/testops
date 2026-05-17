@@ -7,9 +7,9 @@ import type {
   QualityCourseSavePayload,
   QualityCourseVO,
 } from '@/apis/quality'
-import { qualityCourseApi } from '@/apis/quality'
 import { message, Modal } from 'ant-design-vue'
 import { onMounted, reactive, ref, watch } from 'vue'
+import { qualityCourseApi } from '@/apis/quality'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const qualityStore = useQualityStore()
@@ -127,11 +127,11 @@ function openEdit(record: QualityCourseVO) {
 
 async function submitEditor() {
   if (
-    !editor.trainingPlanId ||
-    !editor.programId ||
-    !editor.courseId ||
-    !editor.courseCode ||
-    !editor.courseName
+    !editor.trainingPlanId
+    || !editor.programId
+    || !editor.courseId
+    || !editor.courseCode
+    || !editor.courseName
   ) {
     message.error('请填写培养方案 / 专业 / 课程主键 / 编码 / 名称')
     return

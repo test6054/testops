@@ -63,19 +63,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { ref, watch } from 'vue'
 import {
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
   listQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { ref, watch } from 'vue'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
 const rows = ref<ExamQuestionAnalysisRecordVO[]>([])

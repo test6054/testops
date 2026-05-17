@@ -101,20 +101,20 @@
 
 <script lang="ts" setup>
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'StudentLearningProfileCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 interface DiagnosisItem {
   questionType?: string

@@ -4,11 +4,11 @@
   业务含义：当前租户下的所有院系
 -->
 <script setup lang="ts">
-import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 
 interface Props {
   value?: string | null
@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: TenantSchoolDepartmentDto]
+  "change": [value: string | null, option?: TenantSchoolDepartmentDto]
 }>()
 
 const options = ref<TenantSchoolDepartmentDto[]>([])

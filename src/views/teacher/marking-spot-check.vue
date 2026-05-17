@@ -70,12 +70,12 @@
 
 <script lang="ts" setup>
 import type { SpotCheckConclusionCode } from '@/apis/mark/marking-quality'
-import { handleSpotCheck } from '@/apis/mark/marking-quality'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { handleSpotCheck } from '@/apis/mark/marking-quality'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard } from '@/components/ui-guide/ui'

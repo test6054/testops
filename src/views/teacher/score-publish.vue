@@ -3,9 +3,9 @@
     <div class="score-publish-page">
       <PageHeader title="成绩发布">
         <template #tags>
-          <UiTag v-if="selectedExamId" tone="blue" size="md"
-            >{{ pagination.total ?? 0 }} 名考生</UiTag
-          >
+          <UiTag v-if="selectedExamId" tone="blue" size="md">
+            {{ pagination.total ?? 0 }} 名考生
+          </UiTag>
         </template>
         <template #actions>
           <a-select
@@ -141,8 +141,8 @@
                     size="sm"
                     variant="ghost"
                     :disabled="
-                      !candidates[index].paperInstanceId ||
-                      candidates[index].finalScoreStatus !== 'PUBLISHED'
+                      !candidates[index].paperInstanceId
+                        || candidates[index].finalScoreStatus !== 'PUBLISHED'
                     "
                     @click="handleDeanonymize(candidates[index])"
                   >
@@ -252,6 +252,13 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
+import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   deanonymizePaper,
   FINAL_SCORE_STATUS_LABEL,
@@ -260,13 +267,6 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -292,12 +292,12 @@ const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, ToneCode> = {
 function finalScoreStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING' ||
-    value === 'CALCULATED' ||
-    value === 'CONFIRMED' ||
-    value === 'CORRECTED' ||
-    value === 'PUBLISHED' ||
-    value === 'WITHDRAWN'
+    value === 'PENDING'
+    || value === 'CALCULATED'
+    || value === 'CONFIRMED'
+    || value === 'CORRECTED'
+    || value === 'PUBLISHED'
+    || value === 'WITHDRAWN'
   ) {
     return FINAL_SCORE_STATUS_TONE[value]
   }
@@ -307,12 +307,12 @@ function finalScoreStatusTone(value: unknown): ToneCode {
 function finalScoreStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '未生成'
   if (
-    value === 'PENDING' ||
-    value === 'CALCULATED' ||
-    value === 'CONFIRMED' ||
-    value === 'CORRECTED' ||
-    value === 'PUBLISHED' ||
-    value === 'WITHDRAWN'
+    value === 'PENDING'
+    || value === 'CALCULATED'
+    || value === 'CONFIRMED'
+    || value === 'CORRECTED'
+    || value === 'PUBLISHED'
+    || value === 'WITHDRAWN'
   ) {
     return FINAL_SCORE_STATUS_LABEL[value]
   }

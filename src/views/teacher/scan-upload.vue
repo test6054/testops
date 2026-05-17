@@ -184,8 +184,8 @@
                 <a-typography-text strong :content="batches[index].batchNo || '-'" />
                 <div
                   v-if="
-                    batches[index].batchExternalNo &&
-                    batches[index].batchExternalNo !== batches[index].batchNo
+                    batches[index].batchExternalNo
+                      && batches[index].batchExternalNo !== batches[index].batchNo
                   "
                   class="muted"
                 >
@@ -260,13 +260,6 @@ import type {
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
-import {
-  createScanBatchByCondition,
-  getMarkingProgress,
-  listScannerDevices,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -279,6 +272,13 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  createScanBatchByCondition,
+  getMarkingProgress,
+  listScannerDevices,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+} from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -327,8 +327,7 @@ const {
 // ─── 概览统计 ─────────────────────────────
 const progress = ref<MarkingProgressVO | null>(null)
 const progressLoading = ref(false)
-const hasOpenProcessing = computed(() => (progress.value?.openProcessingTaskCount ?? 0) > 0)
-
+computed(() => (progress.value?.openProcessingTaskCount ?? 0) > 0)
 /** 全局加载状态：任一子加载中即视为正在加载 */
 const globalLoading = computed(
   () => progressLoading.value || devicesLoading.value || batchLoading.value || previewLoading.value,
@@ -395,10 +394,10 @@ const batchFormRules: Record<string, Rule[]> = {
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value &&
-    batchForm.scannerDeviceIds.length > 0 &&
-    !!batchForm.scanWindow &&
-    batchForm.scanWindow.length === 2,
+    !!selectedExamId.value
+    && batchForm.scannerDeviceIds.length > 0
+    && !!batchForm.scanWindow
+    && batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -500,7 +499,7 @@ async function handleCreateBatch(): Promise<void> {
 const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })

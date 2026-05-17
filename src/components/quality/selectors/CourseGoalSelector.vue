@@ -4,11 +4,11 @@
   必传 qualityCourseId
 -->
 <script setup lang="ts">
-import type { CourseGoalVO } from '@/apis/quality'
-import { courseGoalApi } from '@/apis/quality'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { CourseGoalVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
+import { courseGoalApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: CourseGoalVO]
+  "change": [value: string | null, option?: CourseGoalVO]
 }>()
 
 const options = ref<CourseGoalVO[]>([])

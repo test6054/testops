@@ -14,6 +14,8 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
+import { message, Modal } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   SCORE_BATCH_STATUS_COLOR,
@@ -21,8 +23,6 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -93,8 +93,8 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value =
-    (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+  assessmentItems.value
+    = (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
 }
 
 /* ========== 明细编辑 ========== */
@@ -205,23 +205,33 @@ async function submitBatchCreate() {
     message.error('请粘贴明细 JSON 数组')
     return
   }
-  let parsed: ScoreRecordSavePayload[]
+  let raw: unknown
   try {
-    const raw = JSON.parse(text)
-    if (!Array.isArray(raw)) throw new Error('根节点必须是数组')
-    parsed = raw.map((item, idx) => {
-      if (!item.assessmentItemId) throw new Error(`第 ${idx + 1} 行缺少 assessmentItemId`)
-      if (item.rawScore == null || item.fullScore == null)
-        throw new Error(`第 ${idx + 1} 行缺少 rawScore / fullScore`)
-      return {
-        batchId: selectedBatch.value!.id,
-        qualityCourseId: qualityStore.currentQualityCourseId,
-        ...item,
-      } as ScoreRecordSavePayload
-    })
+    raw = JSON.parse(text)
   } catch (err) {
     message.error(`JSON 解析失败：${(err as Error).message}`)
     return
+  }
+  if (!Array.isArray(raw)) {
+    message.error('JSON 解析失败：根节点必须是数组')
+    return
+  }
+  const parsed: ScoreRecordSavePayload[] = []
+  for (let idx = 0; idx < raw.length; idx++) {
+    const item = raw[idx] as Partial<ScoreRecordSavePayload> | null
+    if (!item || !item.assessmentItemId) {
+      message.error(`JSON 解析失败：第 ${idx + 1} 行缺少 assessmentItemId`)
+      return
+    }
+    if (item.rawScore == null || item.fullScore == null) {
+      message.error(`JSON 解析失败：第 ${idx + 1} 行缺少 rawScore / fullScore`)
+      return
+    }
+    parsed.push({
+      batchId: selectedBatch.value.id,
+      qualityCourseId: qualityStore.currentQualityCourseId,
+      ...item,
+    } as ScoreRecordSavePayload)
   }
   batchCreateSubmitting.value = true
   try {
@@ -255,8 +265,8 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value =
-      (await scoreRecordApi.listValidByItem(
+    validByItemRecords.value
+      = (await scoreRecordApi.listValidByItem(
         validByItemId.value,
         qualityStore.currentQualityCourseId,
       )) || []
@@ -433,9 +443,7 @@ function handleCourseChange(courseId: string | null) {
               <template #default="{ record }">
                 <a-space>
                   <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-                  <a-button type="link" size="small" danger @click="handleDelete(record)"
-                    >删除</a-button
-                  >
+                  <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table-column>
@@ -497,7 +505,7 @@ function handleCourseChange(courseId: string | null) {
           <a-textarea
             v-model:value="editor.rubricBreakdown"
             :rows="3"
-            placeholder='{"rubricItemId": score, ...}'
+            placeholder="{&quot;rubricItemId&quot;: score, ...}"
             :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
           />
         </a-form-item>

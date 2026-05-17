@@ -12,9 +12,9 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
-import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import { message, Modal } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 
 const list = ref<ScaleConversionRuleVO[]>([])
 const total = ref(0)
@@ -26,7 +26,7 @@ const query = reactive<ScaleConversionRuleQueryPayload>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType; label: string }[] = (
+const scaleTypeOptions: { value: ScaleType, label: string }[] = (
   Object.keys(SCALE_TYPE_LABEL) as ScaleType[]
 ).map((value) => ({
   value,
@@ -216,9 +216,7 @@ onMounted(() => loadList())
           <template #default="{ record }">
             <a-space>
               <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)"
-                >删除</a-button
-              >
+              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
             </a-space>
           </template>
         </a-table-column>

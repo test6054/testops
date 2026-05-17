@@ -68,6 +68,11 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   listRejudgePlans,
@@ -75,15 +80,10 @@ import {
   REJUDGE_PLAN_STATUS_LABEL,
   REJUDGE_TRIGGER_TYPE_LABEL,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { ref, watch } from 'vue'
 
 defineOptions({ name: 'RejudgePlanCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const rows = ref<ExamRejudgePlanVO[]>([])
 const loading = ref(false)

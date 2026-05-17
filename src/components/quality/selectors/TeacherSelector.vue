@@ -3,11 +3,11 @@
   数据源：POST /api/admin/teachers/user-list（远程搜索+分页）
 -->
 <script setup lang="ts">
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
+import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 
 interface Props {
   value?: string | null
@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: TeacherUserInfoDto]
+  "change": [value: string | null, option?: TeacherUserInfoDto]
 }>()
 
 const options = ref<TeacherUserInfoDto[]>([])
@@ -109,9 +109,7 @@ defineExpose({ reload: loadOptions })
       :label="opt.nickName || opt.userName"
     >
       {{ opt.nickName || opt.userName }}
-      <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 font-mono text-xs"
-        >({{ opt.teacherNumber }})</span
-      >
+      <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 font-mono text-xs">({{ opt.teacherNumber }})</span>
       <span v-if="opt.department" class="text-gray-400 ml-1">{{ opt.department }}</span>
     </a-select-option>
   </a-select>

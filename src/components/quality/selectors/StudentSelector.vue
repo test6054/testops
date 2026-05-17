@@ -4,8 +4,8 @@
   必传 classId；当 classId 缺失时组件禁用
 -->
 <script setup lang="ts">
-import type { UserDto } from '@/types/api-types.d'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { UserDto } from '@/types/api-types.d'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { getStudentsByClass } from '@/apis/edu/class'
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: UserDto]
+  "change": [value: string | null, option?: UserDto]
 }>()
 
 const options = ref<UserDto[]>([])
@@ -122,9 +122,7 @@ defineExpose({ reload: loadOptions })
       :label="opt.nickName || opt.userName"
     >
       {{ opt.nickName || opt.userName }}
-      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 font-mono text-xs"
-        >({{ opt.studentNumber }})</span
-      >
+      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 font-mono text-xs">({{ opt.studentNumber }})</span>
     </a-select-option>
   </a-select>
 </template>

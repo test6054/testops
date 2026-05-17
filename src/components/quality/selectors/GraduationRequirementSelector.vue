@@ -4,11 +4,11 @@
   必传 trainingPlanId；当 trainingPlanId 缺失时组件禁用并提示
 -->
 <script setup lang="ts">
-import type { GraduationRequirementVO } from '@/apis/quality'
-import { graduationRequirementApi } from '@/apis/quality'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { GraduationRequirementVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
+import { graduationRequirementApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: GraduationRequirementVO]
+  "change": [value: string | null, option?: GraduationRequirementVO]
 }>()
 
 const options = ref<GraduationRequirementVO[]>([])

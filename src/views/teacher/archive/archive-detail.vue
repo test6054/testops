@@ -312,6 +312,16 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
+import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import dayjs from 'dayjs'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   appraiseArchive,
   approveDestruction,
@@ -326,16 +336,6 @@ import {
   requestAppraisal,
   requestDestruction,
 } from '@/apis/mark/archive'
-import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
-import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import dayjs from 'dayjs'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -396,8 +396,8 @@ const itemColumns = [
 const showProgressCard = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'PACKAGING' ||
-    archive.value.archiveStatus === 'PACKAGING_FAILED'
+    archive.value.archiveStatus === 'PACKAGING'
+    || archive.value.archiveStatus === 'PACKAGING_FAILED'
   )
 })
 
@@ -419,20 +419,20 @@ const canPackage = computed(() => {
 const canRequestDestruction = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'APPRAISAL_DECIDED' &&
-    archive.value.appraisalDecision === 'DESTROY'
+    archive.value.archiveStatus === 'APPRAISAL_DECIDED'
+    && archive.value.appraisalDecision === 'DESTROY'
   )
 })
 
 const hasAnyAction = computed(() => {
   if (!archive.value) return false
   return (
-    canPackage.value ||
-    archive.value.archiveStatus === 'ACTIVE' ||
-    archive.value.archiveStatus === 'APPRAISAL_PENDING' ||
-    canRequestDestruction.value ||
-    archive.value.archiveStatus === 'DESTRUCTION_PENDING' ||
-    archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
+    canPackage.value
+    || archive.value.archiveStatus === 'ACTIVE'
+    || archive.value.archiveStatus === 'APPRAISAL_PENDING'
+    || canRequestDestruction.value
+    || archive.value.archiveStatus === 'DESTRUCTION_PENDING'
+    || archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
   )
 })
 

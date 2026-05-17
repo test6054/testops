@@ -11,11 +11,11 @@ import type {
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
 } from '@/apis/quality'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
 import type { MajorVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { majorCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import { message, Modal } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
+import { majorCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 
 /**
@@ -29,10 +29,10 @@ function workgroupLevelLabel(value: unknown): string {
     return ''
   }
   if (
-    value === 'UNIVERSITY' ||
-    value === 'COLLEGE' ||
-    value === 'PROGRAM' ||
-    value === 'INDUSTRY'
+    value === 'UNIVERSITY'
+    || value === 'COLLEGE'
+    || value === 'PROGRAM'
+    || value === 'INDUSTRY'
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
@@ -141,10 +141,10 @@ function openEdit(record: EvaluationWorkgroupVO) {
 
 async function submitEditor() {
   if (
-    !editor.programId ||
-    !editor.workgroupCode.trim() ||
-    !editor.workgroupName.trim() ||
-    !editor.convenerUserId
+    !editor.programId
+    || !editor.workgroupCode.trim()
+    || !editor.workgroupName.trim()
+    || !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -255,9 +255,9 @@ onMounted(async () => {
           <template #default="{ record }">
             <a-space>
               <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)"
-                >删除</a-button
-              >
+              <a-button type="link" size="small" danger @click="handleDelete(record)">
+                删除
+              </a-button>
             </a-space>
           </template>
         </a-table-column>
@@ -301,7 +301,7 @@ onMounted(async () => {
           <a-textarea
             v-model:value="editor.members"
             :rows="3"
-            placeholder='例如 ["张三", "李四", "王五"]'
+            placeholder="例如 [&quot;张三&quot;, &quot;李四&quot;, &quot;王五&quot;]"
           />
         </a-form-item>
         <a-form-item label="职责">

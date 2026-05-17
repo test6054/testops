@@ -5,14 +5,12 @@
         <template #tags>
           <UiTag
             v-if="organization?.organizationStatus"
-            :tone="STATUS_TONE[organization.organizationStatus]"
+            :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
             size="md"
           >
-            {{ STATUS_LABEL[organization.organizationStatus] }}
+            {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
           </UiTag>
-          <UiTag v-if="organization" tone="blue" size="md"
-            >题组 {{ organization.groups?.length ?? 0 }}</UiTag
-          >
+          <UiTag v-if="organization" tone="blue" size="md">题组 {{ organization.groups?.length ?? 0 }}</UiTag>
           <UiTag v-if="organization?.anonymousMode" tone="green" size="md">匿名阅卷</UiTag>
         </template>
         <template #actions>
@@ -51,10 +49,10 @@
                 <a-descriptions-item label="组织状态">
                   <UiTag
                     v-if="organization.organizationStatus"
-                    :tone="STATUS_TONE[organization.organizationStatus]"
+                    :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
                     size="sm"
                   >
-                    {{ STATUS_LABEL[organization.organizationStatus] }}
+                    {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
                   </UiTag>
                 </a-descriptions-item>
                 <a-descriptions-item label="匿名阅卷">
@@ -62,9 +60,9 @@
                     {{ organization.anonymousMode ? '启用' : '关闭' }}
                   </UiTag>
                 </a-descriptions-item>
-                <a-descriptions-item label="题组数量"
-                  >{{ organization.groups?.length ?? 0 }} 组</a-descriptions-item
-                >
+                <a-descriptions-item label="题组数量">
+                  {{ organization.groups?.length ?? 0 }} 组
+                </a-descriptions-item>
                 <a-descriptions-item label="备注" :span="3">
                   {{ organization.remark || '-' }}
                 </a-descriptions-item>
@@ -90,19 +88,21 @@
               >
                 <template #bodyCell="{ column, index }">
                   <template v-if="column.key === 'groupName'">
-                    <a-typography-text strong>{{
-                      groups[index].groupName || '-'
-                    }}</a-typography-text>
+                    <a-typography-text strong>
+                      {{
+                        groups[index].groupName || '-'
+                      }}
+                    </a-typography-text>
                   </template>
                   <template v-else-if="column.key === 'questionTemplateIds'">
-                    <UiTag tone="blue" size="sm"
-                      >{{ groups[index].questionTemplateIds?.length ?? 0 }} 题</UiTag
-                    >
+                    <UiTag tone="blue" size="sm">
+                      {{ groups[index].questionTemplateIds?.length ?? 0 }} 题
+                    </UiTag>
                   </template>
                   <template v-else-if="column.key === 'reviewerUserIds'">
-                    <UiTag tone="purple" size="sm"
-                      >{{ groups[index].reviewerUserIds?.length ?? 0 }} 人</UiTag
-                    >
+                    <UiTag tone="purple" size="sm">
+                      {{ groups[index].reviewerUserIds?.length ?? 0 }} 人
+                    </UiTag>
                   </template>
                   <template v-else-if="column.key === 'groupStatus'">
                     <UiTag :tone="groupStatusTone(groups[index].groupStatus)" size="sm">
@@ -224,10 +224,10 @@
                 <a-form-item label="当前状态">
                   <UiTag
                     v-if="organization.organizationStatus"
-                    :tone="STATUS_TONE[organization.organizationStatus]"
+                    :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
                     size="md"
                   >
-                    {{ STATUS_LABEL[organization.organizationStatus] }}
+                    {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
                   </UiTag>
                 </a-form-item>
                 <a-form-item label="目标状态" required>
@@ -311,7 +311,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   AllocationPolicySavePayload,
   AnonymousTokenPolicyCode,
@@ -324,20 +323,6 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySavePayload,
 } from '@/apis/mark/marking-organization'
-import {
-  ANONYMOUS_TOKEN_POLICY_LABEL,
-  getOrganizationById,
-  MARKING_ALLOCATION_MODE_LABEL,
-  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
-  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
-  MARKING_REASSIGN_MODE_LABEL,
-  QUESTION_GROUP_STATUS_LABEL as GROUP_STATUS_LABEL,
-  QUESTION_GROUP_STATUS_TONE as GROUP_STATUS_TONE,
-  saveAllocationPolicy,
-  saveQuestionGroup,
-  saveRecyclePolicy,
-  updateOrganizationStatus,
-} from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
 import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
@@ -348,7 +333,22 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { getExamTemplate } from '@/apis/mark/exam'
+import {
+  ANONYMOUS_TOKEN_POLICY_LABEL,
+  getOrganizationById,
+  MARKING_ALLOCATION_MODE_LABEL,
+  MARKING_ORGANIZATION_STATUS_LABEL,
+  MARKING_ORGANIZATION_STATUS_TONE,
+  MARKING_REASSIGN_MODE_LABEL,
+  QUESTION_GROUP_STATUS_LABEL,
+  QUESTION_GROUP_STATUS_TONE,
+  saveAllocationPolicy,
+  saveQuestionGroup,
+  saveRecyclePolicy,
+  updateOrganizationStatus,
+} from '@/apis/mark/marking-organization'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -629,7 +629,7 @@ const statusTransitionOptions = computed(() => {
   if (!current) return []
   return STATUS_TRANSITIONS[current].map((code) => ({
     value: code,
-    label: STATUS_LABEL[code],
+    label: MARKING_ORGANIZATION_STATUS_LABEL[code],
   }))
 })
 
@@ -667,12 +667,12 @@ function formatTime(value?: string): string {
 // 严格 typed helper：题组 groupStatus 是 QuestionMarkingGroupStatusCode | undefined。
 function groupStatusTone(status?: QuestionMarkingGroupStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return GROUP_STATUS_TONE[status] ?? 'gray'
+  return QUESTION_GROUP_STATUS_TONE[status] ?? 'gray'
 }
 
 function groupStatusLabel(status?: QuestionMarkingGroupStatusCode): string {
   if (!status) return '-'
-  return GROUP_STATUS_LABEL[status] ?? status
+  return QUESTION_GROUP_STATUS_LABEL[status] ?? status
 }
 
 onMounted(loadOrganization)

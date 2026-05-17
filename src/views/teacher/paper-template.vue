@@ -353,7 +353,6 @@ import type {
   ExamQuestionTemplateVO,
   ExamSummaryVO,
 } from '@/apis/mark/exam'
-import { getExamTemplate, pageExams, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -364,6 +363,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
+import { getExamTemplate, pageExams, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -416,10 +416,10 @@ function nextRowKey(prefix: string): string {
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 
-const form = reactive<{ templateName: string; totalPages?: number }>({
+const form = reactive<{ templateName: string, totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -526,10 +526,10 @@ async function loadTemplate(): Promise<void> {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
     if (
-      errMsg &&
-      !errMsg.includes('未找到') &&
-      !errMsg.includes('不存在') &&
-      !errMsg.includes('当前模板')
+      errMsg
+      && !errMsg.includes('未找到')
+      && !errMsg.includes('不存在')
+      && !errMsg.includes('当前模板')
     ) {
       message.warning(`当前考试尚未配置完整模板：${errMsg}`)
     }

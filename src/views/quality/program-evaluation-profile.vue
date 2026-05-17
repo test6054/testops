@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 /**
  * 专业评价口径配置
  *
@@ -12,17 +13,16 @@ import type {
   ProgramEvaluationProfileSavePayload,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
+import type { MajorVO } from '@/apis/quality/user-catalog'
+import { message, Modal } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   EVALUATION_METHOD_LABEL,
   programEvaluationProfileApi,
 } from '@/apis/quality'
-import type { MajorVO } from '@/apis/quality/user-catalog'
 import { majorCatalogApi } from '@/apis/quality/user-catalog'
-import type { SelectValue } from 'ant-design-vue/es/select'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 
 const list = ref<ProgramEvaluationProfileVO[]>([])
 const total = ref(0)
@@ -247,9 +247,7 @@ onMounted(async () => {
           <template #default="{ record }">
             <a-space>
               <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)"
-                >删除</a-button
-              >
+              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
             </a-space>
           </template>
         </a-table-column>

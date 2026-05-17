@@ -7,9 +7,9 @@ import type {
   TrainingPlanSavePayload,
   TrainingPlanVO,
 } from '@/apis/quality'
-import { trainingPlanApi } from '@/apis/quality'
 import { message, Modal } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { trainingPlanApi } from '@/apis/quality'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const qualityStore = useQualityStore()
@@ -106,10 +106,10 @@ function openEdit(record: TrainingPlanVO) {
 
 async function submitEditor() {
   if (
-    !editor.programId.trim() ||
-    !editor.planCode.trim() ||
-    !editor.planName.trim() ||
-    !editor.schoolYear.trim()
+    !editor.programId.trim()
+    || !editor.planCode.trim()
+    || !editor.planName.trim()
+    || !editor.schoolYear.trim()
   ) {
     message.error('请填写专业 / 编码 / 名称 / 学年')
     return

@@ -87,9 +87,9 @@
                   </a-tooltip>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiButton size="sm" @click="openSimilarDrawer(signatures[index])"
-                    >查找相似题</UiButton
-                  >
+                  <UiButton size="sm" @click="openSimilarDrawer(signatures[index])">
+                    查找相似题
+                  </UiButton>
                 </template>
               </template>
             </a-table>
@@ -359,7 +359,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type {
   AiAnalysisStatusCode,
   AnswerClusterRecordVO,
@@ -368,6 +367,16 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { pageExams } from '@/apis/mark/exam'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -383,18 +392,9 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
 
@@ -404,7 +404,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 const activeTab = ref<'signature' | 'experience' | 'cluster'>('signature')
 

@@ -4,9 +4,7 @@
       <PageHeader title="阅卷任务池">
         <template #tags>
           <UiTag tone="blue" size="md">我的任务 {{ tasks.length }}</UiTag>
-          <UiTag v-if="inProgressCount > 0" tone="orange" size="md"
-            >阅卷中 {{ inProgressCount }}</UiTag
-          >
+          <UiTag v-if="inProgressCount > 0" tone="orange" size="md">阅卷中 {{ inProgressCount }}</UiTag>
         </template>
         <template #actions>
           <a-select
@@ -208,13 +206,6 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import {
-  claimMarkingTasks,
-  getTeacherClaimContext,
-  listMarkingTasks,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -224,6 +215,13 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  claimMarkingTasks,
+  getTeacherClaimContext,
+  listMarkingTasks,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
@@ -408,11 +406,11 @@ function formatTime(value?: string): string {
 function taskStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '-'
   if (
-    value === 'ALLOCATED' ||
-    value === 'IN_PROGRESS' ||
-    value === 'SUBMITTED' ||
-    value === 'FINALIZED' ||
-    value === 'RECYCLED'
+    value === 'ALLOCATED'
+    || value === 'IN_PROGRESS'
+    || value === 'SUBMITTED'
+    || value === 'FINALIZED'
+    || value === 'RECYCLED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -427,11 +425,11 @@ function taskStatusLabel(value: unknown): string {
 function taskStatusTone(value: unknown): 'gray' | 'blue' | 'orange' | 'green' | 'red' {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'ALLOCATED' ||
-    value === 'IN_PROGRESS' ||
-    value === 'SUBMITTED' ||
-    value === 'FINALIZED' ||
-    value === 'RECYCLED'
+    value === 'ALLOCATED'
+    || value === 'IN_PROGRESS'
+    || value === 'SUBMITTED'
+    || value === 'FINALIZED'
+    || value === 'RECYCLED'
   ) {
     return STATUS_TONE[value]
   }
