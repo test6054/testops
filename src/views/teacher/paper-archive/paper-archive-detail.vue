@@ -339,13 +339,29 @@
 
 <script setup lang="ts">
 import type { UploadFile } from 'ant-design-vue'
-import { message, Modal } from 'ant-design-vue'
 import type {
   PaperArchiveItemVO,
   PaperArchiveOcrStatusCode,
   PaperArchiveSetStatusCode,
   PaperArchiveSetVO,
 } from '@/apis/mark/paper-archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import {
+  ArrowLeftOutlined,
+  DownloadOutlined,
+  FileSearchOutlined,
+  ProfileOutlined,
+  ReloadOutlined,
+  UploadOutlined,
+} from '@ant-design/icons-vue'
+import { message, Modal } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  downloadFile as downloadStorageFile,
+  uploadFile as uploadStorageFile,
+} from '@/apis/edu/file-management'
 import {
   getPaperArchiveSetDetail,
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
@@ -358,22 +374,6 @@ import {
   updatePaperArchiveItemTags,
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import {
-  ArrowLeftOutlined,
-  DownloadOutlined,
-  FileSearchOutlined,
-  ProfileOutlined,
-  ReloadOutlined,
-  UploadOutlined,
-} from '@ant-design/icons-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  downloadFile as downloadStorageFile,
-  uploadFile as uploadStorageFile,
-} from '@/apis/edu/file-management'
 import PageHeader from '@/components/common/PageHeader.vue'
 import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'

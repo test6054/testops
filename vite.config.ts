@@ -1,6 +1,6 @@
 import type { UserConfig } from 'vite'
-import { defineConfig, loadEnv } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
+import { defineConfig, loadEnv } from 'vite'
 import createVitePlugins from './config/plugins'
 
 export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
@@ -54,8 +54,8 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
           assetFileNames: 'static/[ext]/[name]-[hash].[ext]',
           manualChunks: {
             'ant-design-vue': ['ant-design-vue'],
-            echarts: ['echarts'],
-            vendor: ['vue', 'vue-router', 'pinia', 'axios'],
+            'echarts': ['echarts'],
+            'vendor': ['vue', 'vue-router', 'pinia', 'axios'],
           },
         },
       },
