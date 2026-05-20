@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 间接评价管理 - 问卷 + 题项 + 答卷
  *
@@ -19,6 +20,9 @@ import type {
   IndirectEvaluationResponseVO,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   indirectFormApi,
@@ -29,10 +33,6 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   CourseGoalSelector,
   GraduationRequirementSelector,
@@ -41,9 +41,9 @@ import {
   StudentSelector,
   TeacherSelector,
 } from '@/components/quality/selectors'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 
 const formColumns: ColumnsType = [
   { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120 },
@@ -189,7 +189,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(payload: { current: number; pageSize: number }) {
+function handleFormPageChange(payload: { current: number, pageSize: number }) {
   formQuery.pageNum = payload.current
   formQuery.pageSize = payload.pageSize
   loadForms()
@@ -397,21 +397,32 @@ async function submitBatchResponse() {
     message.error('请粘贴答卷 JSON 数组')
     return
   }
-  let parsed: IndirectEvaluationResponseSavePayload[]
+  let raw: unknown
   try {
-    const raw = JSON.parse(text)
-    if (!Array.isArray(raw)) throw new Error('根节点必须是数组')
-    parsed = raw.map((item, idx) => {
-      if (!item.itemId) throw new Error(`第 ${idx + 1} 行缺少 itemId`)
-      if (!item.respondentType) throw new Error(`第 ${idx + 1} 行缺少 respondentType`)
-      return {
-        formId: selectedForm.value!.id,
-        ...item,
-      } as IndirectEvaluationResponseSavePayload
-    })
-  } catch (err) {
-    message.error(`JSON 解析失败：${(err as Error).message}`)
+    raw = JSON.parse(text)
+  } catch {
+    message.error('JSON 解析失败：格式错误')
     return
+  }
+  if (!Array.isArray(raw)) {
+    message.error('JSON 解析失败：根节点必须是数组')
+    return
+  }
+  const parsed: IndirectEvaluationResponseSavePayload[] = []
+  for (let idx = 0; idx < raw.length; idx++) {
+    const item = raw[idx]
+    if (!item.itemId) {
+      message.error(`JSON 解析失败：第 ${idx + 1} 行缺少 itemId`)
+      return
+    }
+    if (!item.respondentType) {
+      message.error(`JSON 解析失败：第 ${idx + 1} 行缺少 respondentType`)
+      return
+    }
+    parsed.push({
+      formId: selectedForm.value!.id,
+      ...item,
+    } as IndirectEvaluationResponseSavePayload)
   }
   batchResponseSubmitting.value = true
   try {
@@ -456,8 +467,8 @@ const signals = computed<SignalMetric[]>(() => {
   const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample || 0), 0)
   const validResponses = responses.value.filter((r) => r.validFlag).length
   const invalidResponses = responses.value.filter((r) => !r.validFlag).length
-  const sampleRatio =
-    expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+  const sampleRatio
+    = expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
 
   return [
     { key: 'forms-total', label: '问卷总数', value: forms.value.length, tone: 'blue' },
@@ -581,7 +592,7 @@ onMounted(async () => {
               <UiButton variant="ghost" size="sm" @click.stop="openFormEdit(record)">
                 编辑
               </UiButton>
-              <UiButton variant="danger-ghost" size="sm" @click.stop="handleFormDelete(record)">
+              <UiButton variant="ghost" status="danger" size="sm" @click.stop="handleFormDelete(record)">
                 删除
               </UiButton>
             </a-space>
@@ -633,7 +644,7 @@ onMounted(async () => {
                   <UiButton variant="ghost" size="sm" @click.stop="openItemEdit(record)">
                     编辑
                   </UiButton>
-                  <UiButton variant="danger-ghost" size="sm" @click.stop="deleteItem(record)">
+                  <UiButton variant="ghost" status="danger" size="sm" @click.stop="deleteItem(record)">
                     删除
                   </UiButton>
                 </a-space>
@@ -687,7 +698,7 @@ onMounted(async () => {
                   <UiButton variant="ghost" size="sm" @click="openResponseEdit(record)">
                     编辑
                   </UiButton>
-                  <UiButton variant="danger-ghost" size="sm" @click="deleteResponse(record)">
+                  <UiButton variant="ghost" status="danger" size="sm" @click="deleteResponse(record)">
                     删除
                   </UiButton>
                 </a-space>

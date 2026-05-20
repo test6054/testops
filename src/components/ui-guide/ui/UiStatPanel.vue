@@ -51,8 +51,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { Component } from 'vue'
-import type { BadgeTone } from './types'
+import type { UiStatPanelItem } from './types'
 import { computed, useSlots } from 'vue'
 import UiMetricCard from './UiMetricCard.vue'
 import UiPanelHeader from './UiPanelHeader.vue'
@@ -79,24 +78,7 @@ const props = withDefaults(defineProps<{
   columns: 4,
   compact: false,
 })
-type TrendTone = 'default' | 'success' | 'warning' | 'danger'
 type Variant = 'grid' | 'strip' | 'compact'
-
-interface UiStatPanelItem {
-  key?: string | number
-  label: string
-  value: string | number
-  unit?: string
-  helper?: string
-  subText?: string
-  trend?: string
-  trendTone?: TrendTone
-  tone?: BadgeTone
-  icon?: Component
-  clickable?: boolean
-  compact?: boolean
-  onClick?: () => void
-}
 
 const slots = useSlots()
 

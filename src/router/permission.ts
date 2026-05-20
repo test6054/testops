@@ -174,5 +174,8 @@ export function requiresAuth(path: string): boolean {
   // 根路径 / 不需要强制认证，由路由守卫动态处理（已登录则跳转工作台，未登录则显示登录页）
   // /requirement 是公开的需求收集页面，不需要认证
   // /403、/404 错误页允许未认证访问，避免权限不足时无法展示错误页
+  if (path.startsWith('/survey/')) {
+    return false
+  }
   return !noAuthPaths.includes(path)
 }

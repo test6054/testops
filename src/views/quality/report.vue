@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 报告生成与确认台
  *
@@ -15,6 +16,18 @@ import type {
   ReportStatus,
   ReportVO,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { LoadingOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import Modal from 'ant-design-vue/es/modal'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   isReportExportStatus,
   isReportStatus,
@@ -26,23 +39,11 @@ import {
   REPORT_TYPE_LABEL,
   reportApi,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
-} from '@/types/workbench'
-import { LoadingOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   CourseSelector,
   ProgramSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -51,8 +52,8 @@ import {
   StageWorkbenchShell,
   TaskResultPanel,
 } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 
 /* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
 
@@ -154,7 +155,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -407,7 +408,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatus; title: string }> = [
+  const order: Array<{ key: ReportStatus, title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'SUBMITTED', title: '待确认' },
     { key: 'CONFIRMED', title: '已确认' },
@@ -514,7 +515,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleReportResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+function handleReportResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
   const record = list.value.find((r) => r.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -660,7 +661,8 @@ onMounted(loadList)
               <UiButton
                 v-for="to in nextStatuses(record.status)"
                 :key="to"
-                :variant="to === 'RETURNED' ? 'danger-ghost' : 'outline'"
+                :variant="to === 'RETURNED' ? 'ghost' : 'outline'"
+                :status="to === 'RETURNED' ? 'danger' : undefined"
                 size="sm"
                 @click="handleTransit(record, to)"
               >
@@ -668,9 +670,9 @@ onMounted(loadList)
               </UiButton>
               <UiButton
                 v-if="
-                  record.status === 'SUBMITTED' ||
-                  record.status === 'CONFIRMED' ||
-                  record.status === 'ARCHIVED'
+                  record.status === 'SUBMITTED'
+                    || record.status === 'CONFIRMED'
+                    || record.status === 'ARCHIVED'
                 "
                 variant="ghost"
                 size="sm"
@@ -680,7 +682,8 @@ onMounted(loadList)
               </UiButton>
               <UiButton
                 v-if="record.status === 'DRAFT'"
-                variant="danger-ghost"
+                variant="ghost"
+                status="danger"
                 size="sm"
                 @click="handleDelete(record)"
               >

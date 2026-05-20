@@ -499,3 +499,20 @@ export interface UiStepItem {
   description?: string
   status?: UiStepStatus
 }
+
+/** 统计面板项（UiStatPanel） */
+export interface UiStatPanelItem {
+  key?: string | number
+  label: string
+  value: string | number
+  unit?: string
+  helper?: string
+  subText?: string
+  trend?: string
+  trendTone?: 'default' | 'success' | 'warning' | 'danger'
+  tone?: BadgeTone
+  icon?: import('vue').Component
+  clickable?: boolean
+  compact?: boolean
+  onClick?: () => void
+}

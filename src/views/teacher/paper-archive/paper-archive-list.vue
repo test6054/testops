@@ -242,6 +242,12 @@
 
 <script setup lang="ts">
 import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/paper-archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   activatePaperArchiveSet,
   createPaperArchiveSet,
@@ -249,17 +255,11 @@ import {
   PAPER_ARCHIVE_SET_STATUS_LABEL,
   PAPER_ARCHIVE_SET_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import dayjs from 'dayjs'
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
-import { useMarkStageStore } from '@/stores/modules/markStage'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
+import { useMarkStageStore } from '@/stores/modules/markStage'
 
 defineOptions({ name: 'TeacherPaperArchiveList' })
 
@@ -340,15 +340,15 @@ function syncPaperArchiveStageToStore(): void {
   const statuses = sets.value.map((s) => s.archiveStatus)
   const hasDestroyed = statuses.some(
     (s) =>
-      s === 'DESTROYED' ||
-      s === 'DESTRUCTION_APPROVED' ||
-      s === 'DESTRUCTION_PENDING' ||
-      s === 'DESTRUCTION_REJECTED',
+      s === 'DESTROYED'
+      || s === 'DESTRUCTION_APPROVED'
+      || s === 'DESTRUCTION_PENDING'
+      || s === 'DESTRUCTION_REJECTED',
   )
   const hasActive = statuses.some(
     (s) => s === 'ACTIVE' || s === 'APPRAISAL_PENDING' || s === 'APPRAISAL_DECIDED',
   )
-  const hasDraft = statuses.some((s) => s === 'DRAFT')
+  const hasDraft = statuses.includes('DRAFT')
   let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
   let hint = ''
   if (hasDestroyed) {

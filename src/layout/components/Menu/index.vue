@@ -33,9 +33,9 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
-import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { debounce } from 'lodash-es'
+import { ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
 import { useAppStore, useRouteStore } from '@/stores'
 import { isExternal } from '@/utils/validate'
@@ -172,10 +172,10 @@ const onMenuItemClick = ({ key }: { key: Key }) => {
 
 // ─── 子菜单展开状态 ────────────────────────────────────────
 // 当前展开的 SubMenu key 列表（仅 inline 模式使用；vertical/collapsed 模式由 antd 内部 popup 接管）
-const openKeys = ref<string[]>([])
+const openKeys = ref<Key[]>([])
 
 // 当前激活路由所属的 menuGroup（来自 route.meta.menuGroup）
-const currentGroupKey = computed<string | null>(() => {
+const currentGroupKey = computed<Key | null>(() => {
   return (route.meta?.menuGroup as string | undefined) ?? null
 })
 
@@ -194,10 +194,10 @@ watch(
 )
 
 // 用户手动展开/收起子菜单
-const onOpenChange = (keys: string[]) => {
+const onOpenChange = (keys: Key[]) => {
   if (appStore.menuAccordion) {
     // 手风琴模式：只保留最新打开的那一个
-    const latestOpen = keys.find((k) => !openKeys.value.includes(k))
+    const latestOpen = keys.find((k) => !openKeys.value.includes(String(k)))
     openKeys.value = latestOpen ? [latestOpen] : []
   } else {
     openKeys.value = keys

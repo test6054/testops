@@ -4,7 +4,7 @@
  * 业务边界：跨质量评价页面共享"在飞 / 待关注"任务的运行态汇总：
  * - 在飞 AI 任务（PENDING / PROCESSING）
  * - 在导出报告（PENDING / PROCESSING）
- * - 未关闭的改进任务（DRAFT / IN_PROGRESS / OWNER_VERIFY / COMMITTEE_REVIEW）
+ * - 未关闭的改进任务（OPEN / IN_PROGRESS / SUBMITTED / REVIEWED）
  *
  * 用途：
  * - dashboard 页面 / 顶部 SignalBand 直接展示"待关注任务数"
@@ -20,13 +20,13 @@
  * 不持久化：在飞状态完全后端持有。
  */
 import type { AiTaskVO } from '@/apis/quality/ai-task'
-import { aiTaskApi } from '@/apis/quality/ai-task'
 import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import type { ReportVO } from '@/apis/quality/report'
-import { reportApi } from '@/apis/quality/report'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { aiTaskApi } from '@/apis/quality/ai-task'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
+import { reportApi } from '@/apis/quality/report'
 
 const DEFAULT_TOP_N = 50
 
@@ -74,7 +74,7 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
     aiTasksInFlight.value.length
     + reportExportsInFlight.value.length
     + reportExportsFailed.value.length
-    + improvementTasksOpen.value.filter((t) => t.status === 'OWNER_VERIFY' || t.status === 'COMMITTEE_REVIEW').length,
+    + improvementTasksOpen.value.filter((t) => t.status === 'SUBMITTED' || t.status === 'REVIEWED').length,
   )
 
   /* ---------- Actions ---------- */
@@ -187,9 +187,6 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
     totalAttentionCount,
 
     // actions
-    pollAiTasks,
-    pollReportExports,
-    pollImprovementTasks,
     refreshAll,
     reset,
   }

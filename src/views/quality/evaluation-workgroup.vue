@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 校院两级评价工作组管理
  *
@@ -11,18 +12,17 @@ import type {
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
 } from '@/apis/quality'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
 import type { MajorCategoryVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
+import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
-import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { FilterField } from '@/components/ui-guide/ui/types'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 
 const filterFields: FilterField[] = [
   { key: 'programId', label: '专业大类', type: 'custom', placeholder: '专业大类', width: 220 },
@@ -63,10 +63,10 @@ function workgroupLevelLabel(value: unknown): string {
     return ''
   }
   if (
-    value === 'UNIVERSITY' ||
-    value === 'COLLEGE' ||
-    value === 'PROGRAM' ||
-    value === 'INDUSTRY'
+    value === 'UNIVERSITY'
+    || value === 'COLLEGE'
+    || value === 'PROGRAM'
+    || value === 'INDUSTRY'
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
@@ -137,7 +137,7 @@ async function loadDicts() {
   programs.value = (await majorCategoryCatalogApi.listAll()) || []
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -164,13 +164,6 @@ function handleResetSearch() {
   loadList()
 }
 
-function resetQuery() {
-  query.pageNum = 1
-  query.programId = undefined
-  query.levelCode = undefined
-  query.enabled = undefined
-  loadList()
-}
 
 function openCreate() {
   editorMode.value = 'create'
@@ -196,10 +189,10 @@ function openEdit(record: EvaluationWorkgroupVO) {
 
 async function submitEditor() {
   if (
-    !editor.programId ||
-    !editor.workgroupCode.trim() ||
-    !editor.workgroupName.trim() ||
-    !editor.convenerUserId
+    !editor.programId
+    || !editor.workgroupCode.trim()
+    || !editor.workgroupName.trim()
+    || !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -302,7 +295,7 @@ onMounted(async () => {
             allow-clear
             class="ewg__filter"
             :options="levelOptions"
-            @update:value="(v: string | undefined) => update(v)"
+            @update:value="(v: unknown) => update(v)"
           />
         </template>
       </UiSearchForm>
@@ -337,7 +330,7 @@ onMounted(async () => {
           <template v-else-if="column.key === 'actions'">
             <a-space>
               <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                 删除
               </UiButton>
             </a-space>
@@ -385,7 +378,7 @@ onMounted(async () => {
           <a-textarea
             v-model:value="editor.members"
             :rows="3"
-            placeholder='例如 ["张三", "李四", "王五"]'
+            placeholder="例如 [&quot;张三&quot;, &quot;李四&quot;, &quot;王五&quot;]"
           />
         </a-form-item>
         <a-form-item label="职责">

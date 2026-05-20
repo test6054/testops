@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveVO } from '@/apis/quality'
-import { archiveApi } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
+import { archiveApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: ArchiveVO]
+  "change": [value: string | null, option?: ArchiveVO]
 }>()
 
 const options = ref<ArchiveVO[]>([])

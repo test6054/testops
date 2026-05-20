@@ -7,13 +7,13 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ProgramEvaluationProfileVO } from '@/apis/quality'
+import { message } from 'ant-design-vue'
+import { onMounted, ref, watch } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   EVALUATION_METHOD_LABEL,
   programEvaluationProfileApi,
 } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 
 interface Props {
   value?: string | null
@@ -37,7 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: ProgramEvaluationProfileVO]
+  "change": [value: string | null, option?: ProgramEvaluationProfileVO]
 }>()
 
 const options = ref<ProgramEvaluationProfileVO[]>([])
@@ -119,8 +119,7 @@ defineExpose({ reload: loadOptions })
       <span class="text-gray-400 ml-1">
         ·
         {{
-          EVALUATION_METHOD_LABEL[opt.evaluationMethod as keyof typeof EVALUATION_METHOD_LABEL] ||
-          opt.evaluationMethod
+          EVALUATION_METHOD_LABEL[opt.evaluationMethod as keyof typeof EVALUATION_METHOD_LABEL] || opt.evaluationMethod
         }}
       </span>
     </a-select-option>

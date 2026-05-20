@@ -225,9 +225,9 @@
               <template v-if="column.key === 'sampleType'">
                 <UiTag tone="purple" size="sm">
                   {{
-                    DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || ''] ||
-                    record.sampleType ||
-                    '-'
+                    DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || '']
+                      || record.sampleType
+                      || '-'
                   }}
                 </UiTag>
               </template>
@@ -289,6 +289,13 @@
 
 <script lang="ts" setup>
 import type { DiagnosticSampleVO, OperationLogVO } from '@/apis/mark/admin-audit'
+import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -298,14 +305,7 @@ import {
   OPERATION_TYPE_LABEL,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
-import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'

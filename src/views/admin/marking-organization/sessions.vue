@@ -70,12 +70,15 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import type {
   FormalSessionVO,
   MarkingOrganizationVO,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   getOrganizationById,
   listFormalSessions,
@@ -83,13 +86,10 @@ import {
   MARKING_ORGANIZATION_STATUS_LABEL as ORG_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE as ORG_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import FormalSessionPanel from './components/FormalSessionPanel.vue'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })

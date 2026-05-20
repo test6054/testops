@@ -30,16 +30,16 @@ import type { WorkbenchStageStatus } from '@/types/workbench'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-export type MarkStageKey =
-  | 'EXAM_PREP'
-  | 'PAPER_TEMPLATE'
-  | 'SCAN'
-  | 'MARKING_ORG'
-  | 'TRIAL_MARK'
-  | 'FORMAL_MARK'
-  | 'SCORE_PUBLISH'
-  | 'GRADE_REVIEW'
-  | 'ARCHIVE'
+export type MarkStageKey
+  = | 'EXAM_PREP'
+    | 'PAPER_TEMPLATE'
+    | 'SCAN'
+    | 'MARKING_ORG'
+    | 'TRIAL_MARK'
+    | 'FORMAL_MARK'
+    | 'SCORE_PUBLISH'
+    | 'GRADE_REVIEW'
+    | 'ARCHIVE'
 
 export interface MarkStageProgress {
   current: MarkStageKey
@@ -144,7 +144,7 @@ export const useMarkStageStore = defineStore('markStage', () => {
   })))
 
   const hasBlocked = computed(() =>
-    Object.values(observedProgress.value.states).some((s) => s === 'blocked'),
+    Object.values(observedProgress.value.states).includes('blocked'),
   )
 
   /* ---------- Actions ---------- */
@@ -189,14 +189,6 @@ export const useMarkStageStore = defineStore('markStage', () => {
     progress.blockedReason = firstBlocked ? progress.hints[firstBlocked] : ''
     progressMap.value = new Map(progressMap.value)
   }
-
-  function resetExam(examId: string): void {
-    if (!progressMap.value.has(examId)) return
-    const next = new Map(progressMap.value)
-    next.delete(examId)
-    progressMap.value = next
-  }
-
   function reset(): void {
     progressMap.value = new Map()
     observedExamId.value = ''
@@ -212,10 +204,6 @@ export const useMarkStageStore = defineStore('markStage', () => {
     setCurrentStage,
     setStageStatus,
     bulkUpdate,
-    resetExam,
     reset,
   }
 })
-
-export const MARK_STAGE_KEYS: ReadonlyArray<MarkStageKey> = ORDERED_STAGES
-export const MARK_STAGE_TITLES: Readonly<Record<MarkStageKey, string>> = STAGE_TITLES

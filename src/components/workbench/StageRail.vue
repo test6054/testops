@@ -10,11 +10,11 @@
 <script lang="ts" setup>
 import type { UiArrowTimelineStage } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage } from '@/types/workbench'
-import { WORKBENCH_STAGE_TO_TIMELINE } from '@/types/workbench'
-
 import { computed } from 'vue'
 
 import UiArrowTimeline from '@/components/ui-guide/ui/UiArrowTimeline.vue'
+
+import { WORKBENCH_STAGE_TO_TIMELINE } from '@/types/workbench'
 
 defineOptions({
   name: 'StageRail',

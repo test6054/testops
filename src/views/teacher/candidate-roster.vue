@@ -246,9 +246,9 @@ async function loadRoster(): Promise<void> {
   }
 }
 
-function handleExamChange(value: unknown): void {
+function handleExamChange(value: unknown, option: unknown): void {
   // 委托给 useMarkExamSelector 完成 URL/Store 同步
-  onExamChange(value as string | number | undefined)
+  onExamChange(value as never, option as never)
   if (selectedExamId.value) {
     void loadRoster()
   } else {

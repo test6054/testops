@@ -18,10 +18,11 @@
  * - 同一 taskId 只能存在一个轮询计时器；重复 startPolling 会复用现有计时器
  * - 终态任务（SUCCEEDED / FAILED / CANCELLED）轮询自动 stop；调用方通过 watch(getTaskStatus(id)) 感知
  */
-import type { AiTaskStatus, AiTaskVO } from '@/apis/quality/ai-task'
-import { aiTaskApi } from '@/apis/quality/ai-task'
+import type { AiTaskVO } from '@/apis/quality/ai-task'
+import type { AiTaskStatus } from '@/apis/quality/types'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 
 const TERMINAL_STATUSES: ReadonlySet<AiTaskStatus> = new Set<AiTaskStatus>([
   'SUCCEEDED',
@@ -108,7 +109,9 @@ export const useAiTaskStore = defineStore('aiTask', () => {
       }
     }
 
-    const timer = setInterval(() => { void tick() }, intervalMs)
+    const timer = setInterval(() => {
+      void tick()
+    }, intervalMs)
     pollingHandles.set(taskId, { taskId, intervalMs, timer })
     snapshotPolling()
     // 立即触发一次，避免等到第一个 tick 才感知

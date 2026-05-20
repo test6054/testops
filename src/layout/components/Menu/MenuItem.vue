@@ -68,10 +68,10 @@ const menuData = computed(() => {
 // 是否应该显示为菜单项（而不是子菜单）
 const shouldShowAsMenuItem = computed(() => {
   return (
-    menuData.value.isOneShowingChild &&
-    (!menuData.value.onlyOneChild?.children ||
-      menuData.value.onlyOneChild?.meta?.noShowingChildren) &&
-    !props.item?.meta?.alwaysShow
+    menuData.value.isOneShowingChild
+    && (!menuData.value.onlyOneChild?.children
+      || menuData.value.onlyOneChild?.meta?.noShowingChildren)
+    && !props.item?.meta?.alwaysShow
   )
 })
 

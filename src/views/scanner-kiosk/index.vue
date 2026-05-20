@@ -6,6 +6,7 @@ import type {
   ScannerDeviceInfo,
   StartScanJobRequest,
 } from '@/apis/mark/scanner-agent-local'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   activateLocalAgent,
   cancelScanJob,
@@ -20,7 +21,6 @@ import {
   startScanJob,
   unbindLocalAgent,
 } from '@/apis/mark/scanner-agent-local'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 type ColorMode = 'COLOR' | 'GRAY' | 'LINEART'
 type DuplexMode = 'SIMPLEX' | 'DUPLEX'
@@ -46,7 +46,7 @@ const gatewayBaseUrlEnv = import.meta.env.VITE_SCANNER_GATEWAY_BASE_URL
 const defaultGatewayBaseUrl = typeof gatewayBaseUrlEnv === 'string' ? gatewayBaseUrlEnv.trim() : ''
 const previewPageNo = ref<number>(0)
 
-const busyState = ref<{ active: boolean; activeJobId: string; activeJob: ScanJobResponse | null }>({
+const busyState = ref<{ active: boolean, activeJobId: string, activeJob: ScanJobResponse | null }>({
   active: false,
   activeJobId: '',
   activeJob: null,
@@ -90,15 +90,15 @@ const selectedScanner = computed(() =>
 )
 const canStartScan = computed(() => {
   return Boolean(
-    health.value?.bound &&
-    health.value.scannerConnected &&
-    !health.value.upgradeRequired &&
-    !health.value.tokenResetRequired &&
-    selectedScannerId.value &&
-    scanForm.value.examId.trim() &&
-    scanForm.value.declaredClassIdsText.trim() &&
-    scanForm.value.scannerDeviceId.trim() &&
-    scanForm.value.scannerStationId.trim(),
+    health.value?.bound
+    && health.value.scannerConnected
+    && !health.value.upgradeRequired
+    && !health.value.tokenResetRequired
+    && selectedScannerId.value
+    && scanForm.value.examId.trim()
+    && scanForm.value.declaredClassIdsText.trim()
+    && scanForm.value.scannerDeviceId.trim()
+    && scanForm.value.scannerStationId.trim(),
   )
 })
 
@@ -474,7 +474,7 @@ function handleError(error: unknown) {
         <button
           v-for="(step, idx) in STEPS"
           :key="step.key"
-          :class="['step-item', { active: idx === currentStep, done: idx < currentStep }]"
+          class="step-item" :class="[{ active: idx === currentStep, done: idx < currentStep }]"
           type="button"
           @click="goToStep(idx)"
         >
@@ -483,7 +483,7 @@ function handleError(error: unknown) {
         </button>
       </nav>
       <div class="header-status">
-        <span :class="['status-beacon', health?.bound ? 'online' : 'offline']" />
+        <span class="status-beacon" :class="[health?.bound ? 'online' : 'offline']" />
         <span class="status-text">{{ health?.bound ? '已绑定' : '未绑定' }}</span>
       </div>
     </header>
@@ -566,9 +566,7 @@ function handleError(error: unknown) {
         <div class="busy-banner-body">
           <div class="busy-banner-title">扫描仪正在执行其他扫描任务</div>
           <div class="busy-banner-meta">
-            <span
-              >活动任务：<code>{{ busyState.activeJobId }}</code></span
-            >
+            <span>活动任务：<code>{{ busyState.activeJobId }}</code></span>
             <span v-if="busyState.activeJob">
               状态：{{ busyState.activeJob.status }} · {{ busyState.activeJob.scannedPages }}/{{
                 busyState.activeJob.pages.length
@@ -754,8 +752,7 @@ function handleError(error: unknown) {
           <button
             v-for="scanner in scanners"
             :key="scanner.localScannerId"
-            :class="[
-              'scanner-card',
+            class="scanner-card" :class="[
               {
                 selected: selectedScannerId === scanner.localScannerId,
                 unavailable: !scanner.available,
@@ -781,12 +778,10 @@ function handleError(error: unknown) {
             </div>
             <div class="scanner-card-info">
               <strong>{{ scanner.displayName }}</strong>
-              <span class="scanner-meta"
-                >{{ scanner.driverType }} · {{ scanner.supportsAdf ? 'ADF' : '平板' }} ·
-                {{ scanner.supportsDuplex ? '双面' : '单面' }}</span
-              >
+              <span class="scanner-meta">{{ scanner.driverType }} · {{ scanner.supportsAdf ? 'ADF' : '平板' }} ·
+                {{ scanner.supportsDuplex ? '双面' : '单面' }}</span>
             </div>
-            <span :class="['scanner-status', scanner.available ? 'online' : 'offline']">
+            <span class="scanner-status" :class="[scanner.available ? 'online' : 'offline']">
               {{ scanner.available ? '可用' : '离线' }}
             </span>
           </button>
@@ -904,7 +899,7 @@ function handleError(error: unknown) {
                 <button
                   v-for="mode in ['GRAY', 'COLOR', 'LINEART'] as const"
                   :key="mode"
-                  :class="['option-btn', { active: scanForm.colorMode === mode }]"
+                  class="option-btn" :class="[{ active: scanForm.colorMode === mode }]"
                   type="button"
                   @click="scanForm.colorMode = mode"
                 >
@@ -918,7 +913,7 @@ function handleError(error: unknown) {
                 <button
                   v-for="mode in ['SIMPLEX', 'DUPLEX'] as const"
                   :key="mode"
-                  :class="['option-btn', { active: scanForm.duplexMode === mode }]"
+                  class="option-btn" :class="[{ active: scanForm.duplexMode === mode }]"
                   type="button"
                   @click="scanForm.duplexMode = mode"
                 >
@@ -931,7 +926,7 @@ function handleError(error: unknown) {
           <label class="toggle-row">
             <span class="toggle-label">空白页自动检测</span>
             <button
-              :class="['toggle', { on: scanForm.blankPageDetectionEnabled }]"
+              class="toggle" :class="[{ on: scanForm.blankPageDetectionEnabled }]"
               type="button"
               role="switch"
               :aria-checked="scanForm.blankPageDetectionEnabled"
@@ -947,7 +942,7 @@ function handleError(error: unknown) {
         <div class="ws-header">
           <div class="ws-status-bar">
             <div class="ws-status-item">
-              <span :class="['ws-status-dot', jobStatusTone]" />
+              <span class="ws-status-dot" :class="[jobStatusTone]" />
               <span class="ws-status-label">{{ currentJob?.status || '—' }}</span>
             </div>
             <div class="ws-status-item">
@@ -1051,7 +1046,7 @@ function handleError(error: unknown) {
               <button
                 v-for="page in visiblePages"
                 :key="page.pageNo"
-                :class="['ws-thumb', { active: previewPageNo === page.pageNo }]"
+                class="ws-thumb" :class="[{ active: previewPageNo === page.pageNo }]"
                 type="button"
                 @click="previewPageNo = page.pageNo"
               >
@@ -1063,8 +1058,7 @@ function handleError(error: unknown) {
                 />
                 <span class="ws-thumb-no">{{ page.pageNo }}</span>
                 <span
-                  :class="[
-                    'ws-thumb-status',
+                  class="ws-thumb-status" :class="[
                     page.status === 'UPLOADED'
                       ? 'uploaded'
                       : page.status === 'UPLOADING'
@@ -1098,7 +1092,7 @@ function handleError(error: unknown) {
               <div
                 class="ws-progress-fill"
                 :class="jobStatusTone"
-                :style="{ width: scanProgress + '%' }"
+                :style="{ width: `${scanProgress}%` }"
               />
             </div>
             <span class="ws-progress-text">{{ scanProgress }}%</span>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 专业算法实例
  *
@@ -14,6 +15,10 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -23,16 +28,11 @@ import {
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
-import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { ProgramSelector } from '@/components/quality/selectors'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptModal } from './_helpers'
 
 const columns: ColumnsType = [
@@ -209,10 +209,10 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim() ||
-    !editor.profileName.trim() ||
-    !editor.templateId ||
-    !editor.programId
+    !editor.profileCode.trim()
+    || !editor.profileName.trim()
+    || !editor.templateId
+    || !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
@@ -268,7 +268,7 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -444,7 +444,7 @@ onMounted(async () => {
               >
                 撤销
               </UiButton>
-              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                 删除
               </UiButton>
             </a-space>

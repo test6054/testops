@@ -268,6 +268,15 @@
 
     .ant-menu-sub.ant-menu-inline {
       background: transparent !important;
+
+      // 二级菜单项缩进，区分层级
+      > .ant-menu-item {
+        margin: 2px 8px 2px 12px !important;
+        padding: 0 12px 0 24px !important;
+        height: 36px !important;
+        line-height: 36px !important;
+        font-weight: 400;
+      }
     }
   }
 }

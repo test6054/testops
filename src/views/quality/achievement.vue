@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 达成度评价驾驶舱
  *
@@ -17,6 +18,16 @@ import type {
   AchievementResultQueryPayload,
   AchievementResultVO,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -29,18 +40,7 @@ import {
   isAchievementStatus,
   isAchievementTargetType,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { CourseSelector, ProgramSelector } from '@/components/quality/selectors'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -148,7 +148,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -189,7 +189,7 @@ function resetQuery() {
  *  - compute-civic-goal-aggregate     课程思政独立汇总
  *  - compute-complex-engineering-aggregate  复杂工程问题专项
  */
-const triggerButtons: Array<{ key: string; label: string; handler: () => Promise<unknown> }> = [
+const triggerButtons: Array<{ key: string, label: string, handler: () => Promise<unknown> }> = [
   {
     key: 'COURSE_GOAL',
     label: '课程目标',
@@ -306,8 +306,8 @@ async function handleTrigger(key: string, handler: () => Promise<unknown>) {
   } catch (err) {
     // 计算被用户取消（如未填 courseGoalId）静默忽略
     if (
-      err instanceof Error &&
-      (err.message === 'cancelled' || err.message === 'missing courseGoalId')
+      err instanceof Error
+      && (err.message === 'cancelled' || err.message === 'missing courseGoalId')
     ) {
       return
     }
@@ -368,7 +368,7 @@ const auditBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = auditBuckets.value
-  const order: Array<{ key: AchievementAuditStatus; title: string }> = [
+  const order: Array<{ key: AchievementAuditStatus, title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'CALCULATED', title: '已计算' },
     { key: 'SUBMITTED', title: '已提交' },
@@ -474,8 +474,8 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
   return list.value
     .filter(
       (r) =>
-        r.auditStatus === 'RETURNED' ||
-        (isAchievementStatus(r.achievementStatus) && r.achievementStatus === 'NOT_ACHIEVED'),
+        r.auditStatus === 'RETURNED'
+        || (isAchievementStatus(r.achievementStatus) && r.achievementStatus === 'NOT_ACHIEVED'),
     )
     .slice(0, 5)
     .map((r) => ({
@@ -491,7 +491,7 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+function handleResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
   const record = list.value.find((r) => r.id === payload.item.id)
   if (record && payload.action.key === 'detail') goDetail(record)
 }
@@ -631,9 +631,9 @@ onMounted(async () => {
             </template>
             <template
               v-else-if="
-                column.key === 'targetId' ||
-                column.key === 'qualityCourseId' ||
-                column.key === 'classId'
+                column.key === 'targetId'
+                  || column.key === 'qualityCourseId'
+                  || column.key === 'classId'
               "
             >
               {{ text || '-' }}
@@ -643,19 +643,16 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'achievementValue'">
               <span
-                :class="[
-                  'achievement__value',
-                  record.finalValue !== null &&
-                  record.thresholdValue !== null &&
-                  record.finalValue >= record.thresholdValue
+                class="achievement__value" :class="[
+                  record.finalValue !== null
+                    && record.thresholdValue !== null
+                    && record.finalValue >= record.thresholdValue
                     ? 'achievement__value--ok'
                     : 'achievement__value--bad',
                 ]"
-                >{{ formatValue(record.finalValue) }}</span
-              >
+              >{{ formatValue(record.finalValue) }}</span>
               <span class="achievement__threshold">
-                / {{ formatValue(record.thresholdValue) }}</span
-              >
+                / {{ formatValue(record.thresholdValue) }}</span>
             </template>
             <template v-else-if="column.key === 'sample'">
               {{ record.sampleValid ?? '-' }} / {{ record.sampleTotal ?? '-' }}
@@ -677,7 +674,8 @@ onMounted(async () => {
                 <UiButton
                   v-for="to in nextStatuses(record.auditStatus)"
                   :key="to"
-                  :variant="to === 'RETURNED' ? 'danger-ghost' : 'outline'"
+                  :variant="to === 'RETURNED' ? 'ghost' : 'outline'"
+                  :status="to === 'RETURNED' ? 'danger' : 'normal'"
                   size="sm"
                   @click="handleTransit(record, to)"
                 >

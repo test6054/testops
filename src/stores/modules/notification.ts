@@ -25,16 +25,16 @@ import type {
   InboxMessageMarkRequest,
   InboxUnreadCountResponse,
 } from '@/apis/edu/message'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import {
   getInboxMessages,
   getUnreadCount,
-  markAllAsRead as apiMarkAllAsRead,
+  markAllAsRead,
   MessageFolderEnum,
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 import { getValidToken } from '@/utils/auth'
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000
@@ -133,7 +133,7 @@ export const useNotificationStore = defineStore('notification', () => {
   /** 当前用户全部站内信标记已读（不含系统公告，由后端口径决定） */
   async function markAllRead(): Promise<void> {
     if (!isAuthenticated()) return
-    await apiMarkAllAsRead()
+    await markAllAsRead()
     await loadUnreadCount()
     await loadRecentMessages()
   }

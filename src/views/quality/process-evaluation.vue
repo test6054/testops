@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
@@ -19,6 +20,9 @@ import type {
   ProcessEvaluationRecordSavePayload,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
@@ -29,10 +33,6 @@ import {
   processNodeApi,
   processRecordApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   AssessmentItemSelector,
   CourseGoalSelector,
@@ -41,9 +41,9 @@ import {
   StudentSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const nodeColumns: ColumnsType = [
@@ -204,8 +204,8 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    records.value =
-      (await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value)) || []
+    records.value
+      = (await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value)) || []
   } finally {
     recordsLoading.value = false
   }
@@ -376,8 +376,8 @@ async function queryConfirmedByGoal() {
   }
   confirmedByGoalLoading.value = true
   try {
-    confirmedByGoalRecords.value =
-      (await processRecordApi.listConfirmedByCourseGoal(
+    confirmedByGoalRecords.value
+      = (await processRecordApi.listConfirmedByCourseGoal(
         qualityStore.currentQualityCourseId,
         confirmedByGoalId.value,
       )) || []
@@ -599,7 +599,7 @@ function handleCourseChange(courseId: string | null) {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <UiButton variant="danger-ghost" size="sm" @click.stop="handleNodeDelete(record)">
+                  <UiButton variant="ghost" status="danger" size="sm" @click.stop="handleNodeDelete(record)">
                     删除
                   </UiButton>
                 </a-space>
@@ -704,7 +704,8 @@ function handleCourseChange(courseId: string | null) {
                   </UiButton>
                   <UiButton
                     v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    variant="danger-ghost"
+                    variant="ghost"
+                    status="danger"
                     size="sm"
                     @click="deleteRecord(record)"
                   >

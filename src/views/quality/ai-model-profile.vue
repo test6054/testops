@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 / AI 能力 - 模型可靠性台
  *
@@ -12,14 +13,13 @@
  *   语义存在，不参与模型选择。
  */
 import type { AiModelProfileSavePayload, AiModelProfileVO } from '@/apis/quality'
-import { aiModelProfileApi } from '@/apis/quality'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { computed, onMounted, reactive, ref } from 'vue'
-import type { ColumnsType } from 'ant-design-vue/es/table'
+import { aiModelProfileApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 
 const columns: ColumnsType = [
   { title: '名称', dataIndex: 'profileName', key: 'profileName' },
@@ -399,7 +399,8 @@ onMounted(loadList)
               </UiButton>
               <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
               <UiButton
-                variant="danger-ghost"
+                variant="ghost"
+                status="danger"
                 size="sm"
                 :disabled="!record.enabled"
                 @click="handleDisable(record)"

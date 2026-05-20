@@ -72,4 +72,13 @@ export const constantRoutes: RouteRecordRaw[] = [
       requiresAuth: false,
     },
   },
+  {
+    path: '/survey/:token',
+    name: 'PublicSurvey',
+    component: () => import('@/views/public/survey-fill.vue'),
+    meta: {
+      title: '问卷填写',
+      requiresAuth: false,
+    },
+  },
 ]

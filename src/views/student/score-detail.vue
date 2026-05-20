@@ -241,18 +241,7 @@
 
 <script lang="ts" setup>
 import type { StudentQuestionScoreVO, StudentScoreDetailVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  getMyScoreDetail,
-} from '@/apis/mark/student-exam'
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
-import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-  getLatestStudentLearningProfile,
-} from '@/apis/mark/teaching-analysis'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
@@ -260,6 +249,17 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  getMyScoreDetail,
+} from '@/apis/mark/student-exam'
+import {
+  AI_ANALYSIS_STATUS_COLOR,
+  AI_ANALYSIS_STATUS_LABEL,
+  getLatestStudentLearningProfile,
+} from '@/apis/mark/teaching-analysis'
 import {
   UiAlertStrip,
   UiBadge,
@@ -325,9 +325,7 @@ const questionColumns = computed(() => {
 
 const correctCount = computed(() => (detail.value?.questions ?? []).filter(isFullMark).length)
 const partialCount = computed(
-  () =>
-    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q))
-      .length,
+  () => (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q)).length,
 )
 const zeroCount = computed(() => (detail.value?.questions ?? []).filter(isZero).length)
 

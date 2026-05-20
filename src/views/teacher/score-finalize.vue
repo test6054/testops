@@ -282,20 +282,23 @@
           </a-spin>
         </div>
       </a-spin>
-      <template #extra>
-        <UiButton
-          v-if="
-            detailCandidate?.paperInstanceId && detailCandidate?.finalScoreStatus === 'PUBLISHED'
-          "
-          variant="outline"
-          size="sm"
-          @click="handleDeanonymize"
-        >
-          <template #icon>
-            <EyeOutlined />
-          </template>
-          解匿名查看
-        </UiButton>
+      <template #header>
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <h3 class="ui-drawer__title">试卷成绩明细</h3>
+          <UiButton
+            v-if="
+              detailCandidate?.paperInstanceId && detailCandidate?.finalScoreStatus === 'PUBLISHED'
+            "
+            variant="outline"
+            size="sm"
+            @click="handleDeanonymize"
+          >
+            <template #icon>
+              <EyeOutlined />
+            </template>
+            解匿名查看
+          </UiButton>
+        </div>
       </template>
     </UiDrawer>
 
@@ -570,11 +573,6 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handleTableChange(pag: TablePaginationConfig): void {
-  pagination.current = pag.current ?? 1
-  pagination.pageSize = pag.pageSize ?? 20
-  void loadCandidates()
-}
 
 // ─── 状态机按钮可用性 ─────────────────────────────
 function canConfirm(record: ExamScoreSummaryItemVO): boolean {
@@ -926,20 +924,21 @@ async function loadHistoricalScores(): Promise<void> {
         })
         const item = result.list?.[0]
         if (!item || item.finalScore == null) return null
-        return {
+        const point: HistoricalScorePoint = {
           examId: exam.examId,
           examName: exam.examName,
           examEndTime: exam.examEndTime,
-          finalScore: item.finalScore,
+          finalScore: item.finalScore!,
           isCurrent: exam.examId === selectedExamId.value,
-        } satisfies HistoricalScorePoint
+        }
+        return point
       } catch {
         return null
       }
     }))
     historicalScores.value = settled
       .filter((p): p is HistoricalScorePoint => p !== null)
-      .sort((a, b) => {
+      .sort((a: HistoricalScorePoint, b: HistoricalScorePoint) => {
         const ta = a.examEndTime ? dayjs(a.examEndTime).valueOf() : 0
         const tb = b.examEndTime ? dayjs(b.examEndTime).valueOf() : 0
         return ta - tb

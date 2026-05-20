@@ -196,7 +196,7 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: 'cell-click', payload: { row: MatrixRow; col: MatrixCol; cell: MatrixCell | undefined }): void
+  (e: 'cell-click', payload: { row: MatrixRow, col: MatrixCol, cell: MatrixCell | undefined }): void
   (e: 'row-click', row: MatrixRow): void
 }>()
 

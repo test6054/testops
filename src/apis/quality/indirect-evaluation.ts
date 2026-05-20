@@ -28,6 +28,16 @@ export interface IndirectEvaluationFormVO {
   description?: string
   expectedSample?: number
   enabled: boolean
+  status?: string
+  accessToken?: string
+  startTime?: string
+  endTime?: string
+  accessMode?: string
+  allowAnonymous?: boolean
+  requireIdentityFields?: string
+  maxSubmissionsPerRespondent?: number
+  welcomeMessage?: string
+  thankYouMessage?: string
   createTime?: string
   updateTime?: string
 }
@@ -63,6 +73,12 @@ export interface IndirectEvaluationItemVO {
   scaleRuleId?: string
   weight?: number
   sortOrder?: number
+  itemType?: string
+  scaleMin?: number
+  scaleMax?: number
+  scaleLabels?: string
+  choiceOptions?: string
+  required?: boolean
   createTime?: string
   updateTime?: string
 }
@@ -77,6 +93,12 @@ export interface IndirectEvaluationItemSavePayload {
   scaleRuleId?: string
   weight?: number
   sortOrder?: number
+  itemType?: string
+  scaleMin?: number
+  scaleMax?: number
+  scaleLabels?: string
+  choiceOptions?: string
+  required?: boolean
 }
 
 export interface IndirectEvaluationResponseVO {
@@ -91,6 +113,10 @@ export interface IndirectEvaluationResponseVO {
   validFlag?: boolean
   invalidReason?: string
   receivedAt?: string
+  submissionId?: string
+  respondentName?: string
+  respondentContact?: string
+  submittedAt?: string
   createTime?: string
   updateTime?: string
 }
@@ -109,6 +135,50 @@ export interface IndirectEvaluationResponseSavePayload {
   receivedAt?: string
 }
 
+export interface IndirectEvaluationFormPublishPayload {
+  id: string
+  startTime: string
+  endTime: string
+  accessMode?: string
+  allowAnonymous?: boolean
+  requireIdentityFields?: string
+  maxSubmissionsPerRespondent?: number
+  welcomeMessage?: string
+  thankYouMessage?: string
+}
+
+export interface IndirectEvaluationProgressVO {
+  formId: string
+  formName: string
+  status: string
+  submissionCount: number
+  expectedSample?: number
+  completionRate?: number
+  startTime?: string
+  endTime?: string
+}
+
+export interface IndirectEvaluationStatisticsVO {
+  overallSampleCount: number
+  overallScore?: number
+  items: IndirectEvaluationItemStatistics[]
+}
+
+export interface IndirectEvaluationItemStatistics {
+  itemId: string
+  itemCode: string
+  itemText: string
+  targetType: string
+  targetId: string
+  sampleCount: number
+  validCount: number
+  mean?: number
+  median?: number
+  stdDev?: number
+  distribution?: Record<string, number>
+  convertedScore?: number
+}
+
 export const indirectFormApi = {
   page: (data: IndirectEvaluationFormQueryPayload) =>
     http.post<PageResult<IndirectEvaluationFormVO>>(`${FORM}/page`, data),
@@ -120,6 +190,14 @@ export const indirectFormApi = {
     http.post<void>(`${FORM}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${FORM}/delete`, { id }),
+  publish: (data: IndirectEvaluationFormPublishPayload) =>
+    http.post<{ accessToken: string; publicUrl: string }>(`${FORM}/publish`, data),
+  close: (id: string) =>
+    http.post<void>(`${FORM}/close`, { id }),
+  progress: (id: string) =>
+    http.post<IndirectEvaluationProgressVO>(`${FORM}/progress`, { id }),
+  statistics: (id: string) =>
+    http.post<IndirectEvaluationStatisticsVO>(`${FORM}/statistics`, { id }),
 }
 
 export const indirectItemApi = {
@@ -156,4 +234,24 @@ export const indirectResponseApi = {
   /** 统计某题项的有效样本数（用于覆盖率计算） */
   countValidByItem: (itemId: string) =>
     http.post<number>(`${RESPONSE}/count-valid-by-item`, { id: itemId }),
+  /** Excel 批量导入答卷 */
+  importExcel: (formId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('formId', formId)
+    formData.append('file', file)
+    return http.post<IndirectResponseImportResult>(`${RESPONSE}/import-excel`, formData)
+  },
+}
+
+export interface IndirectResponseImportResult {
+  totalRows: number
+  successCount: number
+  skippedCount: number
+  errors: IndirectResponseImportRowError[]
+}
+
+export interface IndirectResponseImportRowError {
+  rowIndex: number
+  itemCode: string
+  errorMessage: string
 }

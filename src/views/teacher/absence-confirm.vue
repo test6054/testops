@@ -517,8 +517,8 @@ async function handleRevoke(): Promise<void> {
 
 // ─── 事件处理 ─────────────────────────────────
 
-async function handleExamChange(value: unknown): Promise<void> {
-  onExamChange(value as string | number | undefined)
+async function handleExamChange(value: unknown, option: unknown): Promise<void> {
+  onExamChange(value as never, option as never)
   reconcileVO.value = null
   records.value = []
   candidates.value = []

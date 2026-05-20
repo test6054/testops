@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 持续改进与审核闭环工作台（4-in-1）
  *
@@ -38,6 +39,9 @@ import type {
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -56,11 +60,6 @@ import {
   isAuditSupervisionType,
   isImprovementTaskStatus,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useAiTaskStore } from '@/stores/modules/aiTask'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,
@@ -74,9 +73,10 @@ import {
   TeacherSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { promptModal } from './_helpers'
 
@@ -234,7 +234,7 @@ async function loadImprovementList() {
   }
 }
 
-function handleImprovementPageChange(payload: { current: number; pageSize: number }) {
+function handleImprovementPageChange(payload: { current: number, pageSize: number }) {
   improvementQuery.pageNum = payload.current
   improvementQuery.pageSize = payload.pageSize
   loadImprovementList()
@@ -494,7 +494,7 @@ async function loadIssueList() {
   }
 }
 
-function handleIssuePageChange(payload: { current: number; pageSize: number }) {
+function handleIssuePageChange(payload: { current: number, pageSize: number }) {
   issueQuery.pageNum = payload.current
   issueQuery.pageSize = payload.pageSize
   loadIssueList()
@@ -561,10 +561,10 @@ function openIssueEdit(record: AuditIssueVO) {
 
 async function submitIssueEditor() {
   if (
-    !issueEditor.issueCode.trim() ||
-    !issueEditor.issueTitle.trim() ||
-    !issueEditor.issueSource ||
-    !issueEditor.severity
+    !issueEditor.issueCode.trim()
+    || !issueEditor.issueTitle.trim()
+    || !issueEditor.issueSource
+    || !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -679,7 +679,7 @@ async function loadRectList() {
   }
 }
 
-function handleRectPageChange(payload: { current: number; pageSize: number }) {
+function handleRectPageChange(payload: { current: number, pageSize: number }) {
   rectQuery.pageNum = payload.current
   rectQuery.pageSize = payload.pageSize
   loadRectList()
@@ -726,11 +726,11 @@ function openRectEdit(record: AuditRectificationVO) {
 
 async function submitRectEditor() {
   if (
-    !rectEditor.auditIssueId ||
-    !rectEditor.rectificationCode.trim() ||
-    !rectEditor.rectificationTitle.trim() ||
-    !rectEditor.ownerUserId ||
-    !rectEditor.dueDate
+    !rectEditor.auditIssueId
+    || !rectEditor.rectificationCode.trim()
+    || !rectEditor.rectificationTitle.trim()
+    || !rectEditor.ownerUserId
+    || !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -878,7 +878,7 @@ async function loadSupList() {
   }
 }
 
-function handleSupPageChange(payload: { current: number; pageSize: number }) {
+function handleSupPageChange(payload: { current: number, pageSize: number }) {
   supQuery.pageNum = payload.current
   supQuery.pageSize = payload.pageSize
   loadSupList()
@@ -943,9 +943,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim() ||
-    !supEditor.supervisionTitle.trim() ||
-    !supEditor.supervisionType
+    !supEditor.supervisionCode.trim()
+    || !supEditor.supervisionTitle.trim()
+    || !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return
@@ -1124,9 +1124,9 @@ onMounted(async () => {
         <div class="iwb__context-actions">
           <span class="iwb__context-meta">
             培养方案：
-            <span v-if="qualityStore.currentTrainingPlan" class="iwb__context-strong">
-              {{ qualityStore.currentTrainingPlan.planCode }} ·
-              {{ qualityStore.currentTrainingPlan.planName }}
+            <span v-if="qualityStore.currentPlan" class="iwb__context-strong">
+              {{ qualityStore.currentPlan.planCode }} ·
+              {{ qualityStore.currentPlan.planName }}
             </span>
             <span v-else class="iwb__context-muted">未选择</span>
           </span>
@@ -1205,10 +1205,10 @@ onMounted(async () => {
             <template #bodyCell="{ column, record, text }">
               <template
                 v-if="
-                  column.key === 'qualityCourseId' ||
-                  column.key === 'ownerUserId' ||
-                  column.key === 'ownerRole' ||
-                  column.key === 'dueDate'
+                  column.key === 'qualityCourseId'
+                    || column.key === 'ownerUserId'
+                    || column.key === 'ownerRole'
+                    || column.key === 'dueDate'
                 "
               >
                 {{ text || '-' }}
@@ -1234,7 +1234,8 @@ onMounted(async () => {
                   <UiButton
                     v-for="to in nextImprovementStatuses(record.status)"
                     :key="to"
-                    :variant="to === 'RETURNED' ? 'danger-ghost' : 'outline'"
+                    :variant="to === 'RETURNED' ? 'ghost' : 'outline'"
+                    :status="to === 'RETURNED' ? 'danger' : 'normal'"
                     size="sm"
                     @click="handleImprovementTransit(record, to)"
                   >
@@ -1248,7 +1249,8 @@ onMounted(async () => {
                     AI 建议
                   </UiButton>
                   <UiButton
-                    variant="danger-ghost"
+                    variant="ghost"
+                    status="danger"
                     size="sm"
                     @click="handleImprovementDelete(record)"
                   >
@@ -1361,7 +1363,7 @@ onMounted(async () => {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <UiButton variant="danger-ghost" size="sm" @click="handleIssueDelete(record)">
+                  <UiButton variant="ghost" status="danger" size="sm" @click="handleIssueDelete(record)">
                     删除
                   </UiButton>
                 </a-space>
@@ -1478,7 +1480,8 @@ onMounted(async () => {
                   </UiButton>
                   <UiButton
                     v-if="record.status === 'SUBMITTED'"
-                    variant="danger-ghost"
+                    variant="ghost"
+                    status="danger"
                     size="sm"
                     @click="verifyRect(record, 'REJECTED')"
                   >
@@ -1492,7 +1495,7 @@ onMounted(async () => {
                   >
                     闭环
                   </UiButton>
-                  <UiButton variant="danger-ghost" size="sm" @click="handleRectDelete(record)">
+                  <UiButton variant="ghost" status="danger" size="sm" @click="handleRectDelete(record)">
                     删除
                   </UiButton>
                 </a-space>
@@ -1575,7 +1578,7 @@ onMounted(async () => {
               <template v-else-if="column.key === 'actions'">
                 <a-space>
                   <UiButton variant="ghost" size="sm" @click="openSupEdit(record)"> 编辑 </UiButton>
-                  <UiButton variant="danger-ghost" size="sm" @click="handleSupDelete(record)">
+                  <UiButton variant="ghost" status="danger" size="sm" @click="handleSupDelete(record)">
                     删除
                   </UiButton>
                 </a-space>

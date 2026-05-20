@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { computed } from 'vue'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ApartmentOutlined from '@ant-design/icons-vue/ApartmentOutlined'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
@@ -79,6 +78,7 @@ import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
+import { computed } from 'vue'
 
 const props = defineProps<{ icon?: string }>()
 
@@ -166,17 +166,17 @@ const ICON_COMPONENTS: Record<string, Component> = {
 // 菜单图标集合来自路由配置；新增图标时同步补充映射即可。
 const ICON_ALIASES: Record<string, string> = {
   'user-group': 'TeamOutlined',
-  apps: 'AppstoreOutlined',
-  list: 'UnorderedListOutlined',
-  IconBarChart: 'BarChartOutlined',
-  IconCloud: 'CloudOutlined',
-  IconFile: 'FileOutlined',
-  IconList: 'UnorderedListOutlined',
-  IconStar: 'StarOutlined',
-  settings: 'SettingOutlined',
-  setting: 'SettingOutlined',
-  notification: 'BellOutlined',
-  bookmark: 'BookOutlined',
+  "apps": 'AppstoreOutlined',
+  "list": 'UnorderedListOutlined',
+  "IconBarChart": 'BarChartOutlined',
+  "IconCloud": 'CloudOutlined',
+  "IconFile": 'FileOutlined',
+  "IconList": 'UnorderedListOutlined',
+  "IconStar": 'StarOutlined',
+  "settings": 'SettingOutlined',
+  "setting": 'SettingOutlined',
+  "notification": 'BellOutlined',
+  "bookmark": 'BookOutlined',
 }
 
 /**

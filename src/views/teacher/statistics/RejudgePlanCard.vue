@@ -81,7 +81,6 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { ref, watch } from 'vue'
-import { UiDataTable } from '@/components/ui-guide/ui'
 import {
   approveRejudgePlan,
   listRejudgePlans,
@@ -89,6 +88,7 @@ import {
   REJUDGE_PLAN_STATUS_LABEL,
   REJUDGE_TRIGGER_TYPE_LABEL,
 } from '@/apis/mark/question-analysis'
+import { UiDataTable } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'RejudgePlanCard' })
 

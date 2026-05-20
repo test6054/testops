@@ -1,0 +1,189 @@
+/**
+ * 公开问卷填写共享逻辑。
+ * 供移动端（一题一页）和 PC 端（全页展示）共用。
+ */
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { message } from 'ant-design-vue'
+import { publicSurveyApi } from '@/apis/public-survey'
+import type { PublicSurveyVO, PublicSurveyItemVO } from '@/apis/public-survey'
+
+export function useSurveyFill() {
+  const route = useRoute()
+  const token = route.params.token as string
+
+  const loading = ref(true)
+  const errorMessage = ref('')
+  const survey = ref<PublicSurveyVO | null>(null)
+  const submitted = ref(false)
+  const submitting = ref(false)
+  const thankYouMessage = ref('感谢您的参与！')
+
+  const formState = reactive({
+    respondentName: '',
+    respondentContact: '',
+  })
+
+  const answers = reactive<Record<string, string>>({})
+  const multiAnswers = reactive<Record<string, string[]>>({})
+  const openTexts = reactive<Record<string, string>>({})
+
+  const totalCount = computed(() => survey.value?.items.length ?? 0)
+
+  const answeredCount = computed(() => {
+    if (!survey.value) return 0
+    let count = 0
+    for (const item of survey.value.items) {
+      if (isItemAnswered(item)) count++
+    }
+    return count
+  })
+
+  const progressPercent = computed(() => {
+    if (totalCount.value === 0) return 0
+    return Math.round((answeredCount.value / totalCount.value) * 100)
+  })
+
+  function isItemAnswered(item: PublicSurveyItemVO): boolean {
+    if (item.itemType === 'SCALE' || item.itemType === 'SINGLE_CHOICE') {
+      return !!answers[item.id]
+    }
+    if (item.itemType === 'MULTI_CHOICE') {
+      return !!(multiAnswers[item.id] && multiAnswers[item.id].length > 0)
+    }
+    if (item.itemType === 'OPEN_TEXT') {
+      return !!(openTexts[item.id] && openTexts[item.id].trim())
+    }
+    return false
+  }
+
+  function getScaleOptions(item: PublicSurveyItemVO) {
+    const min = item.scaleMin ?? 1
+    const max = item.scaleMax ?? 5
+    let labels: string[] = []
+    if (item.scaleLabels) {
+      try {
+        labels = JSON.parse(item.scaleLabels)
+      } catch {
+        labels = []
+      }
+    }
+    const options = []
+    for (let i = min; i <= max; i++) {
+      const labelIndex = i - min
+      options.push({
+        value: i,
+        label: labels[labelIndex] || '',
+      })
+    }
+    return options
+  }
+
+  function parseOptions(optionsJson?: string): string[] {
+    if (!optionsJson) return []
+    try {
+      return JSON.parse(optionsJson)
+    } catch {
+      return []
+    }
+  }
+
+  function findFirstUnansweredRequired(): number {
+    if (!survey.value) return -1
+    for (let i = 0; i < survey.value.items.length; i++) {
+      const item = survey.value.items[i]
+      if (item.required && !isItemAnswered(item)) {
+        return i
+      }
+    }
+    return -1
+  }
+
+  function buildAnswerList() {
+    if (!survey.value) return []
+    return survey.value.items
+      .map((item) => {
+        let rawValue: string | undefined
+        let openText: string | undefined
+
+        if (item.itemType === 'SCALE' || item.itemType === 'SINGLE_CHOICE') {
+          rawValue = answers[item.id]
+        } else if (item.itemType === 'MULTI_CHOICE') {
+          const selected = multiAnswers[item.id]
+          rawValue = selected && selected.length > 0 ? JSON.stringify(selected) : undefined
+        } else if (item.itemType === 'OPEN_TEXT') {
+          openText = openTexts[item.id]
+        }
+
+        return { itemId: item.id, rawValue, openText }
+      })
+      .filter((a) => a.rawValue || a.openText)
+  }
+
+  async function loadSurvey() {
+    loading.value = true
+    try {
+      const res = await publicSurveyApi.getSurvey(token)
+      survey.value = res
+    } catch (err: unknown) {
+      const e = err as { message?: string }
+      errorMessage.value = e.message || '问卷加载失败'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function submitSurvey(): Promise<boolean> {
+    if (!survey.value) return false
+
+    const unansweredIdx = findFirstUnansweredRequired()
+    if (unansweredIdx >= 0) {
+      message.warning(`请完成第 ${unansweredIdx + 1} 题（必填）`)
+      return false
+    }
+
+    submitting.value = true
+    try {
+      const result = await publicSurveyApi.submit(token, {
+        respondentName: formState.respondentName || undefined,
+        respondentContact: formState.respondentContact || undefined,
+        answers: buildAnswerList(),
+      })
+      thankYouMessage.value = result || '感谢您的参与！'
+      submitted.value = true
+      return true
+    } catch (err: unknown) {
+      const e = err as { message?: string }
+      message.error(e.message || '提交失败，请重试')
+      return false
+    } finally {
+      submitting.value = false
+    }
+  }
+
+  onMounted(() => {
+    loadSurvey()
+  })
+
+  return {
+    token,
+    loading,
+    errorMessage,
+    survey,
+    submitted,
+    submitting,
+    thankYouMessage,
+    formState,
+    answers,
+    multiAnswers,
+    openTexts,
+    totalCount,
+    answeredCount,
+    progressPercent,
+    isItemAnswered,
+    getScaleOptions,
+    parseOptions,
+    findFirstUnansweredRequired,
+    submitSurvey,
+  }
+}

@@ -21,9 +21,9 @@ import type {
   ExamStatusCode,
   ExamSummaryVO,
 } from '@/apis/mark/exam'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 
 export const useMarkExamContextStore = defineStore(
   'markExamContext',

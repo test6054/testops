@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 / AI 能力 - AI 脱敏映射审计台
  *
@@ -11,6 +12,9 @@
  *  - 从 AI 任务详情抽屉点击「查看脱敏审计」跳转，自动加载（query.aiTaskId）
  */
 import type { AiMaskMappingRevealVO, AiMaskMappingVO, AiTaskVO } from '@/apis/quality'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
@@ -20,13 +24,9 @@ import {
   isAiTaskStatus,
   isAiTaskType,
 } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 
 /* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
 
@@ -88,7 +88,7 @@ async function loadMapping() {
     taskVO.value = task
     mappingVO.value = mapping
     if (!mapping) message.info('该 AI 任务尚未生成脱敏映射')
-    if (route.query.aiTaskId !== id) router.replace({ query: { ...route.query, aiTaskId: id } })
+    if (route.query.aiTaskId !== id) void router.replace({ query: { ...route.query, aiTaskId: id } })
   } finally {
     loading.value = false
   }
@@ -200,7 +200,7 @@ onMounted(() => {
         <div class="ai-mask__panel-actions">
           <UiButton
             v-if="!revealVO"
-            variant="danger"
+            variant="destructive"
             size="sm"
             :loading="revealLoading"
             @click="confirmReveal"

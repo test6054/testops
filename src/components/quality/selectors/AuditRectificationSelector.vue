@@ -6,13 +6,13 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditRectificationStatus, AuditRectificationVO } from '@/apis/quality'
+import { message } from 'ant-design-vue'
+import { onMounted, ref, watch } from 'vue'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
   auditRectificationApi,
 } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 
 interface Props {
   value?: string | null
@@ -34,7 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: AuditRectificationVO]
+  "change": [value: string | null, option?: AuditRectificationVO]
 }>()
 
 const options = ref<AuditRectificationVO[]>([])

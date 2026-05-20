@@ -1,7 +1,8 @@
+import type { ReviewTaskItemVO, ReviewTaskQueryPayload } from '@/apis/mark/exam'
 /**
  * 阅卷任务 Store
  *
- * 业务边界：跨阅卷主链页面共享当前用户在指定考试下的阅卷任务、复核任务与进度概览。
+ * 业务边界：跨阅卷主链页面共享当前用户在指定考试下的阅卷任务与复核任务。
  *
  * 后端契约：
  * - POST /api/mark/organization/task/list           — 阅卷任务列表
@@ -9,12 +10,10 @@
  * - POST /api/mark/organization/task/claim-context  — 教师领取上下文（活跃题组 + 当前正评会话）
  * - POST /api/mark/exams/review-tasks               — 匿名批阅 / 复核任务列表
  * - POST /api/mark/exams/review-tasks/claim         — 复核任务领取
- * - POST /api/mark/exams/marking-progress           — 阅卷进度概览
  *
  * 数据范围：
  * - tasks 仅当前用户在 examId+sessionId+groupId 的任务（按业务页面参数加载）
  * - reviewTasks 仅当前用户的复核队列
- * - progressByExam 多场考试的进度概览缓存（Map<examId, MarkingProgressVO>）
  *
  * 不持久化：任务状态对实时性敏感，每次进入页面需重新拉取。
  */
@@ -25,15 +24,14 @@ import type {
   TeacherClaimContextQueryPayload,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import {
   claimMarkingTasks,
   getTeacherClaimContext,
   listMarkingTasks,
 } from '@/apis/mark/marking-organization'
-import type { MarkingProgressVO, ReviewTaskItemVO, ReviewTaskQueryPayload } from '@/apis/mark/exam'
-import { claimReviewTask, getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
@@ -50,22 +48,18 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   const claimContextByExam = ref<Map<string, TeacherClaimContextVO>>(new Map())
   const claimContextLoading = ref(false)
 
-  /** 阅卷进度概览：按 examId 缓存 */
-  const progressByExam = ref<Map<string, MarkingProgressVO>>(new Map())
-  const progressLoading = ref(false)
-
   /* ---------- Computed ---------- */
 
   const inProgressTasks = computed(() =>
-    tasks.value.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ALLOCATED'),
+    tasks.value.filter((t) => t.taskStatus === 'IN_PROGRESS' || t.taskStatus === 'ALLOCATED'),
   )
 
   const submittedTasks = computed(() =>
-    tasks.value.filter((t) => t.status === 'SUBMITTED' || t.status === 'FINALIZED'),
+    tasks.value.filter((t) => t.taskStatus === 'SUBMITTED' || t.taskStatus === 'FINALIZED'),
   )
 
   const pendingReviewTasks = computed(() =>
-    reviewTasks.value.filter((t) => t.taskStatus === 'PENDING' || t.taskStatus === 'IN_PROGRESS'),
+    reviewTasks.value.filter((t) => t.status === 'PENDING' || t.status === 'IN_PROGRESS'),
   )
 
   /* ---------- Actions ---------- */
@@ -129,38 +123,10 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     }
   }
 
-  async function loadProgress(examId: string): Promise<MarkingProgressVO> {
-    progressLoading.value = true
-    try {
-      const result = await getMarkingProgress(examId)
-      const next = new Map(progressByExam.value)
-      next.set(examId, result)
-      progressByExam.value = next
-      return result
-    } finally {
-      progressLoading.value = false
-    }
-  }
-
-  function getProgress(examId: string): MarkingProgressVO | null {
-    return progressByExam.value.get(examId) ?? null
-  }
-
-  function clearTasks(): void {
-    tasks.value = []
-    tasksLoadedExamId.value = ''
-  }
-
-  function clearReviewTasks(): void {
-    reviewTasks.value = []
-    reviewLoadedExamId.value = ''
-  }
-
   function reset(): void {
     tasks.value = []
     reviewTasks.value = []
     claimContextByExam.value = new Map()
-    progressByExam.value = new Map()
     tasksLoadedExamId.value = ''
     reviewLoadedExamId.value = ''
   }
@@ -175,8 +141,6 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     reviewLoadedExamId,
     claimContextByExam,
     claimContextLoading,
-    progressByExam,
-    progressLoading,
 
     // computed
     inProgressTasks,
@@ -190,10 +154,6 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     getClaimContext,
     loadReviewTasks,
     claimReviewTaskAction,
-    loadProgress,
-    getProgress,
-    clearTasks,
-    clearReviewTasks,
     reset,
   }
 })

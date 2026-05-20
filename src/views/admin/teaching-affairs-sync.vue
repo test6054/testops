@@ -285,7 +285,7 @@
         <a-textarea
           v-model:value="createForm.syncConfig"
           :rows="4"
-          placeholder='{"endpoint":"https://sis.school/api","apiKey":"xxx"}'
+          placeholder="{&quot;endpoint&quot;:&quot;https://sis.school/api&quot;,&quot;apiKey&quot;:&quot;xxx&quot;}"
         />
       </a-form-item>
     </a-form>
@@ -327,9 +327,7 @@
         {{ detailTask.lastSyncTime ?? '-' }}
       </a-descriptions-item>
       <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-        <span class="error-text"
-          >[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span
-        >
+        <span class="error-text">[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span>
       </a-descriptions-item>
       <a-descriptions-item label="操作" :span="1">
         <a-space>
@@ -352,7 +350,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type {
   ExternalSystemTypeCode,
   PassbackRecordVO,
@@ -362,6 +359,16 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { pageExams } from '@/apis/mark/exam'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -379,15 +386,6 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
@@ -399,7 +397,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 const loading = ref(false)
 

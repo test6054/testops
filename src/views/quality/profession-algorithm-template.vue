@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 专业算法模板配置
  *
@@ -12,18 +13,17 @@ import type {
   ProfessionAlgorithmTemplateSavePayload,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref } from 'vue'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'templateCode', key: 'templateCode', width: 120 },
@@ -177,7 +177,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -408,9 +408,9 @@ onMounted(async () => {
               </a-tooltip>
               <UiButton v-else variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
               <a-tooltip v-if="isSharedTemplate(record)" title="平台共享模板不能在租户侧删除">
-                <UiButton variant="danger-ghost" size="sm" disabled> 删除 </UiButton>
+                <UiButton variant="ghost" status="danger" size="sm" disabled> 删除 </UiButton>
               </a-tooltip>
-              <UiButton v-else variant="danger-ghost" size="sm" @click="handleDelete(record)">
+              <UiButton v-else variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                 删除
               </UiButton>
             </a-space>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 培养方案体系工作台 - 4-in-1 综合工作台
  *
@@ -43,6 +44,10 @@ import type {
   TrainingPlanSavePayload,
   TrainingPlanVO,
 } from '@/apis/quality'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   accreditationStandardApi,
   AGGREGATION_FUNCTION_LABEL,
@@ -55,17 +60,12 @@ import {
   trainingObjectiveRequirementApi,
   trainingPlanApi,
 } from '@/apis/quality'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const objectiveColumns: ColumnsType = [
@@ -141,8 +141,8 @@ async function loadObjectives() {
   }
   objectivesLoading.value = true
   try {
-    objectives.value =
-      (await trainingObjectiveApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
+    objectives.value
+      = (await trainingObjectiveApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
     if (selectedObjective.value) {
       const matched = objectives.value.find((o) => o.id === selectedObjective.value!.id)
       selectedObjective.value = matched || objectives.value[0] || null
@@ -167,8 +167,8 @@ async function loadRequirements() {
   }
   requirementsLoading.value = true
   try {
-    requirements.value =
-      (await graduationRequirementApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
+    requirements.value
+      = (await graduationRequirementApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
     if (selectedRequirement.value) {
       const matched = requirements.value.find((r) => r.id === selectedRequirement.value!.id)
       selectedRequirement.value = matched || requirements.value[0] || null
@@ -199,11 +199,6 @@ async function loadAllIndicators() {
   }
 }
 
-const allIndicators = computed<RequirementIndicatorVO[]>(() => {
-  const acc: RequirementIndicatorVO[] = []
-  for (const list of indicatorsByReq.value.values()) acc.push(...list)
-  return acc
-})
 
 const indicatorsOfSelected = computed<RequirementIndicatorVO[]>(() => {
   if (!selectedRequirement.value) return []
@@ -222,8 +217,8 @@ async function loadObjectiveRequirementMappings() {
   }
   mappingLoading.value = true
   try {
-    objectiveRequirementMappings.value =
-      (await trainingObjectiveRequirementApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
+    objectiveRequirementMappings.value
+      = (await trainingObjectiveRequirementApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
   } finally {
     mappingLoading.value = false
   }
@@ -272,8 +267,8 @@ async function loadStandardMappings() {
   }
   standardMappingsLoading.value = true
   try {
-    standardMappings.value =
-      (await requirementStandardMappingApi.listByRequirement(selectedRequirement.value.id)) || []
+    standardMappings.value
+      = (await requirementStandardMappingApi.listByRequirement(selectedRequirement.value.id)) || []
   } finally {
     standardMappingsLoading.value = false
   }
@@ -458,10 +453,10 @@ function openPlanEdit() {
 
 async function submitPlan() {
   if (
-    !planEditor.programId.trim() ||
-    !planEditor.planCode.trim() ||
-    !planEditor.planName.trim() ||
-    !planEditor.schoolYear.trim()
+    !planEditor.programId.trim()
+    || !planEditor.planCode.trim()
+    || !planEditor.planName.trim()
+    || !planEditor.schoolYear.trim()
   ) {
     message.error('请填写专业 ID、方案编码、方案名称、入学学年')
     return
@@ -644,9 +639,9 @@ async function submitObjMapping() {
     return
   }
   if (
-    objMappingEditor.weight == null ||
-    objMappingEditor.weight < 0 ||
-    objMappingEditor.weight > 1
+    objMappingEditor.weight == null
+    || objMappingEditor.weight < 0
+    || objMappingEditor.weight > 1
   ) {
     message.error('权重必须在 0~1 之间')
     return
@@ -823,9 +818,9 @@ async function submitIndicator() {
     return
   }
   if (
-    indicatorEditor.requirementWeight == null ||
-    indicatorEditor.requirementWeight <= 0 ||
-    indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null
+    || indicatorEditor.requirementWeight <= 0
+    || indicatorEditor.requirementWeight > 1
   ) {
     message.error('观测点权重必须在 (0, 1] 之间')
     return
@@ -1034,7 +1029,7 @@ function joinCsv(values: string[]): string {
           >
             提交确认
           </UiButton>
-          <UiButton variant="danger-ghost" size="sm" :disabled="!currentPlan" @click="deletePlan">
+          <UiButton variant="ghost" status="danger" size="sm" :disabled="!currentPlan" @click="deletePlan">
             删除方案
           </UiButton>
         </div>
@@ -1097,7 +1092,6 @@ function joinCsv(values: string[]): string {
                     style: 'cursor: pointer',
                   })
                 "
-                size="middle"
                 :show-pagination="false"
                 flat
                 :total="objectives.length"
@@ -1220,11 +1214,12 @@ function joinCsv(values: string[]): string {
                 if (payload.cell) {
                   const m = objectiveRequirementMappings.find(
                     (x) =>
-                      x.trainingObjectiveId === payload.row.key &&
-                      x.graduationRequirementId === payload.col.key,
+                      x.trainingObjectiveId === payload.row.key
+                      && x.graduationRequirementId === payload.col.key,
                   )
                   if (m) openObjMappingEdit(m)
-                } else {
+                }
+                else {
                   objMappingEditorMode = 'create'
                   objMappingEditingId = undefined
                   Object.assign(objMappingEditor, {
@@ -1273,7 +1268,6 @@ function joinCsv(values: string[]): string {
                     style: 'cursor: pointer',
                   })
                 "
-                size="middle"
                 :show-pagination="false"
                 flat
                 :total="requirements.length"
@@ -1333,8 +1327,8 @@ function joinCsv(values: string[]): string {
                   <a-space>
                     <a-tag
                       :color="
-                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1) <
-                        WEIGHT_EPSILON
+                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1)
+                          < WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "
@@ -1661,7 +1655,7 @@ function joinCsv(values: string[]): string {
             :options="civicDimensionOptions"
             placeholder="德 智 体 美 劳 维度（如适用）"
             style="width: 100%"
-            @change="(val: string[]) => (requirementEditor.civicDimensions = joinCsv(val))"
+            @change="(_val: any) => (requirementEditor.civicDimensions = joinCsv(_val as string[]))"
           />
         </a-form-item>
       </a-form>
@@ -1731,7 +1725,7 @@ function joinCsv(values: string[]): string {
             :options="civicDimensionOptions"
             placeholder="可选"
             style="width: 100%"
-            @change="(val: string[]) => (indicatorEditor.civicDimensions = joinCsv(val))"
+            @change="(_val: any) => (indicatorEditor.civicDimensions = joinCsv(_val as string[]))"
           />
         </a-form-item>
       </a-form>

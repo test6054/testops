@@ -583,8 +583,8 @@ function ellipsis(text: string | undefined, len = 60): string {
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 
-function handleExamChange(value: unknown): void {
-  onExamChange(value as string | number | undefined)
+function handleExamChange(value: unknown, option: unknown): void {
+  onExamChange(value as never, option as never)
   signatures.value = []
   experiences.value = []
   latestCluster.value = null

@@ -7,9 +7,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
-import { courseCatalogApi } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
+import { courseCatalogApi } from '@/apis/quality/user-catalog'
 
 interface Props {
   value?: string | null
@@ -30,7 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: CourseListVO]
+  "change": [value: string | null, option?: CourseListVO]
 }>()
 
 const options = ref<CourseListVO[]>([])
@@ -52,8 +52,8 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    options.value =
-      (await courseCatalogApi.authorizedByMajorCategory(props.majorCategoryId || undefined)) || []
+    options.value
+      = (await courseCatalogApi.authorizedByMajorCategory(props.majorCategoryId || undefined)) || []
   } catch (e) {
     console.error('[CatalogCourseSelector] 加载课程目录失败', e)
     message.error('加载课程目录失败')

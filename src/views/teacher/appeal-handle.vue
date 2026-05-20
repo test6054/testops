@@ -35,7 +35,7 @@
       <!-- P2 顶部汇总信号：复核处理进度全景，避免教师在 4 张子卡片之间反复对比数字 -->
       <UiStatPanel
         :items="summaryMetrics"
-        :columns="6"
+        :columns="3"
         variant="grid"
         compact
         class="appeal-page__summary"
@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { UiStatItem } from '@/components/ui-guide/ui/types'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -105,7 +105,7 @@ const rejectedCount = ref(0)
 const correctedCount = ref(0)
 const correctionRecordCount = ref(0)
 
-const summaryMetrics = computed<UiStatItem[]>(() => [
+const summaryMetrics = computed<UiStatPanelItem[]>(() => [
   { key: 'pending', label: '待处理', value: pendingCount.value, tone: pendingCount.value > 0 ? 'orange' : 'gray' },
   { key: 'inReview', label: '处理中', value: inReviewCount.value, tone: 'blue' },
   { key: 'approved', label: '通过', value: approvedCount.value, tone: 'green' },

@@ -202,11 +202,6 @@ import type {
   IncidentRecordVO,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
-import {
-  INCIDENT_LEVEL_LABEL,
-  INCIDENT_LEVEL_TONE,
-  loadDashboardOverview,
-} from '@/apis/mark/admin-dashboard'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
@@ -217,6 +212,11 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  INCIDENT_LEVEL_LABEL,
+  INCIDENT_LEVEL_TONE,
+  loadDashboardOverview,
+} from '@/apis/mark/admin-dashboard'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'

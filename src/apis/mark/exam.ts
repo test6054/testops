@@ -417,6 +417,7 @@ export interface ScanAttentionQueryPayload {
 
 /** 扫描异常待办项 - 对应 ScanAttentionItemResponse */
 export interface ScanAttentionItemVO {
+  id: string
   attentionType?: string
   sourceType?: string
   sourceId?: string
@@ -511,20 +512,20 @@ export function createScanBatchByCondition(
 
 /** 按设备的事件分布片段 - 对应 ExamScannerBatchDeviceBreakdown */
 export interface ExamScannerBatchDeviceBreakdownVO {
-  scannerDeviceId?: string
-  scannerIp?: string
-  eventCount?: number
-  pageCount?: number
+  scannerDeviceId: string
+  scannerIp: string
+  eventCount: number
+  pageCount: number
 }
 
 /** 扫描批次聚合预览响应 - 对应 ExamScannerBatchPreviewResponse */
 export interface ExamScannerBatchPreviewVO {
-  eventCount?: number
-  fileCount?: number
-  pageCount?: number
+  eventCount: number
+  fileCount: number
+  pageCount: number
   scanStartTime?: string
   scanEndTime?: string
-  deviceBreakdown?: ExamScannerBatchDeviceBreakdownVO[]
+  deviceBreakdown: ExamScannerBatchDeviceBreakdownVO[]
 }
 
 /**

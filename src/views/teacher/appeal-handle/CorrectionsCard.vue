@@ -30,12 +30,16 @@
             {{ correctionStatusLabel(rows[index]) }}
           </a-tag>
         </template>
-        <template v-else-if="column.key === 'effectiveTime'">{{
-          fmt(rows[index].effectiveTime)
-        }}</template>
-        <template v-else-if="column.key === 'createTime'">{{
-          fmt(rows[index].createTime)
-        }}</template>
+        <template v-else-if="column.key === 'effectiveTime'">
+          {{
+            fmt(rows[index].effectiveTime)
+          }}
+        </template>
+        <template v-else-if="column.key === 'createTime'">
+          {{
+            fmt(rows[index].createTime)
+          }}
+        </template>
       </template>
     </UiDataTable>
 
@@ -101,6 +105,11 @@ import type {
   GradeCorrectionStatusCode,
   GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { reactive, ref, watch } from 'vue'
 import {
   createCorrection,
   GRADE_CORRECTION_STATUS_COLOR,
@@ -108,16 +117,11 @@ import {
   GRADE_CORRECTION_TYPE_LABEL,
   listCorrections,
 } from '@/apis/mark/grade-review'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { reactive, ref, watch } from 'vue'
 import { UiDataTable } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])

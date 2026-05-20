@@ -226,23 +226,13 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import type {
   ExportScopeCode,
   ExportTaskStatusCode,
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
-import {
-  createExportTask,
-  EXPORT_SCOPE_LABEL,
-  EXPORT_STATUS_LABEL,
-  EXPORT_STATUS_TONE,
-  EXPORT_TYPE_LABEL,
-  listExportTasks,
-} from '@/apis/mark/exam-export'
 import type { BadgeTone } from '@/components/ui-guide/ui'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -251,6 +241,16 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
+import { pageExams } from '@/apis/mark/exam'
+import {
+  createExportTask,
+  EXPORT_SCOPE_LABEL,
+  EXPORT_STATUS_LABEL,
+  EXPORT_STATUS_TONE,
+  EXPORT_TYPE_LABEL,
+  listExportTasks,
+} from '@/apis/mark/exam-export'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'ExamExportTasks' })
@@ -261,7 +261,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string; value: string }>>([])
+const examOptions = ref<Array<{ label: string, value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const tasks = ref<ExportTaskVO[]>([])
@@ -274,8 +274,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
-      (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value)
+      && (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 

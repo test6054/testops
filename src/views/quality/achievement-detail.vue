@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 达成度详情
  *
@@ -20,6 +21,10 @@ import type {
   AchievementTargetType,
   ManualReviewDecision,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -31,11 +36,6 @@ import {
   achievementDetailApi,
   achievementManualReviewApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { promptModal } from './_helpers'
@@ -60,7 +60,7 @@ const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
 const loading = ref(false)
-const reviewForm = reactive<{ decision: ManualReviewDecision; reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecision, reviewRemark: string }>({
   decision: 'CONFIRMED',
   reviewRemark: '',
 })
@@ -266,7 +266,8 @@ onMounted(loadAll)
           <UiButton
             v-for="to in nextStatuses"
             :key="to"
-            :variant="to === 'RETURNED' ? 'danger-ghost' : 'primary'"
+            :variant="to === 'RETURNED' ? 'ghost' : 'primary'"
+            :status="to === 'RETURNED' ? 'danger' : 'normal'"
             size="sm"
             @click="handleTransit(to)"
           >
@@ -359,10 +360,10 @@ onMounted(loadAll)
               </template>
               <template
                 v-else-if="
-                  column.key === 'weight' ||
-                  column.key === 'fullScore' ||
-                  column.key === 'averageScore' ||
-                  column.key === 'achievementValue'
+                  column.key === 'weight'
+                    || column.key === 'fullScore'
+                    || column.key === 'averageScore'
+                    || column.key === 'achievementValue'
                 "
               >
                 {{ text ?? '-' }}

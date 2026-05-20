@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import UiConfirmDialog from '@/components/ui-guide/ui/UiConfirmDialog.vue'
 /**
  * 全局确认对话框宿主：在 App.vue 顶层挂一次，配合 confirmAsync() 实现 imperative 调用 UiConfirmDialog。
  *
@@ -9,7 +10,6 @@ import {
   handleConfirmOk,
   useConfirmDialogState,
 } from '@/composables/useConfirmDialog'
-import UiConfirmDialog from '@/components/ui-guide/ui/UiConfirmDialog.vue'
 
 defineOptions({ name: 'GlobalConfirmDialog' })
 

@@ -142,12 +142,6 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode, StudentExamItemVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-} from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -156,6 +150,12 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+} from '@/apis/mark/student-exam'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
@@ -167,7 +167,7 @@ const exams = ref<StudentExamItemVO[]>([])
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
-const statusOptions: Array<{ value: FinalScoreStatusCode; label: string }> = [
+const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
   { value: 'PENDING', label: '待计算' },
   { value: 'CALCULATED', label: '已计算' },
   { value: 'CONFIRMED', label: '已确认' },

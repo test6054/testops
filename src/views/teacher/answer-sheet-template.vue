@@ -288,8 +288,8 @@ async function loadTemplate(): Promise<void> {
   }
 }
 
-function handleExamChange(value: unknown): void {
-  onExamChange(value as string | number | undefined)
+function handleExamChange(value: unknown, option: unknown): void {
+  onExamChange(value as never, option as never)
   if (selectedExamId.value) {
     void loadTemplate()
   } else {

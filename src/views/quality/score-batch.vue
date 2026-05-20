@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 /**
  * 质量评价 - 成绩 Excel 异步导入
@@ -20,6 +21,16 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   assessmentItemApi,
   isScoreBatchStatus,
@@ -28,17 +39,6 @@ import {
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -47,8 +47,8 @@ import {
   StageWorkbenchShell,
   TaskResultPanel,
 } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 
 const qualityStore = useQualityStore()
 
@@ -145,7 +145,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatus; title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatus, title: string }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PARSING', title: '解析中' },
     { key: 'PREVIEW_READY', title: '预览就绪' },
@@ -264,7 +264,7 @@ async function loadBatches() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadBatches()
@@ -549,7 +549,7 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+function handleBatchResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
   const record = batches.value.find((b) => b.id === payload.item.id)
   if (record && payload.action.key === 'preview') openPreview(record)
 }
@@ -809,9 +809,9 @@ onMounted(async () => {
           </template>
           <template
             v-else-if="
-              column.key === 'schoolYear' ||
-              column.key === 'semester' ||
-              column.key === 'createTime'
+              column.key === 'schoolYear'
+                || column.key === 'semester'
+                || column.key === 'createTime'
             "
           >
             {{ text || '-' }}
@@ -868,7 +868,8 @@ onMounted(async () => {
               </UiButton>
               <UiButton
                 v-if="canCancel(record.status)"
-                variant="danger-ghost"
+                variant="ghost"
+                status="danger"
                 size="sm"
                 @click="handleCancel(record)"
               >
@@ -876,7 +877,8 @@ onMounted(async () => {
               </UiButton>
               <UiButton
                 v-if="canDelete(record.status)"
-                variant="danger-ghost"
+                variant="ghost"
+                status="danger"
                 size="sm"
                 @click="handleDelete(record)"
               >

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 专业评价口径配置
  *
@@ -12,6 +13,10 @@ import type {
   ProgramEvaluationProfileSavePayload,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -20,15 +25,10 @@ import {
   isEvaluationMethod,
   programEvaluationProfileApi,
 } from '@/apis/quality'
-import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref } from 'vue'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 
 const columns: ColumnsType = [
   { title: '专业', dataIndex: 'programName', key: 'programName' },
@@ -127,8 +127,8 @@ const disabledCount = computed(() => list.value.filter((item) => !item.enabled).
 const signals = computed<SignalMetric[]>(() => {
   const engineering = list.value.filter(
     (item) =>
-      isAccreditationType(item.accreditationType) &&
-      item.accreditationType === 'ENGINEERING_ACCREDITATION',
+      isAccreditationType(item.accreditationType)
+      && item.accreditationType === 'ENGINEERING_ACCREDITATION',
   ).length
   return [
     { key: 'overall', label: '总口径', value: total.value, tone: 'gray' },
@@ -163,7 +163,7 @@ async function loadDicts() {
   programs.value = majors || []
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -316,7 +316,7 @@ onMounted(async () => {
           <template v-else-if="column.key === 'actions'">
             <a-space>
               <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                 删除
               </UiButton>
             </a-space>

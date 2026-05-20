@@ -575,7 +575,6 @@
         </a-form-item>
       </a-form>
     </a-modal>
-
   </StageWorkbenchShell>
 </template>
 
@@ -583,6 +582,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
+import { getAllClasses } from '@/apis/edu/class'
 import type {
   ExamScannerActivationCodeVO,
   ExamScannerDeviceCreatePayload,
@@ -596,14 +596,8 @@ import type {
   ScannerDeviceStatusCode,
   ScannerDuplexModeCode,
   ScannerEndpointOnlineStatusCode,
-  ScannerInterfaceModeCode,
+  ScannerInterfaceModeCode
 } from '@/apis/mark/exam-mark-scanner'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { getAllClasses } from '@/apis/edu/class'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -619,10 +613,15 @@ import {
   SCANNER_INTERFACE_MODE_COLOR,
   SCANNER_INTERFACE_MODE_LABEL,
   triggerSaneScan,
-  updateScannerDevice,
+  updateScannerDevice
 } from '@/apis/mark/exam-mark-scanner'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiDataTable } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -939,8 +938,7 @@ async function handleResetToken(record: ExamScannerDeviceVO): Promise<void> {
 }
 
 async function handleCreateActivationCode(record: ExamScannerDeviceVO): Promise<void> {
-  const result = await createScannerActivationCode({ deviceId: record.id })
-  activationCodeInfo.value = result
+  activationCodeInfo.value = await createScannerActivationCode({ deviceId: record.id })
   activationCodeDeviceName.value = record.deviceName || record.scannerDeviceId || '扫描设备'
   showActivationCodeModal.value = true
 }
@@ -1081,7 +1079,6 @@ onMounted(() => {
   loadClassList()
   loadExamList()
 })
-
 </script>
 
 <style scoped lang="scss">
@@ -1181,5 +1178,4 @@ onMounted(() => {
     font-size: 13px;
   }
 }
-
 </style>

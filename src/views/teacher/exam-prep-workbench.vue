@@ -53,6 +53,8 @@ const TONE_MAP: Record<WorkbenchStageStatus, BadgeTone> = {
   pending: 'gray',
   active: 'blue',
   completed: 'green',
+  warning: 'orange',
+  error: 'red',
   blocked: 'red',
 }
 
@@ -77,7 +79,6 @@ const router = useRouter()
 
 // B-8 统一考试选择器：列表加载、URL 同步、跨页面记忆
 const {
-  exams,
   examOptions,
   loading: examLoading,
   selectedExamId,
@@ -98,13 +99,11 @@ async function loadDetail(examId: string | undefined) {
   detailLoading.value = true
   try {
     detail.value = await getExamDetail(examId)
-  }
-  catch (error) {
+  } catch (error) {
     detail.value = null
     const errMsg = error instanceof Error ? error.message : '考试详情加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -132,9 +131,14 @@ function syncStageProgressToStore(): void {
   const allCompleted = completedCount === steps.length
   const examPrepStatus: WorkbenchStageStatus = allCompleted
     ? 'completed'
-    : (blockedCount > 0 ? 'blocked' : 'active')
-  const examPrepHint = blockedReasons.value[0]
-    ?? (allCompleted ? `准备全部就绪（${completedCount}/${steps.length}）` : `准备进度 ${completedCount}/${steps.length}`)
+    : blockedCount > 0
+      ? 'blocked'
+      : 'active'
+  const examPrepHint
+    = blockedReasons.value[0]
+      ?? (allCompleted
+      ? `准备全部就绪（${completedCount}/${steps.length}）`
+      : `准备进度 ${completedCount}/${steps.length}`)
   // 答题卡模板 → PAPER_TEMPLATE 阶段
   const paperStep = steps.find((s) => s.key === 'paperTemplate')
   // 考生名册 → SCAN 阶段的身份绑定前置依赖
@@ -144,9 +148,10 @@ function syncStageProgressToStore(): void {
     PAPER_TEMPLATE: paperStep
       ? { status: paperStep.status, hint: paperStep.statusText }
       : undefined,
-    SCAN: candStep && candStep.status !== 'completed'
-      ? { status: 'blocked', hint: candStep.blockedReason || '考生名册未就绪' }
-      : { status: 'pending', hint: '等待阅卷组织上游' },
+    SCAN:
+      candStep && candStep.status !== 'completed'
+        ? { status: 'blocked', hint: candStep.blockedReason || '考生名册未就绪' }
+        : { status: 'pending', hint: '等待阅卷组织上游' },
   })
   markStageStore.setCurrentStage(examId, allCompleted ? 'PAPER_TEMPLATE' : 'EXAM_PREP')
 }
@@ -181,11 +186,11 @@ const prepSteps = computed<PrepStepCard[]>(() => {
       description: hasQuestions
         ? `已配置 ${d.questionCount} 道题，可进行评分配置`
         : '尚未录入题目模板，无法启动批阅',
-      status: hasQuestions ? 'completed' : (hasTemplate ? 'active' : 'pending'),
+      status: hasQuestions ? 'completed' : hasTemplate ? 'active' : 'pending',
       statusText: hasQuestions ? `${d.questionCount} 道` : '未配置',
       routeName: 'TeacherPaperTemplate',
       primaryAction: hasQuestions ? '查看 / 调整' : '录入题目',
-      blockedReason: hasQuestions ? undefined : (hasTemplate ? undefined : '需先完成答题卡模板'),
+      blockedReason: hasQuestions ? undefined : hasTemplate ? undefined : '需先完成答题卡模板',
     },
     {
       key: 'standardAnswer',
@@ -193,11 +198,11 @@ const prepSteps = computed<PrepStepCard[]>(() => {
       description: hasAnswers
         ? `已录入 ${d.answerCount} 题标准答案`
         : '尚未录入标准答案，客观题无法自动评分',
-      status: hasAnswers ? 'completed' : (hasQuestions ? 'active' : 'pending'),
+      status: hasAnswers ? 'completed' : hasQuestions ? 'active' : 'pending',
       statusText: hasAnswers ? `${d.answerCount} 题` : '未配置',
       routeName: 'TeacherPaperTemplate',
       primaryAction: hasAnswers ? '查看 / 调整' : '录入标准答案',
-      blockedReason: hasAnswers ? undefined : (hasQuestions ? undefined : '需先录入题目模板'),
+      blockedReason: hasAnswers ? undefined : hasQuestions ? undefined : '需先录入题目模板',
     },
     {
       key: 'candidateRoster',
@@ -214,12 +219,14 @@ const prepSteps = computed<PrepStepCard[]>(() => {
   ]
 })
 
-const stageRail = computed<WorkbenchStage[]>(() => prepSteps.value.map((step) => ({
-  key: step.key,
-  title: step.title,
-  status: step.status,
-  statusText: step.statusText,
-})))
+const stageRail = computed<WorkbenchStage[]>(() =>
+  prepSteps.value.map((step) => ({
+    key: step.key,
+    title: step.title,
+    status: step.status,
+    statusText: step.statusText,
+  })),
+)
 
 const statMetrics = computed(() => {
   const d = detail.value
@@ -227,8 +234,17 @@ const statMetrics = computed(() => {
   const completed = prepSteps.value.filter((s) => s.status === 'completed').length
   const blocked = prepSteps.value.filter((s) => s.status === 'blocked').length
   return [
-    { label: '准备进度', value: `${completed} / ${prepSteps.value.length}`, tone: (completed === prepSteps.value.length ? 'green' : 'blue') as 'green' | 'blue' },
-    { label: '阻断项', value: blocked, unit: '项', tone: (blocked > 0 ? 'red' : 'gray') as 'red' | 'gray' },
+    {
+      label: '准备进度',
+      value: `${completed} / ${prepSteps.value.length}`,
+      tone: (completed === prepSteps.value.length ? 'green' : 'blue') as 'green' | 'blue',
+    },
+    {
+      label: '阻断项',
+      value: blocked,
+      unit: '项',
+      tone: (blocked > 0 ? 'red' : 'gray') as 'red' | 'gray',
+    },
     { label: '题目数', value: d.questionCount ?? 0, unit: '道', tone: 'blue' as const },
     { label: '标准答案', value: d.answerCount ?? 0, unit: '题', tone: 'gray' as const },
     { label: '考生数', value: d.candidateCount ?? 0, unit: '人', tone: 'blue' as const },
@@ -236,9 +252,9 @@ const statMetrics = computed(() => {
   ]
 })
 
-const blockedReasons = computed(() => prepSteps.value
-  .filter((s) => s.blockedReason)
-  .map((s) => s.blockedReason as string))
+const blockedReasons = computed(() =>
+  prepSteps.value.filter((s) => s.blockedReason).map((s) => s.blockedReason as string),
+)
 
 function goExamList() {
   void router.push({ name: 'TeacherExamList' })
@@ -268,20 +284,20 @@ onMounted(async () => {
 })
 
 // detail 或考试切换后同步阶段状态
-watch(
-  [() => selectedExamId.value, () => detail.value],
-  () => {
-    if (selectedExamId.value && detail.value) {
-      syncStageProgressToStore()
-    }
-  },
-)
+watch([() => selectedExamId.value, () => detail.value], () => {
+  if (selectedExamId.value && detail.value) {
+    syncStageProgressToStore()
+  }
+})
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar title="考试准备工作台" subtitle="按阶段聚合考试模板、题目、标准答案与考生名册的准备状态">
+      <ContextBar
+        title="考试准备工作台"
+        subtitle="按阶段聚合考试模板、题目、标准答案与考生名册的准备状态"
+      >
         <template #status>
           <a-select
             :value="selectedExamId"
@@ -305,9 +321,7 @@ watch(
             </template>
             刷新
           </UiButton>
-          <UiButton variant="primary" size="sm" @click="goExamList">
-            考试列表
-          </UiButton>
+          <UiButton variant="primary" size="sm" @click="goExamList"> 考试列表 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -319,7 +333,13 @@ watch(
     <template v-else>
       <a-spin :spinning="detailLoading">
         <StageRail :stages="stageRail" compact class="exam-prep__stages" />
-        <UiStatPanel :items="statMetrics" :columns="3" variant="grid" compact class="exam-prep__signals" />
+        <UiStatPanel
+          :items="statMetrics"
+          :columns="3"
+          variant="grid"
+          compact
+          class="exam-prep__signals"
+        />
 
         <div v-if="blockedReasons.length > 0" class="exam-prep__blocked">
           <a-alert

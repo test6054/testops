@@ -182,16 +182,9 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreatePayload,
-} from '@/apis/mark/marking-organization'
-import {
-  createOrganization,
-  getOrganization,
-  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
-  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
@@ -200,6 +193,13 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
+import {
+  createOrganization,
+  getOrganization,
+  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
+  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import { UiBadge, UiButton, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'

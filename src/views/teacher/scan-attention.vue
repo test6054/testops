@@ -129,7 +129,7 @@
           :columns="columns"
           :data-source="attentions"
           :loading="loading"
-          :row-key="rowKey"
+          row-key="id"
           :enable-selection="true"
           :selected-row-keys="selectedRowKeys"
           :show-pagination="false"
@@ -375,15 +375,6 @@ const columns: ColumnType<ScanAttentionItemVO>[] = [
   { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
 
-function rowKey(record: ScanAttentionItemVO): string {
-  return [
-    record.sourceType ?? '',
-    record.sourceId ?? '',
-    record.attentionType ?? '',
-    record.paperInstanceId ?? '',
-    record.pageId ?? '',
-  ].join('|')
-}
 
 function formatTime(value?: string): string {
   if (!value) return '-'
@@ -631,7 +622,7 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(rowKey(item)) && item.paperInstanceId && item.scanBatchId,
+      selectedRowKeys.value.includes(item.id) && item.paperInstanceId && item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择有试卷实例的异常项')

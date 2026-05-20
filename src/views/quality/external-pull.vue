@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 外部数据拔取中心
  *
@@ -19,6 +20,9 @@ import type {
   ExternalPullTaskVO,
   ExternalSourceType,
 } from '@/apis/quality'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   EXTERNAL_PULL_TASK_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_LABEL,
@@ -30,13 +34,9 @@ import {
   isExternalPullTaskStatus,
   isExternalSourceType,
 } from '@/apis/quality'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref } from 'vue'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptModal } from './_helpers'
 
 const sourceColumns: ColumnsType = [
@@ -227,7 +227,7 @@ function canCancelTask(status: unknown): boolean {
   return status === 'PENDING' || status === 'RUNNING'
 }
 
-function handleTaskPageChange(payload: { current: number; pageSize: number }) {
+function handleTaskPageChange(payload: { current: number, pageSize: number }) {
   taskQuery.pageNum = payload.current
   taskQuery.pageSize = payload.pageSize
   loadTasks()
@@ -292,7 +292,7 @@ function toCipher(plain: string): string {
   // 占位实现：仅 base64。生产环境必须接入真实加密。
   if (!plain) return ''
   try {
-    return globalThis.btoa(unescape(encodeURIComponent(plain)))
+    return globalThis.btoa(decodeURIComponent(encodeURIComponent(plain)))
   } catch {
     return plain
   }
@@ -321,9 +321,9 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 
 async function submitSource() {
   if (
-    !sourceForm.sourceCode.trim() ||
-    !sourceForm.sourceName.trim() ||
-    !sourceForm.jdbcUrl.trim()
+    !sourceForm.sourceCode.trim()
+    || !sourceForm.sourceName.trim()
+    || !sourceForm.jdbcUrl.trim()
   ) {
     message.error('请填写编码 / 名称 / JDBC URL')
     return
@@ -421,12 +421,12 @@ function openTaskCreate() {
 
 async function submitTask() {
   if (
-    !taskForm.taskName.trim() ||
-    !taskForm.taskCode.trim() ||
-    !taskForm.sourceId ||
-    !taskForm.businessAnchor.trim() ||
-    !taskForm.businessId ||
-    !taskForm.sqlTemplate.trim()
+    !taskForm.taskName.trim()
+    || !taskForm.taskCode.trim()
+    || !taskForm.sourceId
+    || !taskForm.businessAnchor.trim()
+    || !taskForm.businessId
+    || !taskForm.sqlTemplate.trim()
   ) {
     message.error('请填写任务编码 / 名称 / 数据源 / 业务错点 / SQL')
     return
@@ -520,8 +520,8 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
   return tasks.value
     .filter(
       (t) =>
-        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED') ||
-        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
+        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED')
+        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
     )
     .slice(0, 5)
     .map((t) => ({
@@ -529,17 +529,17 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
       title: `${t.taskCode} - ${t.taskName}`,
       statusLabel: taskStatusLabel(t.status),
       statusTone: (isExternalPullTaskStatus(t.status) && t.status === 'FAILED' ? 'red' : 'blue') as
-        | 'red'
-        | 'blue',
+      | 'red'
+      | 'blue',
       description:
-        t.failureReason ||
-        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中…' : undefined),
+        t.failureReason
+        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中…' : undefined),
       time: t.startedAt || undefined,
       actions: [{ key: 'detail', label: '详情' }],
     }))
 })
 
-function handlePullResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+function handlePullResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
   const record = tasks.value.find((t) => t.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -629,7 +629,7 @@ onMounted(async () => {
               <UiButton variant="ghost" size="sm" @click="toggleSourceEnabled(record)">
                 {{ record.enabled ? '停用' : '启用' }}
               </UiButton>
-              <UiButton variant="danger-ghost" size="sm" @click="deleteSource(record)">
+              <UiButton variant="ghost" status="danger" size="sm" @click="deleteSource(record)">
                 删除
               </UiButton>
             </a-space>
@@ -707,7 +707,8 @@ onMounted(async () => {
               <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
               <UiButton
                 v-if="canCancelTask(record.status)"
-                variant="danger-ghost"
+                variant="ghost"
+                status="danger"
                 size="sm"
                 @click="cancelTask(record)"
               >
@@ -805,7 +806,7 @@ onMounted(async () => {
           <a-textarea
             v-model:value="sourceForm.fieldWhitelist"
             :rows="3"
-            placeholder='如 {"t_score":["id","score"]}'
+            placeholder="如 {&quot;t_score&quot;:[&quot;id&quot;,&quot;score&quot;]}"
             class="external-pull__mono"
           />
         </a-form-item>
@@ -878,7 +879,7 @@ onMounted(async () => {
           <a-textarea
             v-model:value="taskForm.sqlParameters"
             :rows="2"
-            placeholder='如 {"startDate":"2025-01-01"}'
+            placeholder="如 {&quot;startDate&quot;:&quot;2025-01-01&quot;}"
             class="external-pull__mono"
           />
         </a-form-item>
@@ -995,7 +996,8 @@ onMounted(async () => {
                 </UiButton>
                 <UiButton
                   v-if="record.confirmationStatus === 'PREVIEW'"
-                  variant="danger-ghost"
+                  variant="ghost"
+                  status="danger"
                   size="sm"
                   @click="rejectResult(record)"
                 >

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 认证标准配置
  *
@@ -10,15 +11,14 @@ import type {
   AccreditationStandardSavePayload,
   AccreditationStandardVO,
 } from '@/apis/quality'
-import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { computed, onMounted, reactive, ref } from 'vue'
-import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 
 const list = ref<AccreditationStandardVO[]>([])
 const total = ref(0)
@@ -125,7 +125,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -280,7 +280,7 @@ onMounted(() => loadList())
           <template v-else-if="column.key === 'actions'">
             <a-space>
               <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                 删除
               </UiButton>
             </a-space>

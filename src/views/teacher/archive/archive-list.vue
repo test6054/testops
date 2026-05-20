@@ -104,8 +104,8 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
               {{
-                archives[index].archiveStatusMessage ||
-                archiveStatusLabel(archives[index].archiveStatus)
+                archives[index].archiveStatusMessage
+                  || archiveStatusLabel(archives[index].archiveStatus)
               }}
             </UiTag>
             <div
@@ -145,8 +145,8 @@
               </UiButton>
               <UiButton
                 v-if="
-                  archives[index].archiveStatus === 'DRAFT' ||
-                  archives[index].archiveStatus === 'PACKAGING_FAILED'
+                  archives[index].archiveStatus === 'DRAFT'
+                    || archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
                 size="sm"
                 @click="confirmPackage(archives[index])"
@@ -221,14 +221,6 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
-import {
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
-  ARCHIVE_STATUS_TONE,
-  createArchive,
-  listArchives,
-  packageArchive,
-} from '@/apis/mark/archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -238,6 +230,14 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  createArchive,
+  listArchives,
+  packageArchive,
+} from '@/apis/mark/archive'
 import {
   UiAlertStrip,
   UiBadge,
@@ -307,7 +307,7 @@ interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
   description: string
-  action: { label: string; handler: () => void }
+  action: { label: string, handler: () => void }
 }
 
 const archiveAlert = computed<ArchiveAlert | null>(() => {
@@ -364,11 +364,11 @@ function syncArchiveStageToStore(): void {
   const statuses = archives.value.map((a) => a.archiveStatus)
   const hasCompleted = statuses.some(
     (s) =>
-      s === 'APPRAISAL_DECIDED' ||
-      s === 'DESTRUCTION_PENDING' ||
-      s === 'DESTRUCTION_APPROVED' ||
-      s === 'DESTRUCTION_REJECTED' ||
-      s === 'DESTROYED',
+      s === 'APPRAISAL_DECIDED'
+      || s === 'DESTRUCTION_PENDING'
+      || s === 'DESTRUCTION_APPROVED'
+      || s === 'DESTRUCTION_REJECTED'
+      || s === 'DESTROYED',
   )
   const hasActive = statuses.some(
     (s) => s === 'PACKAGING' || s === 'ACTIVE' || s === 'APPRAISAL_PENDING',
@@ -381,11 +381,11 @@ function syncArchiveStageToStore(): void {
     hint = `已鉴定存档 ${
       statuses.filter(
         (s) =>
-          s === 'APPRAISAL_DECIDED' ||
-          s === 'DESTRUCTION_PENDING' ||
-          s === 'DESTRUCTION_APPROVED' ||
-          s === 'DESTRUCTION_REJECTED' ||
-          s === 'DESTROYED',
+          s === 'APPRAISAL_DECIDED'
+          || s === 'DESTRUCTION_PENDING'
+          || s === 'DESTRUCTION_APPROVED'
+          || s === 'DESTRUCTION_REJECTED'
+          || s === 'DESTROYED',
       ).length
     } / ${archives.value.length}`
   } else if (hasActive) {
@@ -448,9 +448,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans &&
-    !createForm.includeMarkedSlices &&
-    !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans
+    && !createForm.includeMarkedSlices
+    && !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return

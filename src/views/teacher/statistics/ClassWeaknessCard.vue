@@ -79,20 +79,20 @@
 
 <script lang="ts" setup>
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'ClassWeaknessCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 /**
  * B-12 联动：本卡每次成功查询/生成后，把当前 classId 上抛给父级 statistics.vue，

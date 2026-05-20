@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 成绩明细管理
  *
@@ -12,6 +13,9 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   isScoreBatchStatus,
@@ -20,18 +24,14 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   CourseSelector,
   StudentSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const batchColumns: ColumnsType = [
@@ -137,8 +137,8 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value =
-    (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+  assessmentItems.value
+    = (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
 }
 
 /* ========== 信号指标带（SignalBand） ========== */
@@ -336,8 +336,8 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value =
-      (await scoreRecordApi.listValidByItem(
+    validByItemRecords.value
+      = (await scoreRecordApi.listValidByItem(
         validByItemId.value,
         qualityStore.currentQualityCourseId,
       )) || []
@@ -536,7 +536,7 @@ function handleCourseChange(courseId: string | null) {
                 <template v-else-if="column.key === 'actions'">
                   <a-space>
                     <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-                    <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+                    <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                       删除
                     </UiButton>
                   </a-space>
@@ -608,7 +608,7 @@ function handleCourseChange(courseId: string | null) {
           <a-textarea
             v-model:value="editor.rubricBreakdown"
             :rows="3"
-            placeholder='{"rubricItemId": score, ...}'
+            placeholder="{&quot;rubricItemId&quot;: score, ...}"
             class="score-record__mono"
           />
         </a-form-item>

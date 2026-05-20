@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 材料归档与专家包导出台
  *
@@ -14,18 +15,17 @@ import type {
   ArchiveVO,
   ExpertPackageExportPayload,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   ARCHIVE_BUSINESS_TYPE_LABEL,
   archiveApi,
   EXPERT_PACKAGE_TYPE_LABEL,
   isArchiveBusinessType,
 } from '@/apis/quality'
-import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { confirmAsync } from '@/composables/useConfirmDialog'
-import { computed, onMounted, reactive, ref } from 'vue'
-import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { FilterField } from '@/components/ui-guide/ui/types'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiSearchForm } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -33,7 +33,7 @@ import {
   SignalBand,
   StageWorkbenchShell,
 } from '@/components/workbench'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 
 /* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
 
@@ -147,7 +147,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -156,8 +156,8 @@ function handlePageChange(payload: { current: number; pageSize: number }) {
 function syncFilterToQuery() {
   const businessTypeRaw = filterModel.value.businessType
   query.businessType = isArchiveBusinessType(businessTypeRaw) ? businessTypeRaw : undefined
-  query.archiveCategory =
-    typeof filterModel.value.archiveCategory === 'string' ? filterModel.value.archiveCategory : ''
+  query.archiveCategory
+    = typeof filterModel.value.archiveCategory === 'string' ? filterModel.value.archiveCategory : ''
   query.keyword = typeof filterModel.value.keyword === 'string' ? filterModel.value.keyword : ''
 }
 
@@ -332,9 +332,9 @@ const signals = computed<SignalMetric[]>(() => {
       key: 'expert',
       label: '专家材料包',
       value: expertPackages,
-      tone: expertPackages > 0 ? 'gold' : 'gray',
+      tone: expertPackages > 0 ? 'yellow' : 'gray',
     },
-    { key: 'report', label: '报告归档', value: reports, tone: reports > 0 ? 'cyan' : 'gray' },
+    { key: 'report', label: '报告归档', value: reports, tone: reports > 0 ? 'blue' : 'gray' },
     { key: 'overall', label: '总台帐', value: total.value, tone: 'gray' },
   ]
 })
@@ -457,7 +457,7 @@ onMounted(loadList)
             <a-space wrap>
               <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
               <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                 删除
               </UiButton>
               <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
