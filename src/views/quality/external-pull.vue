@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
- * 外部数据源 + 拔取任务工作台
+ * 质量评价 - 外部数据拔取中心
  *
- * 主链：
- * 1. 维护只读数据源：连接串 / 账号 / 密码 一律传 cipher 密文，后端 AES-256 保存。
- * 2. 创建拔取任务（仅允许 SELECT，受 SqlGuard 拦截）。
- * 3. 调度器自动执行，状态 PENDING → RUNNING → SUCCEEDED → 生成结果批次 PREVIEW。
- * 4. PREVIEW 后由人工确认或驳回（CONFIRMED / REJECTED）。
- * 5. 审计记录写 t_quality_external_pull_audit。
+ * 后端契约（ExternalPullTaskController + ExternalDataSourceController + ExternalPullResultController + ExternalPullAuditController）：
+ * 1. 维护只读数据源：jdbcUrl / username / password 仅以 cipher 密文传输，后端 AES-256-GCM 保存。
+ * 2. 创建拔取任务：仅允许 SELECT 语句，受 SqlGuard 与 fieldWhitelist 拦截。
+ * 3. 调度器执行：状态机 PENDING -> RUNNING -> SUCCEEDED / FAILED / CANCELLED。
+ * 4. 结果批次 confirmationStatus PREVIEW -> CONFIRMED / REJECTED（人工确认或驳回）。
+ * 5. 审计记录写 t_quality_external_pull_audit，记录 SQL 安全 / 白名单 / 脱敏预览状态。
  */
 import type {
   ExternalDataSourceSavePayload,
@@ -16,12 +16,9 @@ import type {
   ExternalPullResultVO,
   ExternalPullTaskCreatePayload,
   ExternalPullTaskQueryPayload,
-  ExternalPullTaskStatus,
   ExternalPullTaskVO,
   ExternalSourceType,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   EXTERNAL_PULL_TASK_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_LABEL,
@@ -30,8 +27,79 @@ import {
   externalPullAuditApi,
   externalPullResultApi,
   externalPullTaskApi,
+  isExternalPullTaskStatus,
+  isExternalSourceType,
 } from '@/apis/quality'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { promptModal } from './_helpers'
+
+const sourceColumns: ColumnsType = [
+  { title: '编码', dataIndex: 'sourceCode', key: 'sourceCode', width: 160 },
+  { title: '名称', dataIndex: 'sourceName', key: 'sourceName' },
+  { title: '数据库类型', dataIndex: 'sourceType', key: 'sourceType', width: 120 },
+  { title: '驱动类', dataIndex: 'driverClass', key: 'driverClass', width: 200 },
+  { title: '最大行数', dataIndex: 'maxRowCount', key: 'maxRowCount', width: 100 },
+  { title: '超时（秒）', dataIndex: 'queryTimeoutSeconds', key: 'queryTimeoutSeconds', width: 90 },
+  { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
+  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+]
+
+const taskColumns: ColumnsType = [
+  { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 160 },
+  { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
+  { title: '数据源', dataIndex: 'sourceId', key: 'sourceId', width: 160 },
+  { title: '业务锚点', dataIndex: 'businessAnchor', key: 'businessAnchor', width: 180 },
+  { title: '返回行数', dataIndex: 'returnRows', key: 'returnRows', width: 100 },
+  { title: '耗时（ms）', dataIndex: 'elapsedMs', key: 'elapsedMs', width: 110 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
+  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+]
+
+const detailResultColumns: ColumnsType = [
+  { title: '批次 ID', dataIndex: 'id', key: 'id', width: 120 },
+  { title: '业务锚点', key: 'detailAnchor' },
+  { title: '预览行数', dataIndex: 'previewRows', key: 'previewRows', width: 100 },
+  { title: '确认行数', dataIndex: 'confirmedRows', key: 'confirmedRows', width: 100 },
+  { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 110 },
+  { title: '操作', key: 'actions', width: 180 },
+]
+
+/* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
+
+function taskStatusLabel(value: unknown): string {
+  if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function taskStatusColor(value: unknown): string {
+  if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_COLOR[value]
+  return 'default'
+}
+
+function sourceTypeLabel(value: unknown): string {
+  if (isExternalSourceType(value)) return EXTERNAL_SOURCE_TYPE_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function confirmationStatusColor(value: unknown): string {
+  if (value === 'CONFIRMED') return 'green'
+  if (value === 'REJECTED') return 'red'
+  if (value === 'PREVIEW') return 'orange'
+  return 'default'
+}
+
+function auditTone(status: unknown): string {
+  if (status === 'PASSED') return 'green'
+  if (status === 'REJECTED') return 'red'
+  if (status === 'WARNING') return 'orange'
+  return 'gray'
+}
 
 const sources = ref<ExternalDataSourceVO[]>([])
 const sourceTotal = ref(0)
@@ -93,12 +161,80 @@ const detailResults = ref<ExternalPullResultVO[]>([])
 const detailAudits = ref<ExternalPullAuditVO[]>([])
 const detailLoading = ref(false)
 
-const sourceTypeOptions = Object.entries(EXTERNAL_SOURCE_TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const taskStatusOptions = Object.entries(EXTERNAL_PULL_TASK_STATUS_LABEL).map(([value, label]) => ({ value, label }))
+const sourceTypeOptions = Object.entries(EXTERNAL_SOURCE_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const taskStatusOptions = Object.entries(EXTERNAL_PULL_TASK_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+
+/* ========== 信号指标带 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const enabledSources = sources.value.filter((s) => s.enabled).length
+  const runningTasks = tasks.value.filter(
+    (t) => isExternalPullTaskStatus(t.status) && t.status === 'RUNNING',
+  ).length
+  const failedTasks = tasks.value.filter(
+    (t) => isExternalPullTaskStatus(t.status) && t.status === 'FAILED',
+  ).length
+  const succeededTasks = tasks.value.filter(
+    (t) => isExternalPullTaskStatus(t.status) && t.status === 'SUCCEEDED',
+  ).length
+  return [
+    { key: 'src-total', label: '数据源总数', value: sourceTotal.value, tone: 'blue' },
+    {
+      key: 'src-enabled',
+      label: '已启用数据源',
+      value: enabledSources,
+      tone: enabledSources > 0 ? 'green' : 'gray',
+    },
+    { key: 'task-total', label: '本页任务', value: tasks.value.length, tone: 'blue' },
+    {
+      key: 'task-running',
+      label: '运行中',
+      value: runningTasks,
+      tone: runningTasks > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'task-success',
+      label: '已成功',
+      value: succeededTasks,
+      tone: succeededTasks > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'task-failed',
+      label: '失败',
+      value: failedTasks,
+      tone: failedTasks > 0 ? 'red' : 'gray',
+    },
+  ]
+})
 
 function sourceName(sourceId: string | undefined): string {
   if (!sourceId) return '-'
-  return sources.value.find(s => s.id === sourceId)?.sourceName || sourceId
+  return sources.value.find((s) => s.id === sourceId)?.sourceName || sourceId
+}
+
+const enabledSourceOptions = computed(() =>
+  sources.value.filter((s) => s.enabled).map((s) => ({ value: s.id, label: s.sourceName })),
+)
+
+function canCancelTask(status: unknown): boolean {
+  if (!isExternalPullTaskStatus(status)) return false
+  return status === 'PENDING' || status === 'RUNNING'
+}
+
+function handleTaskPageChange(payload: { current: number; pageSize: number }) {
+  taskQuery.pageNum = payload.current
+  taskQuery.pageSize = payload.pageSize
+  loadTasks()
+}
+
+async function reloadAll() {
+  await Promise.all([loadSources(), loadTasks()])
 }
 
 async function loadSources() {
@@ -107,8 +243,7 @@ async function loadSources() {
     const page = await externalDataSourceApi.page(sourceQuery)
     sources.value = page.list
     sourceTotal.value = page.total
-  }
-  finally {
+  } finally {
     sourceLoading.value = false
   }
 }
@@ -124,8 +259,7 @@ async function loadTasks() {
     })
     tasks.value = page.list
     taskTotal.value = page.total
-  }
-  finally {
+  } finally {
     taskLoading.value = false
   }
 }
@@ -159,8 +293,7 @@ function toCipher(plain: string): string {
   if (!plain) return ''
   try {
     return globalThis.btoa(unescape(encodeURIComponent(plain)))
-  }
-  catch {
+  } catch {
     return plain
   }
 }
@@ -187,7 +320,11 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 }
 
 async function submitSource() {
-  if (!sourceForm.sourceCode.trim() || !sourceForm.sourceName.trim() || !sourceForm.jdbcUrl.trim()) {
+  if (
+    !sourceForm.sourceCode.trim() ||
+    !sourceForm.sourceName.trim() ||
+    !sourceForm.jdbcUrl.trim()
+  ) {
     message.error('请填写编码 / 名称 / JDBC URL')
     return
   }
@@ -202,8 +339,7 @@ async function submitSource() {
   const whitelist = sourceForm.fieldWhitelist.trim()
   try {
     JSON.parse(whitelist)
-  }
-  catch {
+  } catch {
     message.error('字段白名单必须是合法 JSON')
     return
   }
@@ -226,15 +362,13 @@ async function submitSource() {
     if (sourceEditorMode.value === 'create') {
       await externalDataSourceApi.create(payload)
       message.success('数据源已创建')
-    }
-    else {
+    } else {
       await externalDataSourceApi.update(payload)
       message.success('数据源已更新')
     }
     sourceEditorVisible.value = false
     await loadSources()
-  }
-  finally {
+  } finally {
     sourceEditing.value = false
   }
 }
@@ -246,9 +380,9 @@ async function toggleSourceEnabled(record: ExternalDataSourceVO) {
 }
 
 async function deleteSource(record: ExternalDataSourceVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除数据源 ${record.sourceCode}？`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await externalDataSourceApi.delete(record.id)
       message.success('已删除')
@@ -286,9 +420,14 @@ function openTaskCreate() {
 }
 
 async function submitTask() {
-  if (!taskForm.taskName.trim() || !taskForm.taskCode.trim() || !taskForm.sourceId
-    || !taskForm.businessAnchor.trim() || !taskForm.businessId
-    || !taskForm.sqlTemplate.trim()) {
+  if (
+    !taskForm.taskName.trim() ||
+    !taskForm.taskCode.trim() ||
+    !taskForm.sourceId ||
+    !taskForm.businessAnchor.trim() ||
+    !taskForm.businessId ||
+    !taskForm.sqlTemplate.trim()
+  ) {
     message.error('请填写任务编码 / 名称 / 数据源 / 业务错点 / SQL')
     return
   }
@@ -299,8 +438,7 @@ async function submitTask() {
   if (taskForm.sqlParameters && taskForm.sqlParameters.trim()) {
     try {
       JSON.parse(taskForm.sqlParameters)
-    }
-    catch {
+    } catch {
       message.error('SQL 参数必须是合法 JSON')
       return
     }
@@ -322,8 +460,7 @@ async function submitTask() {
     message.success('任务已提交，等待调度器执行')
     taskCreateVisible.value = false
     await loadTasks()
-  }
-  finally {
+  } finally {
     taskCreating.value = false
   }
 }
@@ -333,9 +470,10 @@ async function submitTask() {
  * 任务成功后会生成一个 PREVIEW_READY 状态的结果批次，在详情抽屉中对该批次 confirm / reject。
  */
 async function confirmResult(result: ExternalPullResultVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `确认拔取结果批次 #${result.id}？`,
     content: '确认后进入达成度计算可用来源',
+    type: 'info',
     onOk: async () => {
       await externalPullResultApi.confirm({ id: result.id })
       message.success('已确认')
@@ -373,10 +511,37 @@ async function reloadDetail(taskId: string) {
     ])
     detailResults.value = results
     detailAudits.value = audits
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
+}
+
+const pullResultItems = computed<TaskResultItem[]>(() => {
+  return tasks.value
+    .filter(
+      (t) =>
+        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED') ||
+        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
+    )
+    .slice(0, 5)
+    .map((t) => ({
+      id: t.id,
+      title: `${t.taskCode} - ${t.taskName}`,
+      statusLabel: taskStatusLabel(t.status),
+      statusTone: (isExternalPullTaskStatus(t.status) && t.status === 'FAILED' ? 'red' : 'blue') as
+        | 'red'
+        | 'blue',
+      description:
+        t.failureReason ||
+        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中…' : undefined),
+      time: t.startedAt || undefined,
+      actions: [{ key: 'detail', label: '详情' }],
+    }))
+})
+
+function handlePullResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+  const record = tasks.value.find((t) => t.id === payload.item.id)
+  if (record && payload.action.key === 'detail') openDetail(record)
 }
 
 onMounted(async () => {
@@ -385,150 +550,182 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page">
-    <a-card title="外部只读数据源" :bordered="false" style="margin-bottom: 16px">
-      <template #extra>
-        <a-space>
-          <a-button @click="loadSources">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="external-pull__context">
+        <div class="external-pull__context-info">
+          <h2 class="external-pull__title">外部数据拔取审计</h2>
+        </div>
+        <div class="external-pull__context-actions">
+          <UiButton
+            variant="ghost"
+            size="sm"
+            :loading="sourceLoading || taskLoading"
+            @click="reloadAll"
+          >
             刷新
-          </a-button>
-          <a-button type="primary" @click="openSourceCreate">
-            新建数据源
-          </a-button>
-        </a-space>
-      </template>
-      <a-table
+          </UiButton>
+          <UiButton variant="outline" size="sm" @click="openSourceCreate"> 新建数据源 </UiButton>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :disabled="!sources.some((s) => s.enabled)"
+            @click="openTaskCreate"
+          >
+            新建拔取任务
+          </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <SignalBand :metrics="signals" compact class="external-pull__signals" />
+
+    <TaskResultPanel
+      v-if="pullResultItems.length > 0"
+      title="待关注任务"
+      :items="pullResultItems"
+      class="external-pull__result-panel"
+      @action="handlePullResultAction"
+    />
+
+    <section class="external-pull__panel">
+      <header class="external-pull__panel-header">
+        <h3 class="external-pull__panel-title">外部只读数据源</h3>
+        <span class="external-pull__panel-meta">{{ sourceTotal }} 个</span>
+      </header>
+      <UiEmpty
+        v-if="!sources.length && !sourceLoading"
+        description="尚未配置任何外部只读数据源；请先新建数据源以便创建拔取任务"
+        size="sm"
+      />
+      <UiDataTable
+        v-else
+        :columns="sourceColumns"
         :data-source="sources"
         :loading="sourceLoading"
         row-key="id"
         size="small"
-        :pagination="false"
+        :show-pagination="false"
+        flat
+        :total="sources.length"
       >
-        <a-table-column title="编码" data-index="sourceCode" />
-        <a-table-column title="名称" data-index="sourceName" />
-        <a-table-column title="数据库类型" data-index="sourceType" width="120">
-          <template #default="{ text }">
-            {{ EXTERNAL_SOURCE_TYPE_LABEL[text as ExternalSourceType] || text }}
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'sourceType'">
+            {{ sourceTypeLabel(text) }}
           </template>
-        </a-table-column>
-        <a-table-column title="驱动类" data-index="driverClass" width="180" />
-        <a-table-column title="最大行数" data-index="maxRowCount" width="100" />
-        <a-table-column title="超时秒" data-index="queryTimeoutSeconds" width="80" />
-        <a-table-column title="状态" data-index="enabled" width="100">
-          <template #default="{ text }">
+          <template
+            v-else-if="column.key === 'maxRowCount' || column.key === 'queryTimeoutSeconds'"
+          >
+            {{ text ?? '-' }}
+          </template>
+          <template v-else-if="column.key === 'enabled'">
             <a-tag :color="text ? 'green' : 'default'">
               {{ text ? '启用' : '停用' }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="操作" width="180" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space wrap>
-              <a-button type="link" size="small" @click="openSourceEdit(record)">
-                编辑
-              </a-button>
-              <a-button type="link" size="small" @click="toggleSourceEnabled(record)">
+              <UiButton variant="ghost" size="sm" @click="openSourceEdit(record)"> 编辑 </UiButton>
+              <UiButton variant="ghost" size="sm" @click="toggleSourceEnabled(record)">
                 {{ record.enabled ? '停用' : '启用' }}
-              </a-button>
-              <a-button type="link" size="small" danger @click="deleteSource(record)">
+              </UiButton>
+              <UiButton variant="danger-ghost" size="sm" @click="deleteSource(record)">
                 删除
-              </a-button>
+              </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
-    <a-card title="拔取任务" :bordered="false">
-      <template #extra>
-        <a-space>
+    <section class="external-pull__panel">
+      <header class="external-pull__panel-header">
+        <h3 class="external-pull__panel-title">拔取任务</h3>
+        <div class="external-pull__panel-actions">
           <a-select
             v-model:value="taskQuery.sourceId"
             placeholder="按数据源筛选"
-            style="width: 180px"
+            class="external-pull__filter external-pull__filter--lg"
             allow-clear
-            :options="sources.map(s => ({ value: s.id, label: s.sourceName }))"
+            :options="sources.map((s) => ({ value: s.id, label: s.sourceName }))"
           />
           <a-select
             v-model:value="taskQuery.status"
             placeholder="状态"
-            style="width: 130px"
+            class="external-pull__filter"
             allow-clear
             :options="taskStatusOptions"
           />
-          <a-input v-model:value="taskQuery.businessAnchor" placeholder="业务错点（如 SCORE_BATCH）" style="width: 200px" @press-enter="loadTasks" />
-          <a-button type="primary" @click="loadTasks">
+          <a-input
+            v-model:value="taskQuery.businessAnchor"
+            placeholder="业务锚点（如 SCORE_BATCH）"
+            class="external-pull__filter external-pull__filter--lg"
+            @press-enter="loadTasks"
+          />
+          <UiButton variant="outline" size="sm" :loading="taskLoading" @click="loadTasks">
             查询
-          </a-button>
-          <a-button type="primary" @click="openTaskCreate">
-            新建拔取任务
-          </a-button>
-        </a-space>
-      </template>
+          </UiButton>
+        </div>
+      </header>
 
-      <a-table
+      <UiEmpty
+        v-if="!tasks.length && !taskLoading"
+        description="当前筛选条件下无拔取任务；请新建拔取任务或调整筛选"
+        size="sm"
+      />
+      <UiDataTable
+        v-else
+        v-model:current="taskQuery.pageNum"
+        v-model:page-size="taskQuery.pageSize"
+        :columns="taskColumns"
         :data-source="tasks"
         :loading="taskLoading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: taskQuery.pageNum,
-          pageSize: taskQuery.pageSize,
-          total: taskTotal,
-          showSizeChanger: true,
-          onChange: (page: number, size: number) => { taskQuery.pageNum = page; taskQuery.pageSize = size; loadTasks() },
-        }"
+        :total="taskTotal"
+        flat
+        @page-change="handleTaskPageChange"
       >
-        <a-table-column title="任务编码" data-index="taskCode" width="160" />
-        <a-table-column title="任务名称" data-index="taskName" />
-        <a-table-column title="数据源" data-index="sourceId" width="160">
-          <template #default="{ text }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'sourceId'">
             {{ sourceName(text) }}
           </template>
-        </a-table-column>
-        <a-table-column title="业务错点" data-index="businessAnchor" width="140" />
-        <a-table-column title="返回行数" data-index="returnRows" width="100">
-          <template #default="{ text }">
+          <template v-else-if="column.key === 'businessAnchor'">
+            <div>{{ record.businessAnchor || '-' }}</div>
+            <div class="external-pull__sub-text">#{{ record.businessId || '-' }}</div>
+          </template>
+          <template v-else-if="column.key === 'returnRows' || column.key === 'elapsedMs'">
             {{ text ?? '-' }}
           </template>
-        </a-table-column>
-        <a-table-column title="耗时 (ms)" data-index="elapsedMs" width="100">
-          <template #default="{ text }">
-            {{ text ?? '-' }}
-          </template>
-        </a-table-column>
-        <a-table-column title="状态" data-index="status" width="120">
-          <template #default="{ text }">
-            <a-tag :color="EXTERNAL_PULL_TASK_STATUS_COLOR[text as ExternalPullTaskStatus]">
-              {{ EXTERNAL_PULL_TASK_STATUS_LABEL[text as ExternalPullTaskStatus] || text }}
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="taskStatusColor(text)">
+              {{ taskStatusLabel(text) }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="操作" width="220" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space wrap>
-              <a-button type="link" size="small" @click="openDetail(record)">
-                详情（确认 / 驳回）
-              </a-button>
-              <a-button
-                v-if="record.status === 'PENDING' || record.status === 'RUNNING'"
-                type="link"
-                size="small"
-                danger
+              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
+              <UiButton
+                v-if="canCancelTask(record.status)"
+                variant="danger-ghost"
+                size="sm"
                 @click="cancelTask(record)"
               >
                 取消
-              </a-button>
+              </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
-    <a-modal
+    <UiDrawer
       v-model:open="sourceEditorVisible"
       :title="sourceEditorMode === 'create' ? '新建数据源' : `编辑数据源 ${sourceForm.sourceCode}`"
+      :width="720"
       :confirm-loading="sourceEditing"
+      :hide-footer="false"
+      ok-text="保存"
       @ok="submitSource"
     >
       <a-alert
@@ -537,23 +734,38 @@ onMounted(async () => {
         show-icon
         message="编辑模式必须重新输入连接串 / 账号 / 密码"
         description="后端不下行明文凭证，保存时连接串 / 账号 / 密码会覆盖原有密文。其他字段默认以当前值为准。"
-        style="margin-bottom: 12px"
+        class="external-pull__editor-alert"
       />
       <a-form layout="vertical" :model="sourceForm">
-        <a-form-item label="数据源编码" required>
-          <a-input v-model:value="sourceForm.sourceCode" />
-        </a-form-item>
-        <a-form-item label="名称" required>
-          <a-input v-model:value="sourceForm.sourceName" />
-        </a-form-item>
-        <a-form-item label="数据库类型" required>
-          <a-select v-model:value="sourceForm.sourceType" :options="sourceTypeOptions" />
-        </a-form-item>
-        <a-form-item label="驱动类全名" required>
-          <a-input v-model:value="sourceForm.driverClass" placeholder="org.postgresql.Driver" />
-        </a-form-item>
+        <a-row :gutter="12">
+          <a-col :span="12">
+            <a-form-item label="数据源编码" required>
+              <a-input v-model:value="sourceForm.sourceCode" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="名称" required>
+              <a-input v-model:value="sourceForm.sourceName" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="12">
+          <a-col :span="12">
+            <a-form-item label="数据库类型" required>
+              <a-select v-model:value="sourceForm.sourceType" :options="sourceTypeOptions" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="驱动类全名" required>
+              <a-input v-model:value="sourceForm.driverClass" placeholder="org.postgresql.Driver" />
+            </a-form-item>
+          </a-col>
+        </a-row>
         <a-form-item label="JDBC URL" required>
-          <a-input v-model:value="sourceForm.jdbcUrl" placeholder="jdbc:postgresql://host:5432/db" />
+          <a-input
+            v-model:value="sourceForm.jdbcUrl"
+            placeholder="jdbc:postgresql://host:5432/db"
+          />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
@@ -570,25 +782,55 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="最大行数" required>
-              <a-input-number v-model:value="sourceForm.maxRowCount" :min="1" :max="1000000" style="width: 100%" />
+              <a-input-number
+                v-model:value="sourceForm.maxRowCount"
+                :min="1"
+                :max="1000000"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="查询超时（秒）" required>
-              <a-input-number v-model:value="sourceForm.queryTimeoutSeconds" :min="1" :max="3600" style="width: 100%" />
+              <a-input-number
+                v-model:value="sourceForm.queryTimeoutSeconds"
+                :min="1"
+                :max="3600"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
         <a-form-item label="字段白名单 JSON" required>
-          <a-textarea v-model:value="sourceForm.fieldWhitelist" :rows="3" placeholder="如 {&quot;t_score&quot;:[&quot;id&quot;,&quot;score&quot;]}" />
+          <a-textarea
+            v-model:value="sourceForm.fieldWhitelist"
+            :rows="3"
+            placeholder='如 {"t_score":["id","score"]}'
+            class="external-pull__mono"
+          />
         </a-form-item>
         <a-form-item label="启用">
           <a-switch v-model:checked="sourceForm.enabled" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal v-model:open="taskCreateVisible" title="新建拔取任务" :confirm-loading="taskCreating" width="720" @ok="submitTask">
+    <UiDrawer
+      v-model:open="taskCreateVisible"
+      title="新建拔取任务"
+      :width="780"
+      :confirm-loading="taskCreating"
+      :hide-footer="false"
+      ok-text="提交任务"
+      @ok="submitTask"
+    >
+      <a-alert
+        type="info"
+        show-icon
+        message="SQL 安全约束"
+        description="仅允许 SELECT 语句；后端 SqlGuard 会拒绝 INSERT/UPDATE/DELETE/DROP/ALTER 等；字段白名单可继承数据源默认或在任务覆盖。"
+        class="external-pull__editor-alert"
+      />
       <a-form layout="vertical" :model="taskForm">
         <a-row :gutter="12">
           <a-col :span="12">
@@ -603,59 +845,90 @@ onMounted(async () => {
           </a-col>
         </a-row>
         <a-form-item label="数据源" required>
-          <a-select v-model:value="taskForm.sourceId" :options="sources.filter(s => s.enabled).map(s => ({ value: s.id, label: s.sourceName }))" />
+          <a-select
+            v-model:value="taskForm.sourceId"
+            :options="enabledSourceOptions"
+            placeholder="仅显示已启用的数据源"
+          />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
-            <a-form-item label="业务错点" required>
-              <a-input v-model:value="taskForm.businessAnchor" placeholder="SCORE_BATCH / PROCESS_NODE / ..." />
+            <a-form-item label="业务锚点" required>
+              <a-input
+                v-model:value="taskForm.businessAnchor"
+                placeholder="SCORE_BATCH / PROCESS_NODE / ..."
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="业务错点 ID" required>
-              <a-input v-model:value="taskForm.businessId" placeholder="错点对应业务表主键 ID" />
+            <a-form-item label="业务锚点 ID" required>
+              <a-input v-model:value="taskForm.businessId" placeholder="锚点对应业务表主键 ID" />
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="SELECT SQL模板" required>
-          <a-textarea v-model:value="taskForm.sqlTemplate" :rows="5" placeholder="只允许 SELECT，禁止 INSERT/UPDATE/DELETE/DROP/ALTER 等" />
+        <a-form-item label="SELECT SQL 模板" required>
+          <a-textarea
+            v-model:value="taskForm.sqlTemplate"
+            :rows="5"
+            placeholder="只允许 SELECT，禁止 INSERT/UPDATE/DELETE/DROP/ALTER 等"
+            class="external-pull__mono"
+          />
         </a-form-item>
         <a-form-item label="SQL 参数 JSON（可选）">
-          <a-textarea v-model:value="taskForm.sqlParameters" :rows="2" placeholder="如 {&quot;startDate&quot;:&quot;2025-01-01&quot;}" />
+          <a-textarea
+            v-model:value="taskForm.sqlParameters"
+            :rows="2"
+            placeholder='如 {"startDate":"2025-01-01"}'
+            class="external-pull__mono"
+          />
         </a-form-item>
         <a-form-item label="字段白名单 JSON（可留空继承数据源白名单）">
-          <a-textarea v-model:value="taskForm.fieldWhitelist" :rows="2" />
+          <a-textarea
+            v-model:value="taskForm.fieldWhitelist"
+            :rows="2"
+            class="external-pull__mono"
+          />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="最大行数（可选）">
-              <a-input-number v-model:value="taskForm.maxRowCount" :min="1" :max="1000000" style="width: 100%" />
+              <a-input-number
+                v-model:value="taskForm.maxRowCount"
+                :min="1"
+                :max="1000000"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="查询超时（秒）可选">
-              <a-input-number v-model:value="taskForm.queryTimeoutSeconds" :min="1" :max="3600" style="width: 100%" />
+            <a-form-item label="查询超时（秒，可选）">
+              <a-input-number
+                v-model:value="taskForm.queryTimeoutSeconds"
+                :min="1"
+                :max="3600"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-drawer v-model:open="detailVisible" title="拔取任务详情" width="720" :loading="detailLoading">
+    <UiDrawer v-model:open="detailVisible" title="拔取任务详情" :width="820" :hide-footer="true">
       <template v-if="detailRecord">
-        <a-descriptions :column="2" size="small" bordered>
+        <a-descriptions :column="2" size="small" bordered class="external-pull__detail-desc">
           <a-descriptions-item label="任务编码">
             {{ detailRecord.taskCode }}
           </a-descriptions-item>
           <a-descriptions-item label="状态">
-            <a-tag :color="EXTERNAL_PULL_TASK_STATUS_COLOR[detailRecord.status]">
-              {{ EXTERNAL_PULL_TASK_STATUS_LABEL[detailRecord.status] || detailRecord.status }}
+            <a-tag :color="taskStatusColor(detailRecord.status)">
+              {{ taskStatusLabel(detailRecord.status) }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="数据源">
             {{ sourceName(detailRecord.sourceId) }}
           </a-descriptions-item>
-          <a-descriptions-item label="业务错点">
+          <a-descriptions-item label="业务锚点">
             {{ detailRecord.businessAnchor }} #{{ detailRecord.businessId }}
           </a-descriptions-item>
           <a-descriptions-item label="返回行数">
@@ -671,71 +944,250 @@ onMounted(async () => {
             {{ detailRecord.finishedAt || '-' }}
           </a-descriptions-item>
           <a-descriptions-item v-if="detailRecord.failureReason" label="失败原因" :span="2">
-            <span style="color: #ff4d4f">{{ detailRecord.failureReason }}</span>
+            <span class="external-pull__error-text">{{ detailRecord.failureReason }}</span>
           </a-descriptions-item>
           <a-descriptions-item label="SQL 模板" :span="2">
-            <pre style="white-space: pre-wrap; word-break: break-word">{{ detailRecord.sqlTemplate }}</pre>
+            <pre class="external-pull__sql-pre">{{ detailRecord.sqlTemplate }}</pre>
           </a-descriptions-item>
           <a-descriptions-item v-if="detailRecord.sqlParameters" label="SQL 参数" :span="2">
-            <pre style="white-space: pre-wrap; word-break: break-word">{{ detailRecord.sqlParameters }}</pre>
+            <pre class="external-pull__sql-pre">{{ detailRecord.sqlParameters }}</pre>
           </a-descriptions-item>
         </a-descriptions>
 
-        <a-divider>结果批次（可逐批确认 / 驳回）</a-divider>
-        <a-table :data-source="detailResults" :pagination="false" row-key="id" size="small">
-          <a-table-column title="批次 ID" data-index="id" width="100" />
-          <a-table-column title="业务错点">
-            <template #default="{ record }">
+        <h4 class="external-pull__section-title">结果批次（可逐批确认 / 驳回）</h4>
+        <UiEmpty
+          v-if="!detailResults.length && !detailLoading"
+          description="任务暂未生成结果批次；任务执行成功后会出现 PREVIEW 状态的批次"
+          size="sm"
+        />
+        <UiDataTable
+          v-else
+          :columns="detailResultColumns"
+          :data-source="detailResults"
+          :loading="detailLoading"
+          :show-pagination="false"
+          row-key="id"
+          size="small"
+          flat
+          :total="detailResults.length"
+        >
+          <template #bodyCell="{ column, record, text }">
+            <template v-if="column.key === 'detailAnchor'">
               {{ record.businessAnchor }} #{{ record.businessId }}
             </template>
-          </a-table-column>
-          <a-table-column title="预览行数" data-index="previewRows" width="100">
-            <template #default="{ text }">{{ text ?? '-' }}</template>
-          </a-table-column>
-          <a-table-column title="确认行数" data-index="confirmedRows" width="100">
-            <template #default="{ text }">{{ text ?? '-' }}</template>
-          </a-table-column>
-          <a-table-column title="状态" data-index="confirmationStatus" width="110">
-            <template #default="{ text }">
-              <a-tag :color="text === 'CONFIRMED' ? 'green' : text === 'REJECTED' ? 'red' : 'orange'">
+            <template v-else-if="column.key === 'previewRows' || column.key === 'confirmedRows'">
+              {{ text ?? '-' }}
+            </template>
+            <template v-else-if="column.key === 'confirmationStatus'">
+              <a-tag :color="confirmationStatusColor(text)">
                 {{ text || '-' }}
               </a-tag>
             </template>
-          </a-table-column>
-          <a-table-column title="操作" width="160">
-            <template #default="{ record }">
+            <template v-else-if="column.key === 'actions'">
               <a-space>
-                <a-button v-if="record.confirmationStatus === 'PREVIEW'" type="link" size="small" @click="confirmResult(record)">
+                <UiButton
+                  v-if="record.confirmationStatus === 'PREVIEW'"
+                  variant="primary"
+                  size="sm"
+                  @click="confirmResult(record)"
+                >
                   确认
-                </a-button>
-                <a-button v-if="record.confirmationStatus === 'PREVIEW'" type="link" size="small" danger @click="rejectResult(record)">
+                </UiButton>
+                <UiButton
+                  v-if="record.confirmationStatus === 'PREVIEW'"
+                  variant="danger-ghost"
+                  size="sm"
+                  @click="rejectResult(record)"
+                >
                   驳回
-                </a-button>
+                </UiButton>
               </a-space>
             </template>
-          </a-table-column>
-        </a-table>
+          </template>
+        </UiDataTable>
 
-        <a-divider>审计流水</a-divider>
-        <a-timeline>
-          <a-timeline-item v-for="audit in detailAudits" :key="audit.id" :color="audit.sqlSafetyStatus === 'PASSED' ? 'green' : audit.sqlSafetyStatus === 'REJECTED' ? 'red' : 'orange'">
-            <p><strong>{{ audit.auditEvent }}</strong></p>
-            <p v-if="audit.sqlSafetyStatus">SQL 安全：{{ audit.sqlSafetyStatus }}<span v-if="audit.sqlSafetyDetail"> · {{ audit.sqlSafetyDetail }}</span></p>
-            <p v-if="audit.fieldWhitelistStatus">白名单：{{ audit.fieldWhitelistStatus }}<span v-if="audit.fieldWhitelistDetail"> · {{ audit.fieldWhitelistDetail }}</span></p>
-            <p v-if="audit.maskPreviewStatus">脱敏预览：{{ audit.maskPreviewStatus }}</p>
-            <p v-if="audit.auditDetail" style="color: #555">
+        <h4 class="external-pull__section-title">审计流水</h4>
+        <UiEmpty
+          v-if="!detailAudits.length && !detailLoading"
+          description="任务暂无审计流水"
+          size="sm"
+        />
+        <a-timeline v-else>
+          <a-timeline-item
+            v-for="audit in detailAudits"
+            :key="audit.id"
+            :color="auditTone(audit.sqlSafetyStatus)"
+          >
+            <p class="external-pull__audit-event">
+              <strong>{{ audit.auditEvent }}</strong>
+            </p>
+            <p v-if="audit.sqlSafetyStatus" class="external-pull__audit-line">
+              SQL 安全：{{ audit.sqlSafetyStatus }}
+              <span v-if="audit.sqlSafetyDetail"> · {{ audit.sqlSafetyDetail }}</span>
+            </p>
+            <p v-if="audit.fieldWhitelistStatus" class="external-pull__audit-line">
+              白名单：{{ audit.fieldWhitelistStatus }}
+              <span v-if="audit.fieldWhitelistDetail"> · {{ audit.fieldWhitelistDetail }}</span>
+            </p>
+            <p v-if="audit.maskPreviewStatus" class="external-pull__audit-line">
+              脱敏预览：{{ audit.maskPreviewStatus }}
+            </p>
+            <p v-if="audit.auditDetail" class="external-pull__audit-detail">
               {{ audit.auditDetail }}
             </p>
-            <p style="color: #999; font-size: 12px">
-              {{ audit.auditedAt }}
+            <p class="external-pull__sub-text">
+              {{ audit.auditedAt || '-' }}
             </p>
           </a-timeline-item>
         </a-timeline>
       </template>
-    </a-drawer>
-  </div>
+    </UiDrawer>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.external-pull {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__context-info {
+    flex: 1;
+    min-width: 320px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__result-panel {
+    margin-bottom: 16px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-meta {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 160px;
+
+    &--lg {
+      width: 220px;
+    }
+  }
+
+  &__editor-alert {
+    margin-bottom: 12px;
+  }
+
+  &__detail-desc {
+    margin-bottom: 16px;
+  }
+
+  &__section-title {
+    margin: 16px 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__error-text {
+    color: var(--ant-color-error, #dc2626);
+  }
+
+  &__sql-pre {
+    margin: 0;
+    padding: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    background: var(--dp-gray-50, #f8fafc);
+    border-radius: 4px;
+  }
+
+  &__mono {
+    :deep(textarea) {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+  }
+
+  &__audit-event {
+    margin: 0 0 4px;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__audit-line {
+    margin: 0 0 2px;
+    font-size: 13px;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__audit-detail {
+    margin: 4px 0;
+    color: var(--dp-text-secondary, #475569);
+    font-size: 13px;
+  }
+
+  &__sub-text {
+    margin: 4px 0 0;
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+}
 </style>

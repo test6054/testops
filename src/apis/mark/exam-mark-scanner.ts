@@ -41,6 +41,21 @@ export const SCANNER_DEVICE_STATUS_COLOR: Record<ScannerDeviceStatusCode, BadgeT
   DISABLED: 'red',
 }
 
+/** Agent 在线状态编码 */
+export type ScannerEndpointOnlineStatusCode = 'ONLINE' | 'OFFLINE'
+
+/** Agent 在线状态文案 */
+export const SCANNER_ENDPOINT_ONLINE_STATUS_LABEL: Record<ScannerEndpointOnlineStatusCode, string> = {
+  ONLINE: '在线',
+  OFFLINE: '离线',
+}
+
+/** Agent 在线状态颜色 */
+export const SCANNER_ENDPOINT_ONLINE_STATUS_COLOR: Record<ScannerEndpointOnlineStatusCode, BadgeTone> = {
+  ONLINE: 'green',
+  OFFLINE: 'orange',
+}
+
 /** 色彩模式 */
 export type ScannerColorModeCode = 'COLOR' | 'GRAY' | 'LINEART'
 
@@ -76,9 +91,36 @@ export interface ExamScannerDeviceVO {
   model?: string
   location?: string
   lastSeenAt?: string
+  endpointOnlineStatus?: ScannerEndpointOnlineStatusCode
+  endpointMachineCode?: string
+  endpointName?: string
+  agentVersion?: string
+  clientVersion?: string
+  scannerConnected?: boolean
+  pendingJobCount?: number
+  pendingUploadPageCount?: number
+  diagnosticStatus?: string
+  diagnosticMessage?: string
+  lastHeartbeatAt?: string
   remark?: string
   createTime?: string
   updateTime?: string
+}
+
+/** 扫描 Agent 激活码创建请求 */
+export interface ExamScannerActivationCodeCreatePayload {
+  deviceId: string
+  expireMinutes?: number
+}
+
+/** 扫描 Agent 激活码响应 */
+export interface ExamScannerActivationCodeVO {
+  id: string
+  scannerDeviceId?: string
+  scannerStationId?: string
+  activationCode?: string
+  status?: string
+  expireAt?: string
 }
 
 /** 扫描设备详情视图 - 对应 ExamScannerDeviceDetailResponse */
@@ -253,6 +295,19 @@ export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDet
  */
 export function resetScannerDevicePushToken(id: string): Promise<ExamScannerDeviceTokenVO> {
   return http.post<ExamScannerDeviceTokenVO>('/api/mark/exams/scan-devices/reset-token', { id })
+}
+
+/**
+ * 生成扫描 Agent 一次性激活码
+ * POST /api/mark/exams/scan-devices/activation-code/create
+ */
+export function createScannerActivationCode(
+  payload: ExamScannerActivationCodeCreatePayload,
+): Promise<ExamScannerActivationCodeVO> {
+  return http.post<ExamScannerActivationCodeVO>(
+    '/api/mark/exams/scan-devices/activation-code/create',
+    payload,
+  )
 }
 
 /**

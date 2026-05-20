@@ -1,12 +1,10 @@
 <script setup lang="ts">
 /**
- * 成绩明细管理
+ * 质量评价 - 成绩明细管理
  *
- * 上下文：先选成绩批次 (ScoreBatchVO)，再列出该批次下所有明细。
- * 后端：/api/quality/score-records  + /api/quality/score-batches
- *
- * 用途：人工核对 Excel 异步导入或外部 AI 解析草稿的明细数据，
- *      标记 validFlag、补救/排除无效成绩，确认后供达成度计算使用。
+ * 后端契约：
+ * - /api/quality/score-records: list-by-batch / list-valid-by-item / detail / create / batch-create / update / delete
+ * - /api/quality/score-batches: page（按 qualityCourseId 拉批次列表）
  */
 import type {
   AssessmentItemVO,
@@ -14,18 +12,60 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
+  isScoreBatchStatus,
   SCORE_BATCH_STATUS_COLOR,
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
-import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
-import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, ref, watch } from 'vue'
+import {
+  CourseSelector,
+  StudentSelector,
+  TrainingPlanSelector,
+} from '@/components/quality/selectors'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
+
+const batchColumns: ColumnsType = [
+  { title: '编码', dataIndex: 'batchCode', key: 'batchCode', width: 120 },
+  { title: '名称', dataIndex: 'batchName', key: 'batchName' },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 110 },
+]
+
+const recordColumns: ColumnsType = [
+  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
+  { title: '姓名', dataIndex: 'studentName', key: 'studentName', width: 100 },
+  { title: '考核环节', dataIndex: 'assessmentItemId', key: 'assessmentItemId' },
+  { title: '得分 / 满分', key: 'score', width: 140 },
+  { title: '状态', key: 'recordStatus', width: 140 },
+  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+]
+
+const validByItemColumns: ColumnsType = [
+  { title: '批次 ID', dataIndex: 'batchId', key: 'batchId', width: 140 },
+  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
+  { title: '姓名', dataIndex: 'studentName', key: 'studentName', width: 100 },
+  { title: '得分 / 满分', key: 'score', width: 140 },
+]
+
+/* ========== 状态守卫 helper：禁止 as 类型断言 ========== */
+function batchStatusLabel(value: unknown): string {
+  if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function batchStatusColor(value: unknown): string {
+  if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_COLOR[value]
+  return 'default'
+}
 
 const qualityStore = useQualityStore()
 
@@ -34,6 +74,10 @@ const qualityStore = useQualityStore()
 const batches = ref<ScoreBatchVO[]>([])
 const batchesLoading = ref(false)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
+
+function selectBatch(batch: ScoreBatchVO) {
+  selectedBatch.value = batch
+}
 
 async function loadBatches() {
   if (!qualityStore.currentQualityCourseId) {
@@ -93,14 +137,35 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value
-    = (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+  assessmentItems.value =
+    (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
 }
+
+/* ========== 信号指标带（SignalBand） ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const list = filteredRecords.value
+  const valid = list.filter((r) => r.validFlag).length
+  const invalid = list.length - valid
+  const errored = list.filter((r) => r.errorCodes && r.errorCodes.length > 0).length
+  const totalScore = list.reduce((sum, r) => sum + Number(r.rawScore || 0), 0)
+  const totalFull = list.reduce((sum, r) => sum + Number(r.fullScore || 0), 0)
+  const ratio = totalFull > 0 ? Math.round((totalScore / totalFull) * 100) : 0
+  return [
+    { key: 'total', label: '当前明细', value: list.length, tone: 'blue' },
+    { key: 'valid', label: '有效', value: valid, tone: 'green' },
+    { key: 'invalid', label: '无效', value: invalid, tone: invalid > 0 ? 'orange' : 'gray' },
+    { key: 'errored', label: '异常', value: errored, tone: errored > 0 ? 'red' : 'gray' },
+    { key: 'ratio', label: '平均得分率', value: `${ratio}%`, tone: 'blue' },
+    { key: 'batches', label: '批次总数', value: batches.value.length, tone: 'gray' },
+  ]
+})
 
 /* ========== 明细编辑 ========== */
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
+const editorSubmitting = ref(false)
 const editor = ref<ScoreRecordSavePayload>({
   batchId: '',
   assessmentItemId: '',
@@ -150,17 +215,23 @@ async function submitEditor() {
     message.error('请填写考核环节、原始分、满分')
     return
   }
-  if (editorMode.value === 'create') await scoreRecordApi.create(v)
-  else await scoreRecordApi.update(v)
-  message.success('已保存')
-  editorVisible.value = false
-  await loadRecords()
+  editorSubmitting.value = true
+  try {
+    if (editorMode.value === 'create') await scoreRecordApi.create(v)
+    else await scoreRecordApi.update(v)
+    message.success('已保存')
+    editorVisible.value = false
+    await loadRecords()
+  } finally {
+    editorSubmitting.value = false
+  }
 }
 
 async function handleDelete(record: ScoreRecordVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除该明细？`,
-    okType: 'danger',
+    content: `学号 ${record.studentNumber || '-'} 姓名 ${record.studentName || '-'}`,
+    type: 'error',
     onOk: async () => {
       await scoreRecordApi.delete(record.id)
       message.success('已删除')
@@ -220,11 +291,11 @@ async function submitBatchCreate() {
   for (let idx = 0; idx < raw.length; idx++) {
     const item = raw[idx] as Partial<ScoreRecordSavePayload> | null
     if (!item || !item.assessmentItemId) {
-      message.error(`JSON 解析失败：第 ${idx + 1} 行缺少 assessmentItemId`)
+      message.error(`第 ${idx + 1} 行缺少 assessmentItemId`)
       return
     }
     if (item.rawScore == null || item.fullScore == null) {
-      message.error(`JSON 解析失败：第 ${idx + 1} 行缺少 rawScore / fullScore`)
+      message.error(`第 ${idx + 1} 行缺少 rawScore / fullScore`)
       return
     }
     parsed.push({
@@ -265,8 +336,8 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value
-      = (await scoreRecordApi.listValidByItem(
+    validByItemRecords.value =
+      (await scoreRecordApi.listValidByItem(
         validByItemId.value,
         qualityStore.currentQualityCourseId,
       )) || []
@@ -320,149 +391,177 @@ function handleCourseChange(courseId: string | null) {
 </script>
 
 <template>
-  <div class="page">
-    <a-card :bordered="false" style="margin-bottom: 12px">
-      <a-space wrap>
-        <span class="filter-label">培养方案：</span>
-        <TrainingPlanSelector
-          :value="qualityStore.currentTrainingPlanId || null"
-          :width="280"
-          @change="handlePlanChange"
-        />
-        <span class="filter-label">质量评价课程：</span>
-        <CourseSelector
-          :value="qualityStore.currentQualityCourseId || null"
-          :training-plan-id="qualityStore.currentTrainingPlanId || null"
-          :width="340"
-          @change="handleCourseChange"
-        />
-      </a-space>
-    </a-card>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="score-record__context">
+        <div class="score-record__context-group">
+          <span class="score-record__context-label">培养方案</span>
+          <TrainingPlanSelector
+            :value="qualityStore.currentTrainingPlanId || null"
+            :width="280"
+            @change="handlePlanChange"
+          />
+        </div>
+        <div class="score-record__context-group">
+          <span class="score-record__context-label">质量评价课程</span>
+          <CourseSelector
+            :value="qualityStore.currentQualityCourseId || null"
+            :training-plan-id="qualityStore.currentTrainingPlanId || null"
+            :width="320"
+            @change="handleCourseChange"
+          />
+        </div>
+      </div>
+    </template>
 
-    <a-alert
-      v-if="!qualityStore.currentQualityCourseId"
-      type="warning"
-      show-icon
-      message="尚未选择质量评价课程"
-      style="margin-bottom: 12px"
+    <UiEmpty
+      v-if="!qualityStore.currentTrainingPlanId"
+      description="请先选择培养方案，再维护其下的成绩明细"
+      class="score-record__empty"
     />
 
-    <a-row v-if="qualityStore.currentQualityCourseId" :gutter="12">
-      <a-col :span="9">
-        <a-card title="成绩批次" :bordered="false">
-          <a-table
+    <UiEmpty
+      v-else-if="!qualityStore.currentQualityCourseId"
+      description="请先选择质量评价课程，再查看 / 维护其下成绩批次的明细"
+      class="score-record__empty"
+    />
+
+    <template v-else>
+      <SignalBand :metrics="signals" compact class="score-record__signals" />
+
+      <div class="score-record__layout">
+        <section class="score-record__panel score-record__panel--batches">
+          <header class="score-record__panel-header">
+            <h3 class="score-record__panel-title">成绩批次</h3>
+            <span class="score-record__panel-meta">{{ batches.length }} 批</span>
+          </header>
+          <UiDataTable
+            class="score-record__batches-table"
+            :columns="batchColumns"
             :data-source="batches"
             :loading="batchesLoading"
             row-key="id"
             size="middle"
-            :pagination="false"
-            :row-class-name="
-              (r: ScoreBatchVO) => (selectedBatch?.id === r.id ? 'row-selected' : '')
-            "
+            :show-pagination="false"
+            flat
+            :total="batches.length"
+            :row-class-name="(r: ScoreBatchVO) => (selectedBatch?.id === r.id ? 'is-selected' : '')"
             :custom-row="
               (record: ScoreBatchVO) => ({
-                onClick: () => (selectedBatch = record),
-                style: 'cursor: pointer',
+                onClick: () => selectBatch(record),
               })
             "
           >
-            <a-table-column title="编码" data-index="batchCode" width="120" />
-            <a-table-column title="名称" data-index="batchName" />
-            <a-table-column title="状态" data-index="status" width="100">
-              <template #default="{ text }">
-                <a-tag
-                  :color="SCORE_BATCH_STATUS_COLOR[text as keyof typeof SCORE_BATCH_STATUS_COLOR]"
+            <template #bodyCell="{ column, text }">
+              <template v-if="column.key === 'status'">
+                <a-tag :color="batchStatusColor(text)">
+                  {{ batchStatusLabel(text) }}
+                </a-tag>
+              </template>
+            </template>
+          </UiDataTable>
+        </section>
+
+        <section class="score-record__panel score-record__panel--detail">
+          <UiEmpty
+            v-if="!selectedBatch"
+            description="请在左侧选择成绩批次后查看其明细数据"
+            class="score-record__empty"
+          />
+          <template v-else>
+            <header class="score-record__detail-header">
+              <div>
+                <h3 class="score-record__panel-title">「{{ selectedBatch.batchName }}」明细</h3>
+                <div class="score-record__detail-meta">
+                  状态
+                  <a-tag :color="batchStatusColor(selectedBatch.status)">
+                    {{ batchStatusLabel(selectedBatch.status) }}
+                  </a-tag>
+                  · 编码 {{ selectedBatch.batchCode }}
+                </div>
+              </div>
+              <div class="score-record__detail-actions">
+                <a-select
+                  v-model:value="validFilterSelect"
+                  placeholder="有效性筛选"
+                  allow-clear
+                  class="score-record__valid-select"
                 >
-                  {{
-                    SCORE_BATCH_STATUS_LABEL[text as keyof typeof SCORE_BATCH_STATUS_LABEL] || text
-                  }}
-                </a-tag>
+                  <a-select-option value="true"> 仅有效 </a-select-option>
+                  <a-select-option value="false"> 仅无效 </a-select-option>
+                </a-select>
+                <UiButton variant="ghost" size="sm" @click="openValidByItem">
+                  按考核环节查有效
+                </UiButton>
+                <UiButton variant="outline" size="sm" @click="openBatchCreate"> 批量录入 </UiButton>
+                <UiButton variant="primary" size="sm" @click="openCreate"> 新增明细 </UiButton>
+              </div>
+            </header>
+
+            <UiDataTable
+              class="score-record__records-table"
+              :columns="recordColumns"
+              :data-source="filteredRecords"
+              :loading="recordsLoading"
+              row-key="id"
+              size="middle"
+              :page-size="20"
+              :total="filteredRecords.length"
+              flat
+            >
+              <template #bodyCell="{ column, record, text }">
+                <template v-if="column.key === 'studentNumber' || column.key === 'studentName'">
+                  {{ text || '-' }}
+                </template>
+                <template v-else-if="column.key === 'assessmentItemId'">
+                  <span class="score-record__item-code">
+                    {{ assessmentItemMap.get(text)?.itemCode || '-' }}
+                  </span>
+                  {{ assessmentItemMap.get(text)?.itemName || text }}
+                </template>
+                <template v-else-if="column.key === 'score'">
+                  {{ Number(record.rawScore).toFixed(1) }} /
+                  {{ Number(record.fullScore).toFixed(0) }}
+                </template>
+                <template v-else-if="column.key === 'recordStatus'">
+                  <a-space size="small">
+                    <a-tag :color="record.validFlag ? 'green' : 'red'">
+                      {{ record.validFlag ? '有效' : '无效' }}
+                    </a-tag>
+                    <a-tooltip v-if="record.errorCodes" :title="record.errorCodes">
+                      <a-tag color="orange"> 异常 </a-tag>
+                    </a-tooltip>
+                  </a-space>
+                </template>
+                <template v-else-if="column.key === 'actions'">
+                  <a-space>
+                    <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
+                    <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+                      删除
+                    </UiButton>
+                  </a-space>
+                </template>
               </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
-      </a-col>
-
-      <a-col :span="15">
-        <a-empty v-if="!selectedBatch" description="请在左侧选择成绩批次查看明细" />
-
-        <a-card v-else :bordered="false">
-          <template #title>
-            <span>「{{ selectedBatch.batchName }}」明细</span>
+            </UiDataTable>
           </template>
-          <template #extra>
-            <a-space>
-              <a-select
-                v-model:value="validFilterSelect"
-                placeholder="有效性筛选"
-                allow-clear
-                style="width: 140px"
-              >
-                <a-select-option value="true">仅有效</a-select-option>
-                <a-select-option value="false">仅无效</a-select-option>
-              </a-select>
-              <a-button type="primary" size="small" @click="openCreate"> 新增明细 </a-button>
-              <a-button size="small" @click="openBatchCreate"> 批量录入 </a-button>
-              <a-button size="small" @click="openValidByItem"> 按考核环节查有效 </a-button>
-            </a-space>
-          </template>
+        </section>
+      </div>
+    </template>
 
-          <a-table
-            :data-source="filteredRecords"
-            :loading="recordsLoading"
-            row-key="id"
-            size="middle"
-            :pagination="{ pageSize: 20, showSizeChanger: true }"
-          >
-            <a-table-column title="学号" data-index="studentNumber" width="120" />
-            <a-table-column title="姓名" data-index="studentName" width="100" />
-            <a-table-column title="考核环节" data-index="assessmentItemId">
-              <template #default="{ text }">
-                <span class="font-mono text-xs text-gray-500 mr-1">
-                  {{ assessmentItemMap.get(text)?.itemCode }}
-                </span>
-                {{ assessmentItemMap.get(text)?.itemName || text }}
-              </template>
-            </a-table-column>
-            <a-table-column title="得分 / 满分" width="120">
-              <template #default="{ record }">
-                {{ Number(record.rawScore).toFixed(1) }} / {{ Number(record.fullScore).toFixed(0) }}
-              </template>
-            </a-table-column>
-            <a-table-column title="状态" width="120">
-              <template #default="{ record }">
-                <a-tag :color="record.validFlag ? 'green' : 'red'">
-                  {{ record.validFlag ? '有效' : '无效' }}
-                </a-tag>
-                <a-tooltip v-if="record.errorCodes" :title="record.errorCodes">
-                  <a-tag color="orange">异常</a-tag>
-                </a-tooltip>
-              </template>
-            </a-table-column>
-            <a-table-column title="操作" width="120" fixed="right">
-              <template #default="{ record }">
-                <a-space>
-                  <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-                  <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
-                </a-space>
-              </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
-      </a-col>
-    </a-row>
-
-    <a-modal
+    <UiDrawer
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新增成绩明细' : '编辑成绩明细'"
-      width="720px"
+      :width="720"
+      :confirm-loading="editorSubmitting"
+      :hide-footer="false"
+      ok-text="保存"
       @ok="submitEditor"
     >
       <a-form layout="vertical" :model="editor">
         <a-form-item label="考核环节" required>
           <a-select v-model:value="editor.assessmentItemId" placeholder="选择考核环节">
             <a-select-option v-for="a in assessmentItems" :key="a.id" :value="a.id">
-              <span class="font-mono text-xs text-gray-500 mr-1">{{ a.itemCode }}</span>
+              <span class="score-record__item-code">{{ a.itemCode }}</span>
               {{ a.itemName }}（满分 {{ a.fullScore }}）
             </a-select-option>
           </a-select>
@@ -479,8 +578,12 @@ function handleCourseChange(courseId: string | null) {
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="学生 ID">
-              <a-input v-model:value="editor.studentUserId" />
+            <a-form-item label="学生">
+              <StudentSelector
+                :value="editor.studentUserId || null"
+                placeholder="选择学生"
+                @change="(v) => (editor.studentUserId = v ?? '')"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -505,13 +608,13 @@ function handleCourseChange(courseId: string | null) {
           <a-textarea
             v-model:value="editor.rubricBreakdown"
             :rows="3"
-            placeholder="{&quot;rubricItemId&quot;: score, ...}"
-            :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
+            placeholder='{"rubricItemId": score, ...}'
+            class="score-record__mono"
           />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="8">
-            <a-form-item label="有效">
+            <a-form-item label="是否有效">
               <a-switch v-model:checked="editor.validFlag" />
             </a-form-item>
           </a-col>
@@ -525,13 +628,14 @@ function handleCourseChange(courseId: string | null) {
           <a-input v-model:value="editor.errorCodes" placeholder="如 SCORE_OVERFLOW, DUP_STUDENT" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
+    <UiDrawer
       v-model:open="batchCreateVisible"
       :title="`批量录入成绩明细（${selectedBatch?.batchName || ''}）`"
+      :width="780"
       :confirm-loading="batchCreateSubmitting"
-      width="780px"
+      :hide-footer="false"
       ok-text="提交批量录入"
       @ok="submitBatchCreate"
     >
@@ -540,28 +644,28 @@ function handleCourseChange(courseId: string | null) {
         show-icon
         message="粘贴 JSON 数组，每行一个明细对象"
         description="必填：assessmentItemId、rawScore、fullScore；可选：studentNumber、studentName、classId、studentUserId、rubricBreakdown、validFlag、invalidReason、errorCodes。batchId 与 qualityCourseId 由页面自动填入。"
-        style="margin-bottom: 12px"
+        class="score-record__batch-alert"
       />
       <a-textarea
         v-model:value="batchCreateText"
         :rows="14"
         :placeholder="BATCH_CREATE_PLACEHOLDER"
-        :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
+        class="score-record__mono"
       />
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
+    <UiDrawer
       v-model:open="validByItemVisible"
       title="按考核环节查有效明细"
-      :footer="null"
-      width="780px"
+      :width="780"
+      :hide-footer="true"
     >
-      <a-space style="margin-bottom: 12px" wrap>
-        <span>考核环节：</span>
+      <div class="score-record__valid-search">
+        <span class="score-record__context-label">考核环节</span>
         <a-select
           v-model:value="validByItemId"
           placeholder="选择考核环节"
-          style="min-width: 320px"
+          class="score-record__valid-select-wide"
           show-search
           option-filter-prop="label"
         >
@@ -571,54 +675,176 @@ function handleCourseChange(courseId: string | null) {
             :value="a.id"
             :label="`${a.itemCode} ${a.itemName}`"
           >
-            <span class="font-mono text-xs text-gray-500 mr-1">{{ a.itemCode }}</span>
+            <span class="score-record__item-code">{{ a.itemCode }}</span>
             {{ a.itemName }}
           </a-select-option>
         </a-select>
-        <a-button type="primary" :loading="validByItemLoading" @click="queryValidByItem">
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="validByItemLoading"
+          @click="queryValidByItem"
+        >
           查询
-        </a-button>
-      </a-space>
-      <a-table
+        </UiButton>
+      </div>
+      <UiDataTable
+        :columns="validByItemColumns"
         :data-source="validByItemRecords"
         :loading="validByItemLoading"
         row-key="id"
         size="small"
-        :pagination="{ pageSize: 20, showSizeChanger: true }"
+        :page-size="20"
+        :total="validByItemRecords.length"
+        flat
       >
-        <a-table-column title="批次" data-index="batchId" width="120" />
-        <a-table-column title="学号" data-index="studentNumber" width="120" />
-        <a-table-column title="姓名" data-index="studentName" width="100" />
-        <a-table-column title="得分 / 满分" width="120">
-          <template #default="{ record }">
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'score'">
             {{ Number(record.rawScore).toFixed(1) }} / {{ Number(record.fullScore).toFixed(0) }}
           </template>
-        </a-table-column>
-      </a-table>
-    </a-modal>
-  </div>
+        </template>
+      </UiDataTable>
+    </UiDrawer>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page {
-  padding: 16px;
+.score-record {
+  &__context {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+
+  &__context-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__context-label {
+    color: var(--dp-text-secondary, #475569);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  &__empty {
+    margin-top: 32px;
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__layout {
+    display: grid;
+    grid-template-columns: minmax(360px, 38%) 1fr;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 320px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-meta {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+
+  &__batches-table {
+    :deep(.ant-table-row) {
+      cursor: pointer;
+    }
+
+    :deep(.is-selected) td {
+      background-color: var(--ant-color-primary-bg, #e6f4ff) !important;
+    }
+  }
+
+  &__detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__detail-meta {
+    margin-top: 4px;
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+
+  &__detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__valid-select {
+    width: 140px;
+  }
+
+  &__valid-select-wide {
+    flex: 1;
+    min-width: 320px;
+  }
+
+  &__valid-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__item-code {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    margin-right: 4px;
+  }
+
+  &__mono {
+    :deep(textarea) {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+  }
+
+  &__batch-alert {
+    margin-bottom: 12px;
+  }
 }
-.filter-label {
-  color: var(--ant-color-text-secondary);
-}
-:deep(.row-selected) td {
-  background-color: var(--ant-color-primary-bg) !important;
-}
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.text-xs {
-  font-size: 12px;
-}
-.text-gray-500 {
-  color: rgba(0, 0, 0, 0.45);
-}
-.mr-1 {
-  margin-right: 4px;
+
+@media (max-width: 1023px) {
+  .score-record__layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

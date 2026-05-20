@@ -15,3 +15,6 @@ export * from './label'
 
 // 通用统计
 export * from './statistics'
+
+// 工作台共享类型
+export * from './workbench'

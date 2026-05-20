@@ -1,16 +1,14 @@
 <template>
-  <GiPageLayout>
-    <div class="scan-attention-page">
-      <PageHeader title="扫描异常待办">
-        <template #tags>
-          <UiTag :tone="attentions.length > 0 ? 'red' : 'green'" size="md">
-            {{ attentions.length > 0 ? `${attentions.length} 条未闭合` : '当前无异常' }}
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="scan-attention__context">
+        <div class="scan-attention__context-info">
+          <h2 class="scan-attention__title">
+            阅卷交付 - 扫描异常队列
+          </h2>
           <a-select
             :value="selectedExamId"
-            style="width: 280px"
+            class="scan-attention__exam-select"
             placeholder="选择考试"
             :options="examOptions"
             :loading="examLoading"
@@ -19,6 +17,11 @@
             allow-clear
             @change="onExamChange"
           />
+        </div>
+        <div class="scan-attention__context-actions">
+          <UiTag :tone="attentions.length > 0 ? 'red' : 'green'" size="sm">
+            {{ attentions.length > 0 ? `${attentions.length} 条未闭合` : '当前无异常' }}
+          </UiTag>
           <UiButton
             variant="outline"
             size="sm"
@@ -26,72 +29,116 @@
             :loading="loading"
             @click="loadAttentions"
           >
-            <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请选择一场考试以查看异常待办"
-        class="empty-block"
-      />
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请选择一场考试以查看异常待办"
+      class="scan-attention__empty"
+    />
 
-      <template v-else>
-        <UiCard class="scan-attention-page__filter-card">
-          <template #title>
-            <SearchOutlined />
-            <span>筛选条件</span>
-          </template>
+    <template v-else>
+      <!-- 概览：KPI + 类型分布 -->
+      <div class="scan-attention__overview">
+        <UiStatPanel
+          title="异常概览"
+          :items="statPanelMetrics"
+          :columns="4"
+          variant="grid"
+          compact
+          class="scan-attention__stats"
+        />
+        <a-card :bordered="false" size="small" class="scan-attention__chart-card">
+          <UiDonutChart
+            :items="donutItems"
+            center-label="异常总数"
+            :center-value="attentions.length"
+            :size="160"
+            :stroke-width="14"
+          />
+        </a-card>
+      </div>
 
-          <a-form layout="inline" :model="filterForm" @submit.prevent="loadAttentions">
-            <a-form-item label="异常类型">
-              <a-select
-                v-model:value="filterForm.attentionType"
-                placeholder="全部异常"
-                :options="attentionTypeOptions"
-                allow-clear
-                style="width: 240px"
-                @change="onAttentionTypeChange"
-              />
-            </a-form-item>
-            <a-form-item label="扫描批次ID">
-              <a-input
-                v-model:value="filterForm.scanBatchId"
-                placeholder="scanBatchId"
-                allow-clear
-                style="width: 200px"
-                @press-enter="loadAttentions"
-              />
-            </a-form-item>
-            <a-form-item label="试卷实例ID">
-              <a-input
-                v-model:value="filterForm.paperInstanceId"
-                placeholder="paperInstanceId"
-                allow-clear
-                style="width: 200px"
-                @press-enter="loadAttentions"
-              />
-            </a-form-item>
-            <a-form-item>
-              <a-space>
-                <UiButton size="sm" :loading="loading" @click="loadAttentions">查询</UiButton>
-                <UiButton size="sm" variant="outline" @click="resetFilter">重置</UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </UiCard>
+      <section class="scan-attention__panel">
+        <header class="scan-attention__panel-header">
+          <h3 class="scan-attention__panel-title">
+            筛选条件
+          </h3>
+        </header>
+        <a-form
+          layout="inline"
+          :model="filterForm"
+          class="scan-attention__filter-form"
+          @submit.prevent="loadAttentions"
+        >
+          <a-form-item label="异常类型">
+            <a-select
+              v-model:value="filterForm.attentionType"
+              placeholder="全部异常"
+              :options="attentionTypeOptions"
+              allow-clear
+              class="scan-attention__type-select"
+              @change="onAttentionTypeChange"
+            />
+          </a-form-item>
+          <a-form-item label="扫描批次ID">
+            <a-input
+              v-model:value="filterForm.scanBatchId"
+              placeholder="scanBatchId"
+              allow-clear
+              class="scan-attention__filter-input"
+              @press-enter="loadAttentions"
+            />
+          </a-form-item>
+          <a-form-item label="试卷实例ID">
+            <a-input
+              v-model:value="filterForm.paperInstanceId"
+              placeholder="paperInstanceId"
+              allow-clear
+              class="scan-attention__filter-input"
+              @press-enter="loadAttentions"
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <UiButton size="sm" :loading="loading" @click="loadAttentions">
+                查询
+              </UiButton>
+              <UiButton size="sm" variant="outline" @click="resetFilter">
+                重置
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </section>
 
-        <UiCard class="scan-attention-page__table-card">
-          <template #title>
-            <ExclamationCircleOutlined />
-            <span>异常列表</span>
-            <UiBadge :tone="attentions.length > 0 ? 'red' : 'green'">
-              {{ attentions.length }}
-            </UiBadge>
-          </template>
-          <template #extra>
+      <section class="scan-attention__panel">
+        <header class="scan-attention__panel-header">
+          <h3 class="scan-attention__panel-title">
+            异常待办列表
+          </h3>
+          <span class="scan-attention__panel-meta">
+            共 {{ attentions.length }} 条
+          </span>
+        </header>
+        <UiDataTable
+          :columns="columns"
+          :data-source="attentions"
+          :loading="loading"
+          :row-key="rowKey"
+          :enable-selection="true"
+          :selected-row-keys="selectedRowKeys"
+          :show-pagination="false"
+          flat
+          empty-title="当前无异常"
+          empty-description="当前筛选条件下没有异常待办"
+          v-bind="{ rowSelection }"
+        >
+          <template #toolbar-right>
             <UiButton
               size="sm"
               :disabled="selectedRowKeys.length === 0"
@@ -102,83 +149,73 @@
             </UiButton>
           </template>
 
-          <UiEmpty v-if="!loading && attentions.length === 0" description="当前无异常待办" />
-
-          <a-table
-            v-else
-            :columns="columns"
-            :data-source="attentions"
-            :loading="loading"
-            :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
-            :row-key="rowKey"
-            :row-selection="rowSelection"
-            size="middle"
-            class="scan-attention-table"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'attentionType'">
-                <UiTag tone="red" size="sm">{{ record.attentionType || '-' }}</UiTag>
-              </template>
-              <template v-else-if="column.key === 'sourceInfo'">
-                <div class="source-cell">
-                  <span v-if="record.sourceType"><b>{{ record.sourceType }}</b></span>
-                  <span v-if="record.sourceId" class="muted">#{{ record.sourceId }}</span>
-                </div>
-              </template>
-              <template v-else-if="column.key === 'paperInstanceId'">
-                <a-typography-text
-                  v-if="record.paperInstanceId"
-                  copyable
-                  :content="record.paperInstanceId"
-                />
-                <span v-else class="muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="record.status ? 'orange' : 'gray'" size="sm">
-                  {{ record.status || '-' }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'diagnostic'">
-                <a-typography-text :content="record.diagnostic" :ellipsis="{ tooltip: true }" />
-              </template>
-              <template v-else-if="column.key === 'updateTime'">
-                {{ formatTime(record.updateTime) }}
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <UiButton
-                    v-if="record.attentionType === 'RECOGNITION_REVIEW'"
-                    size="sm"
-                    :disabled="!record.paperInstanceId || !record.scanBatchId"
-                    @click="openBindModal(record)"
-                  >
-                    身份绑定
-                  </UiButton>
-                  <UiButton v-else size="sm" @click="openLedger(record)"> 处置入口 </UiButton>
-                  <UiButton size="sm" variant="ghost" @click="openDetail(record)">详情</UiButton>
-                </a-space>
-              </template>
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'attentionType'">
+              <UiTag :tone="attentionTypeTone(record.attentionType)" size="sm">
+                {{ attentionTypeLabel(record.attentionType) }}
+              </UiTag>
             </template>
-          </a-table>
-        </UiCard>
-      </template>
-    </div>
+            <template v-else-if="column.key === 'sourceInfo'">
+              <div class="scan-attention__source-cell">
+                <span v-if="record.sourceType"><b>{{ record.sourceType }}</b></span>
+                <span v-if="record.sourceId" class="scan-attention__hint">#{{ record.sourceId }}</span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'paperInstanceId'">
+              <a-typography-text
+                v-if="record.paperInstanceId"
+                copyable
+                :content="record.paperInstanceId"
+              />
+              <span v-else class="scan-attention__hint">-</span>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="statusTone(record.status)" size="sm">
+                {{ record.status || '-' }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'diagnostic'">
+              <a-typography-text :content="record.diagnostic" :ellipsis="{ tooltip: true }" />
+            </template>
+            <template v-else-if="column.key === 'updateTime'">
+              {{ formatTime(record.updateTime) }}
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <a-space>
+                <UiButton
+                  v-if="record.attentionType === 'RECOGNITION_REVIEW'"
+                  size="sm"
+                  :disabled="!record.paperInstanceId || !record.scanBatchId"
+                  @click="openBindDrawer(record)"
+                >
+                  身份绑定
+                </UiButton>
+                <UiButton v-else size="sm" @click="openLedger(record)">处置入口</UiButton>
+                <UiButton size="sm" variant="ghost" @click="openDetail(record)">详情</UiButton>
+              </a-space>
+            </template>
+          </template>
+        </UiDataTable>
+      </section>
+    </template>
 
-    <!-- 身份绑定弹窗 -->
-    <a-modal
-      v-model:open="bindModalOpen"
+    <!-- 身份绑定抽屉 -->
+    <UiDrawer
+      :open="bindDrawerOpen"
       title="试卷身份绑定"
+      :width="560"
       :confirm-loading="binding"
-      :mask-closable="false"
-      width="600px"
-      @ok="handleBind"
+      @update:open="(v: boolean) => bindDrawerOpen = v"
+      @close="bindDrawerOpen = false"
+      @confirm="handleBind"
     >
       <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
-        <a-alert
-          type="warning"
-          show-icon
-          message="请从考生名册中选择正确的考生并提交绑定。绑定后将自动完成该试卷实例与考生的身份关联。"
-          style="margin-bottom: 12px"
+        <UiAlertStrip
+          tone="warning"
+          title="操作提示"
+          description="请从考生名册中选择正确的考生并提交绑定。绑定后将自动完成该试卷实例与考生的身份关联。"
+          dense
+          class="scan-attention__bind-alert"
         />
         <a-form-item label="扫描批次ID">
           <a-input :value="bindForm.scanBatchId" disabled />
@@ -225,10 +262,17 @@
           </a-col>
         </a-row>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <!-- 详情弹窗 -->
-    <a-modal v-model:open="detailModalOpen" title="异常详情" :footer="null" width="640px">
+    <!-- 详情抽屉 -->
+    <UiDrawer
+      :open="detailDrawerOpen"
+      title="异常详情"
+      :width="560"
+      hide-footer
+      @update:open="(v: boolean) => detailDrawerOpen = v"
+      @close="detailDrawerOpen = false"
+    >
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
         <a-descriptions-item label="异常类型">
           {{ detailRecord.attentionType || '-' }}
@@ -250,34 +294,41 @@
           {{ detailRecord.questionTemplateId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="诊断">
-          <pre class="diagnostic-pre">{{ detailRecord.diagnostic || '-' }}</pre>
+          <pre class="scan-attention__diagnostic-pre">{{ detailRecord.diagnostic || '-' }}</pre>
         </a-descriptions-item>
         <a-descriptions-item label="更新时间">
           {{ formatTime(detailRecord.updateTime) }}
         </a-descriptions-item>
       </a-descriptions>
-    </a-modal>
-  </GiPageLayout>
+    </UiDrawer>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+/**
+ * 阅卷交付 - 扫描异常队列
+ *
+ * 后端契约：
+ * - listScanAttentions(examId, attentionType?, scanBatchId?, paperInstanceId?)
+ * - bindPaper(...)、batchBindPapers(...)、listExamCandidates(examId)
+ *
+ * attentionType 枚举：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW
+ */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateVO, ScanAttentionItemVO } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindItemPayload } from '@/apis/mark/exam-mark-scanner'
-import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import type { UiChartSliceItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+
 import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
 import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiAlertStrip, UiButton, UiDataTable, UiDonutChart, UiDrawer, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherScanAttention' })
@@ -361,6 +412,64 @@ function onAttentionTypeChange(): void {
   void loadAttentions()
 }
 
+// ─── 类型色彩编码 ─────────────────────────────────
+const ATTENTION_TYPE_TONE: Record<string, 'red' | 'orange' | 'purple' | 'blue' | 'gray'> = {
+  QUALITY_BLOCK: 'red',
+  PROCESSING_BLOCK: 'orange',
+  DUPLICATE_PENDING: 'purple',
+  RECOGNITION_REVIEW: 'blue',
+}
+
+const ATTENTION_TYPE_LABEL: Record<string, string> = {
+  QUALITY_BLOCK: '质量阻断',
+  PROCESSING_BLOCK: '处理阻断',
+  DUPLICATE_PENDING: '重复待处置',
+  RECOGNITION_REVIEW: '识别复核',
+}
+
+function attentionTypeTone(type?: string): 'red' | 'orange' | 'purple' | 'blue' | 'gray' {
+  return ATTENTION_TYPE_TONE[type ?? ''] ?? 'gray'
+}
+
+function attentionTypeLabel(type?: string): string {
+  return ATTENTION_TYPE_LABEL[type ?? ''] ?? (type || '-')
+}
+
+function statusTone(status?: string): 'red' | 'orange' | 'green' | 'gray' {
+  if (!status) return 'gray'
+  if (status === 'CLOSED' || status === 'RESOLVED') return 'green'
+  if (status === 'OPEN' || status === 'PENDING') return 'red'
+  return 'orange'
+}
+
+const typeCounts = computed(() => {
+  const counts: Record<string, number> = {
+    QUALITY_BLOCK: 0,
+    PROCESSING_BLOCK: 0,
+    DUPLICATE_PENDING: 0,
+    RECOGNITION_REVIEW: 0,
+  }
+  for (const a of attentions.value) {
+    const k = a.attentionType ?? ''
+    if (k in counts) counts[k] += 1
+  }
+  return counts
+})
+
+const statPanelMetrics = computed(() => [
+  { label: '质量阻断', value: typeCounts.value.QUALITY_BLOCK, unit: '条', tone: typeCounts.value.QUALITY_BLOCK > 0 ? 'red' as const : 'gray' as const },
+  { label: '处理阻断', value: typeCounts.value.PROCESSING_BLOCK, unit: '条', tone: typeCounts.value.PROCESSING_BLOCK > 0 ? 'orange' as const : 'gray' as const },
+  { label: '重复待处置', value: typeCounts.value.DUPLICATE_PENDING, unit: '条', tone: typeCounts.value.DUPLICATE_PENDING > 0 ? 'purple' as const : 'gray' as const },
+  { label: '识别复核', value: typeCounts.value.RECOGNITION_REVIEW, unit: '条', tone: typeCounts.value.RECOGNITION_REVIEW > 0 ? 'blue' as const : 'gray' as const },
+])
+
+const donutItems = computed<UiChartSliceItem[]>(() => [
+  { key: 'quality', label: '质量阻断', value: typeCounts.value.QUALITY_BLOCK, tone: 'red' },
+  { key: 'processing', label: '处理阻断', value: typeCounts.value.PROCESSING_BLOCK, tone: 'orange' },
+  { key: 'duplicate', label: '重复待处置', value: typeCounts.value.DUPLICATE_PENDING, tone: 'purple' },
+  { key: 'recognition', label: '识别复核', value: typeCounts.value.RECOGNITION_REVIEW, tone: 'blue' },
+])
+
 function resetFilter(): void {
   filterForm.attentionType = ''
   filterForm.scanBatchId = ''
@@ -369,7 +478,7 @@ function resetFilter(): void {
 }
 
 // ─── 身份绑定弹窗 ────────────────────────────────
-const bindModalOpen = ref(false)
+const bindDrawerOpen = ref(false)
 const binding = ref(false)
 const bindFormRef = ref<FormInstance>()
 const bindForm = reactive<{
@@ -431,7 +540,7 @@ async function ensureCandidatesLoaded(): Promise<void> {
   }
 }
 
-function openBindModal(record: ScanAttentionItemVO): void {
+function openBindDrawer(record: ScanAttentionItemVO): void {
   if (!record.paperInstanceId || !record.scanBatchId) {
     message.warning('该异常缺少试卷实例或扫描批次信息，无法进行身份绑定')
     return
@@ -442,7 +551,7 @@ function openBindModal(record: ScanAttentionItemVO): void {
   bindForm.confirmedCandidateRosterId = undefined
   bindForm.attemptStatus = ''
   bindForm.attemptNo = ''
-  bindModalOpen.value = true
+  bindDrawerOpen.value = true
   void ensureCandidatesLoaded()
 }
 
@@ -482,7 +591,7 @@ async function handleBind(): Promise<void> {
       attemptNo: bindForm.attemptNo?.trim() || undefined,
     })
     message.success('试卷身份绑定成功')
-    bindModalOpen.value = false
+    bindDrawerOpen.value = false
     await loadAttentions()
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '试卷身份绑定失败'
@@ -493,12 +602,12 @@ async function handleBind(): Promise<void> {
 }
 
 // ─── 详情弹窗 ────────────────────────────────────
-const detailModalOpen = ref(false)
+const detailDrawerOpen = ref(false)
 const detailRecord = ref<ScanAttentionItemVO | null>(null)
 
 function openDetail(record: ScanAttentionItemVO): void {
   detailRecord.value = record
-  detailModalOpen.value = true
+  detailDrawerOpen.value = true
 }
 
 // ─── 行选择与批量绑定 ─────────────────────────────
@@ -585,42 +694,128 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-.scan-attention-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
-  min-height: 100vh;
-}
-
-.scan-attention-table {
-  :deep(.ant-table-thead > tr > th) {
-    background: var(--ant-color-fill-quaternary);
-    font-weight: 600;
+.scan-attention {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
   }
-}
 
-.source-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+  &__context-info {
+    flex: 1;
+    min-width: 280px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
 
-.muted {
-  color: var(--ant-color-text-tertiary);
-  font-size: 12px;
-}
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
 
-.diagnostic-pre {
-  margin: 0;
-  font-family: inherit;
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  color: var(--ant-color-text);
-}
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
 
-.empty-block {
-  padding: 60px 0;
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__overview {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 16px;
+    align-items: start;
+  }
+
+  &__stats {
+    min-width: 0;
+  }
+
+  &__chart-card {
+    min-width: 0;
+  }
+
+  @media (max-width: 900px) {
+    &__overview {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-meta {
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__filter-form {
+    margin: 0;
+  }
+
+  &__type-select {
+    width: 240px;
+  }
+
+  &__filter-input {
+    width: 200px;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
+  &__source-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__hint {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+
+  &__diagnostic-pre {
+    margin: 0;
+    font-family: inherit;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__bind-alert {
+    margin-bottom: 16px;
+  }
 }
 </style>

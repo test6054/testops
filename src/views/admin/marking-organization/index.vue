@@ -1,17 +1,12 @@
 <template>
-  <GiPageLayout>
-    <div class="organization-index-page">
-      <PageHeader title="阅卷组织管理">
-        <template #tags>
-          <UiTag v-if="organization?.organizationStatus" :tone="STATUS_TONE[organization.organizationStatus]" size="md">
-            {{ STATUS_LABEL[organization.organizationStatus] }}
-          </UiTag>
-          <UiTag v-if="organization" tone="blue" size="md">题组 {{ organization.groups?.length ?? 0 }}</UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="org-index__context">
+        <div class="org-index__context-info">
+          <h2 class="org-index__title">阅卷交付 - 阅卷组织</h2>
           <a-select
             :value="selectedExamId"
-            style="width: 280px"
+            class="org-index__exam-select"
             placeholder="选择考试"
             :options="examOptions"
             :loading="examLoading"
@@ -20,6 +15,15 @@
             allow-clear
             @change="onExamChange"
           />
+        </div>
+        <div class="org-index__context-actions">
+          <UiTag
+            v-if="organization?.organizationStatus"
+            :tone="STATUS_TONE[organization.organizationStatus]"
+            size="sm"
+          >
+            {{ STATUS_LABEL[organization.organizationStatus] }}
+          </UiTag>
           <UiButton
             variant="outline"
             size="sm"
@@ -27,114 +31,113 @@
             :loading="loading"
             @click="loadOrganization"
           >
-            <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
           <UiButton
             v-if="selectedExamId && !organization && !loading"
+            variant="primary"
             size="sm"
-            @click="openCreateModal"
+            @click="openCreateDrawer"
           >
-            <template #icon><PlusOutlined /></template>
             新建组织
           </UiButton>
-          <UiButton
-            v-if="organization"
-            size="sm"
-            @click="goDetail"
-          >
-            <template #icon><RightOutlined /></template>
+          <UiButton v-if="organization" variant="primary" size="sm" @click="goDetail">
             进入详情
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请先选择考试以查看 / 创建阅卷组织"
-        class="empty-block"
-      />
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请先选择考试以查看 / 创建阅卷组织"
+      class="org-index__empty"
+    />
 
-      <a-spin v-else :spinning="loading" tip="加载组织中...">
-        <UiCard v-if="organization" class="org-summary-card">
-          <template #title>
+    <a-spin v-else :spinning="loading" tip="加载组织中...">
+      <SignalBand v-if="organization" :metrics="signalMetrics" compact class="org-index__signals" />
+
+      <section v-if="organization" class="org-index__panel">
+        <header class="org-index__panel-header">
+          <h3 class="org-index__panel-title">
             <ProfileOutlined />
-            <span>组织全貌</span>
-            <UiBadge tone="blue">EXAM #{{ organization.examId }}</UiBadge>
-          </template>
+            组织全貌
+          </h3>
+          <UiBadge tone="blue"> EXAM #{{ organization.examId }} </UiBadge>
+        </header>
 
-          <a-descriptions
-            :column="{ xs: 1, sm: 2, lg: 3 }"
-            size="middle"
-            bordered
-            class="org-descriptions"
-          >
-            <a-descriptions-item label="组长用户ID">
-              <a-typography-text copyable>{{ organization.leaderUserId || '-' }}</a-typography-text>
-            </a-descriptions-item>
-            <a-descriptions-item label="组织状态">
-              <UiTag v-if="organization.organizationStatus" :tone="STATUS_TONE[organization.organizationStatus]" size="sm">
-                {{ STATUS_LABEL[organization.organizationStatus] }}
-              </UiTag>
-            </a-descriptions-item>
-            <a-descriptions-item label="匿名阅卷">
-              <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
-                {{ organization.anonymousMode ? '启用' : '关闭' }}
-              </UiTag>
-            </a-descriptions-item>
-            <a-descriptions-item label="题组数量">
-              {{ organization.groups?.length ?? 0 }} 组
-            </a-descriptions-item>
-            <a-descriptions-item label="创建时间">
-              {{ formatTime(organization.createTime) }}
-            </a-descriptions-item>
-            <a-descriptions-item label="更新时间">
-              {{ formatTime(organization.updateTime) }}
-            </a-descriptions-item>
-            <a-descriptions-item label="备注" :span="3">
-              <span v-if="organization.remark">{{ organization.remark }}</span>
-              <span v-else class="muted">-</span>
-            </a-descriptions-item>
-          </a-descriptions>
+        <a-descriptions
+          :column="{ xs: 1, sm: 2, lg: 3 }"
+          size="middle"
+          bordered
+          class="org-index__descriptions"
+        >
+          <a-descriptions-item label="组长用户 ID">
+            <a-typography-text copyable>
+              {{ organization.leaderUserId || '-' }}
+            </a-typography-text>
+          </a-descriptions-item>
+          <a-descriptions-item label="组织状态">
+            <UiTag
+              v-if="organization.organizationStatus"
+              :tone="STATUS_TONE[organization.organizationStatus]"
+              size="sm"
+            >
+              {{ STATUS_LABEL[organization.organizationStatus] }}
+            </UiTag>
+          </a-descriptions-item>
+          <a-descriptions-item label="匿名阅卷">
+            <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
+              {{ organization.anonymousMode ? '启用' : '关闭' }}
+            </UiTag>
+          </a-descriptions-item>
+          <a-descriptions-item label="题组数量">
+            {{ organization.groups?.length ?? 0 }} 组
+          </a-descriptions-item>
+          <a-descriptions-item label="创建时间">
+            {{ formatTime(organization.createTime) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="更新时间">
+            {{ formatTime(organization.updateTime) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="备注" :span="3">
+            <span v-if="organization.remark">
+              {{ organization.remark }}
+            </span>
+            <span v-else class="org-index__hint">-</span>
+          </a-descriptions-item>
+        </a-descriptions>
 
-          <a-divider class="section-divider" />
+        <div class="org-index__actions">
+          <UiButton size="sm" @click="goDetail"> 管理题组与策略 </UiButton>
+          <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
+        </div>
+      </section>
 
-          <div class="actions-row">
-            <UiButton size="sm" @click="goDetail">
-              <template #icon><SettingOutlined /></template>
-              管理题组与策略
-            </UiButton>
-            <UiButton size="sm" variant="outline" @click="goSessions">
-              <template #icon><PlayCircleOutlined /></template>
-              试评 / 正评会话
-            </UiButton>
-          </div>
-        </UiCard>
+      <section v-else-if="!loading" class="org-index__panel org-index__panel--empty">
+        <h3 class="org-index__empty-title">
+          <InfoCircleOutlined />
+          本考试尚未创建阅卷组织
+        </h3>
+        <p class="org-index__empty-desc">
+          阅卷组织是组织教师批改试卷的核心实体；创建后可继续编排题组、配置分配策略并启动试评 /
+          正评。
+        </p>
+        <UiButton variant="primary" size="md" @click="openCreateDrawer">
+          立即创建阅卷组织
+        </UiButton>
+      </section>
+    </a-spin>
 
-        <UiCard v-else-if="!loading" class="empty-org-card">
-          <template #title>
-            <InfoCircleOutlined />
-            <span>本考试尚未创建阅卷组织</span>
-          </template>
-          <p class="empty-org-desc">
-            阅卷组织是组织教师批改试卷的核心实体；创建后可继续编排题组、配置分配策略并启动试评 / 正评。
-          </p>
-          <UiButton size="md" @click="openCreateModal">
-            <template #icon><PlusOutlined /></template>
-            立即创建阅卷组织
-          </UiButton>
-        </UiCard>
-      </a-spin>
-    </div>
-
-    <a-modal
-      v-model:open="createModalOpen"
+    <!-- 新建组织抽屉 -->
+    <UiDrawer
+      :open="createDrawerOpen"
       title="新建阅卷组织"
+      :width="520"
       :confirm-loading="creating"
-      ok-text="提交创建"
-      cancel-text="取消"
-      :width="560"
-      @ok="submitCreate"
+      @update:open="(v: boolean) => (createDrawerOpen = v)"
+      @close="createDrawerOpen = false"
+      @confirm="submitCreate"
     >
       <a-form ref="createFormRef" :model="createForm" :rules="createRules" layout="vertical">
         <a-form-item label="关联考试">
@@ -153,7 +156,7 @@
         </a-form-item>
         <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
           <a-switch v-model:checked="createForm.anonymousMode" />
-          <span class="hint">启用后阅卷教师不可见考生身份</span>
+          <span class="org-index__switch-hint">启用后阅卷教师不可见考生身份</span>
         </a-form-item>
         <a-form-item label="备注" name="remark">
           <a-textarea
@@ -165,38 +168,40 @@
           />
         </a-form-item>
       </a-form>
-    </a-modal>
-  </GiPageLayout>
+    </UiDrawer>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+/**
+ * 阅卷交付 - 阅卷组织详情入口
+ *
+ * 后端契约（MarkingOrganizationController）：
+ * - getOrganization({ examId })  查询当前考试的阅卷组织
+ * - createOrganization(payload)  创建阅卷组织
+ */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreatePayload,
 } from '@/apis/mark/marking-organization'
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
-import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import RightOutlined from '@ant-design/icons-vue/RightOutlined'
-import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import {
   createOrganization,
   getOrganization,
   MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/marking-organization'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { SignalMetric } from '@/types/workbench'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { UiBadge, UiButton, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'AdminMarkingOrganizationIndex' })
@@ -213,7 +218,7 @@ const {
 } = useMarkExamSelector()
 
 const selectedExamLabel = computed(() => {
-  const exam = exams.value.find(item => item.examId === selectedExamId.value)
+  const exam = exams.value.find((item) => item.examId === selectedExamId.value)
   if (!exam) return ''
   return exam.examNo ? `${exam.examName} (${exam.examNo})` : exam.examName
 })
@@ -236,11 +241,32 @@ async function loadOrganization(): Promise<void> {
   }
 }
 
+const signalMetrics = computed<SignalMetric[]>(() => {
+  const org = organization.value
+  if (!org) return []
+  const groupCount = org.groups?.length ?? 0
+  return [
+    { key: 'groups', label: '题组数', value: groupCount, tone: groupCount > 0 ? 'blue' : 'orange' },
+    {
+      key: 'anonymous',
+      label: '匿名阅卷',
+      value: org.anonymousMode ? '已启用' : '关闭',
+      tone: org.anonymousMode ? 'green' : 'gray',
+    },
+    {
+      key: 'status',
+      label: '组织状态',
+      value: org.organizationStatus ? STATUS_LABEL[org.organizationStatus] : '-',
+      tone: org.organizationStatus ? STATUS_TONE[org.organizationStatus] : 'gray',
+    },
+  ]
+})
+
 const teacherList = ref<UserListItemDto[]>([])
 const teacherLoading = ref(false)
 
 const teacherOptions = computed(() =>
-  teacherList.value.map(item => ({
+  teacherList.value.map((item) => ({
     value: item.id,
     label: item.identifierNumber
       ? `${item.nickName || item.userName} (${item.identifierNumber})`
@@ -265,7 +291,7 @@ async function loadTeachers(): Promise<void> {
   }
 }
 
-const createModalOpen = ref(false)
+const createDrawerOpen = ref(false)
 const creating = ref(false)
 const createFormRef = ref<FormInstance>()
 
@@ -286,7 +312,7 @@ const createRules: Record<string, Rule[]> = {
   remark: [{ max: 200, message: '备注最多 200 字', trigger: 'blur' }],
 }
 
-function openCreateModal(): void {
+function openCreateDrawer(): void {
   if (!selectedExamId.value) {
     message.warning('请先选择考试')
     return
@@ -294,7 +320,7 @@ function openCreateModal(): void {
   createForm.leaderUserId = undefined
   createForm.anonymousMode = true
   createForm.remark = ''
-  createModalOpen.value = true
+  createDrawerOpen.value = true
   if (teacherList.value.length === 0) {
     void loadTeachers()
   }
@@ -317,7 +343,7 @@ async function submitCreate(): Promise<void> {
     }
     organization.value = await createOrganization(payload)
     message.success('阅卷组织已创建')
-    createModalOpen.value = false
+    createDrawerOpen.value = false
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '创建阅卷组织失败'
     message.error(errMsg)
@@ -360,56 +386,127 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-.organization-index-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.empty-block {
-  margin-top: 48px;
-}
-
-.org-summary-card {
-  :deep(.descriptions-row) {
-    background-color: #fafafa;
+.org-index {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
   }
-}
 
-.org-descriptions {
-  :deep(.ant-descriptions-item-label) {
-    width: 140px;
-    color: #595959;
+  &__context-info {
+    flex: 1;
+    min-width: 280px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
   }
-}
 
-.section-divider {
-  margin: 16px 0 12px;
-}
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
 
-.actions-row {
-  display: flex;
-  gap: 8px;
-}
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
 
-.empty-org-card {
-  text-align: center;
-}
+  &__exam-select {
+    width: 280px;
+  }
 
-.empty-org-desc {
-  margin: 8px 0 16px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #595959;
-}
+  &__signals {
+    margin-bottom: 0;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
 
-.muted {
-  color: #bfbfbf;
-}
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
 
-.hint {
-  margin-left: 8px;
-  font-size: 12px;
-  color: #8c8c8c;
+    &--empty {
+      text-align: center;
+      padding: 40px 16px;
+    }
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__empty {
+    padding: 48px 0;
+  }
+
+  &__empty-title {
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  &__empty-desc {
+    margin: 8px 0 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__descriptions {
+    margin-top: 8px;
+
+    :deep(.ant-descriptions-item-label) {
+      width: 140px;
+      color: var(--dp-text-secondary, #475569);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--dp-border-light, #f1f5f9);
+  }
+
+  &__hint {
+    color: var(--dp-text-disabled, #94a3b8);
+  }
+
+  &__switch-hint {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+  }
 }
 </style>

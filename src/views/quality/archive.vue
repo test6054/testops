@@ -1,26 +1,58 @@
 <script setup lang="ts">
 /**
- * 材料归档 + 专家材料包导出
+ * 质量评价 - 材料归档与专家包导出台
  *
- * 功能：
- * - 列表分页查归档记录（按业务类型 / 归档分类 / 关键字筛选）
- * - 触发专家材料包导出（REQUIREMENT / PROGRAM_ACCREDITATION），打 ZIP -> edu-storage 上传 -> 落归档 -> edu-message 通知
- * - 详情抽屉
+ * 后端契约（ArchiveController）：
+ * - GET /quality/archive/page  分页查询
+ * - GET /quality/archive/{id}  详情
+ * - POST /quality/archive/create / update / delete  手工台帐补登
+ * - POST /quality/archive/expert-package/export  专家材料包异步导出，返回 archiveId
  */
 import type {
-  ArchiveBusinessType,
   ArchiveQueryPayload,
   ArchiveSavePayload,
   ArchiveVO,
   ExpertPackageExportPayload,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   ARCHIVE_BUSINESS_TYPE_LABEL,
   archiveApi,
   EXPERT_PACKAGE_TYPE_LABEL,
+  isArchiveBusinessType,
 } from '@/apis/quality'
+import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiSearchForm } from '@/components/ui-guide/ui'
+import {
+  AuditTimelineDrawer,
+  ContextBar,
+  SignalBand,
+  StageWorkbenchShell,
+} from '@/components/workbench'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
+
+/* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
+
+function archiveBusinessTypeLabel(value: unknown): string {
+  if (isArchiveBusinessType(value)) return ARCHIVE_BUSINESS_TYPE_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function archiveBusinessTypeColor(value: unknown): string {
+  if (!isArchiveBusinessType(value)) return 'default'
+  if (value === 'EXPERT_PACKAGE') return 'gold'
+  if (value === 'REPORT') return 'cyan'
+  if (value === 'GRADUATION_REQUIREMENT') return 'purple'
+  return 'blue'
+}
+
+function isExpertPackageRecord(value: unknown): boolean {
+  return isArchiveBusinessType(value) && value === 'EXPERT_PACKAGE'
+}
 
 const list = ref<ArchiveVO[]>([])
 const total = ref(0)
@@ -35,7 +67,37 @@ const query = reactive<ArchiveQueryPayload>({
   keyword: '',
 })
 
-const businessTypeOptions = Object.entries(ARCHIVE_BUSINESS_TYPE_LABEL).map(([value, label]) => ({ value, label }))
+const businessTypeOptions = Object.entries(ARCHIVE_BUSINESS_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+
+const filterFields: FilterField[] = [
+  {
+    key: 'businessType',
+    label: '业务类型',
+    type: 'select',
+    placeholder: '业务类型',
+    allowClear: true,
+    options: businessTypeOptions,
+    width: 180,
+  },
+  { key: 'archiveCategory', label: '归档分类', type: 'input', placeholder: '归档分类', width: 130 },
+  {
+    key: 'keyword',
+    label: '关键字',
+    type: 'input',
+    placeholder: '关键字',
+    width: 180,
+    inputPrefixIcon: 'search',
+  },
+]
+
+const filterModel = ref<Record<string, unknown>>({
+  businessType: undefined,
+  archiveCategory: '',
+  keyword: '',
+})
 
 const exportVisible = ref(false)
 const exportSubmitting = ref(false)
@@ -80,24 +142,36 @@ async function loadList() {
     })
     list.value = page.list
     total.value = page.total
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(page: number, pageSize: number) {
-  query.pageNum = page
-  query.pageSize = pageSize
+function handlePageChange(payload: { current: number; pageSize: number }) {
+  query.pageNum = payload.current
+  query.pageSize = payload.pageSize
   loadList()
 }
 
-function resetQuery() {
+function syncFilterToQuery() {
+  const businessTypeRaw = filterModel.value.businessType
+  query.businessType = isArchiveBusinessType(businessTypeRaw) ? businessTypeRaw : undefined
+  query.archiveCategory =
+    typeof filterModel.value.archiveCategory === 'string' ? filterModel.value.archiveCategory : ''
+  query.keyword = typeof filterModel.value.keyword === 'string' ? filterModel.value.keyword : ''
+}
+
+function handleSearch() {
   query.pageNum = 1
-  query.businessType = undefined
-  query.archiveCategory = ''
+  syncFilterToQuery()
+  loadList()
+}
+
+function handleResetSearch() {
+  filterModel.value = { businessType: undefined, archiveCategory: '', keyword: '' }
+  query.pageNum = 1
   query.archiveOfficeConfirmed = undefined
-  query.keyword = ''
+  syncFilterToQuery()
   loadList()
 }
 
@@ -117,12 +191,14 @@ function openExport() {
 
 async function submitExport() {
   if (!exportForm.targetId.trim()) {
-    message.error('请填写目标 ID（按毕业要求时为 graduation_requirement_id；按专业认证时为 training_plan_id）')
+    message.error(
+      '请填写目标 ID（按毕业要求时为 graduation_requirement_id；按专业认证时为 training_plan_id）',
+    )
     return
   }
   const recipients = recipientInput.value
     .split(',')
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean)
   exportSubmitting.value = true
   try {
@@ -137,8 +213,7 @@ async function submitExport() {
     message.success(`导出成功，归档 ID = ${archiveId}`)
     exportVisible.value = false
     await loadList()
-  }
-  finally {
+  } finally {
     exportSubmitting.value = false
   }
 }
@@ -148,8 +223,7 @@ async function openDetail(record: ArchiveVO) {
   detailLoading.value = true
   try {
     detailRecord.value = await archiveApi.detail(record.id)
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -189,8 +263,7 @@ async function openEdit(record: ArchiveVO) {
       notes: detail.notes || '',
     })
     editorVisible.value = true
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -219,24 +292,22 @@ async function submitEditor() {
     if (editorMode.value === 'create') {
       await archiveApi.create(payload)
       message.success('已新建归档记录')
-    }
-    else {
+    } else {
       await archiveApi.update(payload)
       message.success('已更新归档记录')
     }
     editorVisible.value = false
     await loadList()
-  }
-  finally {
+  } finally {
     editorSubmitting.value = false
   }
 }
 
 function handleDelete(record: ArchiveVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除归档 ${record.archiveCode}？`,
-    content: '删除后文件本身保留在 edu-storage，仅删除归档台账记录。',
-    okType: 'danger',
+    content: '删除后文件本身保留在 edu-storage，仅删除归档台帐记录。',
+    type: 'error',
     onOk: async () => {
       await archiveApi.delete(record.id)
       message.success('已删除')
@@ -245,107 +316,180 @@ function handleDelete(record: ArchiveVO) {
   })
 }
 
+/* ========== 信号指标 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const totalCount = list.value.length
+  const confirmed = list.value.filter((r) => r.archiveOfficeConfirmed).length
+  const pending = totalCount - confirmed
+  const expertPackages = list.value.filter((r) => isExpertPackageRecord(r.businessType)).length
+  const reports = list.value.filter((r) => r.businessType === 'REPORT').length
+  return [
+    { key: 'total', label: '本页归档', value: totalCount, tone: 'blue' },
+    { key: 'confirmed', label: '已确认', value: confirmed, tone: confirmed > 0 ? 'green' : 'gray' },
+    { key: 'pending', label: '待确认', value: pending, tone: pending > 0 ? 'orange' : 'gray' },
+    {
+      key: 'expert',
+      label: '专家材料包',
+      value: expertPackages,
+      tone: expertPackages > 0 ? 'gold' : 'gray',
+    },
+    { key: 'report', label: '报告归档', value: reports, tone: reports > 0 ? 'cyan' : 'gray' },
+    { key: 'overall', label: '总台帐', value: total.value, tone: 'gray' },
+  ]
+})
+
+const columns: ColumnsType = [
+  { title: '归档编码', dataIndex: 'archiveCode', key: 'archiveCode' },
+  { title: '业务类型', dataIndex: 'businessType', key: 'businessType', width: 160 },
+  { title: '业务 ID', dataIndex: 'businessId', key: 'businessId', width: 120 },
+  { title: '文件 ID', dataIndex: 'fileId', key: 'fileId', width: 120 },
+  { title: '分类', dataIndex: 'archiveCategory', key: 'archiveCategory' },
+  { title: '保管年限', dataIndex: 'retentionYears', key: 'retentionYears', width: 100 },
+  {
+    title: '档案室确认',
+    dataIndex: 'archiveOfficeConfirmed',
+    key: 'archiveOfficeConfirmed',
+    width: 110,
+  },
+  { title: '归档时间', dataIndex: 'archivedAt', key: 'archivedAt', width: 170 },
+  { title: '操作', key: 'actions', width: 280, fixed: 'right' },
+]
+
+const auditDrawerOpen = ref(false)
+const auditEvents = ref<AuditTimelineEvent[]>([])
+const auditLoading = ref(false)
+
+async function openAuditDrawer(record: ArchiveVO) {
+  auditDrawerOpen.value = true
+  auditLoading.value = true
+  auditEvents.value = []
+  try {
+    const page = await getOperationLogPage({
+      pageNum: 1,
+      pageSize: 50,
+      module: 'ARCHIVE',
+      category: 'QUALITY',
+      description: record.id,
+    })
+    auditEvents.value = page.list.map((log) => ({
+      id: log.id,
+      operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
+      operationType: log.type,
+      operationLabel: log.detail || log.type,
+      time: log.createTime,
+      targetType: log.module,
+      targetId: log.bizId || undefined,
+      beforeValue: log.changeDetails ? JSON.parse(log.changeDetails)?.before : undefined,
+      afterValue: log.changeDetails ? JSON.parse(log.changeDetails)?.after : undefined,
+    }))
+  } catch {
+    auditEvents.value = []
+  } finally {
+    auditLoading.value = false
+  }
+}
+
 onMounted(loadList)
 </script>
 
 <template>
-  <div class="archive-page">
-    <a-card title="材料归档" :bordered="false">
-      <template #extra>
-        <a-space>
-          <a-select
-            v-model:value="query.businessType"
-            placeholder="业务类型"
-            style="width: 160px"
-            allow-clear
-            :options="businessTypeOptions"
-          />
-          <a-input v-model:value="query.archiveCategory" placeholder="归档分类" style="width: 120px" />
-          <a-input v-model:value="query.keyword" placeholder="关键字" style="width: 180px" @press-enter="loadList" />
-          <a-button type="primary" @click="loadList">
-            查询
-          </a-button>
-          <a-button @click="resetQuery">
-            重置
-          </a-button>
-          <a-button type="primary" @click="openExport">
-            导出专家材料包
-          </a-button>
-        </a-space>
-      </template>
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar title="质量评价 - 材料归档">
+        <template #actions>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
+            刷新
+          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openCreate"> 补登台帐 </UiButton>
+          <UiButton variant="primary" size="sm" @click="openExport"> 导出专家材料包 </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
-      <a-table
+    <SignalBand :metrics="signals" compact class="archive__signals" />
+
+    <section class="archive__panel">
+      <header class="archive__panel-header">
+        <h3 class="archive__panel-title">归档列表</h3>
+      </header>
+
+      <UiSearchForm
+        v-model="filterModel"
+        :fields="filterFields"
+        :show-labels="false"
+        class="archive__search-form"
+        @search="handleSearch"
+        @reset="handleResetSearch"
+      />
+
+      <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
+        :columns="columns"
         :data-source="list"
         :loading="loading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: query.pageNum,
-          pageSize: query.pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (n: number) => `共 ${n} 条`,
-          onChange: handlePageChange,
-        }"
+        :total="total"
+        flat
+        @page-change="handlePageChange"
       >
-        <a-table-column title="归档编码" data-index="archiveCode" />
-        <a-table-column title="业务类型" data-index="businessType" width="160">
-          <template #default="{ text }">
-            <a-tag :color="text === 'EXPERT_PACKAGE' ? 'gold' : 'blue'">
-              {{ ARCHIVE_BUSINESS_TYPE_LABEL[text as ArchiveBusinessType] || text }}
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'businessType'">
+            <a-tag :color="archiveBusinessTypeColor(text)">
+              {{ archiveBusinessTypeLabel(text) }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="业务 ID" data-index="businessId" width="120" />
-        <a-table-column title="文件 ID" data-index="fileId" width="120" />
-        <a-table-column title="分类" data-index="archiveCategory" />
-        <a-table-column title="保管年限" data-index="retentionYears" width="100">
-          <template #default="{ text }">
-            {{ text ?? '-' }} 年
+          <template v-else-if="column.key === 'archiveCategory'">
+            {{ text || '-' }}
           </template>
-        </a-table-column>
-        <a-table-column title="档案室确认" data-index="archiveOfficeConfirmed" width="110">
-          <template #default="{ text }">
+          <template v-else-if="column.key === 'retentionYears'"> {{ text ?? '-' }} 年 </template>
+          <template v-else-if="column.key === 'archiveOfficeConfirmed'">
             <a-tag :color="text ? 'green' : 'default'">
               {{ text ? '已确认' : '未确认' }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="归档时间" data-index="archivedAt" width="170" />
-        <a-table-column title="操作" width="220" fixed="right">
-          <template #default="{ record }">
-            <a-space>
-              <a-button type="link" size="small" @click="openDetail(record)">
-                详情
-              </a-button>
-              <a-button type="link" size="small" @click="openEdit(record)">
-                编辑
-              </a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">
+          <template v-else-if="column.key === 'archivedAt'">
+            {{ text || '-' }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-space wrap>
+              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
+              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
+              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
                 删除
-              </a-button>
+              </UiButton>
+              <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
-    <a-modal
+    <UiDrawer
       v-model:open="exportVisible"
       title="导出专家材料包"
+      :width="560"
       :confirm-loading="exportSubmitting"
+      :hide-footer="false"
+      ok-text="触发导出"
       @ok="submitExport"
     >
       <a-alert
         type="info"
         show-icon
         message="REQUIREMENT 整包：targetId 为毕业要求 ID；PROGRAM_ACCREDITATION 整包：targetId 为培养方案 ID。导出后会自动落 t_quality_archive 并通过 edu-message 推送站内信。"
-        style="margin-bottom: 12px"
+        class="archive__alert"
       />
       <a-form layout="vertical" :model="exportForm">
         <a-form-item label="材料包类型" required>
           <a-radio-group v-model:value="exportForm.packageType">
-            <a-radio v-for="(label, value) in EXPERT_PACKAGE_TYPE_LABEL" :key="value" :value="value">
+            <a-radio
+              v-for="(label, value) in EXPERT_PACKAGE_TYPE_LABEL"
+              :key="value"
+              :value="value"
+            >
               {{ label }}
             </a-radio>
           </a-radio-group>
@@ -353,11 +497,18 @@ onMounted(loadList)
         <a-form-item label="目标 ID" required>
           <a-input
             v-model:value="exportForm.targetId"
-            :placeholder="exportForm.packageType === 'REQUIREMENT' ? 'graduation_requirement_id' : 'training_plan_id'"
+            :placeholder="
+              exportForm.packageType === 'REQUIREMENT'
+                ? 'graduation_requirement_id'
+                : 'training_plan_id'
+            "
           />
         </a-form-item>
         <a-form-item label="归档编码">
-          <a-input v-model:value="exportForm.archiveCode" placeholder="可选；为空时自动生成 EP-{REQ|PROG}-{id}-{timestamp}" />
+          <a-input
+            v-model:value="exportForm.archiveCode"
+            placeholder="可选；为空时自动生成 EP-{REQ|PROG}-{id}-{timestamp}"
+          />
         </a-form-item>
         <a-form-item label="保管年限">
           <a-input-number v-model:value="exportForm.retentionYears" :min="1" :max="50" />
@@ -372,13 +523,15 @@ onMounted(loadList)
           <a-textarea v-model:value="exportForm.notes" :rows="2" placeholder="可选" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-modal
+    <UiDrawer
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建归档记录' : '编辑归档记录'"
+      :width="720"
       :confirm-loading="editorSubmitting"
-      width="700px"
+      :hide-footer="false"
+      ok-text="保存"
       @ok="submitEditor"
     >
       <a-form layout="vertical" :model="editor">
@@ -423,7 +576,7 @@ onMounted(loadList)
                 v-model:value="editor.retentionYears"
                 :min="1"
                 :max="50"
-                style="width: 100%"
+                class="archive__number-full"
               />
             </a-form-item>
           </a-col>
@@ -435,20 +588,18 @@ onMounted(loadList)
           <a-textarea v-model:value="editor.notes" :rows="2" />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-drawer
-      v-model:open="detailVisible"
-      title="归档详情"
-      width="520"
-      :loading="detailLoading"
-    >
+    <UiDrawer v-model:open="detailVisible" title="归档详情" :width="560" :hide-footer="true">
+      <UiEmpty v-if="!detailRecord && !detailLoading" description="详情数据未加载" size="sm" />
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
         <a-descriptions-item label="归档编码">
           {{ detailRecord.archiveCode }}
         </a-descriptions-item>
         <a-descriptions-item label="业务类型">
-          <a-tag>{{ ARCHIVE_BUSINESS_TYPE_LABEL[detailRecord.businessType as ArchiveBusinessType] || detailRecord.businessType }}</a-tag>
+          <a-tag :color="archiveBusinessTypeColor(detailRecord.businessType)">
+            {{ archiveBusinessTypeLabel(detailRecord.businessType) }}
+          </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="业务 ID">
           {{ detailRecord.businessId }}
@@ -466,7 +617,9 @@ onMounted(loadList)
           {{ detailRecord.retentionPolicyCode || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="档案室确认">
-          {{ detailRecord.archiveOfficeConfirmed ? '已确认' : '未确认' }}
+          <a-tag :color="detailRecord.archiveOfficeConfirmed ? 'green' : 'default'">
+            {{ detailRecord.archiveOfficeConfirmed ? '已确认' : '未确认' }}
+          </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="归档时间">
           {{ detailRecord.archivedAt || '-' }}
@@ -475,12 +628,72 @@ onMounted(loadList)
           {{ detailRecord.notes || '-' }}
         </a-descriptions-item>
       </a-descriptions>
-    </a-drawer>
-  </div>
+    </UiDrawer>
+
+    <AuditTimelineDrawer
+      v-model:open="auditDrawerOpen"
+      :events="auditEvents"
+      :loading="auditLoading"
+      title="归档操作审计"
+      show-diff
+    />
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.archive-page {
-  padding: 16px;
+.archive {
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 180px;
+
+    &--xs {
+      width: 130px;
+    }
+  }
+
+  &__alert {
+    margin-bottom: 16px;
+  }
+
+  &__number-full {
+    width: 100%;
+  }
 }
 </style>

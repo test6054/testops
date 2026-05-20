@@ -1,364 +1,341 @@
 <template>
-  <GiPageLayout>
-    <div class="experience-page">
-      <PageHeader title="批改经验库">
-        <template #tags>
-          <UiTag v-if="signatures.length > 0" tone="blue" size="md">
-            签名 {{ signatures.length }}
-          </UiTag>
-          <UiTag v-if="experiences.length > 0" tone="green" size="md">
-            经验案例 {{ experiences.length }}
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="experience-page__context">
+        <div class="experience-page__context-left">
           <a-select
-            v-model:value="selectedExamId"
-            style="width: 280px"
+            :value="selectedExamId"
+            class="experience-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
-            :loading="examOptionsLoading"
+            :loading="examLoading"
             show-search
             option-filter-prop="label"
             allow-clear
             @change="handleExamChange"
           />
+          <UiTag v-if="signatures.length > 0" tone="blue" size="sm">
+            签名 {{ signatures.length }}
+          </UiTag>
+          <UiTag v-if="experiences.length > 0" tone="green" size="sm">
+            经验案例 {{ experiences.length }}
+          </UiTag>
+        </div>
+      </div>
+    </template>
+
+    <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="experience-page__empty" />
+
+    <a-tabs v-else v-model:active-key="activeTab">
+      <!-- ─── Tab 1: 题目签名与相似题 ─── -->
+      <a-tab-pane key="signature">
+        <template #tab>
+          <span><FileSearchOutlined /> 题目签名 / 相似题</span>
         </template>
-      </PageHeader>
 
-      <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="empty-block" />
-
-      <a-tabs v-else v-model:active-key="activeTab">
-        <!-- ─── Tab 1: 题目签名与相似题 ─── -->
-        <a-tab-pane key="signature">
-          <template #tab>
-            <span><FileSearchOutlined /> 题目签名 / 相似题</span>
+        <UiCard class="info-card">
+          <template #title>
+            <span>考试题目签名</span>
+            <UiBadge tone="blue">{{ signatures.length }}</UiBadge>
           </template>
-
-          <UiCard class="info-card">
-            <template #title>
-              <span>考试题目签名</span>
-              <UiBadge tone="blue">{{ signatures.length }}</UiBadge>
-            </template>
-            <template #extra>
-              <a-space>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :loading="signaturesLoading"
-                  @click="loadSignatures"
-                >
-                  <template #icon><ReloadOutlined /></template>
-                  刷新
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  :loading="generatingSignatures"
-                  @click="handleGenerateSignatures"
-                >
-                  <template #icon><ThunderboltOutlined /></template>
-                  生成 / 重算签名
-                </UiButton>
-              </a-space>
-            </template>
-
-            <a-alert
-              type="info"
-              show-icon
-              message="签名说明"
-              description="签名基于题干 + 标准答案 + 题型 + 结构特征生成 SHA-256 + SimHash 双签。SimHash 用于跨考试相似题汉明距离检索（≤ 16 视为语义相近）。每次「生成 / 重算」会覆盖该考试的全部签名记录。"
-              style="margin-bottom: 12px"
-            />
-
-            <a-table
-              :columns="signatureColumns"
-              :data-source="signatures"
-              :loading="signaturesLoading"
-              :pagination="{ pageSize: 20, showSizeChanger: false }"
-              row-key="id"
-              size="middle"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'questionType'">
-                  {{ questionTypeLabel(signatures[index].questionType) }}
-                </template>
-                <template v-else-if="column.key === 'questionDigest'">
-                  <a-tooltip :title="signatures[index].questionDigest">
-                    <span>{{ ellipsis(signatures[index].questionDigest, 60) }}</span>
-                  </a-tooltip>
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiButton size="sm" @click="openSimilarDrawer(signatures[index])">
-                    查找相似题
-                  </UiButton>
-                </template>
-              </template>
-            </a-table>
-          </UiCard>
-        </a-tab-pane>
-
-        <!-- ─── Tab 2: AI 经验案例 ─── -->
-        <a-tab-pane key="experience">
-          <template #tab>
-            <span><BulbOutlined /> AI 批改经验</span>
-          </template>
-
-          <UiCard class="info-card">
-            <template #title>
-              <span>批改经验案例</span>
-              <UiBadge tone="green">{{ experiences.length }}</UiBadge>
-            </template>
-            <template #extra>
-              <a-space>
-                <a-input-search
-                  v-model:value="experienceQuestionFilter"
-                  placeholder="按题目模板ID 过滤"
-                  style="width: 220px"
-                  allow-clear
-                  @search="loadExperiences"
-                />
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :loading="experienceLoading"
-                  @click="loadExperiences"
-                >
-                  <template #icon><ReloadOutlined /></template>
-                  刷新
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  :disabled="!experienceQuestionFilter.trim()"
-                  :loading="extracting"
-                  @click="handleExtract"
-                >
-                  <template #icon><ThunderboltOutlined /></template>
-                  AI 提取经验
-                </UiButton>
-              </a-space>
-            </template>
-
-            <a-alert
-              type="info"
-              show-icon
-              message="AI 经验提取说明"
-              description="基于教师确认后的批改结果（含主观题逐题打分、评注、最终成绩），调用本租户默认 AI 模型提取共性经验。同一题目允许多次生成，每次结果作为独立历史记录保留。"
-              style="margin-bottom: 12px"
-            />
-
-            <a-table
-              :columns="experienceColumns"
-              :data-source="experiences"
-              :loading="experienceLoading"
-              :pagination="{ pageSize: 20, showSizeChanger: false }"
-              row-key="id"
-              size="middle"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'questionType'">
-                  {{ questionTypeLabel(experiences[index].questionType) }}
-                </template>
-                <template v-else-if="column.key === 'analysisStatus'">
-                  <UiTag :tone="aiStatusTone(experiences[index].analysisStatus)" size="sm">
-                    {{ aiStatusLabel(experiences[index].analysisStatus) }}
-                  </UiTag>
-                </template>
-                <template v-else-if="column.key === 'caseStatus'">
-                  <UiTag :tone="caseStatusTone(experiences[index].caseStatus)" size="sm">
-                    {{ caseStatusLabel(experiences[index].caseStatus) }}
-                  </UiTag>
-                </template>
-                <template v-else-if="column.key === 'experienceSummary'">
-                  <a-tooltip :title="experiences[index].experienceSummary">
-                    <span>{{ ellipsis(experiences[index].experienceSummary, 80) }}</span>
-                  </a-tooltip>
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiButton
-                    size="sm"
-                    variant="outline"
-                    @click="openExperienceDrawer(experiences[index])"
-                  >
-                    详情
-                  </UiButton>
-                </template>
-              </template>
-            </a-table>
-          </UiCard>
-        </a-tab-pane>
-
-        <!-- ─── Tab 3: AI 答案聚类 ─── -->
-        <a-tab-pane key="cluster">
-          <template #tab>
-            <span><PartitionOutlined /> AI 答案聚类</span>
-          </template>
-
-          <UiCard class="info-card">
-            <template #title>
-              <span>答案聚类</span>
-              <UiBadge
-                v-if="latestCluster"
-                :tone="aiStatusTone(latestCluster.analysisStatus ?? 'PENDING')"
+          <template #extra>
+            <a-space>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="signaturesLoading"
+                @click="loadSignatures"
               >
-                {{ aiStatusLabel(latestCluster.analysisStatus ?? 'PENDING') }}
-              </UiBadge>
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
+              <UiButton
+                size="sm"
+                :loading="generatingSignatures"
+                @click="handleGenerateSignatures"
+              >
+                <template #icon><ThunderboltOutlined /></template>
+                生成 / 重算签名
+              </UiButton>
+            </a-space>
+          </template>
+
+          <UiDataTable
+            :columns="signatureColumns"
+            :data-source="signatures"
+            :loading="signaturesLoading"
+            flat
+            :total="signatures.length"
+            :page-size="20"
+            row-key="id"
+            size="middle"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'questionType'">
+                {{ questionTypeLabel(signatures[index].questionType) }}
+              </template>
+              <template v-else-if="column.key === 'questionDigest'">
+                <a-tooltip :title="signatures[index].questionDigest">
+                  <span>{{ ellipsis(signatures[index].questionDigest, 60) }}</span>
+                </a-tooltip>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiButton size="sm" @click="openSimilarDrawer(signatures[index])">
+                  查找相似题
+                </UiButton>
+              </template>
             </template>
-            <template #extra>
-              <a-space>
-                <a-input
-                  v-model:value="clusterQuestionId"
-                  placeholder="题目模板ID"
-                  style="width: 200px"
-                />
+          </UiDataTable>
+        </UiCard>
+      </a-tab-pane>
+
+      <!-- ─── Tab 2: AI 经验案例 ─── -->
+      <a-tab-pane key="experience">
+        <template #tab>
+          <span><BulbOutlined /> AI 批改经验</span>
+        </template>
+
+        <UiCard class="info-card">
+          <template #title>
+            <span>批改经验案例</span>
+            <UiBadge tone="green">{{ experiences.length }}</UiBadge>
+          </template>
+          <template #extra>
+            <a-space>
+              <a-input-search
+                v-model:value="experienceQuestionFilter"
+                placeholder="按题目模板ID 过滤"
+                style="width: 220px"
+                allow-clear
+                @search="loadExperiences"
+              />
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="experienceLoading"
+                @click="loadExperiences"
+              >
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
+              <UiButton
+                size="sm"
+                :disabled="!experienceQuestionFilter.trim()"
+                :loading="extracting"
+                @click="handleExtract"
+              >
+                <template #icon><ThunderboltOutlined /></template>
+                AI 提取经验
+              </UiButton>
+            </a-space>
+          </template>
+
+          <UiDataTable
+            :columns="experienceColumns"
+            :data-source="experiences"
+            :loading="experienceLoading"
+            flat
+            :total="experiences.length"
+            :page-size="20"
+            row-key="id"
+            size="middle"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'questionType'">
+                {{ questionTypeLabel(experiences[index].questionType) }}
+              </template>
+              <template v-else-if="column.key === 'analysisStatus'">
+                <UiTag :tone="aiStatusTone(experiences[index].analysisStatus)" size="sm">
+                  {{ aiStatusLabel(experiences[index].analysisStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'caseStatus'">
+                <UiTag :tone="caseStatusTone(experiences[index].caseStatus)" size="sm">
+                  {{ caseStatusLabel(experiences[index].caseStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'experienceSummary'">
+                <a-tooltip :title="experiences[index].experienceSummary">
+                  <span>{{ ellipsis(experiences[index].experienceSummary, 80) }}</span>
+                </a-tooltip>
+              </template>
+              <template v-else-if="column.key === 'actions'">
                 <UiButton
                   size="sm"
                   variant="outline"
-                  :disabled="!clusterQuestionId.trim()"
-                  :loading="clusterLoading"
-                  @click="loadLatestCluster"
+                  @click="openExperienceDrawer(experiences[index])"
                 >
-                  <template #icon><ReloadOutlined /></template>
-                  查询最新
+                  详情
                 </UiButton>
-                <UiButton
-                  size="sm"
-                  :disabled="!clusterQuestionId.trim()"
-                  :loading="clustering"
-                  @click="handleGenerateCluster"
-                >
-                  <template #icon><ThunderboltOutlined /></template>
-                  AI 聚类
-                </UiButton>
-              </a-space>
+              </template>
             </template>
+          </UiDataTable>
+        </UiCard>
+      </a-tab-pane>
 
-            <a-alert
-              type="info"
-              show-icon
-              message="答案聚类说明"
-              description="对同一题目下教师已批改的答案文本进行 AI 聚类分组，便于发现相似错答模式。每次「AI 聚类」覆盖最近一次结果，同一题目最新结果由「查询最新」获取。"
-              style="margin-bottom: 12px"
-            />
+      <!-- ─── Tab 3: AI 答案聚类 ─── -->
+      <a-tab-pane key="cluster">
+        <template #tab>
+          <span><PartitionOutlined /> AI 答案聚类</span>
+        </template>
 
-            <a-empty
-              v-if="!latestCluster"
-              description="尚无聚类结果，请先指定题目模板ID 并点击「AI 聚类」"
-            />
-
-            <template v-else>
-              <a-descriptions :column="3" bordered size="small" style="margin-bottom: 12px">
-                <a-descriptions-item label="分组数">
-                  <b>{{ latestCluster.groupCount ?? 0 }}</b>
-                </a-descriptions-item>
-                <a-descriptions-item label="分析状态">
-                  <UiTag :tone="aiStatusTone(latestCluster.analysisStatus ?? 'PENDING')" size="sm">
-                    {{ aiStatusLabel(latestCluster.analysisStatus ?? 'PENDING') }}
-                  </UiTag>
-                </a-descriptions-item>
-                <a-descriptions-item label="耗时">
-                  {{ latestCluster.latencyMs ? `${latestCluster.latencyMs} ms` : '-' }}
-                </a-descriptions-item>
-                <a-descriptions-item label="AI Trace ID" :span="3">
-                  {{ latestCluster.aiTraceId ?? '-' }}
-                </a-descriptions-item>
-                <a-descriptions-item v-if="latestCluster.errorMessage" label="错误" :span="3">
-                  <span class="error-text">{{ latestCluster.errorMessage }}</span>
-                </a-descriptions-item>
-                <a-descriptions-item label="聚类总结" :span="3">
-                  <pre class="json-pre">{{ latestCluster.clusterSummary || '（无）' }}</pre>
-                </a-descriptions-item>
-                <a-descriptions-item label="分组明细 JSON" :span="3">
-                  <pre class="json-pre">{{ latestCluster.answerGroups || '（无）' }}</pre>
-                </a-descriptions-item>
-              </a-descriptions>
-            </template>
-          </UiCard>
-        </a-tab-pane>
-      </a-tabs>
-    </div>
-
-    <!-- 相似题抽屉 -->
-    <a-drawer
-      v-model:open="similarDrawerOpen"
-      :title="`相似题检索 - 题目 #${similarSourceQuestionId ?? ''}`"
-      width="640"
-      :destroy-on-close="true"
-    >
-      <a-spin :spinning="similarLoading">
-        <a-empty
-          v-if="!similarLoading && similarResults.length === 0"
-          description="未检索到相似题"
-        />
-        <a-list v-else :data-source="similarResults" item-layout="vertical">
-          <template #renderItem="{ item }: { item: QuestionSignatureVO }">
-            <a-list-item>
-              <a-space size="small">
-                <UiTag tone="blue" size="sm">考试 #{{ item.examId }}</UiTag>
-                <UiTag tone="blue" size="sm">
-                  {{ questionTypeLabel(item.questionType) }}
-                </UiTag>
-                <UiTag tone="gray" size="sm">题号 {{ item.questionNo ?? '-' }}</UiTag>
-              </a-space>
-              <p class="similar-digest">{{ item.questionDigest ?? '（无摘要）' }}</p>
-            </a-list-item>
+        <UiCard class="info-card">
+          <template #title>
+            <span>答案聚类</span>
+            <UiBadge
+              v-if="latestCluster"
+              :tone="aiStatusTone(latestCluster.analysisStatus ?? 'PENDING')"
+            >
+              {{ aiStatusLabel(latestCluster.analysisStatus ?? 'PENDING') }}
+            </UiBadge>
           </template>
-        </a-list>
-      </a-spin>
-    </a-drawer>
+          <template #extra>
+            <a-space>
+              <a-input
+                v-model:value="clusterQuestionId"
+                placeholder="题目模板ID"
+                style="width: 200px"
+              />
+              <UiButton
+                size="sm"
+                variant="outline"
+                :disabled="!clusterQuestionId.trim()"
+                :loading="clusterLoading"
+                @click="loadLatestCluster"
+              >
+                <template #icon><ReloadOutlined /></template>
+                查询最新
+              </UiButton>
+              <UiButton
+                size="sm"
+                :disabled="!clusterQuestionId.trim()"
+                :loading="clustering"
+                @click="handleGenerateCluster"
+              >
+                <template #icon><ThunderboltOutlined /></template>
+                AI 聚类
+              </UiButton>
+            </a-space>
+          </template>
 
-    <!-- 经验案例详情抽屉 -->
-    <a-drawer
-      v-model:open="experienceDrawerOpen"
-      title="批改经验详情"
-      width="720"
-      :destroy-on-close="true"
-    >
-      <a-descriptions v-if="detailExperience" :column="1" bordered size="small">
-        <a-descriptions-item label="ID">{{ detailExperience.id }}</a-descriptions-item>
-        <a-descriptions-item label="来源考试">
-          {{ detailExperience.sourceExamId }}
-        </a-descriptions-item>
-        <a-descriptions-item label="题目模板">
-          {{ detailExperience.questionTemplateId }}
-        </a-descriptions-item>
-        <a-descriptions-item label="状态">
-          <UiTag :tone="caseStatusTone(detailExperience.caseStatus)" size="sm">
-            {{ caseStatusLabel(detailExperience.caseStatus) }}
-          </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="AI 状态">
-          <UiTag :tone="aiStatusTone(detailExperience.analysisStatus)" size="sm">
-            {{ aiStatusLabel(detailExperience.analysisStatus) }}
-          </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="AI Trace">
-          {{ detailExperience.aiTraceId ?? '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="耗时">
-          {{ detailExperience.latencyMs ? `${detailExperience.latencyMs} ms` : '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="经验总结">
-          <pre class="json-pre">{{ detailExperience.experienceSummary || '（无）' }}</pre>
-        </a-descriptions-item>
-        <a-descriptions-item label="结构化条目 JSON">
-          <pre class="json-pre">{{ detailExperience.experienceItems || '（无）' }}</pre>
-        </a-descriptions-item>
-        <a-descriptions-item label="风险标签">
-          <pre class="json-pre">{{ detailExperience.riskTags || '（无）' }}</pre>
-        </a-descriptions-item>
-        <a-descriptions-item label="适用边界">
-          {{ detailExperience.applicableScope ?? '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item v-if="detailExperience.errorMessage" label="错误信息">
-          <span class="error-text">{{ detailExperience.errorMessage }}</span>
-        </a-descriptions-item>
-      </a-descriptions>
-    </a-drawer>
-  </GiPageLayout>
+          <a-empty
+            v-if="!latestCluster"
+            description="尚无聚类结果，请先指定题目模板ID 并点击「AI 聚类」"
+          />
+
+          <template v-else>
+            <a-descriptions :column="3" bordered size="small" style="margin-bottom: 12px">
+              <a-descriptions-item label="分组数">
+                <b>{{ latestCluster.groupCount ?? 0 }}</b>
+              </a-descriptions-item>
+              <a-descriptions-item label="分析状态">
+                <UiTag :tone="aiStatusTone(latestCluster.analysisStatus ?? 'PENDING')" size="sm">
+                  {{ aiStatusLabel(latestCluster.analysisStatus ?? 'PENDING') }}
+                </UiTag>
+              </a-descriptions-item>
+              <a-descriptions-item label="耗时">
+                {{ latestCluster.latencyMs ? `${latestCluster.latencyMs} ms` : '-' }}
+              </a-descriptions-item>
+              <a-descriptions-item label="AI Trace ID" :span="3">
+                {{ latestCluster.aiTraceId ?? '-' }}
+              </a-descriptions-item>
+              <a-descriptions-item v-if="latestCluster.errorMessage" label="错误" :span="3">
+                <span class="error-text">{{ latestCluster.errorMessage }}</span>
+              </a-descriptions-item>
+              <a-descriptions-item label="聚类总结" :span="3">
+                <pre class="json-pre">{{ latestCluster.clusterSummary || '（无）' }}</pre>
+              </a-descriptions-item>
+              <a-descriptions-item label="分组明细 JSON" :span="3">
+                <pre class="json-pre">{{ latestCluster.answerGroups || '（无）' }}</pre>
+              </a-descriptions-item>
+            </a-descriptions>
+          </template>
+        </UiCard>
+      </a-tab-pane>
+    </a-tabs>
+  </StageWorkbenchShell>
+
+  <!-- 相似题抽屉 -->
+  <a-drawer
+    v-model:open="similarDrawerOpen"
+    :title="`相似题检索 - 题目 #${similarSourceQuestionId ?? ''}`"
+    width="640"
+    :destroy-on-close="true"
+  >
+    <a-spin :spinning="similarLoading">
+      <a-empty
+        v-if="!similarLoading && similarResults.length === 0"
+        description="未检索到相似题"
+      />
+      <a-list v-else :data-source="similarResults" item-layout="vertical">
+        <template #renderItem="{ item }: { item: QuestionSignatureVO }">
+          <a-list-item>
+            <a-space size="small">
+              <UiTag tone="blue" size="sm">考试 #{{ item.examId }}</UiTag>
+              <UiTag tone="blue" size="sm">
+                {{ questionTypeLabel(item.questionType) }}
+              </UiTag>
+              <UiTag tone="gray" size="sm">题号 {{ item.questionNo ?? '-' }}</UiTag>
+            </a-space>
+            <p class="similar-digest">{{ item.questionDigest ?? '（无摘要）' }}</p>
+          </a-list-item>
+        </template>
+      </a-list>
+    </a-spin>
+  </a-drawer>
+
+  <!-- 经验案例详情抽屉 -->
+  <a-drawer
+    v-model:open="experienceDrawerOpen"
+    title="批改经验详情"
+    width="720"
+    :destroy-on-close="true"
+  >
+    <a-descriptions v-if="detailExperience" :column="1" bordered size="small">
+      <a-descriptions-item label="ID">{{ detailExperience.id }}</a-descriptions-item>
+      <a-descriptions-item label="来源考试">
+        {{ detailExperience.sourceExamId }}
+      </a-descriptions-item>
+      <a-descriptions-item label="题目模板">
+        {{ detailExperience.questionTemplateId }}
+      </a-descriptions-item>
+      <a-descriptions-item label="状态">
+        <UiTag :tone="caseStatusTone(detailExperience.caseStatus)" size="sm">
+          {{ caseStatusLabel(detailExperience.caseStatus) }}
+        </UiTag>
+      </a-descriptions-item>
+      <a-descriptions-item label="AI 状态">
+        <UiTag :tone="aiStatusTone(detailExperience.analysisStatus)" size="sm">
+          {{ aiStatusLabel(detailExperience.analysisStatus) }}
+        </UiTag>
+      </a-descriptions-item>
+      <a-descriptions-item label="AI Trace">
+        {{ detailExperience.aiTraceId ?? '-' }}
+      </a-descriptions-item>
+      <a-descriptions-item label="耗时">
+        {{ detailExperience.latencyMs ? `${detailExperience.latencyMs} ms` : '-' }}
+      </a-descriptions-item>
+      <a-descriptions-item label="经验总结">
+        <pre class="json-pre">{{ detailExperience.experienceSummary || '（无）' }}</pre>
+      </a-descriptions-item>
+      <a-descriptions-item label="结构化条目 JSON">
+        <pre class="json-pre">{{ detailExperience.experienceItems || '（无）' }}</pre>
+      </a-descriptions-item>
+      <a-descriptions-item label="风险标签">
+        <pre class="json-pre">{{ detailExperience.riskTags || '（无）' }}</pre>
+      </a-descriptions-item>
+      <a-descriptions-item label="适用边界">
+        {{ detailExperience.applicableScope ?? '-' }}
+      </a-descriptions-item>
+      <a-descriptions-item v-if="detailExperience.errorMessage" label="错误信息">
+        <span class="error-text">{{ detailExperience.errorMessage }}</span>
+      </a-descriptions-item>
+    </a-descriptions>
+  </a-drawer>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type {
   AiAnalysisStatusCode,
   AnswerClusterRecordVO,
@@ -375,8 +352,6 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -392,20 +367,21 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
 
-const route = useRoute()
-const router = useRouter()
+// B-8 统一考试选择器
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExamSelector,
+} = useMarkExamSelector()
 
-const selectedExamId = ref<string | undefined>(
-  route.query.examId ? String(route.query.examId) : undefined,
-)
-const examOptions = ref<Array<{ label: string, value: string }>>([])
-const examOptionsLoading = ref(false)
 const activeTab = ref<'signature' | 'experience' | 'cluster'>('signature')
 
 // ─── 题目签名 ─────────────────────────────────
@@ -607,24 +583,8 @@ function ellipsis(text: string | undefined, len = 60): string {
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 
-async function loadExamOptions(): Promise<void> {
-  examOptionsLoading.value = true
-  try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    examOptions.value = (result.list ?? []).map((item: ExamSummaryVO) => ({
-      label: `${item.examName}（${item.statusMessage}）`,
-      value: item.examId,
-    }))
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '加载考试列表失败')
-  } finally {
-    examOptionsLoading.value = false
-  }
-}
-
 function handleExamChange(value: unknown): void {
-  selectedExamId.value = value != null ? String(value) : undefined
-  void router.replace({ query: selectedExamId.value ? { examId: selectedExamId.value } : {} })
+  onExamChange(value as string | number | undefined)
   signatures.value = []
   experiences.value = []
   latestCluster.value = null
@@ -643,8 +603,18 @@ watch(activeTab, () => {
   void reloadActiveTab()
 })
 
+// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
+watch(selectedExamId, (value) => {
+  signatures.value = []
+  experiences.value = []
+  latestCluster.value = null
+  if (value) {
+    void reloadActiveTab()
+  }
+})
+
 onMounted(async () => {
-  await loadExamOptions()
+  await initExamSelector()
   if (selectedExamId.value) {
     await reloadActiveTab()
   }
@@ -653,6 +623,29 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .experience-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

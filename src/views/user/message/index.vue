@@ -1,12 +1,12 @@
 <template>
-  <GiPageLayout>
-    <div class="message-page">
-      <PageHeader title="消息中心">
-        <template #tags>
-          <UiTag tone="blue" size="md">站内信 + 系统公告</UiTag>
-          <UiTag v-if="unreadTotal > 0" tone="red" size="md">未读 {{ unreadTotal }}</UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="message-page__context">
+        <div class="message-page__context-left">
+          <UiTag tone="blue" size="sm">站内信 + 系统公告</UiTag>
+          <UiTag v-if="unreadTotal > 0" tone="red" size="sm">未读 {{ unreadTotal }}</UiTag>
+        </div>
+        <div class="message-page__context-right">
           <UiButton
             variant="outline"
             size="sm"
@@ -25,280 +25,280 @@
             <template #icon><CheckCircleOutlined /></template>
             全部标记已读
           </UiButton>
-        </template>
-      </PageHeader>
-
-      <!-- Tabs -->
-      <UiCard class="message-page__list-card">
-        <template #title>
-          <BellOutlined />
-          <span>消息列表</span>
-        </template>
-
-        <a-tabs v-model:active-key="activeTab" @change="onTabChange">
-          <!-- 我的消息 -->
-          <a-tab-pane key="inbox">
-            <template #tab>
-              <span class="tab-label">
-                我的消息
-                <a-badge
-                  v-if="unreadInboxCount > 0"
-                  :count="unreadInboxCount"
-                  :overflow-count="99"
-                  :offset="[8, -4]"
-                />
-              </span>
-            </template>
-
-            <div class="filter-bar">
-              <a-space wrap>
-                <a-input
-                  v-model:value="inboxFilter.keyword"
-                  placeholder="按主题搜索"
-                  allow-clear
-                  style="width: 240px"
-                  @press-enter="loadMessages(1)"
-                />
-                <a-select
-                  v-model:value="inboxFilter.isRead"
-                  placeholder="阅读状态"
-                  allow-clear
-                  style="width: 140px"
-                  :options="readStatusOptions"
-                  @change="loadMessages(1)"
-                />
-                <UiButton size="sm" :loading="loadingMessages" @click="loadMessages(1)">
-                  查询
-                </UiButton>
-                <UiButton
-                  v-if="unreadInboxCount > 0"
-                  size="sm"
-                  variant="outline"
-                  :loading="markingAllInbox"
-                  @click="markAllInbox"
-                >
-                  全部已读
-                </UiButton>
-              </a-space>
-            </div>
-
-            <UiEmpty v-if="!loadingMessages && messages.length === 0" description="暂无站内信" />
-
-            <a-list
-              v-else
-              :data-source="messages"
-              :loading="loadingMessages"
-              item-layout="horizontal"
-              class="msg-list"
-              :pagination="messagePagination"
-            >
-              <template #renderItem="{ item }">
-                <a-list-item class="msg-item" :class="{ 'msg-item--unread': !item.isRead }">
-                  <a-list-item-meta>
-                    <template #title>
-                      <button
-                        type="button"
-                        class="msg-item__title"
-                        @click="openMessageDetail(item)"
-                      >
-                        <span v-if="!item.isRead" class="dot dot--unread" />
-                        {{ item.subject || '无主题' }}
-                      </button>
-                    </template>
-                    <template #description>
-                      <div class="msg-item__meta">
-                        <UiTag tone="blue" size="sm">
-                          {{
-                            formatMessageType(item.messageType)
-                          }}
-                        </UiTag>
-                        <span>发自 {{ item.senderInfo?.nickName || item.senderUserId || '系统' }}</span>
-                        <span>{{ formatTime(item.sendTime) }}</span>
-                      </div>
-                    </template>
-                  </a-list-item-meta>
-                  <template #actions>
-                    <UiButton size="sm" variant="ghost" @click="openMessageDetail(item)">
-                      查看
-                    </UiButton>
-                    <UiButton
-                      v-if="!item.isRead"
-                      size="sm"
-                      variant="ghost"
-                      @click="markMessageRead(item)"
-                    >
-                      标记已读
-                    </UiButton>
-                  </template>
-                </a-list-item>
-              </template>
-            </a-list>
-          </a-tab-pane>
-
-          <!-- 系统公告 -->
-          <a-tab-pane key="announcement">
-            <template #tab>
-              <span class="tab-label">
-                系统公告
-                <a-badge
-                  v-if="unreadAnnouncementCount > 0"
-                  :count="unreadAnnouncementCount"
-                  :overflow-count="99"
-                  :offset="[8, -4]"
-                />
-              </span>
-            </template>
-
-            <div class="filter-bar">
-              <a-space wrap>
-                <a-input
-                  v-model:value="announcementFilter.titleKeyword"
-                  placeholder="按标题搜索"
-                  allow-clear
-                  style="width: 240px"
-                  @press-enter="loadAnnouncements(1)"
-                />
-                <a-select
-                  v-model:value="announcementFilter.priority"
-                  placeholder="优先级"
-                  allow-clear
-                  style="width: 140px"
-                  :options="priorityOptions"
-                  @change="loadAnnouncements(1)"
-                />
-                <a-checkbox
-                  v-model:checked="announcementFilter.unreadOnly"
-                  @change="loadAnnouncements(1)"
-                >
-                  仅未读
-                </a-checkbox>
-                <UiButton size="sm" :loading="loadingAnnouncements" @click="loadAnnouncements(1)">
-                  查询
-                </UiButton>
-                <UiButton
-                  v-if="unreadAnnouncementCount > 0"
-                  size="sm"
-                  variant="outline"
-                  :loading="markingAllAnnouncement"
-                  @click="markAllAnnouncements"
-                >
-                  全部已读
-                </UiButton>
-              </a-space>
-            </div>
-
-            <UiEmpty
-              v-if="!loadingAnnouncements && announcements.length === 0"
-              description="暂无系统公告"
-            />
-
-            <a-list
-              v-else
-              :data-source="announcements"
-              :loading="loadingAnnouncements"
-              item-layout="horizontal"
-              class="msg-list"
-              :pagination="announcementPagination"
-            >
-              <template #renderItem="{ item }">
-                <a-list-item class="msg-item" :class="{ 'msg-item--unread': !item.isRead }">
-                  <a-list-item-meta>
-                    <template #title>
-                      <button
-                        type="button"
-                        class="msg-item__title"
-                        @click="openAnnouncementDetail(item)"
-                      >
-                        <span v-if="!item.isRead" class="dot dot--unread" />
-                        {{ item.title }}
-                      </button>
-                    </template>
-                    <template #description>
-                      <div class="msg-item__meta">
-                        <UiTag :tone="getPriorityTone(item.priority)" size="sm">
-                          {{ item.priorityName || item.priority }}
-                        </UiTag>
-                        <span>发布 {{ item.createUserName || '系统' }}</span>
-                        <span>{{ formatTime(item.publishTime || item.createTime) }}</span>
-                        <span v-if="item.relativeTime" class="muted">{{ item.relativeTime }}</span>
-                      </div>
-                    </template>
-                  </a-list-item-meta>
-                  <template #actions>
-                    <UiButton size="sm" variant="ghost" @click="openAnnouncementDetail(item)">
-                      查看
-                    </UiButton>
-                  </template>
-                </a-list-item>
-              </template>
-            </a-list>
-          </a-tab-pane>
-        </a-tabs>
-      </UiCard>
-    </div>
-
-    <!-- 站内信详情抽屉 -->
-    <a-drawer
-      v-model:open="messageDrawerOpen"
-      :title="activeMessage?.subject || '消息详情'"
-      width="640"
-      placement="right"
-    >
-      <a-spin :spinning="messageDetailLoading">
-        <div v-if="messageDetail" class="msg-detail">
-          <div class="msg-detail__meta">
-            <UiTag tone="blue" size="sm">{{ formatMessageType(messageDetail.messageType) }}</UiTag>
-            <span>发自
-              {{ messageDetail.senderInfo?.nickName || messageDetail.senderUserId || '系统' }}</span>
-            <span>{{ formatTime(messageDetail.sendTime) }}</span>
-          </div>
-          <a-divider />
-          <div class="msg-detail__content" v-html="messageDetail.contentHtml || '<p>无正文</p>'" />
-          <div v-if="messageDetail.metadata?.jumpUrl" class="msg-detail__jump">
-            <UiButton size="sm" variant="outline" @click="goJump(messageDetail.metadata.jumpUrl)">
-              跳转查看相关业务
-            </UiButton>
-          </div>
         </div>
-        <UiEmpty v-else description="无消息详情" />
-      </a-spin>
-    </a-drawer>
+      </div>
+    </template>
 
-    <!-- 公告详情抽屉 -->
-    <a-drawer
-      v-model:open="announcementDrawerOpen"
-      :title="activeAnnouncement?.title || '公告详情'"
-      width="640"
-      placement="right"
-    >
-      <a-spin :spinning="announcementDetailLoading">
-        <div v-if="announcementDetail" class="msg-detail">
-          <div class="msg-detail__meta">
-            <UiTag :tone="getPriorityTone(announcementDetail.priority)" size="sm">
-              {{ announcementDetail.priorityName || announcementDetail.priority }}
-            </UiTag>
-            <span>发布 {{ announcementDetail.createUserName || '系统' }}</span>
-            <span>{{
-              formatTime(announcementDetail.publishTime || announcementDetail.createTime)
-            }}</span>
+    <!-- Tabs -->
+    <UiCard class="message-page__list-card">
+      <template #title>
+        <BellOutlined />
+        <span>消息列表</span>
+      </template>
+
+      <a-tabs v-model:active-key="activeTab" @change="onTabChange">
+        <!-- 我的消息 -->
+        <a-tab-pane key="inbox">
+          <template #tab>
+            <span class="tab-label">
+              我的消息
+              <a-badge
+                v-if="unreadInboxCount > 0"
+                :count="unreadInboxCount"
+                :overflow-count="99"
+                :offset="[8, -4]"
+              />
+            </span>
+          </template>
+
+          <div class="filter-bar">
+            <a-space wrap>
+              <a-input
+                v-model:value="inboxFilter.keyword"
+                placeholder="按主题搜索"
+                allow-clear
+                style="width: 240px"
+                @press-enter="loadMessages(1)"
+              />
+              <a-select
+                v-model:value="inboxFilter.isRead"
+                placeholder="阅读状态"
+                allow-clear
+                style="width: 140px"
+                :options="readStatusOptions"
+                @change="loadMessages(1)"
+              />
+              <UiButton size="sm" :loading="loadingMessages" @click="loadMessages(1)">
+                查询
+              </UiButton>
+              <UiButton
+                v-if="unreadInboxCount > 0"
+                size="sm"
+                variant="outline"
+                :loading="markingAllInbox"
+                @click="markAllInbox"
+              >
+                全部已读
+              </UiButton>
+            </a-space>
           </div>
-          <a-divider />
-          <div class="msg-detail__content" v-html="announcementDetail.content || '<p>无正文</p>'" />
-          <a-divider />
-          <UiButton
-            v-if="!announcementDetail.isRead"
-            size="sm"
-            :loading="confirmingRead"
-            @click="confirmAnnouncementRead(announcementDetail)"
+
+          <UiEmpty v-if="!loadingMessages && messages.length === 0" description="暂无站内信" />
+
+          <a-list
+            v-else
+            :data-source="messages"
+            :loading="loadingMessages"
+            item-layout="horizontal"
+            class="msg-list"
+            :pagination="messagePagination"
           >
-            确认已读
-          </UiButton>
-          <UiTag v-else tone="green" size="sm">已确认阅读</UiTag>
+            <template #renderItem="{ item }">
+              <a-list-item class="msg-item" :class="{ 'msg-item--unread': !item.isRead }">
+                <a-list-item-meta>
+                  <template #title>
+                    <button
+                      type="button"
+                      class="msg-item__title"
+                      @click="openMessageDetail(item)"
+                    >
+                      <span v-if="!item.isRead" class="dot dot--unread" />
+                      {{ item.subject || '无主题' }}
+                    </button>
+                  </template>
+                  <template #description>
+                    <div class="msg-item__meta">
+                      <UiTag tone="blue" size="sm">
+                        {{
+                          formatMessageType(item.messageType)
+                        }}
+                      </UiTag>
+                      <span>发自 {{ item.senderInfo?.nickName || item.senderUserId || '系统' }}</span>
+                      <span>{{ formatTime(item.sendTime) }}</span>
+                    </div>
+                  </template>
+                </a-list-item-meta>
+                <template #actions>
+                  <UiButton size="sm" variant="ghost" @click="openMessageDetail(item)">
+                    查看
+                  </UiButton>
+                  <UiButton
+                    v-if="!item.isRead"
+                    size="sm"
+                    variant="ghost"
+                    @click="markMessageRead(item)"
+                  >
+                    标记已读
+                  </UiButton>
+                </template>
+              </a-list-item>
+            </template>
+          </a-list>
+        </a-tab-pane>
+
+        <!-- 系统公告 -->
+        <a-tab-pane key="announcement">
+          <template #tab>
+            <span class="tab-label">
+              系统公告
+              <a-badge
+                v-if="unreadAnnouncementCount > 0"
+                :count="unreadAnnouncementCount"
+                :overflow-count="99"
+                :offset="[8, -4]"
+              />
+            </span>
+          </template>
+
+          <div class="filter-bar">
+            <a-space wrap>
+              <a-input
+                v-model:value="announcementFilter.titleKeyword"
+                placeholder="按标题搜索"
+                allow-clear
+                style="width: 240px"
+                @press-enter="loadAnnouncements(1)"
+              />
+              <a-select
+                v-model:value="announcementFilter.priority"
+                placeholder="优先级"
+                allow-clear
+                style="width: 140px"
+                :options="priorityOptions"
+                @change="loadAnnouncements(1)"
+              />
+              <a-checkbox
+                v-model:checked="announcementFilter.unreadOnly"
+                @change="loadAnnouncements(1)"
+              >
+                仅未读
+              </a-checkbox>
+              <UiButton size="sm" :loading="loadingAnnouncements" @click="loadAnnouncements(1)">
+                查询
+              </UiButton>
+              <UiButton
+                v-if="unreadAnnouncementCount > 0"
+                size="sm"
+                variant="outline"
+                :loading="markingAllAnnouncement"
+                @click="markAllAnnouncements"
+              >
+                全部已读
+              </UiButton>
+            </a-space>
+          </div>
+
+          <UiEmpty
+            v-if="!loadingAnnouncements && announcements.length === 0"
+            description="暂无系统公告"
+          />
+
+          <a-list
+            v-else
+            :data-source="announcements"
+            :loading="loadingAnnouncements"
+            item-layout="horizontal"
+            class="msg-list"
+            :pagination="announcementPagination"
+          >
+            <template #renderItem="{ item }">
+              <a-list-item class="msg-item" :class="{ 'msg-item--unread': !item.isRead }">
+                <a-list-item-meta>
+                  <template #title>
+                    <button
+                      type="button"
+                      class="msg-item__title"
+                      @click="openAnnouncementDetail(item)"
+                    >
+                      <span v-if="!item.isRead" class="dot dot--unread" />
+                      {{ item.title }}
+                    </button>
+                  </template>
+                  <template #description>
+                    <div class="msg-item__meta">
+                      <UiTag :tone="getPriorityTone(item.priority)" size="sm">
+                        {{ item.priorityName || item.priority }}
+                      </UiTag>
+                      <span>发布 {{ item.createUserName || '系统' }}</span>
+                      <span>{{ formatTime(item.publishTime || item.createTime) }}</span>
+                      <span v-if="item.relativeTime" class="muted">{{ item.relativeTime }}</span>
+                    </div>
+                  </template>
+                </a-list-item-meta>
+                <template #actions>
+                  <UiButton size="sm" variant="ghost" @click="openAnnouncementDetail(item)">
+                    查看
+                  </UiButton>
+                </template>
+              </a-list-item>
+            </template>
+          </a-list>
+        </a-tab-pane>
+      </a-tabs>
+    </UiCard>
+  </StageWorkbenchShell>
+
+  <!-- 站内信详情抽屉 -->
+  <a-drawer
+    v-model:open="messageDrawerOpen"
+    :title="activeMessage?.subject || '消息详情'"
+    width="640"
+    placement="right"
+  >
+    <a-spin :spinning="messageDetailLoading">
+      <div v-if="messageDetail" class="msg-detail">
+        <div class="msg-detail__meta">
+          <UiTag tone="blue" size="sm">{{ formatMessageType(messageDetail.messageType) }}</UiTag>
+          <span>发自
+            {{ messageDetail.senderInfo?.nickName || messageDetail.senderUserId || '系统' }}</span>
+          <span>{{ formatTime(messageDetail.sendTime) }}</span>
         </div>
-        <UiEmpty v-else description="无公告详情" />
-      </a-spin>
-    </a-drawer>
-  </GiPageLayout>
+        <a-divider />
+        <div class="msg-detail__content" v-html="messageDetail.contentHtml || '<p>无正文</p>'" />
+        <div v-if="messageDetail.metadata?.jumpUrl" class="msg-detail__jump">
+          <UiButton size="sm" variant="outline" @click="goJump(messageDetail.metadata.jumpUrl)">
+            跳转查看相关业务
+          </UiButton>
+        </div>
+      </div>
+      <UiEmpty v-else description="无消息详情" />
+    </a-spin>
+  </a-drawer>
+
+  <!-- 公告详情抽屉 -->
+  <a-drawer
+    v-model:open="announcementDrawerOpen"
+    :title="activeAnnouncement?.title || '公告详情'"
+    width="640"
+    placement="right"
+  >
+    <a-spin :spinning="announcementDetailLoading">
+      <div v-if="announcementDetail" class="msg-detail">
+        <div class="msg-detail__meta">
+          <UiTag :tone="getPriorityTone(announcementDetail.priority)" size="sm">
+            {{ announcementDetail.priorityName || announcementDetail.priority }}
+          </UiTag>
+          <span>发布 {{ announcementDetail.createUserName || '系统' }}</span>
+          <span>{{
+            formatTime(announcementDetail.publishTime || announcementDetail.createTime)
+          }}</span>
+        </div>
+        <a-divider />
+        <div class="msg-detail__content" v-html="announcementDetail.content || '<p>无正文</p>'" />
+        <a-divider />
+        <UiButton
+          v-if="!announcementDetail.isRead"
+          size="sm"
+          :loading="confirmingRead"
+          @click="confirmAnnouncementRead(announcementDetail)"
+        >
+          确认已读
+        </UiButton>
+        <UiTag v-else tone="green" size="sm">已确认阅读</UiTag>
+      </div>
+      <UiEmpty v-else description="无公告详情" />
+    </a-spin>
+  </a-drawer>
 </template>
 
 <script lang="ts" setup>
@@ -325,9 +325,8 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 import { globalUnreadCount } from '@/composables/useUnreadCount'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
 
@@ -643,6 +642,28 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .message-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

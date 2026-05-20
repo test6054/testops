@@ -1,17 +1,17 @@
 <template>
-  <GiPageLayout>
-    <div class="task-detail-page">
-      <PageHeader title="复核任务详情" back-route="/teacher/review-assignment">
-        <template #tags>
-          <UiTag v-if="detail?.status" :tone="reviewStatusTone(detail.status)" size="md">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="task-detail-page__context">
+        <div class="task-detail-page__context-left">
+          <UiTag v-if="detail?.status" :tone="reviewStatusTone(detail.status)" size="sm">
             {{ reviewStatusLabel(detail.status) }}
           </UiTag>
-          <UiTag v-if="detail?.anonymousNo" tone="gray" size="md">{{ detail.anonymousNo }}</UiTag>
-          <UiTag v-if="detail?.questionNo" tone="blue" size="md">
+          <UiTag v-if="detail?.anonymousNo" tone="gray" size="sm">{{ detail.anonymousNo }}</UiTag>
+          <UiTag v-if="detail?.questionNo" tone="blue" size="sm">
             题{{ detail.questionNo }} · 满分{{ detail.fullScore ?? '-' }}
           </UiTag>
-        </template>
-        <template #actions>
+        </div>
+        <div class="task-detail-page__context-right">
           <UiButton v-if="canEnterWorkspace" size="sm" @click="goWorkspace">
             <template #icon><EditOutlined /></template>
             进入批阅
@@ -26,108 +26,108 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <UiEmpty v-if="!hasParams" description="缺少必要参数：examId / taskId" class="task-detail-page__empty" />
+
+    <a-spin v-else :spinning="loading" tip="正在加载任务...">
+      <!-- 关联 ID 摘要 -->
+      <UiCard v-if="detail" class="info-card">
+        <template #title>
+          <ProfileOutlined />
+          <span>关联 ID 与评语</span>
         </template>
-      </PageHeader>
+        <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" :label-style="labelStyle" size="small">
+          <a-descriptions-item label="题目模板ID">
+            {{ detail.questionTemplateId || '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="试卷实例ID">
+            {{ detail.paperInstanceId || '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="批改结果ID">
+            {{ detail.gradeResultId || '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="评语" :span="3">
+            <a-typography-text v-if="detail.commentText" :content="detail.commentText" />
+            <span v-else class="muted">-</span>
+          </a-descriptions-item>
+        </a-descriptions>
+      </UiCard>
 
-      <UiEmpty v-if="!hasParams" description="缺少必要参数：examId / taskId" class="empty-block" />
+      <a-row :gutter="16" class="detail-row">
+        <a-col :xs="24" :lg="16">
+          <UiCard class="info-card">
+            <template #title>
+              <PictureOutlined />
+              <span>作答切片</span>
+            </template>
+            <UiEmpty v-if="!detail?.sliceFileId" description="该题目暂无切片图" />
+            <div v-else class="slice-viewer">
+              <a-spin :spinning="sliceLoading" tip="加载切片中...">
+                <a-image
+                  v-if="sliceImageUrl"
+                  :src="sliceImageUrl"
+                  :preview="{}"
+                  class="slice-image"
+                >
+                  <template #previewMask>点击查看原图</template>
+                </a-image>
+                <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
+              </a-spin>
+            </div>
+          </UiCard>
 
-      <a-spin v-else :spinning="loading" tip="正在加载任务...">
-        <!-- 关联 ID 摘要 -->
-        <UiCard v-if="detail" class="info-card">
-          <template #title>
-            <ProfileOutlined />
-            <span>关联 ID 与评语</span>
-          </template>
-          <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" :label-style="labelStyle" size="small">
-            <a-descriptions-item label="题目模板ID">
-              {{ detail.questionTemplateId || '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="试卷实例ID">
-              {{ detail.paperInstanceId || '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="批改结果ID">
-              {{ detail.gradeResultId || '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="评语" :span="3">
-              <a-typography-text v-if="detail.commentText" :content="detail.commentText" />
-              <span v-else class="muted">-</span>
-            </a-descriptions-item>
-          </a-descriptions>
-        </UiCard>
+          <UiCard class="info-card">
+            <template #title>
+              <FileTextOutlined />
+              <span>识别答案</span>
+            </template>
+            <UiEmpty v-if="!detail?.recognizedAnswer" description="尚未产生识别答案" />
+            <pre v-else class="text-pre">{{ detail.recognizedAnswer }}</pre>
+          </UiCard>
 
-        <a-row :gutter="16" class="detail-row">
-          <a-col :xs="24" :lg="16">
-            <UiCard class="info-card">
-              <template #title>
-                <PictureOutlined />
-                <span>作答切片</span>
+          <UiCard class="info-card">
+            <template #title>
+              <RobotOutlined />
+              <span>AI 诊断</span>
+            </template>
+            <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 诊断信息" />
+            <pre v-else class="text-pre">{{ detail.aiDiagnostic }}</pre>
+          </UiCard>
+        </a-col>
+
+        <a-col :xs="24" :lg="8">
+          <UiCard class="info-card">
+            <template #title>
+              <CommentOutlined />
+              <span>批注历史</span>
+              <UiBadge tone="blue">{{ annotations.length }}</UiBadge>
+            </template>
+            <UiEmpty v-if="annotations.length === 0" description="尚无批注记录" />
+            <a-list v-else :data-source="annotations" size="small">
+              <template #renderItem="{ item }">
+                <a-list-item>
+                  <a-list-item-meta>
+                    <template #title>
+                      <a-typography-text :content="item.annotationText || '（无批注正文）'" />
+                    </template>
+                    <template #description>
+                      <div class="annotation-meta">
+                        <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
+                        <span class="muted">{{ formatTime(item.createTime) }}</span>
+                      </div>
+                    </template>
+                  </a-list-item-meta>
+                </a-list-item>
               </template>
-              <UiEmpty v-if="!detail?.sliceFileId" description="该题目暂无切片图" />
-              <div v-else class="slice-viewer">
-                <a-spin :spinning="sliceLoading" tip="加载切片中...">
-                  <a-image
-                    v-if="sliceImageUrl"
-                    :src="sliceImageUrl"
-                    :preview="{}"
-                    class="slice-image"
-                  >
-                    <template #previewMask>点击查看原图</template>
-                  </a-image>
-                  <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
-                </a-spin>
-              </div>
-            </UiCard>
-
-            <UiCard class="info-card">
-              <template #title>
-                <FileTextOutlined />
-                <span>识别答案</span>
-              </template>
-              <UiEmpty v-if="!detail?.recognizedAnswer" description="尚未产生识别答案" />
-              <pre v-else class="text-pre">{{ detail.recognizedAnswer }}</pre>
-            </UiCard>
-
-            <UiCard class="info-card">
-              <template #title>
-                <RobotOutlined />
-                <span>AI 诊断</span>
-              </template>
-              <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 诊断信息" />
-              <pre v-else class="text-pre">{{ detail.aiDiagnostic }}</pre>
-            </UiCard>
-          </a-col>
-
-          <a-col :xs="24" :lg="8">
-            <UiCard class="info-card">
-              <template #title>
-                <CommentOutlined />
-                <span>批注历史</span>
-                <UiBadge tone="blue">{{ annotations.length }}</UiBadge>
-              </template>
-              <UiEmpty v-if="annotations.length === 0" description="尚无批注记录" />
-              <a-list v-else :data-source="annotations" size="small">
-                <template #renderItem="{ item }">
-                  <a-list-item>
-                    <a-list-item-meta>
-                      <template #title>
-                        <a-typography-text :content="item.annotationText || '（无批注正文）'" />
-                      </template>
-                      <template #description>
-                        <div class="annotation-meta">
-                          <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
-                          <span class="muted">{{ formatTime(item.createTime) }}</span>
-                        </div>
-                      </template>
-                    </a-list-item-meta>
-                  </a-list-item>
-                </template>
-              </a-list>
-            </UiCard>
-          </a-col>
-        </a-row>
-      </a-spin>
-    </div>
-  </GiPageLayout>
+            </a-list>
+          </UiCard>
+        </a-col>
+      </a-row>
+    </a-spin>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -146,9 +146,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'TeacherReviewTaskDetail' })
 
@@ -310,6 +309,32 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .task-detail-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

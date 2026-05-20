@@ -66,16 +66,16 @@
               {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="经验案例ID">{{
-            record.experienceCaseId ?? '-'
-          }}</a-descriptions-item>
-          <a-descriptions-item label="评估考试ID">{{
-            record.evalExamId ?? '-'
-          }}</a-descriptions-item>
+          <a-descriptions-item label="经验案例ID">
+            {{ record.experienceCaseId ?? '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="评估考试ID">
+            {{ record.evalExamId ?? '-' }}
+          </a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间" :span="2">{{
-            fmt(record.createTime)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间" :span="2">
+            {{ fmt(record.createTime) }}
+          </a-descriptions-item>
           <a-descriptions-item label="trace ID">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -112,11 +112,11 @@
 
 <script lang="ts" setup>
 import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
+import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { reactive, ref } from 'vue'
-import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 
 defineOptions({ name: 'ExperienceEffectivenessCard' })

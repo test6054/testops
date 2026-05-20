@@ -12,9 +12,15 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
+import { isScaleType, SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 
 const list = ref<ScaleConversionRuleVO[]>([])
 const total = ref(0)
@@ -26,21 +32,17 @@ const query = reactive<ScaleConversionRuleQueryPayload>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType, label: string }[] = (
+const scaleTypeOptions: { value: ScaleType; label: string }[] = (
   Object.keys(SCALE_TYPE_LABEL) as ScaleType[]
 ).map((value) => ({
   value,
   label: SCALE_TYPE_LABEL[value],
 }))
 
-// a-select 的 v-model 类型 SelectValue 不支持 boolean，桥接为字符串。
-const queryEnabledSelect = computed({
-  get(): string | undefined {
-    return query.enabled === undefined ? undefined : String(query.enabled)
-  },
-  set(v: string | undefined): void {
-    query.enabled = v === undefined ? undefined : v === 'true'
-  },
+// UiSearchForm 状态仓库：enabled 在表单使用字符串，@search 时映射回 query.enabled (boolean | undefined)
+const filterModel = ref<Record<string, unknown>>({
+  scaleType: undefined,
+  enabled: undefined,
 })
 
 const editorVisible = ref(false)
@@ -64,6 +66,39 @@ const editorJsonValid = computed(() => {
 })
 const submitting = ref(false)
 
+const filterFields: FilterField[] = [
+  {
+    key: 'scaleType',
+    label: '量表类型',
+    type: 'select',
+    placeholder: '量表类型',
+    allowClear: true,
+    options: scaleTypeOptions,
+    width: 180,
+  },
+  {
+    key: 'enabled',
+    label: '状态',
+    type: 'select',
+    placeholder: '状态',
+    allowClear: true,
+    width: 130,
+    options: [
+      { value: 'true', label: '启用' },
+      { value: 'false', label: '停用' },
+    ],
+  },
+]
+
+const columns: ColumnsType = [
+  { title: '编码', dataIndex: 'ruleCode', key: 'ruleCode', width: 140 },
+  { title: '名称', dataIndex: 'ruleName', key: 'ruleName' },
+  { title: '量表类型', dataIndex: 'scaleType', key: 'scaleType', width: 140 },
+  { title: '说明', dataIndex: 'description', key: 'description' },
+  { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 90 },
+  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+]
+
 async function loadList() {
   loading.value = true
   try {
@@ -75,16 +110,31 @@ async function loadList() {
   }
 }
 
-function handlePageChange(p: number, ps: number) {
-  query.pageNum = p
-  query.pageSize = ps
+function handlePageChange(payload: { current: number; pageSize: number }) {
+  query.pageNum = payload.current
+  query.pageSize = payload.pageSize
   loadList()
 }
 
-function resetQuery() {
+function syncFilterToQuery() {
+  const scaleTypeRaw = filterModel.value.scaleType
+  query.scaleType = isScaleType(scaleTypeRaw) ? scaleTypeRaw : undefined
+  const enabledRaw = filterModel.value.enabled
+  if (enabledRaw === 'true') query.enabled = true
+  else if (enabledRaw === 'false') query.enabled = false
+  else query.enabled = undefined
+}
+
+function handleSearch() {
   query.pageNum = 1
-  query.scaleType = undefined
-  query.enabled = undefined
+  syncFilterToQuery()
+  loadList()
+}
+
+function handleResetSearch() {
+  filterModel.value = { scaleType: undefined, enabled: undefined }
+  query.pageNum = 1
+  syncFilterToQuery()
   loadList()
 }
 
@@ -142,9 +192,9 @@ async function submitEditor() {
 }
 
 async function handleDelete(record: ScaleConversionRuleVO) {
-  Modal.confirm({
+  await confirmAsync({
     title: `删除换算规则 ${record.ruleCode}？`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await scaleConversionRuleApi.delete(record.id)
       message.success('已删除')
@@ -153,75 +203,84 @@ async function handleDelete(record: ScaleConversionRuleVO) {
   })
 }
 
+/* ========== 信号指标：量表换算规则库健康度 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const enabled = list.value.filter((r) => r.enabled).length
+  const disabled = list.value.filter((r) => !r.enabled).length
+  const byScale: Record<string, number> = {}
+  for (const r of list.value) {
+    byScale[r.scaleType] = (byScale[r.scaleType] || 0) + 1
+  }
+  return [
+    { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
+    { key: 'all-total', label: '规则总数', value: total.value, tone: 'blue' },
+    { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
+    { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
+    { key: 'scale-types', label: '覆盖量表类型', value: Object.keys(byScale).length, tone: 'blue' },
+  ]
+})
+
 onMounted(() => loadList())
 </script>
 
 <template>
-  <div class="page">
-    <a-card title="量表换算规则" :bordered="false">
-      <template #extra>
-        <a-space wrap>
-          <a-select
-            v-model:value="query.scaleType"
-            placeholder="量表类型"
-            allow-clear
-            style="width: 180px"
-            :options="scaleTypeOptions"
-          />
-          <a-select
-            v-model:value="queryEnabledSelect"
-            placeholder="状态"
-            allow-clear
-            style="width: 120px"
-          >
-            <a-select-option value="true">启用</a-select-option>
-            <a-select-option value="false">停用</a-select-option>
-          </a-select>
-          <a-button type="primary" @click="loadList">查询</a-button>
-          <a-button @click="resetQuery">重置</a-button>
-          <a-button type="primary" @click="openCreate">新建换算规则</a-button>
-        </a-space>
-      </template>
+  <StageWorkbenchShell>
+    <template #context>
+      <ContextBar title="量表换算规则库" />
+    </template>
 
-      <a-table
+    <SignalBand :metrics="signals" compact class="scr__signals" />
+
+    <section class="scr__panel">
+      <header class="scr__panel-header">
+        <h3 class="scr__panel-title">换算规则台账</h3>
+        <div class="scr__panel-actions">
+          <UiButton variant="primary" size="sm" @click="openCreate"> 新建换算规则 </UiButton>
+        </div>
+      </header>
+
+      <UiSearchForm
+        v-model="filterModel"
+        :fields="filterFields"
+        :show-labels="false"
+        class="scr__search-form"
+        @search="handleSearch"
+        @reset="handleResetSearch"
+      />
+
+      <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
+        :columns="columns"
         :data-source="list"
         :loading="loading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: query.pageNum,
-          pageSize: query.pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (n: number) => `共 ${n} 条`,
-          onChange: handlePageChange,
-        }"
+        :total="total"
+        flat
+        @page-change="handlePageChange"
       >
-        <a-table-column title="编码" data-index="ruleCode" width="140" />
-        <a-table-column title="名称" data-index="ruleName" />
-        <a-table-column title="量表类型" data-index="scaleType" width="140">
-          <template #default="{ text }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'scaleType'">
             {{ scaleTypeOptions.find((o) => o.value === text)?.label || text }}
           </template>
-        </a-table-column>
-        <a-table-column title="说明" data-index="description" />
-        <a-table-column title="状态" data-index="enabled" width="90">
-          <template #default="{ text }">
+          <template v-else-if="column.key === 'enabled'">
             <a-tag :color="text ? 'green' : 'default'">
               {{ text ? '启用' : '停用' }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="操作" width="160" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space>
-              <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
+              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+                删除
+              </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
     <a-modal
       v-model:open="editorVisible"
@@ -257,22 +316,66 @@ onMounted(() => loadList())
           :validate-status="editorJsonValid ? 'success' : 'error'"
           :help="editorJsonValid ? '' : '请输入合法 JSON，键为原始量表值，值为 0~1 分值'"
         >
-          <a-textarea
-            v-model:value="editor.conversionMap"
-            :rows="8"
-            :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
-          />
+          <a-textarea v-model:value="editor.conversionMap" :rows="8" class="scr__monospace" />
         </a-form-item>
         <a-form-item label="说明">
           <a-textarea v-model:value="editor.description" :rows="3" />
         </a-form-item>
       </a-form>
     </a-modal>
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page {
-  padding: 16px;
+.scr {
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 130px;
+
+    &--md {
+      width: 180px;
+    }
+  }
+
+  &__monospace {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
 }
 </style>

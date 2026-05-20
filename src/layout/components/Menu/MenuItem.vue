@@ -1,38 +1,28 @@
 <template>
-  <div v-if="!item.meta?.hideInMenu">
-    <a-menu-item
-      v-if="shouldShowAsMenuItem"
-      :key="menuItemKey"
-    >
+  <template v-if="!item.meta?.hideInMenu">
+    <a-menu-item v-if="shouldShowAsMenuItem" :key="menuItemKey">
       <template #icon>
         <MenuIcon :icon="menuItemIcon" />
       </template>
       <span>{{ menuItemTitle }}</span>
     </a-menu-item>
 
-    <a-sub-menu
-      v-else
-      :key="item.path"
-    >
+    <a-sub-menu v-else :key="item.path">
       <template #title>{{ item?.meta?.title }}</template>
       <template #icon>
         <MenuIcon :icon="subMenuIcon" />
       </template>
-      <MenuItem
-        v-for="child in visibleChildren"
-        :key="child.path"
-        :item="child"
-      />
+      <MenuItem v-for="child in visibleChildren" :key="child.path" :item="child" />
     </a-sub-menu>
-  </div>
+  </template>
 </template>
 
 <script lang="ts" setup>
-import type {RouteRecordRaw} from 'vue-router'
-import {computed} from 'vue'
+import type { RouteRecordRaw } from 'vue-router'
+import { computed } from 'vue'
 import MenuIcon from './MenuIcon.vue'
 
-defineOptions({name: 'MenuItem'})
+defineOptions({ name: 'MenuItem' })
 const props = withDefaults(defineProps<Props>(), {})
 
 interface Props {
@@ -46,7 +36,7 @@ interface Props {
 const visibleChildren = computed((): RouteRecordRaw[] => {
   const children = props.item.children as RouteRecordRaw[] | undefined
   if (!children) return []
-  return children.filter(child => !child.meta?.hideInMenu)
+  return children.filter((child) => !child.meta?.hideInMenu)
 })
 
 // 计算菜单数据
@@ -62,21 +52,27 @@ const menuData = computed(() => {
     isOneShowing = true
   } else if (children.length === 0) {
     // 没有子路由时，显示父路由
-    onlyChild = {...props.item, meta: {...props.item.meta, noShowingChildren: true}} as RouteRecordRaw
+    onlyChild = {
+      ...props.item,
+      meta: { ...props.item.meta, noShowingChildren: true },
+    } as RouteRecordRaw
     isOneShowing = true
   }
 
   return {
     onlyOneChild: onlyChild,
-    isOneShowingChild: isOneShowing
+    isOneShowingChild: isOneShowing,
   }
 })
 
 // 是否应该显示为菜单项（而不是子菜单）
 const shouldShowAsMenuItem = computed(() => {
-  return menuData.value.isOneShowingChild
-    && (!menuData.value.onlyOneChild?.children || menuData.value.onlyOneChild?.meta?.noShowingChildren)
-    && !props.item?.meta?.alwaysShow
+  return (
+    menuData.value.isOneShowingChild &&
+    (!menuData.value.onlyOneChild?.children ||
+      menuData.value.onlyOneChild?.meta?.noShowingChildren) &&
+    !props.item?.meta?.alwaysShow
+  )
 })
 
 // 菜单项的key

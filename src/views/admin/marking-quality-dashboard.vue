@@ -1,24 +1,12 @@
 <template>
-  <GiPageLayout>
-    <div class="quality-page">
-      <PageHeader title="阅卷质量监控">
-        <template #tags>
-          <UiTag v-if="selectedExamId" tone="blue" size="md">考试 #{{ selectedExamId }}</UiTag>
-          <UiTag v-if="selectedExamId && progress" tone="blue" size="md">
-            完成率 {{ progress.completionRate?.toFixed?.(2) ?? '-' }}%
-          </UiTag>
-          <UiTag
-            v-if="selectedExamId && progress?.riskLevel"
-            :tone="riskTone(progress.riskLevel)"
-            size="md"
-          >
-            {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel] }}
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="quality-dashboard__context">
+        <div class="quality-dashboard__context-info">
+          <h2 class="quality-dashboard__title">阅卷交付 - 阅卷质量控制台</h2>
           <a-select
             v-model:value="selectedExamId"
-            style="width: 240px"
+            class="quality-dashboard__exam-select"
             placeholder="选择考试"
             :options="examOptions"
             :loading="examOptionsLoading"
@@ -29,24 +17,41 @@
           />
           <a-input
             v-model:value="organizationIdInput"
-            style="width: 160px"
-            placeholder="阅卷组织ID"
+            class="quality-dashboard__org-input"
+            placeholder="阅卷组织 ID"
             allow-clear
             @change="handleScopeChange"
           />
           <a-input
             v-model:value="groupIdInput"
-            style="width: 140px"
-            placeholder="题组ID（可选）"
+            class="quality-dashboard__group-input"
+            placeholder="题组 ID（可选）"
             allow-clear
             @change="handleScopeChange"
           />
-        </template>
-      </PageHeader>
+        </div>
+        <div class="quality-dashboard__context-actions">
+          <UiTag
+            v-if="selectedExamId && progress?.riskLevel"
+            :tone="riskTone(progress.riskLevel)"
+            size="sm"
+          >
+            {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel] }}
+          </UiTag>
+        </div>
+      </div>
+    </template>
 
-      <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="empty-block" />
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请先选择一场考试"
+      class="quality-dashboard__empty"
+    />
 
-      <a-tabs v-else v-model:active-key="activeTab">
+    <template v-else>
+      <SignalBand :metrics="signalMetrics" compact class="quality-dashboard__signals" />
+
+      <a-tabs v-model:active-key="activeTab" class="quality-dashboard__tabs">
         <!-- ─── Tab 1: 进度监控 ─── -->
         <a-tab-pane key="progress">
           <template #tab>
@@ -84,19 +89,21 @@
               </a-space>
             </template>
 
-            <a-alert
+            <UiAlertStrip
               v-if="!scopeValid"
-              type="info"
-              show-icon
-              message="请填写阅卷组织ID（必填）"
+              tone="info"
+              title="请填写阅卷组织ID（必填）"
               description="进度监控按 (考试 + 阅卷组织 + 题组) 维度统计；题组留空表示组织级合计。"
+              dense
+              class="quality-dashboard__alert"
             />
-            <a-alert
+            <UiAlertStrip
               v-else-if="!progress"
-              type="info"
-              show-icon
-              message="尚无进度快照"
+              tone="info"
+              title="尚无进度快照"
               description="点击「立即快照」实时计算并保存。"
+              dense
+              class="quality-dashboard__alert"
             />
             <a-descriptions v-else :column="3" bordered size="small">
               <a-descriptions-item label="总任务数">
@@ -112,10 +119,10 @@
                 {{ progress.submittedTasks ?? 0 }}
               </a-descriptions-item>
               <a-descriptions-item label="已定稿">
-                <b style="color: #389e0d">{{ progress.finalizedTasks ?? 0 }}</b>
+                <b class="quality-dashboard__num-success">{{ progress.finalizedTasks ?? 0 }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="已回收">
-                <b style="color: #d4380d">{{ progress.recycledTasks ?? 0 }}</b>
+                <b class="quality-dashboard__num-warning">{{ progress.recycledTasks ?? 0 }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="完成率">
                 {{ progress.completionRate?.toFixed?.(2) ?? '-' }}%
@@ -132,7 +139,7 @@
                 {{ progress.snapshotTime ?? '-' }}
               </a-descriptions-item>
               <a-descriptions-item v-if="progress.riskDetail" label="风险详情" :span="3">
-                <pre class="json-pre">{{ progress.riskDetail }}</pre>
+                <pre class="quality-dashboard__json-pre">{{ progress.riskDetail }}</pre>
               </a-descriptions-item>
             </a-descriptions>
           </UiCard>
@@ -154,7 +161,7 @@
                 <a-select
                   v-model:value="metricStatusFilter"
                   placeholder="状态过滤"
-                  style="width: 140px"
+                  class="quality-dashboard__metric-filter"
                   allow-clear
                   @change="loadReviewerMetrics"
                 >
@@ -187,11 +194,13 @@
               </a-space>
             </template>
 
-            <a-table
+            <UiDataTable
               :columns="reviewerColumns"
               :data-source="reviewerMetrics"
               :loading="reviewerLoading"
-              :pagination="{ pageSize: 20, showSizeChanger: false }"
+              :page-size="20"
+              :total="reviewerMetrics.length"
+              flat
               row-key="id"
               size="middle"
             >
@@ -201,20 +210,20 @@
                     {{ metricStatusLabel(reviewerMetrics[index].metricStatus) }}
                   </UiTag>
                 </template>
-                <template v-else-if="column.key === 'avgScore'">{{
-                  formatDecimal(reviewerMetrics[index].avgScore)
-                }}</template>
-                <template v-else-if="column.key === 'scoreStddev'">{{
-                  formatDecimal(reviewerMetrics[index].scoreStddev)
-                }}</template>
-                <template v-else-if="column.key === 'consistencyRate'">{{
-                  formatDecimal(reviewerMetrics[index].consistencyRate)
-                }}</template>
-                <template v-else-if="column.key === 'scoreBias'">{{
-                  formatDecimal(reviewerMetrics[index].scoreBias)
-                }}</template>
+                <template v-else-if="column.key === 'avgScore'">
+                  {{ formatDecimal(reviewerMetrics[index].avgScore) }}
+                </template>
+                <template v-else-if="column.key === 'scoreStddev'">
+                  {{ formatDecimal(reviewerMetrics[index].scoreStddev) }}
+                </template>
+                <template v-else-if="column.key === 'consistencyRate'">
+                  {{ formatDecimal(reviewerMetrics[index].consistencyRate) }}
+                </template>
+                <template v-else-if="column.key === 'scoreBias'">
+                  {{ formatDecimal(reviewerMetrics[index].scoreBias) }}
+                </template>
               </template>
-            </a-table>
+            </UiDataTable>
           </UiCard>
         </a-tab-pane>
 
@@ -229,15 +238,15 @@
               <span>创建抽检任务</span>
             </template>
 
-            <a-alert
-              type="info"
-              show-icon
-              message="抽检规则"
+            <UiAlertStrip
+              tone="info"
+              title="抽检规则"
               description="按 (阅卷组织 + 题组 + 抽检比例) 创建任务。可选指定教师；不指定则全组抽检。后端将随机抽样并生成 PENDING 抽检记录，由组长在「抽检处理」入口处理结论。"
-              style="margin-bottom: 12px"
+              dense
+              class="quality-dashboard__alert"
             />
 
-            <a-form layout="vertical" style="max-width: 720px">
+            <a-form layout="vertical" class="quality-dashboard__form">
               <a-form-item label="阅卷组织ID" required>
                 <a-input :value="organizationIdInput" disabled />
               </a-form-item>
@@ -249,7 +258,7 @@
                   v-model:value="spotForm.sampleRate"
                   :min="1"
                   :max="100"
-                  style="width: 100%"
+                  class="quality-dashboard__field-full"
                   placeholder="请输入 1~100 之间的抽检比例"
                 />
               </a-form-item>
@@ -284,15 +293,15 @@
               <span>触发异常批次重处理</span>
             </template>
 
-            <a-alert
-              type="warning"
-              show-icon
-              message="重处理影响范围"
+            <UiAlertStrip
+              tone="warning"
+              title="重处理影响范围"
               description="ALL：清空批次内所有页的识别 / 评分结果，重新走识别流；FAILED_ONLY：仅重做识别失败页。重处理过程中阅卷工作不可用。请确认与教师协调时间窗口后再触发。"
-              style="margin-bottom: 12px"
+              dense
+              class="quality-dashboard__alert"
             />
 
-            <a-form layout="vertical" style="max-width: 720px">
+            <a-form layout="vertical" class="quality-dashboard__form">
               <a-form-item label="扫描批次ID" required>
                 <a-input v-model:value="reprocessForm.scanBatchId" placeholder="输入扫描批次ID" />
               </a-form-item>
@@ -330,13 +339,14 @@
           </UiCard>
         </a-tab-pane>
       </a-tabs>
-    </div>
-  </GiPageLayout>
+    </template>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   BatchReprocessScopeCode,
   ProgressMonitorRecordVO,
@@ -344,18 +354,6 @@ import type {
   ReviewerMetricStatusCode,
   ReviewerQualityMetricVO,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
 import {
   createSpotCheckTasks,
   getLatestProgress,
@@ -368,9 +366,28 @@ import {
   REVIEWER_METRIC_STATUS_LABEL,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  UiAlertStrip,
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiTag,
+} from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
 
@@ -384,7 +401,7 @@ const organizationIdInput = ref<string>(
   route.query.organizationId ? String(route.query.organizationId) : '',
 )
 const groupIdInput = ref<string>(route.query.groupId ? String(route.query.groupId) : '')
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 
 const activeTab = ref<'progress' | 'reviewer' | 'spotcheck' | 'reprocess'>('progress')
@@ -570,6 +587,61 @@ function riskTone(level: ProgressRiskLevelCode): BadgeTone {
   return PROGRESS_RISK_LEVEL_COLOR[level] ?? 'blue'
 }
 
+/* ========== 信号指标：阅卷质量全局风险面板 ========== */
+
+const signalMetrics = computed<SignalMetric[]>(() => {
+  const p = progress.value
+  const reviewerWarning = reviewerMetrics.value.filter((r) => r.metricStatus === 'WARNING').length
+  const reviewerSuspended = reviewerMetrics.value.filter(
+    (r) => r.metricStatus === 'SUSPENDED',
+  ).length
+
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const recycledCount = p?.recycledTasks ?? 0
+  const inProgressCount = p?.inProgressTasks ?? 0
+  const finalizedCount = p?.finalizedTasks ?? 0
+
+  return [
+    {
+      key: 'completion',
+      label: '完成率',
+      value: completionRate,
+      tone: p?.riskLevel ? riskTone(p.riskLevel) : 'gray',
+    },
+    {
+      key: 'inProgress',
+      label: '进行中',
+      value: inProgressCount,
+      tone: inProgressCount > 0 ? 'blue' : 'gray',
+    },
+    {
+      key: 'finalized',
+      label: '已定稿',
+      value: finalizedCount,
+      tone: finalizedCount > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'recycled',
+      label: '已回收',
+      value: recycledCount,
+      tone: recycledCount > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'warning',
+      label: '教师预警',
+      value: reviewerWarning,
+      tone: reviewerWarning > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'suspended',
+      label: '教师暂停',
+      value: reviewerSuspended,
+      tone: reviewerSuspended > 0 ? 'red' : 'gray',
+    },
+  ]
+})
+
 function formatDecimal(value: number | undefined): string {
   if (value === null || value === undefined) return '-'
   const n = typeof value === 'number' ? value : Number(value)
@@ -630,10 +702,103 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
-.quality-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.quality-dashboard {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__context-info {
+    flex: 1;
+    min-width: 320px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__signals {
+    margin-bottom: 12px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__tabs {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 0 16px;
+  }
+
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 240px;
+  }
+
+  &__org-input {
+    width: 160px;
+  }
+
+  &__group-input {
+    width: 140px;
+  }
+
+  &__metric-filter {
+    width: 140px;
+  }
+
+  &__form {
+    max-width: 720px;
+  }
+
+  &__field-full {
+    width: 100%;
+  }
+
+  &__alert {
+    margin-bottom: 12px;
+  }
+
+  &__empty {
+    margin-top: 80px;
+  }
+
+  &__num-success {
+    color: var(--ant-color-success, #16a34a);
+  }
+
+  &__num-warning {
+    color: var(--ant-color-warning, #ea580c);
+  }
+
+  &__json-pre {
+    background: var(--dp-surface-soft, #f8fafc);
+    padding: 8px;
+    border-radius: 4px;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 12px;
+    color: var(--dp-text-primary, #0f172a);
+  }
 }
 
 .info-card {
@@ -642,19 +807,5 @@ onMounted(async () => {
     align-items: center;
     gap: 8px;
   }
-}
-
-.empty-block {
-  margin-top: 80px;
-}
-
-.json-pre {
-  background: rgba(0, 0, 0, 0.03);
-  padding: 8px;
-  border-radius: 4px;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-size: 12px;
 }
 </style>

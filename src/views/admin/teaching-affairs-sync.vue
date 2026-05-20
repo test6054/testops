@@ -1,19 +1,11 @@
 <template>
-  <GiPageLayout>
-    <div class="sync-page">
-      <PageHeader title="教务系统同步">
-        <template #tags>
-          <UiTag v-if="syncTasks.length > 0" tone="blue" size="md">
-            同步任务 {{ syncTasks.length }}
-          </UiTag>
-          <UiTag v-if="passbackRecords.length > 0" tone="green" size="md">
-            回写记录 {{ passbackRecords.length }}
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="sync-page__context">
+        <div class="sync-page__context-left">
           <a-select
             v-model:value="selectedExamId"
-            style="width: 280px"
+            class="sync-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
             :loading="examOptionsLoading"
@@ -22,6 +14,14 @@
             allow-clear
             @change="handleExamChange"
           />
+          <UiTag v-if="syncTasks.length > 0" tone="blue" size="sm">
+            同步任务 {{ syncTasks.length }}
+          </UiTag>
+          <UiTag v-if="passbackRecords.length > 0" tone="green" size="sm">
+            回写记录 {{ passbackRecords.length }}
+          </UiTag>
+        </div>
+        <div class="sync-page__context-right">
           <UiButton size="sm" :disabled="!selectedExamId" @click="openCreateModal">
             <template #icon><PlusOutlined /></template>
             新建同步任务
@@ -36,332 +36,323 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请先选择一场已发布成绩的考试"
+      class="sync-page__empty"
+    />
+
+    <template v-else>
+      <UiCard class="info-card">
+        <template #title>
+          <SyncOutlined />
+          <span>同步任务</span>
+          <UiBadge tone="blue">{{ syncTasks.length }}</UiBadge>
         </template>
-      </PageHeader>
+        <template #extra>
+          <a-select
+            v-model:value="syncStatusFilter"
+            placeholder="状态过滤"
+            style="width: 160px"
+            allow-clear
+            @change="loadSyncTasks"
+          >
+            <a-select-option
+              v-for="(label, code) in SYNC_TASK_STATUS_LABEL"
+              :key="code"
+              :value="code"
+            >
+              {{ label }}
+            </a-select-option>
+          </a-select>
+        </template>
 
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请先选择一场已发布成绩的考试"
-        class="empty-block"
-      />
-
-      <template v-else>
-        <a-alert
-          type="info"
-          show-icon
-          message="教务回写流程"
-          description="① 创建同步任务（外部系统 + 同步类型 + 课程/成绩项映射 + 配置 JSON）→ ② 执行回写：基于已发布的最终成绩生成 PassbackRecord → ③ 系统将记录发送外部系统 → ④ 外部系统返回结果后调对账接口比对本地分 vs 外部分。失败 / 部分成功可重试或取消。"
-          style="margin-bottom: 16px"
-        />
-
-        <UiCard class="info-card">
-          <template #title>
-            <SyncOutlined />
-            <span>同步任务</span>
-            <UiBadge tone="blue">{{ syncTasks.length }}</UiBadge>
+        <UiDataTable
+          :columns="syncColumns"
+          :data-source="syncTasks"
+          :loading="syncLoading"
+          :page-size="20"
+          :total="syncTasks.length"
+          flat
+          row-key="id"
+          size="middle"
+        >
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'externalSystemType'">
+              {{
+                syncTasks[index].externalSystemType
+                  ? EXTERNAL_SYSTEM_TYPE_LABEL[syncTasks[index].externalSystemType!]
+                  : '-'
+              }}
+            </template>
+            <template v-else-if="column.key === 'syncType'">
+              {{ syncTasks[index].syncType ? SYNC_TYPE_LABEL[syncTasks[index].syncType!] : '-' }}
+            </template>
+            <template v-else-if="column.key === 'taskStatus'">
+              <UiTag :tone="syncStatusTone(syncTasks[index].taskStatus)" size="sm">
+                {{
+                  syncTasks[index].taskStatus
+                    ? SYNC_TASK_STATUS_LABEL[syncTasks[index].taskStatus!]
+                    : '-'
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'retry'">
+              {{ syncTasks[index].retryCount ?? 0 }} / {{ syncTasks[index].maxRetryCount ?? '-' }}
+            </template>
+            <template v-else-if="column.key === 'lastError'">
+              <a-tooltip
+                v-if="syncTasks[index].lastErrorMessage"
+                :title="syncTasks[index].lastErrorMessage"
+              >
+                <span class="error-text">{{ syncTasks[index].lastErrorCode ?? 'ERROR' }}</span>
+              </a-tooltip>
+              <span v-else class="hint-text">-</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <a-space>
+                <UiButton
+                  v-if="canExecute(syncTasks[index].taskStatus)"
+                  size="sm"
+                  :loading="actionLoadingId === syncTasks[index].id"
+                  @click="handleExecute(syncTasks[index])"
+                >
+                  执行回写
+                </UiButton>
+                <UiButton
+                  v-if="canRetry(syncTasks[index].taskStatus)"
+                  size="sm"
+                  variant="outline"
+                  :loading="actionLoadingId === syncTasks[index].id"
+                  @click="handleRetry(syncTasks[index])"
+                >
+                  重试
+                </UiButton>
+                <UiButton
+                  v-if="canCancel(syncTasks[index].taskStatus)"
+                  size="sm"
+                  variant="outline"
+                  :loading="actionLoadingId === syncTasks[index].id"
+                  @click="handleCancel(syncTasks[index])"
+                >
+                  取消
+                </UiButton>
+                <UiButton size="sm" variant="outline" @click="openTaskDetail(syncTasks[index])">
+                  详情
+                </UiButton>
+              </a-space>
+            </template>
           </template>
-          <template #extra>
-            <a-select
-              v-model:value="syncStatusFilter"
-              placeholder="状态过滤"
+        </UiDataTable>
+      </UiCard>
+
+      <UiCard class="info-card">
+        <template #title>
+          <FileSyncOutlined />
+          <span>回写记录</span>
+          <UiBadge tone="blue">{{ passbackRecords.length }}</UiBadge>
+        </template>
+        <template #extra>
+          <a-space>
+            <a-input
+              v-model:value="passbackTaskFilter"
+              placeholder="任务ID过滤"
               style="width: 160px"
               allow-clear
-              @change="loadSyncTasks"
+              @press-enter="loadPassbackRecords"
+            />
+            <a-select
+              v-model:value="passbackStatusFilter"
+              placeholder="回写状态"
+              style="width: 160px"
+              allow-clear
+              @change="loadPassbackRecords"
             >
               <a-select-option
-                v-for="(label, code) in SYNC_TASK_STATUS_LABEL"
+                v-for="(label, code) in PASSBACK_STATUS_LABEL"
                 :key="code"
                 :value="code"
               >
                 {{ label }}
               </a-select-option>
             </a-select>
-          </template>
-
-          <a-table
-            :columns="syncColumns"
-            :data-source="syncTasks"
-            :loading="syncLoading"
-            :pagination="{ pageSize: 20, showSizeChanger: false }"
-            row-key="id"
-            size="middle"
-          >
-            <template #bodyCell="{ column, index }">
-              <template v-if="column.key === 'externalSystemType'">
-                {{
-                  syncTasks[index].externalSystemType
-                    ? EXTERNAL_SYSTEM_TYPE_LABEL[syncTasks[index].externalSystemType!]
-                    : '-'
-                }}
-              </template>
-              <template v-else-if="column.key === 'syncType'">
-                {{ syncTasks[index].syncType ? SYNC_TYPE_LABEL[syncTasks[index].syncType!] : '-' }}
-              </template>
-              <template v-else-if="column.key === 'taskStatus'">
-                <UiTag :tone="syncStatusTone(syncTasks[index].taskStatus)" size="sm">
-                  {{
-                    syncTasks[index].taskStatus
-                      ? SYNC_TASK_STATUS_LABEL[syncTasks[index].taskStatus!]
-                      : '-'
-                  }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'retry'">
-                {{ syncTasks[index].retryCount ?? 0 }} / {{ syncTasks[index].maxRetryCount ?? '-' }}
-              </template>
-              <template v-else-if="column.key === 'lastError'">
-                <a-tooltip
-                  v-if="syncTasks[index].lastErrorMessage"
-                  :title="syncTasks[index].lastErrorMessage"
-                >
-                  <span class="error-text">{{ syncTasks[index].lastErrorCode ?? 'ERROR' }}</span>
-                </a-tooltip>
-                <span v-else class="hint-text">-</span>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <UiButton
-                    v-if="canExecute(syncTasks[index].taskStatus)"
-                    size="sm"
-                    :loading="actionLoadingId === syncTasks[index].id"
-                    @click="handleExecute(syncTasks[index])"
-                  >
-                    执行回写
-                  </UiButton>
-                  <UiButton
-                    v-if="canRetry(syncTasks[index].taskStatus)"
-                    size="sm"
-                    variant="outline"
-                    :loading="actionLoadingId === syncTasks[index].id"
-                    @click="handleRetry(syncTasks[index])"
-                  >
-                    重试
-                  </UiButton>
-                  <UiButton
-                    v-if="canCancel(syncTasks[index].taskStatus)"
-                    size="sm"
-                    variant="outline"
-                    :loading="actionLoadingId === syncTasks[index].id"
-                    @click="handleCancel(syncTasks[index])"
-                  >
-                    取消
-                  </UiButton>
-                  <UiButton size="sm" variant="outline" @click="openTaskDetail(syncTasks[index])">
-                    详情
-                  </UiButton>
-                </a-space>
-              </template>
-            </template>
-          </a-table>
-        </UiCard>
-
-        <UiCard class="info-card">
-          <template #title>
-            <FileSyncOutlined />
-            <span>回写记录</span>
-            <UiBadge tone="blue">{{ passbackRecords.length }}</UiBadge>
-          </template>
-          <template #extra>
-            <a-space>
-              <a-input
-                v-model:value="passbackTaskFilter"
-                placeholder="任务ID过滤"
-                style="width: 160px"
-                allow-clear
-                @press-enter="loadPassbackRecords"
-              />
-              <a-select
-                v-model:value="passbackStatusFilter"
-                placeholder="回写状态"
-                style="width: 160px"
-                allow-clear
-                @change="loadPassbackRecords"
-              >
-                <a-select-option
-                  v-for="(label, code) in PASSBACK_STATUS_LABEL"
-                  :key="code"
-                  :value="code"
-                >
-                  {{ label }}
-                </a-select-option>
-              </a-select>
-              <UiButton
-                size="sm"
-                variant="outline"
-                :loading="passbackLoading"
-                @click="loadPassbackRecords"
-              >
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-            </a-space>
-          </template>
-
-          <a-table
-            :columns="passbackColumns"
-            :data-source="passbackRecords"
-            :loading="passbackLoading"
-            :pagination="{ pageSize: 50, showSizeChanger: false }"
-            row-key="id"
-            size="middle"
-          >
-            <template #bodyCell="{ column, index }">
-              <template v-if="column.key === 'passbackStatus'">
-                <UiTag :tone="passbackStatusTone(passbackRecords[index].passbackStatus)" size="sm">
-                  {{
-                    passbackRecords[index].passbackStatus
-                      ? PASSBACK_STATUS_LABEL[passbackRecords[index].passbackStatus!]
-                      : '-'
-                  }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'reconcileStatus'">
-                <UiTag
-                  v-if="passbackRecords[index].reconcileStatus"
-                  :tone="reconcileStatusTone(passbackRecords[index].reconcileStatus)"
-                  size="sm"
-                >
-                  {{ RECONCILE_STATUS_LABEL[passbackRecords[index].reconcileStatus!] }}
-                </UiTag>
-                <span v-else class="hint-text">-</span>
-              </template>
-              <template v-else-if="column.key === 'errorMessage'">
-                <a-tooltip
-                  v-if="passbackRecords[index].errorMessage"
-                  :title="passbackRecords[index].errorMessage"
-                >
-                  <span class="error-text">{{
-                    ellipsis(passbackRecords[index].errorMessage, 40)
-                  }}</span>
-                </a-tooltip>
-                <span v-else class="hint-text">-</span>
-              </template>
-            </template>
-          </a-table>
-        </UiCard>
-      </template>
-    </div>
-
-    <!-- 创建任务 Modal -->
-    <a-modal
-      v-model:open="createModalOpen"
-      title="新建同步任务"
-      :destroy-on-close="true"
-      :confirm-loading="creating"
-      :ok-button-props="{ disabled: !createValid }"
-      ok-text="创建"
-      width="640px"
-      @ok="handleCreate"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="外部系统类型" required>
-          <a-radio-group v-model:value="createForm.externalSystemType">
-            <a-radio-button
-              v-for="(label, code) in EXTERNAL_SYSTEM_TYPE_LABEL"
-              :key="code"
-              :value="code"
-            >
-              {{ label }}
-            </a-radio-button>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item label="同步类型" required>
-          <a-radio-group v-model:value="createForm.syncType">
-            <a-radio-button v-for="(label, code) in SYNC_TYPE_LABEL" :key="code" :value="code">
-              {{ label }}
-            </a-radio-button>
-          </a-radio-group>
-          <div class="hint-text" style="margin-top: 4px">
-            后端当前仅闭合 GRADE_EXPORT 路径；其他类型为预留映射。
-          </div>
-        </a-form-item>
-        <a-form-item label="外部课程ID">
-          <a-input
-            v-model:value="createForm.externalCourseId"
-            placeholder="如教务系统中的课程编号"
-          />
-        </a-form-item>
-        <a-form-item label="外部成绩项ID">
-          <a-input
-            v-model:value="createForm.externalLineItemId"
-            placeholder="如成绩册中的成绩项 GUID"
-          />
-        </a-form-item>
-        <a-form-item label="同步配置 JSON">
-          <a-textarea
-            v-model:value="createForm.syncConfig"
-            :rows="4"
-            placeholder="{&quot;endpoint&quot;:&quot;https://sis.school/api&quot;,&quot;apiKey&quot;:&quot;xxx&quot;}"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- 任务详情抽屉 -->
-    <a-drawer
-      v-model:open="taskDetailOpen"
-      title="同步任务详情"
-      width="540"
-      :destroy-on-close="true"
-    >
-      <a-descriptions v-if="detailTask" :column="1" bordered size="small">
-        <a-descriptions-item label="任务ID">{{ detailTask.id }}</a-descriptions-item>
-        <a-descriptions-item label="考试ID">{{ detailTask.examId }}</a-descriptions-item>
-        <a-descriptions-item label="外部系统">
-          {{
-            detailTask.externalSystemType
-              ? EXTERNAL_SYSTEM_TYPE_LABEL[detailTask.externalSystemType]
-              : '-'
-          }}
-        </a-descriptions-item>
-        <a-descriptions-item label="同步类型">
-          {{ detailTask.syncType ? SYNC_TYPE_LABEL[detailTask.syncType] : '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="状态">
-          <UiTag :tone="syncStatusTone(detailTask.taskStatus)" size="sm">
-            {{ detailTask.taskStatus ? SYNC_TASK_STATUS_LABEL[detailTask.taskStatus] : '-' }}
-          </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="重试">
-          {{ detailTask.retryCount ?? 0 }} / {{ detailTask.maxRetryCount ?? '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="外部课程ID">
-          {{ detailTask.externalCourseId ?? '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="外部成绩项ID">
-          {{ detailTask.externalLineItemId ?? '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="同步配置">
-          <pre class="json-pre">{{ detailTask.syncConfig || '（空）' }}</pre>
-        </a-descriptions-item>
-        <a-descriptions-item label="最后同步时间">
-          {{ detailTask.lastSyncTime ?? '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-          <span class="error-text">[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span>
-        </a-descriptions-item>
-        <a-descriptions-item label="操作" :span="1">
-          <a-space>
             <UiButton
-              v-if="detailTask.id"
               size="sm"
               variant="outline"
-              :loading="reconciling"
-              @click="handleReconcile(detailTask)"
+              :loading="passbackLoading"
+              @click="loadPassbackRecords"
             >
-              <template #icon><AuditOutlined /></template>
-              对账
+              <template #icon><ReloadOutlined /></template>
+              刷新
             </UiButton>
           </a-space>
-        </a-descriptions-item>
-      </a-descriptions>
-    </a-drawer>
-  </GiPageLayout>
+        </template>
+
+        <UiDataTable
+          :columns="passbackColumns"
+          :data-source="passbackRecords"
+          :loading="passbackLoading"
+          :page-size="50"
+          :total="passbackRecords.length"
+          flat
+          row-key="id"
+          size="middle"
+        >
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'passbackStatus'">
+              <UiTag :tone="passbackStatusTone(passbackRecords[index].passbackStatus)" size="sm">
+                {{
+                  passbackRecords[index].passbackStatus
+                    ? PASSBACK_STATUS_LABEL[passbackRecords[index].passbackStatus!]
+                    : '-'
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'reconcileStatus'">
+              <UiTag
+                v-if="passbackRecords[index].reconcileStatus"
+                :tone="reconcileStatusTone(passbackRecords[index].reconcileStatus)"
+                size="sm"
+              >
+                {{ RECONCILE_STATUS_LABEL[passbackRecords[index].reconcileStatus!] }}
+              </UiTag>
+              <span v-else class="hint-text">-</span>
+            </template>
+            <template v-else-if="column.key === 'errorMessage'">
+              <a-tooltip
+                v-if="passbackRecords[index].errorMessage"
+                :title="passbackRecords[index].errorMessage"
+              >
+                <span class="error-text">{{
+                  ellipsis(passbackRecords[index].errorMessage, 40)
+                }}</span>
+              </a-tooltip>
+              <span v-else class="hint-text">-</span>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </template>
+  </StageWorkbenchShell>
+
+  <!-- 创建任务 Modal -->
+  <a-modal
+    v-model:open="createModalOpen"
+    title="新建同步任务"
+    :destroy-on-close="true"
+    :confirm-loading="creating"
+    :ok-button-props="{ disabled: !createValid }"
+    ok-text="创建"
+    width="640px"
+    @ok="handleCreate"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="外部系统类型" required>
+        <a-radio-group v-model:value="createForm.externalSystemType">
+          <a-radio-button
+            v-for="(label, code) in EXTERNAL_SYSTEM_TYPE_LABEL"
+            :key="code"
+            :value="code"
+          >
+            {{ label }}
+          </a-radio-button>
+        </a-radio-group>
+      </a-form-item>
+      <a-form-item label="同步类型" required>
+        <a-radio-group v-model:value="createForm.syncType">
+          <a-radio-button v-for="(label, code) in SYNC_TYPE_LABEL" :key="code" :value="code">
+            {{ label }}
+          </a-radio-button>
+        </a-radio-group>
+        <div class="hint-text" style="margin-top: 4px">
+          后端当前仅闭合 GRADE_EXPORT 路径；其他类型为预留映射。
+        </div>
+      </a-form-item>
+      <a-form-item label="外部课程ID">
+        <a-input v-model:value="createForm.externalCourseId" placeholder="如教务系统中的课程编号" />
+      </a-form-item>
+      <a-form-item label="外部成绩项ID">
+        <a-input
+          v-model:value="createForm.externalLineItemId"
+          placeholder="如成绩册中的成绩项 GUID"
+        />
+      </a-form-item>
+      <a-form-item label="同步配置 JSON">
+        <a-textarea
+          v-model:value="createForm.syncConfig"
+          :rows="4"
+          placeholder='{"endpoint":"https://sis.school/api","apiKey":"xxx"}'
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <!-- 任务详情抽屉 -->
+  <a-drawer v-model:open="taskDetailOpen" title="同步任务详情" width="540" :destroy-on-close="true">
+    <a-descriptions v-if="detailTask" :column="1" bordered size="small">
+      <a-descriptions-item label="任务ID">{{ detailTask.id }}</a-descriptions-item>
+      <a-descriptions-item label="考试ID">{{ detailTask.examId }}</a-descriptions-item>
+      <a-descriptions-item label="外部系统">
+        {{
+          detailTask.externalSystemType
+            ? EXTERNAL_SYSTEM_TYPE_LABEL[detailTask.externalSystemType]
+            : '-'
+        }}
+      </a-descriptions-item>
+      <a-descriptions-item label="同步类型">
+        {{ detailTask.syncType ? SYNC_TYPE_LABEL[detailTask.syncType] : '-' }}
+      </a-descriptions-item>
+      <a-descriptions-item label="状态">
+        <UiTag :tone="syncStatusTone(detailTask.taskStatus)" size="sm">
+          {{ detailTask.taskStatus ? SYNC_TASK_STATUS_LABEL[detailTask.taskStatus] : '-' }}
+        </UiTag>
+      </a-descriptions-item>
+      <a-descriptions-item label="重试">
+        {{ detailTask.retryCount ?? 0 }} / {{ detailTask.maxRetryCount ?? '-' }}
+      </a-descriptions-item>
+      <a-descriptions-item label="外部课程ID">
+        {{ detailTask.externalCourseId ?? '-' }}
+      </a-descriptions-item>
+      <a-descriptions-item label="外部成绩项ID">
+        {{ detailTask.externalLineItemId ?? '-' }}
+      </a-descriptions-item>
+      <a-descriptions-item label="同步配置">
+        <pre class="json-pre">{{ detailTask.syncConfig || '（空）' }}</pre>
+      </a-descriptions-item>
+      <a-descriptions-item label="最后同步时间">
+        {{ detailTask.lastSyncTime ?? '-' }}
+      </a-descriptions-item>
+      <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
+        <span class="error-text"
+          >[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span
+        >
+      </a-descriptions-item>
+      <a-descriptions-item label="操作" :span="1">
+        <a-space>
+          <UiButton
+            v-if="detailTask.id"
+            size="sm"
+            variant="outline"
+            :loading="reconciling"
+            @click="handleReconcile(detailTask)"
+          >
+            <template #icon><AuditOutlined /></template>
+            对账
+          </UiButton>
+        </a-space>
+      </a-descriptions-item>
+    </a-descriptions>
+  </a-drawer>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import type {
   ExternalSystemTypeCode,
   PassbackRecordVO,
@@ -371,16 +362,6 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -398,9 +379,17 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'AdminTeachingAffairsSync' })
 
@@ -410,7 +399,7 @@ const router = useRouter()
 const selectedExamId = ref<string | undefined>(
   route.query.examId ? String(route.query.examId) : undefined,
 )
-const examOptions = ref<Array<{ label: string, value: string }>>([])
+const examOptions = ref<Array<{ label: string; value: string }>>([])
 const examOptionsLoading = ref(false)
 const loading = ref(false)
 
@@ -667,6 +656,36 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .sync-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

@@ -1,17 +1,17 @@
 <template>
-  <GiPageLayout>
-    <div class="exam-detail-page">
-      <PageHeader :title="detail?.examName || '考试详情'" back-route="/teacher/exam-list">
-        <template #tags>
-          <UiTag v-if="detail?.status" :tone="EXAM_STATUS_TONE[detail.status]" size="md">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="exam-detail-page__context">
+        <div class="exam-detail-page__context-left">
+          <UiTag v-if="detail?.status" :tone="EXAM_STATUS_TONE[detail.status]" size="sm">
             {{ detail.statusMessage || EXAM_STATUS_LABEL[detail.status] }}
           </UiTag>
-          <UiTag v-if="detail?.examNo" tone="gray" size="md">编号 {{ detail.examNo }}</UiTag>
-          <UiTag v-if="detail" tone="blue" size="md">
+          <UiTag v-if="detail?.examNo" tone="gray" size="sm">编号 {{ detail.examNo }}</UiTag>
+          <UiTag v-if="detail" tone="blue" size="sm">
             {{ detail.candidateCount }} 人 · {{ detail.questionCount }} 题
           </UiTag>
-        </template>
-        <template #actions>
+        </div>
+        <div class="exam-detail-page__context-right">
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadDetail">
             <template #icon><ReloadOutlined /></template>
             刷新
@@ -26,140 +26,140 @@
           <UiButton size="sm" variant="outline" :disabled="!examId" @click="goRoster">
             考生名册
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <a-spin :spinning="loading">
-        <UiEmpty v-if="!loading && !detail" description="未查询到考试数据" class="empty-block" />
+    <a-spin :spinning="loading">
+      <UiEmpty v-if="!loading && !detail" description="未查询到考试数据" class="exam-detail-page__empty" />
 
-        <a-row v-if="detail" :gutter="16">
-          <!-- 基本信息 -->
-          <a-col :xs="24" :lg="16">
-            <UiCard class="info-card">
-              <template #title>
-                <ProfileOutlined />
-                <span>基本信息</span>
-              </template>
-              <a-descriptions :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
-                <a-descriptions-item label="考试名称">{{ detail.examName }}</a-descriptions-item>
-                <a-descriptions-item label="考试编号">
-                  {{
-                    detail.examNo || '-'
-                  }}
-                </a-descriptions-item>
-                <a-descriptions-item label="状态">
-                  <UiTag :tone="EXAM_STATUS_TONE[detail.status]" size="sm">
-                    {{ detail.statusMessage || EXAM_STATUS_LABEL[detail.status] }}
-                  </UiTag>
-                </a-descriptions-item>
-                <a-descriptions-item label="批改策略">
-                  {{
-                    detail.gradingStrategy || '默认'
-                  }}
-                </a-descriptions-item>
-                <a-descriptions-item label="开始时间">
-                  {{
-                    formatTime(detail.examStartTime)
-                  }}
-                </a-descriptions-item>
-                <a-descriptions-item label="结束时间">
-                  {{
-                    formatTime(detail.examEndTime)
-                  }}
-                </a-descriptions-item>
-                <a-descriptions-item label="创建时间">
-                  {{
-                    formatTime(detail.createTime)
-                  }}
-                </a-descriptions-item>
-                <a-descriptions-item label="更新时间">
-                  {{
-                    formatTime(detail.updateTime)
-                  }}
-                </a-descriptions-item>
-                <a-descriptions-item label="备注" :span="2">
-                  {{
-                    detail.remark || '-'
-                  }}
-                </a-descriptions-item>
-              </a-descriptions>
-            </UiCard>
+      <a-row v-if="detail" :gutter="16">
+        <!-- 基本信息 -->
+        <a-col :xs="24" :lg="16">
+          <UiCard class="info-card">
+            <template #title>
+              <ProfileOutlined />
+              <span>基本信息</span>
+            </template>
+            <a-descriptions :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
+              <a-descriptions-item label="考试名称">{{ detail.examName }}</a-descriptions-item>
+              <a-descriptions-item label="考试编号">
+                {{
+                  detail.examNo || '-'
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item label="状态">
+                <UiTag :tone="EXAM_STATUS_TONE[detail.status]" size="sm">
+                  {{ detail.statusMessage || EXAM_STATUS_LABEL[detail.status] }}
+                </UiTag>
+              </a-descriptions-item>
+              <a-descriptions-item label="批改策略">
+                {{
+                  detail.gradingStrategy || '默认'
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item label="开始时间">
+                {{
+                  formatTime(detail.examStartTime)
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item label="结束时间">
+                {{
+                  formatTime(detail.examEndTime)
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item label="创建时间">
+                {{
+                  formatTime(detail.createTime)
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item label="更新时间">
+                {{
+                  formatTime(detail.updateTime)
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item label="备注" :span="2">
+                {{
+                  detail.remark || '-'
+                }}
+              </a-descriptions-item>
+            </a-descriptions>
+          </UiCard>
 
-            <UiCard class="info-card">
-              <template #title>
+          <UiCard class="info-card">
+            <template #title>
+              <FileOutlined />
+              <span>试卷模板</span>
+              <UiBadge :tone="detail.templateId ? 'green' : 'orange'">
+                {{ detail.templateId ? '已配置' : '未配置' }}
+              </UiBadge>
+            </template>
+            <UiEmpty
+              v-if="!detail.templateId"
+              description="尚未配置试卷模板，请先在「试卷模板」页面录入题目和页面配置。"
+            >
+              <UiButton size="sm" @click="goPaperTemplate">前往配置</UiButton>
+            </UiEmpty>
+            <a-descriptions v-else :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
+              <a-descriptions-item label="模板ID">{{ detail.templateId }}</a-descriptions-item>
+              <a-descriptions-item label="模板名称">
+                {{
+                  detail.templateName || '-'
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item label="总页数">
+                {{
+                  detail.totalPages ?? '-'
+                }}
+              </a-descriptions-item>
+            </a-descriptions>
+          </UiCard>
+        </a-col>
+
+        <!-- 班级范围 + 快捷入口 -->
+        <a-col :xs="24" :lg="8">
+          <UiCard class="info-card">
+            <template #title>
+              <TeamOutlined />
+              <span>班级范围</span>
+              <UiBadge tone="blue">{{ detail.classIds.length }}</UiBadge>
+            </template>
+            <UiEmpty v-if="!detail.classIds.length" description="尚未设置班级范围" />
+            <div v-else class="class-list">
+              <UiTag v-for="classId in detail.classIds" :key="classId" tone="blue" size="sm">
+                班级 #{{ classId }}
+              </UiTag>
+            </div>
+            <a-divider />
+            <UiButton size="sm" variant="outline" block @click="goRoster">
+              管理考生名册
+            </UiButton>
+          </UiCard>
+
+          <UiCard class="info-card">
+            <template #title>
+              <AppstoreOutlined />
+              <span>常用入口</span>
+            </template>
+            <div class="shortcut-list">
+              <button type="button" class="shortcut-btn" @click="goPaperTemplate">
                 <FileOutlined />
                 <span>试卷模板</span>
-                <UiBadge :tone="detail.templateId ? 'green' : 'orange'">
-                  {{ detail.templateId ? '已配置' : '未配置' }}
-                </UiBadge>
-              </template>
-              <UiEmpty
-                v-if="!detail.templateId"
-                description="尚未配置试卷模板，请先在「试卷模板」页面录入题目和页面配置。"
-              >
-                <UiButton size="sm" @click="goPaperTemplate">前往配置</UiButton>
-              </UiEmpty>
-              <a-descriptions v-else :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
-                <a-descriptions-item label="模板ID">{{ detail.templateId }}</a-descriptions-item>
-                <a-descriptions-item label="模板名称">
-                  {{
-                    detail.templateName || '-'
-                  }}
-                </a-descriptions-item>
-                <a-descriptions-item label="总页数">
-                  {{
-                    detail.totalPages ?? '-'
-                  }}
-                </a-descriptions-item>
-              </a-descriptions>
-            </UiCard>
-          </a-col>
-
-          <!-- 班级范围 + 快捷入口 -->
-          <a-col :xs="24" :lg="8">
-            <UiCard class="info-card">
-              <template #title>
+              </button>
+              <button type="button" class="shortcut-btn" @click="goAnswerSheetTemplate">
+                <FormOutlined />
+                <span>答题卡模板</span>
+              </button>
+              <button type="button" class="shortcut-btn" @click="goRoster">
                 <TeamOutlined />
-                <span>班级范围</span>
-                <UiBadge tone="blue">{{ detail.classIds.length }}</UiBadge>
-              </template>
-              <UiEmpty v-if="!detail.classIds.length" description="尚未设置班级范围" />
-              <div v-else class="class-list">
-                <UiTag v-for="classId in detail.classIds" :key="classId" tone="blue" size="sm">
-                  班级 #{{ classId }}
-                </UiTag>
-              </div>
-              <a-divider />
-              <UiButton size="sm" variant="outline" block @click="goRoster">
-                管理考生名册
-              </UiButton>
-            </UiCard>
-
-            <UiCard class="info-card">
-              <template #title>
-                <AppstoreOutlined />
-                <span>常用入口</span>
-              </template>
-              <div class="shortcut-list">
-                <button type="button" class="shortcut-btn" @click="goPaperTemplate">
-                  <FileOutlined />
-                  <span>试卷模板</span>
-                </button>
-                <button type="button" class="shortcut-btn" @click="goAnswerSheetTemplate">
-                  <FormOutlined />
-                  <span>答题卡模板</span>
-                </button>
-                <button type="button" class="shortcut-btn" @click="goRoster">
-                  <TeamOutlined />
-                  <span>考生名册</span>
-                </button>
-              </div>
-            </UiCard>
-          </a-col>
-        </a-row>
-      </a-spin>
-    </div>
-  </GiPageLayout>
+                <span>考生名册</span>
+              </button>
+            </div>
+          </UiCard>
+        </a-col>
+      </a-row>
+    </a-spin>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -176,9 +176,8 @@ import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'TeacherExamDetail' })
 
@@ -240,11 +239,31 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .exam-detail-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
-  min-height: 100vh;
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__empty {
+    padding: 48px 0;
+  }
 }
 
 .info-card {

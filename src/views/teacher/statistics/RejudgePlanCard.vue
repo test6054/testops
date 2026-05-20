@@ -16,13 +16,15 @@
       </a-space>
     </template>
 
-    <a-table
+    <UiDataTable
       :columns="columns"
       :data-source="rows"
       :loading="loading"
       row-key="id"
       size="small"
-      :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
+      :page-size="20"
+      :total="rows.length"
+      flat
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'triggerType'">
@@ -33,15 +35,21 @@
             {{ planStatusLabel(rows[index].planStatus) }}
           </a-tag>
         </template>
-        <template v-else-if="column.key === 'approvedTime'">{{
-          fmt(rows[index].approvedTime)
-        }}</template>
-        <template v-else-if="column.key === 'executedTime'">{{
-          fmt(rows[index].executedTime)
-        }}</template>
-        <template v-else-if="column.key === 'createTime'">{{
-          fmt(rows[index].createTime)
-        }}</template>
+        <template v-else-if="column.key === 'approvedTime'">
+          {{
+            fmt(rows[index].approvedTime)
+          }}
+        </template>
+        <template v-else-if="column.key === 'executedTime'">
+          {{
+            fmt(rows[index].executedTime)
+          }}
+        </template>
+        <template v-else-if="column.key === 'createTime'">
+          {{
+            fmt(rows[index].createTime)
+          }}
+        </template>
         <template v-else-if="column.key === 'actions'">
           <a-popconfirm title="确认审批通过？" @confirm="handleApprove(rows[index].id)">
             <a-button
@@ -57,7 +65,7 @@
           </a-popconfirm>
         </template>
       </template>
-    </a-table>
+    </UiDataTable>
   </a-card>
 </template>
 
@@ -73,6 +81,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { ref, watch } from 'vue'
+import { UiDataTable } from '@/components/ui-guide/ui'
 import {
   approveRejudgePlan,
   listRejudgePlans,

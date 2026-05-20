@@ -1,20 +1,58 @@
 <script setup lang="ts">
 /**
- * AI 模型配置工作台
+ * 质量评价 / AI 能力 - 模型可靠性台
  *
- * 业务规则（与后端完全对齐）：
- * - 同一租户全局只能有 1 条 enabled=true 的 AI 模型配置，被 edu-quality 的 7 类能力
- *   与 edu-mark 的所有 AI 主链共享读取；
- * - 模型选择不再依据 abilityCode，abilityCode 仅在 AI 任务与脱敏证据快照中作为
- *   路由与审计语义存在；
- * - 交互：维护多条候选配置，但任意时刻仅有一条「启用」；切换启用 = 将另一条提交
- *   enabled=true，后端会按 tenantId advisory lock 串行化并把同租户其它配置全部
- *   置为停用。
+ * 后端契约（AiModelProfileController）：
+ * - GET  /quality/ai-model-profile/list?enabledOnly  列表
+ * - POST /quality/ai-model-profile/save              保存 / 启用切换，apiKey 留空 = 保留原密钥
+ * - POST /quality/ai-model-profile/health-check      人工触发健康检查
+ *
+ * 唯一启用约束：同租户 enabled=true 最多 1 条。切换启用时后端会在 advisory lock 下
+ *   串行化并把同租户其它配置置为停用。abilityCode 仅作为 AI 任务与脱敏证据快照的审计
+ *   语义存在，不参与模型选择。
  */
 import type { AiModelProfileSavePayload, AiModelProfileVO } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { aiModelProfileApi } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+
+const columns: ColumnsType = [
+  { title: '名称', dataIndex: 'profileName', key: 'profileName' },
+  { title: 'Provider', dataIndex: 'providerType', key: 'providerType', width: 140 },
+  { title: '模型', dataIndex: 'modelName', key: 'modelName', width: 180 },
+  { title: '温度', dataIndex: 'temperature', key: 'temperature', width: 80 },
+  { title: '最大 Token', dataIndex: 'maxTokens', key: 'maxTokens', width: 100 },
+  { title: '密钥', dataIndex: 'apiKeyConfigured', key: 'apiKeyConfigured', width: 90 },
+  { title: '健康', dataIndex: 'healthStatus', key: 'healthStatus', width: 100 },
+  { title: '操作', key: 'actions', width: 360, fixed: 'right' },
+]
+
+/* ========== 健康状态守卫 helper：禁用 as 类型断言 ========== */
+
+type HealthStatus = 'HEALTHY' | 'FAILED' | 'PENDING'
+
+function isHealthStatus(value: unknown): value is HealthStatus {
+  return value === 'HEALTHY' || value === 'FAILED' || value === 'PENDING'
+}
+
+function healthLabel(value: unknown): string {
+  if (!isHealthStatus(value)) return '未检测'
+  if (value === 'HEALTHY') return '健康'
+  if (value === 'FAILED') return '异常'
+  return '待检测'
+}
+
+function healthColor(value: unknown): string {
+  if (!isHealthStatus(value)) return 'default'
+  if (value === 'HEALTHY') return 'green'
+  if (value === 'FAILED') return 'red'
+  return 'orange'
+}
 
 const list = ref<AiModelProfileVO[]>([])
 const loading = ref(false)
@@ -135,8 +173,9 @@ async function handleActivate(record: AiModelProfileVO) {
     return
   }
   const current = activeProfile.value
-  Modal.confirm({
+  void confirmAsync({
     title: `将「${record.profileName}」设为当前启用模型？`,
+    type: 'warning',
     content: current
       ? `当前启用的「${current.profileName}」将被自动置为停用。同一租户下只会保留一条启用记录。`
       : '提交后本条配置将作为当前租户唯一启用的 AI 模型。',
@@ -166,9 +205,9 @@ async function handleActivate(record: AiModelProfileVO) {
 }
 
 async function handleDisable(record: AiModelProfileVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `停用「${record.profileName}」？`,
-    okType: 'danger',
+    type: 'error',
     content: record.enabled
       ? '该配置是当前启用模型。停用后本租户将没有可用 AI 模型，AI 任务会进入阻断状态。请谨慎操作。'
       : '该配置本来就未启用，停用后仅从候选库序列中维持停用状态。',
@@ -207,32 +246,85 @@ async function handleHealthCheck(record: AiModelProfileVO) {
   }
 }
 
-function renderHealth(status?: string): { color: string, label: string } {
-  switch (status) {
-    case 'HEALTHY':
-      return { color: 'green', label: '健康' }
-    case 'FAILED':
-      return { color: 'red', label: '异常' }
-    default:
-      return { color: 'default', label: '未检测' }
-  }
-}
+/* ========== 信号指标 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const totalCount = list.value.length
+  const enabledCount = list.value.filter((item) => item.enabled).length
+  const healthy = list.value.filter((item) => item.healthStatus === 'HEALTHY').length
+  const failed = list.value.filter((item) => item.healthStatus === 'FAILED').length
+  const keyMissing = list.value.filter((item) => !item.apiKeyConfigured).length
+  return [
+    { key: 'total', label: '候选总数', value: totalCount, tone: 'blue' },
+    {
+      key: 'enabled',
+      label: '当前启用',
+      value: enabledCount,
+      tone: enabledCount > 0 ? 'green' : 'red',
+    },
+    { key: 'healthy', label: '健康', value: healthy, tone: healthy > 0 ? 'green' : 'gray' },
+    { key: 'failed', label: '异常', value: failed, tone: failed > 0 ? 'red' : 'gray' },
+    {
+      key: 'key-missing',
+      label: '密钥未配',
+      value: keyMissing,
+      tone: keyMissing > 0 ? 'orange' : 'gray',
+    },
+  ]
+})
 
 onMounted(loadList)
 </script>
 
 <template>
-  <div class="page">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="ai-model__context">
+        <div class="ai-model__context-info">
+          <h2 class="ai-model__title">质量评价 - AI 模型可靠性台</h2>
+        </div>
+        <div class="ai-model__context-actions">
+          <a-checkbox v-model:checked="enabledOnly" @change="loadList"> 仅看启用 </a-checkbox>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
+            刷新
+          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openCreate"> 新建配置 </UiButton>
+        </div>
+      </div>
+    </template>
+
     <a-alert
       type="warning"
       show-icon
       message="同一租户全局只能启用 1 条 AI 模型配置，被 edu-quality 与 edu-mark 的所有 AI 主链共用。未启用任何配置时 AI 任务会立即进入阻断状态（设计：禁止 yml 兜底）。"
-      style="margin-bottom: 12px"
+      class="ai-model__alert"
     />
 
-    <a-card title="当前启用模型" :bordered="false">
-      <a-empty v-if="!activeProfile" description="当前租户尚未启用任何 AI 模型" />
-      <a-descriptions v-else :column="3" size="small">
+    <SignalBand :metrics="signals" compact class="ai-model__signals" />
+
+    <section class="ai-model__panel">
+      <header class="ai-model__panel-header">
+        <h3 class="ai-model__panel-title">当前启用模型</h3>
+        <div v-if="activeProfile" class="ai-model__panel-meta">
+          <a-tag :color="healthColor(activeProfile.healthStatus)">
+            {{ healthLabel(activeProfile.healthStatus) }}
+          </a-tag>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="healthLoading === activeProfile.id"
+            @click="handleHealthCheck(activeProfile)"
+          >
+            重新检测
+          </UiButton>
+        </div>
+      </header>
+      <UiEmpty
+        v-if="!activeProfile"
+        description="当前租户尚未启用任何 AI 模型，请从候选仓库中选择一条设为启用"
+        size="sm"
+      />
+      <a-descriptions v-else :column="3" size="small" bordered>
         <a-descriptions-item label="配置名称">
           {{ activeProfile.profileName }}
         </a-descriptions-item>
@@ -245,97 +337,88 @@ onMounted(loadList)
         <a-descriptions-item label="API Host" :span="3">
           {{ activeProfile.apiHost || '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="健康状态">
-          <a-tag :color="renderHealth(activeProfile.healthStatus).color">
-            {{ renderHealth(activeProfile.healthStatus).label }}
-          </a-tag>
-        </a-descriptions-item>
         <a-descriptions-item label="上次检测时间">
           {{ activeProfile.lastHealthCheckAt || '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="最近诊断">
+        <a-descriptions-item label="最近诊断" :span="2">
           {{ activeProfile.lastHealthMessage || '-' }}
         </a-descriptions-item>
       </a-descriptions>
-    </a-card>
+    </section>
 
-    <a-card title="模型候选库" :bordered="false" style="margin-top: 12px">
-      <template #extra>
-        <a-space>
-          <a-checkbox v-model:checked="enabledOnly" @change="loadList"> 仅看启用 </a-checkbox>
-          <a-button @click="loadList"> 刷新 </a-button>
-          <a-button type="primary" @click="openCreate"> 新建配置 </a-button>
-        </a-space>
-      </template>
+    <section class="ai-model__panel">
+      <header class="ai-model__panel-header">
+        <h3 class="ai-model__panel-title">模型候选仓库</h3>
+      </header>
 
-      <a-table
+      <UiDataTable
+        :columns="columns"
         :data-source="list"
         :loading="loading"
         row-key="id"
         size="middle"
-        :pagination="false"
+        :show-pagination="false"
+        flat
+        :total="list.length"
       >
-        <a-table-column title="名称" data-index="profileName">
-          <template #default="{ record }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'profileName'">
             <a-space>
               <span>{{ record.profileName }}</span>
-              <a-tag v-if="record.enabled" color="green"> 当前启用 </a-tag>
+              <a-tag v-if="record.enabled" color="green"> 启用 </a-tag>
             </a-space>
           </template>
-        </a-table-column>
-        <a-table-column title="Provider" data-index="providerType" width="140" />
-        <a-table-column title="模型" data-index="modelName" width="180" />
-        <a-table-column title="温度" data-index="temperature" width="80" />
-        <a-table-column title="最大 Token" data-index="maxTokens" width="100" />
-        <a-table-column title="密钥" data-index="apiKeyConfigured" width="90">
-          <template #default="{ text }">
+          <template v-else-if="column.key === 'apiKeyConfigured'">
             <a-tag :color="text ? 'blue' : 'red'">
               {{ text ? '已配置' : '未配置' }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="健康" data-index="healthStatus" width="100">
-          <template #default="{ text }">
-            <a-tag :color="renderHealth(text).color">
-              {{ renderHealth(text).label }}
+          <template v-else-if="column.key === 'healthStatus'">
+            <a-tag :color="healthColor(text)">
+              {{ healthLabel(text) }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="操作" width="320" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space wrap>
-              <a-button
+              <UiButton
                 v-if="!record.enabled"
-                type="link"
-                size="small"
+                variant="primary"
+                size="sm"
                 :loading="activatingId === record.id"
                 @click="handleActivate(record)"
               >
                 设为启用
-              </a-button>
-              <a-button
-                type="link"
-                size="small"
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
                 :loading="healthLoading === record.id"
                 @click="handleHealthCheck(record)"
               >
                 健康检查
-              </a-button>
-              <a-button type="link" size="small" @click="openEdit(record)"> 编辑 </a-button>
-              <a-button type="link" size="small" danger @click="handleDisable(record)">
+              </UiButton>
+              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
+              <UiButton
+                variant="danger-ghost"
+                size="sm"
+                :disabled="!record.enabled"
+                @click="handleDisable(record)"
+              >
                 停用
-              </a-button>
+              </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
-    <a-modal
+    <UiDrawer
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建 AI 模型配置' : '编辑 AI 模型配置'"
+      :width="680"
       :confirm-loading="submitting"
-      width="640px"
+      :hide-footer="false"
+      ok-text="保存"
       @ok="submitEditor"
     >
       <a-alert
@@ -343,7 +426,7 @@ onMounted(loadList)
         type="info"
         show-icon
         message="提交后本条配置将成为当前租户唯一启用模型，同租户其它配置会被后端自动置为停用。"
-        style="margin-bottom: 12px"
+        class="ai-model__editor-alert"
       />
       <a-form layout="vertical" :model="editor">
         <a-form-item label="配置名称" required>
@@ -384,7 +467,7 @@ onMounted(loadList)
                 :min="0"
                 :max="1"
                 :step="0.1"
-                style="width: 100%"
+                class="ai-model__number-full"
               />
             </a-form-item>
           </a-col>
@@ -395,7 +478,7 @@ onMounted(loadList)
                 :min="64"
                 :max="32768"
                 :step="64"
-                style="width: 100%"
+                class="ai-model__number-full"
               />
             </a-form-item>
           </a-col>
@@ -405,7 +488,7 @@ onMounted(loadList)
                 v-model:value="editor.connectTimeoutSecs"
                 :min="1"
                 :max="120"
-                style="width: 100%"
+                class="ai-model__number-full"
               />
             </a-form-item>
           </a-col>
@@ -415,7 +498,7 @@ onMounted(loadList)
                 v-model:value="editor.readTimeoutSecs"
                 :min="30"
                 :max="1800"
-                style="width: 100%"
+                class="ai-model__number-full"
               />
             </a-form-item>
           </a-col>
@@ -424,12 +507,90 @@ onMounted(loadList)
           <a-switch v-model:checked="editor.enabled" />
         </a-form-item>
       </a-form>
-    </a-modal>
-  </div>
+    </UiDrawer>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page {
-  padding: 16px;
+.ai-model {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__context-info {
+    flex: 1;
+    min-width: 320px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__alert {
+    margin-bottom: 16px;
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+
+    & + & {
+      margin-top: 16px;
+    }
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__editor-alert {
+    margin-bottom: 12px;
+  }
+
+  &__number-full {
+    width: 100%;
+  }
 }
 </style>

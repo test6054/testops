@@ -1,12 +1,14 @@
 /**
  * 教师（SCH_TECH / CROP_ADMIN / CROP_USER）路由
  *
- * 阅卷端教师工作台包含四大主链路：
- *   ① 考试管理：考试列表、试卷模板、答题卡模板、考生名册
- *   ⑤ 制卷管理：试卷母版、印刷包管理
- *   ② 扫描与识别：扫描录入、异常待办、影像账本
- *   ③ 批阅流程：分派批阅、匿名批阅、进度看板、仲裁裁定
- *   ④ 成绩与发布：成绩确认、成绩发布、复核处理、成绩统计
+ * 阅卷端教师工作台按真实使用流程组织：
+ *   ① 考试管理   menuGroupOrder=1：考试列表 → 试卷模板 → 答题卡模板 → 考生名册
+ *   ② 制卷管理   menuGroupOrder=2：试卷母版 → 印刷包管理
+ *   ③ 扫描与识别 menuGroupOrder=3：扫描录入 → 实时看板 → 异常待办 → 影像账本 → 设备管理 → OCR 配置
+ *   ④ 批阅流程   menuGroupOrder=4：分派批阅 → 匿名批阅 → 进度看板 → 仲裁裁定
+ *   ⑤ 阅卷任务   menuGroupOrder=5：阅卷任务池 → 抽检处理 → 批改经验库
+ *   ⑥ 成绩与发布 menuGroupOrder=6：缺考确认 → 成绩确认 → 成绩发布 → 复核处理 → 成绩统计 → 导出任务
+ *   ⑦ 考后归档   menuGroupOrder=7：归档列表 → 纸质档案库
  */
 import type { RouteRecordRaw } from 'vue-router'
 import { RoleEnum } from '@/utils/permission'
@@ -27,6 +29,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
       hideInMenu: false,
     },
     children: [
+      // ─── 阅卷概览（独立顶部入口） ─────────────────────────
       {
         path: 'marking-overview',
         name: 'TeacherMarkingOverview',
@@ -39,7 +42,23 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
 
-      // ─── 考试管理 ─────────────────────────────────────────
+      // ─── ① 考试管理 ──────────────────────────────────────
+      {
+        path: 'exam-prep-workbench',
+        name: 'TeacherExamPrepWorkbench',
+        component: () => import('@/views/teacher/exam-prep-workbench.vue'),
+        meta: {
+          title: '考试准备工作台',
+          roles: TEACHER_ROLES,
+          icon: 'dashboard',
+          hideInMenu: false,
+          keepAlive: false,
+          menuGroup: 'exam',
+          menuGroupTitle: '考试管理',
+          menuGroupIcon: 'schedule',
+          menuGroupOrder: 1,
+        },
+      },
       {
         path: 'exam-list',
         name: 'TeacherExamList',
@@ -117,7 +136,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
 
-      // ─── 制卷管理 ─────────────────────────────────────────
+      // ─── ② 制卷管理 ──────────────────────────────────────
       {
         path: 'paper-master',
         name: 'TeacherPaperMaster',
@@ -151,7 +170,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
 
-      // ─── 扫描与识别 ───────────────────────────────────────
+      // ─── ③ 扫描与识别 ────────────────────────────────────
       {
         path: 'scan-upload',
         name: 'TeacherScanUpload',
@@ -161,6 +180,24 @@ export const teacherRoutes: RouteRecordRaw[] = [
           roles: TEACHER_ROLES,
           icon: 'cloud-upload',
           hideInMenu: false,
+          menuGroup: 'scan',
+          menuGroupTitle: '扫描与识别',
+          menuGroupIcon: 'scan',
+          menuGroupOrder: 3,
+        },
+      },
+      {
+        path: 'scan-live-monitor',
+        name: 'TeacherScanLiveMonitor',
+        component: () => import('@/views/teacher/scan-live-monitor.vue'),
+        meta: {
+          title: '实时看板',
+          roles: TEACHER_ROLES,
+          icon: 'thunderbolt',
+          hideInMenu: false,
+          // 实时 SSE 看板进入即建立连接、退出即释放，不应保留状态
+          keepAlive: false,
+          noCache: true,
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
@@ -216,25 +253,6 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'scan-live-monitor',
-        name: 'TeacherScanLiveMonitor',
-        component: () => import('@/views/teacher/scan-live-monitor.vue'),
-        meta: {
-          title: '实时看板',
-          roles: TEACHER_ROLES,
-          icon: 'thunderbolt',
-          hideInMenu: false,
-          // 实时 SSE 看板进入即建立连接、退出即释放，不应保留状态
-          keepAlive: false,
-          noCache: true,
-          menuGroup: 'scan',
-          menuGroupTitle: '扫描与识别',
-          menuGroupIcon: 'scan',
-          menuGroupOrder: 3,
-        },
-      },
-
-      {
         path: 'ocr-settings',
         name: 'TeacherOcrSettings',
         component: () => import('@/views/teacher/ocr-settings.vue'),
@@ -251,7 +269,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
 
-      // ─── 批阅流程 ─────────────────────────────────────────
+      // ─── ④ 批阅流程 ──────────────────────────────────────
       {
         path: 'review-assignment',
         name: 'TeacherReviewAssignment',
@@ -326,164 +344,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
 
-      // ─── 成绩与发布 ───────────────────────────────────────
-      {
-        path: 'absence-confirm',
-        name: 'TeacherAbsenceConfirm',
-        component: () => import('@/views/teacher/absence-confirm.vue'),
-        meta: {
-          title: '缺考确认',
-          roles: TEACHER_ROLES,
-          icon: 'user-delete',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'score',
-          menuGroupTitle: '成绩与发布',
-          menuGroupIcon: 'trophy',
-          menuGroupOrder: 5,
-        },
-      },
-      {
-        path: 'score-finalize',
-        name: 'TeacherScoreFinalize',
-        component: () => import('@/views/teacher/score-finalize.vue'),
-        meta: {
-          title: '成绩确认',
-          roles: TEACHER_ROLES,
-          icon: 'check-square',
-          hideInMenu: false,
-          menuGroup: 'score',
-          menuGroupTitle: '成绩与发布',
-          menuGroupIcon: 'trophy',
-          menuGroupOrder: 5,
-        },
-      },
-      {
-        path: 'score-publish',
-        name: 'TeacherScorePublish',
-        component: () => import('@/views/teacher/score-publish.vue'),
-        meta: {
-          title: '成绩发布',
-          roles: TEACHER_ROLES,
-          icon: 'notification',
-          hideInMenu: false,
-          menuGroup: 'score',
-          menuGroupTitle: '成绩与发布',
-          menuGroupIcon: 'trophy',
-          menuGroupOrder: 5,
-        },
-      },
-      {
-        path: 'appeal-handle',
-        name: 'TeacherAppealHandle',
-        component: () => import('@/views/teacher/appeal-handle.vue'),
-        meta: {
-          title: '复核处理',
-          roles: TEACHER_ROLES,
-          icon: 'interaction',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'score',
-          menuGroupTitle: '成绩与发布',
-          menuGroupIcon: 'trophy',
-          menuGroupOrder: 5,
-        },
-      },
-      {
-        path: 'statistics',
-        name: 'TeacherStatistics',
-        component: () => import('@/views/teacher/statistics.vue'),
-        meta: {
-          title: '成绩统计',
-          roles: TEACHER_ROLES,
-          icon: 'bar-chart',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'score',
-          menuGroupTitle: '成绩与发布',
-          menuGroupIcon: 'trophy',
-          menuGroupOrder: 5,
-        },
-      },
-      {
-        path: 'exam-exports',
-        name: 'TeacherExamExports',
-        component: () => import('@/views/common/exam-export-tasks.vue'),
-        meta: {
-          title: '导出任务',
-          roles: TEACHER_ROLES,
-          icon: 'cloud-download',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'score',
-          menuGroupTitle: '成绩与发布',
-          menuGroupIcon: 'trophy',
-          menuGroupOrder: 5,
-        },
-      },
-
-      // ─── 考后归档 ─────────────────────────────────────────
-      {
-        path: 'archive-list',
-        name: 'TeacherArchiveList',
-        component: () => import('@/views/teacher/archive/archive-list.vue'),
-        meta: {
-          title: '归档列表',
-          roles: TEACHER_ROLES,
-          icon: 'inbox',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'archive',
-          menuGroupTitle: '考后归档',
-          menuGroupIcon: 'safety-certificate',
-          menuGroupOrder: 6,
-        },
-      },
-      {
-        path: 'archive/:archiveId/detail',
-        name: 'TeacherArchiveDetail',
-        component: () => import('@/views/teacher/archive/archive-detail.vue'),
-        meta: {
-          title: '归档详情',
-          roles: TEACHER_ROLES,
-          icon: 'eye',
-          hideInMenu: true,
-          noCache: true,
-        },
-      },
-
-      // ─── 纸质试卷档案库 ───────────────────────────────────────
-      // 历史纸质试卷扫描入库 / tag / 检索 / OCR / 归档；独立于批改主链与考后归档主链
-      {
-        path: 'paper-archive-list',
-        name: 'TeacherPaperArchiveList',
-        component: () => import('@/views/teacher/paper-archive/paper-archive-list.vue'),
-        meta: {
-          title: '纸质档案库',
-          roles: TEACHER_ROLES,
-          icon: 'folder-open',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'archive',
-          menuGroupTitle: '考后归档',
-          menuGroupIcon: 'safety-certificate',
-          menuGroupOrder: 6,
-        },
-      },
-      {
-        path: 'paper-archive/:archiveSetId/detail',
-        name: 'TeacherPaperArchiveDetail',
-        component: () => import('@/views/teacher/paper-archive/paper-archive-detail.vue'),
-        meta: {
-          title: '纸质档案详情',
-          roles: TEACHER_ROLES,
-          icon: 'eye',
-          hideInMenu: true,
-          noCache: true,
-        },
-      },
-
-      // ─── 阅卷任务（MarkingOrganization 主链） ─────────────────
+      // ─── ⑤ 阅卷任务（MarkingOrganization 主链） ─────────────
       {
         path: 'marking-task-pool',
         name: 'TeacherMarkingTaskPool',
@@ -539,6 +400,161 @@ export const teacherRoutes: RouteRecordRaw[] = [
           title: '阅卷工作台',
           roles: TEACHER_ROLES,
           icon: 'highlight',
+          hideInMenu: true,
+          noCache: true,
+        },
+      },
+
+      // ─── ⑥ 成绩与发布 ────────────────────────────────────
+      {
+        path: 'absence-confirm',
+        name: 'TeacherAbsenceConfirm',
+        component: () => import('@/views/teacher/absence-confirm.vue'),
+        meta: {
+          title: '缺考确认',
+          roles: TEACHER_ROLES,
+          icon: 'user-delete',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'score',
+          menuGroupTitle: '成绩与发布',
+          menuGroupIcon: 'trophy',
+          menuGroupOrder: 6,
+        },
+      },
+      {
+        path: 'score-finalize',
+        name: 'TeacherScoreFinalize',
+        component: () => import('@/views/teacher/score-finalize.vue'),
+        meta: {
+          title: '成绩确认',
+          roles: TEACHER_ROLES,
+          icon: 'check-square',
+          hideInMenu: false,
+          menuGroup: 'score',
+          menuGroupTitle: '成绩与发布',
+          menuGroupIcon: 'trophy',
+          menuGroupOrder: 6,
+        },
+      },
+      {
+        path: 'score-publish',
+        name: 'TeacherScorePublish',
+        component: () => import('@/views/teacher/score-publish.vue'),
+        meta: {
+          title: '成绩发布',
+          roles: TEACHER_ROLES,
+          icon: 'notification',
+          hideInMenu: false,
+          menuGroup: 'score',
+          menuGroupTitle: '成绩与发布',
+          menuGroupIcon: 'trophy',
+          menuGroupOrder: 6,
+        },
+      },
+      {
+        path: 'appeal-handle',
+        name: 'TeacherAppealHandle',
+        component: () => import('@/views/teacher/appeal-handle.vue'),
+        meta: {
+          title: '复核处理',
+          roles: TEACHER_ROLES,
+          icon: 'interaction',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'score',
+          menuGroupTitle: '成绩与发布',
+          menuGroupIcon: 'trophy',
+          menuGroupOrder: 6,
+        },
+      },
+      {
+        path: 'statistics',
+        name: 'TeacherStatistics',
+        component: () => import('@/views/teacher/statistics.vue'),
+        meta: {
+          title: '成绩统计',
+          roles: TEACHER_ROLES,
+          icon: 'bar-chart',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'score',
+          menuGroupTitle: '成绩与发布',
+          menuGroupIcon: 'trophy',
+          menuGroupOrder: 6,
+        },
+      },
+      {
+        path: 'exam-exports',
+        name: 'TeacherExamExports',
+        component: () => import('@/views/common/exam-export-tasks.vue'),
+        meta: {
+          title: '导出任务',
+          roles: TEACHER_ROLES,
+          icon: 'cloud-download',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'score',
+          menuGroupTitle: '成绩与发布',
+          menuGroupIcon: 'trophy',
+          menuGroupOrder: 6,
+        },
+      },
+
+      // ─── ⑦ 考后归档 ──────────────────────────────────────
+      {
+        path: 'archive-list',
+        name: 'TeacherArchiveList',
+        component: () => import('@/views/teacher/archive/archive-list.vue'),
+        meta: {
+          title: '归档列表',
+          roles: TEACHER_ROLES,
+          icon: 'inbox',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'archive',
+          menuGroupTitle: '考后归档',
+          menuGroupIcon: 'safety-certificate',
+          menuGroupOrder: 7,
+        },
+      },
+      {
+        path: 'archive/:archiveId/detail',
+        name: 'TeacherArchiveDetail',
+        component: () => import('@/views/teacher/archive/archive-detail.vue'),
+        meta: {
+          title: '归档详情',
+          roles: TEACHER_ROLES,
+          icon: 'eye',
+          hideInMenu: true,
+          noCache: true,
+        },
+      },
+      // 历史纸质试卷扫描入库 / tag / 检索 / OCR / 归档；独立于批改主链与考后归档主链
+      {
+        path: 'paper-archive-list',
+        name: 'TeacherPaperArchiveList',
+        component: () => import('@/views/teacher/paper-archive/paper-archive-list.vue'),
+        meta: {
+          title: '纸质档案库',
+          roles: TEACHER_ROLES,
+          icon: 'folder-open',
+          hideInMenu: false,
+          keepAlive: true,
+          menuGroup: 'archive',
+          menuGroupTitle: '考后归档',
+          menuGroupIcon: 'safety-certificate',
+          menuGroupOrder: 7,
+        },
+      },
+      {
+        path: 'paper-archive/:archiveSetId/detail',
+        name: 'TeacherPaperArchiveDetail',
+        component: () => import('@/views/teacher/paper-archive/paper-archive-detail.vue'),
+        meta: {
+          title: '纸质档案详情',
+          roles: TEACHER_ROLES,
+          icon: 'eye',
           hideInMenu: true,
           noCache: true,
         },

@@ -1,148 +1,388 @@
 <template>
-  <GiPageLayout>
-    <div class="spot-check-page">
-      <PageHeader title="抽检处理" />
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="spot-check-page__context">
+        <div class="spot-check-page__context-left">
+          <a-select
+            :value="selectedExamId"
+            class="spot-check-page__exam-select"
+            placeholder="按考试过滤（不选则查全部）"
+            :options="examOptions"
+            :loading="examLoading"
+            show-search
+            option-filter-prop="label"
+            allow-clear
+            @change="onExamChange"
+          />
+          <UiTag :tone="pendingItems.length > 0 ? 'orange' : 'green'" size="sm">
+            待处理 {{ pendingItems.length }}
+          </UiTag>
+        </div>
+        <div class="spot-check-page__context-right">
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </div>
+      </div>
+    </template>
 
-      <UiCard class="info-card">
-        <template #title>
-          <span>处理抽检结论</span>
+    <UiAlertStrip
+      tone="info"
+      title="抽检处理说明"
+      description="此处展示当前账号作为「被抽检教师」尚未处理的抽检记录（PENDING / IN_PROGRESS）。点击行尾「处理结论」可内联完成结论提交，无需再手输抽检记录ID。"
+      dense
+      class="spot-check-page__alert"
+    />
+
+    <UiCard class="info-card">
+      <template #title>
+        <AimOutlined />
+        <span>我的待处理抽检</span>
+        <UiBadge :tone="pendingItems.length > 0 ? 'orange' : 'gray'">
+          {{ pendingItems.length }}
+        </UiBadge>
+      </template>
+
+      <UiEmpty
+        v-if="!loading && pendingItems.length === 0"
+        description="当前没有待处理的抽检任务"
+      />
+
+      <UiDataTable
+        v-else
+        :columns="columns"
+        :data-source="pendingItems"
+        :loading="loading"
+        :page-size="20"
+        :total="pendingItems.length"
+        flat
+        row-key="id"
+        size="middle"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'examId'">
+            <span class="spot-check-page__exam-cell">
+              {{ examNameOf(pendingItems[index].examId) }}
+            </span>
+            <div class="spot-check-page__sub">#{{ pendingItems[index].examId }}</div>
+          </template>
+          <template v-else-if="column.key === 'questionTemplateId'">
+            <span v-if="pendingItems[index].questionTemplateId">
+              题模板 #{{ pendingItems[index].questionTemplateId }}
+            </span>
+            <span v-else class="spot-check-page__hint">-</span>
+          </template>
+          <template v-else-if="column.key === 'originalScore'">
+            <span class="spot-check-page__score">
+              {{ formatScore(pendingItems[index].originalScore) }}
+            </span>
+          </template>
+          <template v-else-if="column.key === 'spotCheckStatus'">
+            <UiTag :tone="statusTone(pendingItems[index].spotCheckStatus)" size="sm">
+              {{ statusLabel(pendingItems[index].spotCheckStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'createTime'">
+            {{ formatTime(pendingItems[index].createTime) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiButton size="sm" @click="openHandleModal(pendingItems[index])">
+              处理结论
+            </UiButton>
+          </template>
         </template>
+      </UiDataTable>
+    </UiCard>
 
-        <a-alert
-          type="info"
-          show-icon
-          message="抽检处理流程"
-          description="组长在阅卷质量监控创建抽检任务后，本页用于对单条抽检记录处理结论。处理结论 PASSED 表示判分一致；ABNORMAL 表示判分异常，需填写组长建议分（可选）和处理说明。处理结果将进入 t_exam_reviewer_quality_metric 影响该教师的质量指标。"
-          style="margin-bottom: 16px"
-        />
+    <!-- 内联处理结论 Modal -->
+    <a-modal
+      v-model:open="modalOpen"
+      title="处理抽检结论"
+      :destroy-on-close="true"
+      :confirm-loading="submitting"
+      :ok-button-props="{ disabled: !valid }"
+      ok-text="提交结论"
+      width="640px"
+      @ok="submitConclusion"
+    >
+      <a-descriptions
+        v-if="targetItem"
+        :column="2"
+        size="small"
+        bordered
+        class="spot-check-page__target-desc"
+      >
+        <a-descriptions-item label="抽检记录ID">{{ targetItem.id }}</a-descriptions-item>
+        <a-descriptions-item label="考试">
+          {{ examNameOf(targetItem.examId) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="题目模板ID">
+          {{ targetItem.questionTemplateId ?? '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="试卷实例ID">
+          {{ targetItem.paperInstanceId ?? '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="教师原分">
+          {{ formatScore(targetItem.originalScore) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="分派时间">
+          {{ formatTime(targetItem.createTime) }}
+        </a-descriptions-item>
+      </a-descriptions>
 
-        <a-form layout="vertical" style="max-width: 720px">
-          <a-form-item label="抽检记录ID" required>
-            <a-input
-              v-model:value="form.spotCheckId"
-              placeholder="输入抽检记录ID（从抽检通知 / 管理员看板获取）"
-            />
-          </a-form-item>
+      <a-form layout="vertical" class="spot-check-page__form">
+        <a-form-item label="处理结论" required>
+          <a-radio-group v-model:value="form.conclusion">
+            <a-radio-button value="PASSED">一致通过</a-radio-button>
+            <a-radio-button value="ABNORMAL">判分异常</a-radio-button>
+          </a-radio-group>
+        </a-form-item>
 
-          <a-form-item label="处理结论" required>
-            <a-radio-group v-model:value="form.conclusion">
-              <a-radio-button value="PASSED">一致通过</a-radio-button>
-              <a-radio-button value="ABNORMAL">判分异常</a-radio-button>
-            </a-radio-group>
-          </a-form-item>
+        <a-form-item v-if="form.conclusion === 'ABNORMAL'" label="组长建议分（可选）">
+          <a-input-number
+            v-model:value="form.suggestedScore"
+            :min="0"
+            :step="0.5"
+            class="spot-check-page__field-full"
+            placeholder="如认为该题应给分，填入建议分"
+          />
+        </a-form-item>
 
-          <a-form-item v-if="form.conclusion === 'ABNORMAL'" label="组长建议分（可选）">
-            <a-input-number
-              v-model:value="form.suggestedScore"
-              :min="0"
-              :max="100"
-              :step="0.5"
-              style="width: 100%"
-              placeholder="如认为该题应给分，填入建议分"
-            />
-          </a-form-item>
-
-          <a-form-item label="处理说明">
-            <a-textarea
-              v-model:value="form.handleNote"
-              :rows="4"
-              placeholder="说明本次抽检结论的依据（PASSED 可选；ABNORMAL 建议必填）"
-            />
-          </a-form-item>
-
-          <a-form-item>
-            <a-space>
-              <UiButton :loading="submitting" :disabled="!valid" @click="handleSubmit">
-                <template #icon><CheckCircleOutlined /></template>
-                提交处理
-              </UiButton>
-              <UiButton variant="outline" @click="resetForm">
-                <template #icon><ReloadOutlined /></template>
-                清空
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </UiCard>
-    </div>
-  </GiPageLayout>
+        <a-form-item label="处理说明">
+          <a-textarea
+            v-model:value="form.handleNote"
+            :rows="4"
+            :placeholder="
+              form.conclusion === 'ABNORMAL'
+                ? '判分异常时建议填写依据（500 字内）'
+                : '可选：填写一致通过的简要说明'
+            "
+            :maxlength="500"
+            show-count
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
-import type { SpotCheckConclusionCode } from '@/apis/mark/marking-quality'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import type { ColumnType } from 'ant-design-vue/es/table'
+import type {
+  MyPendingSpotCheckItemVO,
+  MyPendingSpotCheckStatusCode,
+  SpotCheckConclusionCode,
+} from '@/apis/mark/marking-quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { handleSpotCheck } from '@/apis/mark/marking-quality'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiButton, UiCard } from '@/components/ui-guide/ui'
+import { handleSpotCheck, listMyPendingSpotChecks } from '@/apis/mark/marking-quality'
+import {
+  UiAlertStrip,
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiTag,
+} from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherMarkingSpotCheck' })
 
-const route = useRoute()
-const router = useRouter()
+// ─── 考试选择器（可选过滤；不选 = 跨考试聚合） ──────────────
+const {
+  examOptions,
+  exams,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExams,
+} = useMarkExamSelector()
 
+// 题号 / 考试名缓存：从 exams 列表派生
+function examNameOf(examId?: string): string {
+  if (!examId) return '-'
+  const exam = exams.value.find(item => item.examId === examId)
+  return exam?.examName || `考试 #${examId}`
+}
+
+// ─── 待处理抽检列表 ──────────────────────────────────────
+const pendingItems = ref<MyPendingSpotCheckItemVO[]>([])
+const loading = ref(false)
+
+async function loadList(): Promise<void> {
+  loading.value = true
+  try {
+    pendingItems.value = await listMyPendingSpotChecks({
+      examId: selectedExamId.value || undefined,
+    })
+  }
+  catch (error) {
+    message.error(error instanceof Error ? error.message : '加载待处理抽检失败')
+    pendingItems.value = []
+  }
+  finally {
+    loading.value = false
+  }
+}
+
+const columns: ColumnType<MyPendingSpotCheckItemVO>[] = [
+  { title: '考试', key: 'examId', width: 220, ellipsis: true },
+  { title: '题目', key: 'questionTemplateId', width: 150 },
+  { title: '教师原分', key: 'originalScore', width: 110, align: 'right' },
+  { title: '抽检状态', key: 'spotCheckStatus', width: 110 },
+  { title: '分派时间', key: 'createTime', width: 170 },
+  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
+]
+
+function statusTone(status?: MyPendingSpotCheckStatusCode): BadgeTone {
+  if (status === 'PENDING') return 'orange'
+  if (status === 'IN_PROGRESS') return 'blue'
+  return 'gray'
+}
+
+function statusLabel(status?: MyPendingSpotCheckStatusCode): string {
+  if (status === 'PENDING') return '待抽检'
+  if (status === 'IN_PROGRESS') return '抽检中'
+  return status || '-'
+}
+
+function formatScore(value?: number): string {
+  if (value == null) return '-'
+  return value.toFixed(2)
+}
+
+function formatTime(value?: string): string {
+  if (!value) return '-'
+  return dayjs(value).format('YYYY-MM-DD HH:mm')
+}
+
+// ─── 内联处理 Modal ─────────────────────────────────────
+const modalOpen = ref(false)
 const submitting = ref(false)
+const targetItem = ref<MyPendingSpotCheckItemVO | null>(null)
 
-// a-input-number v-model:value 不接受 null，未填状态统一用 undefined。
+// a-input-number v-model:value 不接受 null，未填状态统一用 undefined
 interface SpotCheckForm {
-  spotCheckId: string
   conclusion: SpotCheckConclusionCode
   suggestedScore: number | undefined
   handleNote: string
 }
 
 const form = reactive<SpotCheckForm>({
-  spotCheckId: '',
   conclusion: 'PASSED',
   suggestedScore: undefined,
   handleNote: '',
 })
 
-const valid = computed(() => Boolean(form.spotCheckId.trim() && form.conclusion))
+const valid = computed(() => Boolean(targetItem.value?.id && form.conclusion))
 
-async function handleSubmit(): Promise<void> {
-  if (!valid.value) return
+function openHandleModal(item: MyPendingSpotCheckItemVO): void {
+  targetItem.value = item
+  form.conclusion = 'PASSED'
+  form.suggestedScore = undefined
+  form.handleNote = ''
+  modalOpen.value = true
+}
+
+async function submitConclusion(): Promise<void> {
+  if (!valid.value || !targetItem.value) return
   submitting.value = true
   try {
     await handleSpotCheck({
-      spotCheckId: form.spotCheckId.trim(),
+      spotCheckId: targetItem.value.id,
       conclusion: form.conclusion,
       suggestedScore: form.suggestedScore,
       handleNote: form.handleNote.trim() || undefined,
     })
     message.success('已提交抽检处理结论')
-    resetForm()
-  } catch (error) {
+    // 从本地列表移除已处理项，避免重复显示直至下次 loadList
+    pendingItems.value = pendingItems.value.filter(item => item.id !== targetItem.value?.id)
+    modalOpen.value = false
+    targetItem.value = null
+  }
+  catch (error) {
     message.error(error instanceof Error ? error.message : '处理抽检结论失败')
-  } finally {
+  }
+  finally {
     submitting.value = false
   }
 }
 
-function resetForm(): void {
-  form.spotCheckId = ''
-  form.conclusion = 'PASSED'
-  form.suggestedScore = undefined
-  form.handleNote = ''
-  void router.replace({ query: {} })
-}
-
-onMounted(() => {
-  if (route.query.spotCheckId) {
-    form.spotCheckId = String(route.query.spotCheckId)
-  }
+onMounted(async () => {
+  await initExams()
+  await loadList()
 })
 </script>
 
 <style lang="scss" scoped>
 .spot-check-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__alert {
+    margin-bottom: 4px;
+  }
+
+  &__form {
+    margin-top: 12px;
+  }
+
+  &__field-full {
+    width: 100%;
+  }
+
+  &__target-desc {
+    margin-bottom: 4px;
+  }
+
+  &__exam-cell {
+    font-weight: 500;
+    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+  }
+
+  &__sub {
+    font-size: 12px;
+    color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+  }
+
+  &__score {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  &__hint {
+    color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+  }
 }
 
 .info-card {

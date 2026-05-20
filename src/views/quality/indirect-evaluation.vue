@@ -10,7 +10,6 @@
  * 设计：先选问卷 → 显示题项 → 选题项查看答卷
  */
 import type {
-  AchievementTargetType,
   IndirectEvaluationFormQueryPayload,
   IndirectEvaluationFormSavePayload,
   IndirectEvaluationFormVO,
@@ -18,19 +17,71 @@ import type {
   IndirectEvaluationItemVO,
   IndirectEvaluationResponseSavePayload,
   IndirectEvaluationResponseVO,
-  RespondentType,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   indirectFormApi,
   indirectItemApi,
   indirectResponseApi,
+  isAchievementTargetType,
+  isRespondentType,
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import {
+  CourseGoalSelector,
+  GraduationRequirementSelector,
+  ProgramSelector,
+  RequirementIndicatorSelector,
+  StudentSelector,
+  TeacherSelector,
+} from '@/components/quality/selectors'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+
+const formColumns: ColumnsType = [
+  { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120 },
+  { title: '名称', dataIndex: 'formName', key: 'formName' },
+  { title: '问卷类型', dataIndex: 'formType', key: 'formType', width: 140 },
+  { title: '目标', dataIndex: 'targetType', key: 'targetType', width: 200 },
+  { title: '期望样本', dataIndex: 'expectedSample', key: 'expectedSample', width: 100 },
+  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+]
+
+const itemColumns: ColumnsType = [
+  { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 100 },
+  { title: '题面', dataIndex: 'itemText', key: 'itemText' },
+  { title: '权重', dataIndex: 'weight', key: 'weight', width: 70 },
+  { title: '有效样本', key: 'validCount', width: 100 },
+  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+]
+
+const responseColumns: ColumnsType = [
+  { title: '应答人', dataIndex: 'respondentType', key: 'respondentType', width: 100 },
+  { title: '原始值', dataIndex: 'rawValue', key: 'rawValue', width: 80 },
+  { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 80 },
+  { title: '开放回答', dataIndex: 'openText', key: 'openText' },
+  { title: '有效', dataIndex: 'validFlag', key: 'validFlag', width: 70 },
+  { title: '操作', key: 'actions', width: 160, fixed: 'right' },
+]
+
+/* ========== 状态守卫 helper（禁用 as 类型断言） ========== */
+
+function targetTypeLabel(value: unknown): string {
+  if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function respondentTypeLabel(value: unknown): string {
+  if (isRespondentType(value)) return RESPONDENT_TYPE_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
 
 const formTypeOptions = [
   { value: 'STUDENT_SELF', label: '学生自评' },
@@ -42,8 +93,14 @@ const formTypeOptions = [
   { value: 'INTERNSHIP_SUPERVISOR', label: '实习导师' },
 ]
 
-const targetTypeOptions = Object.entries(ACHIEVEMENT_TARGET_TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const respondentTypeOptions = Object.entries(RESPONDENT_TYPE_LABEL).map(([value, label]) => ({ value, label }))
+const targetTypeOptions = Object.entries(ACHIEVEMENT_TARGET_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const respondentTypeOptions = Object.entries(RESPONDENT_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 /* ========== 问卷分页 ========== */
 
@@ -120,9 +177,9 @@ async function submitForm() {
 }
 
 async function handleFormDelete(record: IndirectEvaluationFormVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除问卷 ${record.formCode}？`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await indirectFormApi.delete(record.id)
       message.success('已删除')
@@ -132,9 +189,9 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(p: number, ps: number) {
-  formQuery.pageNum = p
-  formQuery.pageSize = ps
+function handleFormPageChange(payload: { current: number; pageSize: number }) {
+  formQuery.pageNum = payload.current
+  formQuery.pageSize = payload.pageSize
   loadForms()
 }
 
@@ -152,7 +209,7 @@ async function loadItems() {
   }
   itemsLoading.value = true
   try {
-    items.value = await indirectItemApi.listByForm(selectedForm.value.id) || []
+    items.value = (await indirectItemApi.listByForm(selectedForm.value.id)) || []
   } finally {
     itemsLoading.value = false
   }
@@ -212,9 +269,9 @@ async function submitItem() {
 }
 
 async function deleteItem(record: IndirectEvaluationItemVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除题项 ${record.itemCode}？`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await indirectItemApi.delete(record.id)
       message.success('已删除')
@@ -236,7 +293,7 @@ async function loadResponses() {
   }
   responsesLoading.value = true
   try {
-    responses.value = await indirectResponseApi.listByItem(selectedItem.value.id) || []
+    responses.value = (await indirectResponseApi.listByItem(selectedItem.value.id)) || []
   } finally {
     responsesLoading.value = false
   }
@@ -285,19 +342,17 @@ async function submitResponse() {
     message.error('请选择应答人类型')
     return
   }
-  if (responseEditorMode.value === 'create')
-    await indirectResponseApi.create(v)
-  else
-    await indirectResponseApi.update(v)
+  if (responseEditorMode.value === 'create') await indirectResponseApi.create(v)
+  else await indirectResponseApi.update(v)
   message.success('已保存')
   responseEditorVisible.value = false
   await loadResponses()
 }
 
 async function deleteResponse(record: IndirectEvaluationResponseVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: '删除该答卷？',
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await indirectResponseApi.delete(record.id)
       message.success('已删除')
@@ -345,20 +400,16 @@ async function submitBatchResponse() {
   let parsed: IndirectEvaluationResponseSavePayload[]
   try {
     const raw = JSON.parse(text)
-    if (!Array.isArray(raw))
-      throw new Error('根节点必须是数组')
+    if (!Array.isArray(raw)) throw new Error('根节点必须是数组')
     parsed = raw.map((item, idx) => {
-      if (!item.itemId)
-        throw new Error(`第 ${idx + 1} 行缺少 itemId`)
-      if (!item.respondentType)
-        throw new Error(`第 ${idx + 1} 行缺少 respondentType`)
+      if (!item.itemId) throw new Error(`第 ${idx + 1} 行缺少 itemId`)
+      if (!item.respondentType) throw new Error(`第 ${idx + 1} 行缺少 respondentType`)
       return {
         formId: selectedForm.value!.id,
         ...item,
       } as IndirectEvaluationResponseSavePayload
     })
-  }
-  catch (err) {
+  } catch (err) {
     message.error(`JSON 解析失败：${(err as Error).message}`)
     return
   }
@@ -368,8 +419,7 @@ async function submitBatchResponse() {
     message.success(`已批量录入 ${parsed.length} 条答卷`)
     batchResponseVisible.value = false
     await loadResponses()
-  }
-  finally {
+  } finally {
     batchResponseSubmitting.value = false
   }
 }
@@ -380,23 +430,70 @@ const validCountMap = ref<Map<string, number>>(new Map())
 const validCountLoading = ref(false)
 
 async function refreshValidCounts() {
-  if (!items.value.length)
-    return
+  if (!items.value.length) return
   validCountLoading.value = true
   try {
     const results = await Promise.all(
-      items.value.map(item =>
-        indirectResponseApi.countValidByItem(item.id)
-          .then(count => [item.id, count] as const)
+      items.value.map((item) =>
+        indirectResponseApi
+          .countValidByItem(item.id)
+          .then((count) => [item.id, count] as const)
           .catch(() => [item.id, 0] as const),
       ),
     )
     validCountMap.value = new Map(results)
-  }
-  finally {
+  } finally {
     validCountLoading.value = false
   }
 }
+
+/* ========== 信号指标：问卷 + 题项 + 答卷健康度 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const enabledForms = forms.value.filter((f) => f.enabled).length
+  const totalItems = items.value.length
+  const totalValid = Array.from(validCountMap.value.values()).reduce((sum, n) => sum + n, 0)
+  const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample || 0), 0)
+  const validResponses = responses.value.filter((r) => r.validFlag).length
+  const invalidResponses = responses.value.filter((r) => !r.validFlag).length
+  const sampleRatio =
+    expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+
+  return [
+    { key: 'forms-total', label: '问卷总数', value: forms.value.length, tone: 'blue' },
+    {
+      key: 'forms-enabled',
+      label: '启用问卷',
+      value: enabledForms,
+      tone: enabledForms > 0 ? 'green' : 'gray',
+    },
+    { key: 'items-total', label: '题项总数', value: totalItems, tone: 'blue' },
+    {
+      key: 'valid-total',
+      label: '有效样本',
+      value: totalValid,
+      tone: totalValid > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'sample-ratio',
+      label: '样本达成率',
+      value: sampleRatio,
+      tone: sampleRatio >= 1 ? 'green' : sampleRatio > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'responses-valid',
+      label: '当前题项有效',
+      value: validResponses,
+      tone: validResponses > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'responses-invalid',
+      label: '当前题项无效',
+      value: invalidResponses,
+      tone: invalidResponses > 0 ? 'red' : 'gray',
+    },
+  ]
+})
 
 /* ========== 联动 ========== */
 
@@ -404,6 +501,7 @@ watch(selectedForm, async () => {
   selectedItem.value = null
   responses.value = []
   await loadItems()
+  await refreshValidCounts()
 })
 
 watch(selectedItem, () => loadResponses())
@@ -414,148 +512,189 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page">
-    <a-card title="间接评价问卷" :bordered="false" style="margin-bottom: 12px">
-      <template #extra>
-        <a-space wrap>
-          <a-select v-model:value="formQuery.formType" placeholder="问卷类型" allow-clear style="width: 160px" :options="formTypeOptions" />
-          <a-select v-model:value="formQuery.targetType" placeholder="目标类型" allow-clear style="width: 180px" :options="targetTypeOptions" />
-          <a-button type="primary" @click="loadForms">查询</a-button>
-          <a-button type="primary" @click="openFormCreate">新建问卷</a-button>
-        </a-space>
-      </template>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="ie__context">
+        <div class="ie__context-info">
+          <h2 class="ie__title">间接评价管理</h2>
+        </div>
+        <div class="ie__context-actions">
+          <a-select
+            v-model:value="formQuery.formType"
+            placeholder="问卷类型"
+            allow-clear
+            class="ie__filter"
+            :options="formTypeOptions"
+          />
+          <a-select
+            v-model:value="formQuery.targetType"
+            placeholder="目标类型"
+            allow-clear
+            class="ie__filter ie__filter--md"
+            :options="targetTypeOptions"
+          />
+          <UiButton variant="outline" size="sm" :loading="formsLoading" @click="loadForms">
+            查询
+          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openFormCreate"> 新建问卷 </UiButton>
+        </div>
+      </div>
+    </template>
 
-      <a-table
+    <SignalBand :metrics="signals" compact class="ie__signals" />
+
+    <section class="ie__panel">
+      <header class="ie__panel-header">
+        <h3 class="ie__panel-title">间接评价问卷台账</h3>
+      </header>
+      <UiDataTable
+        v-model:current="formQuery.pageNum"
+        v-model:page-size="formQuery.pageSize"
+        :columns="formColumns"
         :data-source="forms"
         :loading="formsLoading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: formQuery.pageNum,
-          pageSize: formQuery.pageSize,
-          total: formsTotal,
-          showSizeChanger: true,
-          showTotal: (n: number) => `共 ${n} 条`,
-          onChange: handleFormPageChange,
-        }"
-        :row-class-name="(r: IndirectEvaluationFormVO) => (selectedForm?.id === r.id ? 'row-selected' : '')"
-        :custom-row="(record: IndirectEvaluationFormVO) => ({
-          onClick: () => (selectedForm = record),
-          style: 'cursor: pointer',
-        })"
+        :total="formsTotal"
+        flat
+        @page-change="handleFormPageChange"
+        :row-class-name="
+          (r: IndirectEvaluationFormVO) => (selectedForm?.id === r.id ? 'ie__row-selected' : '')
+        "
+        :custom-row="
+          (record: IndirectEvaluationFormVO) => ({
+            onClick: () => (selectedForm = record),
+            style: 'cursor: pointer',
+          })
+        "
       >
-        <a-table-column title="编码" data-index="formCode" width="120" />
-        <a-table-column title="名称" data-index="formName" />
-        <a-table-column title="问卷类型" data-index="formType" width="140">
-          <template #default="{ text }">
-            {{ formTypeOptions.find(o => o.value === text)?.label || text }}
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'formType'">
+            {{ formTypeOptions.find((o) => o.value === text)?.label || text }}
           </template>
-        </a-table-column>
-        <a-table-column title="目标" data-index="targetType" width="160">
-          <template #default="{ record }">
-            {{ ACHIEVEMENT_TARGET_TYPE_LABEL[record.targetType as AchievementTargetType] }}
-            <span class="text-gray-500 text-xs">({{ record.targetId }})</span>
+          <template v-else-if="column.key === 'targetType'">
+            {{ targetTypeLabel(record.targetType) }}
+            <span class="ie__sub-desc">({{ record.targetId }})</span>
           </template>
-        </a-table-column>
-        <a-table-column title="期望样本" data-index="expectedSample" width="100" />
-        <a-table-column title="操作" width="160" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space>
-              <a-button type="link" size="small" @click.stop="openFormEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click.stop="handleFormDelete(record)">删除</a-button>
+              <UiButton variant="ghost" size="sm" @click.stop="openFormEdit(record)">
+                编辑
+              </UiButton>
+              <UiButton variant="danger-ghost" size="sm" @click.stop="handleFormDelete(record)">
+                删除
+              </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
-    <a-row v-if="selectedForm" :gutter="12">
+    <a-row v-if="selectedForm" :gutter="12" class="ie__split">
       <a-col :span="12">
-        <a-card title="题项" :bordered="false">
-          <template #extra>
-            <a-button type="primary" size="small" @click="openItemCreate">新建题项</a-button>
-          </template>
+        <section class="ie__panel">
+          <header class="ie__panel-header">
+            <h3 class="ie__panel-title">题项</h3>
+            <UiButton variant="primary" size="sm" @click="openItemCreate"> 新建题项 </UiButton>
+          </header>
 
-          <a-table
+          <UiDataTable
+            :columns="itemColumns"
             :data-source="items"
             :loading="itemsLoading"
             row-key="id"
             size="middle"
-            :pagination="false"
-            :row-class-name="(r: IndirectEvaluationItemVO) => (selectedItem?.id === r.id ? 'row-selected' : '')"
-            :custom-row="(record: IndirectEvaluationItemVO) => ({
-              onClick: () => (selectedItem = record),
-              style: 'cursor: pointer',
-            })"
+            :show-pagination="false"
+            flat
+            :total="items.length"
+            :row-class-name="
+              (r: IndirectEvaluationItemVO) => (selectedItem?.id === r.id ? 'ie__row-selected' : '')
+            "
+            :custom-row="
+              (record: IndirectEvaluationItemVO) => ({
+                onClick: () => (selectedItem = record),
+                style: 'cursor: pointer',
+              })
+            "
           >
-            <a-table-column title="编码" data-index="itemCode" width="100" />
-            <a-table-column title="题面" data-index="itemText" />
-            <a-table-column title="权重" data-index="weight" width="70">
-              <template #default="{ text }">
+            <template #bodyCell="{ column, record, text }">
+              <template v-if="column.key === 'weight'">
                 {{ text == null ? '-' : Number(text).toFixed(2) }}
               </template>
-            </a-table-column>
-            <a-table-column title="操作" width="120" fixed="right">
-              <template #default="{ record }">
+              <template v-else-if="column.key === 'validCount'">
+                <span
+                  :class="validCountMap.get(record.id) ? 'ie__count-strong' : 'ie__count-muted'"
+                >
+                  {{ validCountMap.get(record.id) ?? 0 }}
+                </span>
+              </template>
+              <template v-else-if="column.key === 'actions'">
                 <a-space>
-                  <a-button type="link" size="small" @click.stop="openItemEdit(record)">编辑</a-button>
-                  <a-button type="link" size="small" danger @click.stop="deleteItem(record)">删除</a-button>
+                  <UiButton variant="ghost" size="sm" @click.stop="openItemEdit(record)">
+                    编辑
+                  </UiButton>
+                  <UiButton variant="danger-ghost" size="sm" @click.stop="deleteItem(record)">
+                    删除
+                  </UiButton>
                 </a-space>
               </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
+            </template>
+          </UiDataTable>
+        </section>
       </a-col>
 
       <a-col :span="12">
-        <a-empty v-if="!selectedItem" description="请在左侧选择题项查看答卷" />
+        <UiEmpty v-if="!selectedItem" description="请在左侧选择题项查看答卷" class="ie__empty" />
 
-        <a-card v-else :bordered="false">
-          <template #title>
-            <span>「{{ selectedItem.itemCode }} · {{ selectedItem.itemText.substring(0, 24) }}…」答卷</span>
-          </template>
-          <template #extra>
-            <a-button type="primary" size="small" @click="openResponseCreate">新增答卷</a-button>
-          </template>
+        <section v-else class="ie__panel">
+          <header class="ie__panel-header">
+            <h3 class="ie__panel-title">
+              「{{ selectedItem.itemCode }} · {{ selectedItem.itemText.substring(0, 24) }}…」答卷
+            </h3>
+            <div class="ie__panel-actions">
+              <UiButton variant="outline" size="sm" @click="openBatchResponse"> 批量录入 </UiButton>
+              <UiButton variant="primary" size="sm" @click="openResponseCreate">
+                新增答卷
+              </UiButton>
+            </div>
+          </header>
 
-          <a-table
+          <UiDataTable
+            :columns="responseColumns"
             :data-source="responses"
             :loading="responsesLoading"
             row-key="id"
             size="middle"
-            :pagination="{ pageSize: 10 }"
+            :page-size="10"
+            :total="responses.length"
+            flat
           >
-            <a-table-column title="应答人" data-index="respondentType" width="100">
-              <template #default="{ text }">
-                {{ RESPONDENT_TYPE_LABEL[text as RespondentType] }}
+            <template #bodyCell="{ column, record, text }">
+              <template v-if="column.key === 'respondentType'">
+                {{ respondentTypeLabel(text) }}
               </template>
-            </a-table-column>
-            <a-table-column title="原始值" data-index="rawValue" width="80" />
-            <a-table-column title="换算分" data-index="convertedScore" width="80">
-              <template #default="{ text }">
+              <template v-else-if="column.key === 'convertedScore'">
                 {{ text == null ? '-' : Number(text).toFixed(2) }}
               </template>
-            </a-table-column>
-            <a-table-column title="开放回答" data-index="openText">
-              <template #default="{ text }">
-                <span class="text-xs">{{ text || '-' }}</span>
+              <template v-else-if="column.key === 'openText'">
+                <span class="ie__sub-desc">{{ text || '-' }}</span>
               </template>
-            </a-table-column>
-            <a-table-column title="有效" data-index="validFlag" width="70">
-              <template #default="{ text }">
+              <template v-else-if="column.key === 'validFlag'">
                 <a-tag :color="text ? 'green' : 'red'">{{ text ? '有效' : '无效' }}</a-tag>
               </template>
-            </a-table-column>
-            <a-table-column title="操作" width="140" fixed="right">
-              <template #default="{ record }">
+              <template v-else-if="column.key === 'actions'">
                 <a-space>
-                  <a-button type="link" size="small" @click="openResponseEdit(record)">编辑</a-button>
-                  <a-button type="link" size="small" danger @click="deleteResponse(record)">删除</a-button>
+                  <UiButton variant="ghost" size="sm" @click="openResponseEdit(record)">
+                    编辑
+                  </UiButton>
+                  <UiButton variant="danger-ghost" size="sm" @click="deleteResponse(record)">
+                    删除
+                  </UiButton>
                 </a-space>
               </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
+            </template>
+          </UiDataTable>
+        </section>
       </a-col>
     </a-row>
 
@@ -580,7 +719,11 @@ onMounted(async () => {
           </a-col>
           <a-col :span="8">
             <a-form-item label="期望样本">
-              <a-input-number v-model:value="formEditor.expectedSample" :min="0" style="width: 100%" />
+              <a-input-number
+                v-model:value="formEditor.expectedSample"
+                :min="0"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -590,17 +733,46 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="目标类型" required>
-              <a-select v-model:value="formEditor.targetType" :options="targetTypeOptions" />
+              <a-select
+                v-model:value="formEditor.targetType"
+                :options="targetTypeOptions"
+                @change="formEditor.targetId = ''"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="目标 ID" required>
-              <a-input v-model:value="formEditor.targetId" placeholder="对应业务对象的 ID" />
+            <a-form-item label="目标对象" required>
+              <CourseGoalSelector
+                v-if="formEditor.targetType === 'COURSE_GOAL'"
+                :value="formEditor.targetId || null"
+                placeholder="选择课程目标"
+                @change="(v) => (formEditor.targetId = v ?? '')"
+              />
+              <RequirementIndicatorSelector
+                v-else-if="formEditor.targetType === 'REQUIREMENT_INDICATOR'"
+                :value="formEditor.targetId || null"
+                placeholder="选择观测点"
+                @change="(v) => (formEditor.targetId = v ?? '')"
+              />
+              <GraduationRequirementSelector
+                v-else-if="formEditor.targetType === 'GRADUATION_REQUIREMENT'"
+                :value="formEditor.targetId || null"
+                placeholder="选择毕业要求"
+                @change="(v) => (formEditor.targetId = v ?? '')"
+              />
+              <a-input
+                v-else
+                v-model:value="formEditor.targetId"
+                placeholder="该目标类型暂无下拉，请填业务对象 ID"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="所属专业 ID">
-              <a-input v-model:value="formEditor.programId" />
+            <a-form-item label="所属专业">
+              <ProgramSelector
+                :value="formEditor.programId || null"
+                @change="(v) => (formEditor.programId = v ?? '')"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -627,7 +799,12 @@ onMounted(async () => {
           </a-col>
           <a-col :span="8">
             <a-form-item label="权重">
-              <a-input-number v-model:value="itemEditor.weight" :min="0" :step="0.1" style="width: 100%" />
+              <a-input-number
+                v-model:value="itemEditor.weight"
+                :min="0"
+                :step="0.1"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -642,17 +819,48 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="目标类型" required>
-              <a-select v-model:value="itemEditor.targetType" :options="targetTypeOptions" />
+              <a-select
+                v-model:value="itemEditor.targetType"
+                :options="targetTypeOptions"
+                @change="itemEditor.targetId = ''"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="目标 ID" required>
-              <a-input v-model:value="itemEditor.targetId" />
+            <a-form-item label="目标对象" required>
+              <CourseGoalSelector
+                v-if="itemEditor.targetType === 'COURSE_GOAL'"
+                :value="itemEditor.targetId || null"
+                placeholder="选择课程目标"
+                @change="(v) => (itemEditor.targetId = v ?? '')"
+              />
+              <RequirementIndicatorSelector
+                v-else-if="itemEditor.targetType === 'REQUIREMENT_INDICATOR'"
+                :value="itemEditor.targetId || null"
+                placeholder="选择观测点"
+                @change="(v) => (itemEditor.targetId = v ?? '')"
+              />
+              <GraduationRequirementSelector
+                v-else-if="itemEditor.targetType === 'GRADUATION_REQUIREMENT'"
+                :value="itemEditor.targetId || null"
+                placeholder="选择毕业要求"
+                @change="(v) => (itemEditor.targetId = v ?? '')"
+              />
+              <a-input
+                v-else
+                v-model:value="itemEditor.targetId"
+                placeholder="该目标类型暂无下拉，请填业务对象 ID"
+              />
             </a-form-item>
           </a-col>
         </a-row>
         <a-form-item label="量表换算规则">
-          <a-select v-model:value="itemEditor.scaleRuleId" allow-clear show-search option-filter-prop="label">
+          <a-select
+            v-model:value="itemEditor.scaleRuleId"
+            allow-clear
+            show-search
+            option-filter-prop="label"
+          >
             <a-select-option
               v-for="r in scaleRules"
               :key="r.id"
@@ -676,12 +884,32 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="应答人类型" required>
-              <a-select v-model:value="responseEditor.respondentType" :options="respondentTypeOptions" />
+              <a-select
+                v-model:value="responseEditor.respondentType"
+                :options="respondentTypeOptions"
+                @change="responseEditor.respondentId = ''"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="应答人 ID">
-              <a-input v-model:value="responseEditor.respondentId" placeholder="可选" />
+            <a-form-item label="应答人">
+              <StudentSelector
+                v-if="responseEditor.respondentType === 'STUDENT'"
+                :value="responseEditor.respondentId || null"
+                placeholder="选择在校学生"
+                @change="(v) => (responseEditor.respondentId = v ?? '')"
+              />
+              <TeacherSelector
+                v-else-if="responseEditor.respondentType === 'TEACHER'"
+                :value="responseEditor.respondentId || null"
+                placeholder="选择教师"
+                @change="(v) => (responseEditor.respondentId = v ?? '')"
+              />
+              <a-input
+                v-else
+                v-model:value="responseEditor.respondentId"
+                placeholder="填写应答人业务 ID（毕业生 / 用人单位 / 专家 / 导师）"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -693,7 +921,13 @@ onMounted(async () => {
           </a-col>
           <a-col :span="12">
             <a-form-item label="换算分（0~1）">
-              <a-input-number v-model:value="responseEditor.convertedScore" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="responseEditor.convertedScore"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -708,7 +942,10 @@ onMounted(async () => {
           </a-col>
           <a-col :span="16">
             <a-form-item label="无效原因">
-              <a-input v-model:value="responseEditor.invalidReason" :disabled="responseEditor.validFlag" />
+              <a-input
+                v-model:value="responseEditor.invalidReason"
+                :disabled="responseEditor.validFlag"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -729,21 +966,127 @@ onMounted(async () => {
         show-icon
         message="粘贴 JSON 数组，每条为一个答卷"
         description="必填：itemId、respondentType；可选：respondentId、rawValue、convertedScore、openText、validFlag、invalidReason。formId 由页面自动填入。"
-        style="margin-bottom: 12px"
+        class="ie__alert"
       />
       <a-textarea
         v-model:value="batchResponseText"
         :rows="14"
         :placeholder="BATCH_RESPONSE_PLACEHOLDER"
-        :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
+        class="ie__monospace"
       />
     </a-modal>
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
-:deep(.row-selected) td { background-color: var(--ant-color-primary-bg) !important; }
-.text-xs { font-size: 12px; }
-.text-gray-500 { color: rgba(0, 0, 0, 0.45); }
+.ie {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__context-info {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 140px;
+
+    &--md {
+      width: 180px;
+    }
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__split {
+    margin-top: 0;
+  }
+
+  &__empty {
+    margin-top: 32px;
+  }
+
+  &__sub-desc {
+    margin-left: 4px;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__count-strong {
+    color: var(--dp-success, #16a34a);
+    font-weight: 500;
+  }
+
+  &__count-muted {
+    color: var(--dp-text-muted, #94a3b8);
+  }
+
+  &__alert {
+    margin-bottom: 12px;
+  }
+
+  &__monospace {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+}
+
+:deep(.ie__row-selected) td {
+  background-color: var(--ant-color-primary-bg) !important;
+}
 </style>

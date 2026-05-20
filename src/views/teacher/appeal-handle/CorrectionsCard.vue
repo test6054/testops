@@ -11,13 +11,15 @@
       </a-space>
     </template>
 
-    <a-table
+    <UiDataTable
       :columns="columns"
       :data-source="rows"
       :loading="loading"
       row-key="id"
       size="small"
-      :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
+      :page-size="20"
+      :total="rows.length"
+      flat
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'correctionType'">
@@ -28,10 +30,14 @@
             {{ correctionStatusLabel(rows[index]) }}
           </a-tag>
         </template>
-        <template v-else-if="column.key === 'effectiveTime'">{{fmt(rows[index].effectiveTime) }}</template>
-        <template v-else-if="column.key === 'createTime'">{{fmt(rows[index].createTime) }}</template>
+        <template v-else-if="column.key === 'effectiveTime'">{{
+          fmt(rows[index].effectiveTime)
+        }}</template>
+        <template v-else-if="column.key === 'createTime'">{{
+          fmt(rows[index].createTime)
+        }}</template>
       </template>
-    </a-table>
+    </UiDataTable>
 
     <a-modal
       v-model:open="createOpen"
@@ -95,11 +101,6 @@ import type {
   GradeCorrectionStatusCode,
   GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { reactive, ref, watch } from 'vue'
 import {
   createCorrection,
   GRADE_CORRECTION_STATUS_COLOR,
@@ -107,10 +108,16 @@ import {
   GRADE_CORRECTION_TYPE_LABEL,
   listCorrections,
 } from '@/apis/mark/grade-review'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { reactive, ref, watch } from 'vue'
+import { UiDataTable } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])

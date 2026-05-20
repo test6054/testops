@@ -1,306 +1,306 @@
 <template>
-  <GiPageLayout>
-    <div v-if="archive" class="archive-detail-page">
-      <PageHeader
-        :title="archive.archiveTitle || archive.archiveNo"
-        :subtitle="`归档编号 ${archive.archiveNo} · 考试 #${archive.examId}`"
-      >
-        <template #tags>
-          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus] || 'gray'" size="md">
+  <StageWorkbenchShell v-if="archive">
+    <template #context>
+      <div class="archive-detail-page__context">
+        <div class="archive-detail-page__context-left">
+          <span class="archive-detail-page__title">{{
+            archive.archiveTitle || archive.archiveNo
+          }}</span>
+          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus] || 'gray'" size="sm">
             {{ archive.archiveStatusMessage || ARCHIVE_STATUS_LABEL[archive.archiveStatus] }}
           </UiTag>
-          <UiTag v-if="archive.permanentRetention" tone="purple" size="md">永久保管</UiTag>
-          <UiTag v-else-if="archive.retentionYears" tone="gray" size="md">
+          <UiTag v-if="archive.permanentRetention" tone="purple" size="sm">永久保管</UiTag>
+          <UiTag v-else-if="archive.retentionYears" tone="gray" size="sm">
             保管 {{ archive.retentionYears }} 年
           </UiTag>
-          <UiTag v-if="archive.archiveFileSize" tone="blue" size="md">
+          <UiTag v-if="archive.archiveFileSize" tone="blue" size="sm">
             ZIP {{ formatBytes(Number(archive.archiveFileSize)) }}
           </UiTag>
-        </template>
-        <template #actions>
+        </div>
+        <div class="archive-detail-page__context-right">
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadDetail">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
           <UiButton size="sm" variant="ghost" @click="goBack">返回列表</UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <UiCard v-if="showProgressCard" class="archive-detail-page__progress-card">
-        <template #title>
-          <ClockCircleOutlined />
-          <span>异步打包进度</span>
-          <UiBadge tone="blue">
-            {{ ARCHIVE_PHASE_LABEL[archive.packagingPhase as ArchivePackagingPhase] || '运行中' }}
-          </UiBadge>
-        </template>
-        <a-progress :percent="archive.packagingProgressPercent ?? 0" :status="progressStatus" />
-        <div class="progress-message">
-          {{ archive.packagingProgressMessage || '正在执行...' }}
-        </div>
-        <div v-if="archive.packagingUploadId" class="progress-upload-id">
-          活跃 uploadId：<code>{{ archive.packagingUploadId }}</code>
-        </div>
-        <div v-if="archive.packagingDiagnostic" class="progress-diagnostic">
-          <a-alert type="error" show-icon :message="archive.packagingDiagnostic" />
-        </div>
-      </UiCard>
+    <UiCard v-if="showProgressCard" class="archive-detail-page__progress-card">
+      <template #title>
+        <ClockCircleOutlined />
+        <span>异步打包进度</span>
+        <UiBadge tone="blue">
+          {{ ARCHIVE_PHASE_LABEL[archive.packagingPhase as ArchivePackagingPhase] || '运行中' }}
+        </UiBadge>
+      </template>
+      <a-progress :percent="archive.packagingProgressPercent ?? 0" :status="progressStatus" />
+      <div class="progress-message">
+        {{ archive.packagingProgressMessage || '正在执行...' }}
+      </div>
+      <div v-if="archive.packagingUploadId" class="progress-upload-id">
+        活跃 uploadId：<code>{{ archive.packagingUploadId }}</code>
+      </div>
+      <div v-if="archive.packagingDiagnostic" class="progress-diagnostic">
+        <a-alert type="error" show-icon :message="archive.packagingDiagnostic" />
+      </div>
+    </UiCard>
 
-      <UiCard class="archive-detail-page__info-card">
-        <template #title>
-          <FileOutlined />
-          <span>归档信息</span>
-        </template>
-        <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" size="small" bordered>
-          <a-descriptions-item label="状态">
-            <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus] || 'gray'" size="sm">
-              {{ archive.archiveStatusMessage || ARCHIVE_STATUS_LABEL[archive.archiveStatus] }}
-            </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="所属考试"> 考试 #{{ archive.examId }} </a-descriptions-item>
-          <a-descriptions-item label="保管期限">
-            <span v-if="archive.permanentRetention">永久保管</span>
-            <span v-else>
-              {{ archive.retentionYears }} 年
-              <span v-if="archive.retentionUntil" class="muted">
-                · 至 {{ archive.retentionUntil }}
-              </span>
+    <UiCard class="archive-detail-page__info-card">
+      <template #title>
+        <FileOutlined />
+        <span>归档信息</span>
+      </template>
+      <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" size="small" bordered>
+        <a-descriptions-item label="状态">
+          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus] || 'gray'" size="sm">
+            {{ archive.archiveStatusMessage || ARCHIVE_STATUS_LABEL[archive.archiveStatus] }}
+          </UiTag>
+        </a-descriptions-item>
+        <a-descriptions-item label="所属考试"> 考试 #{{ archive.examId }} </a-descriptions-item>
+        <a-descriptions-item label="保管期限">
+          <span v-if="archive.permanentRetention">永久保管</span>
+          <span v-else>
+            {{ archive.retentionYears }} 年
+            <span v-if="archive.retentionUntil" class="muted">
+              · 至 {{ archive.retentionUntil }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="原始扫描">
-            {{ archive.originalScanCount ?? 0 }}
-          </a-descriptions-item>
-          <a-descriptions-item label="批改切片">
-            {{ archive.markedSliceCount ?? 0 }}
-          </a-descriptions-item>
-          <a-descriptions-item label="答案细则">
-            {{ archive.answerBookletCount ?? 0 }}
-          </a-descriptions-item>
-          <a-descriptions-item label="清单数">{{ archive.itemCount ?? 0 }}</a-descriptions-item>
-          <a-descriptions-item label="ZIP 大小">
-            {{ archive.archiveFileSize ? formatBytes(Number(archive.archiveFileSize)) : '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="ZIP SHA-256">
-            <span v-if="archive.archiveChecksum">
-              <code>{{ archive.archiveChecksum.substring(0, 16) }}…</code>
-            </span>
-            <span v-else class="muted">-</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="创建时间">
-            {{ formatTime(archive.createTime) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="打包开始">
-            {{ formatTime(archive.packagingStartedTime) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="打包完成">
-            {{ formatTime(archive.packagingCompletedTime) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </UiCard>
+          </span>
+        </a-descriptions-item>
+        <a-descriptions-item label="原始扫描">
+          {{ archive.originalScanCount ?? 0 }}
+        </a-descriptions-item>
+        <a-descriptions-item label="批改切片">
+          {{ archive.markedSliceCount ?? 0 }}
+        </a-descriptions-item>
+        <a-descriptions-item label="答案细则">
+          {{ archive.answerBookletCount ?? 0 }}
+        </a-descriptions-item>
+        <a-descriptions-item label="清单数">{{ archive.itemCount ?? 0 }}</a-descriptions-item>
+        <a-descriptions-item label="ZIP 大小">
+          {{ archive.archiveFileSize ? formatBytes(Number(archive.archiveFileSize)) : '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="ZIP SHA-256">
+          <span v-if="archive.archiveChecksum">
+            <code>{{ archive.archiveChecksum.substring(0, 16) }}…</code>
+          </span>
+          <span v-else class="muted">-</span>
+        </a-descriptions-item>
+        <a-descriptions-item label="创建时间">
+          {{ formatTime(archive.createTime) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="打包开始">
+          {{ formatTime(archive.packagingStartedTime) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="打包完成">
+          {{ formatTime(archive.packagingCompletedTime) }}
+        </a-descriptions-item>
+      </a-descriptions>
+    </UiCard>
 
-      <UiCard class="archive-detail-page__action-card">
-        <template #title>
-          <ThunderboltOutlined />
-          <span>可执行操作</span>
-        </template>
-        <a-space wrap>
-          <UiButton v-if="canPackage" size="sm" @click="confirmPackage">
-            <template #icon><CloudUploadOutlined /></template>
-            {{ archive.archiveStatus === 'PACKAGING_FAILED' ? '重试打包' : '入队打包' }}
-          </UiButton>
-          <UiButton
-            v-if="archive.archiveStatus === 'ACTIVE'"
-            size="sm"
-            @click="confirmRequestAppraisal"
-          >
-            申请鉴定
-          </UiButton>
-          <UiButton
-            v-if="archive.archiveStatus === 'APPRAISAL_PENDING'"
-            size="sm"
-            @click="openAppraiseModal"
-          >
-            提交鉴定决议
-          </UiButton>
-          <UiButton
-            v-if="canRequestDestruction"
-            size="sm"
-            variant="outline"
-            @click="openDestructionRequestModal"
-          >
-            申请销毁
-          </UiButton>
-          <UiButton
-            v-if="archive.archiveStatus === 'DESTRUCTION_PENDING'"
-            size="sm"
-            @click="openApproveDestructionModal"
-          >
-            审批销毁
-          </UiButton>
-          <UiButton
-            v-if="archive.archiveStatus === 'DESTRUCTION_APPROVED'"
-            size="sm"
-            variant="outline"
-            @click="confirmExecuteDestruction"
-          >
-            执行物理销毁
-          </UiButton>
-          <span v-if="!hasAnyAction" class="muted">当前状态没有可执行的下一步操作</span>
-        </a-space>
-      </UiCard>
+    <UiCard class="archive-detail-page__action-card">
+      <template #title>
+        <ThunderboltOutlined />
+        <span>可执行操作</span>
+      </template>
+      <a-space wrap>
+        <UiButton v-if="canPackage" size="sm" @click="confirmPackage">
+          <template #icon><CloudUploadOutlined /></template>
+          {{ archive.archiveStatus === 'PACKAGING_FAILED' ? '重试打包' : '入队打包' }}
+        </UiButton>
+        <UiButton
+          v-if="archive.archiveStatus === 'ACTIVE'"
+          size="sm"
+          @click="confirmRequestAppraisal"
+        >
+          申请鉴定
+        </UiButton>
+        <UiButton
+          v-if="archive.archiveStatus === 'APPRAISAL_PENDING'"
+          size="sm"
+          @click="openAppraiseModal"
+        >
+          提交鉴定决议
+        </UiButton>
+        <UiButton
+          v-if="canRequestDestruction"
+          size="sm"
+          variant="outline"
+          @click="openDestructionRequestModal"
+        >
+          申请销毁
+        </UiButton>
+        <UiButton
+          v-if="archive.archiveStatus === 'DESTRUCTION_PENDING'"
+          size="sm"
+          @click="openApproveDestructionModal"
+        >
+          审批销毁
+        </UiButton>
+        <UiButton
+          v-if="archive.archiveStatus === 'DESTRUCTION_APPROVED'"
+          size="sm"
+          variant="outline"
+          @click="confirmExecuteDestruction"
+        >
+          执行物理销毁
+        </UiButton>
+        <span v-if="!hasAnyAction" class="muted">当前状态没有可执行的下一步操作</span>
+      </a-space>
+    </UiCard>
 
-      <UiCard class="archive-detail-page__tabs-card">
-        <a-tabs v-model:active-key="activeTab">
-          <a-tab-pane key="items" :tab="`清单项 (${items.length})`">
-            <UiEmpty v-if="items.length === 0" description="暂无清单项" />
-            <a-table
-              v-else
-              :columns="itemColumns"
-              :data-source="items"
-              :pagination="{ pageSize: 20, showSizeChanger: true }"
-              row-key="itemId"
-              size="small"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'category'">
-                  <UiTag tone="blue" size="sm">
-                    {{ record.itemCategoryMessage || record.itemCategory }}
-                  </UiTag>
-                </template>
-                <template v-else-if="column.key === 'student'">
-                  <span v-if="record.studentNo">
-                    {{ record.studentNo }}
-                    <span v-if="record.studentName" class="muted">· {{ record.studentName }}</span>
-                  </span>
-                  <span v-else class="muted">-</span>
-                </template>
-                <template v-else-if="column.key === 'questionNo'">
-                  <span v-if="record.questionNo">{{ record.questionNo }}</span>
-                  <span v-else class="muted">-</span>
-                </template>
-                <template v-else-if="column.key === 'fileSize'">
-                  {{ record.fileSize ? formatBytes(Number(record.fileSize)) : '-' }}
-                </template>
+    <UiCard class="archive-detail-page__tabs-card">
+      <a-tabs v-model:active-key="activeTab">
+        <a-tab-pane key="items" :tab="`清单项 (${items.length})`">
+          <UiEmpty v-if="items.length === 0" description="暂无清单项" />
+          <UiDataTable
+            v-else
+            :columns="itemColumns"
+            :data-source="items"
+            :page-size="20"
+            :total="items.length"
+            flat
+            row-key="itemId"
+            size="small"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'category'">
+                <UiTag tone="blue" size="sm">
+                  {{ record.itemCategoryMessage || record.itemCategory }}
+                </UiTag>
               </template>
-            </a-table>
-          </a-tab-pane>
-          <a-tab-pane key="events" :tab="`事件流水 (${events.length})`">
-            <UiEmpty v-if="events.length === 0" description="暂无事件" />
-            <a-timeline v-else mode="left">
-              <a-timeline-item
-                v-for="event in events"
-                :key="event.eventId"
-                :color="resolveEventColor(event.eventType)"
-              >
-                <div class="event-line">
-                  <strong>{{ event.eventTypeMessage || event.eventType }}</strong>
-                  <span class="muted">· {{ formatTime(event.eventTime) }}</span>
-                </div>
-                <div v-if="event.reason" class="event-reason">{{ event.reason }}</div>
-                <div v-if="event.payload" class="event-payload">
-                  <details>
-                    <summary>查看 payload</summary>
-                    <pre>{{ event.payload }}</pre>
-                  </details>
-                </div>
-              </a-timeline-item>
-            </a-timeline>
-          </a-tab-pane>
-        </a-tabs>
-      </UiCard>
-    </div>
+              <template v-else-if="column.key === 'student'">
+                <span v-if="record.studentNo">
+                  {{ record.studentNo }}
+                  <span v-if="record.studentName" class="muted">· {{ record.studentName }}</span>
+                </span>
+                <span v-else class="muted">-</span>
+              </template>
+              <template v-else-if="column.key === 'questionNo'">
+                <span v-if="record.questionNo">{{ record.questionNo }}</span>
+                <span v-else class="muted">-</span>
+              </template>
+              <template v-else-if="column.key === 'fileSize'">
+                {{ record.fileSize ? formatBytes(Number(record.fileSize)) : '-' }}
+              </template>
+            </template>
+          </UiDataTable>
+        </a-tab-pane>
+        <a-tab-pane key="events" :tab="`事件流水 (${events.length})`">
+          <UiEmpty v-if="events.length === 0" description="暂无事件" />
+          <a-timeline v-else mode="left">
+            <a-timeline-item
+              v-for="event in events"
+              :key="event.eventId"
+              :color="resolveEventColor(event.eventType)"
+            >
+              <div class="event-line">
+                <strong>{{ event.eventTypeMessage || event.eventType }}</strong>
+                <span class="muted">· {{ formatTime(event.eventTime) }}</span>
+              </div>
+              <div v-if="event.reason" class="event-reason">{{ event.reason }}</div>
+              <div v-if="event.payload" class="event-payload">
+                <details>
+                  <summary>查看 payload</summary>
+                  <pre>{{ event.payload }}</pre>
+                </details>
+              </div>
+            </a-timeline-item>
+          </a-timeline>
+        </a-tab-pane>
+      </a-tabs>
+    </UiCard>
+  </StageWorkbenchShell>
 
-    <UiEmpty v-else-if="!loading" description="归档包不存在或已被删除" />
+  <UiEmpty v-else-if="!loading" description="归档包不存在或已被删除" />
 
-    <a-modal
-      v-model:open="appraiseModalOpen"
-      title="提交鉴定决议"
-      ok-text="提交"
-      cancel-text="取消"
-      :confirm-loading="actionLoading"
-      @ok="submitAppraisal"
-    >
-      <a-form layout="vertical" :model="appraiseForm">
-        <a-form-item label="鉴定决议">
-          <a-radio-group v-model:value="appraiseForm.decision">
-            <a-radio value="RETAIN">{{ ARCHIVE_APPRAISAL_LABEL.RETAIN }}（延长保管）</a-radio>
-            <a-radio value="DESTROY">
-              {{ ARCHIVE_APPRAISAL_LABEL.DESTROY }}（进入销毁审批流）
-            </a-radio>
-          </a-radio-group>
+  <a-modal
+    v-model:open="appraiseModalOpen"
+    title="提交鉴定决议"
+    ok-text="提交"
+    cancel-text="取消"
+    :confirm-loading="actionLoading"
+    @ok="submitAppraisal"
+  >
+    <a-form layout="vertical" :model="appraiseForm">
+      <a-form-item label="鉴定决议">
+        <a-radio-group v-model:value="appraiseForm.decision">
+          <a-radio value="RETAIN">{{ ARCHIVE_APPRAISAL_LABEL.RETAIN }}（延长保管）</a-radio>
+          <a-radio value="DESTROY">
+            {{ ARCHIVE_APPRAISAL_LABEL.DESTROY }}（进入销毁审批流）
+          </a-radio>
+        </a-radio-group>
+      </a-form-item>
+      <template v-if="appraiseForm.decision === 'RETAIN'">
+        <a-form-item label="保管处理">
+          <a-checkbox v-model:checked="appraiseForm.permanentRetention"> 改为永久保管 </a-checkbox>
         </a-form-item>
-        <template v-if="appraiseForm.decision === 'RETAIN'">
-          <a-form-item label="保管处理">
-            <a-checkbox v-model:checked="appraiseForm.permanentRetention">
-              改为永久保管
-            </a-checkbox>
-          </a-form-item>
-          <a-form-item v-if="!appraiseForm.permanentRetention" label="延长年限">
-            <a-input-number
-              v-model:value="appraiseForm.retentionExtensionYears"
-              :min="1"
-              :max="100"
-              style="width: 140px"
-            />
-            <span class="muted ml-2">不填则按原年限重新起算</span>
-          </a-form-item>
-        </template>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="appraiseForm.remark" :rows="3" placeholder="可填写鉴定意见" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <a-modal
-      v-model:open="destructionRequestModalOpen"
-      title="申请销毁"
-      ok-text="提交申请"
-      cancel-text="取消"
-      :confirm-loading="actionLoading"
-      :ok-button-props="{ disabled: !destructionRequestForm.reason.trim() }"
-      @ok="submitDestructionRequest"
-    >
-      <a-form layout="vertical" :model="destructionRequestForm">
-        <a-form-item label="销毁原因" required>
-          <a-textarea
-            v-model:value="destructionRequestForm.reason"
-            :rows="4"
-            placeholder="请填写销毁理由，便于审批人评估"
+        <a-form-item v-if="!appraiseForm.permanentRetention" label="延长年限">
+          <a-input-number
+            v-model:value="appraiseForm.retentionExtensionYears"
+            :min="1"
+            :max="100"
+            style="width: 140px"
           />
+          <span class="muted ml-2">不填则按原年限重新起算</span>
         </a-form-item>
-        <a-alert
-          type="warning"
-          show-icon
-          message="申请人无法审批自己提交的销毁申请，请由其他角色审批"
+      </template>
+      <a-form-item label="备注">
+        <a-textarea v-model:value="appraiseForm.remark" :rows="3" placeholder="可填写鉴定意见" />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <a-modal
+    v-model:open="destructionRequestModalOpen"
+    title="申请销毁"
+    ok-text="提交申请"
+    cancel-text="取消"
+    :confirm-loading="actionLoading"
+    :ok-button-props="{ disabled: !destructionRequestForm.reason.trim() }"
+    @ok="submitDestructionRequest"
+  >
+    <a-form layout="vertical" :model="destructionRequestForm">
+      <a-form-item label="销毁原因" required>
+        <a-textarea
+          v-model:value="destructionRequestForm.reason"
+          :rows="4"
+          placeholder="请填写销毁理由，便于审批人评估"
         />
-      </a-form>
-    </a-modal>
+      </a-form-item>
+      <a-alert
+        type="warning"
+        show-icon
+        message="申请人无法审批自己提交的销毁申请，请由其他角色审批"
+      />
+    </a-form>
+  </a-modal>
 
-    <a-modal
-      v-model:open="approveDestructionModalOpen"
-      title="审批销毁"
-      ok-text="提交审批"
-      cancel-text="取消"
-      :confirm-loading="actionLoading"
-      @ok="submitApproveDestruction"
-    >
-      <a-form layout="vertical" :model="approveDestructionForm">
-        <a-form-item label="审批决议">
-          <a-radio-group v-model:value="approveDestructionForm.decision">
-            <a-radio value="APPROVED">{{ ARCHIVE_DESTRUCTION_LABEL.APPROVED }}</a-radio>
-            <a-radio value="REJECTED">{{ ARCHIVE_DESTRUCTION_LABEL.REJECTED }}</a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea
-            v-model:value="approveDestructionForm.remark"
-            :rows="3"
-            placeholder="可填写审批意见"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-  </GiPageLayout>
+  <a-modal
+    v-model:open="approveDestructionModalOpen"
+    title="审批销毁"
+    ok-text="提交审批"
+    cancel-text="取消"
+    :confirm-loading="actionLoading"
+    @ok="submitApproveDestruction"
+  >
+    <a-form layout="vertical" :model="approveDestructionForm">
+      <a-form-item label="审批决议">
+        <a-radio-group v-model:value="approveDestructionForm.decision">
+          <a-radio value="APPROVED">{{ ARCHIVE_DESTRUCTION_LABEL.APPROVED }}</a-radio>
+          <a-radio value="REJECTED">{{ ARCHIVE_DESTRUCTION_LABEL.REJECTED }}</a-radio>
+        </a-radio-group>
+      </a-form-item>
+      <a-form-item label="备注">
+        <a-textarea
+          v-model:value="approveDestructionForm.remark"
+          :rows="3"
+          placeholder="可填写审批意见"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
@@ -312,16 +312,6 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
-import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
-import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
-import dayjs from 'dayjs'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   appraiseArchive,
   approveDestruction,
@@ -336,11 +326,25 @@ import {
   requestAppraisal,
   requestDestruction,
 } from '@/apis/mark/archive'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import dayjs from 'dayjs'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkStageStore } from '@/stores/modules/markStage'
+import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 
 defineOptions({ name: 'TeacherArchiveDetail' })
+
+const markStageStore = useMarkStageStore()
+const examContextStore = useMarkExamContextStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -396,8 +400,8 @@ const itemColumns = [
 const showProgressCard = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'PACKAGING'
-    || archive.value.archiveStatus === 'PACKAGING_FAILED'
+    archive.value.archiveStatus === 'PACKAGING' ||
+    archive.value.archiveStatus === 'PACKAGING_FAILED'
   )
 })
 
@@ -419,22 +423,69 @@ const canPackage = computed(() => {
 const canRequestDestruction = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'APPRAISAL_DECIDED'
-    && archive.value.appraisalDecision === 'DESTROY'
+    archive.value.archiveStatus === 'APPRAISAL_DECIDED' &&
+    archive.value.appraisalDecision === 'DESTROY'
   )
 })
 
 const hasAnyAction = computed(() => {
   if (!archive.value) return false
   return (
-    canPackage.value
-    || archive.value.archiveStatus === 'ACTIVE'
-    || archive.value.archiveStatus === 'APPRAISAL_PENDING'
-    || canRequestDestruction.value
-    || archive.value.archiveStatus === 'DESTRUCTION_PENDING'
-    || archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
+    canPackage.value ||
+    archive.value.archiveStatus === 'ACTIVE' ||
+    archive.value.archiveStatus === 'APPRAISAL_PENDING' ||
+    canRequestDestruction.value ||
+    archive.value.archiveStatus === 'DESTRUCTION_PENDING' ||
+    archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
   )
 })
+
+/**
+ * 将归档包状态映射为 ARCHIVE 阶段状态。与 archive-list 采用同一语义。
+ * 该页面仅针对单个归档包，其状态索引着其 examId 的 ARCHIVE 阶段。
+ */
+function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
+  const examId = pkg.examId
+  if (!examId) return
+  examContextStore.currentExamId = examId
+  markStageStore.observeExam(examId)
+  let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
+  let hint = ''
+  switch (pkg.archiveStatus) {
+    case 'DRAFT':
+      status = 'blocked'
+      hint = '草稿待打包'
+      break
+    case 'PACKAGING_FAILED':
+      status = 'blocked'
+      hint = `打包失败${pkg.packagingDiagnostic ? ` · ${pkg.packagingDiagnostic}` : ''}`
+      break
+    case 'PACKAGING':
+      status = 'active'
+      hint = pkg.packagingProgressMessage
+        ? `打包中 · ${pkg.packagingProgressPercent ?? 0}% · ${pkg.packagingProgressMessage}`
+        : `打包中 · ${pkg.packagingProgressPercent ?? 0}%`
+      break
+    case 'ACTIVE':
+      status = 'active'
+      hint = '保管中，可申请鉴定'
+      break
+    case 'APPRAISAL_PENDING':
+      status = 'active'
+      hint = '鉴定待办'
+      break
+    case 'APPRAISAL_DECIDED':
+    case 'DESTRUCTION_PENDING':
+    case 'DESTRUCTION_APPROVED':
+    case 'DESTRUCTION_REJECTED':
+    case 'DESTROYED':
+      status = 'completed'
+      hint = pkg.archiveStatusMessage || '归档生命周期完整'
+      break
+  }
+  markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
+  markStageStore.setCurrentStage(examId, 'ARCHIVE')
+}
 
 async function loadDetail(): Promise<void> {
   if (!archiveId) {
@@ -447,6 +498,7 @@ async function loadDetail(): Promise<void> {
     archive.value = detail.archive
     items.value = detail.items ?? []
     events.value = detail.events ?? []
+    syncArchiveDetailStageToStore(detail.archive)
     syncPolling()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '归档详情加载失败')
@@ -469,9 +521,10 @@ function syncPolling(): void {
 
 function confirmPackage(): void {
   if (!archive.value) return
-  Modal.confirm({
+  void confirmAsync({
     title: '确认入队打包？',
     content: `归档包 ${archive.value.archiveNo} 将进入异步打包队列，过程可能需要数分钟。`,
+    type: 'info',
     okText: '入队打包',
     cancelText: '取消',
     onOk: async () => {
@@ -487,9 +540,10 @@ function confirmPackage(): void {
 }
 
 function confirmRequestAppraisal(): void {
-  Modal.confirm({
+  void confirmAsync({
     title: '申请档案鉴定？',
     content: '提交后归档进入鉴定待办状态，由鉴定人决定保留或销毁。',
+    type: 'info',
     okText: '申请鉴定',
     cancelText: '取消',
     onOk: async () => {
@@ -587,11 +641,11 @@ async function submitApproveDestruction(): Promise<void> {
 }
 
 function confirmExecuteDestruction(): void {
-  Modal.confirm({
+  void confirmAsync({
     title: '确认执行物理销毁？',
     content: '执行后归档 ZIP 将从 edu-storage 删除，仅保留销毁前快照，操作不可恢复。',
+    type: 'error',
     okText: '执行销毁',
-    okButtonProps: { danger: true },
     cancelText: '取消',
     onOk: async () => {
       try {
@@ -649,6 +703,34 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .archive-detail-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ant-color-text);
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

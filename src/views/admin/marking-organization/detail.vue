@@ -1,257 +1,260 @@
 <template>
-  <GiPageLayout>
-    <div class="organization-detail-page">
-      <PageHeader title="阅卷组织详情" back-route="/admin/marking-organization">
-        <template #tags>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="org-detail__context">
+        <div class="org-detail__context-info">
+          <h2 class="org-detail__title">阅卷交付 - 阅卷组织详情</h2>
           <UiTag
             v-if="organization?.organizationStatus"
             :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
-            size="md"
+            size="sm"
           >
             {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
           </UiTag>
-          <UiTag v-if="organization" tone="blue" size="md">题组 {{ organization.groups?.length ?? 0 }}</UiTag>
-          <UiTag v-if="organization?.anonymousMode" tone="green" size="md">匿名阅卷</UiTag>
-        </template>
-        <template #actions>
+          <UiTag v-if="organization" tone="blue" size="sm">
+            题组 {{ organization.groups?.length ?? 0 }}
+          </UiTag>
+          <UiTag v-if="organization?.anonymousMode" tone="green" size="sm"> 匿名阅卷 </UiTag>
+        </div>
+        <div class="org-detail__context-actions">
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadOrganization">
-            <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-          <UiButton size="sm" @click="goSessions">
-            <template #icon><PlayCircleOutlined /></template>
-            试评 / 正评
-          </UiButton>
-        </template>
-      </PageHeader>
+          <UiButton variant="primary" size="sm" @click="goSessions"> 试评 / 正评 </UiButton>
+        </div>
+      </div>
+    </template>
 
-      <UiEmpty v-if="!organization && !loading" description="未找到阅卷组织" class="empty-block" />
+    <UiEmpty
+      v-if="!organization && !loading"
+      description="未找到阅卷组织"
+      class="org-detail__empty"
+    />
 
-      <a-spin v-else :spinning="loading">
-        <UiCard v-if="organization" class="detail-card">
-          <a-tabs v-model:active-key="activeTab" class="detail-tabs">
-            <a-tab-pane key="info" tab="基本信息 + 题组">
-              <a-descriptions
-                :column="{ xs: 1, sm: 2, lg: 3 }"
-                size="middle"
-                bordered
-                class="info-descriptions"
-              >
-                <a-descriptions-item label="组织ID">
-                  <a-typography-text copyable>{{ organization.id }}</a-typography-text>
-                </a-descriptions-item>
-                <a-descriptions-item label="考试ID">
-                  <a-typography-text copyable>{{ organization.examId }}</a-typography-text>
-                </a-descriptions-item>
-                <a-descriptions-item label="组长用户ID">
-                  {{ organization.leaderUserId || '-' }}
-                </a-descriptions-item>
-                <a-descriptions-item label="组织状态">
-                  <UiTag
-                    v-if="organization.organizationStatus"
-                    :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
-                    size="sm"
-                  >
-                    {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
-                  </UiTag>
-                </a-descriptions-item>
-                <a-descriptions-item label="匿名阅卷">
-                  <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
-                    {{ organization.anonymousMode ? '启用' : '关闭' }}
-                  </UiTag>
-                </a-descriptions-item>
-                <a-descriptions-item label="题组数量">
-                  {{ organization.groups?.length ?? 0 }} 组
-                </a-descriptions-item>
-                <a-descriptions-item label="备注" :span="3">
-                  {{ organization.remark || '-' }}
-                </a-descriptions-item>
-              </a-descriptions>
-
-              <div class="section-header">
-                <h3>题组列表</h3>
-                <UiButton size="sm" @click="openGroupModal">
-                  <template #icon><PlusOutlined /></template>
-                  新建题组
-                </UiButton>
-              </div>
-
-              <UiEmpty v-if="!groups.length" description="尚未建立题组" />
-              <a-table
-                v-else
-                :columns="groupColumns"
-                :data-source="groups"
-                row-key="id"
-                size="middle"
-                :pagination="false"
-                class="group-table"
-              >
-                <template #bodyCell="{ column, index }">
-                  <template v-if="column.key === 'groupName'">
-                    <a-typography-text strong>
-                      {{
-                        groups[index].groupName || '-'
-                      }}
-                    </a-typography-text>
-                  </template>
-                  <template v-else-if="column.key === 'questionTemplateIds'">
-                    <UiTag tone="blue" size="sm">
-                      {{ groups[index].questionTemplateIds?.length ?? 0 }} 题
-                    </UiTag>
-                  </template>
-                  <template v-else-if="column.key === 'reviewerUserIds'">
-                    <UiTag tone="purple" size="sm">
-                      {{ groups[index].reviewerUserIds?.length ?? 0 }} 人
-                    </UiTag>
-                  </template>
-                  <template v-else-if="column.key === 'groupStatus'">
-                    <UiTag :tone="groupStatusTone(groups[index].groupStatus)" size="sm">
-                      {{ groupStatusLabel(groups[index].groupStatus) }}
-                    </UiTag>
-                  </template>
-                  <template v-else-if="column.key === 'createTime'">
-                    {{ formatTime(groups[index].createTime) }}
-                  </template>
-                </template>
-              </a-table>
-            </a-tab-pane>
-
-            <a-tab-pane key="policy" tab="任务策略">
-              <a-form :model="policyForm" layout="vertical" class="policy-form">
-                <a-row :gutter="16">
-                  <a-col :xs="24" :lg="12">
-                    <h4 class="subsection-title">任务分配策略</h4>
-                    <a-form-item label="策略适用范围">
-                      <a-select
-                        v-model:value="policyForm.allocationGroupId"
-                        placeholder="选择题组（留空表示组织级默认）"
-                        :options="groupSelectOptions"
-                        allow-clear
-                      />
-                    </a-form-item>
-                    <a-form-item label="分配模式" required>
-                      <a-select
-                        v-model:value="policyForm.allocationMode"
-                        :options="ALLOCATION_MODE_OPTIONS"
-                      />
-                    </a-form-item>
-                    <a-form-item label="每批分配任务数">
-                      <a-input-number
-                        v-model:value="policyForm.batchSize"
-                        :min="1"
-                        :max="500"
-                        style="width: 100%"
-                      />
-                    </a-form-item>
-                    <a-form-item label="教师最大待处理任务数">
-                      <a-input-number
-                        v-model:value="policyForm.loadLimit"
-                        :min="1"
-                        :max="500"
-                        style="width: 100%"
-                      />
-                    </a-form-item>
-                    <a-form-item label="匿名令牌策略">
-                      <a-select
-                        v-model:value="policyForm.anonymousTokenPolicy"
-                        :options="ANONYMOUS_TOKEN_OPTIONS"
-                        allow-clear
-                      />
-                    </a-form-item>
-                    <a-form-item label="优先级规则（JSON / DSL）">
-                      <a-textarea
-                        v-model:value="policyForm.priorityRule"
-                        :rows="2"
-                        placeholder="可选，由后端策略层解析"
-                      />
-                    </a-form-item>
-                    <UiButton :loading="savingAllocation" @click="submitAllocation">
-                      <template #icon><SaveOutlined /></template>
-                      保存分配策略
-                    </UiButton>
-                  </a-col>
-
-                  <a-col :xs="24" :lg="12">
-                    <h4 class="subsection-title">任务回收策略</h4>
-                    <a-form-item label="策略适用范围">
-                      <a-select
-                        v-model:value="policyForm.recycleGroupId"
-                        placeholder="选择题组（留空表示组织级默认）"
-                        :options="groupSelectOptions"
-                        allow-clear
-                      />
-                    </a-form-item>
-                    <a-form-item label="超时时间（分钟）">
-                      <a-input-number
-                        v-model:value="policyForm.timeoutMinutes"
-                        :min="1"
-                        :max="1440"
-                        style="width: 100%"
-                      />
-                    </a-form-item>
-                    <a-form-item label="教师最大待处理任务数">
-                      <a-input-number
-                        v-model:value="policyForm.maxPendingCount"
-                        :min="1"
-                        :max="500"
-                        style="width: 100%"
-                      />
-                    </a-form-item>
-                    <a-form-item label="再分配模式">
-                      <a-select
-                        v-model:value="policyForm.reassignMode"
-                        :options="REASSIGN_MODE_OPTIONS"
-                        allow-clear
-                      />
-                    </a-form-item>
-                    <UiButton :loading="savingRecycle" @click="submitRecycle">
-                      <template #icon><SaveOutlined /></template>
-                      保存回收策略
-                    </UiButton>
-                  </a-col>
-                </a-row>
-              </a-form>
-            </a-tab-pane>
-
-            <a-tab-pane key="status" tab="状态推进">
-              <a-alert
-                type="info"
-                show-icon
-                message="阅卷组织按业务阶段推进；每次只能推进到允许的下一状态。"
-                style="margin-bottom: 16px"
-              />
-              <a-form layout="vertical" class="status-form">
-                <a-form-item label="当前状态">
-                  <UiTag
-                    v-if="organization.organizationStatus"
-                    :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
-                    size="md"
-                  >
-                    {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
-                  </UiTag>
-                </a-form-item>
-                <a-form-item label="目标状态" required>
-                  <a-select
-                    v-model:value="targetStatus"
-                    placeholder="选择目标状态"
-                    style="width: 320px"
-                    :options="statusTransitionOptions"
-                  />
-                </a-form-item>
-                <UiButton
-                  :disabled="!targetStatus"
-                  :loading="updatingStatus"
-                  @click="submitStatusUpdate"
+    <a-spin v-else :spinning="loading">
+      <section v-if="organization" class="org-detail__panel">
+        <a-tabs v-model:active-key="activeTab" class="detail-tabs">
+          <a-tab-pane key="info" tab="基本信息 + 题组">
+            <a-descriptions
+              :column="{ xs: 1, sm: 2, lg: 3 }"
+              size="middle"
+              bordered
+              class="info-descriptions"
+            >
+              <a-descriptions-item label="组织ID">
+                <a-typography-text copyable>{{ organization.id }}</a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item label="考试ID">
+                <a-typography-text copyable>{{ organization.examId }}</a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item label="组长用户ID">
+                {{ organization.leaderUserId || '-' }}
+              </a-descriptions-item>
+              <a-descriptions-item label="组织状态">
+                <UiTag
+                  v-if="organization.organizationStatus"
+                  :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
+                  size="sm"
                 >
-                  <template #icon><ArrowRightOutlined /></template>
-                  推进到目标状态
-                </UiButton>
-              </a-form>
-            </a-tab-pane>
-          </a-tabs>
-        </UiCard>
-      </a-spin>
-    </div>
+                  {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
+                </UiTag>
+              </a-descriptions-item>
+              <a-descriptions-item label="匿名阅卷">
+                <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
+                  {{ organization.anonymousMode ? '启用' : '关闭' }}
+                </UiTag>
+              </a-descriptions-item>
+              <a-descriptions-item label="题组数量">
+                {{ organization.groups?.length ?? 0 }} 组
+              </a-descriptions-item>
+              <a-descriptions-item label="备注" :span="3">
+                {{ organization.remark || '-' }}
+              </a-descriptions-item>
+            </a-descriptions>
+
+            <div class="section-header">
+              <h3>题组列表</h3>
+              <UiButton size="sm" @click="openGroupModal">
+                <template #icon><PlusOutlined /></template>
+                新建题组
+              </UiButton>
+            </div>
+
+            <UiEmpty v-if="!groups.length" description="尚未建立题组" />
+            <UiDataTable
+              v-else
+              :columns="groupColumns"
+              :data-source="groups"
+              row-key="id"
+              size="middle"
+              :show-pagination="false"
+              flat
+              :total="groups.length"
+              class="group-table"
+            >
+              <template #bodyCell="{ column, index }">
+                <template v-if="column.key === 'groupName'">
+                  <a-typography-text strong>
+                    {{ groups[index].groupName || '-' }}
+                  </a-typography-text>
+                </template>
+                <template v-else-if="column.key === 'questionTemplateIds'">
+                  <UiTag tone="blue" size="sm">
+                    {{ groups[index].questionTemplateIds?.length ?? 0 }} 题
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'reviewerUserIds'">
+                  <UiTag tone="purple" size="sm">
+                    {{ groups[index].reviewerUserIds?.length ?? 0 }} 人
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'groupStatus'">
+                  <UiTag :tone="groupStatusTone(groups[index].groupStatus)" size="sm">
+                    {{ groupStatusLabel(groups[index].groupStatus) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'createTime'">
+                  {{ formatTime(groups[index].createTime) }}
+                </template>
+              </template>
+            </UiDataTable>
+          </a-tab-pane>
+
+          <a-tab-pane key="policy" tab="任务策略">
+            <a-form :model="policyForm" layout="vertical" class="policy-form">
+              <a-row :gutter="16">
+                <a-col :xs="24" :lg="12">
+                  <h4 class="subsection-title">任务分配策略</h4>
+                  <a-form-item label="策略适用范围">
+                    <a-select
+                      v-model:value="policyForm.allocationGroupId"
+                      placeholder="选择题组（留空表示组织级默认）"
+                      :options="groupSelectOptions"
+                      allow-clear
+                    />
+                  </a-form-item>
+                  <a-form-item label="分配模式" required>
+                    <a-select
+                      v-model:value="policyForm.allocationMode"
+                      :options="ALLOCATION_MODE_OPTIONS"
+                    />
+                  </a-form-item>
+                  <a-form-item label="每批分配任务数">
+                    <a-input-number
+                      v-model:value="policyForm.batchSize"
+                      :min="1"
+                      :max="500"
+                      style="width: 100%"
+                    />
+                  </a-form-item>
+                  <a-form-item label="教师最大待处理任务数">
+                    <a-input-number
+                      v-model:value="policyForm.loadLimit"
+                      :min="1"
+                      :max="500"
+                      style="width: 100%"
+                    />
+                  </a-form-item>
+                  <a-form-item label="匿名令牌策略">
+                    <a-select
+                      v-model:value="policyForm.anonymousTokenPolicy"
+                      :options="ANONYMOUS_TOKEN_OPTIONS"
+                      allow-clear
+                    />
+                  </a-form-item>
+                  <a-form-item label="优先级规则（JSON / DSL）">
+                    <a-textarea
+                      v-model:value="policyForm.priorityRule"
+                      :rows="2"
+                      placeholder="可选，由后端策略层解析"
+                    />
+                  </a-form-item>
+                  <UiButton :loading="savingAllocation" @click="submitAllocation">
+                    <template #icon><SaveOutlined /></template>
+                    保存分配策略
+                  </UiButton>
+                </a-col>
+
+                <a-col :xs="24" :lg="12">
+                  <h4 class="subsection-title">任务回收策略</h4>
+                  <a-form-item label="策略适用范围">
+                    <a-select
+                      v-model:value="policyForm.recycleGroupId"
+                      placeholder="选择题组（留空表示组织级默认）"
+                      :options="groupSelectOptions"
+                      allow-clear
+                    />
+                  </a-form-item>
+                  <a-form-item label="超时时间（分钟）">
+                    <a-input-number
+                      v-model:value="policyForm.timeoutMinutes"
+                      :min="1"
+                      :max="1440"
+                      style="width: 100%"
+                    />
+                  </a-form-item>
+                  <a-form-item label="教师最大待处理任务数">
+                    <a-input-number
+                      v-model:value="policyForm.maxPendingCount"
+                      :min="1"
+                      :max="500"
+                      style="width: 100%"
+                    />
+                  </a-form-item>
+                  <a-form-item label="再分配模式">
+                    <a-select
+                      v-model:value="policyForm.reassignMode"
+                      :options="REASSIGN_MODE_OPTIONS"
+                      allow-clear
+                    />
+                  </a-form-item>
+                  <UiButton :loading="savingRecycle" @click="submitRecycle">
+                    <template #icon><SaveOutlined /></template>
+                    保存回收策略
+                  </UiButton>
+                </a-col>
+              </a-row>
+            </a-form>
+          </a-tab-pane>
+
+          <a-tab-pane key="status" tab="状态推进">
+            <a-alert
+              type="info"
+              show-icon
+              message="阅卷组织按业务阶段推进；每次只能推进到允许的下一状态。"
+              style="margin-bottom: 16px"
+            />
+            <a-form layout="vertical" class="status-form">
+              <a-form-item label="当前状态">
+                <UiTag
+                  v-if="organization.organizationStatus"
+                  :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
+                  size="md"
+                >
+                  {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
+                </UiTag>
+              </a-form-item>
+              <a-form-item label="目标状态" required>
+                <a-select
+                  v-model:value="targetStatus"
+                  placeholder="选择目标状态"
+                  style="width: 320px"
+                  :options="statusTransitionOptions"
+                />
+              </a-form-item>
+              <UiButton
+                :disabled="!targetStatus"
+                :loading="updatingStatus"
+                @click="submitStatusUpdate"
+              >
+                <template #icon><ArrowRightOutlined /></template>
+                推进到目标状态
+              </UiButton>
+            </a-form>
+          </a-tab-pane>
+        </a-tabs>
+      </section>
+    </a-spin>
 
     <a-modal
       v-model:open="groupModalOpen"
@@ -304,13 +307,14 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </GiPageLayout>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   AllocationPolicySavePayload,
   AnonymousTokenPolicyCode,
@@ -323,18 +327,6 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySavePayload,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
-import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { getExamTemplate } from '@/apis/mark/exam'
 import {
   ANONYMOUS_TOKEN_POLICY_LABEL,
   getOrganizationById,
@@ -349,9 +341,17 @@ import {
   saveRecyclePolicy,
   updateOrganizationStatus,
 } from '@/apis/mark/marking-organization'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getExamTemplate } from '@/apis/mark/exam'
+import { UiButton, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
@@ -679,14 +679,48 @@ onMounted(loadOrganization)
 </script>
 
 <style lang="scss" scoped>
-.organization-detail-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+.org-detail {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
 
-.empty-block {
-  margin-top: 48px;
+  &__context-info {
+    flex: 1;
+    min-width: 280px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__empty {
+    padding: 48px 0;
+  }
 }
 
 .detail-tabs {
@@ -698,7 +732,7 @@ onMounted(loadOrganization)
 .info-descriptions {
   :deep(.ant-descriptions-item-label) {
     width: 140px;
-    color: #595959;
+    color: var(--dp-text-secondary, #475569);
   }
 }
 
@@ -720,7 +754,7 @@ onMounted(loadOrganization)
     margin: 0 0 12px;
     font-size: 14px;
     font-weight: 500;
-    color: #262626;
+    color: var(--dp-text-primary, #0f172a);
   }
 }
 

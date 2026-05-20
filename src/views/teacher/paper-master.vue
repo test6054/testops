@@ -1,241 +1,243 @@
 <template>
-  <GiPageLayout>
-    <div class="paper-master-page">
-      <PageHeader title="试卷母版">
-        <template #tags>
-          <UiTag
-            v-if="masterData"
-            :tone="masterData.status === 'ACTIVE' ? 'green' : 'gray'"
-            size="md"
-          >
-            {{ masterData.status === 'ACTIVE' ? '已生效' : '草稿' }}
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="paper-master-page__context">
+        <div class="paper-master-page__context-left">
           <a-select
-            v-model:value="selectedExamId"
-            style="width: 280px"
+            :value="selectedExamId"
+            class="paper-master-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
-            :loading="examOptionsLoading"
+            :loading="examLoading"
             show-search
             option-filter-prop="label"
             allow-clear
             @change="handleExamChange"
           />
+          <UiTag
+            v-if="masterData"
+            :tone="masterData.status === 'ACTIVE' ? 'green' : 'gray'"
+            size="sm"
+          >
+            {{ masterData.status === 'ACTIVE' ? '已生效' : '草稿' }}
+          </UiTag>
+        </div>
+        <div class="paper-master-page__context-right">
           <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
             <template #icon><SaveOutlined /></template>
             保存母版
           </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <UiEmpty v-if="!selectedExamId" description="请选择需要维护母版的考试" class="paper-master-page__empty" />
+
+    <a-spin v-else :spinning="loading">
+      <!-- PDF 预览区 -->
+      <UiCard v-if="pdfPreviewUrl || pdfPreviewLoading" class="preview-card">
+        <template #title>
+          <EyeOutlined />
+          <span>母版 PDF 预览</span>
         </template>
-      </PageHeader>
+        <template #extra>
+          <a-button v-if="pdfPreviewUrl" type="link" size="small" @click="openPdfInNewTab">
+            新窗口打开
+          </a-button>
+          <a-button type="link" size="small" @click="closePdfPreview">关闭预览</a-button>
+        </template>
+        <a-spin :spinning="pdfPreviewLoading">
+          <iframe v-if="pdfPreviewUrl" :src="pdfPreviewUrl" class="pdf-iframe" />
+          <div v-else class="pdf-placeholder">正在加载 PDF…</div>
+        </a-spin>
+      </UiCard>
 
-      <UiEmpty v-if="!selectedExamId" description="请选择需要维护母版的考试" class="empty-block" />
-
-      <a-spin v-else :spinning="loading">
-        <!-- PDF 预览区 -->
-        <UiCard v-if="pdfPreviewUrl || pdfPreviewLoading" class="preview-card">
-          <template #title>
-            <EyeOutlined />
-            <span>母版 PDF 预览</span>
-          </template>
-          <template #extra>
-            <a-button v-if="pdfPreviewUrl" type="link" size="small" @click="openPdfInNewTab">
-              新窗口打开
-            </a-button>
-            <a-button type="link" size="small" @click="closePdfPreview">关闭预览</a-button>
-          </template>
-          <a-spin :spinning="pdfPreviewLoading">
-            <iframe v-if="pdfPreviewUrl" :src="pdfPreviewUrl" class="pdf-iframe" />
-            <div v-else class="pdf-placeholder">正在加载 PDF…</div>
-          </a-spin>
-        </UiCard>
-
-        <!-- 基本信息 -->
-        <UiCard class="info-card">
-          <template #title>
-            <FileTextOutlined />
-            <span>母版基本信息</span>
-          </template>
-          <a-form layout="inline">
-            <a-form-item label="母版名称" required>
-              <a-input
-                v-model:value="form.masterName"
-                placeholder="例如：2026 春《工程制图》期末母版"
-                :maxlength="100"
-                style="width: 360px"
-              />
-            </a-form-item>
-            <a-form-item label="母版 PDF">
-              <a-upload :before-upload="handleBeforeUpload" :show-upload-list="false" accept=".pdf">
-                <UiButton size="sm" :loading="uploading">
-                  <template #icon><UploadOutlined /></template>
-                  {{ form.masterFileId ? '重新上传' : '上传 PDF' }}
-                </UiButton>
-              </a-upload>
-              <span v-if="uploadedFileName" class="uploaded-hint">{{ uploadedFileName }}</span>
-              <UiButton
-                v-if="form.masterFileId"
-                size="sm"
-                style="margin-left: 8px"
-                @click="previewPdf"
-              >
-                <template #icon><EyeOutlined /></template>
-                预览
+      <!-- 基本信息 -->
+      <UiCard class="info-card">
+        <template #title>
+          <FileTextOutlined />
+          <span>母版基本信息</span>
+        </template>
+        <a-form layout="inline">
+          <a-form-item label="母版名称" required>
+            <a-input
+              v-model:value="form.masterName"
+              placeholder="例如：2026 春《工程制图》期末母版"
+              :maxlength="100"
+              style="width: 360px"
+            />
+          </a-form-item>
+          <a-form-item label="母版 PDF">
+            <a-upload :before-upload="handleBeforeUpload" :show-upload-list="false" accept=".pdf">
+              <UiButton size="sm" :loading="uploading">
+                <template #icon><UploadOutlined /></template>
+                {{ form.masterFileId ? '重新上传' : '上传 PDF' }}
               </UiButton>
-            </a-form-item>
-            <a-form-item label="防伪水印">
-              <a-input
-                v-model:value="form.watermarkText"
-                placeholder="可选，印刷在每页的水印文字"
-                :maxlength="200"
-                style="width: 280px"
+            </a-upload>
+            <span v-if="uploadedFileName" class="uploaded-hint">{{ uploadedFileName }}</span>
+            <UiButton
+              v-if="form.masterFileId"
+              size="sm"
+              style="margin-left: 8px"
+              @click="previewPdf"
+            >
+              <template #icon><EyeOutlined /></template>
+              预览
+            </UiButton>
+          </a-form-item>
+          <a-form-item label="防伪水印">
+            <a-input
+              v-model:value="form.watermarkText"
+              placeholder="可选，印刷在每页的水印文字"
+              :maxlength="200"
+              style="width: 280px"
+            />
+          </a-form-item>
+        </a-form>
+      </UiCard>
+
+      <!-- 身份填涂区 -->
+      <UiCard class="area-card">
+        <template #title>
+          <ProfileOutlined />
+          <span>身份填涂区（{{ identityAreas.length }}）</span>
+        </template>
+        <template #extra>
+          <UiButton size="sm" @click="addIdentityArea">
+            <template #icon><PlusOutlined /></template>
+            新增
+          </UiButton>
+        </template>
+        <UiDataTable
+          :columns="identityColumns"
+          :data-source="identityAreas"
+          :show-pagination="false"
+          flat
+          :total="identityAreas.length"
+          row-key="rowKey"
+          size="small"
+          bordered
+        >
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'areaType'">
+              <a-select
+                v-model:value="record.areaType"
+                style="width: 140px"
+                :options="identityAreaTypeOptions"
+                placeholder="选择类型"
               />
-            </a-form-item>
-          </a-form>
-        </UiCard>
-
-        <!-- 身份填涂区 -->
-        <UiCard class="area-card">
-          <template #title>
-            <ProfileOutlined />
-            <span>身份填涂区（{{ identityAreas.length }}）</span>
-          </template>
-          <template #extra>
-            <UiButton size="sm" @click="addIdentityArea">
-              <template #icon><PlusOutlined /></template>
-              新增
-            </UiButton>
-          </template>
-          <a-table
-            :columns="identityColumns"
-            :data-source="identityAreas"
-            :pagination="false"
-            row-key="rowKey"
-            size="small"
-            bordered
-          >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'areaType'">
-                <a-select
-                  v-model:value="record.areaType"
-                  style="width: 140px"
-                  :options="identityAreaTypeOptions"
-                  placeholder="选择类型"
-                />
-              </template>
-              <template v-else-if="column.key === 'pageNo'">
-                <a-input-number
-                  v-model:value="record.pageNo"
-                  :min="1"
-                  :max="99"
-                  style="width: 80px"
-                />
-              </template>
-              <template v-else-if="column.key === 'x'">
-                <a-input-number v-model:value="record.x" :min="0" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'y'">
-                <a-input-number v-model:value="record.y" :min="0" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'width'">
-                <a-input-number v-model:value="record.width" :min="1" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'height'">
-                <a-input-number v-model:value="record.height" :min="1" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'fillCellCount'">
-                <a-input-number v-model:value="record.fillCellCount" :min="0" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'action'">
-                <a-button type="link" danger size="small" @click="removeIdentityArea(index)">
-                  删除
-                </a-button>
-              </template>
             </template>
-          </a-table>
-        </UiCard>
-
-        <!-- 客观题填涂区 -->
-        <UiCard class="area-card">
-          <template #title>
-            <ProfileOutlined />
-            <span>客观题填涂区（{{ objectiveAreas.length }}）</span>
-          </template>
-          <template #extra>
-            <UiButton size="sm" @click="addObjectiveArea">
-              <template #icon><PlusOutlined /></template>
-              新增
-            </UiButton>
-          </template>
-          <a-table
-            :columns="objectiveColumns"
-            :data-source="objectiveAreas"
-            :pagination="false"
-            row-key="rowKey"
-            size="small"
-            bordered
-          >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'questionTemplateId'">
-                <a-input
-                  v-model:value="record.questionTemplateId"
-                  placeholder="题目模板ID"
-                  style="width: 140px"
-                />
-              </template>
-              <template v-else-if="column.key === 'pageNo'">
-                <a-input-number
-                  v-model:value="record.pageNo"
-                  :min="1"
-                  :max="99"
-                  style="width: 80px"
-                />
-              </template>
-              <template v-else-if="column.key === 'optionLabels'">
-                <a-input
-                  v-model:value="record.optionLabels"
-                  placeholder="A,B,C,D"
-                  style="width: 120px"
-                />
-              </template>
-              <template v-else-if="column.key === 'x'">
-                <a-input-number v-model:value="record.x" :min="0" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'y'">
-                <a-input-number v-model:value="record.y" :min="0" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'boxWidth'">
-                <a-input-number v-model:value="record.boxWidth" :min="1" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'boxHeight'">
-                <a-input-number v-model:value="record.boxHeight" :min="1" style="width: 80px" />
-              </template>
-              <template v-else-if="column.key === 'optionCount'">
-                <a-input-number
-                  v-model:value="record.optionCount"
-                  :min="2"
-                  :max="26"
-                  style="width: 80px"
-                />
-              </template>
-              <template v-else-if="column.key === 'action'">
-                <a-button type="link" danger size="small" @click="removeObjectiveArea(index)">
-                  删除
-                </a-button>
-              </template>
+            <template v-else-if="column.key === 'pageNo'">
+              <a-input-number
+                v-model:value="record.pageNo"
+                :min="1"
+                :max="99"
+                style="width: 80px"
+              />
             </template>
-          </a-table>
-        </UiCard>
-      </a-spin>
-    </div>
-  </GiPageLayout>
+            <template v-else-if="column.key === 'x'">
+              <a-input-number v-model:value="record.x" :min="0" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'y'">
+              <a-input-number v-model:value="record.y" :min="0" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'width'">
+              <a-input-number v-model:value="record.width" :min="1" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'height'">
+              <a-input-number v-model:value="record.height" :min="1" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'fillCellCount'">
+              <a-input-number v-model:value="record.fillCellCount" :min="0" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <a-button type="link" danger size="small" @click="removeIdentityArea(index)">
+                删除
+              </a-button>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+
+      <!-- 客观题填涂区 -->
+      <UiCard class="area-card">
+        <template #title>
+          <ProfileOutlined />
+          <span>客观题填涂区（{{ objectiveAreas.length }}）</span>
+        </template>
+        <template #extra>
+          <UiButton size="sm" @click="addObjectiveArea">
+            <template #icon><PlusOutlined /></template>
+            新增
+          </UiButton>
+        </template>
+        <UiDataTable
+          :columns="objectiveColumns"
+          :data-source="objectiveAreas"
+          :show-pagination="false"
+          flat
+          :total="objectiveAreas.length"
+          row-key="rowKey"
+          size="small"
+          bordered
+        >
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'questionTemplateId'">
+              <a-input
+                v-model:value="record.questionTemplateId"
+                placeholder="题目模板ID"
+                style="width: 140px"
+              />
+            </template>
+            <template v-else-if="column.key === 'pageNo'">
+              <a-input-number
+                v-model:value="record.pageNo"
+                :min="1"
+                :max="99"
+                style="width: 80px"
+              />
+            </template>
+            <template v-else-if="column.key === 'optionLabels'">
+              <a-input
+                v-model:value="record.optionLabels"
+                placeholder="A,B,C,D"
+                style="width: 120px"
+              />
+            </template>
+            <template v-else-if="column.key === 'x'">
+              <a-input-number v-model:value="record.x" :min="0" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'y'">
+              <a-input-number v-model:value="record.y" :min="0" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'boxWidth'">
+              <a-input-number v-model:value="record.boxWidth" :min="1" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'boxHeight'">
+              <a-input-number v-model:value="record.boxHeight" :min="1" style="width: 80px" />
+            </template>
+            <template v-else-if="column.key === 'optionCount'">
+              <a-input-number
+                v-model:value="record.optionCount"
+                :min="2"
+                :max="26"
+                style="width: 80px"
+              />
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <a-button type="link" danger size="small" @click="removeObjectiveArea(index)">
+                删除
+              </a-button>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </a-spin>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type {
   PaperMasterIdentityAreaPayload,
   PaperMasterObjectiveAreaPayload,
@@ -249,38 +251,22 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
-import { pageExams } from '@/apis/mark/exam'
 import { getPaperMaster, savePaperMaster } from '@/apis/mark/paper-master'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherPaperMaster' })
 
-const route = useRoute()
-
-// ─── 考试选择器 ──────────────────────────────────────────────────────
-
-const selectedExamId = ref<string | undefined>(undefined)
-const examOptions = ref<Array<{ label: string, value: string }>>([])
-const examOptionsLoading = ref(false)
-
-async function loadExamOptions() {
-  examOptionsLoading.value = true
-  try {
-    const res = await pageExams({ pageNum: 1, pageSize: 500 })
-    examOptions.value = (res.list ?? []).map((e: ExamSummaryVO) => ({
-      label: `${e.examName}（${e.examNo}）`,
-      value: e.examId,
-    }))
-  } catch {
-    message.error('加载考试列表失败')
-  } finally {
-    examOptionsLoading.value = false
-  }
-}
+// ─── B-8 统一考试选择器：复用 useMarkExamSelector，支持 URL/全局上下文同步 ─────
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExamSelector,
+} = useMarkExamSelector()
 
 // ─── 母版表单 ────────────────────────────────────────────────────────
 
@@ -440,10 +426,10 @@ function clearForm() {
   masterData.value = null
 }
 
-function handleExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]): void {
-  const next = value != null ? String(value) : undefined
-  selectedExamId.value = next
-  if (next) {
+function handleExamChange(value: unknown): void {
+  // 委托给 useMarkExamSelector 完成 URL/Store 同步，再驱动业务侧加载/清空
+  onExamChange(value as string | number | undefined)
+  if (selectedExamId.value) {
     void loadMasterData()
   } else {
     clearForm()
@@ -562,12 +548,9 @@ onBeforeUnmount(() => {
 
 // ─── 初始化 ──────────────────────────────────────────────────────────
 
-onMounted(() => {
-  loadExamOptions()
-  const queryExamId = route.query.examId as string | undefined
-  if (queryExamId) {
-    selectedExamId.value = queryExamId
-  }
+onMounted(async () => {
+  await initExamSelector()
+  // URL → 组件初次加载时若有 examId，watch(selectedExamId) 会自动触发 loadMasterData
 })
 
 watch(
@@ -583,6 +566,33 @@ watch(
 
 <style lang="scss" scoped>
 .paper-master-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    margin-top: 80px;
+  }
+
   .empty-block {
     margin-top: 80px;
   }

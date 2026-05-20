@@ -881,8 +881,12 @@ export interface MarkingProgressQueryPayload {
 /** 阅卷进度响应 - 对应 MarkingProgressResponse */
 export interface MarkingProgressVO {
   examId?: string
+  /** 试卷数量（含未绑定 / 冲突 / 已绑定的全部扫描卷面） */
   paperCount?: number
+  /** 可阅卷试卷数（bindingStatus = BOUND，完成率分母真源） */
+  gradablePaperCount?: number
   questionCount?: number
+  /** 应批阅题目总数 = gradablePaperCount × questionCount，已排除缺考 / 未绑定 / 冲突卷 */
   totalQuestionGradeCount?: number
   confirmedQuestionGradeCount?: number
   pendingReviewTaskCount?: number

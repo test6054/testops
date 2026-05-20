@@ -1,192 +1,177 @@
 <template>
-  <GiPageLayout>
-    <div class="print-package-page">
-      <PageHeader title="印刷包管理">
-        <template #tags>
-          <UiTag v-if="pagination.total > 0" tone="blue" size="md">
-            共 {{ pagination.total }} 个印刷包
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="print-package-page__context">
+        <div class="print-package-page__context-left">
           <a-select
-            v-model:value="selectedExamId"
-            style="width: 280px"
+            :value="selectedExamId"
+            class="print-package-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
-            :loading="examOptionsLoading"
+            :loading="examLoading"
             show-search
             option-filter-prop="label"
             allow-clear
             @change="handleExamChange"
           />
+          <UiTag v-if="pagination.total > 0" tone="blue" size="sm">
+            共 {{ pagination.total }} 个印刷包
+          </UiTag>
+        </div>
+        <div class="print-package-page__context-right">
           <UiButton size="sm" :disabled="!selectedExamId" :loading="generating" @click="openGenerateModal">
             <template #icon><ThunderboltOutlined /></template>
             一键生成印刷包
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <UiEmpty v-if="!selectedExamId" description="请选择考试以查看印刷包" class="empty-block" />
+    <UiEmpty v-if="!selectedExamId" description="请选择考试以查看印刷包" class="print-package-page__empty" />
 
-      <a-spin v-else :spinning="loading">
-        <UiEmpty v-if="!loading && packageList.length === 0" description="该考试暂无印刷包，点击“一键生成”创建" />
+    <a-spin v-else :spinning="loading">
+      <UiEmpty v-if="!loading && packageList.length === 0" description="该考试暂无印刷包，点击“一键生成”创建" />
 
-        <div v-else class="package-list">
-          <UiCard v-for="pkg in packageList" :key="pkg.printPackageId" class="package-card">
-            <template #title>
-              <ContainerOutlined />
-              <span>{{ pkg.packageName }}</span>
-            </template>
-            <template #extra>
-              <UiTag :tone="statusTone(pkg.status)" size="sm">
-                {{ statusLabel(pkg.status) }}
+      <div v-else class="package-list">
+        <UiCard v-for="pkg in packageList" :key="pkg.printPackageId" class="package-card">
+          <template #title>
+            <ContainerOutlined />
+            <span>{{ pkg.packageName }}</span>
+          </template>
+          <template #extra>
+            <UiTag :tone="statusTone(pkg.status)" size="sm">
+              {{ statusLabel(pkg.status) }}
+            </UiTag>
+          </template>
+
+          <a-descriptions :column="3" size="small" bordered>
+            <a-descriptions-item label="编号">{{ pkg.packageNo }}</a-descriptions-item>
+            <a-descriptions-item label="生成人数">{{ pkg.itemCount }}</a-descriptions-item>
+            <a-descriptions-item label="生成时间">{{ pkg.generatedTime ?? '-' }}</a-descriptions-item>
+            <a-descriptions-item label="备注" :span="3">{{ pkg.sealRemark || '-' }}</a-descriptions-item>
+          </a-descriptions>
+
+          <div class="package-actions">
+            <a-button type="link" size="small" @click="viewDetail(pkg)">
+              查看明细
+            </a-button>
+            <a-button v-if="pkg.packageFileId" type="link" size="small" @click="downloadPackagePdf(pkg)">
+              下载 PDF
+            </a-button>
+          </div>
+        </UiCard>
+
+        <a-pagination
+          v-if="pagination.total > pagination.pageSize"
+          v-model:current="pagination.pageNum"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          show-size-changer
+          :page-size-options="['10', '20', '50']"
+          class="print-package-page__pagination"
+          @change="loadPackageList"
+        />
+      </div>
+    </a-spin>
+
+    <!-- 一键生成印刷包弹窗 -->
+    <a-modal
+      v-model:open="generateModalVisible"
+      title="一键生成印刷包"
+      :width="560"
+      :confirm-loading="generating"
+      ok-text="开始生成"
+      cancel-text="取消"
+      @ok="handleGenerate"
+    >
+      <a-alert
+        type="info"
+        show-icon
+        style="margin-bottom: 16px"
+        message="系统将基于当前试卷母版和考生名册，为每位考生自动合成含二维码、条形码和防伪码的专属印刷文件，并合并为一个印刷包 PDF。"
+      />
+      <a-form layout="vertical" style="margin-top: 8px">
+        <a-form-item label="印刷包编号" required>
+          <a-input
+            v-model:value="generateForm.packageNo"
+            placeholder="例如：PKG-2026-001"
+            :maxlength="50"
+          />
+        </a-form-item>
+        <a-form-item label="印刷包名称" required>
+          <a-input
+            v-model:value="generateForm.packageName"
+            placeholder="例如：期末A卷-第一批次"
+            :maxlength="100"
+          />
+        </a-form-item>
+        <a-form-item label="封装备注">
+          <a-textarea
+            v-model:value="generateForm.sealRemark"
+            :rows="2"
+            :maxlength="500"
+            placeholder="可选"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 印刷包明细弹窗 -->
+    <a-modal
+      v-model:open="detailModalVisible"
+      :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
+      :width="960"
+      :footer="null"
+    >
+      <a-spin :spinning="detailLoading">
+        <UiDataTable
+          :columns="detailColumns"
+          :data-source="detailItems"
+          :show-pagination="false"
+          flat
+          :total="detailItems.length"
+          row-key="printPackageItemId"
+          size="small"
+          bordered
+          :scroll="{ y: 400 }"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
+                {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
               </UiTag>
             </template>
-
-            <a-descriptions :column="3" size="small" bordered>
-              <a-descriptions-item label="编号">{{ pkg.packageNo }}</a-descriptions-item>
-              <a-descriptions-item label="生成人数">{{ pkg.itemCount }}</a-descriptions-item>
-              <a-descriptions-item label="生成时间">{{ pkg.generatedTime ?? '-' }}</a-descriptions-item>
-              <a-descriptions-item label="备注" :span="3">{{ pkg.sealRemark || '-' }}</a-descriptions-item>
-            </a-descriptions>
-
-            <div class="package-actions">
-              <a-button type="link" size="small" @click="viewDetail(pkg)">
-                查看明细
-              </a-button>
-              <a-button v-if="pkg.packageFileId" type="link" size="small" @click="downloadPackagePdf(pkg)">
-                下载 PDF
-              </a-button>
-            </div>
-          </UiCard>
-
-          <a-pagination
-            v-if="pagination.total > pagination.pageSize"
-            v-model:current="pagination.pageNum"
-            v-model:page-size="pagination.pageSize"
-            :total="pagination.total"
-            show-size-changer
-            :page-size-options="['10', '20', '50']"
-            style="margin-top: 16px; text-align: right"
-            @change="loadPackageList"
-          />
-        </div>
+          </template>
+        </UiDataTable>
       </a-spin>
-
-      <!-- 一键生成印刷包弹窗 -->
-      <a-modal
-        v-model:open="generateModalVisible"
-        title="一键生成印刷包"
-        :width="560"
-        :confirm-loading="generating"
-        ok-text="开始生成"
-        cancel-text="取消"
-        @ok="handleGenerate"
-      >
-        <a-alert
-          type="info"
-          show-icon
-          style="margin-bottom: 16px"
-          message="系统将基于当前试卷母版和考生名册，为每位考生自动合成含二维码、条形码和防伪码的专属印刷文件，并合并为一个印刷包 PDF。"
-        />
-        <a-form layout="vertical" style="margin-top: 8px">
-          <a-form-item label="印刷包编号" required>
-            <a-input
-              v-model:value="generateForm.packageNo"
-              placeholder="例如：PKG-2026-001"
-              :maxlength="50"
-            />
-          </a-form-item>
-          <a-form-item label="印刷包名称" required>
-            <a-input
-              v-model:value="generateForm.packageName"
-              placeholder="例如：期末A卷-第一批次"
-              :maxlength="100"
-            />
-          </a-form-item>
-          <a-form-item label="封装备注">
-            <a-textarea
-              v-model:value="generateForm.sealRemark"
-              :rows="2"
-              :maxlength="500"
-              placeholder="可选"
-            />
-          </a-form-item>
-        </a-form>
-      </a-modal>
-
-      <!-- 印刷包明细弹窗 -->
-      <a-modal
-        v-model:open="detailModalVisible"
-        :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
-        :width="960"
-        :footer="null"
-      >
-        <a-spin :spinning="detailLoading">
-          <a-table
-            :columns="detailColumns"
-            :data-source="detailItems"
-            :pagination="false"
-            row-key="printPackageItemId"
-            size="small"
-            bordered
-            :scroll="{ y: 400 }"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
-                <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
-                  {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
-                </UiTag>
-              </template>
-            </template>
-          </a-table>
-        </a-spin>
-      </a-modal>
-    </div>
-  </GiPageLayout>
+    </a-modal>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/paper-master'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
-import { pageExams } from '@/apis/mark/exam'
 import { generatePrintPackage, getPrintPackage, pagePrintPackages } from '@/apis/mark/paper-master'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherPrintPackage' })
 
-const route = useRoute()
+// ─── B-8 统一考试选择器 ──────────────────────────────────────────
 
-// ─── 考试选择器 ──────────────────────────────────────────────────────
-
-const selectedExamId = ref<string | undefined>(undefined)
-const examOptions = ref<Array<{ label: string, value: string }>>([])
-const examOptionsLoading = ref(false)
-
-async function loadExamOptions() {
-  examOptionsLoading.value = true
-  try {
-    const res = await pageExams({ pageNum: 1, pageSize: 500 })
-    examOptions.value = (res.list ?? []).map((e: ExamSummaryVO) => ({
-      label: `${e.examName}（${e.examNo}）`,
-      value: e.examId,
-    }))
-  } catch {
-    message.error('加载考试列表失败')
-  } finally {
-    examOptionsLoading.value = false
-  }
-}
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExamSelector,
+} = useMarkExamSelector()
 
 // ─── 印刷包分页列表 ─────────────────────────────────────────────────
 
@@ -213,10 +198,10 @@ async function loadPackageList() {
   }
 }
 
-function handleExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]) {
-  const examId = value != null ? String(value) : undefined
+function handleExamChange(value: unknown): void {
+  onExamChange(value as string | number | undefined)
   pagination.pageNum = 1
-  if (examId) {
+  if (selectedExamId.value) {
     loadPackageList()
   }
   else {
@@ -336,12 +321,8 @@ const detailColumns: ColumnType[] = [
 
 // ─── 初始化 ──────────────────────────────────────────────────────────
 
-onMounted(() => {
-  loadExamOptions()
-  const queryExamId = route.query.examId as string | undefined
-  if (queryExamId) {
-    selectedExamId.value = queryExamId
-  }
+onMounted(async () => {
+  await initExamSelector()
 })
 
 watch(selectedExamId, (val) => {
@@ -353,6 +334,36 @@ watch(selectedExamId, (val) => {
 
 <style lang="scss" scoped>
 .print-package-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    margin-top: 80px;
+  }
+
+  &__pagination {
+    margin-top: 16px;
+    text-align: right;
+  }
+
   .empty-block {
     margin-top: 80px;
   }

@@ -11,11 +11,12 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
  *   onMounted(init)
  */
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { pageExams } from '@/apis/mark/exam'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/auth'
+import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useUserStore } from '@/stores/modules/user'
 
 export interface MarkExamSelectorOptions {
@@ -35,22 +36,45 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const router = useRouter()
   const authStore = useAuthStore()
   const userStore = useUserStore()
+  const examContext = useMarkExamContextStore()
 
   const syncUrl = options.syncUrl ?? true
   const maxLoad = options.maxLoad ?? 200
 
   const exams = ref<ExamSummaryVO[]>([])
   const loading = ref(false)
-  const selectedExamId = ref<string | undefined>(
-    route.query.examId ? String(route.query.examId) : undefined,
+
+  // 应用优先级：URL > 全局 Store > 空
+  const initialId =
+    (route.query.examId ? String(route.query.examId) : '') || examContext.currentExamId || ''
+  const selectedExamId = ref<string | undefined>(initialId || undefined)
+
+  // 页面本地选择变化 → 同步到全局 Store，使跨页面访问保持一致
+  watch(selectedExamId, (next) => {
+    if (next && next !== examContext.currentExamId) {
+      examContext.currentExamId = next
+    } else if (!next && examContext.currentExamId) {
+      examContext.currentExamId = ''
+    }
+  })
+
+  // 全局 Store 变化 → 同步到本页面，保持多 Tab 一致
+  watch(
+    () => examContext.currentExamId,
+    (next) => {
+      if (next && next !== selectedExamId.value) {
+        selectedExamId.value = next
+        if (syncUrl) writeExamIdToUrl(next)
+      }
+    },
   )
 
   const selectedExam = computed<ExamSummaryVO | null>(
-    () => exams.value.find(item => item.examId === selectedExamId.value) ?? null,
+    () => exams.value.find((item) => item.examId === selectedExamId.value) ?? null,
   )
 
   const examOptions = computed<MarkExamSelectOption[]>(() =>
-    exams.value.map(item => ({
+    exams.value.map((item) => ({
       value: item.examId,
       label: item.examNo ? `${item.examName} (${item.examNo})` : item.examName,
     })),
@@ -69,19 +93,19 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
         createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
       })
       exams.value = result.list ?? []
-      // URL 未指定 examId 时默认选第一个
+      // 同步考试列表到全局 Store，供跨页面下拉复用
+      examContext.exams = exams.value
+      // URL / Store 都未指定时默认选第一个
       if (!selectedExamId.value && exams.value.length > 0) {
         selectedExamId.value = exams.value[0].examId
         if (syncUrl) {
           writeExamIdToUrl(selectedExamId.value)
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
       message.error(errMsg)
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -90,14 +114,16 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     const nextQuery = { ...route.query }
     if (examId) {
       nextQuery.examId = examId
-    }
-    else {
+    } else {
       delete nextQuery.examId
     }
     void router.replace({ query: nextQuery })
   }
 
-  function onExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]): void {
+  function onExamChange(
+    value: SelectValue,
+    _option: DefaultOptionType | DefaultOptionType[],
+  ): void {
     const examId = value != null ? String(value) : undefined
     selectedExamId.value = examId
     if (syncUrl) {

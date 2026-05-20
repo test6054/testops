@@ -12,13 +12,37 @@ import type {
   ProfessionAlgorithmTemplateSavePayload,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+
+const columns: ColumnsType = [
+  { title: '编码', dataIndex: 'templateCode', key: 'templateCode', width: 120 },
+  { title: '名称', dataIndex: 'templateName', key: 'templateName' },
+  { title: '来源', key: 'source', width: 110 },
+  { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 180 },
+  { title: '学科', dataIndex: 'disciplineCategory', key: 'disciplineCategory', width: 120 },
+  { title: '直接/间接默认权重', key: 'weights', width: 160 },
+  { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
+  { title: '操作', key: 'actions', width: 280, fixed: 'right' },
+]
+
+/* ========== 状态守卫 helper（避免 as 断言） ========== */
+
+function accreditationTypeLabel(value: unknown): string {
+  if (typeof value !== 'string') return '-'
+  const dict: Record<string, string> = ACCREDITATION_TYPE_LABEL
+  return dict[value] || value
+}
 
 const list = ref<ProfessionAlgorithmTemplateVO[]>([])
 const total = ref(0)
@@ -78,7 +102,33 @@ function isSharedTemplate(record: ProfessionAlgorithmTemplateVO) {
   return String(record.tenantId) === '0'
 }
 
-function assignEditor(record: ProfessionAlgorithmTemplateVO, id: string | undefined, templateCode: string, templateName: string) {
+/* ========== 信号指标：专业算法模板库健康度 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const shared = list.value.filter((t) => isSharedTemplate(t)).length
+  const tenant = list.value.filter((t) => !isSharedTemplate(t)).length
+  const enabled = list.value.filter((t) => t.enabled).length
+  const disabled = list.value.filter((t) => !t.enabled).length
+  const aiSupport = list.value.filter((t) => t.aiLiteracySupported).length
+  const civic = list.value.filter((t) => t.civicDimensionsSupported).length
+  return [
+    { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
+    { key: 'all-total', label: '模板总数', value: total.value, tone: 'blue' },
+    { key: 'shared', label: '平台共享', value: shared, tone: shared > 0 ? 'blue' : 'gray' },
+    { key: 'tenant', label: '租户自定义', value: tenant, tone: tenant > 0 ? 'green' : 'gray' },
+    { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
+    { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
+    { key: 'ai-support', label: '支持 AI 素养', value: aiSupport, tone: 'blue' },
+    { key: 'civic', label: '支持五育维度', value: civic, tone: 'blue' },
+  ]
+})
+
+function assignEditor(
+  record: ProfessionAlgorithmTemplateVO,
+  id: string | undefined,
+  templateCode: string,
+  templateName: string,
+) {
   Object.assign(editor, {
     id,
     templateCode,
@@ -127,9 +177,9 @@ async function loadList() {
   }
 }
 
-function handlePageChange(p: number, ps: number) {
-  query.pageNum = p
-  query.pageSize = ps
+function handlePageChange(payload: { current: number; pageSize: number }) {
+  query.pageNum = payload.current
+  query.pageSize = payload.pageSize
   loadList()
 }
 
@@ -256,9 +306,9 @@ async function handleDelete(record: ProfessionAlgorithmTemplateVO) {
     message.info('平台共享模板不能在租户侧删除')
     return
   }
-  Modal.confirm({
+  void confirmAsync({
     title: `删除模板 ${record.templateCode}？`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await professionAlgorithmTemplateApi.delete(record.id)
       message.success('已删除')
@@ -273,91 +323,101 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page">
-    <a-card title="专业算法模板" :bordered="false">
-      <template #extra>
-        <a-space wrap>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="pat__context">
+        <div class="pat__context-info">
+          <h2 class="pat__title">专业算法模板库</h2>
+        </div>
+      </div>
+    </template>
+
+    <SignalBand :metrics="signals" compact class="pat__signals" />
+
+    <section class="pat__panel">
+      <header class="pat__panel-header">
+        <h3 class="pat__panel-title">模板台账</h3>
+        <div class="pat__panel-actions">
           <a-select
             v-model:value="query.accreditationType"
             placeholder="认证类型"
             allow-clear
-            style="width: 200px"
+            class="pat__filter pat__filter--lg"
             :options="accreditationOptions"
           />
-          <a-input v-model:value="query.keyword" placeholder="编码/名称" style="width: 200px" @press-enter="loadList" />
-          <a-button type="primary" @click="loadList">查询</a-button>
-          <a-button @click="resetQuery">重置</a-button>
-          <a-button type="primary" @click="openCreate">新建模板</a-button>
-        </a-space>
-      </template>
+          <a-input
+            v-model:value="query.keyword"
+            placeholder="编码/名称"
+            class="pat__filter pat__filter--md"
+            @press-enter="loadList"
+          />
+          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
+            查询
+          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openCreate"> 新建模板 </UiButton>
+        </div>
+      </header>
 
-      <a-table
+      <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
+        :columns="columns"
         :data-source="list"
         :loading="loading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: query.pageNum,
-          pageSize: query.pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (n: number) => `共 ${n} 条`,
-          onChange: handlePageChange,
-        }"
+        :total="total"
+        flat
+        @page-change="handlePageChange"
       >
-        <a-table-column title="编码" data-index="templateCode" width="120" />
-        <a-table-column title="名称" data-index="templateName" />
-        <a-table-column title="来源" width="110">
-          <template #default="{ record }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'source'">
             <a-tag :color="isSharedTemplate(record) ? 'blue' : 'green'">
               {{ isSharedTemplate(record) ? '平台共享' : '租户自定义' }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="认证类型" data-index="accreditationType" width="180">
-          <template #default="{ text }">
-            {{ ACCREDITATION_TYPE_LABEL[text as keyof typeof ACCREDITATION_TYPE_LABEL] || text }}
+          <template v-else-if="column.key === 'accreditationType'">
+            {{ accreditationTypeLabel(text) }}
           </template>
-        </a-table-column>
-        <a-table-column title="学科" data-index="disciplineCategory" width="120" />
-        <a-table-column title="直接/间接默认权重" width="160">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'weights'">
             {{ record.directWeightDefault ?? '-' }} / {{ record.indirectWeightDefault ?? '-' }}
           </template>
-        </a-table-column>
-        <a-table-column title="状态" data-index="enabled" width="100">
-          <template #default="{ text }">
+          <template v-else-if="column.key === 'enabled'">
             <a-tag :color="text ? 'green' : 'default'">
               {{ text ? '启用' : '停用' }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="操作" width="260" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space>
-              <a-button type="link" size="small" @click="openDetail(record)">详情</a-button>
-              <a-button
+              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
+              <UiButton
                 v-if="isSharedTemplate(record)"
-                type="link"
-                size="small"
+                variant="outline"
+                size="sm"
                 :loading="copyingTemplateId === record.id"
                 @click="copyAsTenantTemplate(record)"
               >
                 复制为租户模板
-              </a-button>
-              <a-tooltip v-if="isSharedTemplate(record)" title="平台共享模板仅可查看和继承，不能在租户侧编辑">
-                <a-button type="link" size="small" disabled>编辑</a-button>
+              </UiButton>
+              <a-tooltip
+                v-if="isSharedTemplate(record)"
+                title="平台共享模板仅可查看和继承，不能在租户侧编辑"
+              >
+                <UiButton variant="ghost" size="sm" disabled> 编辑 </UiButton>
               </a-tooltip>
-              <a-button v-else type="link" size="small" @click="openEdit(record)">编辑</a-button>
+              <UiButton v-else variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
               <a-tooltip v-if="isSharedTemplate(record)" title="平台共享模板不能在租户侧删除">
-                <a-button type="link" size="small" danger disabled>删除</a-button>
+                <UiButton variant="danger-ghost" size="sm" disabled> 删除 </UiButton>
               </a-tooltip>
-              <a-button v-else type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+              <UiButton v-else variant="danger-ghost" size="sm" @click="handleDelete(record)">
+                删除
+              </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
     <a-modal
       v-model:open="editorVisible"
@@ -397,7 +457,13 @@ onMounted(async () => {
           </a-col>
         </a-row>
         <a-form-item label="关联认证标准">
-          <a-select v-model:value="editor.standardId" allow-clear show-search option-filter-prop="label" placeholder="可选">
+          <a-select
+            v-model:value="editor.standardId"
+            allow-clear
+            show-search
+            option-filter-prop="label"
+            placeholder="可选"
+          >
             <a-select-option
               v-for="s in standards"
               :key="s.id"
@@ -416,7 +482,10 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="课程目标聚合">
-              <a-select v-model:value="editor.courseGoalAggregation" :options="aggregationOptions" />
+              <a-select
+                v-model:value="editor.courseGoalAggregation"
+                :options="aggregationOptions"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -426,7 +495,10 @@ onMounted(async () => {
           </a-col>
           <a-col :span="8">
             <a-form-item label="毕业要求聚合">
-              <a-select v-model:value="editor.requirementAggregation" :options="aggregationOptions" />
+              <a-select
+                v-model:value="editor.requirementAggregation"
+                :options="aggregationOptions"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -435,39 +507,79 @@ onMounted(async () => {
         <a-row :gutter="12">
           <a-col :span="6">
             <a-form-item label="直接评价权重">
-              <a-input-number v-model:value="editor.directWeightDefault" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.directWeightDefault"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="6">
             <a-form-item label="间接评价权重">
-              <a-input-number v-model:value="editor.indirectWeightDefault" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.indirectWeightDefault"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="6">
             <a-form-item label="间接最低样本">
-              <a-input-number v-model:value="editor.indirectMinValidSampleCount" :min="0" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.indirectMinValidSampleCount"
+                :min="0"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="6">
             <a-form-item label="间接覆盖率阈值">
-              <a-input-number v-model:value="editor.indirectCoverageThreshold" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.indirectCoverageThreshold"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="课程目标默认阈值">
-              <a-input-number v-model:value="editor.courseGoalThresholdDefault" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.courseGoalThresholdDefault"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="观测点默认阈值">
-              <a-input-number v-model:value="editor.indicatorThresholdDefault" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.indicatorThresholdDefault"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="毕业要求默认阈值">
-              <a-input-number v-model:value="editor.requirementThresholdDefault" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="editor.requirementThresholdDefault"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -505,7 +617,7 @@ onMounted(async () => {
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="认证类型">
-            {{ ACCREDITATION_TYPE_LABEL[detailRecord.accreditationType as keyof typeof ACCREDITATION_TYPE_LABEL] || detailRecord.accreditationType }}
+            {{ accreditationTypeLabel(detailRecord.accreditationType) }}
           </a-descriptions-item>
           <a-descriptions-item label="学科分类">
             {{ detailRecord.disciplineCategory || '-' }}
@@ -526,7 +638,8 @@ onMounted(async () => {
             {{ detailRecord.requirementAggregation || '-' }}
           </a-descriptions-item>
           <a-descriptions-item label="直接 / 间接权重">
-            {{ detailRecord.directWeightDefault ?? '-' }} / {{ detailRecord.indirectWeightDefault ?? '-' }}
+            {{ detailRecord.directWeightDefault ?? '-' }} /
+            {{ detailRecord.indirectWeightDefault ?? '-' }}
           </a-descriptions-item>
           <a-descriptions-item label="间接最低样本">
             {{ detailRecord.indirectMinValidSampleCount ?? '-' }}
@@ -572,26 +685,101 @@ onMounted(async () => {
 
         <a-divider v-if="isSharedTemplate(detailRecord)">租户继承</a-divider>
         <a-space v-if="isSharedTemplate(detailRecord)">
-          <a-button
-            type="primary"
+          <UiButton
+            variant="primary"
+            size="sm"
             :loading="copyingTemplateId === detailRecord.id"
             @click="copyAsTenantTemplate(detailRecord)"
           >
             复制为租户模板
-          </a-button>
+          </UiButton>
         </a-space>
       </template>
     </a-drawer>
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.pat {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__context-info {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 140px;
+
+    &--md {
+      width: 200px;
+    }
+
+    &--lg {
+      width: 220px;
+    }
+  }
+}
+
 .json-preview {
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
   max-height: 180px;
   overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--dp-text-muted, #475569);
 }
 </style>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 /**
- * 成绩 Excel 异步导入工作台
+ * 质量评价 - 成绩 Excel 异步导入
  *
- * 主链（严格对齐后端 ScoreBatchController）：
+ * 后端契约（ScoreBatchController）：
  * 1. 选择 质量评价课程 + 考核环节 + 学年 / 学期 -> 填批次编码 / 名称 -> 上传 Excel
  *    上传后调用 edu-storage 得到 sourceFileId，再调用 /api/quality/score-batches/create 注册批次
  * 2. POST /enqueue-parse 触发异步解析，状态机：PENDING -> PARSING -> PREVIEW_READY / FAILED
@@ -20,17 +20,35 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import {
   assessmentItemApi,
+  isScoreBatchStatus,
   qualityCourseApi,
   SCORE_BATCH_STATUS_COLOR,
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import {
+  AuditTimelineDrawer,
+  SignalBand,
+  StageRail,
+  StageWorkbenchShell,
+  TaskResultPanel,
+} from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 
 const qualityStore = useQualityStore()
 
@@ -90,6 +108,75 @@ const statusOptions = Object.entries(SCORE_BATCH_STATUS_LABEL).map(([value, labe
   value,
   label,
 }))
+
+// ─── 状态守卫 helper：禁止 as 类型断言 ─────────────────────────────
+function statusLabel(value: unknown): string {
+  if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function statusColor(value: unknown): string {
+  if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_COLOR[value]
+  return 'default'
+}
+
+function sourceModeLabel(value: unknown): string {
+  if (typeof value !== 'string') return '-'
+  const opt = SOURCE_MODE_OPTIONS.find((o) => o.value === value)
+  return opt ? opt.label : value || '-'
+}
+
+// ─── 阶段状态分布（用于 StageRail） ─────────────────────────────
+const statusBuckets = computed(() => {
+  const buckets: Record<ScoreBatchStatus, number> = {
+    PENDING: 0,
+    PARSING: 0,
+    PREVIEW_READY: 0,
+    VALIDATED: 0,
+    CONFIRMED: 0,
+    FAILED: 0,
+    CANCELLED: 0,
+  }
+  for (const b of batches.value) {
+    if (isScoreBatchStatus(b.status)) buckets[b.status] += 1
+  }
+  return buckets
+})
+
+const stages = computed<WorkbenchStage[]>(() => {
+  const b = statusBuckets.value
+  const stageOrder: Array<{ key: ScoreBatchStatus; title: string }> = [
+    { key: 'PENDING', title: '待处理' },
+    { key: 'PARSING', title: '解析中' },
+    { key: 'PREVIEW_READY', title: '预览就绪' },
+    { key: 'VALIDATED', title: '已校验' },
+    { key: 'CONFIRMED', title: '已确认' },
+  ]
+  return stageOrder.map((stage) => {
+    const count = b[stage.key]
+    let status: WorkbenchStage['status'] = 'pending'
+    if (stage.key === 'CONFIRMED' && count > 0) status = 'completed'
+    else if (count > 0) status = 'active'
+    return {
+      key: stage.key,
+      title: stage.title,
+      status,
+      statusText: `${count} 个批次`,
+    }
+  })
+})
+
+const signals = computed<SignalMetric[]>(() => {
+  const b = statusBuckets.value
+  return [
+    { key: 'total', label: '本页批次', value: batches.value.length, tone: 'blue' },
+    { key: 'confirmed', label: '已确认', value: b.CONFIRMED, tone: 'green' },
+    { key: 'validated', label: '已校验', value: b.VALIDATED, tone: 'blue' },
+    { key: 'previewReady', label: '预览就绪', value: b.PREVIEW_READY, tone: 'orange' },
+    { key: 'failed', label: '失败', value: b.FAILED, tone: 'red' },
+    { key: 'cancelled', label: '已取消', value: b.CANCELLED, tone: 'gray' },
+  ]
+})
 
 const courseSelectOptions = computed(() =>
   courseOptions.value.map((item) => ({
@@ -177,11 +264,36 @@ async function loadBatches() {
   }
 }
 
-function handlePageChange(page: number, pageSize: number) {
-  query.pageNum = page
-  query.pageSize = pageSize
+function handlePageChange(payload: { current: number; pageSize: number }) {
+  query.pageNum = payload.current
+  query.pageSize = payload.pageSize
   loadBatches()
 }
+
+const batchListColumns: ColumnsType = [
+  { title: '批次 ID', dataIndex: 'id', key: 'id', width: 120 },
+  { title: '编码', dataIndex: 'batchCode', key: 'batchCode', width: 140 },
+  { title: '名称', dataIndex: 'batchName', key: 'batchName' },
+  { title: '课程', key: 'course', width: 220 },
+  { title: '考核环节', key: 'assessmentItem', width: 200 },
+  { title: '学年', dataIndex: 'schoolYear', key: 'schoolYear', width: 110 },
+  { title: '学期', dataIndex: 'semester', key: 'semester', width: 70 },
+  { title: '接入模式', dataIndex: 'sourceMode', key: 'sourceMode', width: 160 },
+  { title: '行数（成功/错误/总）', key: 'rowsBreakdown', width: 180 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
+  { title: '提交时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
+  { title: '操作', key: 'actions', width: 360, fixed: 'right' },
+]
+
+const diagnosticsColumns: ColumnsType = [
+  { title: 'Excel 行号', dataIndex: 'rowIndex', key: 'rowIndex', width: 80 },
+  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber' },
+  { title: '姓名', dataIndex: 'studentName', key: 'studentName' },
+  { title: '班级', dataIndex: 'className', key: 'className' },
+  { title: '原始得分', dataIndex: 'rawScore', key: 'rawScore' },
+  { title: '是否通过', dataIndex: 'valid', key: 'valid', width: 90 },
+  { title: '错误码 / 说明', key: 'errorInfo' },
+]
 
 function resetQuery() {
   query.pageNum = 1
@@ -256,9 +368,10 @@ async function openPreview(record: ScoreBatchVO) {
 }
 
 async function handleValidate(record: ScoreBatchVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: '校验该批次？',
     content: `批次 ${record.id} 校验通过后将进入 VALIDATED 状态，是否继续？`,
+    type: 'info',
     onOk: async () => {
       await scoreBatchApi.validate(record.id)
       message.success('批次已校验')
@@ -268,9 +381,10 @@ async function handleValidate(record: ScoreBatchVO) {
 }
 
 async function handleConfirm(record: ScoreBatchVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: '确认该批次？',
     content: `批次 ${record.id} 确认后将参与达成度计算，是否继续？`,
+    type: 'info',
     onOk: async () => {
       await scoreBatchApi.confirm(record.id)
       message.success('批次已确认')
@@ -280,10 +394,10 @@ async function handleConfirm(record: ScoreBatchVO) {
 }
 
 async function handleCancel(record: ScoreBatchVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: '取消该批次？',
     content: `批次 ${record.id} 取消后不再参与达成度计算`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await scoreBatchApi.updateStatus({
         id: record.id,
@@ -296,9 +410,10 @@ async function handleCancel(record: ScoreBatchVO) {
 }
 
 async function handleReParse(record: ScoreBatchVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: '重新解析该批次？',
     content: `仅 PENDING / FAILED 状态可触发；当前状态：${SCORE_BATCH_STATUS_LABEL[record.status]}`,
+    type: 'warning',
     onOk: async () => {
       await scoreBatchApi.enqueueParse(record.id)
       message.success('已重新触发解析')
@@ -382,16 +497,73 @@ function canEdit(status: ScoreBatchStatus) {
   return status !== 'CONFIRMED'
 }
 
+const auditDrawerOpen = ref(false)
+const auditEvents = ref<AuditTimelineEvent[]>([])
+const auditLoading = ref(false)
+
+async function openAuditDrawer(record: ScoreBatchVO) {
+  auditDrawerOpen.value = true
+  auditLoading.value = true
+  auditEvents.value = []
+  try {
+    const page = await getOperationLogPage({
+      pageNum: 1,
+      pageSize: 50,
+      module: 'SCORE_BATCH',
+      category: 'QUALITY',
+      description: record.id,
+    })
+    auditEvents.value = page.list.map((log) => ({
+      id: log.id,
+      operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
+      operationType: log.type,
+      operationLabel: log.detail || log.type,
+      time: log.createTime,
+      targetType: log.module,
+      targetId: log.bizId || undefined,
+      beforeValue: log.changeDetails ? JSON.parse(log.changeDetails)?.before : undefined,
+      afterValue: log.changeDetails ? JSON.parse(log.changeDetails)?.after : undefined,
+    }))
+  } catch {
+    auditEvents.value = []
+  } finally {
+    auditLoading.value = false
+  }
+}
+
+const batchResultItems = computed<TaskResultItem[]>(() => {
+  return batches.value
+    .filter((b) => b.status === 'FAILED' || b.status === 'PARSING')
+    .slice(0, 5)
+    .map((b) => ({
+      id: b.id,
+      title: `${b.batchCode} - ${b.batchName}`,
+      statusLabel: statusLabel(b.status),
+      statusTone: b.status === 'FAILED' ? 'red' : 'blue',
+      description:
+        b.status === 'FAILED'
+          ? `错误 ${b.errorRows ?? 0} 行 / 总 ${b.totalRows ?? 0} 行`
+          : `解析中…`,
+      time: b.createTime || undefined,
+      actions: [{ key: 'preview', label: '预览' }],
+    }))
+})
+
+function handleBatchResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+  const record = batches.value.find((b) => b.id === payload.item.id)
+  if (record && payload.action.key === 'preview') openPreview(record)
+}
+
 function canDelete(status: ScoreBatchStatus) {
   // 仅安全状态允许物理删除；已 CONFIRMED 禁止删除以保护达成度计算血缘
   return status === 'PENDING' || status === 'FAILED' || status === 'CANCELLED'
 }
 
 async function handleDelete(record: ScoreBatchVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除批次 ${record.batchCode}？`,
     content: '删除后批次及关联成绩明细会被清除，该操作不可恢复，请谨慎操作。',
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await scoreBatchApi.delete(record.id)
       message.success('已删除')
@@ -461,102 +633,21 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="score-batch-page">
-    <a-card title="Excel 成绩导入" :bordered="false" class="upload-card">
-      <a-form layout="inline" :model="uploadForm">
-        <a-form-item label="课程" required>
-          <a-select
-            v-model:value="uploadForm.qualityCourseId"
-            placeholder="选择质量评价课程"
-            style="min-width: 240px"
-            :options="courseSelectOptions"
-          />
-        </a-form-item>
-        <a-form-item label="考核环节" required>
-          <a-select
-            v-model:value="uploadForm.assessmentItemId"
-            placeholder="选择考核环节"
-            style="min-width: 220px"
-            :options="uploadAssessmentItemOptions"
-            :loading="uploadAssessmentLoading"
-            :disabled="!uploadForm.qualityCourseId"
-            allow-clear
-          />
-        </a-form-item>
-        <a-form-item label="批次编码" required>
-          <a-input
-            v-model:value="uploadForm.batchCode"
-            placeholder="batch_code"
-            style="width: 160px"
-          />
-        </a-form-item>
-        <a-form-item label="批次名称" required>
-          <a-input
-            v-model:value="uploadForm.batchName"
-            placeholder="batch_name"
-            style="width: 200px"
-          />
-        </a-form-item>
-        <a-form-item label="接入模式">
-          <a-select
-            v-model:value="uploadForm.sourceMode"
-            style="width: 200px"
-            :options="SOURCE_MODE_OPTIONS"
-          />
-        </a-form-item>
-        <a-form-item label="学年">
-          <a-input
-            v-model:value="uploadForm.schoolYear"
-            placeholder="例：2024-2025"
-            style="width: 160px"
-          />
-        </a-form-item>
-        <a-form-item label="学期">
-          <a-select v-model:value="uploadForm.semester" style="width: 100px">
-            <a-select-option value="1"> 1 </a-select-option>
-            <a-select-option value="2"> 2 </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item>
-          <a-upload
-            name="file"
-            accept=".xlsx,.xls"
-            :show-upload-list="false"
-            :custom-request="handleUpload"
-            :disabled="uploading"
-          >
-            <a-button type="primary" :loading="uploading">
-              <template #icon>
-                <span class="anticon"><svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor">
-                  <path d="M512 64L128 448h128v448h512V448h128L512 64z" /></svg></span>
-              </template>
-              上传 Excel
-            </a-button>
-          </a-upload>
-        </a-form-item>
-      </a-form>
-      <a-alert
-        type="info"
-        show-icon
-        style="margin-top: 12px"
-        message="Excel 表头按后端 ScoreImportExcelParser 约定：学生学号 / 姓名 / 班级 / 最终成绩。上传后进入 PENDING → PARSING → PREVIEW_READY 状态机，解析完成后通过 校验 → 确认 闭环。"
-      />
-    </a-card>
-
-    <a-card title="成绩批次" :bordered="false" class="list-card">
-      <template #extra>
-        <a-space>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="score-batch__context">
+        <div class="score-batch__context-left">
           <a-select
             v-model:value="query.qualityCourseId"
             placeholder="按课程筛选"
-            style="min-width: 200px"
+            class="score-batch__filter score-batch__filter--lg"
             allow-clear
             :options="courseSelectOptions"
           />
           <a-select
             v-model:value="query.assessmentItemId"
             placeholder="考核环节"
-            style="min-width: 200px"
+            class="score-batch__filter score-batch__filter--lg"
             :options="queryAssessmentItemOptions"
             :loading="queryAssessmentLoading"
             :disabled="!query.qualityCourseId"
@@ -565,165 +656,263 @@ onMounted(async () => {
           <a-select
             v-model:value="query.status"
             placeholder="状态"
-            style="width: 160px"
+            class="score-batch__filter"
             allow-clear
             :options="statusOptions"
           />
           <a-select
             v-model:value="query.sourceMode"
             placeholder="接入模式"
-            style="width: 200px"
+            class="score-batch__filter score-batch__filter--lg"
             allow-clear
             :options="SOURCE_MODE_OPTIONS"
           />
           <a-input
             v-model:value="query.keyword"
             placeholder="关键字"
-            style="width: 160px"
+            class="score-batch__filter"
             @press-enter="loadBatches"
           />
-          <a-button type="primary" @click="loadBatches"> 查询 </a-button>
-          <a-button @click="resetQuery"> 重置 </a-button>
-        </a-space>
-      </template>
+        </div>
+        <div class="score-batch__context-right">
+          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadBatches">
+            查询
+          </UiButton>
+        </div>
+      </div>
+    </template>
 
-      <a-table
+    <UiEmpty
+      v-if="!qualityStore.currentTrainingPlanId"
+      description="请先选择培养方案，再进行成绩批次的接入与计算"
+      class="score-batch__empty"
+    />
+
+    <template v-else>
+      <StageRail :stages="stages" compact class="score-batch__stages" />
+      <SignalBand :metrics="signals" compact class="score-batch__signals" />
+
+      <TaskResultPanel
+        v-if="batchResultItems.length > 0"
+        title="待关注批次"
+        :items="batchResultItems"
+        class="score-batch__result-panel"
+        @action="handleBatchResultAction"
+      />
+
+      <div class="score-batch__upload">
+        <header class="score-batch__upload-header">
+          <h3 class="score-batch__upload-title">Excel 成绩导入</h3>
+          <p class="score-batch__upload-hint">
+            表头按后端 ScoreImportExcelParser 约定：学号 / 姓名 / 班级 / 最终成绩。 上传后进入
+            <code>PENDING → PARSING → PREVIEW_READY</code> 状态机，由
+            <strong>预览 → 校验 → 确认</strong> 完成闭环。
+          </p>
+        </header>
+        <a-form layout="inline" :model="uploadForm" class="score-batch__upload-form">
+          <a-form-item label="课程" required>
+            <a-select
+              v-model:value="uploadForm.qualityCourseId"
+              placeholder="选择质量评价课程"
+              class="score-batch__filter score-batch__filter--lg"
+              :options="courseSelectOptions"
+            />
+          </a-form-item>
+          <a-form-item label="考核环节" required>
+            <a-select
+              v-model:value="uploadForm.assessmentItemId"
+              placeholder="选择考核环节"
+              class="score-batch__filter score-batch__filter--lg"
+              :options="uploadAssessmentItemOptions"
+              :loading="uploadAssessmentLoading"
+              :disabled="!uploadForm.qualityCourseId"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item label="批次编码" required>
+            <a-input
+              v-model:value="uploadForm.batchCode"
+              placeholder="batch_code"
+              class="score-batch__filter"
+            />
+          </a-form-item>
+          <a-form-item label="批次名称" required>
+            <a-input
+              v-model:value="uploadForm.batchName"
+              placeholder="batch_name"
+              class="score-batch__filter score-batch__filter--lg"
+            />
+          </a-form-item>
+          <a-form-item label="接入模式">
+            <a-select
+              v-model:value="uploadForm.sourceMode"
+              class="score-batch__filter score-batch__filter--lg"
+              :options="SOURCE_MODE_OPTIONS"
+            />
+          </a-form-item>
+          <a-form-item label="学年">
+            <a-input
+              v-model:value="uploadForm.schoolYear"
+              placeholder="例：2024-2025"
+              class="score-batch__filter"
+            />
+          </a-form-item>
+          <a-form-item label="学期">
+            <a-select
+              v-model:value="uploadForm.semester"
+              class="score-batch__filter score-batch__filter--xxs"
+            >
+              <a-select-option value="1"> 1 </a-select-option>
+              <a-select-option value="2"> 2 </a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item>
+            <a-upload
+              name="file"
+              accept=".xlsx,.xls"
+              :show-upload-list="false"
+              :custom-request="handleUpload"
+              :disabled="uploading"
+            >
+              <UiButton variant="primary" :loading="uploading"> 上传 Excel </UiButton>
+            </a-upload>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
+        class="score-batch__table"
+        :columns="batchListColumns"
         :data-source="batches"
         :loading="loading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: query.pageNum,
-          pageSize: query.pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (n: number) => `共 ${n} 条`,
-          onChange: handlePageChange,
-        }"
+        :total="total"
+        flat
+        @page-change="handlePageChange"
       >
-        <a-table-column title="批次 ID" data-index="id" width="120" />
-        <a-table-column title="编码" data-index="batchCode" width="140" />
-        <a-table-column title="名称" data-index="batchName" />
-        <a-table-column title="课程" width="220">
-          <template #default="{ record }">
-            <div>{{ record.qualityCourseName }}</div>
-            <div style="color: #999; font-size: 12px">{{ record.qualityCourseCode }}</div>
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'course'">
+            <div>{{ record.qualityCourseName || '-' }}</div>
+            <div class="score-batch__sub-text">
+              {{ record.qualityCourseCode || '' }}
+            </div>
           </template>
-        </a-table-column>
-        <a-table-column title="考核环节" width="200">
-          <template #default="{ record }">
-            <div>{{ record.assessmentItemName }}</div>
-            <div style="color: #999; font-size: 12px">{{ record.assessmentItemCode }}</div>
+          <template v-else-if="column.key === 'assessmentItem'">
+            <div>{{ record.assessmentItemName || '-' }}</div>
+            <div class="score-batch__sub-text">
+              {{ record.assessmentItemCode || '' }}
+            </div>
           </template>
-        </a-table-column>
-        <a-table-column title="学年" data-index="schoolYear" width="110" />
-        <a-table-column title="学期" data-index="semester" width="70" />
-        <a-table-column title="接入模式" data-index="sourceMode" width="160">
-          <template #default="{ text }">
-            {{ SOURCE_MODE_OPTIONS.find((o) => o.value === text)?.label || text }}
+          <template
+            v-else-if="
+              column.key === 'schoolYear' ||
+              column.key === 'semester' ||
+              column.key === 'createTime'
+            "
+          >
+            {{ text || '-' }}
           </template>
-        </a-table-column>
-        <a-table-column title="行数 (成功/错误/总)" width="160">
-          <template #default="{ record }">
-            <span style="color: #52c41a">{{ record.successRows ?? 0 }}</span>
+          <template v-else-if="column.key === 'sourceMode'">
+            {{ sourceModeLabel(text) }}
+          </template>
+          <template v-else-if="column.key === 'rowsBreakdown'">
+            <span class="score-batch__num-success">{{ record.successRows ?? 0 }}</span>
             /
-            <span :style="{ color: record.errorRows ? '#ff4d4f' : 'inherit' }">{{
-              record.errorRows ?? 0
-            }}</span>
+            <span class="score-batch__num-error">{{ record.errorRows ?? 0 }}</span>
             /
-            {{ record.totalRows ?? 0 }}
+            <span>{{ record.totalRows ?? 0 }}</span>
           </template>
-        </a-table-column>
-        <a-table-column title="状态" data-index="status" width="120">
-          <template #default="{ text }">
-            <a-tag :color="SCORE_BATCH_STATUS_COLOR[text as ScoreBatchStatus]">
-              {{ SCORE_BATCH_STATUS_LABEL[text as ScoreBatchStatus] }}
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="statusColor(text)">
+              {{ statusLabel(text) }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="提交时间" data-index="createTime" width="170" />
-        <a-table-column title="操作" width="320" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space wrap>
-              <a-button type="link" size="small" @click="openPreview(record)"> 预览 </a-button>
-              <a-button
+              <UiButton variant="ghost" size="sm" @click="openPreview(record)"> 预览 </UiButton>
+              <UiButton
                 v-if="canValidate(record.status)"
-                type="link"
-                size="small"
+                variant="ghost"
+                size="sm"
                 @click="handleValidate(record)"
               >
                 校验
-              </a-button>
-              <a-button
+              </UiButton>
+              <UiButton
                 v-if="canConfirm(record.status)"
-                type="link"
-                size="small"
+                variant="primary"
+                size="sm"
                 @click="handleConfirm(record)"
               >
                 确认
-              </a-button>
-              <a-button
+              </UiButton>
+              <UiButton
                 v-if="canReParse(record.status)"
-                type="link"
-                size="small"
+                variant="outline"
+                size="sm"
                 @click="handleReParse(record)"
               >
                 重新解析
-              </a-button>
-              <a-button
-                v-if="canCancel(record.status)"
-                type="link"
-                danger
-                size="small"
-                @click="handleCancel(record)"
-              >
-                取消
-              </a-button>
-              <a-button
+              </UiButton>
+              <UiButton
                 v-if="canEdit(record.status)"
-                type="link"
-                size="small"
+                variant="ghost"
+                size="sm"
                 @click="openEdit(record)"
               >
                 编辑
-              </a-button>
-              <a-button
+              </UiButton>
+              <UiButton
+                v-if="canCancel(record.status)"
+                variant="danger-ghost"
+                size="sm"
+                @click="handleCancel(record)"
+              >
+                取消
+              </UiButton>
+              <UiButton
                 v-if="canDelete(record.status)"
-                type="link"
-                size="small"
-                danger
+                variant="danger-ghost"
+                size="sm"
                 @click="handleDelete(record)"
               >
                 删除
-              </a-button>
+              </UiButton>
+              <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </template>
 
-    <a-modal v-model:open="previewVisible" title="批次明细预览" width="960px" :footer="null">
+    <UiDrawer v-model:open="previewVisible" title="批次明细预览" :width="960" :hide-footer="true">
       <a-descriptions
         v-if="previewBatch"
         :column="3"
         size="small"
         bordered
-        style="margin-bottom: 12px"
+        class="score-batch__preview-descriptions"
       >
-        <a-descriptions-item label="批次 ID">{{ previewBatch.id }}</a-descriptions-item>
+        <a-descriptions-item label="批次 ID">
+          {{ previewBatch.id }}
+        </a-descriptions-item>
         <a-descriptions-item label="状态">
-          <a-tag :color="SCORE_BATCH_STATUS_COLOR[previewBatch.status]">
-            {{ SCORE_BATCH_STATUS_LABEL[previewBatch.status] }}
+          <a-tag :color="statusColor(previewBatch.status)">
+            {{ statusLabel(previewBatch.status) }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="行数">
-          <span style="color: #52c41a">{{ previewSummary.successRows }}</span>
+        <a-descriptions-item label="行数（成功/错误/总）">
+          <span class="score-batch__num-success">{{ previewSummary.successRows }}</span>
           /
-          <span :style="{ color: previewSummary.errorRows ? '#ff4d4f' : 'inherit' }">{{
-            previewSummary.errorRows
-          }}</span>
+          <span :class="previewSummary.errorRows ? 'score-batch__num-error' : ''">
+            {{ previewSummary.errorRows }}
+          </span>
           /
-          {{ previewSummary.totalRows }}
+          <span>{{ previewSummary.totalRows }}</span>
         </a-descriptions-item>
       </a-descriptions>
       <a-alert
@@ -731,30 +920,29 @@ onMounted(async () => {
         type="error"
         show-icon
         :message="previewSummary.errorSummary"
-        style="margin-bottom: 12px"
+        class="score-batch__preview-alert"
       />
-      <a-table
+      <UiDataTable
+        :columns="diagnosticsColumns"
         :data-source="diagnostics"
         :loading="previewLoading"
         row-key="rowIndex"
         size="small"
-        :pagination="false"
+        :show-pagination="false"
+        flat
+        :total="diagnostics.length"
         :scroll="{ y: 420 }"
       >
-        <a-table-column title="Excel 行号" data-index="rowIndex" width="80" />
-        <a-table-column title="学号" data-index="studentNumber" />
-        <a-table-column title="姓名" data-index="studentName" />
-        <a-table-column title="班级" data-index="className" />
-        <a-table-column title="原始得分" data-index="rawScore">
-          <template #default="{ text }">{{ text ?? '-' }}</template>
-        </a-table-column>
-        <a-table-column title="是否通过" data-index="valid" width="90">
-          <template #default="{ text }">
-            <a-tag :color="text ? 'green' : 'red'">{{ text ? '通过' : '失败' }}</a-tag>
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'rawScore'">
+            {{ text ?? '-' }}
           </template>
-        </a-table-column>
-        <a-table-column title="错误码 / 说明">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'valid'">
+            <a-tag :color="text ? 'green' : 'red'">
+              {{ text ? '通过' : '失败' }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'errorInfo'">
             <a-space direction="vertical" size="small" style="width: 100%">
               <a-space v-if="record.errorCodes?.length" wrap size="small">
                 <a-tag v-for="code in record.errorCodes" :key="code" color="orange">
@@ -764,25 +952,29 @@ onMounted(async () => {
               <div
                 v-for="(msg, idx) in record.errorMessages || []"
                 :key="`${record.rowIndex}-${idx}`"
-                style="color: #ff4d4f"
+                class="score-batch__error-msg"
               >
                 {{ msg }}
               </div>
               <span
                 v-if="!record.errorCodes?.length && !record.errorMessages?.length"
-                style="color: #999"
-              >-</span>
+                class="score-batch__sub-text"
+              >
+                -
+              </span>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-modal>
+        </template>
+      </UiDataTable>
+    </UiDrawer>
 
-    <a-modal
+    <UiDrawer
       v-model:open="editorVisible"
       :title="`编辑批次 ${editor.batchCode}`"
+      :width="720"
       :confirm-loading="editorSubmitting"
-      width="720px"
+      :hide-footer="false"
+      ok-text="保存"
       @ok="submitEditor"
     >
       <a-alert
@@ -790,7 +982,7 @@ onMounted(async () => {
         show-icon
         message="批次元数据编辑"
         description="可修改批次名称 / 编码 / 考核环节 / 学年学期；课程一经建立不建议变更。若批次已 CONFIRMED，请先取消后再编辑。"
-        style="margin-bottom: 12px"
+        class="score-batch__editor-alert"
       />
       <a-form layout="vertical" :model="editor">
         <a-row :gutter="12">
@@ -830,24 +1022,142 @@ onMounted(async () => {
           <a-col :span="12">
             <a-form-item label="学期">
               <a-select v-model:value="editor.semester">
-                <a-select-option value="1">1</a-select-option>
-                <a-select-option value="2">2</a-select-option>
+                <a-select-option value="1"> 1 </a-select-option>
+                <a-select-option value="2"> 2 </a-select-option>
               </a-select>
             </a-form-item>
           </a-col>
         </a-row>
       </a-form>
-    </a-modal>
-  </div>
+    </UiDrawer>
+
+    <AuditTimelineDrawer
+      v-model:open="auditDrawerOpen"
+      :events="auditEvents"
+      :loading="auditLoading"
+      title="成绩批次操作审计"
+      show-diff
+    />
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.score-batch-page {
-  padding: 16px;
+.score-batch {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
 
-  .upload-card,
-  .list-card {
+  &__context-left,
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 160px;
+
+    &--lg {
+      width: 220px;
+    }
+
+    &--xxs {
+      width: 80px;
+    }
+  }
+
+  &__empty {
+    margin-top: 32px;
+  }
+
+  &__stages {
     margin-bottom: 16px;
+  }
+
+  &__signals {
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__result-panel {
+    margin-bottom: 20px;
+  }
+
+  &__upload {
+    margin-bottom: 20px;
+    padding: 20px;
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__upload-header {
+    margin-bottom: 16px;
+  }
+
+  &__upload-title {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__upload-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--dp-text-secondary, #64748b);
+    line-height: 1.6;
+
+    code {
+      padding: 1px 6px;
+      margin: 0 2px;
+      font-size: 12px;
+      background: var(--dp-gray-100, #f1f5f9);
+      border-radius: 4px;
+    }
+  }
+
+  &__upload-form {
+    row-gap: 12px;
+  }
+
+  &__table {
+    background: var(--dp-surface, #fff);
+    border-radius: 8px;
+  }
+
+  &__sub-text {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+
+  &__num-success {
+    color: var(--ant-color-success, #16a34a);
+  }
+
+  &__num-error {
+    color: var(--ant-color-error, #dc2626);
+  }
+
+  &__error-msg {
+    color: var(--ant-color-error, #dc2626);
+  }
+
+  &__preview-descriptions {
+    margin-bottom: 12px;
+  }
+
+  &__preview-alert,
+  &__editor-alert {
+    margin-bottom: 12px;
   }
 }
 </style>

@@ -56,19 +56,19 @@
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="范围"
-          >{{ record.scopeType ?? '-' }}/{{ record.scopeId ?? '-' }}</a-descriptions-item
-          >
+          <a-descriptions-item label="范围">
+            {{ record.scopeType ?? '-' }}/{{ record.scopeId ?? '-' }}
+          </a-descriptions-item>
           <a-descriptions-item label="考试数">{{ record.examCount ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="趋势">
-            <a-tag :color="trendColor(record.growthTrend)">{{
-              trendLabel(record.growthTrend)
-            }}</a-tag>
+            <a-tag :color="trendColor(record.growthTrend)">
+              {{ trendLabel(record.growthTrend) }}
+            </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间" :span="2">{{
-            fmt(record.createTime)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间" :span="2">
+            {{ fmt(record.createTime) }}
+          </a-descriptions-item>
           <a-descriptions-item label="trace ID">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -113,11 +113,11 @@
 
 <script lang="ts" setup>
 import type { SemesterAbilityGrowthVO } from '@/apis/mark/cross-exam-analysis'
+import { generateClassGrowth, listGrowth } from '@/apis/mark/cross-exam-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
-import { generateClassGrowth, listGrowth } from '@/apis/mark/cross-exam-analysis'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 
 defineOptions({ name: 'SemesterGrowthCard' })

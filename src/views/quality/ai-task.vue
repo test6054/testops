@@ -1,15 +1,12 @@
 <script setup lang="ts">
 /**
- * AI 任务中心
+ * 质量评价 / AI 能力 - AI 任务与结果审计台
  *
- * 列表：按 能力 / 状态 / 业务类型 / 业务 ID / 操作人 筛选（严格对齐后端 AiTaskQueryRequest）
- * 提交：7 类能力，支持挂业务锚点（专业 / 培养方案 / 课程 / 达成度 / 报告 / 文件节点 / 用户提问）
- * 详情抽屉：
- *  - 任务字段：状态机 / 失败阶段 / 失败原因 / 业务锚点 / 提示词快照 ID / 脱敏映射 ID / 结果 ID
- *  - AI 结果：诊断摘要 / 报告正文 / 校验状态 / 敏感检测 / Token 用量；可对结果『接受 / 退回 / 警告』
- *  - 提示词快照：从 /api/quality/ai-prompt-snapshots/detail 拉取分段提示词
- *  - 脱敏映射：跳转脱敏映射审计页面（明文反脱敏受权限控制）
- * 失败任务可立即同步重跑（运维场景 /run-now）
+ * 后端契约（AiTaskController + AiResultController + AiPromptSnapshotController）：
+ * - 列表 AiTaskQueryRequest：按能力 / 状态 / 业务类型 / 业务 ID / 操作人 / 业务锚点筛选
+ * - 提交 AiTaskSubmitRequest：按能力填必填项（ACHIEVEMENT_DIAGNOSIS -> achievementResultId；SYLLABUS_PARSE / TRAINING_PLAN_PARSE / MATERIAL_QA -> fileNodeId）
+ * - 状态机 PENDING -> PROCESSING -> SUCCEEDED / FAILED / CANCELED，失败可 /run-now重跑
+ * - 结果 updateValidation 可调 PASSED / WARN / REJECTED
  */
 import type {
   AiOutputValidation,
@@ -18,12 +15,8 @@ import type {
   AiTaskQueryPayload,
   AiTaskStatus,
   AiTaskSubmitPayload,
-  AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   AI_OUTPUT_VALIDATION_COLOR,
   AI_OUTPUT_VALIDATION_LABEL,
@@ -33,8 +26,68 @@ import {
   aiPromptSnapshotApi,
   aiResultApi,
   aiTaskApi,
+  isAiOutputValidation,
+  isAiTaskStatus,
+  isAiTaskType,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  CourseSelector,
+  ProgramSelector,
+  ReportSelector,
+  TrainingPlanSelector,
+} from '@/components/quality/selectors'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import {
+  AuditTimelineDrawer,
+  SignalBand,
+  StageRail,
+  StageWorkbenchShell,
+  TaskResultPanel,
+} from '@/components/workbench'
+import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
+
+const aiTaskStore = useAiTaskStore()
+
+/* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
+
+function aiTaskTypeLabel(value: unknown): string {
+  if (isAiTaskType(value)) return AI_TASK_TYPE_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function aiTaskStatusLabel(value: unknown): string {
+  if (isAiTaskStatus(value)) return AI_TASK_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function aiTaskStatusColor(value: unknown): string {
+  if (isAiTaskStatus(value)) return AI_TASK_STATUS_COLOR[value]
+  return 'default'
+}
+
+function validationLabel(value: unknown): string {
+  if (isAiOutputValidation(value)) return AI_OUTPUT_VALIDATION_LABEL[value]
+  return '-'
+}
+
+function validationColor(value: unknown): string {
+  if (isAiOutputValidation(value)) return AI_OUTPUT_VALIDATION_COLOR[value]
+  return 'default'
+}
 
 const qualityStore = useQualityStore()
 const router = useRouter()
@@ -80,9 +133,19 @@ const detailResult = ref<AiResultVO | null>(null)
 const promptSnapshot = ref<AiPromptSnapshotVO | null>(null)
 const validationUpdating = ref(false)
 
-const taskTypeOptions = Object.entries(AI_TASK_TYPE_LABEL).map(([value, label]) => ({ value, label }))
-const statusOptions = Object.entries(AI_TASK_STATUS_LABEL).map(([value, label]) => ({ value, label }))
-const validationOptions: { value: AiOutputValidation, label: string, color: string }[] = [
+const auditDrawerOpen = ref(false)
+const auditEvents = ref<AuditTimelineEvent[]>([])
+const auditLoading = ref(false)
+
+const taskTypeOptions = Object.entries(AI_TASK_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const statusOptions = Object.entries(AI_TASK_STATUS_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+const validationOptions: { value: AiOutputValidation; label: string; color: string }[] = [
   { value: 'PASSED', label: '通过（接受）', color: 'green' },
   { value: 'WARN', label: '警告（需人工审核）', color: 'orange' },
   { value: 'REJECTED', label: '退回（拒绝）', color: 'red' },
@@ -101,24 +164,35 @@ async function loadList() {
       businessId: query.businessId?.trim() || undefined,
       operatorUserId: query.operatorUserId?.trim() || undefined,
       programId: query.programId?.trim() || undefined,
-      trainingPlanId: query.trainingPlanId?.trim() || qualityStore.currentTrainingPlanId || undefined,
+      trainingPlanId:
+        query.trainingPlanId?.trim() || qualityStore.currentTrainingPlanId || undefined,
       qualityCourseId: query.qualityCourseId?.trim() || undefined,
       achievementResultId: query.achievementResultId?.trim() || undefined,
       reportId: query.reportId?.trim() || undefined,
     })
     list.value = page.list
     total.value = page.total
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(page: number, pageSize: number) {
-  query.pageNum = page
-  query.pageSize = pageSize
+function handlePageChange(payload: { current: number; pageSize: number }) {
+  query.pageNum = payload.current
+  query.pageSize = payload.pageSize
   loadList()
 }
+
+const columns: ColumnsType = [
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 100 },
+  { title: '能力', dataIndex: 'taskType', key: 'taskType', width: 180 },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
+  { title: '业务类型', dataIndex: 'businessType', key: 'businessType', width: 160 },
+  { title: '业务锚点', key: 'businessAnchor', width: 240 },
+  { title: '失败阶段', dataIndex: 'failurePhase', key: 'failurePhase', width: 160 },
+  { title: '开始时间', dataIndex: 'startedAt', key: 'startedAt', width: 160 },
+  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+]
 
 function resetQuery() {
   query.pageNum = 1
@@ -159,7 +233,8 @@ async function submitTask() {
       businessType: submitForm.businessType?.trim() || undefined,
       businessId: submitForm.businessId?.trim() || undefined,
       programId: submitForm.programId?.trim() || undefined,
-      trainingPlanId: submitForm.trainingPlanId?.trim() || qualityStore.currentTrainingPlanId || undefined,
+      trainingPlanId:
+        submitForm.trainingPlanId?.trim() || qualityStore.currentTrainingPlanId || undefined,
       qualityCourseId: submitForm.qualityCourseId?.trim() || undefined,
       achievementResultId: submitForm.achievementResultId?.trim() || undefined,
       reportId: submitForm.reportId?.trim() || undefined,
@@ -168,31 +243,36 @@ async function submitTask() {
     })
     message.success(`已提交 AI 任务 ${result.aiTaskId}`)
     submitVisible.value = false
+    // 提交后启动轮询：任务达到终态后自动停止，其他页面能同步看到状态跳转
+    if (result.aiTaskId) aiTaskStore.startPolling(result.aiTaskId)
     await loadList()
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
 
 async function runNow(record: AiTaskVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `立即同步执行任务 ${record.id}？`,
     content: '仅 PENDING 状态可立即执行，常用于演示 / 运维场景。',
+    type: 'info',
     onOk: async () => {
       await aiTaskApi.runNow(record.id)
       message.success('已触发同步执行')
+      // runNow 会使任务进入 PROCESSING，启动轮询跟踪终态
+      aiTaskStore.startPolling(record.id)
       await loadList()
     },
   })
 }
 
 async function cancelTask(record: AiTaskVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `取消任务 ${record.id}？`,
     content: '只有 PENDING / PROCESSING 状态可取消，已成功或已失败的任务不可取消。',
+    type: 'warning',
     onOk: async () => {
-      await aiTaskApi.cancel(record.id)
+      await aiTaskStore.cancelTask(record.id)
       message.success('已取消任务')
       await loadList()
     },
@@ -205,22 +285,74 @@ async function openDetail(record: AiTaskVO) {
   detailRecord.value = record
   detailResult.value = null
   promptSnapshot.value = null
+  // 非终态任务启动轮询，让抽屉实时反映 PROCESSING/SUCCEEDED/FAILED 状态变化
+  if (!isTerminalAiStatus(record.status)) {
+    aiTaskStore.startPolling(record.id)
+  }
   try {
     const [resultVo, snapshotVo] = await Promise.all([
       aiResultApi.getByTask(record.id),
-      record.promptSnapshotId ? aiPromptSnapshotApi.detail(record.promptSnapshotId) : Promise.resolve(null),
+      record.promptSnapshotId
+        ? aiPromptSnapshotApi.detail(record.promptSnapshotId)
+        : Promise.resolve(null),
     ])
     detailResult.value = resultVo
     promptSnapshot.value = snapshotVo
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
 
+/** 判断任务是否已达终态（如果已终态，抽屉不需轮询） */
+function isTerminalAiStatus(status: AiTaskStatus | undefined): boolean {
+  return status === 'SUCCEEDED' || status === 'FAILED' || status === 'CANCELLED'
+}
+
+/**
+ * 详情抽屉关闭时停止当前任务轮询，避免后台僵尸轮询。
+ * 同时在抽屉打开期间同步 store 缓存过来的状态到 detailRecord，UI 能看到状态跳转。
+ */
+watch(detailVisible, (open) => {
+  if (!open && detailRecord.value?.id) {
+    aiTaskStore.stopPolling(detailRecord.value.id)
+  }
+})
+
+// 同步轮询到达的最新状态到 detailRecord，让 UI 实时反映
+watch(
+  () => (detailRecord.value?.id ? aiTaskStore.getCached(detailRecord.value.id) : null),
+  (cached) => {
+    if (!cached || !detailRecord.value) return
+    if (cached.id !== detailRecord.value.id) return
+    // 仅在状态变化时赋值，避免不必要的引用改变
+    if (
+      cached.status !== detailRecord.value.status ||
+      cached.failurePhase !== detailRecord.value.failurePhase ||
+      cached.failureReason !== detailRecord.value.failureReason ||
+      cached.finishedAt !== detailRecord.value.finishedAt
+    ) {
+      detailRecord.value = { ...detailRecord.value, ...cached }
+      // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
+      if (isTerminalAiStatus(cached.status) && !detailResult.value) {
+        void aiResultApi.getByTask(cached.id).then((vo) => {
+          if (detailVisible.value && detailRecord.value?.id === cached.id) {
+            detailResult.value = vo
+          }
+        })
+      }
+    }
+  },
+)
+
+// 页面卸载时保险地停掉详情轮询
+onBeforeUnmount(() => {
+  if (detailRecord.value?.id) {
+    aiTaskStore.stopPolling(detailRecord.value.id)
+  }
+})
+
 async function updateValidation(validation: AiOutputValidation) {
-  if (!detailResult.value)
-    return
+  if (!detailResult.value) return
   validationUpdating.value = true
   try {
     await aiResultApi.updateValidation({
@@ -231,8 +363,7 @@ async function updateValidation(validation: AiOutputValidation) {
     })
     detailResult.value.outputValidation = validation
     message.success(`已更新校验状态为 ${AI_OUTPUT_VALIDATION_LABEL[validation]}`)
-  }
-  finally {
+  } finally {
     validationUpdating.value = false
   }
 }
@@ -241,7 +372,126 @@ function gotoMaskAudit(taskId: string) {
   router.push({ name: 'QualityAiMaskMapping', query: { aiTaskId: taskId } })
 }
 
-watch(() => qualityStore.currentTrainingPlanId, () => loadList())
+async function openAuditDrawer(record: AiTaskVO) {
+  auditDrawerOpen.value = true
+  auditLoading.value = true
+  auditEvents.value = []
+  try {
+    const page = await getOperationLogPage({
+      pageNum: 1,
+      pageSize: 50,
+      module: 'AI_TASK',
+      category: 'QUALITY',
+      description: record.id,
+    })
+    auditEvents.value = page.list.map((log) => ({
+      id: log.id,
+      operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
+      operationType: log.type,
+      operationLabel: log.detail || log.type,
+      time: log.createTime,
+      targetType: log.module,
+      targetId: log.bizId || undefined,
+      beforeValue: log.changeDetails ? JSON.parse(log.changeDetails)?.before : undefined,
+      afterValue: log.changeDetails ? JSON.parse(log.changeDetails)?.after : undefined,
+    }))
+  } catch {
+    auditEvents.value = []
+  } finally {
+    auditLoading.value = false
+  }
+}
+
+const taskResultItems = computed<TaskResultItem[]>(() => {
+  return list.value
+    .filter((t) => t.status === 'FAILED' || t.status === 'PROCESSING')
+    .slice(0, 5)
+    .map((t) => ({
+      id: t.id,
+      title: `${aiTaskTypeLabel(t.taskType)} #${t.id}`,
+      statusLabel: aiTaskStatusLabel(t.status),
+      statusTone: t.status === 'FAILED' ? 'red' : 'blue',
+      description: t.failurePhase ? `失败阶段: ${t.failurePhase}` : undefined,
+      time: t.startedAt || undefined,
+      actions:
+        t.status === 'FAILED'
+          ? [{ key: 'detail', label: '查看详情' }]
+          : [{ key: 'detail', label: '详情' }],
+    }))
+})
+
+function handleTaskResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+  const record = list.value.find((t) => t.id === payload.item.id)
+  if (record && payload.action.key === 'detail') openDetail(record)
+}
+
+/* ========== 阶段轨与信号指标 ========== */
+
+const statusBuckets = computed(() => {
+  const buckets: Record<AiTaskStatus, number> = {
+    PENDING: 0,
+    PROCESSING: 0,
+    SUCCEEDED: 0,
+    FAILED: 0,
+    CANCELED: 0,
+  }
+  for (const item of list.value) {
+    if (isAiTaskStatus(item.status)) buckets[item.status] += 1
+  }
+  return buckets
+})
+
+const stages = computed<WorkbenchStage[]>(() => {
+  const b = statusBuckets.value
+  const order: Array<{ key: AiTaskStatus; title: string; completed?: boolean }> = [
+    { key: 'PENDING', title: '待处理' },
+    { key: 'PROCESSING', title: '运行中' },
+    { key: 'SUCCEEDED', title: '成功', completed: true },
+    { key: 'FAILED', title: '失败' },
+    { key: 'CANCELED', title: '取消' },
+  ]
+  return order.map((stage) => {
+    const count = b[stage.key]
+    let status: WorkbenchStageStatus = 'pending'
+    if (stage.key === 'FAILED' && count > 0) status = 'error'
+    else if (stage.completed && count > 0) status = 'completed'
+    else if (count > 0) status = 'active'
+    return {
+      key: stage.key,
+      title: stage.title,
+      status,
+      statusText: `${count} 条`,
+    }
+  })
+})
+
+const signals = computed<SignalMetric[]>(() => {
+  const b = statusBuckets.value
+  return [
+    { key: 'total', label: '本页任务', value: list.value.length, tone: 'blue' },
+    { key: 'pending', label: '待处理', value: b.PENDING, tone: b.PENDING > 0 ? 'orange' : 'gray' },
+    {
+      key: 'processing',
+      label: '运行中',
+      value: b.PROCESSING,
+      tone: b.PROCESSING > 0 ? 'blue' : 'gray',
+    },
+    {
+      key: 'succeeded',
+      label: '成功',
+      value: b.SUCCEEDED,
+      tone: b.SUCCEEDED > 0 ? 'green' : 'gray',
+    },
+    { key: 'failed', label: '失败', value: b.FAILED, tone: b.FAILED > 0 ? 'red' : 'gray' },
+    { key: 'canceled', label: '取消', value: b.CANCELED, tone: b.CANCELED > 0 ? 'gray' : 'gray' },
+    { key: 'overall', label: '总任务', value: total.value, tone: 'gray' },
+  ]
+})
+
+watch(
+  () => qualityStore.currentTrainingPlanId,
+  () => loadList(),
+)
 
 onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -254,137 +504,170 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="ai-task-page">
-    <a-card title="AI 任务中心" :bordered="false">
-      <template #extra>
-        <a-space>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="ai-task__context">
+        <div class="ai-task__context-info">
+          <h2 class="ai-task__title">质量评价 - AI 任务与结果审计</h2>
+        </div>
+        <div class="ai-task__context-actions">
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
+            刷新
+          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openSubmit"> 提交任务 </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <StageRail :stages="stages" compact class="ai-task__stages" />
+    <SignalBand :metrics="signals" compact class="ai-task__signals" />
+
+    <TaskResultPanel
+      v-if="taskResultItems.length > 0"
+      title="待关注任务"
+      :items="taskResultItems"
+      class="ai-task__result-panel"
+      @action="handleTaskResultAction"
+    />
+
+    <section class="ai-task__panel">
+      <header class="ai-task__panel-header">
+        <h3 class="ai-task__panel-title">任务列表</h3>
+        <div class="ai-task__panel-actions">
           <a-select
             v-model:value="query.taskType"
             placeholder="能力"
-            style="width: 180px"
+            class="ai-task__filter ai-task__filter--md"
             allow-clear
             :options="taskTypeOptions"
           />
           <a-select
             v-model:value="query.status"
             placeholder="状态"
-            style="width: 130px"
+            class="ai-task__filter"
             allow-clear
             :options="statusOptions"
           />
-          <a-input v-model:value="query.businessType" placeholder="业务类型" style="width: 140px" />
-          <a-input v-model:value="query.businessId" placeholder="业务 ID" style="width: 110px" />
-          <a-input v-model:value="query.operatorUserId" placeholder="操作人 ID" style="width: 110px" />
+          <a-input
+            v-model:value="query.businessType"
+            placeholder="业务类型"
+            class="ai-task__filter"
+          />
+          <a-input
+            v-model:value="query.businessId"
+            placeholder="业务 ID"
+            class="ai-task__filter ai-task__filter--xs"
+          />
+          <a-input
+            v-model:value="query.operatorUserId"
+            placeholder="操作人 ID"
+            class="ai-task__filter ai-task__filter--xs"
+          />
           <a-input
             v-model:value="query.trainingPlanId"
-            :placeholder="qualityStore.currentTrainingPlanId ? `培养方案 ID（默认 ${qualityStore.currentTrainingPlanId}）` : '培养方案 ID'"
-            style="width: 160px"
+            :placeholder="
+              qualityStore.currentTrainingPlanId
+                ? `培养方案 #${qualityStore.currentTrainingPlanId}`
+                : '培养方案 ID'
+            "
+            class="ai-task__filter ai-task__filter--md"
           />
-          <a-input v-model:value="query.qualityCourseId" placeholder="课程 ID" style="width: 110px" />
-          <a-input v-model:value="query.achievementResultId" placeholder="达成度 ID" style="width: 110px" />
-          <a-input v-model:value="query.reportId" placeholder="报告 ID" style="width: 110px" />
-          <a-button type="primary" @click="loadList">
+          <a-input
+            v-model:value="query.qualityCourseId"
+            placeholder="课程 ID"
+            class="ai-task__filter ai-task__filter--xs"
+          />
+          <a-input
+            v-model:value="query.achievementResultId"
+            placeholder="达成度 ID"
+            class="ai-task__filter ai-task__filter--xs"
+          />
+          <a-input
+            v-model:value="query.reportId"
+            placeholder="报告 ID"
+            class="ai-task__filter ai-task__filter--xs"
+          />
+          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
             查询
-          </a-button>
-          <a-button @click="resetQuery">
-            重置
-          </a-button>
-          <a-button type="primary" @click="openSubmit">
-            提交任务
-          </a-button>
-        </a-space>
-      </template>
+          </UiButton>
+        </div>
+      </header>
 
-      <a-table
+      <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
+        :columns="columns"
         :data-source="list"
         :loading="loading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: query.pageNum,
-          pageSize: query.pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (n: number) => `共 ${n} 条`,
-          onChange: handlePageChange,
-        }"
+        :total="total"
+        flat
+        @page-change="handlePageChange"
       >
-        <a-table-column title="ID" data-index="id" width="100" />
-        <a-table-column title="能力" data-index="taskType" width="180">
-          <template #default="{ text }">
-            {{ AI_TASK_TYPE_LABEL[text as AiTaskType] || text }}
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'taskType'">
+            {{ aiTaskTypeLabel(text) }}
           </template>
-        </a-table-column>
-        <a-table-column title="状态" data-index="status" width="100">
-          <template #default="{ text }">
-            <a-tag :color="AI_TASK_STATUS_COLOR[text as AiTaskStatus]">
-              {{ AI_TASK_STATUS_LABEL[text as AiTaskStatus] }}
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="aiTaskStatusColor(text)">
+              {{ aiTaskStatusLabel(text) }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="业务类型" data-index="businessType" width="160">
-          <template #default="{ text }">
+          <template v-else-if="column.key === 'businessType'">
             {{ text || '-' }}
           </template>
-        </a-table-column>
-        <a-table-column title="业务锚点" width="240">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'businessAnchor'">
             <a-space direction="vertical" size="small">
-              <a-tag v-if="record.qualityCourseId">
-                课程 #{{ record.qualityCourseId }}
-              </a-tag>
+              <a-tag v-if="record.qualityCourseId"> 课程 #{{ record.qualityCourseId }} </a-tag>
               <a-tag v-if="record.achievementResultId">
                 达成度 #{{ record.achievementResultId }}
               </a-tag>
-              <a-tag v-if="record.reportId">
-                报告 #{{ record.reportId }}
-              </a-tag>
-              <a-tag v-if="record.trainingPlanId">
-                培养方案 #{{ record.trainingPlanId }}
-              </a-tag>
+              <a-tag v-if="record.reportId"> 报告 #{{ record.reportId }} </a-tag>
+              <a-tag v-if="record.trainingPlanId"> 培养方案 #{{ record.trainingPlanId }} </a-tag>
             </a-space>
           </template>
-        </a-table-column>
-        <a-table-column title="失败阶段" data-index="failurePhase" width="160">
-          <template #default="{ text }">
-            <span v-if="text" style="color: #ff4d4f">{{ text }}</span>
+          <template v-else-if="column.key === 'failurePhase'">
+            <span v-if="text" class="ai-task__error-text">{{ text }}</span>
             <span v-else>-</span>
           </template>
-        </a-table-column>
-        <a-table-column title="开始时间" data-index="startedAt" width="160" />
-        <a-table-column title="操作" width="240" fixed="right">
-          <template #default="{ record }">
-            <a-space>
-              <a-button type="link" size="small" @click="openDetail(record)">
-                详情
-              </a-button>
-              <a-button
+          <template v-else-if="column.key === 'startedAt'">
+            {{ text || '-' }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-space wrap>
+              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
+              <UiButton
                 v-if="record.status === 'PENDING'"
-                type="link"
-                size="small"
+                variant="outline"
+                size="sm"
                 @click="runNow(record)"
               >
                 立即执行
-              </a-button>
-              <a-button
+              </UiButton>
+              <UiButton
                 v-if="record.status === 'PENDING' || record.status === 'PROCESSING'"
-                type="link"
-                size="small"
-                danger
+                variant="danger-ghost"
+                size="sm"
                 @click="cancelTask(record)"
               >
                 取消
-              </a-button>
+              </UiButton>
+              <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
-    <a-modal
+    <UiDrawer
       v-model:open="submitVisible"
       title="提交 AI 任务"
+      :width="560"
       :confirm-loading="submitting"
+      :hide-footer="false"
+      ok-text="提交"
       :ok-button-props="{ disabled: submitDisabled }"
       @ok="submitTask"
     >
@@ -393,31 +676,61 @@ onMounted(async () => {
           <a-select v-model:value="submitForm.taskType" :options="taskTypeOptions" />
         </a-form-item>
         <a-form-item label="业务类型">
-          <a-input v-model:value="submitForm.businessType" placeholder="business_type（例如 ACHIEVEMENT_RESULT）" />
-        </a-form-item>
-        <a-form-item label="业务对象 ID">
-          <a-input v-model:value="submitForm.businessId" placeholder="business_id（与业务类型对应）" />
-        </a-form-item>
-        <a-form-item label="培养方案 ID">
           <a-input
-            v-model:value="submitForm.trainingPlanId"
-            :placeholder="qualityStore.currentTrainingPlanId || '默认使用当前选中培养方案'"
+            v-model:value="submitForm.businessType"
+            placeholder="business_type（例如 ACHIEVEMENT_RESULT）"
           />
         </a-form-item>
-        <a-form-item label="专业 ID">
-          <a-input v-model:value="submitForm.programId" placeholder="program_id（可选）" />
+        <a-form-item label="业务对象 ID">
+          <a-input
+            v-model:value="submitForm.businessId"
+            placeholder="business_id（与业务类型对应）"
+          />
         </a-form-item>
-        <a-form-item label="质量评价课程 ID">
-          <a-input v-model:value="submitForm.qualityCourseId" placeholder="quality_course_id（可选）" />
+        <a-form-item label="培养方案">
+          <TrainingPlanSelector
+            :value="submitForm.trainingPlanId || null"
+            :placeholder="
+              qualityStore.currentTrainingPlanId ? '默认使用当前选中培养方案' : '选择培养方案'
+            "
+            @change="(v) => (submitForm.trainingPlanId = v ?? '')"
+          />
+        </a-form-item>
+        <a-form-item label="专业">
+          <ProgramSelector
+            :value="submitForm.programId || null"
+            placeholder="选择专业（可选）"
+            @change="(v) => (submitForm.programId = v ?? '')"
+          />
+        </a-form-item>
+        <a-form-item label="质量评价课程">
+          <CourseSelector
+            :value="submitForm.qualityCourseId || null"
+            :training-plan-id="
+              submitForm.trainingPlanId || qualityStore.currentTrainingPlanId || null
+            "
+            placeholder="选择质量评价课程（可选）"
+            @change="(v) => (submitForm.qualityCourseId = v ?? '')"
+          />
         </a-form-item>
         <a-form-item label="达成度结果 ID">
-          <a-input v-model:value="submitForm.achievementResultId" placeholder="achievement_result_id（ACHIEVEMENT_DIAGNOSIS 必填）" />
+          <a-input
+            v-model:value="submitForm.achievementResultId"
+            placeholder="achievement_result_id（ACHIEVEMENT_DIAGNOSIS 必填）"
+          />
         </a-form-item>
-        <a-form-item label="报告 ID">
-          <a-input v-model:value="submitForm.reportId" placeholder="report_id（XX_REPORT_GENERATE 可填）" />
+        <a-form-item label="报告">
+          <ReportSelector
+            :value="submitForm.reportId || null"
+            placeholder="选择质量报告（XX_REPORT_GENERATE 可填）"
+            @change="(v) => (submitForm.reportId = v ?? '')"
+          />
         </a-form-item>
         <a-form-item label="文件节点 ID">
-          <a-input v-model:value="submitForm.fileNodeId" placeholder="file_node_id（SYLLABUS_PARSE / TRAINING_PLAN_PARSE / MATERIAL_QA 必填）" />
+          <a-input
+            v-model:value="submitForm.fileNodeId"
+            placeholder="file_node_id（SYLLABUS_PARSE / TRAINING_PLAN_PARSE / MATERIAL_QA 必填）"
+          />
         </a-form-item>
         <a-form-item label="用户提问">
           <a-textarea
@@ -429,24 +742,20 @@ onMounted(async () => {
           />
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiDrawer>
 
-    <a-drawer
-      v-model:open="detailVisible"
-      title="AI 任务详情"
-      width="800"
-      :loading="detailLoading"
-    >
+    <UiDrawer v-model:open="detailVisible" title="AI 任务详情" :width="840" :hide-footer="true">
+      <UiEmpty v-if="!detailRecord && !detailLoading" description="详情数据未加载" size="sm" />
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
         <a-descriptions-item label="任务 ID">
           {{ detailRecord.id }}
         </a-descriptions-item>
         <a-descriptions-item label="能力">
-          {{ AI_TASK_TYPE_LABEL[detailRecord.taskType as AiTaskType] }}
+          {{ aiTaskTypeLabel(detailRecord.taskType) }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">
-          <a-tag :color="AI_TASK_STATUS_COLOR[detailRecord.status as AiTaskStatus]">
-            {{ AI_TASK_STATUS_LABEL[detailRecord.status as AiTaskStatus] }}
+          <a-tag :color="aiTaskStatusColor(detailRecord.status)">
+            {{ aiTaskStatusLabel(detailRecord.status) }}
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="操作人 ID">
@@ -457,9 +766,7 @@ onMounted(async () => {
         </a-descriptions-item>
         <a-descriptions-item label="业务锚点">
           <a-space wrap>
-            <a-tag v-if="detailRecord.programId">
-              专业 #{{ detailRecord.programId }}
-            </a-tag>
+            <a-tag v-if="detailRecord.programId"> 专业 #{{ detailRecord.programId }} </a-tag>
             <a-tag v-if="detailRecord.trainingPlanId">
               培养方案 #{{ detailRecord.trainingPlanId }}
             </a-tag>
@@ -469,28 +776,27 @@ onMounted(async () => {
             <a-tag v-if="detailRecord.achievementResultId">
               达成度 #{{ detailRecord.achievementResultId }}
             </a-tag>
-            <a-tag v-if="detailRecord.reportId">
-              报告 #{{ detailRecord.reportId }}
-            </a-tag>
+            <a-tag v-if="detailRecord.reportId"> 报告 #{{ detailRecord.reportId }} </a-tag>
           </a-space>
         </a-descriptions-item>
         <a-descriptions-item label="开始 / 结束">
           {{ detailRecord.startedAt || '-' }} ～ {{ detailRecord.finishedAt || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="失败阶段">
-          <span v-if="detailRecord.failurePhase" style="color: #ff4d4f">
+          <span v-if="detailRecord.failurePhase" class="ai-task__error-text">
             {{ detailRecord.failurePhase }}
           </span>
           <span v-else>-</span>
         </a-descriptions-item>
         <a-descriptions-item label="失败原因">
-          <span v-if="detailRecord.failureReason" style="color: #ff4d4f; white-space: pre-wrap">
+          <span v-if="detailRecord.failureReason" class="ai-task__error-text ai-task__error-pre">
             {{ detailRecord.failureReason }}
           </span>
           <span v-else>-</span>
         </a-descriptions-item>
         <a-descriptions-item label="运维干预状态 / 备注">
-          {{ detailRecord.manualHandlingStatus || '-' }} / {{ detailRecord.manualHandlingRemark || '-' }}
+          {{ detailRecord.manualHandlingStatus || '-' }} /
+          {{ detailRecord.manualHandlingRemark || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="提示词快照 ID">
           {{ detailRecord.promptSnapshotId || '-' }}
@@ -498,14 +804,14 @@ onMounted(async () => {
         <a-descriptions-item label="脱敏映射 ID">
           <a-space>
             <span>{{ detailRecord.maskMappingId || '-' }}</span>
-            <a-button
+            <UiButton
               v-if="detailRecord.maskMappingId"
-              type="link"
-              size="small"
+              variant="ghost"
+              size="sm"
               @click="gotoMaskAudit(detailRecord.id)"
             >
               查看脱敏审计
-            </a-button>
+            </UiButton>
           </a-space>
         </a-descriptions-item>
         <a-descriptions-item label="结果 ID">
@@ -517,15 +823,15 @@ onMounted(async () => {
 
       <a-tabs v-if="detailRecord" default-active-key="result">
         <a-tab-pane key="result" tab="AI 结果">
-          <a-empty v-if="!detailResult" description="尚未生成结果" />
+          <UiEmpty v-if="!detailResult" description="尚未生成结果" size="sm" />
           <template v-else>
             <a-descriptions :column="2" size="small" bordered>
               <a-descriptions-item label="输出校验">
                 <a-tag
                   v-if="detailResult.outputValidation"
-                  :color="AI_OUTPUT_VALIDATION_COLOR[detailResult.outputValidation]"
+                  :color="validationColor(detailResult.outputValidation)"
                 >
-                  {{ AI_OUTPUT_VALIDATION_LABEL[detailResult.outputValidation] }}
+                  {{ validationLabel(detailResult.outputValidation) }}
                 </a-tag>
                 <span v-else>-</span>
               </a-descriptions-item>
@@ -547,61 +853,60 @@ onMounted(async () => {
                 {{ detailResult.completionTokenCount ?? '-' }}
               </a-descriptions-item>
               <a-descriptions-item label="敏感检测明细" :span="2">
-                <pre v-if="detailResult.sensitiveCheckDetail" class="output-pre">{{ detailResult.sensitiveCheckDetail }}</pre>
+                <pre v-if="detailResult.sensitiveCheckDetail" class="ai-task__pre">{{
+                  detailResult.sensitiveCheckDetail
+                }}</pre>
                 <span v-else>-</span>
               </a-descriptions-item>
             </a-descriptions>
 
-            <a-divider style="margin: 12px 0" />
+            <a-divider class="ai-task__divider" />
 
-            <a-space>
-              <span style="color: #595959">校验状态：</span>
-              <a-button
+            <a-space wrap>
+              <span class="ai-task__label">校验状态：</span>
+              <UiButton
                 v-for="opt in validationOptions"
                 :key="opt.value"
-                size="small"
-                :type="detailResult.outputValidation === opt.value ? 'primary' : 'default'"
+                :variant="
+                  detailResult.outputValidation === opt.value
+                    ? opt.value === 'REJECTED'
+                      ? 'danger'
+                      : 'primary'
+                    : opt.value === 'REJECTED'
+                      ? 'danger-ghost'
+                      : 'outline'
+                "
+                size="sm"
                 :loading="validationUpdating"
-                :danger="opt.value === 'REJECTED'"
                 @click="updateValidation(opt.value)"
               >
                 {{ opt.label }}
-              </a-button>
+              </UiButton>
             </a-space>
 
-            <a-divider style="margin: 12px 0" />
+            <a-divider class="ai-task__divider" />
 
-            <h4>诊断摘要</h4>
-            <pre class="output-pre">{{ detailResult.summary || '-' }}</pre>
+            <h4 class="ai-task__section-title">诊断摘要</h4>
+            <pre class="ai-task__pre">{{ detailResult.summary || '-' }}</pre>
 
-            <h4 style="margin-top: 12px">
-              问题列表（JSON）
-            </h4>
-            <pre class="output-pre">{{ detailResult.issueList || '-' }}</pre>
+            <h4 class="ai-task__section-title">问题列表（JSON）</h4>
+            <pre class="ai-task__pre">{{ detailResult.issueList || '-' }}</pre>
 
-            <h4 style="margin-top: 12px">
-              证据引用（JSON）
-            </h4>
-            <pre class="output-pre">{{ detailResult.evidenceReferences || '-' }}</pre>
+            <h4 class="ai-task__section-title">证据引用（JSON）</h4>
+            <pre class="ai-task__pre">{{ detailResult.evidenceReferences || '-' }}</pre>
 
-            <h4 style="margin-top: 12px">
-              改进建议（JSON）
-            </h4>
-            <pre class="output-pre">{{ detailResult.improvementSuggestions || '-' }}</pre>
+            <h4 class="ai-task__section-title">改进建议（JSON）</h4>
+            <pre class="ai-task__pre">{{ detailResult.improvementSuggestions || '-' }}</pre>
 
-            <h4 style="margin-top: 12px">
-              报告正文（Markdown）
-            </h4>
-            <pre class="output-pre">{{ detailResult.reportBody || '-' }}</pre>
+            <h4 class="ai-task__section-title">报告正文（Markdown）</h4>
+            <pre class="ai-task__pre">{{ detailResult.reportBody || '-' }}</pre>
 
-            <h4 style="margin-top: 12px">
-              原始模型输出（脱敏后）
-            </h4>
-            <pre class="output-pre">{{ detailResult.rawModelOutput || '-' }}</pre>
+            <h4 class="ai-task__section-title">原始模型输出（脱敏后）</h4>
+            <pre class="ai-task__pre">{{ detailResult.rawModelOutput || '-' }}</pre>
           </template>
         </a-tab-pane>
         <a-tab-pane key="prompt" tab="提示词快照">
-          <a-empty v-if="!promptSnapshot" description="未读取到提示词快照" />
+          <UiEmpty v-if="!promptSnapshot" description="未读取到提示词快照" size="sm" />
           <template v-else>
             <a-descriptions :column="2" size="small" bordered>
               <a-descriptions-item label="快照 ID">
@@ -614,57 +919,176 @@ onMounted(async () => {
                 {{ promptSnapshot.digest || '-' }}
               </a-descriptions-item>
             </a-descriptions>
-            <a-collapse style="margin-top: 12px">
+            <a-collapse class="ai-task__collapse">
               <a-collapse-panel key="system" header="系统段（systemPrompt）">
-                <pre class="output-pre">{{ promptSnapshot.systemPrompt || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.systemPrompt || '-' }}</pre>
               </a-collapse-panel>
               <a-collapse-panel key="task" header="任务段（taskPrompt）">
-                <pre class="output-pre">{{ promptSnapshot.taskPrompt || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.taskPrompt || '-' }}</pre>
               </a-collapse-panel>
               <a-collapse-panel key="standard" header="标准段（standardSection）">
-                <pre class="output-pre">{{ promptSnapshot.standardSection || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.standardSection || '-' }}</pre>
               </a-collapse-panel>
               <a-collapse-panel key="profile" header="专业实例段（profileSection）">
-                <pre class="output-pre">{{ promptSnapshot.profileSection || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.profileSection || '-' }}</pre>
               </a-collapse-panel>
               <a-collapse-panel key="calculation" header="计算段（calculationSection）">
-                <pre class="output-pre">{{ promptSnapshot.calculationSection || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.calculationSection || '-' }}</pre>
               </a-collapse-panel>
               <a-collapse-panel key="sample" header="样本段（sampleSection）">
-                <pre class="output-pre">{{ promptSnapshot.sampleSection || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.sampleSection || '-' }}</pre>
               </a-collapse-panel>
               <a-collapse-panel key="audit" header="审核段（auditSection）">
-                <pre class="output-pre">{{ promptSnapshot.auditSection || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.auditSection || '-' }}</pre>
               </a-collapse-panel>
               <a-collapse-panel key="output" header="输出格式段（outputFormatSection）">
-                <pre class="output-pre">{{ promptSnapshot.outputFormatSection || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.outputFormatSection || '-' }}</pre>
               </a-collapse-panel>
               <a-collapse-panel key="forbidden" header="禁止指令段（forbiddenSection）">
-                <pre class="output-pre">{{ promptSnapshot.forbiddenSection || '-' }}</pre>
+                <pre class="ai-task__pre">{{ promptSnapshot.forbiddenSection || '-' }}</pre>
               </a-collapse-panel>
             </a-collapse>
           </template>
         </a-tab-pane>
       </a-tabs>
-    </a-drawer>
-  </div>
+    </UiDrawer>
+
+    <AuditTimelineDrawer
+      v-model:open="auditDrawerOpen"
+      :events="auditEvents"
+      :loading="auditLoading"
+      title="AI 任务操作审计"
+      show-diff
+    />
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.ai-task-page {
-  padding: 16px;
-}
+.ai-task {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
 
-.output-pre {
-  background: #f6f8fa;
-  border: 1px solid #e1e4e8;
-  border-radius: 6px;
-  padding: 8px;
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 320px;
-  overflow: auto;
-  margin: 0;
+  &__context-info {
+    flex: 1;
+    min-width: 320px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__stages {
+    margin-bottom: 16px;
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__result-panel {
+    margin-bottom: 16px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 130px;
+
+    &--md {
+      width: 180px;
+    }
+
+    &--xs {
+      width: 110px;
+    }
+  }
+
+  &__error-text {
+    color: var(--ant-color-error, #dc2626);
+  }
+
+  &__error-pre {
+    white-space: pre-wrap;
+  }
+
+  &__divider {
+    margin: 12px 0;
+  }
+
+  &__label {
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__section-title {
+    margin: 12px 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__collapse {
+    margin-top: 12px;
+  }
+
+  &__pre {
+    margin: 0;
+    background: var(--dp-gray-50, #f6f8fa);
+    border: 1px solid var(--dp-border, #e1e4e8);
+    border-radius: 6px;
+    padding: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow: auto;
+  }
 }
 </style>

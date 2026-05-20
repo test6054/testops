@@ -13,35 +13,83 @@
  * - 已确认记录才进入达成度计算
  */
 import type {
-  AssessmentItemVO,
   ConfirmationStatus,
-  CourseGoalVO,
   ProcessEvaluationNodeSavePayload,
   ProcessEvaluationNodeVO,
   ProcessEvaluationRecordSavePayload,
   ProcessEvaluationRecordVO,
-  ProcessNodeType,
-  RequirementIndicatorVO,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
-  assessmentItemApi,
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
-  courseGoalApi,
   DATA_SOURCE_MODE_LABEL,
-  graduationRequirementApi,
+  isConfirmationStatus,
+  isProcessNodeType,
   PROCESS_NODE_TYPE_LABEL,
   processNodeApi,
   processRecordApi,
-  requirementIndicatorApi,
 } from '@/apis/quality'
-import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
-import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, ref, watch } from 'vue'
+import {
+  AssessmentItemSelector,
+  CourseGoalSelector,
+  CourseSelector,
+  RequirementIndicatorSelector,
+  StudentSelector,
+  TrainingPlanSelector,
+} from '@/components/quality/selectors'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
 
+const nodeColumns: ColumnsType = [
+  { title: '编码', dataIndex: 'nodeCode', key: 'nodeCode', width: 100 },
+  { title: '名称', key: 'nodeName' },
+  { title: '权重', dataIndex: 'weight', key: 'weight', width: 80 },
+  { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
+  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+]
+
+const recordColumns: ColumnsType = [
+  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
+  { title: '学生', dataIndex: 'studentUserId', key: 'studentUserId', width: 120 },
+  { title: '原始分', dataIndex: 'rawScore', key: 'rawScore', width: 80 },
+  { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 80 },
+  { title: '来源', dataIndex: 'sourceMode', key: 'sourceMode', width: 140 },
+  { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
+  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+]
+
+const confirmedByGoalColumns: ColumnsType = [
+  { title: '节点 ID', dataIndex: 'nodeId', key: 'nodeId', width: 100 },
+  { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
+  { title: '原始分 / 换算分', key: 'scores', width: 150 },
+  { title: '证据文件', dataIndex: 'evidenceFileId', key: 'evidenceFileId', width: 120 },
+  { title: '确认时间', dataIndex: 'confirmedAt', key: 'confirmedAt', width: 160 },
+]
+
 const qualityStore = useQualityStore()
+
+/* ========== 状态守卫 helper（禁用 as 类型断言） ========== */
+
+function confirmationStatusLabel(value: unknown): string {
+  if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function confirmationStatusColor(value: unknown): string {
+  if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_COLOR[value]
+  return 'default'
+}
+
+function processNodeTypeLabel(value: unknown): string {
+  if (isProcessNodeType(value)) return PROCESS_NODE_TYPE_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
 
 /* ========== 节点列表 ========== */
 
@@ -49,15 +97,10 @@ const nodes = ref<ProcessEvaluationNodeVO[]>([])
 const nodesLoading = ref(false)
 const selectedNode = ref<ProcessEvaluationNodeVO | null>(null)
 
-const courseGoals = ref<CourseGoalVO[]>([])
-const assessmentItems = ref<AssessmentItemVO[]>([])
-const indicators = ref<RequirementIndicatorVO[]>([])
-
-const courseGoalMap = computed(() => new Map(courseGoals.value.map(g => [g.id, g])))
-const assessmentItemMap = computed(() => new Map(assessmentItems.value.map(a => [a.id, a])))
-const indicatorMap = computed(() => new Map(indicators.value.map(i => [i.id, i])))
-
-const nodeTypeOptions = Object.entries(PROCESS_NODE_TYPE_LABEL).map(([value, label]) => ({ value, label }))
+const nodeTypeOptions = Object.entries(PROCESS_NODE_TYPE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 async function loadNodes() {
   if (!qualityStore.currentQualityCourseId) {
@@ -66,34 +109,9 @@ async function loadNodes() {
   }
   nodesLoading.value = true
   try {
-    nodes.value = await processNodeApi.listByCourse(qualityStore.currentQualityCourseId) || []
+    nodes.value = (await processNodeApi.listByCourse(qualityStore.currentQualityCourseId)) || []
   } finally {
     nodesLoading.value = false
-  }
-}
-
-async function loadAuxDict() {
-  if (!qualityStore.currentQualityCourseId) {
-    courseGoals.value = []
-    assessmentItems.value = []
-    indicators.value = []
-    return
-  }
-  const [g, a] = await Promise.all([
-    courseGoalApi.listByCourse(qualityStore.currentQualityCourseId),
-    assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId),
-  ])
-  courseGoals.value = g || []
-  assessmentItems.value = a || []
-  // 加载该培养方案下所有毕业要求的观测点（用于节点挂靠观测点选择）
-  if (qualityStore.currentTrainingPlanId) {
-    const reqs = await graduationRequirementApi.listByPlan(qualityStore.currentTrainingPlanId) || []
-    const all: RequirementIndicatorVO[] = []
-    for (const r of reqs) {
-      const items = await requirementIndicatorApi.listByRequirement(r.id) || []
-      all.push(...items)
-    }
-    indicators.value = all
   }
 }
 
@@ -155,9 +173,9 @@ async function submitNode() {
 }
 
 async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除节点 ${record.nodeCode}？`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await processNodeApi.delete(record.id)
       message.success('已删除')
@@ -186,7 +204,8 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    records.value = await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value) || []
+    records.value =
+      (await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value)) || []
   } finally {
     recordsLoading.value = false
   }
@@ -261,9 +280,9 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
     message.warning('已确认的记录不可删除')
     return
   }
-  Modal.confirm({
+  void confirmAsync({
     title: '删除该记录？',
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await processRecordApi.delete(record.id)
       message.success('已删除')
@@ -312,19 +331,16 @@ async function submitBatchRecord() {
   let parsed: ProcessEvaluationRecordSavePayload[]
   try {
     const raw = JSON.parse(text)
-    if (!Array.isArray(raw))
-      throw new Error('根节点必须是数组')
+    if (!Array.isArray(raw)) throw new Error('根节点必须是数组')
     parsed = raw.map((item, idx) => {
-      if (item.rawScore == null)
-        throw new Error(`第 ${idx + 1} 行缺少 rawScore`)
+      if (item.rawScore == null) throw new Error(`第 ${idx + 1} 行缺少 rawScore`)
       return {
         nodeId: selectedNode.value!.id,
         qualityCourseId: qualityStore.currentQualityCourseId,
         ...item,
       } as ProcessEvaluationRecordSavePayload
     })
-  }
-  catch (err) {
+  } catch (err) {
     message.error(`JSON 解析失败：${(err as Error).message}`)
     return
   }
@@ -334,8 +350,7 @@ async function submitBatchRecord() {
     message.success(`已批量录入 ${parsed.length} 条记录`)
     batchRecordVisible.value = false
     await loadRecords()
-  }
-  finally {
+  } finally {
     batchRecordSubmitting.value = false
   }
 }
@@ -361,31 +376,106 @@ async function queryConfirmedByGoal() {
   }
   confirmedByGoalLoading.value = true
   try {
-    confirmedByGoalRecords.value = await processRecordApi.listConfirmedByCourseGoal(
-      qualityStore.currentQualityCourseId,
-      confirmedByGoalId.value,
-    ) || []
-  }
-  finally {
+    confirmedByGoalRecords.value =
+      (await processRecordApi.listConfirmedByCourseGoal(
+        qualityStore.currentQualityCourseId,
+        confirmedByGoalId.value,
+      )) || []
+  } finally {
     confirmedByGoalLoading.value = false
   }
 }
 
+/* ========== 信号指标：节点 + 记录健康度 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const buckets: Record<ConfirmationStatus, number> = {
+    DRAFT: 0,
+    SUBMITTED: 0,
+    CONFIRMED: 0,
+    RETURNED: 0,
+  }
+  for (const n of nodes.value) {
+    if (isConfirmationStatus(n.confirmationStatus)) buckets[n.confirmationStatus] += 1
+  }
+  let weightSum = 0
+  let coverageSum = 0
+  let coverageCount = 0
+  for (const n of nodes.value) {
+    if (n.weight != null) weightSum += Number(n.weight)
+    if (n.coverageRequired != null) {
+      coverageSum += Number(n.coverageRequired)
+      coverageCount += 1
+    }
+  }
+  const recordBuckets: Record<ConfirmationStatus, number> = {
+    DRAFT: 0,
+    SUBMITTED: 0,
+    CONFIRMED: 0,
+    RETURNED: 0,
+  }
+  for (const r of records.value) {
+    if (isConfirmationStatus(r.confirmationStatus)) recordBuckets[r.confirmationStatus] += 1
+  }
+  const totalWeight = Number(weightSum.toFixed(2))
+  const avgCoverage = coverageCount > 0 ? Number((coverageSum / coverageCount).toFixed(2)) : 0
+  const weightOk = totalWeight === 0 || Math.abs(totalWeight - 1) < 0.01
+
+  return [
+    { key: 'nodes-total', label: '节点总数', value: nodes.value.length, tone: 'blue' },
+    {
+      key: 'nodes-confirmed',
+      label: '已确认节点',
+      value: buckets.CONFIRMED,
+      tone: buckets.CONFIRMED > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'nodes-draft',
+      label: '起草中',
+      value: buckets.DRAFT,
+      tone: buckets.DRAFT > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'nodes-returned',
+      label: '已退回',
+      value: buckets.RETURNED,
+      tone: buckets.RETURNED > 0 ? 'red' : 'gray',
+    },
+    { key: 'weight-sum', label: '权重合计', value: totalWeight, tone: weightOk ? 'green' : 'red' },
+    {
+      key: 'coverage-avg',
+      label: '平均覆盖率',
+      value: avgCoverage,
+      tone: avgCoverage >= 0.8 ? 'green' : avgCoverage > 0 ? 'orange' : 'gray',
+    },
+    { key: 'records-total', label: '当前节点记录', value: records.value.length, tone: 'blue' },
+    {
+      key: 'records-confirmed',
+      label: '已确认记录',
+      value: recordBuckets.CONFIRMED,
+      tone: recordBuckets.CONFIRMED > 0 ? 'green' : 'gray',
+    },
+  ]
+})
+
 /* ========== 上下文联动 ========== */
 
-watch(() => qualityStore.currentQualityCourseId, async () => {
-  selectedNode.value = null
-  records.value = []
-  await Promise.all([loadNodes(), loadAuxDict()])
-})
+watch(
+  () => qualityStore.currentQualityCourseId,
+  async () => {
+    selectedNode.value = null
+    records.value = []
+    await loadNodes()
+  },
+)
 
-watch(() => qualityStore.currentTrainingPlanId, () => {
-  selectedNode.value = null
-  nodes.value = []
-  courseGoals.value = []
-  assessmentItems.value = []
-  indicators.value = []
-})
+watch(
+  () => qualityStore.currentTrainingPlanId,
+  () => {
+    selectedNode.value = null
+    nodes.value = []
+  },
+)
 
 watch(selectedNode, () => loadRecords())
 watch(recordStatusFilter, () => loadRecords())
@@ -398,7 +488,7 @@ onMounted(async () => {
     }
   }
   if (qualityStore.currentQualityCourseId) {
-    await Promise.all([loadNodes(), loadAuxDict()])
+    await loadNodes()
   }
 })
 
@@ -412,85 +502,96 @@ function handleCourseChange(courseId: string | null) {
 </script>
 
 <template>
-  <div class="page">
-    <a-card :bordered="false" style="margin-bottom: 12px">
-      <a-space wrap>
-        <span class="filter-label">培养方案：</span>
-        <TrainingPlanSelector
-          :value="qualityStore.currentTrainingPlanId || null"
-          :width="280"
-          @change="handlePlanChange"
-        />
-        <span class="filter-label">质量评价课程：</span>
-        <CourseSelector
-          :value="qualityStore.currentQualityCourseId || null"
-          :training-plan-id="qualityStore.currentTrainingPlanId || null"
-          :width="340"
-          @change="handleCourseChange"
-        />
-      </a-space>
-    </a-card>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="pe__context">
+        <div class="pe__context-info">
+          <h2 class="pe__title">过程性评价管理</h2>
+        </div>
+        <div class="pe__context-actions">
+          <span class="pe__filter-label">培养方案：</span>
+          <TrainingPlanSelector
+            :value="qualityStore.currentTrainingPlanId || null"
+            :width="260"
+            @change="handlePlanChange"
+          />
+          <span class="pe__filter-label">质量评价课程：</span>
+          <CourseSelector
+            :value="qualityStore.currentQualityCourseId || null"
+            :training-plan-id="qualityStore.currentTrainingPlanId || null"
+            :width="320"
+            @change="handleCourseChange"
+          />
+        </div>
+      </div>
+    </template>
 
-    <a-alert
+    <SignalBand
+      v-if="qualityStore.currentQualityCourseId"
+      :metrics="signals"
+      compact
+      class="pe__signals"
+    />
+
+    <UiEmpty
       v-if="!qualityStore.currentQualityCourseId"
-      type="warning"
-      show-icon
-      message="尚未选择质量评价课程"
-      style="margin-bottom: 12px"
+      description="尚未选择质量评价课程，请在工作台顶部选择培养方案与课程"
+      class="pe__empty"
     />
 
     <a-row v-if="qualityStore.currentQualityCourseId" :gutter="12">
       <a-col :span="10">
-        <a-card title="过程性评价节点" :bordered="false">
-          <template #extra>
-            <a-button type="primary" size="small" @click="openNodeCreate">
-              新建节点
-            </a-button>
-          </template>
+        <section class="pe__panel">
+          <header class="pe__panel-header">
+            <h3 class="pe__panel-title">过程性评价节点</h3>
+            <UiButton variant="primary" size="sm" @click="openNodeCreate"> 新建节点 </UiButton>
+          </header>
 
-          <a-table
+          <UiDataTable
+            :columns="nodeColumns"
             :data-source="nodes"
             :loading="nodesLoading"
             row-key="id"
             size="middle"
-            :pagination="false"
-            :row-class-name="(r: ProcessEvaluationNodeVO) => (selectedNode?.id === r.id ? 'row-selected' : '')"
-            :custom-row="(record: ProcessEvaluationNodeVO) => ({
-              onClick: () => (selectedNode = record),
-              style: 'cursor: pointer',
-            })"
+            :show-pagination="false"
+            flat
+            :total="nodes.length"
+            :row-class-name="
+              (r: ProcessEvaluationNodeVO) => (selectedNode?.id === r.id ? 'pe__row-selected' : '')
+            "
+            :custom-row="
+              (record: ProcessEvaluationNodeVO) => ({
+                onClick: () => (selectedNode = record),
+                style: 'cursor: pointer',
+              })
+            "
           >
-            <a-table-column title="编码" data-index="nodeCode" width="100" />
-            <a-table-column title="名称">
-              <template #default="{ record }">
+            <template #bodyCell="{ column, record, text }">
+              <template v-if="column.key === 'nodeName'">
                 {{ record.nodeName }}
-                <div class="text-xs text-gray-500">
-                  {{ PROCESS_NODE_TYPE_LABEL[record.nodeType as ProcessNodeType] }}
+                <div class="pe__sub-desc">
+                  {{ processNodeTypeLabel(record.nodeType) }}
                 </div>
               </template>
-            </a-table-column>
-            <a-table-column title="权重" data-index="weight" width="80">
-              <template #default="{ text }">
+              <template v-else-if="column.key === 'weight'">
                 {{ text == null ? '-' : Number(text).toFixed(2) }}
               </template>
-            </a-table-column>
-            <a-table-column title="状态" data-index="confirmationStatus" width="100">
-              <template #default="{ text }">
-                <a-tag :color="CONFIRMATION_STATUS_COLOR[text as ConfirmationStatus]">
-                  {{ CONFIRMATION_STATUS_LABEL[text as ConfirmationStatus] || text }}
+              <template v-else-if="column.key === 'confirmationStatus'">
+                <a-tag :color="confirmationStatusColor(text)">
+                  {{ confirmationStatusLabel(text) }}
                 </a-tag>
               </template>
-            </a-table-column>
-            <a-table-column title="操作" width="200" fixed="right">
-              <template #default="{ record }">
+              <template v-else-if="column.key === 'actions'">
                 <a-space wrap>
-                  <a-button type="link" size="small" @click.stop="openNodeEdit(record)">编辑</a-button>
+                  <UiButton variant="ghost" size="sm" @click.stop="openNodeEdit(record)">
+                    编辑
+                  </UiButton>
                   <a-dropdown>
-                    <a-button type="link" size="small" @click.stop>
-                      状态
-                    </a-button>
+                    <UiButton variant="outline" size="sm" @click.stop> 状态 </UiButton>
                     <template #overlay>
-                      <a-menu @click="(e: any) => changeNodeStatus(record, e.key as ConfirmationStatus)">
+                      <a-menu
+                        @click="(e: any) => changeNodeStatus(record, e.key as ConfirmationStatus)"
+                      >
                         <a-menu-item key="DRAFT">起草</a-menu-item>
                         <a-menu-item key="SUBMITTED">提交</a-menu-item>
                         <a-menu-item key="CONFIRMED">确认</a-menu-item>
@@ -498,120 +599,122 @@ function handleCourseChange(courseId: string | null) {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <a-button type="link" size="small" danger @click.stop="handleNodeDelete(record)">删除</a-button>
+                  <UiButton variant="danger-ghost" size="sm" @click.stop="handleNodeDelete(record)">
+                    删除
+                  </UiButton>
                 </a-space>
               </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
+            </template>
+          </UiDataTable>
+        </section>
       </a-col>
 
       <a-col :span="14">
-        <a-empty v-if="!selectedNode" description="请在左侧选择节点查看记录" />
+        <UiEmpty v-if="!selectedNode" description="请在左侧选择节点查看记录" class="pe__empty" />
 
-        <a-card v-else :bordered="false">
-          <template #title>
-            <span>「{{ selectedNode.nodeName }}」记录</span>
-          </template>
-          <template #extra>
-            <a-space>
-              <a-select v-model:value="recordStatusFilter" placeholder="状态筛选" allow-clear style="width: 140px">
+        <section v-else class="pe__panel">
+          <header class="pe__panel-header">
+            <h3 class="pe__panel-title">「{{ selectedNode.nodeName }}」记录</h3>
+            <div class="pe__panel-actions">
+              <a-select
+                v-model:value="recordStatusFilter"
+                placeholder="状态筛选"
+                allow-clear
+                class="pe__filter"
+              >
                 <a-select-option value="DRAFT">起草</a-select-option>
                 <a-select-option value="SUBMITTED">已提交</a-select-option>
                 <a-select-option value="CONFIRMED">已确认</a-select-option>
                 <a-select-option value="RETURNED">已退回</a-select-option>
               </a-select>
-              <a-button
-                type="primary"
-                size="small"
+              <UiButton
+                variant="primary"
+                size="sm"
                 :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
                 @click="openRecordCreate"
               >
                 录入记录
-              </a-button>
-              <a-button
-                size="small"
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
                 :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
                 @click="openBatchRecord"
               >
                 批量录入
-              </a-button>
-              <a-button size="small" @click="openConfirmedByGoal">
+              </UiButton>
+              <UiButton variant="outline" size="sm" @click="openConfirmedByGoal">
                 按课程目标查有效
-              </a-button>
-            </a-space>
-          </template>
+              </UiButton>
+            </div>
+          </header>
 
           <a-alert
             v-if="selectedNode.confirmationStatus !== 'CONFIRMED'"
             type="info"
             show-icon
             message="节点尚未确认，无法录入记录。请先在左侧切换节点状态到「已确认」。"
-            style="margin-bottom: 12px"
+            class="pe__alert"
           />
 
-          <a-table
+          <UiDataTable
+            :columns="recordColumns"
             :data-source="records"
             :loading="recordsLoading"
             row-key="id"
             size="middle"
-            :pagination="false"
+            :show-pagination="false"
+            flat
+            :total="records.length"
           >
-            <a-table-column title="学号" data-index="studentNumber" width="120" />
-            <a-table-column title="学生" data-index="studentUserId" width="120" />
-            <a-table-column title="原始分" data-index="rawScore" width="80">
-              <template #default="{ text }">{{ Number(text).toFixed(2) }}</template>
-            </a-table-column>
-            <a-table-column title="换算分" data-index="convertedScore" width="80">
-              <template #default="{ text }">
+            <template #bodyCell="{ column, record, text }">
+              <template v-if="column.key === 'rawScore'">
+                {{ Number(text).toFixed(2) }}
+              </template>
+              <template v-else-if="column.key === 'convertedScore'">
                 {{ text == null ? '-' : Number(text).toFixed(2) }}
               </template>
-            </a-table-column>
-            <a-table-column title="来源" data-index="sourceMode" width="140">
-              <template #default="{ text }">
-                {{ DATA_SOURCE_MODE_LABEL[text as keyof typeof DATA_SOURCE_MODE_LABEL] || text || '-' }}
+              <template v-else-if="column.key === 'sourceMode'">
+                {{
+                  DATA_SOURCE_MODE_LABEL[text as keyof typeof DATA_SOURCE_MODE_LABEL] || text || '-'
+                }}
               </template>
-            </a-table-column>
-            <a-table-column title="状态" data-index="confirmationStatus" width="100">
-              <template #default="{ text }">
-                <a-tag :color="CONFIRMATION_STATUS_COLOR[text as ConfirmationStatus]">
-                  {{ CONFIRMATION_STATUS_LABEL[text as ConfirmationStatus] || text }}
+              <template v-else-if="column.key === 'confirmationStatus'">
+                <a-tag :color="confirmationStatusColor(text)">
+                  {{ confirmationStatusLabel(text) }}
                 </a-tag>
               </template>
-            </a-table-column>
-            <a-table-column title="操作" width="200" fixed="right">
-              <template #default="{ record }">
+              <template v-else-if="column.key === 'actions'">
                 <a-space wrap>
-                  <a-button
+                  <UiButton
                     v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    type="link"
-                    size="small"
+                    variant="ghost"
+                    size="sm"
                     @click="openRecordEdit(record)"
                   >
                     编辑
-                  </a-button>
-                  <a-button
+                  </UiButton>
+                  <UiButton
                     v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    type="link"
-                    size="small"
+                    variant="outline"
+                    size="sm"
                     @click="confirmRecord(record)"
                   >
                     确认
-                  </a-button>
-                  <a-button
+                  </UiButton>
+                  <UiButton
                     v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    type="link"
-                    size="small"
-                    danger
+                    variant="danger-ghost"
+                    size="sm"
                     @click="deleteRecord(record)"
                   >
                     删除
-                  </a-button>
+                  </UiButton>
                 </a-space>
               </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
+            </template>
+          </UiDataTable>
+        </section>
       </a-col>
     </a-row>
 
@@ -646,41 +749,44 @@ function handleCourseChange(courseId: string | null) {
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="挂靠考核环节">
-              <a-select v-model:value="nodeEditor.assessmentItemId" allow-clear placeholder="可选">
-                <a-select-option v-for="a in assessmentItems" :key="a.id" :value="a.id">
-                  {{ a.itemCode }} · {{ a.itemName }}
-                </a-select-option>
-              </a-select>
+              <AssessmentItemSelector
+                :value="nodeEditor.assessmentItemId || null"
+                :quality-course-id="qualityStore.currentQualityCourseId || null"
+                placeholder="可选"
+                @change="(v) => (nodeEditor.assessmentItemId = v ?? '')"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="挂靠课程目标">
-              <a-select v-model:value="nodeEditor.courseGoalId" allow-clear placeholder="可选">
-                <a-select-option v-for="g in courseGoals" :key="g.id" :value="g.id">
-                  {{ g.goalCode }} · {{ g.goalName }}
-                </a-select-option>
-              </a-select>
+              <CourseGoalSelector
+                :value="nodeEditor.courseGoalId || null"
+                :quality-course-id="qualityStore.currentQualityCourseId || null"
+                placeholder="可选"
+                @change="(v) => (nodeEditor.courseGoalId = v ?? '')"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="挂靠观测点">
-              <a-select v-model:value="nodeEditor.indicatorId" allow-clear placeholder="可选" show-search option-filter-prop="label">
-                <a-select-option
-                  v-for="i in indicators"
-                  :key="i.id"
-                  :value="i.id"
-                  :label="`${i.indicatorCode} · ${i.indicatorName}`"
-                >
-                  {{ i.indicatorCode }} · {{ i.indicatorName }}
-                </a-select-option>
-              </a-select>
+              <RequirementIndicatorSelector
+                :value="nodeEditor.indicatorId || null"
+                placeholder="可选"
+                @change="(v) => (nodeEditor.indicatorId = v ?? '')"
+              />
             </a-form-item>
           </a-col>
         </a-row>
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="权重 (0~1)">
-              <a-input-number v-model:value="nodeEditor.weight" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="nodeEditor.weight"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -690,12 +796,21 @@ function handleCourseChange(courseId: string | null) {
           </a-col>
           <a-col :span="8">
             <a-form-item label="覆盖率要求">
-              <a-input-number v-model:value="nodeEditor.coverageRequired" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="nodeEditor.coverageRequired"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
         <a-form-item label="证据类型">
-          <a-input v-model:value="nodeEditor.evidenceType" placeholder="如 实验报告 / 项目文档 / 课堂答辩" />
+          <a-input
+            v-model:value="nodeEditor.evidenceType"
+            placeholder="如 实验报告 / 项目文档 / 课堂答辩"
+          />
         </a-form-item>
         <a-form-item label="说明">
           <a-textarea v-model:value="nodeEditor.description" :rows="3" />
@@ -718,8 +833,12 @@ function handleCourseChange(courseId: string | null) {
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="学生用户 ID">
-              <a-input v-model:value="recordEditor.studentUserId" placeholder="可与学号同时存在" />
+            <a-form-item label="学生">
+              <StudentSelector
+                :value="recordEditor.studentUserId || null"
+                placeholder="按学生选择"
+                @change="(v) => (recordEditor.studentUserId = v ?? '')"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -731,17 +850,19 @@ function handleCourseChange(courseId: string | null) {
           </a-col>
           <a-col :span="8">
             <a-form-item label="换算分">
-              <a-input-number v-model:value="recordEditor.convertedScore" :min="0" :max="1" :step="0.01" style="width: 100%" />
+              <a-input-number
+                v-model:value="recordEditor.convertedScore"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="数据来源">
               <a-select v-model:value="recordEditor.sourceMode">
-                <a-select-option
-                  v-for="(v, k) in DATA_SOURCE_MODE_LABEL"
-                  :key="k"
-                  :value="k"
-                >
+                <a-select-option v-for="(v, k) in DATA_SOURCE_MODE_LABEL" :key="k" :value="k">
                   {{ v }}
                 </a-select-option>
               </a-select>
@@ -788,60 +909,146 @@ function handleCourseChange(courseId: string | null) {
       :footer="null"
       width="780px"
     >
-      <a-space style="margin-bottom: 12px" wrap>
+      <a-space class="pe__modal-toolbar" wrap>
         <span>课程目标：</span>
-        <a-select
-          v-model:value="confirmedByGoalId"
+        <CourseGoalSelector
+          :value="confirmedByGoalId || null"
+          :quality-course-id="qualityStore.currentQualityCourseId || null"
           placeholder="选择课程目标"
-          style="min-width: 320px"
-          show-search
-          option-filter-prop="label"
+          :width="320"
+          @change="(v) => (confirmedByGoalId = v ?? '')"
+        />
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="confirmedByGoalLoading"
+          @click="queryConfirmedByGoal"
         >
-          <a-select-option
-            v-for="g in courseGoals"
-            :key="g.id"
-            :value="g.id"
-            :label="`${g.goalCode} ${g.goalName}`"
-          >
-            {{ g.goalCode }} · {{ g.goalName }}
-          </a-select-option>
-        </a-select>
-        <a-button type="primary" :loading="confirmedByGoalLoading" @click="queryConfirmedByGoal">
           查询
-        </a-button>
+        </UiButton>
       </a-space>
-      <a-table
+      <UiDataTable
+        :columns="confirmedByGoalColumns"
         :data-source="confirmedByGoalRecords"
         :loading="confirmedByGoalLoading"
         row-key="id"
         size="small"
-        :pagination="{ pageSize: 20, showSizeChanger: true }"
+        :page-size="20"
+        :total="confirmedByGoalRecords.length"
+        flat
       >
-        <a-table-column title="节点 ID" data-index="nodeId" width="100" />
-        <a-table-column title="学号" data-index="studentNumber" width="120" />
-        <a-table-column title="原始分 / 换算分" width="150">
-          <template #default="{ record }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'scores'">
             {{ Number(record.rawScore).toFixed(1) }}
-            <span v-if="record.convertedScore != null" class="text-gray-500 text-xs">
+            <span v-if="record.convertedScore != null" class="pe__sub-desc">
               / {{ Number(record.convertedScore).toFixed(2) }}
             </span>
           </template>
-        </a-table-column>
-        <a-table-column title="证据文件" data-index="evidenceFileId" width="120">
-          <template #default="{ text }">
+          <template v-else-if="column.key === 'evidenceFileId'">
             {{ text || '-' }}
           </template>
-        </a-table-column>
-        <a-table-column title="确认时间" data-index="confirmedAt" width="160" />
-      </a-table>
+        </template>
+      </UiDataTable>
     </a-modal>
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
-.filter-label { color: var(--ant-color-text-secondary); }
-:deep(.row-selected) td { background-color: var(--ant-color-primary-bg) !important; }
-.text-xs { font-size: 12px; }
-.text-gray-500 { color: rgba(0, 0, 0, 0.45); }
+.pe {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__context-info {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter-label {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 13px;
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 140px;
+  }
+
+  &__empty {
+    margin-top: 32px;
+  }
+
+  &__sub-desc {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__alert {
+    margin-bottom: 12px;
+  }
+
+  &__modal-toolbar {
+    margin-bottom: 12px;
+  }
+}
+
+:deep(.pe__row-selected) td {
+  background-color: var(--ant-color-primary-bg) !important;
+}
 </style>

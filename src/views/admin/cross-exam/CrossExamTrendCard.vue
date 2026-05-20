@@ -59,9 +59,9 @@
           <a-descriptions-item label="课程ID">{{ record.courseId ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="班级ID">{{ record.classId ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间" :span="2">{{
-            fmt(record.createTime)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间" :span="2">
+            {{ fmt(record.createTime) }}
+          </a-descriptions-item>
           <a-descriptions-item label="trace ID">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -106,15 +106,15 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisVO } from '@/apis/mark/cross-exam-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref } from 'vue'
 import {
   generateClassTrend,
   generateCourseTrend,
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref } from 'vue'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 
 defineOptions({ name: 'CrossExamTrendCard' })
@@ -182,8 +182,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    record.value
-      = scopeMode.value === 'COURSE'
+    record.value =
+      scopeMode.value === 'COURSE'
         ? await generateCourseTrend({ courseId, examIds })
         : await generateClassTrend({ courseId, classId: form.classId.trim(), examIds })
     message.success('已生成趋势分析')

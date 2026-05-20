@@ -1,357 +1,359 @@
 <template>
-  <GiPageLayout>
-    <div class="paper-template-page">
-      <PageHeader title="试卷模板">
-        <template #tags>
-          <UiTag
-            v-if="selectedExamId"
-            :tone="pages.length === (form.totalPages ?? -1) ? 'green' : 'orange'"
-            size="md"
-          >
-            {{ pages.length }} / {{ form.totalPages ?? '-' }} 页
-          </UiTag>
-          <UiTag v-if="selectedExamId" tone="blue" size="md">
-            {{ questions.length }} 题 · 总分 {{ totalScore }}
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="paper-template-page__context">
+        <div class="paper-template-page__context-left">
           <a-select
-            v-model:value="selectedExamId"
-            style="width: 280px"
+            :value="selectedExamId"
+            class="paper-template-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
-            :loading="examOptionsLoading"
+            :loading="examLoading"
             show-search
             option-filter-prop="label"
             allow-clear
             @change="handleExamChange"
           />
+          <UiTag
+            v-if="selectedExamId"
+            :tone="pages.length === (form.totalPages ?? -1) ? 'green' : 'orange'"
+            size="sm"
+          >
+            {{ pages.length }} / {{ form.totalPages ?? '-' }} 页
+          </UiTag>
+          <UiTag v-if="selectedExamId" tone="blue" size="sm">
+            {{ questions.length }} 题 · 总分 {{ totalScore }}
+          </UiTag>
+        </div>
+        <div class="paper-template-page__context-right">
           <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
             <template #icon><SaveOutlined /></template>
             保存
           </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="paper-template-page__empty" />
+
+    <a-spin v-else :spinning="loading">
+      <UiCard class="info-card">
+        <template #title>
+          <FileTextOutlined />
+          <span>模板基本信息</span>
         </template>
-      </PageHeader>
+        <a-form layout="inline">
+          <a-form-item label="模板名称" required>
+            <a-input
+              v-model:value="form.templateName"
+              placeholder="例如：2026 春《工程制图》期末 v1"
+              :maxlength="100"
+              style="width: 360px"
+            />
+          </a-form-item>
+          <a-form-item label="总页数" required>
+            <a-input-number
+              v-model:value="form.totalPages"
+              :min="1"
+              :max="50"
+              style="width: 120px"
+            />
+          </a-form-item>
+        </a-form>
+      </UiCard>
 
-      <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="empty-block" />
+      <UiCard class="info-card">
+        <template #title>
+          <FileImageOutlined />
+          <span>页面文件配置</span>
+          <UiBadge :tone="pages.length === (form.totalPages ?? -1) ? 'green' : 'orange'">
+            {{ pages.length }} / {{ form.totalPages ?? '-' }}
+          </UiBadge>
+        </template>
+        <template #extra>
+          <UiButton size="sm" variant="outline" @click="addPage">
+            <template #icon>
+              <PlusOutlined />
+            </template>
+            新增页面
+          </UiButton>
+        </template>
 
-      <a-spin v-else :spinning="loading">
-        <UiCard class="info-card">
-          <template #title>
-            <FileTextOutlined />
-            <span>模板基本信息</span>
-          </template>
-          <a-form layout="inline">
-            <a-form-item label="模板名称" required>
-              <a-input
-                v-model:value="form.templateName"
-                placeholder="例如：2026 春《工程制图》期末 v1"
-                :maxlength="100"
-                style="width: 360px"
-              />
-            </a-form-item>
-            <a-form-item label="总页数" required>
+        <a-alert
+          type="info"
+          show-icon
+          :closable="false"
+          message="页面数必须等于「总页数」，且页号 1 ~ 总页数 全部覆盖、不可重复。每页必须上传模板文件并填写宽高（像素）。"
+          style="margin-bottom: 12px"
+        />
+
+        <UiDataTable
+          :columns="pageColumns"
+          :data-source="pages"
+          :show-pagination="false"
+          flat
+          :total="pages.length"
+          row-key="rowKey"
+          size="middle"
+          bordered
+          :scroll="{ x: 800 }"
+        >
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'pageNo'">
               <a-input-number
-                v-model:value="form.totalPages"
+                v-model:value="record.pageNo"
                 :min="1"
-                :max="50"
-                style="width: 120px"
+                size="small"
+                style="width: 100%"
               />
-            </a-form-item>
-          </a-form>
-        </UiCard>
-
-        <UiCard class="info-card">
-          <template #title>
-            <FileImageOutlined />
-            <span>页面文件配置</span>
-            <UiBadge :tone="pages.length === (form.totalPages ?? -1) ? 'green' : 'orange'">
-              {{ pages.length }} / {{ form.totalPages ?? '-' }}
-            </UiBadge>
+            </template>
+            <template v-else-if="column.key === 'templateFile'">
+              <a-space>
+                <UiTag v-if="record.templateFileId" tone="green" size="sm">
+                  {{ record.templateFileName || `节点 #${record.templateFileId}` }}
+                </UiTag>
+                <UiTag v-else tone="orange" size="sm">未上传</UiTag>
+                <a-upload
+                  :show-upload-list="false"
+                  :before-upload="(file: File) => handleUploadPage(file, index)"
+                  accept="image/*,application/pdf"
+                >
+                  <a-button size="small" :loading="record.uploading">
+                    <template #icon>
+                      <UploadOutlined />
+                    </template>
+                    {{ record.templateFileId ? '替换' : '上传' }}
+                  </a-button>
+                </a-upload>
+              </a-space>
+            </template>
+            <template v-else-if="column.key === 'widthPx'">
+              <a-input-number
+                v-model:value="record.widthPx"
+                :min="0"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'heightPx'">
+              <a-input-number
+                v-model:value="record.heightPx"
+                :min="0"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'pageActions'">
+              <a-button type="link" danger size="small" @click="removePage(index)">
+                删除
+              </a-button>
+            </template>
           </template>
-          <template #extra>
-            <UiButton size="sm" variant="outline" @click="addPage">
-              <template #icon>
-                <PlusOutlined />
-              </template>
-              新增页面
-            </UiButton>
-          </template>
+        </UiDataTable>
+      </UiCard>
 
-          <a-alert
-            type="info"
-            show-icon
-            :closable="false"
-            message="页面数必须等于「总页数」，且页号 1 ~ 总页数 全部覆盖、不可重复。每页必须上传模板文件并填写宽高（像素）。"
-            style="margin-bottom: 12px"
-          />
+      <UiCard class="info-card">
+        <template #title>
+          <ProfileOutlined />
+          <span>题目列表</span>
+          <UiBadge tone="blue">{{ questions.length }} 题</UiBadge>
+          <UiBadge tone="green">总分 {{ totalScore }}</UiBadge>
+        </template>
+        <template #extra>
+          <UiButton size="sm" @click="addQuestion">
+            <template #icon>
+              <PlusOutlined />
+            </template>
+            新增题目
+          </UiButton>
+        </template>
 
-          <a-table
-            :columns="pageColumns"
-            :data-source="pages"
-            :pagination="false"
-            row-key="rowKey"
-            size="middle"
-            bordered
-            :scroll="{ x: 800 }"
-          >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'pageNo'">
-                <a-input-number
-                  v-model:value="record.pageNo"
-                  :min="1"
+        <a-alert
+          type="info"
+          show-icon
+          :closable="false"
+          message="题号、排序号必须唯一；满分必填且不可为负。题目区域坐标可在批阅前置任务中再细化。"
+          style="margin-bottom: 12px"
+        />
+
+        <UiDataTable
+          :columns="questionColumns"
+          :data-source="questions"
+          :show-pagination="false"
+          flat
+          :total="questions.length"
+          row-key="rowKey"
+          size="middle"
+          bordered
+          :scroll="{ x: 1280 }"
+        >
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'questionNo'">
+              <a-input v-model:value="record.questionNo" placeholder="如 1 / 1.1" size="small" />
+            </template>
+            <template v-else-if="column.key === 'questionType'">
+              <a-select
+                v-model:value="record.questionType"
+                :options="questionTypeOptions"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'fullScore'">
+              <a-input-number
+                v-model:value="record.fullScore"
+                :min="0"
+                :step="0.5"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'pageNo'">
+              <a-input-number
+                v-model:value="record.pageNo"
+                :min="1"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'x'">
+              <a-input-number
+                v-model:value="record.x"
+                :min="0"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'y'">
+              <a-input-number
+                v-model:value="record.y"
+                :min="0"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'width'">
+              <a-input-number
+                v-model:value="record.width"
+                :min="0"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'height'">
+              <a-input-number
+                v-model:value="record.height"
+                :min="0"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'sortNo'">
+              <a-input-number
+                v-model:value="record.sortNo"
+                :min="1"
+                size="small"
+                style="width: 100%"
+              />
+            </template>
+            <template v-else-if="column.key === 'serverStatus'">
+              <UiTag v-if="record.questionTemplateId" tone="green" size="sm">已存在</UiTag>
+              <UiTag v-else tone="orange" size="sm">未保存</UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <a-space>
+                <a-button
+                  type="link"
                   size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'templateFile'">
-                <a-space>
-                  <UiTag v-if="record.templateFileId" tone="green" size="sm">
-                    {{ record.templateFileName || `节点 #${record.templateFileId}` }}
-                  </UiTag>
-                  <UiTag v-else tone="orange" size="sm">未上传</UiTag>
-                  <a-upload
-                    :show-upload-list="false"
-                    :before-upload="(file: File) => handleUploadPage(file, index)"
-                    accept="image/*,application/pdf"
-                  >
-                    <a-button size="small" :loading="record.uploading">
-                      <template #icon>
-                        <UploadOutlined />
-                      </template>
-                      {{ record.templateFileId ? '替换' : '上传' }}
-                    </a-button>
-                  </a-upload>
-                </a-space>
-              </template>
-              <template v-else-if="column.key === 'widthPx'">
-                <a-input-number
-                  v-model:value="record.widthPx"
-                  :min="0"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'heightPx'">
-                <a-input-number
-                  v-model:value="record.heightPx"
-                  :min="0"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'pageActions'">
-                <a-button type="link" danger size="small" @click="removePage(index)">
+                  :disabled="!questions[index].questionTemplateId"
+                  @click="openAnswerModal(questions[index])"
+                >
+                  标准答案
+                </a-button>
+                <a-button type="link" danger size="small" @click="removeQuestion(index)">
                   删除
                 </a-button>
-              </template>
+              </a-space>
             </template>
-          </a-table>
-        </UiCard>
-
-        <UiCard class="info-card">
-          <template #title>
-            <ProfileOutlined />
-            <span>题目列表</span>
-            <UiBadge tone="blue">{{ questions.length }} 题</UiBadge>
-            <UiBadge tone="green">总分 {{ totalScore }}</UiBadge>
           </template>
-          <template #extra>
-            <UiButton size="sm" @click="addQuestion">
-              <template #icon>
-                <PlusOutlined />
-              </template>
-              新增题目
-            </UiButton>
-          </template>
+        </UiDataTable>
+      </UiCard>
+    </a-spin>
+  </StageWorkbenchShell>
 
-          <a-alert
-            type="info"
-            show-icon
-            :closable="false"
-            message="题号、排序号必须唯一；满分必填且不可为负。题目区域坐标可在批阅前置任务中再细化。"
-            style="margin-bottom: 12px"
-          />
-
-          <a-table
-            :columns="questionColumns"
-            :data-source="questions"
-            :pagination="false"
-            row-key="rowKey"
-            size="middle"
-            bordered
-            :scroll="{ x: 1280 }"
-          >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'questionNo'">
-                <a-input v-model:value="record.questionNo" placeholder="如 1 / 1.1" size="small" />
-              </template>
-              <template v-else-if="column.key === 'questionType'">
-                <a-select
-                  v-model:value="record.questionType"
-                  :options="questionTypeOptions"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'fullScore'">
-                <a-input-number
-                  v-model:value="record.fullScore"
-                  :min="0"
-                  :step="0.5"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'pageNo'">
-                <a-input-number
-                  v-model:value="record.pageNo"
-                  :min="1"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'x'">
-                <a-input-number
-                  v-model:value="record.x"
-                  :min="0"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'y'">
-                <a-input-number
-                  v-model:value="record.y"
-                  :min="0"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'width'">
-                <a-input-number
-                  v-model:value="record.width"
-                  :min="0"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'height'">
-                <a-input-number
-                  v-model:value="record.height"
-                  :min="0"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'sortNo'">
-                <a-input-number
-                  v-model:value="record.sortNo"
-                  :min="1"
-                  size="small"
-                  style="width: 100%"
-                />
-              </template>
-              <template v-else-if="column.key === 'serverStatus'">
-                <UiTag v-if="record.questionTemplateId" tone="green" size="sm">已存在</UiTag>
-                <UiTag v-else tone="orange" size="sm">未保存</UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <a-button
-                    type="link"
-                    size="small"
-                    :disabled="!questions[index].questionTemplateId"
-                    @click="openAnswerModal(questions[index])"
-                  >
-                    标准答案
-                  </a-button>
-                  <a-button type="link" danger size="small" @click="removeQuestion(index)">
-                    删除
-                  </a-button>
-                </a-space>
-              </template>
-            </template>
-          </a-table>
-        </UiCard>
-      </a-spin>
-    </div>
-
-    <a-modal
-      v-model:open="answerModalOpen"
-      title="录入标准答案"
-      :confirm-loading="answerSaving"
-      :destroy-on-close="true"
-      :mask-closable="false"
-      width="640px"
-      @ok="handleSaveAnswer"
-    >
-      <a-form ref="answerFormRef" :model="answerForm" layout="vertical" :rules="answerFormRules">
-        <a-form-item label="题号">
-          <a-input :value="answerContext.questionNo" disabled />
-        </a-form-item>
-        <a-form-item label="题型">
-          <a-input :value="QUESTION_TYPE_LABEL[answerContext.questionType] || ''" disabled />
-        </a-form-item>
-        <a-form-item label="标准答案" name="standardAnswer">
-          <a-textarea
-            v-model:value="answerForm.standardAnswer"
-            :rows="3"
-            :maxlength="2000"
-            placeholder="客观题填写选项（如 A / AB / 1 / 0），主观题填写参考答案要点"
-            show-count
-          />
-        </a-form-item>
-        <a-form-item v-if="answerContext.questionType === 'OBJECTIVE'" label="比较策略">
-          <a-input
-            v-model:value="answerForm.comparePolicy"
-            placeholder="如 EQUALS / IGNORE_ORDER / NUMERIC_TOLERANCE，留空使用默认"
-            :maxlength="64"
-          />
-        </a-form-item>
-        <a-form-item label="答案解析">
-          <a-textarea
-            v-model:value="answerForm.answerExplain"
-            :rows="3"
-            :maxlength="1000"
-            placeholder="供学生查看的解析说明（可选）"
-          />
-        </a-form-item>
-        <a-form-item label="AI 评分提示">
-          <a-textarea
-            v-model:value="answerForm.aiHint"
-            :rows="2"
-            :maxlength="1000"
-            placeholder="主观题给 AI 的额外评分提示（可选）"
-          />
-        </a-form-item>
-        <a-form-item label="结构化答案 JSON">
-          <a-textarea
-            v-model:value="answerForm.answerPayload"
-            :rows="3"
-            :maxlength="4000"
-            placeholder="结构化答案配置（如数值容差），JSON 字符串，可选"
-          />
-        </a-form-item>
-        <a-form-item>
-          <a-checkbox v-model:checked="answerForm.effectiveNow">
-            立即生效（取消勾选则保存为草稿状态）
-          </a-checkbox>
-        </a-form-item>
-      </a-form>
-    </a-modal>
-  </GiPageLayout>
+  <a-modal
+    v-model:open="answerModalOpen"
+    title="录入标准答案"
+    :confirm-loading="answerSaving"
+    :destroy-on-close="true"
+    :mask-closable="false"
+    width="640px"
+    @ok="handleSaveAnswer"
+  >
+    <a-form ref="answerFormRef" :model="answerForm" layout="vertical" :rules="answerFormRules">
+      <a-form-item label="题号">
+        <a-input :value="answerContext.questionNo" disabled />
+      </a-form-item>
+      <a-form-item label="题型">
+        <a-input :value="QUESTION_TYPE_LABEL[answerContext.questionType] || ''" disabled />
+      </a-form-item>
+      <a-form-item label="标准答案" name="standardAnswer">
+        <a-textarea
+          v-model:value="answerForm.standardAnswer"
+          :rows="3"
+          :maxlength="2000"
+          placeholder="客观题填写选项（如 A / AB / 1 / 0），主观题填写参考答案要点"
+          show-count
+        />
+      </a-form-item>
+      <a-form-item v-if="answerContext.questionType === 'OBJECTIVE'" label="比较策略">
+        <a-input
+          v-model:value="answerForm.comparePolicy"
+          placeholder="如 EQUALS / IGNORE_ORDER / NUMERIC_TOLERANCE，留空使用默认"
+          :maxlength="64"
+        />
+      </a-form-item>
+      <a-form-item label="答案解析">
+        <a-textarea
+          v-model:value="answerForm.answerExplain"
+          :rows="3"
+          :maxlength="1000"
+          placeholder="供学生查看的解析说明（可选）"
+        />
+      </a-form-item>
+      <a-form-item label="AI 评分提示">
+        <a-textarea
+          v-model:value="answerForm.aiHint"
+          :rows="2"
+          :maxlength="1000"
+          placeholder="主观题给 AI 的额外评分提示（可选）"
+        />
+      </a-form-item>
+      <a-form-item label="结构化答案 JSON">
+        <a-textarea
+          v-model:value="answerForm.answerPayload"
+          :rows="3"
+          :maxlength="4000"
+          placeholder="结构化答案配置（如数值容差），JSON 字符串，可选"
+        />
+      </a-form-item>
+      <a-form-item>
+        <a-checkbox v-model:checked="answerForm.effectiveNow">
+          立即生效（取消勾选则保存为草稿状态）
+        </a-checkbox>
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamPageTemplatePayload,
   ExamPaperPageTemplateVO,
   ExamQuestionTemplatePayload,
   ExamQuestionTemplateVO,
-  ExamSummaryVO,
 } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -361,17 +363,22 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
-import { getExamTemplate, pageExams, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { getExamTemplate, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherPaperTemplate' })
 
-const route = useRoute()
-const router = useRouter()
+// B-8 统一考试选择器
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExamSelector,
+} = useMarkExamSelector()
 
 interface PageRow {
   rowKey: string
@@ -413,12 +420,6 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const selectedExamId = ref<string | undefined>(
-  route.query.examId ? String(route.query.examId) : undefined,
-)
-const examOptions = ref<Array<{ label: string, value: string }>>([])
-const examOptionsLoading = ref(false)
-
 const form = reactive<{ templateName: string, totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
@@ -454,24 +455,6 @@ const questionColumns: ColumnType<QuestionRow>[] = [
   { title: '状态', key: 'serverStatus', width: 100 },
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
-
-async function loadExamOptions(): Promise<void> {
-  examOptionsLoading.value = true
-  try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    examOptions.value = (result.list ?? [])
-      .filter((item: ExamSummaryVO) => item.status === 'ACTIVE')
-      .map((item: ExamSummaryVO) => ({
-        label: `${item.examName}（${item.statusMessage}）`,
-        value: item.examId,
-      }))
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '加载考试列表失败'
-    message.error(errMsg)
-  } finally {
-    examOptionsLoading.value = false
-  }
-}
 
 function clearTemplate(): void {
   form.templateName = ''
@@ -538,14 +521,9 @@ async function loadTemplate(): Promise<void> {
   }
 }
 
-function handleExamChange(
-  value: SelectValue,
-  _option: DefaultOptionType | DefaultOptionType[],
-): void {
-  const next = value != null ? String(value) : undefined
-  selectedExamId.value = next
-  void router.replace({ query: next ? { examId: next } : {} })
-  if (next) {
+function handleExamChange(value: unknown): void {
+  onExamChange(value as string | number | undefined)
+  if (selectedExamId.value) {
     void loadTemplate()
   } else {
     clearTemplate()
@@ -823,21 +801,17 @@ async function handleSaveAnswer(): Promise<void> {
   }
 }
 
-watch(
-  () => route.query.examId,
-  (value) => {
-    const next = value ? String(value) : undefined
-    if (next !== selectedExamId.value) {
-      selectedExamId.value = next
-      if (next) {
-        void loadTemplate()
-      }
-    }
-  },
-)
+// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步，业务层只需 watch 一次
+watch(selectedExamId, (value) => {
+  if (value) {
+    void loadTemplate()
+  } else {
+    clearTemplate()
+  }
+})
 
 onMounted(async () => {
-  await loadExamOptions()
+  await initExamSelector()
   if (selectedExamId.value) {
     await loadTemplate()
   }
@@ -846,6 +820,33 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .paper-template-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

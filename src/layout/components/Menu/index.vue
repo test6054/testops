@@ -3,10 +3,12 @@
     class="app-side-menu"
     :key="`sidebar-menu-${menuKey}`"
     :inline-collapsed="!isDesktop ? false : appStore.menuCollapse"
-    :mode="mode"
+    mode="inline"
     :selected-keys="activeMenu"
+    :open-keys="appStore.menuCollapse ? [] : openKeys"
     :style="menuStyle"
     @click="onMenuItemClick"
+    @open-change="onOpenChange"
   >
     <!-- 容器路由（/admin、/teacher、/student）：扁平化展开 + menuGroup 分组渲染 -->
     <template v-if="isRoleLayoutRoute && groupedMenus">
@@ -31,6 +33,7 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
+import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { debounce } from 'lodash-es'
 import { useDevice } from '@/hooks'
@@ -147,20 +150,6 @@ const updateStableRoutes = debounce(() => {
 // 监听sidebarRoutes变化
 watch(sidebarRoutes, updateStableRoutes, { immediate: true, deep: true })
 
-// 菜单垂直模式/水平模式
-const mode = computed(() => {
-  if (!['left', 'mix'].includes(appStore.layout)) {
-    return 'horizontal'
-  } else {
-    return 'vertical'
-  }
-})
-
-// 是否默认展开选中的菜单
-const autoOpenSelected = computed(() => {
-  return ['left', 'mix'].includes(appStore.layout)
-})
-
 // 当前页面激活菜单路径，先从路由里面找
 const activeMenu = computed<Key[]>(() => {
   const { meta, path } = route
@@ -181,10 +170,37 @@ const onMenuItemClick = ({ key }: { key: Key }) => {
   emit('menu-item-click-after')
 }
 
-// 折叠状态改变时触发
-const onCollapse = (collapsed: boolean) => {
-  if (appStore.layout === 'mix') {
-    appStore.setMenuCollapse(collapsed)
+// ─── 子菜单展开状态 ────────────────────────────────────────
+// 当前展开的 SubMenu key 列表（仅 inline 模式使用；vertical/collapsed 模式由 antd 内部 popup 接管）
+const openKeys = ref<string[]>([])
+
+// 当前激活路由所属的 menuGroup（来自 route.meta.menuGroup）
+const currentGroupKey = computed<string | null>(() => {
+  return (route.meta?.menuGroup as string | undefined) ?? null
+})
+
+// 路由变化时自动展开所属分组：手风琴模式只保留当前分组
+watch(
+  currentGroupKey,
+  (key) => {
+    if (!key) return
+    if (appStore.menuAccordion) {
+      openKeys.value = [key]
+    } else if (!openKeys.value.includes(key)) {
+      openKeys.value = [...openKeys.value, key]
+    }
+  },
+  { immediate: true },
+)
+
+// 用户手动展开/收起子菜单
+const onOpenChange = (keys: string[]) => {
+  if (appStore.menuAccordion) {
+    // 手风琴模式：只保留最新打开的那一个
+    const latestOpen = keys.find((k) => !openKeys.value.includes(k))
+    openKeys.value = latestOpen ? [latestOpen] : []
+  } else {
+    openKeys.value = keys
   }
 }
 </script>

@@ -22,13 +22,15 @@
       </a-space>
     </template>
 
-    <a-table
+    <UiDataTable
       :columns="columns"
       :data-source="rows"
       :loading="loading"
       row-key="id"
       size="small"
-      :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
+      :page-size="20"
+      :total="rows.length"
+      flat
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'requestStatus'">
@@ -51,9 +53,9 @@
               type="link"
               size="small"
               :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'APPROVED')"
             >
@@ -64,9 +66,9 @@
               size="small"
               danger
               :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'REJECTED')"
             >
@@ -75,7 +77,7 @@
           </a-space>
         </template>
       </template>
-    </a-table>
+    </UiDataTable>
 
     <a-modal
       v-model:open="handleOpen"
@@ -126,21 +128,22 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import {
   handleReviewRequest,
   listReviewRequests,
   REVIEW_REQUEST_STATUS_COLOR,
   REVIEW_REQUEST_STATUS_LABEL,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { UiDataTable } from '@/components/ui-guide/ui'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
 const rows = ref<ExamGradeReviewRequestVO[]>([])

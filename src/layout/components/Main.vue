@@ -58,7 +58,7 @@ const getRouteKey = (route: RouteLocationNormalized) => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: center; // 水平居中
+  align-items: stretch;
   background: var(--ant-color-bg-container);
 
   // 自定义细滚动条样式（替代完全隐藏，保持可操作性）
@@ -82,10 +82,8 @@ const getRouteKey = (route: RouteLocationNormalized) => {
     background-color: var(--ant-color-text-quaternary);
   }
 
-  // 内容区域最大宽度限制 - 应用到内部页面组件
   :deep(> *) {
     width: 100%;
-    max-width: 1400px;
     box-sizing: border-box;
   }
 

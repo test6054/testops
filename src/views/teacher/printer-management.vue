@@ -1,117 +1,129 @@
 <template>
-  <GiPageLayout>
-    <div class="printer-management sa-page">
-      <div class="sa-workspace printer-management__workspace">
-        <div class="sa-workspace__header">
-          <div class="sa-workspace__title-wrap">
-            <h3 class="sa-workspace__title">打印机/扫描仪管理</h3>
-            <p class="sa-workspace__subtitle">
-              维护本租户的网络扫描仪与多功能复合机；支持 HTTP 推送 与 SANE 主动采集 两种接入模式。
-            </p>
-          </div>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="printer-management__context">
+        <div class="printer-management__context-info">
+          <h2 class="printer-management__title">
+            阅卷交付 - 打印机 / 扫描仪管理
+          </h2>
+          <a-tag color="blue">
+            共 {{ devices.length }} 台设备
+          </a-tag>
         </div>
-
-        <!-- 筛选栏 -->
-        <div class="filter-row">
-          <a-input
-            v-model:value="searchForm.scannerDeviceIdKeyword"
-            placeholder="按设备业务ID搜索"
-            allow-clear
-            style="width: 240px; margin-right: 12px"
-            @press-enter="handleSearch"
-          />
-          <a-select
-            v-model:value="searchForm.interfaceMode"
-            placeholder="接入模式"
-            allow-clear
-            style="width: 160px; margin-right: 12px"
-            :options="interfaceModeOptions"
-          />
-          <a-select
-            v-model:value="searchForm.status"
-            placeholder="设备状态"
-            allow-clear
-            style="width: 160px; margin-right: 12px"
-            :options="statusOptions"
-          />
-          <a-button type="primary" @click="handleSearch">查询</a-button>
-          <a-button style="margin-left: 8px" @click="handleResetSearch">重置</a-button>
+        <div class="printer-management__context-actions">
+          <a-button @click="loadDevices">
+            刷新
+          </a-button>
+          <a-button type="primary" @click="handleCreate">
+            <template #icon>
+              <PlusOutlined />
+            </template>
+            新增设备
+          </a-button>
         </div>
-
-        <!-- 工具栏 -->
-        <div class="toolbar-row">
-          <a-tag color="blue">共 {{ devices.length }} 台设备</a-tag>
-          <div class="toolbar-actions">
-            <a-button type="primary" @click="handleCreate">
-              <template #icon>
-                <PlusOutlined />
-              </template>
-              新增设备
-            </a-button>
-            <a-button @click="loadDevices">
-              <template #icon>
-                <ReloadOutlined />
-              </template>
-              刷新
-            </a-button>
-          </div>
-        </div>
-
-        <!-- 设备表格 -->
-        <a-table
-          :columns="columns"
-          :data-source="devices"
-          :loading="loading"
-          :pagination="false"
-          row-key="id"
-          size="middle"
-          bordered
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'interfaceMode'">
-              <a-tag :color="interfaceModeColorOf(devices[index].interfaceMode)">
-                {{ interfaceModeLabelOf(devices[index].interfaceMode) }}
-              </a-tag>
-            </template>
-            <template v-else-if="column.key === 'status'">
-              <a-tag :color="statusColorOf(devices[index].status)">
-                {{ statusLabelOf(devices[index].status) }}
-              </a-tag>
-            </template>
-            <template v-else-if="column.key === 'pushTokenMasked'">
-              <span v-if="devices[index].pushTokenMasked" class="mono">
-                {{ devices[index].pushTokenMasked }}
-              </span>
-              <span v-else class="text-muted">—</span>
-            </template>
-            <template v-else-if="column.key === 'lastSeenAt'">
-              <span v-if="devices[index].lastSeenAt">{{ devices[index].lastSeenAt }}</span>
-              <span v-else class="text-muted">从未通讯</span>
-            </template>
-            <template v-else-if="column.key === 'action'">
-              <div class="operations-cell">
-                <a class="op-link" @click="handleViewDetail(devices[index])">详情</a>
-                <a class="op-link" @click="handleEdit(devices[index])">编辑</a>
-                <a
-                  v-if="devices[index].interfaceMode === 'HTTP_PUSH'"
-                  class="op-link"
-                  @click="handleResetToken(devices[index])"
-                >
-                  重置 token
-                </a>
-                <a
-                  v-if="devices[index].interfaceMode === 'SANE_PULL'"
-                  class="op-link"
-                  @click="handleOpenSaneTrigger(devices[index])"
-                >
-                  采集
-                </a>
-                <a class="op-link op-link--danger" @click="handleDelete(devices[index])">删除</a>
-              </div>
-            </template>
-          </template>
-        </a-table>
       </div>
+    </template>
+
+    <div class="printer-management">
+      <!-- 筛选栏 -->
+      <div class="filter-row">
+        <a-input
+          v-model:value="searchForm.scannerDeviceIdKeyword"
+          placeholder="按设备业务ID搜索"
+          allow-clear
+          style="width: 240px; margin-right: 12px"
+          @press-enter="handleSearch"
+        />
+        <a-select
+          v-model:value="searchForm.interfaceMode"
+          placeholder="接入模式"
+          allow-clear
+          style="width: 160px; margin-right: 12px"
+          :options="interfaceModeOptions"
+        />
+        <a-select
+          v-model:value="searchForm.status"
+          placeholder="设备状态"
+          allow-clear
+          style="width: 160px; margin-right: 12px"
+          :options="statusOptions"
+        />
+        <a-button type="primary" @click="handleSearch">查询</a-button>
+        <a-button style="margin-left: 8px" @click="handleResetSearch">重置</a-button>
+      </div>
+
+      <!-- 设备表格 -->
+      <UiDataTable
+        :columns="columns"
+        :data-source="devices"
+        :loading="loading"
+        :show-pagination="false"
+        row-key="id"
+        size="middle"
+        flat
+        :total="devices.length"
+        bordered
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'interfaceMode'">
+            <a-tag :color="interfaceModeColorOf(devices[index].interfaceMode)">
+              {{ interfaceModeLabelOf(devices[index].interfaceMode) }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'status'">
+            <a-tag :color="statusColorOf(devices[index].status)">
+              {{ statusLabelOf(devices[index].status) }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'endpointOnlineStatus'">
+            <a-tag :color="endpointOnlineStatusColorOf(devices[index].endpointOnlineStatus)">
+              {{ endpointOnlineStatusLabelOf(devices[index].endpointOnlineStatus) }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'agentVersion'">
+            <span v-if="devices[index].agentVersion">{{ devices[index].agentVersion }}</span>
+            <span v-else class="text-muted">未激活</span>
+          </template>
+          <template v-else-if="column.key === 'pushTokenMasked'">
+            <span v-if="devices[index].pushTokenMasked" class="mono">
+              {{ devices[index].pushTokenMasked }}
+            </span>
+            <span v-else class="text-muted">—</span>
+          </template>
+          <template v-else-if="column.key === 'lastSeenAt'">
+            <span v-if="devices[index].lastSeenAt">{{ devices[index].lastSeenAt }}</span>
+            <span v-else class="text-muted">从未通讯</span>
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <div class="operations-cell">
+              <a class="op-link" @click="handleViewDetail(devices[index])">详情</a>
+              <a class="op-link" @click="handleEdit(devices[index])">编辑</a>
+              <a
+                v-if="devices[index].interfaceMode === 'HTTP_PUSH'"
+                class="op-link"
+                @click="handleResetToken(devices[index])"
+              >
+                重置 token
+              </a>
+              <a
+                v-if="devices[index].interfaceMode === 'HTTP_PUSH'"
+                class="op-link"
+                @click="handleCreateActivationCode(devices[index])"
+              >
+                激活码
+              </a>
+              <a
+                v-if="devices[index].interfaceMode === 'SANE_PULL'"
+                class="op-link"
+                @click="handleOpenSaneTrigger(devices[index])"
+              >
+                采集
+              </a>
+              <a class="op-link op-link--danger" @click="handleDelete(devices[index])">删除</a>
+            </div>
+          </template>
+        </template>
+      </UiDataTable>
     </div>
 
     <!-- 新增/编辑设备弹窗 -->
@@ -375,6 +387,26 @@
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="设备 IP">{{ detailInfo.scannerIp || '—' }}</a-descriptions-item>
+        <a-descriptions-item label="Agent 在线状态">
+          <a-tag :color="endpointOnlineStatusColorOf(detailInfo.endpointOnlineStatus)">
+            {{ endpointOnlineStatusLabelOf(detailInfo.endpointOnlineStatus) }}
+          </a-tag>
+        </a-descriptions-item>
+        <a-descriptions-item label="Agent 版本">{{ detailInfo.agentVersion || '未激活' }}</a-descriptions-item>
+        <a-descriptions-item label="客户端版本">{{ detailInfo.clientVersion || '—' }}</a-descriptions-item>
+        <a-descriptions-item label="端点名称">{{ detailInfo.endpointName || '—' }}</a-descriptions-item>
+        <a-descriptions-item label="扫描仪连接">
+          {{ detailInfo.scannerConnected === true ? '已连接' : '未连接或未上报' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="本地队列">
+          任务 {{ detailInfo.pendingJobCount ?? 0 }} / 待上传页 {{ detailInfo.pendingUploadPageCount ?? 0 }}
+        </a-descriptions-item>
+        <a-descriptions-item label="最近心跳">
+          {{ detailInfo.lastHeartbeatAt || '从未心跳' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="Agent 诊断">
+          {{ detailInfo.diagnosticStatus || '—' }} {{ detailInfo.diagnosticMessage || '' }}
+        </a-descriptions-item>
         <template v-if="detailInfo.interfaceMode === 'HTTP_PUSH'">
           <a-descriptions-item label="默认归属考试ID">
             {{ detailInfo.defaultExamId || '—' }}
@@ -433,6 +465,42 @@
           {{ detailInfo.remark || '—' }}
         </a-descriptions-item>
       </a-descriptions>
+    </a-modal>
+
+    <a-modal
+      v-model:open="showActivationCodeModal"
+      title="扫描 Agent 激活码"
+      width="520px"
+      :footer="null"
+      destroy-on-close
+    >
+      <div v-if="activationCodeInfo" class="activation-code-modal">
+        <div class="activation-code-modal__device">
+          {{ activationCodeDeviceName }}
+        </div>
+        <AQrcode
+          v-if="activationCodeInfo.activationCode"
+          :value="activationCodeInfo.activationCode"
+          :size="220"
+          error-level="M"
+        />
+        <div class="activation-code-modal__code mono">
+          {{ activationCodeInfo.activationCode }}
+        </div>
+        <div class="activation-code-modal__meta">
+          <span>设备业务ID：{{ activationCodeInfo.scannerDeviceId }}</span>
+          <span>扫描站点：{{ activationCodeInfo.scannerStationId }}</span>
+          <span>有效期至：{{ activationCodeInfo.expireAt }}</span>
+        </div>
+        <a-space>
+          <a-button type="primary" @click="copyText(activationCodeInfo.activationCode)">
+            复制激活码
+          </a-button>
+          <a-button @click="showActivationCodeModal = false">
+            关闭
+          </a-button>
+        </a-space>
+      </div>
     </a-modal>
 
     <!-- SANE 触发采集弹窗 -->
@@ -507,7 +575,8 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </GiPageLayout>
+
+  </StageWorkbenchShell>
 </template>
 
 <script setup lang="ts">
@@ -515,6 +584,7 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type {
+  ExamScannerActivationCodeVO,
   ExamScannerDeviceCreatePayload,
   ExamScannerDeviceDetailVO,
   ExamScannerDeviceQueryPayload,
@@ -525,15 +595,17 @@ import type {
   ScannerColorModeCode,
   ScannerDeviceStatusCode,
   ScannerDuplexModeCode,
+  ScannerEndpointOnlineStatusCode,
   ScannerInterfaceModeCode,
 } from '@/apis/mark/exam-mark-scanner'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import AQrcode from 'ant-design-vue/es/qrcode'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getAllClasses } from '@/apis/edu/class'
 import {
+  createScannerActivationCode,
   createScannerDevice,
   deleteScannerDevice,
   getScannerDeviceDetail,
@@ -542,11 +614,15 @@ import {
   resetScannerDevicePushToken,
   SCANNER_DEVICE_STATUS_COLOR,
   SCANNER_DEVICE_STATUS_LABEL,
+  SCANNER_ENDPOINT_ONLINE_STATUS_COLOR,
+  SCANNER_ENDPOINT_ONLINE_STATUS_LABEL,
   SCANNER_INTERFACE_MODE_COLOR,
   SCANNER_INTERFACE_MODE_LABEL,
   triggerSaneScan,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import { UiDataTable } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -575,6 +651,9 @@ const examOptions = computed(() =>
     value: item.examId,
   })),
 )
+const showActivationCodeModal = ref(false)
+const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
+const activationCodeDeviceName = ref('')
 
 const interfaceModeOptions = [
   { value: 'HTTP_PUSH', label: SCANNER_INTERFACE_MODE_LABEL.HTTP_PUSH },
@@ -605,6 +684,8 @@ const columns = [
   { title: '接入模式', dataIndex: 'interfaceMode', key: 'interfaceMode', width: 130 },
   { title: 'IP', dataIndex: 'scannerIp', key: 'scannerIp', width: 130 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 90 },
+  { title: 'Agent', dataIndex: 'endpointOnlineStatus', key: 'endpointOnlineStatus', width: 100 },
+  { title: 'Agent 版本', dataIndex: 'agentVersion', key: 'agentVersion', width: 120 },
   { title: 'push_token', dataIndex: 'pushTokenMasked', key: 'pushTokenMasked', width: 130 },
   { title: '最近通讯', dataIndex: 'lastSeenAt', key: 'lastSeenAt', width: 170 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 160, ellipsis: true },
@@ -627,6 +708,14 @@ function interfaceModeLabelOf(mode?: ScannerInterfaceModeCode): string {
 function interfaceModeColorOf(mode?: ScannerInterfaceModeCode): string {
   if (!mode) return 'default'
   return SCANNER_INTERFACE_MODE_COLOR[mode] ?? 'default'
+}
+function endpointOnlineStatusLabelOf(status?: ScannerEndpointOnlineStatusCode): string {
+  if (!status) return '未激活'
+  return SCANNER_ENDPOINT_ONLINE_STATUS_LABEL[status] ?? status
+}
+function endpointOnlineStatusColorOf(status?: ScannerEndpointOnlineStatusCode): string {
+  if (!status) return 'default'
+  return SCANNER_ENDPOINT_ONLINE_STATUS_COLOR[status] ?? 'default'
 }
 
 async function loadDevices(): Promise<void> {
@@ -836,9 +925,10 @@ function openTokenModal(info: ExamScannerDeviceTokenVO): void {
 }
 
 async function handleResetToken(record: ExamScannerDeviceVO): Promise<void> {
-  Modal.confirm({
+  void confirmAsync({
     title: '重置 push_token',
     content: `重置后旧 token 立即失效，扫描仪后台需要重新填入。是否继续？设备：${record.deviceName}`,
+    type: 'warning',
     onOk: async () => {
       const result = await resetScannerDevicePushToken(record.id)
       message.success('push_token 已重置')
@@ -846,6 +936,13 @@ async function handleResetToken(record: ExamScannerDeviceVO): Promise<void> {
       await loadDevices()
     },
   })
+}
+
+async function handleCreateActivationCode(record: ExamScannerDeviceVO): Promise<void> {
+  const result = await createScannerActivationCode({ deviceId: record.id })
+  activationCodeInfo.value = result
+  activationCodeDeviceName.value = record.deviceName || record.scannerDeviceId || '扫描设备'
+  showActivationCodeModal.value = true
 }
 
 function copyText(value?: string | null): void {
@@ -871,10 +968,10 @@ async function handleViewDetail(record: ExamScannerDeviceVO): Promise<void> {
 
 // ─── 删除 ────────────────────────────────────────────
 function handleDelete(record: ExamScannerDeviceVO): void {
-  Modal.confirm({
+  void confirmAsync({
     title: '删除扫描设备',
     content: `确定删除设备"${record.deviceName}"吗？历史扫描事件保持引用，仅当前设备记录被逻辑删除。`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await deleteScannerDevice(record.id)
       message.success('扫描设备已删除')
@@ -984,12 +1081,13 @@ onMounted(() => {
   loadClassList()
   loadExamList()
 })
+
 </script>
 
 <style scoped lang="scss">
 .printer-management {
   &__workspace {
-    padding: 16px;
+    padding: 0;
   }
 }
 
@@ -1051,4 +1149,37 @@ onMounted(() => {
 .token-text {
   word-break: break-all;
 }
+
+.activation-code-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+  &__device {
+    color: #334155;
+    font-weight: 600;
+  }
+
+  &__code {
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    word-break: break-all;
+  }
+
+  &__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    color: #64748b;
+    font-size: 13px;
+  }
+}
+
 </style>

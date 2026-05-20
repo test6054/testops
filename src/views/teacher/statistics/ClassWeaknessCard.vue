@@ -79,20 +79,26 @@
 
 <script lang="ts" setup>
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 
 defineOptions({ name: 'ClassWeaknessCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
+
+/**
+ * B-12 联动：本卡每次成功查询/生成后，把当前 classId 上抛给父级 statistics.vue，
+ * 由父级统一展示「联动上下文」并把同一 classId 提示到学生学情卡，避免子卡片成为孤岛。
+ */
+const emit = defineEmits<{ (e: 'class-change', classId: string): void }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
@@ -117,6 +123,8 @@ async function reload(): Promise<void> {
   loading.value = true
   try {
     record.value = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
+    // B-12 联动：广播当前班级，便于学生学情卡显示同班级上下文
+    emit('class-change', classId)
   } catch (e) {
     record.value = null
     message.error(e instanceof Error ? e.message : '加载失败')
@@ -136,6 +144,7 @@ async function handleGenerate(): Promise<void> {
   try {
     record.value = await generateClassWeaknessAnalysis({ examId: props.examId, classId })
     message.success('已生成最新分析')
+    emit('class-change', classId)
   } catch (e) {
     message.error(e instanceof Error ? e.message : '生成失败')
   } finally {

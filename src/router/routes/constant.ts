@@ -63,4 +63,13 @@ export const constantRoutes: RouteRecordRaw[] = [
       ],
     },
   },
+  {
+    path: '/scanner-kiosk',
+    name: 'ScannerKiosk',
+    component: () => import('@/views/scanner-kiosk/index.vue'),
+    meta: {
+      title: '扫描一体机',
+      requiresAuth: false,
+    },
+  },
 ]

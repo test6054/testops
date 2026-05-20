@@ -166,6 +166,7 @@ export function requiresAuth(path: string): boolean {
     '/login',
     '/forgot-password',
     '/cas-first-login-completion',
+    '/scanner-kiosk',
     '/403',
     '/404',
   ]

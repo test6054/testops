@@ -1,21 +1,10 @@
 <script setup lang="ts">
 /**
- * 教学质量评价工作台首页
+ * 质量评价 - 年度工作台
  *
- * 汇集主链关键指标：
- * - 当前培养方案的毕业要求 / 观测点支撑健康度
- * - 达成度审核漏斗（已计算 / 已提交 / 已确认 / 已归档）
- * - 改进任务台账（未启动 / 整改中 / 已提交待复评 / 已闭环）
- * - AI 任务（待处理 / 处理中 / 成功 / 失败）
- * - 最近 5 条达成度 + 最近 5 条改进任务
+ * 阶段：专业配置 -> 培养方案 -> 数据接入 -> 计算 -> 审核 -> 改进 -> 归档
  */
-import type {
-  AchievementResultVO,
-  AiTaskVO,
-  ImprovementTaskVO,
-} from '@/apis/quality'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import type { AchievementResultVO, AiTaskVO, ImprovementTaskVO } from '@/apis/quality'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -27,11 +16,53 @@ import {
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
   aiTaskApi,
+  CONFIRMATION_STATUS_COLOR,
+  CONFIRMATION_STATUS_LABEL,
   IMPROVEMENT_TASK_STATUS_COLOR,
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
+  isAchievementAuditStatus,
+  isAchievementStatus,
+  isAchievementTargetType,
+  isAiTaskStatus,
+  isAiTaskType,
+  isConfirmationStatus,
+  isImprovementTaskStatus,
 } from '@/apis/quality'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
+import { useQualityTaskStore } from '@/stores/modules/qualityTask'
+import { storeToRefs } from 'pinia'
+
+const recentAchievementColumns: ColumnsType = [
+  { title: '目标类型', dataIndex: 'targetType', key: 'targetType' },
+  { title: '目标 ID', dataIndex: 'targetId', key: 'targetId', width: 120 },
+  { title: '达成值', dataIndex: 'finalValue', key: 'finalValue' },
+  { title: '达成结论', dataIndex: 'achievementStatus', key: 'achievementStatus' },
+  { title: '审核', dataIndex: 'auditStatus', key: 'auditStatus' },
+]
+
+const recentImprovementColumns: ColumnsType = [
+  { title: '编号', dataIndex: 'taskCode', key: 'taskCode' },
+  { title: '标题', dataIndex: 'taskTitle', key: 'taskTitle' },
+  { title: '负责人 ID', dataIndex: 'ownerUserId', key: 'ownerUserId' },
+  { title: '截止', dataIndex: 'dueDate', key: 'dueDate' },
+  { title: '状态', dataIndex: 'status', key: 'status' },
+]
+
+const recentAiTaskColumns: ColumnsType = [
+  { title: '能力', dataIndex: 'taskType', key: 'taskType' },
+  { title: '状态', dataIndex: 'status', key: 'status' },
+  { title: '模型', dataIndex: 'modelName', key: 'modelName' },
+  { title: '失败阶段', dataIndex: 'failurePhase', key: 'failurePhase' },
+  { title: '开始时间', dataIndex: 'startedAt', key: 'startedAt' },
+  { title: '结束时间', dataIndex: 'finishedAt', key: 'finishedAt' },
+]
 
 const router = useRouter()
 const qualityStore = useQualityStore()
@@ -75,6 +106,159 @@ const aiCounts = reactive({
 const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId)
 const trainingPlanLabel = computed(() => qualityStore.currentPlan?.planName || '未选择')
 
+const planConfirmationStatus = computed(() => {
+  const raw = qualityStore.currentPlan?.confirmationStatus
+  return isConfirmationStatus(raw) ? raw : undefined
+})
+
+const planConfirmationLabel = computed(() => {
+  const status = planConfirmationStatus.value
+  return status ? CONFIRMATION_STATUS_LABEL[status] : '未提交'
+})
+
+const planConfirmationColor = computed(() => {
+  const status = planConfirmationStatus.value
+  return status ? CONFIRMATION_STATUS_COLOR[status] : 'default'
+})
+
+// 年度评价阶段推断：依据培养方案确认状态与各能力块计数
+const stages = computed<WorkbenchStage[]>(() => {
+  const planSelected = !!trainingPlanId.value
+  const planConfirmed = planConfirmationStatus.value === 'CONFIRMED'
+  const dataReached =
+    achievementCounts.calculated > 0 ||
+    achievementCounts.submitted > 0 ||
+    achievementCounts.confirmed > 0 ||
+    achievementCounts.archived > 0
+  const calcDone = dataReached
+  const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
+  const improvementActive = improvementCounts.total > 0
+  const improvementClosed = improvementCounts.closed > 0
+  const archived = achievementCounts.archived > 0
+
+  return [
+    {
+      key: 'config',
+      title: '专业配置',
+      status: planSelected ? 'completed' : 'active',
+      statusText: planSelected ? '已选培养方案' : '请选择培养方案',
+    },
+    {
+      key: 'plan',
+      title: '培养方案',
+      status: planConfirmed ? 'completed' : planSelected ? 'active' : 'pending',
+      statusText: planConfirmationLabel.value,
+    },
+    {
+      key: 'data',
+      title: '数据接入',
+      status: dataReached ? 'completed' : planConfirmed ? 'active' : 'pending',
+      statusText: dataReached ? '已产生评价输入' : '待导入成绩 / 拔取数据',
+    },
+    {
+      key: 'calc',
+      title: '达成度计算',
+      status: calcDone ? 'completed' : planConfirmed ? 'active' : 'pending',
+      metrics: [{ label: '已计算', value: achievementCounts.calculated }],
+    },
+    {
+      key: 'audit',
+      title: '审核确认',
+      status: auditDone ? 'completed' : achievementCounts.submitted > 0 ? 'active' : 'pending',
+      metrics: [
+        { label: '已提交', value: achievementCounts.submitted },
+        { label: '已确认', value: achievementCounts.confirmed },
+      ],
+    },
+    {
+      key: 'improve',
+      title: '持续改进',
+      status: improvementClosed ? 'completed' : improvementActive ? 'active' : 'pending',
+      metrics: [
+        { label: '未闭环', value: improvementCounts.total - improvementCounts.closed },
+        { label: '已闭环', value: improvementCounts.closed },
+      ],
+    },
+    {
+      key: 'archive',
+      title: '材料归档',
+      status: archived ? 'completed' : 'pending',
+      metrics: [{ label: '已归档', value: achievementCounts.archived }],
+    },
+  ]
+})
+
+const qualityTaskStore = useQualityTaskStore()
+const { totalAttentionCount } = storeToRefs(qualityTaskStore)
+
+const signals = computed<SignalMetric[]>(() => [
+  {
+    key: 'attention',
+    label: '待关注任务',
+    value: totalAttentionCount.value,
+    tone: totalAttentionCount.value > 0 ? 'orange' : 'gray',
+  },
+  { key: 'a-total', label: '达成度总数', value: achievementCounts.total, tone: 'blue' },
+  { key: 'a-conf', label: '已确认', value: achievementCounts.confirmed, tone: 'green' },
+  { key: 'a-fail', label: '未达成', value: achievementCounts.notAchieved, tone: 'red' },
+  { key: 'i-total', label: '改进任务', value: improvementCounts.total, tone: 'blue' },
+  { key: 'i-prog', label: '整改中', value: improvementCounts.inProgress, tone: 'orange' },
+  { key: 'i-closed', label: '已闭环', value: improvementCounts.closed, tone: 'green' },
+  { key: 'ai-total', label: 'AI 任务', value: aiCounts.total, tone: 'blue' },
+  { key: 'ai-fail', label: 'AI 失败', value: aiCounts.failed, tone: 'red' },
+])
+
+// 枚举取值 helper：严格守卫，避免 as 类型断言
+function targetTypeLabel(value: unknown): string {
+  if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function achievementStatusLabel(value: unknown): string {
+  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function achievementStatusColor(value: unknown): string | undefined {
+  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
+  return undefined
+}
+
+function auditStatusLabel(value: unknown): string {
+  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function auditStatusColor(value: unknown): string | undefined {
+  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
+  return undefined
+}
+
+function improvementStatusLabelOf(value: unknown): string {
+  if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function improvementStatusColorOf(value: unknown): string | undefined {
+  if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_COLOR[value]
+  return undefined
+}
+
+function aiStatusLabel(value: unknown): string {
+  if (isAiTaskStatus(value)) return AI_TASK_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function aiStatusColor(value: unknown): string | undefined {
+  if (isAiTaskStatus(value)) return AI_TASK_STATUS_COLOR[value]
+  return undefined
+}
+
+function aiTypeLabel(value: unknown): string {
+  if (isAiTaskType(value)) return AI_TASK_TYPE_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
 async function loadTrainingPlan() {
   loading.plan = true
   try {
@@ -82,8 +266,7 @@ async function loadTrainingPlan() {
     if (!qualityStore.currentTrainingPlanId && list.length) {
       qualityStore.setCurrent({ trainingPlanId: list[0].id })
     }
-  }
-  finally {
+  } finally {
     loading.plan = false
   }
 }
@@ -101,19 +284,43 @@ async function loadAchievement() {
     achievementCounts.total = page.total
 
     const [calculated, submitted, confirmed, archived, notAchieved] = await Promise.all([
-      achievementApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, auditStatus: 'CALCULATED' }),
-      achievementApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, auditStatus: 'SUBMITTED' }),
-      achievementApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, auditStatus: 'CONFIRMED' }),
-      achievementApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, auditStatus: 'ARCHIVED' }),
-      achievementApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, achievementStatus: 'NOT_ACHIEVED' }),
+      achievementApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        auditStatus: 'CALCULATED',
+      }),
+      achievementApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        auditStatus: 'SUBMITTED',
+      }),
+      achievementApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        auditStatus: 'CONFIRMED',
+      }),
+      achievementApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        auditStatus: 'ARCHIVED',
+      }),
+      achievementApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        achievementStatus: 'NOT_ACHIEVED',
+      }),
     ])
     achievementCounts.calculated = calculated.total
     achievementCounts.submitted = submitted.total
     achievementCounts.confirmed = confirmed.total
     achievementCounts.archived = archived.total
     achievementCounts.notAchieved = notAchieved.total
-  }
-  finally {
+  } finally {
     loading.achievement = false
   }
 }
@@ -131,17 +338,36 @@ async function loadImprovement() {
     improvementCounts.total = page.total
 
     const [open, inProgress, submitted, closed] = await Promise.all([
-      improvementTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, status: 'OPEN' }),
-      improvementTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, status: 'IN_PROGRESS' }),
-      improvementTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, status: 'SUBMITTED' }),
-      improvementTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: trainingPlanId.value, status: 'CLOSED' }),
+      improvementTaskApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        status: 'OPEN',
+      }),
+      improvementTaskApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        status: 'IN_PROGRESS',
+      }),
+      improvementTaskApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        status: 'SUBMITTED',
+      }),
+      improvementTaskApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        trainingPlanId: trainingPlanId.value,
+        status: 'CLOSED',
+      }),
     ])
     improvementCounts.open = open.total
     improvementCounts.inProgress = inProgress.total
     improvementCounts.submitted = submitted.total
     improvementCounts.closed = closed.total
-  }
-  finally {
+  } finally {
     loading.improvement = false
   }
 }
@@ -169,18 +395,27 @@ async function loadAiTasks() {
     aiCounts.processing = processing.total
     aiCounts.succeeded = succeeded.total
     aiCounts.failed = failed.total
-  }
-  finally {
+  } finally {
     loading.ai = false
   }
 }
 
 async function reload() {
-  await Promise.all([loadAchievement(), loadImprovement(), loadAiTasks()])
+  await Promise.all([
+    loadAchievement(),
+    loadImprovement(),
+    loadAiTasks(),
+    qualityTaskStore.refreshAll({
+      trainingPlanId: trainingPlanId.value || undefined,
+      programId: qualityStore.currentProgramId || undefined,
+      qualityCourseId: qualityStore.currentQualityCourseId || undefined,
+    }),
+  ])
 }
 
-function handlePlanChange(value: string) {
-  qualityStore.setCurrent({ trainingPlanId: value })
+function handlePlanChange(value: unknown) {
+  const id = typeof value === 'string' ? value : ''
+  qualityStore.setCurrent({ trainingPlanId: id })
   reload()
 }
 
@@ -194,279 +429,276 @@ function goAchievement() {
 }
 
 function goImprovement() {
-  router.push({ name: 'QualityImprovementTask' })
+  router.push({ name: 'QualityImprovementWorkbench' })
 }
 
 function goAiTask() {
   router.push({ name: 'QualityAiTask' })
 }
+
+function goExternalPull() {
+  router.push({ name: 'QualityExternalPull' })
+}
+
+function goScoreBatch() {
+  router.push({ name: 'QualityScoreBatch' })
+}
 </script>
 
 <template>
-  <div class="quality-dashboard">
-    <header class="page-header">
-      <div>
-        <h2>教学质量评价工作台</h2>
-        <p class="subtitle">
-          当前培养方案：<strong>{{ trainingPlanLabel }}</strong>
-        </p>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="quality-dashboard__context">
+        <div class="quality-dashboard__context-left">
+          <a-select
+            :value="trainingPlanId || undefined"
+            placeholder="选择培养方案"
+            class="quality-dashboard__plan-select"
+            :loading="loading.plan"
+            :options="
+              qualityStore.trainingPlanOptions.map((item) => ({
+                value: item.id,
+                label: `${item.planCode} · ${item.planName}`,
+              }))
+            "
+            @change="handlePlanChange"
+          />
+          <UiTag v-if="trainingPlanLabel !== '未选择'" tone="blue" size="sm">
+            {{ trainingPlanLabel }}
+          </UiTag>
+          <a-tag :color="planConfirmationColor" class="quality-dashboard__plan-status">
+            {{ planConfirmationLabel }}
+          </a-tag>
+        </div>
+        <div class="quality-dashboard__context-right">
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="loading.achievement || loading.improvement || loading.ai"
+            @click="reload"
+          >
+            刷新
+          </UiButton>
+          <UiButton variant="primary" size="sm" :disabled="!trainingPlanId" @click="goAchievement">
+            进入达成度
+          </UiButton>
+        </div>
       </div>
-      <a-space>
-        <a-select
-          :value="trainingPlanId || undefined"
-          placeholder="选择培养方案"
-          style="min-width: 240px"
-          :loading="loading.plan"
-          :options="qualityStore.trainingPlanOptions.map(item => ({
-            value: item.id,
-            label: `${item.planCode} · ${item.planName}`,
-          }))"
-          @change="(val) => handlePlanChange(val as string)"
-        />
-        <a-button :loading="loading.achievement || loading.improvement || loading.ai" @click="reload">
-          刷新
-        </a-button>
-      </a-space>
-    </header>
+    </template>
 
-    <a-row :gutter="16" class="metric-row">
-      <a-col :xs="24" :md="8">
-        <a-card title="达成度概览" :bordered="false" hoverable @click="goAchievement">
-          <a-row :gutter="8" class="metrics">
-            <a-col :span="8">
-              <a-statistic title="总计" :value="achievementCounts.total" />
-            </a-col>
-            <a-col :span="8">
-              <a-statistic title="已确认" :value="achievementCounts.confirmed" />
-            </a-col>
-            <a-col :span="8">
-              <a-statistic title="已归档" :value="achievementCounts.archived" />
-            </a-col>
-          </a-row>
-          <a-divider style="margin: 12px 0" />
-          <a-space wrap>
-            <a-tag color="cyan">
-              计算完成 {{ achievementCounts.calculated }}
-            </a-tag>
-            <a-tag color="blue">
-              已提交 {{ achievementCounts.submitted }}
-            </a-tag>
-            <a-tag color="red">
-              未达成 {{ achievementCounts.notAchieved }}
-            </a-tag>
-          </a-space>
-        </a-card>
-      </a-col>
+    <UiEmpty
+      v-if="!trainingPlanId"
+      description="请先选择培养方案，工作台将基于其生成阶段化指标"
+      class="quality-dashboard__empty"
+    />
 
-      <a-col :xs="24" :md="8">
-        <a-card title="持续改进任务" :bordered="false" hoverable @click="goImprovement">
-          <a-row :gutter="8" class="metrics">
-            <a-col :span="8">
-              <a-statistic title="总计" :value="improvementCounts.total" />
-            </a-col>
-            <a-col :span="8">
-              <a-statistic title="整改中" :value="improvementCounts.inProgress" />
-            </a-col>
-            <a-col :span="8">
-              <a-statistic title="已闭环" :value="improvementCounts.closed" />
-            </a-col>
-          </a-row>
-          <a-divider style="margin: 12px 0" />
-          <a-space wrap>
-            <a-tag color="orange">
-              待启动 {{ improvementCounts.open }}
-            </a-tag>
-            <a-tag color="cyan">
-              待复评 {{ improvementCounts.submitted }}
-            </a-tag>
-          </a-space>
-        </a-card>
-      </a-col>
+    <template v-else>
+      <StageRail :stages="stages" class="quality-dashboard__stages" />
+      <SignalBand :metrics="signals" compact class="quality-dashboard__signals" />
 
-      <a-col :xs="24" :md="8">
-        <a-card title="AI 任务" :bordered="false" hoverable @click="goAiTask">
-          <a-row :gutter="8" class="metrics">
-            <a-col :span="8">
-              <a-statistic title="总计" :value="aiCounts.total" />
-            </a-col>
-            <a-col :span="8">
-              <a-statistic title="成功" :value="aiCounts.succeeded" :value-style="{ color: '#52c41a' }" />
-            </a-col>
-            <a-col :span="8">
-              <a-statistic title="失败" :value="aiCounts.failed" :value-style="{ color: '#ff4d4f' }" />
-            </a-col>
-          </a-row>
-          <a-divider style="margin: 12px 0" />
-          <a-space wrap>
-            <a-tag color="default">
-              待处理 {{ aiCounts.pending }}
-            </a-tag>
-            <a-tag color="blue">
-              处理中 {{ aiCounts.processing }}
-            </a-tag>
-          </a-space>
-        </a-card>
-      </a-col>
-    </a-row>
-
-    <a-row :gutter="16" class="list-row">
-      <a-col :xs="24" :lg="12">
-        <a-card title="最近达成度结果" :bordered="false">
-          <a-table
+      <div class="quality-dashboard__lists">
+        <UiCard class="quality-dashboard__list-card" title="最近达成度结果">
+          <template #extra>
+            <UiButton variant="ghost" size="sm" @click="goAchievement"> 查看全部 </UiButton>
+          </template>
+          <UiDataTable
+            :columns="recentAchievementColumns"
             :data-source="recentAchievements"
-            :pagination="false"
+            :show-pagination="false"
             row-key="id"
             size="small"
             :loading="loading.achievement"
+            flat
+            :total="recentAchievements.length"
           >
-            <a-table-column title="目标类型" data-index="targetType">
-              <template #default="{ text }">
-                {{ ACHIEVEMENT_TARGET_TYPE_LABEL[text as keyof typeof ACHIEVEMENT_TARGET_TYPE_LABEL] || text }}
+            <template #bodyCell="{ column, record, text }">
+              <template v-if="column.key === 'targetType'">
+                {{ targetTypeLabel(text) }}
               </template>
-            </a-table-column>
-            <a-table-column title="目标 ID" data-index="targetId" width="120">
-              <template #default="{ text }">{{ text || '-' }}</template>
-            </a-table-column>
-            <a-table-column title="达成值" data-index="finalValue">
-              <template #default="{ text, record }">
-                <span :style="{ color: record.thresholdValue && Number(text) < Number(record.thresholdValue) ? '#ff4d4f' : '#52c41a' }">
+              <template v-else-if="column.key === 'targetId'">
+                {{ text || '-' }}
+              </template>
+              <template v-else-if="column.key === 'finalValue'">
+                <span
+                  :class="[
+                    'quality-dashboard__value',
+                    record.finalValue !== null &&
+                    record.thresholdValue !== null &&
+                    record.finalValue >= record.thresholdValue
+                      ? 'quality-dashboard__value--ok'
+                      : 'quality-dashboard__value--bad',
+                  ]"
+                >
                   {{ text ?? '-' }}
+                  / {{ record.thresholdValue ?? '-' }}
                 </span>
-                <span style="color: #999; margin-left: 4px"> / {{ record.thresholdValue ?? '-' }}</span>
               </template>
-            </a-table-column>
-            <a-table-column title="达成结论" data-index="achievementStatus">
-              <template #default="{ text }">
-                <a-tag v-if="text" :color="ACHIEVEMENT_STATUS_COLOR[text as keyof typeof ACHIEVEMENT_STATUS_COLOR]">
-                  {{ ACHIEVEMENT_STATUS_LABEL[text as keyof typeof ACHIEVEMENT_STATUS_LABEL] }}
+              <template v-else-if="column.key === 'achievementStatus'">
+                <a-tag v-if="achievementStatusColor(text)" :color="achievementStatusColor(text)">
+                  {{ achievementStatusLabel(text) }}
                 </a-tag>
                 <span v-else>-</span>
               </template>
-            </a-table-column>
-            <a-table-column title="审核" data-index="auditStatus">
-              <template #default="{ text }">
-                <a-tag :color="ACHIEVEMENT_AUDIT_STATUS_COLOR[text as keyof typeof ACHIEVEMENT_AUDIT_STATUS_COLOR]">
-                  {{ ACHIEVEMENT_AUDIT_STATUS_LABEL[text as keyof typeof ACHIEVEMENT_AUDIT_STATUS_LABEL] }}
+              <template v-else-if="column.key === 'auditStatus'">
+                <a-tag :color="auditStatusColor(text)">
+                  {{ auditStatusLabel(text) }}
                 </a-tag>
               </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
-      </a-col>
+            </template>
+          </UiDataTable>
+        </UiCard>
 
-      <a-col :xs="24" :lg="12">
-        <a-card title="最近改进任务" :bordered="false">
-          <a-table
+        <UiCard class="quality-dashboard__list-card" title="最近改进任务">
+          <template #extra>
+            <UiButton variant="ghost" size="sm" @click="goImprovement"> 查看全部 </UiButton>
+          </template>
+          <UiDataTable
+            :columns="recentImprovementColumns"
             :data-source="recentImprovements"
-            :pagination="false"
+            :show-pagination="false"
             row-key="id"
             size="small"
             :loading="loading.improvement"
+            flat
+            :total="recentImprovements.length"
           >
-            <a-table-column title="编号" data-index="taskCode" />
-            <a-table-column title="标题" data-index="taskTitle" />
-            <a-table-column title="负责人 ID" data-index="ownerUserId">
-              <template #default="{ text }">
+            <template #bodyCell="{ column, text }">
+              <template v-if="column.key === 'ownerUserId' || column.key === 'dueDate'">
                 {{ text || '-' }}
               </template>
-            </a-table-column>
-            <a-table-column title="截止" data-index="dueDate">
-              <template #default="{ text }">
-                {{ text || '-' }}
-              </template>
-            </a-table-column>
-            <a-table-column title="状态" data-index="status">
-              <template #default="{ text }">
-                <a-tag :color="IMPROVEMENT_TASK_STATUS_COLOR[text as keyof typeof IMPROVEMENT_TASK_STATUS_COLOR]">
-                  {{ IMPROVEMENT_TASK_STATUS_LABEL[text as keyof typeof IMPROVEMENT_TASK_STATUS_LABEL] }}
+              <template v-else-if="column.key === 'status'">
+                <a-tag :color="improvementStatusColorOf(text)">
+                  {{ improvementStatusLabelOf(text) }}
                 </a-tag>
               </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
-      </a-col>
-    </a-row>
+            </template>
+          </UiDataTable>
+        </UiCard>
 
-    <a-row :gutter="16" class="list-row">
-      <a-col :span="24">
-        <a-card title="最近 AI 任务" :bordered="false">
-          <a-table
+        <UiCard class="quality-dashboard__list-card" title="最近 AI 任务">
+          <template #extra>
+            <UiButton variant="ghost" size="sm" @click="goAiTask"> 查看全部 </UiButton>
+          </template>
+          <UiDataTable
+            :columns="recentAiTaskColumns"
             :data-source="recentAiTasks"
-            :pagination="false"
+            :show-pagination="false"
             row-key="id"
             size="small"
             :loading="loading.ai"
+            flat
+            :total="recentAiTasks.length"
           >
-            <a-table-column title="能力" data-index="taskType">
-              <template #default="{ text }">
-                {{ AI_TASK_TYPE_LABEL[text as keyof typeof AI_TASK_TYPE_LABEL] || text }}
+            <template #bodyCell="{ column, text }">
+              <template v-if="column.key === 'taskType'">
+                {{ aiTypeLabel(text) }}
               </template>
-            </a-table-column>
-            <a-table-column title="状态" data-index="status">
-              <template #default="{ text }">
-                <a-tag :color="AI_TASK_STATUS_COLOR[text as keyof typeof AI_TASK_STATUS_COLOR]">
-                  {{ AI_TASK_STATUS_LABEL[text as keyof typeof AI_TASK_STATUS_LABEL] }}
+              <template v-else-if="column.key === 'status'">
+                <a-tag :color="aiStatusColor(text)">
+                  {{ aiStatusLabel(text) }}
                 </a-tag>
               </template>
-            </a-table-column>
-            <a-table-column title="模型" data-index="modelName">
-              <template #default="{ text }">
+              <template
+                v-else-if="
+                  column.key === 'modelName' ||
+                  column.key === 'startedAt' ||
+                  column.key === 'finishedAt'
+                "
+              >
                 {{ text || '-' }}
               </template>
-            </a-table-column>
-            <a-table-column title="失败阶段" data-index="failurePhase">
-              <template #default="{ text }">
-                <span v-if="text" style="color: #ff4d4f">{{ text }}</span>
+              <template v-else-if="column.key === 'failurePhase'">
+                <span v-if="text" class="quality-dashboard__value--error">{{ text }}</span>
                 <span v-else>-</span>
               </template>
-            </a-table-column>
-            <a-table-column title="开始时间" data-index="startedAt">
-              <template #default="{ text }">
-                {{ text || '-' }}
-              </template>
-            </a-table-column>
-            <a-table-column title="结束时间" data-index="finishedAt">
-              <template #default="{ text }">
-                {{ text || '-' }}
-              </template>
-            </a-table-column>
-          </a-table>
-        </a-card>
-      </a-col>
-    </a-row>
-  </div>
+            </template>
+          </UiDataTable>
+        </UiCard>
+      </div>
+
+      <div class="quality-dashboard__shortcuts">
+        <UiButton variant="outline" size="sm" @click="goScoreBatch"> 成绩批次 </UiButton>
+        <UiButton variant="outline" size="sm" @click="goExternalPull"> 外部数据拔取 </UiButton>
+      </div>
+    </template>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
 .quality-dashboard {
-  padding: 16px;
-
-  .page-header {
+  &__context {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left,
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__plan-select {
+    min-width: 260px;
+  }
+
+  &__plan-status {
+    margin-left: 0;
+  }
+
+  &__empty {
+    margin-top: 32px;
+  }
+
+  &__stages {
+    margin-bottom: 16px;
+  }
+
+  &__signals {
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border-radius: 8px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+  }
+
+  &__lists {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
     margin-bottom: 16px;
 
-    h2 {
-      margin: 0 0 4px;
-      font-size: 18px;
-      font-weight: 600;
-    }
+    @media (min-width: 1280px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
 
-    .subtitle {
-      margin: 0;
-      color: var(--ant-color-text-secondary);
-      font-size: 13px;
+      .quality-dashboard__list-card:last-child {
+        grid-column: span 2;
+      }
     }
   }
 
-  .metric-row,
-  .list-row {
-    margin-bottom: 16px;
+  &__shortcuts {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 4px;
   }
 
-  .metrics {
-    margin-bottom: 4px;
+  &__value--success {
+    color: var(--ant-color-success, #16a34a);
+  }
+
+  &__value--error {
+    color: var(--ant-color-error, #dc2626);
+  }
+
+  &__threshold {
+    color: var(--dp-text-muted, #64748b);
+    margin-left: 4px;
   }
 }
 </style>

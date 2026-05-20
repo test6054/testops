@@ -1,14 +1,14 @@
 <template>
-  <GiPageLayout>
-    <div class="appeal-page">
-      <PageHeader title="复核申请">
-        <template #tags>
-          <UiTag tone="blue" size="md">{{ appealableExams.length }} 场可申请</UiTag>
-          <UiTag v-if="pendingRequestCount > 0" tone="orange" size="md">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="appeal-page__context">
+        <div class="appeal-page__context-left">
+          <UiTag tone="blue" size="sm">{{ appealableExams.length }} 场可申请</UiTag>
+          <UiTag v-if="pendingRequestCount > 0" tone="orange" size="sm">
             待处理 {{ pendingRequestCount }}
           </UiTag>
-        </template>
-        <template #actions>
+        </div>
+        <div class="appeal-page__context-right">
           <UiButton
             variant="outline"
             size="sm"
@@ -22,150 +22,154 @@
             <template #icon><FormOutlined /></template>
             提交复核申请
           </UiButton>
-        </template>
-      </PageHeader>
-
-      <!-- 选择考试 -->
-      <UiCard class="appeal-page__select-card">
-        <template #title>
-          <CheckCircleOutlined />
-          <span>选择待申诉的考试</span>
-          <UiBadge tone="blue">{{ appealableExams.length }} 场</UiBadge>
-        </template>
-
-        <UiEmpty
-          v-if="!loadingExams && appealableExams.length === 0"
-          description="当前没有可发起复核的考试（仅成绩已发布且复核窗口处于开放状态的考试可发起复核）"
-        />
-
-        <div v-else class="exam-pick-list">
-          <article
-            v-for="exam in appealableExams"
-            :key="exam.examId"
-            class="exam-pick-item"
-            :class="{ 'exam-pick-item--active': exam.examId === selectedExamId }"
-            @click="selectedExamId = exam.examId"
-          >
-            <div class="exam-pick-item__radio">
-              <span class="exam-pick-item__radio-dot" />
-            </div>
-            <div class="exam-pick-item__main">
-              <div class="exam-pick-item__title-row">
-                <h3 class="exam-pick-item__title">{{ exam.examName || '未命名考试' }}</h3>
-                <UiTag tone="green" size="sm">已发布</UiTag>
-                <UiTag tone="orange" size="sm">复核进行中</UiTag>
-              </div>
-              <div class="exam-pick-item__meta">
-                <span class="meta-item">编号：{{ exam.examNo || '-' }}</span>
-                <span class="meta-item">
-                  本次得分：<strong class="score-text">{{
-                    exam.finalScore?.toFixed(2) ?? '-'
-                  }}</strong>
-                </span>
-                <span class="meta-item">
-                  <ClockCircleOutlined />
-                  截止 {{ formatTime(exam.reviewWindowCloseTime) }}
-                </span>
-              </div>
-            </div>
-          </article>
         </div>
-      </UiCard>
+      </div>
+    </template>
 
-      <!-- 我的复核申请 -->
-      <UiCard class="appeal-page__list-card">
-        <template #title>
-          <FileSearchOutlined />
-          <span>我的复核申请</span>
-          <UiBadge tone="blue">{{ filteredRequests.length }} 条</UiBadge>
-        </template>
-        <template #extra>
-          <a-space wrap>
-            <a-select
-              v-model:value="filterStatus"
-              placeholder="按状态筛选"
-              allow-clear
-              style="width: 160px"
-              :options="statusOptions"
-              @change="loadRequests"
-            />
-            <a-select
-              v-model:value="filterExamId"
-              placeholder="按考试筛选"
-              allow-clear
-              style="width: 220px"
-              :options="examFilterOptions"
-              option-filter-prop="label"
-              show-search
-            />
-            <UiButton size="sm" variant="outline" :loading="loadingRequests" @click="loadRequests">
-              <template #icon>
-                <ReloadOutlined />
-              </template>
-              刷新
-            </UiButton>
-          </a-space>
-        </template>
+    <!-- 选择考试 -->
+    <UiCard class="appeal-page__select-card">
+      <template #title>
+        <CheckCircleOutlined />
+        <span>选择待申诉的考试</span>
+        <UiBadge tone="blue">{{ appealableExams.length }} 场</UiBadge>
+      </template>
 
-        <UiEmpty
-          v-if="!loadingRequests && filteredRequests.length === 0"
-          description="暂无复核申请记录"
-        />
+      <UiEmpty
+        v-if="!loadingExams && appealableExams.length === 0"
+        description="当前没有可发起复核的考试（仅成绩已发布且复核窗口处于开放状态的考试可发起复核）"
+      />
 
-        <a-table
-          v-else
-          :columns="columns"
-          :data-source="filteredRequests"
-          :loading="loadingRequests"
-          row-key="id"
-          size="middle"
-          class="requests-table"
-          :pagination="{ pageSize: 10, showSizeChanger: true }"
+      <div v-else class="exam-pick-list">
+        <article
+          v-for="exam in appealableExams"
+          :key="exam.examId"
+          class="exam-pick-item"
+          :class="{ 'exam-pick-item--active': exam.examId === selectedExamId }"
+          @click="selectedExamId = exam.examId"
         >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'examName'">
-              <div class="exam-cell">
-                <strong class="exam-cell__title">{{
-                  filteredRequests[index].examName || '未命名考试'
+          <div class="exam-pick-item__radio">
+            <span class="exam-pick-item__radio-dot" />
+          </div>
+          <div class="exam-pick-item__main">
+            <div class="exam-pick-item__title-row">
+              <h3 class="exam-pick-item__title">{{ exam.examName || '未命名考试' }}</h3>
+              <UiTag tone="green" size="sm">已发布</UiTag>
+              <UiTag tone="orange" size="sm">复核进行中</UiTag>
+            </div>
+            <div class="exam-pick-item__meta">
+              <span class="meta-item">编号：{{ exam.examNo || '-' }}</span>
+              <span class="meta-item">
+                本次得分：<strong class="score-text">{{
+                  exam.finalScore?.toFixed(2) ?? '-'
                 }}</strong>
-                <span v-if="filteredRequests[index].examNo" class="exam-cell__sub">编号：{{ filteredRequests[index].examNo }}</span>
-              </div>
+              </span>
+              <span class="meta-item">
+                <ClockCircleOutlined />
+                截止 {{ formatTime(exam.reviewWindowCloseTime) }}
+              </span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </UiCard>
+
+    <!-- 我的复核申请 -->
+    <UiCard class="appeal-page__list-card">
+      <template #title>
+        <FileSearchOutlined />
+        <span>我的复核申请</span>
+        <UiBadge tone="blue">{{ filteredRequests.length }} 条</UiBadge>
+      </template>
+      <template #extra>
+        <a-space wrap>
+          <a-select
+            v-model:value="filterStatus"
+            placeholder="按状态筛选"
+            allow-clear
+            style="width: 160px"
+            :options="statusOptions"
+            @change="loadRequests"
+          />
+          <a-select
+            v-model:value="filterExamId"
+            placeholder="按考试筛选"
+            allow-clear
+            style="width: 220px"
+            :options="examFilterOptions"
+            option-filter-prop="label"
+            show-search
+          />
+          <UiButton size="sm" variant="outline" :loading="loadingRequests" @click="loadRequests">
+            <template #icon>
+              <ReloadOutlined />
             </template>
-            <template v-else-if="column.key === 'reasonType'">
-              <UiTag tone="purple" size="sm">
-                {{ formatReasonType(filteredRequests[index].reasonType) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'requestReason'">
-              <a-tooltip :title="filteredRequests[index].requestReason">
-                <div class="reason-cell">{{ filteredRequests[index].requestReason || '-' }}</div>
-              </a-tooltip>
-            </template>
-            <template v-else-if="column.key === 'requestStatus'">
-              <UiTag
-                v-if="filteredRequests[index].requestStatus"
-                :tone="requestStatusTone(filteredRequests[index].requestStatus)"
-                size="sm"
+            刷新
+          </UiButton>
+        </a-space>
+      </template>
+
+      <UiEmpty
+        v-if="!loadingRequests && filteredRequests.length === 0"
+        description="暂无复核申请记录"
+      />
+
+      <UiDataTable
+        v-else
+        :columns="columns"
+        :data-source="filteredRequests"
+        :loading="loadingRequests"
+        row-key="id"
+        size="middle"
+        class="requests-table"
+        :page-size="10"
+        :total="filteredRequests.length"
+        flat
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'examName'">
+            <div class="exam-cell">
+              <strong class="exam-cell__title">{{
+                filteredRequests[index].examName || '未命名考试'
+              }}</strong>
+              <span v-if="filteredRequests[index].examNo" class="exam-cell__sub"
+                >编号：{{ filteredRequests[index].examNo }}</span
               >
-                {{ requestStatusLabel(filteredRequests[index].requestStatus) }}
-              </UiTag>
-              <span v-else class="muted">-</span>
-            </template>
-            <template v-else-if="column.key === 'createTime'">
-              {{ formatTime(filteredRequests[index].createTime) }}
-            </template>
-            <template v-else-if="column.key === 'reviewTime'">
-              {{ formatTime(filteredRequests[index].reviewTime) }}
-            </template>
-            <template v-else-if="column.key === 'reviewNote'">
-              <a-tooltip :title="filteredRequests[index].reviewNote">
-                <div class="reason-cell">{{ filteredRequests[index].reviewNote || '-' }}</div>
-              </a-tooltip>
-            </template>
+            </div>
           </template>
-        </a-table>
-      </UiCard>
-    </div>
+          <template v-else-if="column.key === 'reasonType'">
+            <UiTag tone="purple" size="sm">
+              {{ formatReasonType(filteredRequests[index].reasonType) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'requestReason'">
+            <a-tooltip :title="filteredRequests[index].requestReason">
+              <div class="reason-cell">{{ filteredRequests[index].requestReason || '-' }}</div>
+            </a-tooltip>
+          </template>
+          <template v-else-if="column.key === 'requestStatus'">
+            <UiTag
+              v-if="filteredRequests[index].requestStatus"
+              :tone="requestStatusTone(filteredRequests[index].requestStatus)"
+              size="sm"
+            >
+              {{ requestStatusLabel(filteredRequests[index].requestStatus) }}
+            </UiTag>
+            <span v-else class="muted">-</span>
+          </template>
+          <template v-else-if="column.key === 'createTime'">
+            {{ formatTime(filteredRequests[index].createTime) }}
+          </template>
+          <template v-else-if="column.key === 'reviewTime'">
+            {{ formatTime(filteredRequests[index].reviewTime) }}
+          </template>
+          <template v-else-if="column.key === 'reviewNote'">
+            <a-tooltip :title="filteredRequests[index].reviewNote">
+              <div class="reason-cell">{{ filteredRequests[index].reviewNote || '-' }}</div>
+            </a-tooltip>
+          </template>
+        </template>
+      </UiDataTable>
+    </UiCard>
 
     <!-- 提交复核弹窗 -->
     <a-modal
@@ -203,7 +207,13 @@
             show-count
           />
         </a-form-item>
-        <a-form-item label="申请题目ID（可选）">
+        <a-form-item
+          :label="
+            sourceQuestionId
+              ? `申请题目ID（来自第 ${sourceQuestionId} 题的复核入口，可手动调整）`
+              : '申请题目ID（可选）'
+          "
+        >
           <a-input
             v-model:value="form.questionIds"
             placeholder="逗号分隔，例如：1001,1002；不填表示对总分申诉"
@@ -211,7 +221,7 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </GiPageLayout>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -219,7 +229,14 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
+import {
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -229,21 +246,14 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import {
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { useRoute, useRouter } from 'vue-router'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'StudentAppeal' })
 
 const route = useRoute()
+const router = useRouter()
 const loadingExams = ref(false)
 const loadingRequests = ref(false)
 const submitting = ref(false)
@@ -261,6 +271,9 @@ const form = reactive({
   questionIds: '',
 })
 
+// 来自 score-detail 题目级复核入口时，记录来源题号用于弹窗内提示
+const sourceQuestionId = ref<string | undefined>(undefined)
+
 const reasonTypeOptions = [
   { value: 'SCORE_ERROR', label: '分数计算错误' },
   { value: 'RUBRIC', label: '评分标准争议' },
@@ -268,7 +281,7 @@ const reasonTypeOptions = [
   { value: 'OTHER', label: '其他' },
 ]
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -380,6 +393,7 @@ function formatReasonType(value?: string): string {
 
 function openSubmitModal() {
   if (!selectedAppealableExam.value) return
+  sourceQuestionId.value = undefined
   form.reasonType = 'SCORE_ERROR'
   form.requestReason = ''
   form.questionIds = ''
@@ -410,6 +424,13 @@ async function submit() {
     })
     message.success('复核申请已提交')
     submitModalOpen.value = false
+    // 来源题号已落库，清理状态与 URL 防止刷新再次自动弹出
+    if (sourceQuestionId.value) {
+      sourceQuestionId.value = undefined
+      const nextQuery = { ...route.query }
+      delete nextQuery.questionId
+      void router.replace({ query: nextQuery })
+    }
     await loadRequests()
   } catch (error) {
     const msg = error instanceof Error ? error.message : '提交复核申请失败'
@@ -431,11 +452,49 @@ watch(
 onMounted(async () => {
   await loadExams()
   await loadRequests()
+  autoOpenFromQuestionQuery()
 })
+
+/**
+ * 路由参数 questionId 来自 score-detail 题目级复核入口；
+ * 当目标考试仍可申请时，自动打开弹窗并预填题号字段。
+ */
+function autoOpenFromQuestionQuery(): void {
+  const queryQuestionId = typeof route.query.questionId === 'string' ? route.query.questionId : ''
+  if (!queryQuestionId) return
+  if (!selectedAppealableExam.value) return
+  sourceQuestionId.value = queryQuestionId
+  form.reasonType = 'SCORE_ERROR'
+  form.requestReason = ''
+  form.questionIds = queryQuestionId
+  submitModalOpen.value = true
+}
 </script>
 
 <style lang="scss" scoped>
 .appeal-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

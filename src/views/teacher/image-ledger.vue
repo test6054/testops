@@ -1,19 +1,11 @@
 <template>
-  <GiPageLayout>
-    <div class="ledger-page">
-      <PageHeader title="影像账本">
-        <template #tags>
-          <UiTag v-if="ledger?.ledgerStatus" :tone="ledgerStatusTone" size="md">
-            {{ ledgerStatusLabel }}
-          </UiTag>
-          <UiTag v-if="ledger" tone="blue" size="md">
-            已扫 {{ ledger.scannedPageCount ?? 0 }} / {{ ledger.expectedPageCount ?? 0 }} 页
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="ledger-page__context">
+        <div class="ledger-page__context-left">
           <a-select
             :value="selectedExamId"
-            style="width: 280px"
+            class="ledger-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
             :loading="examLoading"
@@ -22,6 +14,8 @@
             allow-clear
             @change="onExamChange"
           />
+        </div>
+        <div class="ledger-page__context-right">
           <UiButton
             variant="outline"
             size="sm"
@@ -32,56 +26,56 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <a-alert
-        v-if="attentionContext"
-        class="ledger-page__attention-context"
-        type="warning"
-        show-icon
-      >
-        <template #message>
-          <div class="ledger-page__attention-title">
-            <span>来自扫描异常待办的处置上下文</span>
-            <UiTag tone="red" size="sm">{{ attentionContext.attentionType }}</UiTag>
-          </div>
-        </template>
-        <template #description>
-          <div class="ledger-page__attention-body">
-            <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
-            <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
-            <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
-            <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
-            <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
-          </div>
-        </template>
-      </a-alert>
+    <UiAlertStrip
+      v-if="attentionContext"
+      tone="warning"
+      :title="`来自扫描异常待办的处置上下文：${attentionContext.attentionType}`"
+      dense
+      class="ledger-page__attention-context"
+    >
+      <div class="ledger-page__attention-body">
+        <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
+        <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
+        <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
+        <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
+        <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
+      </div>
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="goBackToScanAttention">
+          返回异常待办
+        </UiButton>
+      </template>
+    </UiAlertStrip>
 
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请选择一场考试以查看影像账本"
-        class="empty-block"
-      />
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请选择一场考试以查看影像账本"
+      class="ledger-page__empty"
+    />
 
-      <div v-else class="ledger-page__cards">
+    <div v-else class="ledger-page__cards">
+      <a-card title="账本概览" :bordered="false" size="small">
         <LedgerSummaryCard
           :ledger="ledger"
           :loading="loadingDetail"
           :balancing="balancing"
           @balance="handleBalance"
         />
-        <DuplicateResolutionCard :exam-id="selectedExamId" @resolve="openResolve" />
-      </div>
+      </a-card>
+      <DuplicateResolutionCard :exam-id="selectedExamId" @resolve="openResolve" />
     </div>
+  </StageWorkbenchShell>
 
-    <DuplicateResolveModal
-      v-model:open="resolveOpen"
-      :exam-id="selectedExamId || ''"
-      :resolution="resolveTarget"
-      @submitted="onChildSubmitted"
-    />
-  </GiPageLayout>
+  <DuplicateResolveModal
+    v-model:open="resolveOpen"
+    :exam-id="selectedExamId || ''"
+    :resolution="resolveTarget"
+    @submitted="onChildSubmitted"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -89,15 +83,13 @@ import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   executeImageLedgerBalance,
   getImageLedgerDetail,
-  LEDGER_STATUS_LABEL,
 } from '@/apis/mark/image-ledger'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiAlertStrip, UiButton, UiEmpty } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
 import DuplicateResolveModal from './image-ledger/DuplicateResolveModal.vue'
@@ -106,6 +98,7 @@ import LedgerSummaryCard from './image-ledger/LedgerSummaryCard.vue'
 defineOptions({ name: 'TeacherImageLedger' })
 
 const route = useRoute()
+const router = useRouter()
 
 const {
   examOptions,
@@ -114,6 +107,14 @@ const {
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
+
+/** 从扫描异常待办入口进入时，处理完单条 attention 后一键回到原列表 */
+function goBackToScanAttention(): void {
+  void router.push({
+    name: 'TeacherScanAttention',
+    query: selectedExamId.value ? { examId: selectedExamId.value } : undefined,
+  })
+}
 
 const ledger = ref<ImageLedgerDetailVO | null>(null)
 const loadingDetail = ref(false)
@@ -145,25 +146,6 @@ const attentionContext = computed<ScanAttentionContext | null>(() => {
     scanBatchId: readQueryString('scanBatchId'),
     paperInstanceId: readQueryString('paperInstanceId'),
     pageId: readQueryString('pageId'),
-  }
-})
-
-const ledgerStatusLabel = computed(() => {
-  const code = ledger.value?.ledgerStatus
-  if (!code) return '未对账'
-  return LEDGER_STATUS_LABEL[code] || code
-})
-
-const ledgerStatusTone = computed<'green' | 'red' | 'orange' | 'gray' | 'blue'>(() => {
-  switch (ledger.value?.ledgerStatus) {
-    case 'BALANCED':
-      return 'green'
-    case 'INCIDENT_OPEN':
-      return 'red'
-    case 'BALANCING':
-      return 'blue'
-    default:
-      return 'gray'
   }
 })
 
@@ -222,22 +204,36 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .ledger-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
-  min-height: 100vh;
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
 }
 
 .ledger-page__attention-context {
-  margin-bottom: 0;
-}
-
-.ledger-page__attention-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 .ledger-page__attention-body {
@@ -252,9 +248,5 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.empty-block {
-  padding: 60px 0;
 }
 </style>

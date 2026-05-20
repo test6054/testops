@@ -1,14 +1,17 @@
 <template>
-  <GiPageLayout>
-    <div class="paper-archive-detail-page">
-      <PageHeader :title="set?.archiveTitle ?? '档案集详情'" :subtitle="set?.archiveNo">
-        <template #tags>
-          <UiTag v-if="set?.archiveStatus" :tone="setStatusTone(set.archiveStatus)" size="md">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="paper-archive-detail-page__context">
+        <div class="paper-archive-detail-page__context-left">
+          <span class="paper-archive-detail-page__title">{{
+            set?.archiveTitle ?? '档案集详情'
+          }}</span>
+          <UiTag v-if="set?.archiveStatus" :tone="setStatusTone(set.archiveStatus)" size="sm">
             {{ set.archiveStatusMessage || setStatusLabel(set.archiveStatus) }}
           </UiTag>
-          <UiTag tone="blue" size="md">{{ set?.paperCount ?? 0 }} 份试卷</UiTag>
-        </template>
-        <template #actions>
+          <UiTag tone="blue" size="sm">{{ set?.paperCount ?? 0 }} 份试卷</UiTag>
+        </div>
+        <div class="paper-archive-detail-page__context-right">
           <UiButton variant="outline" size="sm" @click="goBack">
             <template #icon><ArrowLeftOutlined /></template>
             返回列表
@@ -21,31 +24,147 @@
             <template #icon><UploadOutlined /></template>
             上传试卷
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <UiCard v-if="set" class="paper-archive-detail-page__overview">
-        <template #title>
-          <ProfileOutlined />
-          <span>档案集信息</span>
-        </template>
-        <a-descriptions :column="3" size="small">
-          <a-descriptions-item label="档案编号">{{ set.archiveNo }}</a-descriptions-item>
-          <a-descriptions-item label="学年">{{ set.examYear || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="学期">{{ set.examTerm || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="考期">{{ set.examRound || '-' }}</a-descriptions-item>
-          <a-descriptions-item label="保管期限">
-            <span v-if="set.permanentRetention">永久保管</span>
-            <span v-else
+    <UiCard v-if="set" class="paper-archive-detail-page__overview">
+      <template #title>
+        <ProfileOutlined />
+        <span>档案集信息</span>
+      </template>
+      <a-descriptions :column="3" size="small">
+        <a-descriptions-item label="档案编号">{{ set.archiveNo }}</a-descriptions-item>
+        <a-descriptions-item label="学年">{{ set.examYear || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="学期">{{ set.examTerm || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="考期">{{ set.examRound || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="保管期限">
+          <span v-if="set.permanentRetention">永久保管</span>
+          <span v-else
             >{{ set.retentionYears ?? '-' }} 年（至 {{ set.retentionUntil || '-' }}）</span
+          >
+        </a-descriptions-item>
+        <a-descriptions-item label="创建时间">
+          {{ formatTime(set.createTime) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="档案 tag" :span="3">
+          <UiTag v-for="tag in set.tags ?? []" :key="tag" tone="purple" size="sm" class="tag-chip">
+            {{ tag }}
+          </UiTag>
+          <UiButton size="sm" variant="ghost" @click="openSetTagModal">
+            {{ set.tags?.length ? '编辑 tag' : '添加 tag' }}
+          </UiButton>
+        </a-descriptions-item>
+      </a-descriptions>
+    </UiCard>
+
+    <UiCard class="paper-archive-detail-page__items">
+      <template #title>
+        <FileSearchOutlined />
+        <span>档案项检索</span>
+        <UiBadge tone="blue">{{ pagination.total }} 条</UiBadge>
+      </template>
+
+      <a-form layout="inline" :model="searchForm" class="paper-archive-detail-page__filter">
+        <a-form-item label="OCR 文本">
+          <a-input
+            v-model:value="searchForm.ocrTextKeyword"
+            placeholder="按识别文本关键词过滤"
+            allow-clear
+            style="width: 220px"
+            @press-enter="handleSearch"
+          />
+        </a-form-item>
+        <a-form-item label="学号">
+          <a-input
+            v-model:value="searchForm.studentNo"
+            placeholder="精确学号"
+            allow-clear
+            style="width: 160px"
+          />
+        </a-form-item>
+        <a-form-item label="姓名">
+          <a-input
+            v-model:value="searchForm.studentNameKeyword"
+            placeholder="姓名关键词"
+            allow-clear
+            style="width: 160px"
+          />
+        </a-form-item>
+        <a-form-item label="OCR 状态">
+          <a-select
+            v-model:value="searchForm.ocrStatus"
+            placeholder="全部状态"
+            allow-clear
+            style="width: 140px"
+            :options="ocrStatusOptions"
+          />
+        </a-form-item>
+        <a-form-item label="tag">
+          <a-select
+            v-model:value="searchForm.tagAny"
+            mode="tags"
+            placeholder="任一匹配"
+            style="width: 220px"
+          />
+        </a-form-item>
+        <a-form-item>
+          <a-space>
+            <UiButton size="sm" @click="handleSearch">查询</UiButton>
+            <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
+          </a-space>
+        </a-form-item>
+      </a-form>
+
+      <UiEmpty v-if="!loading && items.length === 0" description="尚未上传任何试卷" />
+
+      <UiDataTable
+        v-else
+        :columns="itemColumns"
+        :data-source="items"
+        :loading="loading"
+        :show-pagination="false"
+        flat
+        :total="items.length"
+        row-key="itemId"
+        size="middle"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'sequenceNo'">
+            <span class="seq">{{ items[index].sequenceNo ?? '-' }}</span>
+            <div class="muted">{{ items[index].fileName || '-' }}</div>
+          </template>
+          <template v-else-if="column.key === 'student'">
+            <span>{{ items[index].studentNo || '-' }}</span>
+            <div v-if="items[index].studentName" class="muted">
+              {{ items[index].studentName }}
+            </div>
+          </template>
+          <template v-else-if="column.key === 'finalScore'">
+            <span v-if="items[index].finalScore !== undefined">
+              {{ items[index].finalScore }}
+            </span>
+            <span v-else class="muted">-</span>
+          </template>
+          <template v-else-if="column.key === 'ocrStatus'">
+            <UiTag :tone="ocrStatusTone(items[index].ocrStatus)" size="sm">
+              {{ items[index].ocrStatusMessage || ocrStatusLabel(items[index].ocrStatus) }}
+            </UiTag>
+            <div
+              v-if="items[index].ocrStatus === 'FAILED' && items[index].ocrFailureReason"
+              class="muted ocr-failure"
             >
-          </a-descriptions-item>
-          <a-descriptions-item label="创建时间">
-            {{ formatTime(set.createTime) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="档案 tag" :span="3">
+              {{ items[index].ocrFailureReason }}
+            </div>
+          </template>
+          <template v-else-if="column.key === 'ocrText'">
+            <div class="ocr-text-preview">
+              {{ truncate(items[index].ocrText, 100) || '-' }}
+            </div>
+          </template>
+          <template v-else-if="column.key === 'tags'">
             <UiTag
-              v-for="tag in set.tags ?? []"
+              v-for="tag in items[index].tags ?? []"
               :key="tag"
               tone="purple"
               size="sm"
@@ -53,315 +172,179 @@
             >
               {{ tag }}
             </UiTag>
-            <UiButton size="sm" variant="ghost" @click="openSetTagModal">
-              {{ set.tags?.length ? '编辑 tag' : '添加 tag' }}
-            </UiButton>
-          </a-descriptions-item>
-        </a-descriptions>
-      </UiCard>
-
-      <UiCard class="paper-archive-detail-page__items">
-        <template #title>
-          <FileSearchOutlined />
-          <span>档案项检索</span>
-          <UiBadge tone="blue">{{ pagination.total }} 条</UiBadge>
-        </template>
-
-        <a-form layout="inline" :model="searchForm" class="paper-archive-detail-page__filter">
-          <a-form-item label="OCR 文本">
-            <a-input
-              v-model:value="searchForm.ocrTextKeyword"
-              placeholder="按识别文本关键词过滤"
-              allow-clear
-              style="width: 220px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item label="学号">
-            <a-input
-              v-model:value="searchForm.studentNo"
-              placeholder="精确学号"
-              allow-clear
-              style="width: 160px"
-            />
-          </a-form-item>
-          <a-form-item label="姓名">
-            <a-input
-              v-model:value="searchForm.studentNameKeyword"
-              placeholder="姓名关键词"
-              allow-clear
-              style="width: 160px"
-            />
-          </a-form-item>
-          <a-form-item label="OCR 状态">
-            <a-select
-              v-model:value="searchForm.ocrStatus"
-              placeholder="全部状态"
-              allow-clear
-              style="width: 140px"
-              :options="ocrStatusOptions"
-            />
-          </a-form-item>
-          <a-form-item label="tag">
-            <a-select
-              v-model:value="searchForm.tagAny"
-              mode="tags"
-              placeholder="任一匹配"
-              style="width: 220px"
-            />
-          </a-form-item>
-          <a-form-item>
-            <a-space>
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-
-        <UiEmpty v-if="!loading && items.length === 0" description="尚未上传任何试卷" />
-
-        <a-table
-          v-else
-          :columns="itemColumns"
-          :data-source="items"
-          :loading="loading"
-          :pagination="false"
-          row-key="itemId"
-          size="middle"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'sequenceNo'">
-              <span class="seq">{{ items[index].sequenceNo ?? '-' }}</span>
-              <div class="muted">{{ items[index].fileName || '-' }}</div>
-            </template>
-            <template v-else-if="column.key === 'student'">
-              <span>{{ items[index].studentNo || '-' }}</span>
-              <div v-if="items[index].studentName" class="muted">
-                {{ items[index].studentName }}
-              </div>
-            </template>
-            <template v-else-if="column.key === 'finalScore'">
-              <span v-if="items[index].finalScore !== undefined">
-                {{ items[index].finalScore }}
-              </span>
-              <span v-else class="muted">-</span>
-            </template>
-            <template v-else-if="column.key === 'ocrStatus'">
-              <UiTag :tone="ocrStatusTone(items[index].ocrStatus)" size="sm">
-                {{ items[index].ocrStatusMessage || ocrStatusLabel(items[index].ocrStatus) }}
-              </UiTag>
-              <div
-                v-if="items[index].ocrStatus === 'FAILED' && items[index].ocrFailureReason"
-                class="muted ocr-failure"
-              >
-                {{ items[index].ocrFailureReason }}
-              </div>
-            </template>
-            <template v-else-if="column.key === 'ocrText'">
-              <div class="ocr-text-preview">
-                {{ truncate(items[index].ocrText, 100) || '-' }}
-              </div>
-            </template>
-            <template v-else-if="column.key === 'tags'">
-              <UiTag
-                v-for="tag in items[index].tags ?? []"
-                :key="tag"
-                tone="purple"
-                size="sm"
-                class="tag-chip"
-              >
-                {{ tag }}
-              </UiTag>
-              <span v-if="!items[index].tags?.length" class="muted">-</span>
-            </template>
-            <template v-else-if="column.key === 'createTime'">
-              {{ formatTime(items[index].createTime) }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <a-space>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :disabled="!items[index].fileId"
-                  @click="handleDownloadItem(items[index])"
-                >
-                  <template #icon><DownloadOutlined /></template>
-                  原图
-                </UiButton>
-                <UiButton size="sm" variant="ghost" @click="openItemTagModal(items[index])">
-                  tag
-                </UiButton>
-                <UiButton
-                  v-if="canTriggerOcr(items[index])"
-                  size="sm"
-                  variant="outline"
-                  @click="confirmTriggerOcr(items[index])"
-                >
-                  {{ items[index].ocrStatus === 'FAILED' ? '重试 OCR' : '识别' }}
-                </UiButton>
-              </a-space>
-            </template>
+            <span v-if="!items[index].tags?.length" class="muted">-</span>
           </template>
-        </a-table>
+          <template v-else-if="column.key === 'createTime'">
+            {{ formatTime(items[index].createTime) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                :disabled="!items[index].fileId"
+                @click="handleDownloadItem(items[index])"
+              >
+                <template #icon><DownloadOutlined /></template>
+                原图
+              </UiButton>
+              <UiButton size="sm" variant="ghost" @click="openItemTagModal(items[index])">
+                tag
+              </UiButton>
+              <UiButton
+                v-if="canTriggerOcr(items[index])"
+                size="sm"
+                variant="outline"
+                @click="confirmTriggerOcr(items[index])"
+              >
+                {{ items[index].ocrStatus === 'FAILED' ? '重试 OCR' : '识别' }}
+              </UiButton>
+            </a-space>
+          </template>
+        </template>
+      </UiDataTable>
 
-        <div class="paper-archive-detail-page__pagination">
-          <a-pagination
-            v-model:current="pagination.pageNum"
-            v-model:page-size="pagination.pageSize"
-            :total="pagination.total"
-            :show-size-changer="true"
-            :show-total="(total: number) => `共 ${total} 条`"
-            @change="loadItems"
-            @show-size-change="loadItems"
-          />
+      <div class="paper-archive-detail-page__pagination">
+        <a-pagination
+          v-model:current="pagination.pageNum"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-size-changer="true"
+          :show-total="(total: number) => `共 ${total} 条`"
+          @change="loadItems"
+          @show-size-change="loadItems"
+        />
+      </div>
+    </UiCard>
+  </StageWorkbenchShell>
+
+  <!-- 上传试卷弹窗 -->
+  <a-modal
+    v-model:open="uploadModalOpen"
+    title="上传纸质试卷"
+    :confirm-loading="uploading"
+    :ok-button-props="{ disabled: !uploadForm.file }"
+    ok-text="上传"
+    cancel-text="取消"
+    width="640px"
+    @ok="submitUpload"
+  >
+    <a-form layout="vertical" :model="uploadForm" class="paper-archive-upload-form">
+      <a-form-item label="扫描文件" required>
+        <a-upload
+          :file-list="uploadFileList"
+          :before-upload="onBeforeUpload"
+          :max-count="1"
+          :show-upload-list="{ showRemoveIcon: true }"
+          accept=".pdf,.png,.jpg,.jpeg,.tiff"
+          @remove="onRemoveUpload"
+        >
+          <UiButton variant="outline" size="sm">
+            <template #icon><UploadOutlined /></template>
+            选择文件
+          </UiButton>
+        </a-upload>
+        <div class="muted upload-hint">
+          支持 PDF / PNG / JPG / TIFF；建议单文件 ≤ 100MB；多页 PDF 推荐使用扫描仪输出。
         </div>
-      </UiCard>
-    </div>
-
-    <!-- 上传试卷弹窗 -->
-    <a-modal
-      v-model:open="uploadModalOpen"
-      title="上传纸质试卷"
-      :confirm-loading="uploading"
-      :ok-button-props="{ disabled: !uploadForm.file }"
-      ok-text="上传"
-      cancel-text="取消"
-      width="640px"
-      @ok="submitUpload"
-    >
-      <a-form layout="vertical" :model="uploadForm" class="paper-archive-upload-form">
-        <a-form-item label="扫描文件" required>
-          <a-upload
-            :file-list="uploadFileList"
-            :before-upload="onBeforeUpload"
-            :max-count="1"
-            :show-upload-list="{ showRemoveIcon: true }"
-            accept=".pdf,.png,.jpg,.jpeg,.tiff"
-            @remove="onRemoveUpload"
-          >
-            <UiButton variant="outline" size="sm">
-              <template #icon><UploadOutlined /></template>
-              选择文件
-            </UiButton>
-          </a-upload>
-          <div class="muted upload-hint">
-            支持 PDF / PNG / JPG / TIFF；建议单文件 ≤ 100MB；多页 PDF 推荐使用扫描仪输出。
-          </div>
-        </a-form-item>
-        <a-form-item label="序号（不填自动 +1）">
-          <a-input-number
-            v-model:value="uploadForm.sequenceNo"
-            :min="1"
-            placeholder="不填由后端自动分配"
+      </a-form-item>
+      <a-form-item label="序号（不填自动 +1）">
+        <a-input-number
+          v-model:value="uploadForm.sequenceNo"
+          :min="1"
+          placeholder="不填由后端自动分配"
+          style="width: 200px"
+        />
+      </a-form-item>
+      <a-form-item label="学号 / 姓名">
+        <a-space>
+          <a-input
+            v-model:value="uploadForm.studentNo"
+            placeholder="学号（可空）"
             style="width: 200px"
           />
-        </a-form-item>
-        <a-form-item label="学号 / 姓名">
-          <a-space>
-            <a-input
-              v-model:value="uploadForm.studentNo"
-              placeholder="学号（可空）"
-              style="width: 200px"
-            />
-            <a-input
-              v-model:value="uploadForm.studentName"
-              placeholder="姓名（可空）"
-              style="width: 200px"
-            />
-          </a-space>
-        </a-form-item>
-        <a-form-item label="当年成绩 / 页数">
-          <a-space>
-            <a-input-number
-              v-model:value="uploadForm.finalScore"
-              :step="0.5"
-              placeholder="成绩"
-              style="width: 140px"
-            />
-            <a-input-number
-              v-model:value="uploadForm.pageCount"
-              :min="1"
-              placeholder="页数"
-              style="width: 120px"
-            />
-          </a-space>
-        </a-form-item>
-        <a-form-item label="试卷 tag">
-          <a-select
-            v-model:value="uploadForm.tags"
-            mode="tags"
-            placeholder="按回车添加 tag"
-            style="width: 100%"
+          <a-input
+            v-model:value="uploadForm.studentName"
+            placeholder="姓名（可空）"
+            style="width: 200px"
           />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea
-            v-model:value="uploadForm.remark"
-            :rows="2"
-            :maxlength="500"
-            placeholder="可选"
+        </a-space>
+      </a-form-item>
+      <a-form-item label="当年成绩 / 页数">
+        <a-space>
+          <a-input-number
+            v-model:value="uploadForm.finalScore"
+            :step="0.5"
+            placeholder="成绩"
+            style="width: 140px"
           />
-        </a-form-item>
-        <a-form-item>
-          <a-checkbox v-model:checked="uploadForm.triggerOcr">上传后立即触发 OCR 识别</a-checkbox>
-        </a-form-item>
-        <a-progress
-          v-if="uploading && uploadProgress > 0"
-          :percent="uploadProgress"
-          status="active"
-          size="small"
+          <a-input-number
+            v-model:value="uploadForm.pageCount"
+            :min="1"
+            placeholder="页数"
+            style="width: 120px"
+          />
+        </a-space>
+      </a-form-item>
+      <a-form-item label="试卷 tag">
+        <a-select
+          v-model:value="uploadForm.tags"
+          mode="tags"
+          placeholder="按回车添加 tag"
+          style="width: 100%"
         />
-      </a-form>
-    </a-modal>
+      </a-form-item>
+      <a-form-item label="备注">
+        <a-textarea
+          v-model:value="uploadForm.remark"
+          :rows="2"
+          :maxlength="500"
+          placeholder="可选"
+        />
+      </a-form-item>
+      <a-form-item>
+        <a-checkbox v-model:checked="uploadForm.triggerOcr">上传后立即触发 OCR 识别</a-checkbox>
+      </a-form-item>
+      <a-progress
+        v-if="uploading && uploadProgress > 0"
+        :percent="uploadProgress"
+        status="active"
+        size="small"
+      />
+    </a-form>
+  </a-modal>
 
-    <!-- tag 编辑弹窗（档案集 / 档案项共用） -->
-    <a-modal
-      v-model:open="tagModal.open"
-      :title="tagModal.target === 'set' ? '编辑档案集 tag' : '编辑档案项 tag'"
-      :confirm-loading="tagSaving"
-      ok-text="保存"
-      cancel-text="取消"
-      @ok="submitTagUpdate"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="tag 列表（最多 32 个）">
-          <a-select
-            v-model:value="tagModal.tags"
-            mode="tags"
-            placeholder="按回车添加 tag"
-            style="width: 100%"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-  </GiPageLayout>
+  <!-- tag 编辑弹窗（档案集 / 档案项共用） -->
+  <a-modal
+    v-model:open="tagModal.open"
+    :title="tagModal.target === 'set' ? '编辑档案集 tag' : '编辑档案项 tag'"
+    :confirm-loading="tagSaving"
+    ok-text="保存"
+    cancel-text="取消"
+    @ok="submitTagUpdate"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="tag 列表（最多 32 个）">
+        <a-select
+          v-model:value="tagModal.tags"
+          mode="tags"
+          placeholder="按回车添加 tag"
+          style="width: 100%"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
 import type { UploadFile } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type {
   PaperArchiveItemVO,
   PaperArchiveOcrStatusCode,
   PaperArchiveSetStatusCode,
   PaperArchiveSetVO,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import {
-  ArrowLeftOutlined,
-  DownloadOutlined,
-  FileSearchOutlined,
-  ProfileOutlined,
-  ReloadOutlined,
-  UploadOutlined,
-} from '@ant-design/icons-vue'
-import { message, Modal } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  downloadFile as downloadStorageFile,
-  uploadFile as uploadStorageFile,
-} from '@/apis/edu/file-management'
 import {
   getPaperArchiveSetDetail,
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
@@ -374,11 +357,32 @@ import {
   updatePaperArchiveItemTags,
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import {
+  ArrowLeftOutlined,
+  DownloadOutlined,
+  FileSearchOutlined,
+  ProfileOutlined,
+  ReloadOutlined,
+  UploadOutlined,
+} from '@ant-design/icons-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  downloadFile as downloadStorageFile,
+  uploadFile as uploadStorageFile,
+} from '@/apis/edu/file-management'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkStageStore } from '@/stores/modules/markStage'
+import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 
 defineOptions({ name: 'TeacherPaperArchiveDetail' })
+
+const markStageStore = useMarkStageStore()
+const examContextStore = useMarkExamContextStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -490,10 +494,49 @@ const canUpload = computed(() => {
   return set.value?.archiveStatus === 'DRAFT' || set.value?.archiveStatus === 'ACTIVE'
 })
 
+/**
+ * 将单个档案集状态映射为当前考试的 ARCHIVE 阶段状态。
+ *
+ * 档案集本身不持有 examId，只能基于 examContextStore.currentExamId 反映“用户视角”。
+ * 无上下文时不写入。
+ */
+function syncArchiveSetStageToStore(set: PaperArchiveSetVO): void {
+  const examId = examContextStore.currentExamId
+  if (!examId) return
+  let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
+  let hint = ''
+  switch (set.archiveStatus) {
+    case 'DRAFT':
+      status = 'blocked'
+      hint = `档案集草稿 · ${set.archiveTitle}`
+      break
+    case 'ACTIVE':
+      status = 'active'
+      hint = `保管中 · ${set.paperCount ?? 0} 份试卷`
+      break
+    case 'APPRAISAL_PENDING':
+      status = 'active'
+      hint = `鉴定待办 · ${set.archiveTitle}`
+      break
+    case 'APPRAISAL_DECIDED':
+    case 'DESTRUCTION_PENDING':
+    case 'DESTRUCTION_APPROVED':
+    case 'DESTRUCTION_REJECTED':
+    case 'DESTROYED':
+      status = 'completed'
+      hint = set.archiveStatusMessage || '档案集生命周期完整'
+      break
+  }
+  if (hint) {
+    markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
+  }
+}
+
 async function loadSet(): Promise<void> {
   if (!archiveSetId.value) return
   try {
     set.value = await getPaperArchiveSetDetail(archiveSetId.value)
+    if (set.value) syncArchiveSetStageToStore(set.value)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '档案集详情加载失败')
   }
@@ -683,9 +726,10 @@ function canTriggerOcr(item: PaperArchiveItemVO): boolean {
 }
 
 function confirmTriggerOcr(item: PaperArchiveItemVO): void {
-  Modal.confirm({
+  void confirmAsync({
     title: 'OCR 识别？',
     content: `档案项 #${item.sequenceNo ?? item.itemId} 将进入 OCR 队列等待识别。`,
+    type: 'info',
     okText: '入队',
     cancelText: '取消',
     onOk: async () => {
@@ -741,10 +785,37 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .paper-archive-detail-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ant-color-text);
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 8px 10px;
 }
 
 .paper-archive-detail-page__overview,

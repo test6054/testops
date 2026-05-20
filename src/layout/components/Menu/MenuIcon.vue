@@ -1,42 +1,67 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import { computed } from 'vue'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ApartmentOutlined from '@ant-design/icons-vue/ApartmentOutlined'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import AreaChartOutlined from '@ant-design/icons-vue/AreaChartOutlined'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import BankOutlined from '@ant-design/icons-vue/BankOutlined'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import BellOutlined from '@ant-design/icons-vue/BellOutlined'
+import BlockOutlined from '@ant-design/icons-vue/BlockOutlined'
 import BookOutlined from '@ant-design/icons-vue/BookOutlined'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import CheckSquareOutlined from '@ant-design/icons-vue/CheckSquareOutlined'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import CloudOutlined from '@ant-design/icons-vue/CloudOutlined'
 import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
+import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
+import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import ControlOutlined from '@ant-design/icons-vue/ControlOutlined'
+import CrownOutlined from '@ant-design/icons-vue/CrownOutlined'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import DatabaseOutlined from '@ant-design/icons-vue/DatabaseOutlined'
 import DeploymentUnitOutlined from '@ant-design/icons-vue/DeploymentUnitOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import ExceptionOutlined from '@ant-design/icons-vue/ExceptionOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
 import FileProtectOutlined from '@ant-design/icons-vue/FileProtectOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import FolderOpenOutlined from '@ant-design/icons-vue/FolderOpenOutlined'
 import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import FunctionOutlined from '@ant-design/icons-vue/FunctionOutlined'
+import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import HomeOutlined from '@ant-design/icons-vue/HomeOutlined'
+import InboxOutlined from '@ant-design/icons-vue/InboxOutlined'
 import InteractionOutlined from '@ant-design/icons-vue/InteractionOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import MailOutlined from '@ant-design/icons-vue/MailOutlined'
 import MessageOutlined from '@ant-design/icons-vue/MessageOutlined'
+import NodeIndexOutlined from '@ant-design/icons-vue/NodeIndexOutlined'
 import OrderedListOutlined from '@ant-design/icons-vue/OrderedListOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import PrinterOutlined from '@ant-design/icons-vue/PrinterOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
+import ReadOutlined from '@ant-design/icons-vue/ReadOutlined'
+import ReconciliationOutlined from '@ant-design/icons-vue/ReconciliationOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import RiseOutlined from '@ant-design/icons-vue/RiseOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
+import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import ScheduleOutlined from '@ant-design/icons-vue/ScheduleOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
@@ -44,56 +69,81 @@ import ShoppingCartOutlined from '@ant-design/icons-vue/ShoppingCartOutlined'
 import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
 import SoundOutlined from '@ant-design/icons-vue/SoundOutlined'
 import StarOutlined from '@ant-design/icons-vue/StarOutlined'
+import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import ToolOutlined from '@ant-design/icons-vue/ToolOutlined'
 import TrophyOutlined from '@ant-design/icons-vue/TrophyOutlined'
 import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
-import { computed } from 'vue'
 
 const props = defineProps<{ icon?: string }>()
 
 const ICON_COMPONENTS: Record<string, Component> = {
+  AimOutlined,
   ApartmentOutlined,
+  ApiOutlined,
   AppstoreOutlined,
   AreaChartOutlined,
   AuditOutlined,
+  BankOutlined,
   BarChartOutlined,
   BellOutlined,
+  BlockOutlined,
   BookOutlined,
   BulbOutlined,
   CheckCircleOutlined,
   CheckSquareOutlined,
+  CloudDownloadOutlined,
   CloudOutlined,
   CloudUploadOutlined,
+  ClusterOutlined,
+  ContainerOutlined,
+  ControlOutlined,
+  CrownOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   DeploymentUnitOutlined,
   EditOutlined,
+  ExceptionOutlined,
   ExperimentOutlined,
   ExportOutlined,
   EyeOutlined,
   FileDoneOutlined,
   FileOutlined,
+  FilePdfOutlined,
   FileProtectOutlined,
   FileSearchOutlined,
   FileTextOutlined,
+  FolderOpenOutlined,
   FolderOutlined,
   FormOutlined,
+  FunctionOutlined,
+  HighlightOutlined,
   HistoryOutlined,
   HomeOutlined,
+  InboxOutlined,
   InteractionOutlined,
   LineChartOutlined,
   MailOutlined,
   MessageOutlined,
+  NodeIndexOutlined,
   OrderedListOutlined,
+  PlayCircleOutlined,
   PlusOutlined,
+  PrinterOutlined,
   ProfileOutlined,
   QuestionCircleOutlined,
+  ReadOutlined,
+  ReconciliationOutlined,
+  ReloadOutlined,
+  RiseOutlined,
   RobotOutlined,
+  SafetyCertificateOutlined,
+  SafetyOutlined,
   ScanOutlined,
   ScheduleOutlined,
   SettingOutlined,
@@ -101,12 +151,14 @@ const ICON_COMPONENTS: Record<string, Component> = {
   SolutionOutlined,
   SoundOutlined,
   StarOutlined,
+  TableOutlined,
   TeamOutlined,
   ThunderboltOutlined,
   ToolOutlined,
   TrophyOutlined,
   UnorderedListOutlined,
   UserAddOutlined,
+  UserDeleteOutlined,
   UserOutlined,
   WarningOutlined,
 }
@@ -114,16 +166,17 @@ const ICON_COMPONENTS: Record<string, Component> = {
 // 菜单图标集合来自路由配置；新增图标时同步补充映射即可。
 const ICON_ALIASES: Record<string, string> = {
   'user-group': 'TeamOutlined',
-  "apps": 'AppstoreOutlined',
-  "list": 'UnorderedListOutlined',
-  "IconBarChart": 'BarChartOutlined',
-  "IconCloud": 'CloudOutlined',
-  "IconFile": 'FileOutlined',
-  "IconList": 'UnorderedListOutlined',
-  "IconStar": 'StarOutlined',
-  "settings": 'SettingOutlined',
-  "setting": 'SettingOutlined',
-  "notification": 'BellOutlined',
+  apps: 'AppstoreOutlined',
+  list: 'UnorderedListOutlined',
+  IconBarChart: 'BarChartOutlined',
+  IconCloud: 'CloudOutlined',
+  IconFile: 'FileOutlined',
+  IconList: 'UnorderedListOutlined',
+  IconStar: 'StarOutlined',
+  settings: 'SettingOutlined',
+  setting: 'SettingOutlined',
+  notification: 'BellOutlined',
+  bookmark: 'BookOutlined',
 }
 
 /**

@@ -6,8 +6,8 @@
  * 菜单分组（按业务主链 + 支撑配置）：
  *   ① 顶层配置（平台 / 教务处）：认证标准 / 算法模板 / 量表换算规则
  *   ② 专业评价配置（专业负责人）：评价口径 / 算法实例 / 校院工作组
- *   ③ 培养方案与目标：培养方案 / 培养目标 / 毕业要求 / 观测点
- *   ④ 课程与考核：质量评价课程 / 课程目标 / 考核环节
+ *   ③ 培养方案体系（综合工作台，4-in-1）：培养方案 + 培养目标 + 毕业要求 + 观测点 + 标准条款映射
+ *   ④ 课程支撑矩阵（综合工作台，3-in-1）：质量评价课程 + 课程目标 + 课程支撑映射 + 考核环节 + 考核权重 + Rubric + 计算规则
  *   ⑤ 数据接入：成绩 Excel 导入 / 外部数据拔取 / 过程性评价 / 成绩明细 / 间接评价
  *   ⑥ 达成度评价：达成度结果与审核（含详情）
  *   ⑦ 持续改进与审核：改进任务 / 审核评估问题 / 整改台账 / 督导复查
@@ -146,113 +146,33 @@ export const qualityRoutes: RouteRecordRaw[] = [
         },
       },
 
-      // ─── ③ 培养方案与目标 ─────────────────────────
+      // ─── ③ 培养方案体系（4-in-1 综合工作台） ───────────
       {
-        path: 'training-plan',
-        name: 'QualityTrainingPlan',
-        component: () => import('@/views/quality/training-plan.vue'),
+        path: 'training-plan-workbench',
+        name: 'QualityTrainingPlanWorkbench',
+        component: () => import('@/views/quality/training-plan-workbench.vue'),
         meta: {
-          title: '培养方案',
+          title: '培养方案体系工作台',
           roles: ALL_ROLES,
-          icon: 'bookmark',
+          icon: 'database',
           hideInMenu: false,
           keepAlive: true,
           menuGroup: 'quality-plan',
-          menuGroupTitle: '培养方案与目标',
-          menuGroupIcon: 'database',
-          menuGroupOrder: 3,
-        },
-      },
-      {
-        path: 'training-objective',
-        name: 'QualityTrainingObjective',
-        component: () => import('@/views/quality/training-objective.vue'),
-        meta: {
-          title: '培养目标',
-          roles: ALL_ROLES,
-          icon: 'rise',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'quality-plan',
-          menuGroupTitle: '培养方案与目标',
-          menuGroupIcon: 'database',
-          menuGroupOrder: 3,
-        },
-      },
-      {
-        path: 'graduation-requirement',
-        name: 'QualityGraduationRequirement',
-        component: () => import('@/views/quality/graduation-requirement.vue'),
-        meta: {
-          title: '毕业要求',
-          roles: ALL_ROLES,
-          icon: 'aim',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'quality-plan',
-          menuGroupTitle: '培养方案与目标',
-          menuGroupIcon: 'database',
-          menuGroupOrder: 3,
-        },
-      },
-      {
-        path: 'requirement-indicator',
-        name: 'QualityRequirementIndicator',
-        component: () => import('@/views/quality/requirement-indicator.vue'),
-        meta: {
-          title: '观测点',
-          roles: ALL_ROLES,
-          icon: 'node-index',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'quality-plan',
-          menuGroupTitle: '培养方案与目标',
+          menuGroupTitle: '培养方案体系',
           menuGroupIcon: 'database',
           menuGroupOrder: 3,
         },
       },
 
-      // ─── ④ 课程与考核 ─────────────────────────────
+      // ─── ④ 课程支撑矩阵（3-in-1 综合工作台） ───────────
       {
-        path: 'quality-course',
-        name: 'QualityQualityCourse',
-        component: () => import('@/views/quality/quality-course.vue'),
+        path: 'quality-course-matrix',
+        name: 'QualityCourseMatrix',
+        component: () => import('@/views/quality/quality-course-matrix.vue'),
         meta: {
-          title: '质量评价课程',
+          title: '课程支撑矩阵工作台',
           roles: ALL_ROLES,
-          icon: 'read',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'quality-course-master',
-          menuGroupTitle: '课程与考核',
-          menuGroupIcon: 'book',
-          menuGroupOrder: 4,
-        },
-      },
-      {
-        path: 'course-goal',
-        name: 'QualityCourseGoal',
-        component: () => import('@/views/quality/course-goal.vue'),
-        meta: {
-          title: '课程目标',
-          roles: ALL_ROLES,
-          icon: 'crown',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'quality-course-master',
-          menuGroupTitle: '课程与考核',
-          menuGroupIcon: 'book',
-          menuGroupOrder: 4,
-        },
-      },
-      {
-        path: 'assessment-item',
-        name: 'QualityAssessmentItem',
-        component: () => import('@/views/quality/assessment-item.vue'),
-        meta: {
-          title: '考核环节',
-          roles: ALL_ROLES,
-          icon: 'check-square',
+          icon: 'book',
           hideInMenu: false,
           keepAlive: true,
           menuGroup: 'quality-course-master',
@@ -374,63 +294,15 @@ export const qualityRoutes: RouteRecordRaw[] = [
         },
       },
 
-      // ─── ⑦ 持续改进与审核 ───────────────────────────
+      // ─── ⑦ 持续改进与审核（4-in-1 综合工作台） ────────
       {
-        path: 'improvement-task',
-        name: 'QualityImprovementTask',
-        component: () => import('@/views/quality/improvement-task.vue'),
+        path: 'improvement-workbench',
+        name: 'QualityImprovementWorkbench',
+        component: () => import('@/views/quality/improvement-workbench.vue'),
         meta: {
-          title: '持续改进任务',
+          title: '持续改进与审核闭环',
           roles: ALL_ROLES,
-          icon: 'interaction',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'quality-improvement',
-          menuGroupTitle: '持续改进与审核',
-          menuGroupIcon: 'reload',
-          menuGroupOrder: 7,
-        },
-      },
-      {
-        path: 'audit-issue',
-        name: 'QualityAuditIssue',
-        component: () => import('@/views/quality/audit-issue.vue'),
-        meta: {
-          title: '审核评估问题',
-          roles: ALL_ROLES,
-          icon: 'exception',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'quality-improvement',
-          menuGroupTitle: '持续改进与审核',
-          menuGroupIcon: 'reload',
-          menuGroupOrder: 7,
-        },
-      },
-      {
-        path: 'audit-rectification',
-        name: 'QualityAuditRectification',
-        component: () => import('@/views/quality/audit-rectification.vue'),
-        meta: {
-          title: '整改台账',
-          roles: ALL_ROLES,
-          icon: 'tool',
-          hideInMenu: false,
-          keepAlive: true,
-          menuGroup: 'quality-improvement',
-          menuGroupTitle: '持续改进与审核',
-          menuGroupIcon: 'reload',
-          menuGroupOrder: 7,
-        },
-      },
-      {
-        path: 'audit-supervision',
-        name: 'QualityAuditSupervision',
-        component: () => import('@/views/quality/audit-supervision.vue'),
-        meta: {
-          title: '督导复查',
-          roles: ALL_ROLES,
-          icon: 'audit',
+          icon: 'reload',
           hideInMenu: false,
           keepAlive: true,
           menuGroup: 'quality-improvement',

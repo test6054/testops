@@ -1,149 +1,153 @@
 <template>
-  <GiPageLayout>
-    <div class="exam-history-page">
-      <PageHeader title="历次考试">
-        <template #tags>
-          <UiTag tone="blue" size="md">{{ exams.length }} 场</UiTag>
-          <UiTag v-if="publishedCount > 0" tone="green" size="md">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="exam-history-page__context">
+        <div class="exam-history-page__context-left">
+          <UiTag tone="blue" size="sm">{{ exams.length }} 场</UiTag>
+          <UiTag v-if="publishedCount > 0" tone="green" size="sm">
             已发布 {{ publishedCount }}
           </UiTag>
-        </template>
-        <template #actions>
+        </div>
+        <div class="exam-history-page__context-right">
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <!-- 筛选 + 列表 -->
-      <UiCard class="exam-history-page__list-card">
-        <template #title>
-          <FileSearchOutlined />
-          <span>考试列表</span>
-          <UiBadge tone="blue">{{ filteredExams.length }} 条</UiBadge>
-        </template>
-        <template #extra>
-          <a-space wrap>
-            <a-input
-              v-model:value="keyword"
-              placeholder="按考试名称或编号筛选"
-              allow-clear
-              style="width: 240px"
+    <!-- 筛选 + 列表 -->
+    <UiCard class="exam-history-page__list-card">
+      <template #title>
+        <FileSearchOutlined />
+        <span>考试列表</span>
+        <UiBadge tone="blue">{{ filteredExams.length }} 条</UiBadge>
+      </template>
+      <template #extra>
+        <a-space wrap>
+          <a-input
+            v-model:value="keyword"
+            placeholder="按考试名称或编号筛选"
+            allow-clear
+            style="width: 240px"
+          >
+            <template #prefix>
+              <SearchOutlined />
+            </template>
+          </a-input>
+          <a-select
+            v-model:value="statusFilter"
+            placeholder="成绩状态"
+            allow-clear
+            style="width: 160px"
+            :options="statusOptions"
+          />
+        </a-space>
+      </template>
+
+      <UiEmpty v-if="!loading && filteredExams.length === 0" description="没有符合条件的考试" />
+
+      <UiDataTable
+        v-else
+        :columns="columns"
+        :data-source="filteredExams"
+        :loading="loading"
+        :page-size="10"
+        :total="filteredExams.length"
+        flat
+        row-key="examId"
+        size="middle"
+        class="history-table"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'examName'">
+            <button type="button" class="link-cell" @click="goDetail(filteredExams[index].examId)">
+              {{ filteredExams[index].examName || '未命名考试' }}
+            </button>
+            <div v-if="filteredExams[index].examNo" class="link-cell__sub">
+              编号：{{ filteredExams[index].examNo }}
+            </div>
+          </template>
+          <template v-else-if="column.key === 'finalScoreStatus'">
+            <UiTag
+              v-if="filteredExams[index].finalScoreStatus"
+              :tone="finalScoreStatusTone(filteredExams[index].finalScoreStatus)"
+              size="sm"
             >
-              <template #prefix>
-                <SearchOutlined />
-              </template>
-            </a-input>
-            <a-select
-              v-model:value="statusFilter"
-              placeholder="成绩状态"
-              allow-clear
-              style="width: 160px"
-              :options="statusOptions"
-            />
-          </a-space>
-        </template>
-
-        <UiEmpty v-if="!loading && filteredExams.length === 0" description="没有符合条件的考试" />
-
-        <a-table
-          v-else
-          :columns="columns"
-          :data-source="filteredExams"
-          :loading="loading"
-          :pagination="{ pageSize: 10, showSizeChanger: true }"
-          row-key="examId"
-          size="middle"
-          class="history-table"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'examName'">
-              <button
-                type="button"
-                class="link-cell"
+              {{ finalScoreStatusLabel(filteredExams[index].finalScoreStatus) }}
+            </UiTag>
+            <UiTag v-else tone="gray" size="sm">未生成</UiTag>
+          </template>
+          <template v-else-if="column.key === 'finalScore'">
+            <span
+              v-if="
+                filteredExams[index].finalScoreStatus === 'PUBLISHED' &&
+                filteredExams[index].finalScore != null
+              "
+              class="score-cell"
+            >
+              {{ (filteredExams[index].finalScore ?? 0).toFixed(2) }}
+            </span>
+            <span v-else class="muted">--</span>
+          </template>
+          <template v-else-if="column.key === 'examStartTime'">
+            {{ formatTime(filteredExams[index].examStartTime) }}
+          </template>
+          <template v-else-if="column.key === 'publishedTime'">
+            {{ formatTime(filteredExams[index].publishedTime) }}
+          </template>
+          <template v-else-if="column.key === 'reviewWindowStatus'">
+            <UiTag
+              v-if="filteredExams[index].reviewWindowStatus === 'ACTIVE'"
+              tone="orange"
+              size="sm"
+            >
+              开放中
+            </UiTag>
+            <UiTag
+              v-else-if="filteredExams[index].reviewWindowStatus === 'CLOSED'"
+              tone="gray"
+              size="sm"
+            >
+              已关闭
+            </UiTag>
+            <span v-else class="muted">未开放</span>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                :disabled="filteredExams[index].finalScoreStatus !== 'PUBLISHED'"
                 @click="goDetail(filteredExams[index].examId)"
               >
-                {{ filteredExams[index].examName || '未命名考试' }}
-              </button>
-              <div v-if="filteredExams[index].examNo" class="link-cell__sub">
-                编号：{{ filteredExams[index].examNo }}
-              </div>
-            </template>
-            <template v-else-if="column.key === 'finalScoreStatus'">
-              <UiTag
-                v-if="filteredExams[index].finalScoreStatus"
-                :tone="finalScoreStatusTone(filteredExams[index].finalScoreStatus)"
+                查看详情
+              </UiButton>
+              <UiButton
                 size="sm"
+                variant="ghost"
+                :disabled="!canSubmitReview(filteredExams[index])"
+                @click="goAppeal(filteredExams[index].examId)"
               >
-                {{ finalScoreStatusLabel(filteredExams[index].finalScoreStatus) }}
-              </UiTag>
-              <UiTag v-else tone="gray" size="sm">未生成</UiTag>
-            </template>
-            <template v-else-if="column.key === 'finalScore'">
-              <span
-                v-if="
-                  filteredExams[index].finalScoreStatus === 'PUBLISHED'
-                    && filteredExams[index].finalScore != null
-                "
-                class="score-cell"
-              >
-                {{ (filteredExams[index].finalScore ?? 0).toFixed(2) }}
-              </span>
-              <span v-else class="muted">--</span>
-            </template>
-            <template v-else-if="column.key === 'examStartTime'">
-              {{ formatTime(filteredExams[index].examStartTime) }}
-            </template>
-            <template v-else-if="column.key === 'publishedTime'">
-              {{ formatTime(filteredExams[index].publishedTime) }}
-            </template>
-            <template v-else-if="column.key === 'reviewWindowStatus'">
-              <UiTag
-                v-if="filteredExams[index].reviewWindowStatus === 'ACTIVE'"
-                tone="orange"
-                size="sm"
-              >
-                开放中
-              </UiTag>
-              <UiTag
-                v-else-if="filteredExams[index].reviewWindowStatus === 'CLOSED'"
-                tone="gray"
-                size="sm"
-              >
-                已关闭
-              </UiTag>
-              <span v-else class="muted">未开放</span>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <a-space>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :disabled="filteredExams[index].finalScoreStatus !== 'PUBLISHED'"
-                  @click="goDetail(filteredExams[index].examId)"
-                >
-                  查看详情
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :disabled="!canSubmitReview(filteredExams[index])"
-                  @click="goAppeal(filteredExams[index].examId)"
-                >
-                  提交复核
-                </UiButton>
-              </a-space>
-            </template>
+                提交复核
+              </UiButton>
+            </a-space>
           </template>
-        </a-table>
-      </UiCard>
-    </div>
-  </GiPageLayout>
+        </template>
+      </UiDataTable>
+    </UiCard>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode, StudentExamItemVO } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -152,15 +156,8 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-} from '@/apis/mark/student-exam'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'StudentExamHistory' })
 
@@ -170,7 +167,7 @@ const exams = ref<StudentExamItemVO[]>([])
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
-const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
+const statusOptions: Array<{ value: FinalScoreStatusCode; label: string }> = [
   { value: 'PENDING', label: '待计算' },
   { value: 'CALCULATED', label: '已计算' },
   { value: 'CONFIRMED', label: '已确认' },
@@ -257,6 +254,25 @@ onMounted(loadExams)
 
 <style lang="scss" scoped>
 .exam-history-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

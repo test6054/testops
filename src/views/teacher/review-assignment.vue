@@ -1,14 +1,11 @@
 <template>
-  <GiPageLayout>
-    <div class="review-assignment-page">
-      <PageHeader title="复核任务池">
-        <template #tags>
-          <UiTag tone="blue" size="md">{{ tasks.length }} 条任务</UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="review-assignment-page__context">
+        <div class="review-assignment-page__context-left">
           <a-select
             :value="selectedExamId"
-            style="width: 280px"
+            class="review-assignment-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
             :loading="examLoading"
@@ -17,6 +14,9 @@
             allow-clear
             @change="onExamChange"
           />
+          <UiTag tone="blue" size="sm">{{ tasks.length }} 条任务</UiTag>
+        </div>
+        <div class="review-assignment-page__context-right">
           <UiButton
             variant="outline"
             size="sm"
@@ -27,145 +27,147 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请选择一场考试以查看复核任务"
+      class="review-assignment-page__empty"
+    />
+
+    <template v-else>
+      <UiCard class="review-assignment-page__filter-card">
+        <template #title>
+          <SearchOutlined />
+          <span>筛选条件</span>
         </template>
-      </PageHeader>
 
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请选择一场考试以查看复核任务"
-        class="empty-block"
-      />
+        <a-form layout="inline" :model="filterForm" @submit.prevent="loadTasks">
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="filterForm.status"
+              style="width: 160px"
+              placeholder="全部状态"
+              allow-clear
+              :options="statusOptions"
+              @change="loadTasks"
+            />
+          </a-form-item>
+          <a-form-item label="题目模板ID">
+            <a-input
+              v-model:value="filterForm.questionTemplateId"
+              placeholder="精确匹配"
+              allow-clear
+              style="width: 220px"
+              @press-enter="loadTasks"
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
+              <UiButton size="sm" variant="outline" @click="resetFilter">重置</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </UiCard>
 
-      <template v-else>
-        <UiCard class="review-assignment-page__filter-card">
-          <template #title>
-            <SearchOutlined />
-            <span>筛选条件</span>
-          </template>
+      <UiCard class="review-assignment-page__table-card">
+        <template #title>
+          <TableOutlined />
+          <span>任务列表</span>
+          <UiBadge tone="blue">{{ tasks.length }} 条</UiBadge>
+        </template>
 
-          <a-form layout="inline" :model="filterForm" @submit.prevent="loadTasks">
-            <a-form-item label="状态">
-              <a-select
-                v-model:value="filterForm.status"
-                style="width: 160px"
-                placeholder="全部状态"
-                allow-clear
-                :options="statusOptions"
-                @change="loadTasks"
-              />
-            </a-form-item>
-            <a-form-item label="题目模板ID">
-              <a-input
-                v-model:value="filterForm.questionTemplateId"
-                placeholder="精确匹配"
-                allow-clear
-                style="width: 220px"
-                @press-enter="loadTasks"
-              />
-            </a-form-item>
-            <a-form-item>
-              <a-space>
-                <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
-                <UiButton size="sm" variant="outline" @click="resetFilter">重置</UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </UiCard>
+        <UiEmpty v-if="!loading && tasks.length === 0" description="暂无符合条件的任务" />
 
-        <UiCard class="review-assignment-page__table-card">
-          <template #title>
-            <TableOutlined />
-            <span>任务列表</span>
-            <UiBadge tone="blue">{{ tasks.length }} 条</UiBadge>
-          </template>
-
-          <UiEmpty v-if="!loading && tasks.length === 0" description="暂无符合条件的任务" />
-
-          <a-table
-            v-else
-            :columns="columns"
-            :data-source="tasks"
-            :loading="loading"
-            :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
-            row-key="reviewTaskId"
-            size="middle"
-            class="review-table"
-          >
-            <template #bodyCell="{ column, index }">
-              <template v-if="column.key === 'anonymousNo'">
-                <a-typography-text strong :content="tasks[index].anonymousNo || '-'" />
-              </template>
-              <template v-else-if="column.key === 'questionNo'">
-                <UiTag tone="blue" size="sm">{{ tasks[index].questionNo || '-' }}</UiTag>
-              </template>
-              <template v-else-if="column.key === 'fullScore'">
-                {{ tasks[index].fullScore ?? '-' }}
-              </template>
-              <template v-else-if="column.key === 'suggestedScore'">
-                <span
-                  v-if="
-                    tasks[index].suggestedScore !== undefined
-                      && tasks[index].suggestedScore !== null
-                  "
-                >
-                  {{ tasks[index].suggestedScore }}
-                </span>
-                <span v-else class="muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="reviewStatusTone(tasks[index].status)" size="sm">
-                  {{ reviewStatusLabel(tasks[index].status) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'assignedTeacherUserId'">
-                <span v-if="tasks[index].assignedTeacherUserId">
-                  <UserOutlined class="mini-icon" />
-                  {{
-                    tasks[index].assignedTeacherUserId === currentUserId
-                      ? '我'
-                      : tasks[index].assignedTeacherUserId
-                  }}
-                </span>
-                <span v-else class="muted">未指派</span>
-              </template>
-              <template v-else-if="column.key === 'updateTime'">
-                {{ formatTime(tasks[index].updateTime) }}
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <a-popconfirm
-                    v-if="tasks[index].status === 'PENDING'"
-                    title="确认领取该任务？领取后将由你负责该题目的批改。"
-                    ok-text="领取"
-                    cancel-text="取消"
-                    :disabled="claiming"
-                    @confirm="handleClaim(tasks[index])"
-                  >
-                    <UiButton
-                      size="sm"
-                      :loading="claiming && claimingTaskId === tasks[index].reviewTaskId"
-                    >
-                      领取
-                    </UiButton>
-                  </a-popconfirm>
-                  <UiButton
-                    v-if="tasks[index].status === 'IN_PROGRESS'"
-                    size="sm"
-                    @click="goWorkspace(tasks[index])"
-                  >
-                    进入批阅
-                  </UiButton>
-                  <UiButton size="sm" variant="ghost" @click="goDetail(tasks[index])">
-                    详情
-                  </UiButton>
-                </a-space>
-              </template>
+        <UiDataTable
+          v-else
+          :columns="columns"
+          :data-source="tasks"
+          :loading="loading"
+          :page-size="20"
+          :total="tasks.length"
+          row-key="reviewTaskId"
+          size="middle"
+          flat
+          class="review-table"
+        >
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'anonymousNo'">
+              <a-typography-text strong :content="tasks[index].anonymousNo || '-'" />
             </template>
-          </a-table>
-        </UiCard>
-      </template>
-    </div>
-  </GiPageLayout>
+            <template v-else-if="column.key === 'questionNo'">
+              <UiTag tone="blue" size="sm">{{ tasks[index].questionNo || '-' }}</UiTag>
+            </template>
+            <template v-else-if="column.key === 'fullScore'">
+              {{ tasks[index].fullScore ?? '-' }}
+            </template>
+            <template v-else-if="column.key === 'suggestedScore'">
+              <span
+                v-if="
+                  tasks[index].suggestedScore !== undefined
+                    && tasks[index].suggestedScore !== null
+                "
+              >
+                {{ tasks[index].suggestedScore }}
+              </span>
+              <span v-else class="muted">-</span>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="reviewStatusTone(tasks[index].status)" size="sm">
+                {{ reviewStatusLabel(tasks[index].status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'assignedTeacherUserId'">
+              <span v-if="tasks[index].assignedTeacherUserId">
+                <UserOutlined class="mini-icon" />
+                {{
+                  tasks[index].assignedTeacherUserId === currentUserId
+                    ? '我'
+                    : tasks[index].assignedTeacherUserId
+                }}
+              </span>
+              <span v-else class="muted">未指派</span>
+            </template>
+            <template v-else-if="column.key === 'updateTime'">
+              {{ formatTime(tasks[index].updateTime) }}
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <a-space>
+                <a-popconfirm
+                  v-if="tasks[index].status === 'PENDING'"
+                  title="确认领取该任务？领取后将由你负责该题目的批改。"
+                  ok-text="领取"
+                  cancel-text="取消"
+                  :disabled="claiming"
+                  @confirm="handleClaim(tasks[index])"
+                >
+                  <UiButton
+                    size="sm"
+                    :loading="claiming && claimingTaskId === tasks[index].reviewTaskId"
+                  >
+                    领取
+                  </UiButton>
+                </a-popconfirm>
+                <UiButton
+                  v-if="tasks[index].status === 'IN_PROGRESS'"
+                  size="sm"
+                  @click="goWorkspace(tasks[index])"
+                >
+                  进入批阅
+                </UiButton>
+                <UiButton size="sm" variant="ghost" @click="goDetail(tasks[index])">
+                  详情
+                </UiButton>
+              </a-space>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </template>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -179,10 +181,10 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { storeToRefs } from 'pinia'
+import { useMarkTaskStore } from '@/stores/modules/markTask'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -261,8 +263,8 @@ function reviewStatusLabel(value: unknown): string {
   return value
 }
 
-const tasks = ref<ReviewTaskItemVO[]>([])
-const loading = ref(false)
+const markTaskStore = useMarkTaskStore()
+const { reviewTasks: tasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
 computed(() => {
   const counter: Record<ReviewTaskStatusCode, number> = {
     PENDING: 0,
@@ -307,9 +309,8 @@ function formatTime(value?: string): string {
 
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
-  loading.value = true
   try {
-    tasks.value = await listReviewTasks({
+    await markTaskStore.loadReviewTasks({
       examId: selectedExamId.value,
       status: filterForm.status,
       questionTemplateId: filterForm.questionTemplateId?.trim() || undefined,
@@ -337,10 +338,7 @@ async function handleClaim(record: ReviewTaskItemVO): Promise<void> {
   claiming.value = true
   claimingTaskId.value = record.reviewTaskId
   try {
-    await claimReviewTask({
-      examId: selectedExamId.value,
-      reviewTaskId: record.reviewTaskId,
-    })
+    await markTaskStore.claimReviewTaskAction(selectedExamId.value, record.reviewTaskId)
     message.success('任务领取成功，已进入复核中')
     await loadTasks()
   } catch (error) {
@@ -388,6 +386,33 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .review-assignment-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

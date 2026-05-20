@@ -14,19 +14,55 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
+  isConfirmationStatus,
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ProgramSelector } from '@/components/quality/selectors'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { promptModal } from './_helpers'
+
+const columns: ColumnsType = [
+  { title: '编码', dataIndex: 'profileCode', key: 'profileCode', width: 140 },
+  { title: '名称', dataIndex: 'profileName', key: 'profileName' },
+  { title: '专业大类', dataIndex: 'programId', key: 'programId', width: 160 },
+  { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 180 },
+  { title: '级别', dataIndex: 'accreditationLevel', key: 'accreditationLevel', width: 100 },
+  { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
+  { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
+  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
+]
+
+/* ========== 状态守卫 helper（避免 as 断言） ========== */
+
+function accreditationTypeLabel(value: unknown): string {
+  if (typeof value !== 'string') return '-'
+  const dict: Record<string, string> = ACCREDITATION_TYPE_LABEL
+  return dict[value] || value
+}
+
+function confirmationStatusLabel(value: unknown): string {
+  if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function confirmationStatusColor(value: unknown): string {
+  if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_COLOR[value]
+  return 'default'
+}
 
 const list = ref<ProfessionAlgorithmProfileVO[]>([])
 const total = ref(0)
@@ -173,10 +209,10 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim()
-    || !editor.profileName.trim()
-    || !editor.templateId
-    || !editor.programId
+    !editor.profileCode.trim() ||
+    !editor.profileName.trim() ||
+    !editor.templateId ||
+    !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
@@ -194,9 +230,10 @@ async function submitEditor() {
 }
 
 async function handleConfirm(record: ProfessionAlgorithmProfileVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `确认实例 ${record.profileCode}？`,
     content: '确认后实例将进入「已确认」状态，可被达成度计算引用。',
+    type: 'info',
     onOk: async () => {
       await professionAlgorithmProfileApi.confirm(record.id)
       message.success('已确认')
@@ -220,9 +257,9 @@ async function handleRevoke(record: ProfessionAlgorithmProfileVO) {
 }
 
 async function handleDelete(record: ProfessionAlgorithmProfileVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除实例 ${record.profileCode}？`,
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await professionAlgorithmProfileApi.delete(record.id)
       message.success('已删除')
@@ -231,9 +268,9 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(p: number, ps: number) {
-  query.pageNum = p
-  query.pageSize = ps
+function handlePageChange(payload: { current: number; pageSize: number }) {
+  query.pageNum = payload.current
+  query.pageSize = payload.pageSize
   loadList()
 }
 
@@ -247,131 +284,174 @@ function resetQuery() {
   loadList()
 }
 
+/* ========== 信号指标：专业算法实例健康度 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const buckets: Record<ConfirmationStatus, number> = {
+    DRAFT: 0,
+    SUBMITTED: 0,
+    CONFIRMED: 0,
+    RETURNED: 0,
+  }
+  for (const p of list.value) {
+    if (isConfirmationStatus(p.confirmationStatus)) buckets[p.confirmationStatus] += 1
+  }
+  const enabled = list.value.filter((p) => p.enabled).length
+  const disabled = list.value.filter((p) => !p.enabled).length
+  const usable = list.value.filter((p) => p.enabled && p.confirmationStatus === 'CONFIRMED').length
+
+  return [
+    { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
+    { key: 'all-total', label: '实例总数', value: total.value, tone: 'blue' },
+    { key: 'usable', label: '可用实例', value: usable, tone: usable > 0 ? 'green' : 'gray' },
+    {
+      key: 'draft',
+      label: '起草',
+      value: buckets.DRAFT,
+      tone: buckets.DRAFT > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'submitted',
+      label: '已提交',
+      value: buckets.SUBMITTED,
+      tone: buckets.SUBMITTED > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'confirmed',
+      label: '已确认',
+      value: buckets.CONFIRMED,
+      tone: buckets.CONFIRMED > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'returned',
+      label: '已退回',
+      value: buckets.RETURNED,
+      tone: buckets.RETURNED > 0 ? 'red' : 'gray',
+    },
+    { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
+    { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
+  ]
+})
+
 onMounted(async () => {
   await Promise.all([loadList(), loadDicts()])
 })
 </script>
 
 <template>
-  <div class="page">
-    <a-card title="专业算法实例" :bordered="false">
-      <template #extra>
-        <a-space wrap>
-          <a-select
-            v-model:value="query.programId"
-            placeholder="专业"
-            allow-clear
-            style="width: 200px"
-            show-search
-            option-filter-prop="label"
-          >
-            <a-select-option
-              v-for="p in programs"
-              :key="p.id"
-              :value="p.id"
-              :label="p.majorCategoryName"
-            >
-              {{ p.majorCategoryName }}
-            </a-select-option>
-          </a-select>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="pap__context">
+        <div class="pap__context-info">
+          <h2 class="pap__title">专业算法实例</h2>
+        </div>
+      </div>
+    </template>
+
+    <SignalBand :metrics="signals" compact class="pap__signals" />
+
+    <section class="pap__panel">
+      <header class="pap__panel-header">
+        <h3 class="pap__panel-title">实例台账</h3>
+        <div class="pap__panel-actions">
+          <ProgramSelector
+            :value="query.programId || null"
+            placeholder="专业大类"
+            :width="200"
+            @change="
+              (v) => {
+                query.programId = v ?? undefined
+                loadList()
+              }
+            "
+          />
           <a-select
             v-model:value="query.accreditationType"
             placeholder="认证类型"
             allow-clear
-            style="width: 180px"
+            class="pap__filter pap__filter--md"
             :options="accreditationOptions"
           />
           <a-select
             v-model:value="query.confirmationStatus"
             placeholder="状态"
             allow-clear
-            style="width: 120px"
+            class="pap__filter"
           >
             <a-select-option v-for="s in statusOptions" :key="s" :value="s">
-              {{ CONFIRMATION_STATUS_LABEL[s] }}
+              {{ confirmationStatusLabel(s) }}
             </a-select-option>
           </a-select>
           <a-input
             v-model:value="query.keyword"
             placeholder="编码/名称"
-            style="width: 180px"
+            class="pap__filter pap__filter--md"
             @press-enter="loadList"
           />
-          <a-button type="primary" @click="loadList">查询</a-button>
-          <a-button @click="resetQuery">重置</a-button>
-          <a-button type="primary" @click="openCreate">新建实例</a-button>
-        </a-space>
-      </template>
+          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
+            查询
+          </UiButton>
+          <UiButton variant="primary" size="sm" @click="openCreate"> 新建实例 </UiButton>
+        </div>
+      </header>
 
-      <a-table
+      <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
+        :columns="columns"
         :data-source="list"
         :loading="loading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: query.pageNum,
-          pageSize: query.pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (n: number) => `共 ${n} 条`,
-          onChange: handlePageChange,
-        }"
+        :total="total"
+        flat
+        @page-change="handlePageChange"
       >
-        <a-table-column title="编码" data-index="profileCode" width="140" />
-        <a-table-column title="名称" data-index="profileName" />
-        <a-table-column title="专业大类" data-index="programId" width="160">
-          <template #default="{ text }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'programId'">
             {{ programs.find((p) => p.id === text)?.majorCategoryName || text }}
           </template>
-        </a-table-column>
-        <a-table-column title="认证类型" data-index="accreditationType" width="180">
-          <template #default="{ text }">
-            {{ ACCREDITATION_TYPE_LABEL[text as keyof typeof ACCREDITATION_TYPE_LABEL] || text }}
+          <template v-else-if="column.key === 'accreditationType'">
+            {{ accreditationTypeLabel(text) }}
           </template>
-        </a-table-column>
-        <a-table-column title="级别" data-index="accreditationLevel" width="100" />
-        <a-table-column title="状态" data-index="confirmationStatus" width="100">
-          <template #default="{ text }">
-            <a-tag :color="CONFIRMATION_STATUS_COLOR[text as ConfirmationStatus]">
-              {{ CONFIRMATION_STATUS_LABEL[text as ConfirmationStatus] || text }}
+          <template v-else-if="column.key === 'confirmationStatus'">
+            <a-tag :color="confirmationStatusColor(text)">
+              {{ confirmationStatusLabel(text) }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="启用" data-index="enabled" width="80">
-          <template #default="{ text }">
+          <template v-else-if="column.key === 'enabled'">
             <a-tag :color="text ? 'green' : 'default'">
               {{ text ? '启用' : '停用' }}
             </a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="操作" width="240" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space wrap>
-              <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button
+              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
+              <UiButton
                 v-if="record.confirmationStatus === 'DRAFT'"
-                type="link"
-                size="small"
+                variant="outline"
+                size="sm"
                 @click="handleConfirm(record)"
               >
                 确认
-              </a-button>
-              <a-button
+              </UiButton>
+              <UiButton
                 v-if="record.confirmationStatus === 'CONFIRMED'"
-                type="link"
-                size="small"
+                variant="outline"
+                size="sm"
                 @click="handleRevoke(record)"
               >
                 撤销
-              </a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">
+              </UiButton>
+              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
                 删除
-              </a-button>
+              </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
     <a-modal
       v-model:open="editorVisible"
@@ -416,21 +496,11 @@ onMounted(async () => {
           </a-col>
           <a-col :span="12">
             <a-form-item label="专业" required>
-              <a-select
-                v-model:value="editor.programId"
+              <ProgramSelector
+                :value="editor.programId || null"
                 placeholder="选择本租户专业"
-                show-search
-                option-filter-prop="label"
-              >
-                <a-select-option
-                  v-for="p in programs"
-                  :key="p.id"
-                  :value="p.id"
-                  :label="p.majorCategoryName"
-                >
-                  {{ p.majorCategoryName }}
-                </a-select-option>
-              </a-select>
+                @change="(v) => (editor.programId = v ?? '')"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -591,11 +661,75 @@ onMounted(async () => {
         <a-checkbox v-model:checked="editor.enabled">启用</a-checkbox>
       </a-form>
     </a-modal>
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page {
-  padding: 16px;
+.pap {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__context-info {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 130px;
+
+    &--md {
+      width: 180px;
+    }
+  }
 }
 </style>

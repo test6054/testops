@@ -1,20 +1,18 @@
 <template>
-  <div
+  <aside
     v-if="isDesktop"
-    :class="{ 'app-menu-dark': appStore.menuDark }"
+    :class="{ 'app-menu-dark': appStore.menuDark, collapsed: appStore.menuCollapse }"
     :style="appStore.menuDark ? appStore.themeCSSVar : undefined"
     class="asider"
   >
-    <a-layout-sider :collapsed="appStore.menuCollapse" :width="230" breakpoint="xl" class="menu">
-      <Logo :collapsed="appStore.menuCollapse"></Logo>
-      <div class="menu-scroll-view">
-        <Menu></Menu>
-      </div>
-      <div class="menu-toggle-wrap">
-        <MenuFoldBtn />
-      </div>
-    </a-layout-sider>
-  </div>
+    <Logo :collapsed="appStore.menuCollapse"></Logo>
+    <div class="menu-scroll-view">
+      <Menu></Menu>
+    </div>
+    <div class="menu-toggle-wrap">
+      <MenuFoldBtn />
+    </div>
+  </aside>
 </template>
 
 <script lang="ts" setup>
@@ -31,8 +29,8 @@ const { isDesktop } = useDevice()
 </script>
 
 <style lang="scss" scoped>
+// 折叠状态下的菜单项布局：图标居中、隐藏文字
 :deep(.ant-menu-inline-collapsed) {
-  // Menu菜单组件修改
   .ant-menu-item-icon {
     margin-right: 0;
     padding: 0;
@@ -48,7 +46,7 @@ const { isDesktop } = useDevice()
   }
 
   .ant-menu-title-content {
-    display: none;
+    display: none !important;
   }
 
   .ant-menu-item-icon,
@@ -63,35 +61,27 @@ const { isDesktop } = useDevice()
   }
 }
 
-:deep(.ant-layout-sider-children) {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: var(--ant-color-bg-container) !important;
-}
-
-:deep(.ant-layout-sider) {
-  background: var(--ant-color-bg-container) !important;
-}
-
-:deep(.ant-layout-sider-trigger) {
-  display: none !important;
-}
-
 .asider {
   z-index: 1000;
+  width: 230px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--ant-color-border-secondary);
   box-sizing: border-box;
   color: var(--ant-color-text);
   background-color: var(--ant-color-bg-container);
+  transition: width 0.2s ease;
+
+  &.collapsed {
+    width: 80px;
+  }
 
   .menu-scroll-view {
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
-    padding-bottom: 56px;
+    overflow-x: hidden;
     background-color: inherit;
 
     &::-webkit-scrollbar {
@@ -108,23 +98,12 @@ const { isDesktop } = useDevice()
     }
   }
 
-  .menu {
-    flex: 1;
-    overflow: hidden;
-    background-color: inherit;
-    position: relative;
-  }
-
   .menu-toggle-wrap {
+    flex-shrink: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
     height: 56px;
-    padding: 0;
     border-top: 1px solid var(--ant-color-border-secondary);
     background-color: inherit;
   }

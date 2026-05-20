@@ -10,12 +10,15 @@ import type {
   AccreditationStandardSavePayload,
   AccreditationStandardVO,
 } from '@/apis/quality'
-import { message, Modal } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
-import {
-  ACCREDITATION_TYPE_LABEL,
-  accreditationStandardApi,
-} from '@/apis/quality'
+import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { computed, onMounted, reactive, ref } from 'vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 
 const list = ref<AccreditationStandardVO[]>([])
 const total = ref(0)
@@ -49,24 +52,53 @@ const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([valu
   label,
 }))
 
-/**
- * 启用状态筛选本地中间值：ant-design-vue 的 SelectValue 不接受 boolean，
- * 这里用字符串枚举选项，通过 syncEnabledFilter 写回真实 DTO query.enabled（boolean | undefined）。
- */
-type EnabledFilterChoice = 'enabled' | 'disabled' | undefined
-const enabledFilter = ref<EnabledFilterChoice>(undefined)
-const enabledFilterOptions = [
-  { value: 'enabled', label: '启用' },
-  { value: 'disabled', label: '停用' },
+const columns: ColumnsType = [
+  { title: '编码', dataIndex: 'standardCode', key: 'standardCode', width: 140 },
+  { title: '名称', dataIndex: 'standardName', key: 'standardName' },
+  { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 180 },
+  { title: '标准年份', dataIndex: 'standardYear', key: 'standardYear', width: 100 },
+  { title: '文号', dataIndex: 'documentNumber', key: 'documentNumber', width: 160 },
+  { title: '状态', key: 'enabled', width: 120 },
+  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
-function syncEnabledFilter() {
-  query.enabled
-    = enabledFilter.value === 'enabled'
-      ? true
-      : enabledFilter.value === 'disabled'
-        ? false
-        : undefined
-}
+
+const filterFields: FilterField[] = [
+  {
+    key: 'accreditationType',
+    label: '认证类型',
+    type: 'select',
+    placeholder: '认证类型',
+    allowClear: true,
+    options: accreditationOptions,
+    width: 220,
+  },
+  {
+    key: 'enabled',
+    label: '状态',
+    type: 'select',
+    placeholder: '状态',
+    allowClear: true,
+    width: 130,
+    options: [
+      { value: 'enabled', label: '启用' },
+      { value: 'disabled', label: '停用' },
+    ],
+  },
+  {
+    key: 'keyword',
+    label: '关键字',
+    type: 'input',
+    placeholder: '编码/名称',
+    width: 200,
+    inputPrefixIcon: 'search',
+  },
+]
+
+const filterModel = ref<Record<string, unknown>>({
+  accreditationType: undefined,
+  enabled: undefined,
+  keyword: '',
+})
 
 /**
  * 表格认证类型列的标签渲染。
@@ -93,18 +125,30 @@ async function loadList() {
   }
 }
 
-function handlePageChange(p: number, ps: number) {
-  query.pageNum = p
-  query.pageSize = ps
+function handlePageChange(payload: { current: number; pageSize: number }) {
+  query.pageNum = payload.current
+  query.pageSize = payload.pageSize
   loadList()
 }
 
-function resetQuery() {
+function syncFilterToQuery() {
+  const accTypeRaw = filterModel.value.accreditationType
+  query.accreditationType = typeof accTypeRaw === 'string' && accTypeRaw ? accTypeRaw : undefined
+  const enabledRaw = filterModel.value.enabled
+  query.enabled = enabledRaw === 'enabled' ? true : enabledRaw === 'disabled' ? false : undefined
+  query.keyword = typeof filterModel.value.keyword === 'string' ? filterModel.value.keyword : ''
+}
+
+function handleSearch() {
   query.pageNum = 1
-  query.accreditationType = undefined
-  query.enabled = undefined
-  enabledFilter.value = undefined
-  query.keyword = ''
+  syncFilterToQuery()
+  loadList()
+}
+
+function handleResetSearch() {
+  filterModel.value = { accreditationType: undefined, enabled: undefined, keyword: '' }
+  query.pageNum = 1
+  syncFilterToQuery()
   loadList()
 }
 
@@ -150,10 +194,10 @@ async function submitEditor() {
 }
 
 async function handleDelete(record: AccreditationStandardVO) {
-  Modal.confirm({
+  void confirmAsync({
     title: `删除认证标准 ${record.standardCode}？`,
     content: '若已被任一专业实例或观测点引用，删除会失败。',
-    okType: 'danger',
+    type: 'error',
     onOk: async () => {
       await accreditationStandardApi.delete(record.id)
       message.success('已删除')
@@ -162,77 +206,88 @@ async function handleDelete(record: AccreditationStandardVO) {
   })
 }
 
+/* ========== 信号指标：认证标准库健康度 ========== */
+
+const signals = computed<SignalMetric[]>(() => {
+  const enabled = list.value.filter((s) => s.enabled).length
+  const disabled = list.value.filter((s) => !s.enabled).length
+  const pilot = list.value.filter((s) => s.isPilotOnly).length
+  const types = new Set(list.value.map((s) => s.accreditationType)).size
+  return [
+    { key: 'total', label: '当前页记录', value: list.value.length, tone: 'blue' },
+    { key: 'all-total', label: '认证标准总数', value: total.value, tone: 'blue' },
+    { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
+    { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
+    { key: 'pilot', label: '仅试点', value: pilot, tone: pilot > 0 ? 'orange' : 'gray' },
+    { key: 'types', label: '覆盖认证类型', value: types, tone: 'blue' },
+  ]
+})
+
 onMounted(() => loadList())
 </script>
 
 <template>
-  <div class="page">
-    <a-card title="认证标准配置" :bordered="false">
-      <template #extra>
-        <a-space wrap>
-          <a-select
-            v-model:value="query.accreditationType"
-            placeholder="认证类型"
-            allow-clear
-            style="width: 200px"
-            :options="accreditationOptions"
-          />
-          <a-select
-            v-model:value="enabledFilter"
-            placeholder="状态"
-            allow-clear
-            style="width: 120px"
-            :options="enabledFilterOptions"
-            @change="syncEnabledFilter"
-          />
-          <a-input v-model:value="query.keyword" placeholder="编码/名称" style="width: 200px" @press-enter="loadList" />
-          <a-button type="primary" @click="loadList">查询</a-button>
-          <a-button @click="resetQuery">重置</a-button>
-          <a-button type="primary" @click="openCreate">新建认证标准</a-button>
-        </a-space>
-      </template>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="as__context">
+        <div class="as__context-info">
+          <h2 class="as__title">认证标准库</h2>
+        </div>
+      </div>
+    </template>
 
-      <a-table
+    <SignalBand :metrics="signals" compact class="as__signals" />
+
+    <section class="as__panel">
+      <header class="as__panel-header">
+        <h3 class="as__panel-title">认证标准台账</h3>
+        <div class="as__panel-actions">
+          <UiButton variant="primary" size="sm" @click="openCreate"> 新建认证标准 </UiButton>
+        </div>
+      </header>
+
+      <UiSearchForm
+        v-model="filterModel"
+        :fields="filterFields"
+        :show-labels="false"
+        class="as__search-form"
+        @search="handleSearch"
+        @reset="handleResetSearch"
+      />
+
+      <UiDataTable
+        v-model:current="query.pageNum"
+        v-model:page-size="query.pageSize"
+        :columns="columns"
         :data-source="list"
         :loading="loading"
         row-key="id"
         size="middle"
-        :pagination="{
-          current: query.pageNum,
-          pageSize: query.pageSize,
-          total,
-          showSizeChanger: true,
-          showTotal: (n: number) => `共 ${n} 条`,
-          onChange: handlePageChange,
-        }"
+        :total="total"
+        flat
+        @page-change="handlePageChange"
       >
-        <a-table-column title="编码" data-index="standardCode" width="140" />
-        <a-table-column title="名称" data-index="standardName" />
-        <a-table-column title="认证类型" data-index="accreditationType" width="180">
-          <template #default="{ text }">
+        <template #bodyCell="{ column, record, text }">
+          <template v-if="column.key === 'accreditationType'">
             {{ accreditationTypeLabel(text) }}
           </template>
-        </a-table-column>
-        <a-table-column title="标准年份" data-index="standardYear" width="100" />
-        <a-table-column title="文号" data-index="documentNumber" width="160" />
-        <a-table-column title="状态" data-index="enabled" width="100">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'enabled'">
             <a-tag :color="record.enabled ? 'green' : 'default'">
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
             <a-tag v-if="record.isPilotOnly" color="orange">试点</a-tag>
           </template>
-        </a-table-column>
-        <a-table-column title="操作" width="160" fixed="right">
-          <template #default="{ record }">
+          <template v-else-if="column.key === 'actions'">
             <a-space>
-              <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" danger @click="handleDelete(record)">删除</a-button>
+              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
+              <UiButton variant="danger-ghost" size="sm" @click="handleDelete(record)">
+                删除
+              </UiButton>
             </a-space>
           </template>
-        </a-table-column>
-      </a-table>
-    </a-card>
+        </template>
+      </UiDataTable>
+    </section>
 
     <a-modal
       v-model:open="editorVisible"
@@ -286,9 +341,79 @@ onMounted(() => loadList())
         </a-space>
       </a-form>
     </a-modal>
-  </div>
+  </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
-.page { padding: 16px; }
+.as {
+  &__context {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__context-info {
+    flex: 1;
+    min-width: 240px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__signals {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    background: var(--dp-surface-elevated, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__panel {
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  &__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__panel-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__filter {
+    width: 130px;
+
+    &--md {
+      width: 200px;
+    }
+
+    &--lg {
+      width: 220px;
+    }
+  }
+}
 </style>

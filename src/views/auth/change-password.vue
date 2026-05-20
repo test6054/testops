@@ -3,7 +3,11 @@
     <div class="change-pwd-container">
       <UiPageHeader
         :title="isForceMode ? '强制修改密码' : '修改密码'"
-        :subtitle="isForceMode ? '出于安全考虑，您需要修改密码后才能继续使用系统' : '为了您的账户安全，请定期修改密码'"
+        :subtitle="
+          isForceMode
+            ? '出于安全考虑，您需要修改密码后才能继续使用系统'
+            : '为了您的账户安全，请定期修改密码'
+        "
         :show-back="!isForceMode"
         @back="handleBack"
       />
@@ -20,30 +24,51 @@
           >
             <UiFormSection title="当前密码">
               <a-form-item name="currentPassword" label="当前密码">
-                <a-input-password v-model:value="passwordForm.currentPassword" placeholder="请输入当前密码" size="large" autocomplete="current-password" />
+                <a-input-password
+                  v-model:value="passwordForm.currentPassword"
+                  placeholder="请输入当前密码"
+                  size="large"
+                  autocomplete="current-password"
+                />
               </a-form-item>
             </UiFormSection>
 
             <UiFormSection title="新密码" divided>
               <a-form-item name="newPassword" label="新密码">
-                <a-input-password v-model:value="passwordForm.newPassword" placeholder="请输入新密码" size="large" autocomplete="new-password" />
+                <a-input-password
+                  v-model:value="passwordForm.newPassword"
+                  placeholder="请输入新密码"
+                  size="large"
+                  autocomplete="new-password"
+                />
               </a-form-item>
               <a-form-item name="confirmPassword" label="确认新密码">
-                <a-input-password v-model:value="passwordForm.confirmPassword" placeholder="请再次输入新密码" size="large" autocomplete="new-password" />
+                <a-input-password
+                  v-model:value="passwordForm.confirmPassword"
+                  placeholder="请再次输入新密码"
+                  size="large"
+                  autocomplete="new-password"
+                />
               </a-form-item>
             </UiFormSection>
 
             <div class="password-strength">
               <span class="strength-label">密码强度</span>
               <div class="strength-bar">
-                <div class="strength-fill" :class="`strength-${passwordStrength}`" :style="{ width: `${(passwordStrength / 5) * 100}%` }" />
+                <div
+                  class="strength-fill"
+                  :class="`strength-${passwordStrength}`"
+                  :style="{ width: `${(passwordStrength / 5) * 100}%` }"
+                />
               </div>
               <span class="strength-text">{{ passwordStrengthText }}</span>
             </div>
 
             <div class="form-actions">
               <a-button v-if="!isForceMode" size="large" @click="handleCancel">取消</a-button>
-              <a-button :loading="loading" html-type="submit" size="large" type="primary">修改密码</a-button>
+              <a-button :loading="loading" html-type="submit" size="large" type="primary"
+                >修改密码</a-button
+              >
             </div>
           </a-form>
         </UiCard>
@@ -91,17 +116,29 @@
             </a-button>
           </div>
         </template>
-        <a-table :columns="historyColumns" :data-source="passwordHistory" :loading="historyLoading" :pagination="false" size="small">
+        <UiDataTable
+          :columns="historyColumns"
+          :data-source="passwordHistory"
+          :loading="historyLoading"
+          :show-pagination="false"
+          flat
+          :total="passwordHistory.length"
+          size="small"
+        >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
-              <a-tag :color="record.success ? 'green' : 'red'">{{ record.success ? '成功' : '失败' }}</a-tag>
+              <a-tag :color="record.success ? 'green' : 'red'">{{
+                record.success ? '成功' : '失败'
+              }}</a-tag>
             </template>
             <template v-else-if="column.key === 'ipAddress'">
               <span class="ip-address">{{ record.ipAddress }}</span>
             </template>
-            <template v-else-if="column.key === 'time'">{{ formatChangeTime(record.changeTime) }}</template>
+            <template v-else-if="column.key === 'time'">{{
+              formatChangeTime(record.changeTime)
+            }}</template>
           </template>
-        </a-table>
+        </UiDataTable>
       </UiCard>
     </div>
   </div>
@@ -109,17 +146,17 @@
 
 <script lang="ts" setup>
 import type { PasswordHistoryDto } from '@/apis/edu/user-management'
+import { getPasswordHistory } from '@/apis/edu/user-management'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import MinusCircleOutlined from '@ant-design/icons-vue/MinusCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { changePassword } from '@/apis/auth'
-import { getPasswordHistory } from '@/apis/edu/user-management'
-import { UiCard, UiFormSection, UiPageHeader } from '@/components/ui-guide/ui'
+import { UiCard, UiDataTable, UiFormSection, UiPageHeader } from '@/components/ui-guide/ui'
 import { useAuthStore, useUserStore } from '@/stores'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { evaluatePasswordStrength, getPasswordStrengthText } from '@/utils/password-policy'
@@ -257,9 +294,10 @@ const handleCancel = () => {
     return
   }
 
-  Modal.confirm({
+  void confirmAsync({
     title: '确认取消',
     content: '确定要取消修改密码吗？已输入的内容将丢失。',
+    type: 'warning',
     onOk: () => {
       router.back()
     },
@@ -364,14 +402,28 @@ onMounted(() => {
 .strength-fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.3s, background-color 0.3s;
+  transition:
+    width 0.3s,
+    background-color 0.3s;
 
-  &.strength-0 { background: var(--ant-color-fill-secondary); }
-  &.strength-1 { background: var(--ant-color-error); }
-  &.strength-2 { background: var(--ant-color-warning); }
-  &.strength-3 { background: var(--ant-color-warning); }
-  &.strength-4 { background: var(--ant-color-success); }
-  &.strength-5 { background: var(--ant-color-success); }
+  &.strength-0 {
+    background: var(--ant-color-fill-secondary);
+  }
+  &.strength-1 {
+    background: var(--ant-color-error);
+  }
+  &.strength-2 {
+    background: var(--ant-color-warning);
+  }
+  &.strength-3 {
+    background: var(--ant-color-warning);
+  }
+  &.strength-4 {
+    background: var(--ant-color-success);
+  }
+  &.strength-5 {
+    background: var(--ant-color-success);
+  }
 }
 
 .strength-text {

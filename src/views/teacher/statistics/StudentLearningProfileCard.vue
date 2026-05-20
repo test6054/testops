@@ -22,6 +22,14 @@
       </a-space>
     </template>
 
+    <a-alert
+      v-if="classIdHint"
+      type="info"
+      show-icon
+      class="class-hint"
+      :message="`联动提示：班级薄弱卡当前分析班级 ID = ${classIdHint}。如本卡查询的学生不在该班，请相应调整。`"
+    />
+
     <a-spin :spinning="loading">
       <a-empty v-if="!hasQueried" description="请输入学生用户ID后查看或生成。" />
       <a-empty v-else-if="!record" description="该学生暂无 AI 学情分析。" />
@@ -114,7 +122,15 @@ import {
 
 defineOptions({ name: 'StudentLearningProfileCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{
+  examId: string
+  reloadToken: number
+  /** B-12 联动：来自班级薄弱卡片的活跃班级 ID，用于显示「正在该班级范围分析」提示 */
+  classIdHint?: string
+}>()
+
+/** B-12 联动：每次成功查询/生成后回写活跃 studentUserId，供父级展示 */
+const emit = defineEmits<{ (e: 'student-change', studentUserId: string): void }>()
 
 interface DiagnosisItem {
   questionType?: string
@@ -161,6 +177,7 @@ async function reload(): Promise<void> {
   loading.value = true
   try {
     record.value = await getLatestStudentLearningProfile({ examId: props.examId, studentUserId })
+    emit('student-change', studentUserId)
   } catch (e) {
     record.value = null
     message.error(e instanceof Error ? e.message : '加载失败')
@@ -180,6 +197,7 @@ async function handleGenerate(): Promise<void> {
   try {
     record.value = await generateStudentLearningProfile({ examId: props.examId, studentUserId })
     message.success('已生成最新学情分析')
+    emit('student-change', studentUserId)
   } catch (e) {
     message.error(e instanceof Error ? e.message : '生成失败')
   } finally {
@@ -241,6 +259,10 @@ watch(
 </script>
 
 <style lang="scss" scoped>
+.class-hint {
+  margin-bottom: 12px;
+}
+
 .ai-record {
   display: flex;
   flex-direction: column;

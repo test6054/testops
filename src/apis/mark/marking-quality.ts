@@ -214,3 +214,43 @@ export function handleSpotCheck(payload: SpotCheckHandlePayload): Promise<boolea
 export function reprocessBatch(payload: BatchReprocessPayload): Promise<boolean> {
   return http.post<boolean>('/api/mark/quality/batch/reprocess', payload)
 }
+
+// ─── B-9 当前教师待处理抽检 ─────────────────────────────────
+
+/** 抽检状态（仅 PENDING / IN_PROGRESS 会出现在「我的待处理」列表中） */
+export type MyPendingSpotCheckStatusCode = 'PENDING' | 'IN_PROGRESS'
+
+/** 待处理抽检列表查询请求 - 对应 MyPendingSpotCheckQueryRequest */
+export interface MyPendingSpotCheckQueryPayload {
+  /** 考试ID（可选，为空时跨考试聚合） */
+  examId?: string
+}
+
+/** 待处理抽检列表项 VO - 对应 MyPendingSpotCheckItemDTO */
+export interface MyPendingSpotCheckItemVO {
+  /** 抽检记录ID（提交结论时作为 spotCheckId 使用） */
+  id: string
+  examId: string
+  organizationId?: string
+  groupId?: string
+  markingTaskId?: string
+  questionTemplateId?: string
+  paperInstanceId?: string
+  reviewerUserId?: string
+  /** 教师原始给分 */
+  originalScore?: number
+  spotCheckStatus?: MyPendingSpotCheckStatusCode
+  /** 抽检创建时间，用于展示「分派多久前」 */
+  createTime?: string
+}
+
+/**
+ * 查询当前教师作为被抽检对象的待处理抽检列表（PENDING + IN_PROGRESS）。
+ * 教师端用于替代「输入 spotCheckId + 提交结论」的笨拙做法。
+ * POST /api/mark/quality/spotcheck/my-pending
+ */
+export function listMyPendingSpotChecks(
+  payload: MyPendingSpotCheckQueryPayload = {},
+): Promise<MyPendingSpotCheckItemVO[]> {
+  return http.post<MyPendingSpotCheckItemVO[]>('/api/mark/quality/spotcheck/my-pending', payload)
+}

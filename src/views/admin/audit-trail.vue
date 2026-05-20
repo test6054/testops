@@ -1,24 +1,25 @@
 <template>
-  <GiPageLayout>
-    <div class="audit-trail-page">
-      <PageHeader title="批改审计" back-route="/admin/dashboard">
-        <template #tags>
-          <UiTag tone="blue" size="md">考试维度</UiTag>
-          <UiTag v-if="selectedExamId" tone="green" size="md">
-            日志 {{ operationLogs.length }} · 事件 {{ incidents.length }}
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="audit-trail__context">
+        <div class="audit-trail__context-info">
+          <h2 class="audit-trail__title">阅卷交付 - 审计与事件</h2>
           <a-select
             v-model:value="selectedExamId"
             placeholder="选择考试"
-            style="width: 280px"
+            class="audit-trail__exam-select"
             :options="examOptions"
             :loading="examLoading"
             show-search
             option-filter-prop="label"
             @change="onExamChange"
           />
+          <UiTag tone="blue" size="sm">考试维度</UiTag>
+          <UiTag v-if="selectedExamId" tone="green" size="sm">
+            日志 {{ operationLogs.length }} · 事件 {{ incidents.length }}
+          </UiTag>
+        </div>
+        <div class="audit-trail__context-actions">
           <UiButton
             variant="outline"
             size="sm"
@@ -29,231 +30,234 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请先选择考试后查看审计数据"
-        class="empty-block"
-      />
+    <!-- 主工作面 -->
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请先选择考试后查看审计数据"
+      class="audit-trail__empty"
+    />
 
-      <UiCard v-else class="audit-trail-page__main-card">
-        <template #title>
-          <FileSearchOutlined />
-          <span>审计内容</span>
-          <UiBadge tone="blue">
-            {{
-              activeTab === 'logs'
-                ? '审计日志'
-                : activeTab === 'incidents'
-                  ? '重大事件'
-                  : '诊断样本'
-            }}
-          </UiBadge>
-        </template>
+    <UiCard v-else class="audit-trail-page__main-card">
+      <template #title>
+        <FileSearchOutlined />
+        <span>审计内容</span>
+        <UiBadge tone="blue">
+          {{
+            activeTab === 'logs' ? '审计日志' : activeTab === 'incidents' ? '重大事件' : '诊断样本'
+          }}
+        </UiBadge>
+      </template>
 
-        <a-tabs v-model:active-key="activeTab" class="audit-tabs" @change="onTabChange">
-          <!-- 审计日志 -->
-          <a-tab-pane key="logs" tab="审计日志">
-            <div class="filter-bar">
-              <a-space wrap>
-                <a-select
-                  v-model:value="logFilter.operationType"
-                  placeholder="操作类型"
-                  allow-clear
-                  style="width: 220px"
-                  :options="operationTypeOptions"
-                  option-filter-prop="label"
-                  show-search
-                />
-                <UiButton size="sm" :loading="logLoading" @click="loadLogs">查询</UiButton>
-                <span class="muted">共 {{ operationLogs.length }} 条</span>
-              </a-space>
-            </div>
+      <a-tabs v-model:active-key="activeTab" class="audit-tabs" @change="onTabChange">
+        <!-- 审计日志 -->
+        <a-tab-pane key="logs" tab="审计日志">
+          <div class="filter-bar">
+            <a-space wrap>
+              <a-select
+                v-model:value="logFilter.operationType"
+                placeholder="操作类型"
+                allow-clear
+                class="audit-trail__filter-input"
+                :options="operationTypeOptions"
+                option-filter-prop="label"
+                show-search
+              />
+              <UiButton size="sm" :loading="logLoading" @click="loadLogs">查询</UiButton>
+              <span class="audit-trail__hint">共 {{ operationLogs.length }} 条</span>
+            </a-space>
+          </div>
 
-            <UiEmpty v-if="!logLoading && operationLogs.length === 0" description="暂无审计日志" />
-            <a-table
-              v-else
-              :columns="logColumns"
-              :data-source="operationLogs"
-              :loading="logLoading"
-              row-key="id"
-              size="middle"
-              class="audit-table"
-              :pagination="{ pageSize: 20, showSizeChanger: true }"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'operationType'">
-                  <UiTag tone="blue" size="sm">
-                    {{ operationTypeText(operationLogs[index].operationType) }}
-                  </UiTag>
-                </template>
-                <template v-else-if="column.key === 'targetType'">
-                  <span>
-                    {{ targetTypeText(operationLogs[index].targetType) }}
-                  </span>
-                </template>
-                <template v-else-if="column.key === 'createTime'">
-                  {{ formatTime(operationLogs[index].createTime) }}
-                </template>
-                <template v-else-if="column.key === 'beforeAfter'">
-                  <a-typography-paragraph
-                    v-if="operationLogs[index].beforeValue || operationLogs[index].afterValue"
-                    :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
-                    copyable
-                  >
-                    {{ formatBeforeAfter(operationLogs[index]) }}
-                  </a-typography-paragraph>
-                  <span v-else class="muted">-</span>
-                </template>
-                <template v-else-if="column.key === 'reason'">
-                  <a-tooltip :title="operationLogs[index].reason">
-                    <span>{{ operationLogs[index].reason || '-' }}</span>
-                  </a-tooltip>
-                </template>
+          <UiEmpty v-if="!logLoading && operationLogs.length === 0" description="暂无审计日志" />
+          <UiDataTable
+            v-else
+            :columns="logColumns"
+            :data-source="operationLogs"
+            :loading="logLoading"
+            row-key="id"
+            size="middle"
+            class="audit-table"
+            :page-size="20"
+            :total="operationLogs.length"
+            flat
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'operationType'">
+                <UiTag tone="blue" size="sm">
+                  {{ operationTypeText(operationLogs[index].operationType) }}
+                </UiTag>
               </template>
-            </a-table>
-          </a-tab-pane>
+              <template v-else-if="column.key === 'targetType'">
+                <span>
+                  {{ targetTypeText(operationLogs[index].targetType) }}
+                </span>
+              </template>
+              <template v-else-if="column.key === 'createTime'">
+                {{ formatTime(operationLogs[index].createTime) }}
+              </template>
+              <template v-else-if="column.key === 'beforeAfter'">
+                <a-typography-paragraph
+                  v-if="operationLogs[index].beforeValue || operationLogs[index].afterValue"
+                  :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+                  copyable
+                >
+                  {{ formatBeforeAfter(operationLogs[index]) }}
+                </a-typography-paragraph>
+                <span v-else class="muted">-</span>
+              </template>
+              <template v-else-if="column.key === 'reason'">
+                <a-tooltip :title="operationLogs[index].reason">
+                  <span>{{ operationLogs[index].reason || '-' }}</span>
+                </a-tooltip>
+              </template>
+            </template>
+          </UiDataTable>
+        </a-tab-pane>
 
-          <!-- 重大事件 -->
-          <a-tab-pane key="incidents" tab="重大事件">
-            <div class="filter-bar">
-              <a-space wrap>
-                <a-checkbox v-model:checked="incidentFilter.unresolvedOnly">仅未解决</a-checkbox>
-                <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents">
-                  查询
+        <!-- 重大事件 -->
+        <a-tab-pane key="incidents" tab="重大事件">
+          <div class="filter-bar">
+            <a-space wrap>
+              <a-checkbox v-model:checked="incidentFilter.unresolvedOnly">仅未解决</a-checkbox>
+              <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents">
+                查询
+              </UiButton>
+              <span class="muted">共 {{ incidents.length }} 条</span>
+            </a-space>
+          </div>
+
+          <UiEmpty v-if="!incidentLoading && incidents.length === 0" description="暂无重大事件" />
+          <UiDataTable
+            v-else
+            :columns="incidentColumns"
+            :data-source="incidents"
+            :loading="incidentLoading"
+            row-key="id"
+            size="middle"
+            class="audit-table"
+            :page-size="20"
+            :total="incidents.length"
+            flat
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'incidentLevel'">
+                <UiTag
+                  v-if="incidents[index].incidentLevel"
+                  :tone="incidentLevelTone(incidents[index].incidentLevel)"
+                  size="sm"
+                >
+                  {{ incidentLevelLabel(incidents[index].incidentLevel) }}
+                </UiTag>
+                <span v-else class="muted">-</span>
+              </template>
+              <template v-else-if="column.key === 'resolved'">
+                <UiTag :tone="incidents[index].resolved ? 'green' : 'orange'" size="sm">
+                  {{ incidents[index].resolved ? '已解决' : '未解决' }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'createTime'">
+                {{ formatTime(incidents[index].createTime) }}
+              </template>
+              <template v-else-if="column.key === 'resolvedTime'">
+                {{ formatTime(incidents[index].resolvedTime) }}
+              </template>
+              <template v-else-if="column.key === 'detail'">
+                <a-typography-paragraph
+                  v-if="incidents[index].detail"
+                  :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+                >
+                  {{ incidents[index].detail }}
+                </a-typography-paragraph>
+                <span v-else class="muted">-</span>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiButton
+                  v-if="!incidents[index].resolved"
+                  size="sm"
+                  variant="outline"
+                  @click="openResolveModal(incidents[index])"
+                >
+                  解决事件
                 </UiButton>
-                <span class="muted">共 {{ incidents.length }} 条</span>
-              </a-space>
-            </div>
-
-            <UiEmpty v-if="!incidentLoading && incidents.length === 0" description="暂无重大事件" />
-            <a-table
-              v-else
-              :columns="incidentColumns"
-              :data-source="incidents"
-              :loading="incidentLoading"
-              row-key="id"
-              size="middle"
-              class="audit-table"
-              :pagination="{ pageSize: 20 }"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'incidentLevel'">
-                  <UiTag
-                    v-if="incidents[index].incidentLevel"
-                    :tone="incidentLevelTone(incidents[index].incidentLevel)"
-                    size="sm"
-                  >
-                    {{ incidentLevelLabel(incidents[index].incidentLevel) }}
-                  </UiTag>
-                  <span v-else class="muted">-</span>
-                </template>
-                <template v-else-if="column.key === 'resolved'">
-                  <UiTag :tone="incidents[index].resolved ? 'green' : 'orange'" size="sm">
-                    {{ incidents[index].resolved ? '已解决' : '未解决' }}
-                  </UiTag>
-                </template>
-                <template v-else-if="column.key === 'createTime'">
-                  {{ formatTime(incidents[index].createTime) }}
-                </template>
-                <template v-else-if="column.key === 'resolvedTime'">
-                  {{ formatTime(incidents[index].resolvedTime) }}
-                </template>
-                <template v-else-if="column.key === 'detail'">
-                  <a-typography-paragraph
-                    v-if="incidents[index].detail"
-                    :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
-                  >
-                    {{ incidents[index].detail }}
-                  </a-typography-paragraph>
-                  <span v-else class="muted">-</span>
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiButton
-                    v-if="!incidents[index].resolved"
-                    size="sm"
-                    variant="outline"
-                    @click="openResolveModal(incidents[index])"
-                  >
-                    解决事件
-                  </UiButton>
-                  <span v-else class="muted">-</span>
-                </template>
+                <span v-else class="muted">-</span>
               </template>
-            </a-table>
-          </a-tab-pane>
+            </template>
+          </UiDataTable>
+        </a-tab-pane>
 
-          <!-- 诊断样本 -->
-          <a-tab-pane key="diagnostic-samples" tab="诊断样本">
-            <div class="filter-bar">
-              <a-space wrap>
-                <a-input
-                  v-model:value="sampleFilter.sampleType"
-                  placeholder="样本类型编码"
-                  allow-clear
-                  style="width: 220px"
-                />
-                <UiButton size="sm" :loading="sampleLoading" @click="loadDiagnosticSamples">
-                  查询
-                </UiButton>
-                <span class="muted">共 {{ diagnosticSamples.length }} 条</span>
-              </a-space>
-            </div>
+        <!-- 诊断样本 -->
+        <a-tab-pane key="diagnostic-samples" tab="诊断样本">
+          <div class="filter-bar">
+            <a-space wrap>
+              <a-input
+                v-model:value="sampleFilter.sampleType"
+                placeholder="样本类型编码"
+                allow-clear
+                class="audit-trail__filter-input"
+              />
+              <UiButton size="sm" :loading="sampleLoading" @click="loadDiagnosticSamples">
+                查询
+              </UiButton>
+              <span class="audit-trail__hint">共 {{ diagnosticSamples.length }} 条</span>
+            </a-space>
+          </div>
 
-            <UiEmpty
-              v-if="!sampleLoading && diagnosticSamples.length === 0"
-              description="暂无诊断样本"
-            />
-            <a-table
-              v-else
-              :columns="sampleColumns"
-              :data-source="diagnosticSamples"
-              :loading="sampleLoading"
-              row-key="id"
-              size="middle"
-              class="audit-table"
-              :pagination="{ pageSize: 20 }"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'sampleType'">
-                  <UiTag tone="purple" size="sm">
-                    {{
-                      DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || '']
-                        || record.sampleType
-                        || '-'
-                    }}
-                  </UiTag>
-                </template>
-                <template v-else-if="column.key === 'createTime'">
-                  {{ formatTime(record.createTime) }}
-                </template>
-                <template v-else-if="column.key === 'snapshotPayload'">
-                  <a-typography-paragraph
-                    v-if="record.snapshotPayload"
-                    :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
-                    copyable
-                  >
-                    {{ record.snapshotPayload }}
-                  </a-typography-paragraph>
-                  <span v-else class="muted">-</span>
-                </template>
-                <template v-else-if="column.key === 'diagnostic'">
-                  <a-typography-paragraph
-                    v-if="record.diagnostic"
-                    :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
-                  >
-                    {{ record.diagnostic }}
-                  </a-typography-paragraph>
-                  <span v-else class="muted">-</span>
-                </template>
+          <UiEmpty
+            v-if="!sampleLoading && diagnosticSamples.length === 0"
+            description="暂无诊断样本"
+          />
+          <UiDataTable
+            v-else
+            :columns="sampleColumns"
+            :data-source="diagnosticSamples"
+            :loading="sampleLoading"
+            row-key="id"
+            size="middle"
+            class="audit-table"
+            :page-size="20"
+            :total="diagnosticSamples.length"
+            flat
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'sampleType'">
+                <UiTag tone="purple" size="sm">
+                  {{
+                    DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || ''] ||
+                    record.sampleType ||
+                    '-'
+                  }}
+                </UiTag>
               </template>
-            </a-table>
-          </a-tab-pane>
-        </a-tabs>
-      </UiCard>
-    </div>
+              <template v-else-if="column.key === 'createTime'">
+                {{ formatTime(record.createTime) }}
+              </template>
+              <template v-else-if="column.key === 'snapshotPayload'">
+                <a-typography-paragraph
+                  v-if="record.snapshotPayload"
+                  :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+                  copyable
+                >
+                  {{ record.snapshotPayload }}
+                </a-typography-paragraph>
+                <span v-else class="muted">-</span>
+              </template>
+              <template v-else-if="column.key === 'diagnostic'">
+                <a-typography-paragraph
+                  v-if="record.diagnostic"
+                  :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+                >
+                  {{ record.diagnostic }}
+                </a-typography-paragraph>
+                <span v-else class="muted">-</span>
+              </template>
+            </template>
+          </UiDataTable>
+        </a-tab-pane>
+      </a-tabs>
+    </UiCard>
 
     <!-- 解决事件弹窗 -->
     <a-modal
@@ -280,18 +284,11 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </GiPageLayout>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { DiagnosticSampleVO, OperationLogVO } from '@/apis/mark/admin-audit'
-import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -301,10 +298,16 @@ import {
   OPERATION_TYPE_LABEL,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
+import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'AdminAuditTrail' })
@@ -544,11 +547,52 @@ onMounted(async () => {
   }
 }
 
-.muted {
-  color: var(--ant-color-text-tertiary);
-}
+.audit-trail {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
 
-.empty-block {
-  padding: 48px 0;
+  &__context-info {
+    flex: 1;
+    min-width: 320px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__context-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__filter-input {
+    width: 220px;
+  }
+
+  &__empty {
+    padding: 48px 0;
+  }
+
+  &__hint {
+    color: var(--dp-text-muted, #64748b);
+  }
 }
 </style>

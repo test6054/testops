@@ -1,164 +1,192 @@
 <template>
-  <GiPageLayout>
-    <div class="marking-task-detail-page">
-      <PageHeader title="阅卷工作台" back-route="/teacher/marking-task-pool">
-        <template #tags>
-          <UiTag v-if="task?.taskStatus" :tone="STATUS_TONE[task.taskStatus]" size="md">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="marking-task-detail-page__context">
+        <div class="marking-task-detail-page__context-left">
+          <UiTag v-if="task?.taskStatus" :tone="STATUS_TONE[task.taskStatus]" size="sm">
             {{ STATUS_LABEL[task.taskStatus] }}
           </UiTag>
-          <UiTag v-if="task" tone="blue" size="md">第 {{ task.reviewRound || 1 }} 轮</UiTag>
-          <UiTag v-if="task?.anonymousToken" tone="gray" size="md">{{ task.anonymousToken }}</UiTag>
-        </template>
-        <template #actions>
+          <UiTag v-if="task" tone="blue" size="sm">第 {{ task.reviewRound || 1 }} 轮</UiTag>
+          <UiTag v-if="task?.anonymousToken" tone="gray" size="sm">{{ task.anonymousToken }}</UiTag>
+        </div>
+        <div class="marking-task-detail-page__context-right">
+          <template v-if="batchProgress">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :disabled="!prevTaskId"
+              @click="goToTask(prevTaskId)"
+            >
+              <template #icon><LeftOutlined /></template>
+              上一题
+            </UiButton>
+            <span class="marking-task-detail-page__progress">
+              {{ batchProgress.current }} / {{ batchProgress.total }}
+            </span>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :disabled="!nextTaskId"
+              @click="goToTask(nextTaskId)"
+            >
+              下一题
+              <template #icon><RightOutlined /></template>
+            </UiButton>
+          </template>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadTask">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <UiEmpty v-if="!taskId" description="缺少必要参数 taskId" class="empty-block" />
+    <UiEmpty v-if="!taskId" description="缺少必要参数 taskId" class="marking-task-detail-page__empty" />
 
-      <a-spin v-else :spinning="loading">
-        <UiEmpty v-if="!loading && !task" description="未找到匹配的阅卷任务" class="empty-block" />
+    <a-spin v-else :spinning="loading">
+      <UiEmpty v-if="!loading && !task" description="未找到匹配的阅卷任务" class="marking-task-detail-page__empty" />
 
-        <a-row v-if="task" :gutter="16">
-          <a-col :xs="24" :lg="14">
-            <UiCard class="info-card">
-              <template #title>
-                <FileImageOutlined />
-                <span>作答切片</span>
-              </template>
-              <UiEmpty v-if="!task.sliceFileId" description="该任务暂无切片文件" />
-              <a-spin v-else :spinning="sliceLoading" tip="加载切片中...">
-                <a-image
-                  v-if="sliceImageUrl"
-                  :src="sliceImageUrl"
-                  :preview="{}"
-                  class="slice-image"
-                >
-                  <template #previewMask>点击查看原图</template>
-                </a-image>
-                <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
-              </a-spin>
-            </UiCard>
-
-            <UiCard class="info-card">
-              <template #title>
-                <ProfileOutlined />
-                <span>任务详情</span>
-              </template>
-
-              <a-descriptions
-                :column="{ xs: 1, sm: 2 }"
-                size="middle"
-                bordered
-                class="task-descriptions"
+      <a-row v-if="task" :gutter="16">
+        <a-col :xs="24" :lg="14">
+          <UiCard class="info-card">
+            <template #title>
+              <FileImageOutlined />
+              <span>作答切片</span>
+            </template>
+            <UiEmpty v-if="!task.sliceFileId" description="该任务暂无切片文件" />
+            <a-spin v-else :spinning="sliceLoading" tip="加载切片中...">
+              <a-image
+                v-if="sliceImageUrl"
+                :src="sliceImageUrl"
+                :preview="{}"
+                class="slice-image"
               >
-                <a-descriptions-item label="任务ID">
-                  <a-typography-text copyable>{{ task.id }}</a-typography-text>
-                </a-descriptions-item>
-                <a-descriptions-item label="正评会话ID">
-                  <a-typography-text copyable>{{ task.sessionId || '-' }}</a-typography-text>
-                </a-descriptions-item>
-                <a-descriptions-item label="题组ID">
-                  <a-typography-text copyable>{{ task.groupId || '-' }}</a-typography-text>
-                </a-descriptions-item>
-                <a-descriptions-item label="题目模板ID">
-                  <a-typography-text copyable>{{
+                <template #previewMask>点击查看原图</template>
+              </a-image>
+              <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
+            </a-spin>
+          </UiCard>
+
+          <UiCard class="info-card">
+            <template #title>
+              <ProfileOutlined />
+              <span>任务详情</span>
+            </template>
+
+            <a-descriptions
+              :column="{ xs: 1, sm: 2 }"
+              size="middle"
+              bordered
+              class="task-descriptions"
+            >
+              <a-descriptions-item label="任务ID">
+                <a-typography-text copyable>{{ task.id }}</a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item label="正评会话ID">
+                <a-typography-text copyable>{{ task.sessionId || '-' }}</a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item label="题组ID">
+                <a-typography-text copyable>{{ task.groupId || '-' }}</a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item label="题目模板ID">
+                <a-typography-text copyable>
+                  {{
                     task.questionTemplateId || '-'
                   }}
-                  </a-typography-text>
-                </a-descriptions-item>
-                <a-descriptions-item label="试卷实例ID">
-                  <a-typography-text copyable>{{ task.paperInstanceId || '-' }}</a-typography-text>
-                </a-descriptions-item>
-                <a-descriptions-item label="评阅轮次">第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item>
-                <a-descriptions-item label="任务状态">
-                  <UiTag :tone="task.taskStatus ? STATUS_TONE[task.taskStatus] : 'gray'" size="sm">
-                    {{ task.taskStatus ? STATUS_LABEL[task.taskStatus] : '-' }}
-                  </UiTag>
-                </a-descriptions-item>
-                <a-descriptions-item label="分配时间">{{
+                </a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item label="试卷实例ID">
+                <a-typography-text copyable>{{ task.paperInstanceId || '-' }}</a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item label="评阅轮次">第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item>
+              <a-descriptions-item label="任务状态">
+                <UiTag :tone="task.taskStatus ? STATUS_TONE[task.taskStatus] : 'gray'" size="sm">
+                  {{ task.taskStatus ? STATUS_LABEL[task.taskStatus] : '-' }}
+                </UiTag>
+              </a-descriptions-item>
+              <a-descriptions-item label="分配时间">
+                {{
                   formatTime(task.allocatedAt)
-                }}</a-descriptions-item>
-                <a-descriptions-item label="提交时间">{{
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item label="提交时间">
+                {{
                   formatTime(task.submittedAt)
-                }}</a-descriptions-item>
-                <a-descriptions-item
-                  v-if="task.score !== undefined && task.score !== null"
-                  label="当前给分"
-                >
-                  <a-typography-text strong>{{ task.score }}</a-typography-text>
-                </a-descriptions-item>
-                <a-descriptions-item v-if="task.annotationNote" label="既有批注" :span="2">
-                  <a-typography-paragraph :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }">
-                    {{ task.annotationNote }}
-                  </a-typography-paragraph>
-                </a-descriptions-item>
-              </a-descriptions>
-            </UiCard>
-          </a-col>
-
-          <a-col :xs="24" :lg="10">
-            <UiCard class="info-card">
-              <template #title>
-                <EditOutlined />
-                <span>批改提交</span>
-              </template>
-
-              <a-alert
-                v-if="!canSubmit"
-                type="info"
-                show-icon
-                message="当前任务状态不允许提交"
-                description="仅已分配 (ALLOCATED) 或批改中 (IN_PROGRESS) 状态可以提交批改。"
-                style="margin-bottom: 12px"
-              />
-
-              <a-form
-                ref="formRef"
-                :model="form"
-                :rules="rules"
-                layout="vertical"
-                :disabled="!canSubmit"
+                }}
+              </a-descriptions-item>
+              <a-descriptions-item
+                v-if="task.score !== undefined && task.score !== null"
+                label="当前给分"
               >
-                <a-form-item label="教师给分" name="score" required>
-                  <a-input-number
-                    v-model:value="form.score"
-                    :min="0"
-                    :step="0.5"
-                    style="width: 100%"
-                    placeholder="按题目满分给分"
-                  />
-                </a-form-item>
-                <a-form-item label="批改批注" name="annotationNote">
-                  <a-textarea
-                    v-model:value="form.annotationNote"
-                    :rows="6"
-                    :maxlength="1000"
-                    placeholder="可选，记录采分点 / 扣分点 / 反馈意见"
-                    show-count
-                  />
-                </a-form-item>
-                <a-form-item>
-                  <UiButton
-                    block
-                    size="md"
-                    :disabled="!canSubmit"
-                    :loading="submitting"
-                    @click="submit"
-                  >
-                    确认给分并提交
-                  </UiButton>
-                </a-form-item>
-              </a-form>
-            </UiCard>
-          </a-col>
-        </a-row>
-      </a-spin>
-    </div>
-  </GiPageLayout>
+                <a-typography-text strong>{{ task.score }}</a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item v-if="task.annotationNote" label="既有批注" :span="2">
+                <a-typography-paragraph :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }">
+                  {{ task.annotationNote }}
+                </a-typography-paragraph>
+              </a-descriptions-item>
+            </a-descriptions>
+          </UiCard>
+        </a-col>
+
+        <a-col :xs="24" :lg="10">
+          <UiCard class="info-card">
+            <template #title>
+              <EditOutlined />
+              <span>批改提交</span>
+            </template>
+
+            <a-alert
+              v-if="!canSubmit"
+              type="info"
+              show-icon
+              message="当前任务状态不允许提交"
+              description="仅已分配 (ALLOCATED) 或批改中 (IN_PROGRESS) 状态可以提交批改。"
+              style="margin-bottom: 12px"
+            />
+
+            <a-form
+              ref="formRef"
+              :model="form"
+              :rules="rules"
+              layout="vertical"
+              :disabled="!canSubmit"
+            >
+              <a-form-item label="教师给分" name="score" required>
+                <a-input-number
+                  v-model:value="form.score"
+                  :min="0"
+                  :step="0.5"
+                  style="width: 100%"
+                  placeholder="按题目满分给分"
+                />
+              </a-form-item>
+              <a-form-item label="批改批注" name="annotationNote">
+                <a-textarea
+                  v-model:value="form.annotationNote"
+                  :rows="6"
+                  :maxlength="1000"
+                  placeholder="可选，记录采分点 / 扣分点 / 反馈意见"
+                  show-count
+                />
+              </a-form-item>
+              <a-form-item>
+                <UiButton
+                  block
+                  size="md"
+                  :disabled="!canSubmit"
+                  :loading="submitting"
+                  @click="submit"
+                >
+                  确认给分并提交
+                </UiButton>
+              </a-form-item>
+            </a-form>
+          </UiCard>
+        </a-col>
+      </a-row>
+    </a-spin>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -166,12 +194,15 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import RightOutlined from '@ant-design/icons-vue/RightOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   getMarkingTaskDetail,
@@ -179,9 +210,9 @@ import {
   MARKING_TASK_STATUS_TONE as STATUS_TONE,
   submitMarkingTask,
 } from '@/apis/mark/marking-organization'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkTaskStore } from '@/stores/modules/markTask'
 
 defineOptions({ name: 'TeacherMarkingTaskDetail' })
 
@@ -197,6 +228,46 @@ const canSubmit = computed(() => {
   const status = task.value?.taskStatus
   return status === 'ALLOCATED' || status === 'IN_PROGRESS'
 })
+
+// ─── P2 上下题快捷导航 ─────────────────────────────────
+// 来源：markTaskStore.tasks（教师在该考试下已加载的本批阅卷任务列表）
+// 仅当当前任务能在批次中找到位置时才显示导航；否则保持原行为。
+const router = useRouter()
+const markTaskStore = useMarkTaskStore()
+const { tasks: batchTasks } = storeToRefs(markTaskStore)
+
+interface BatchProgress {
+  current: number
+  total: number
+}
+
+const batchProgress = computed<BatchProgress | null>(() => {
+  if (!task.value || batchTasks.value.length === 0) return null
+  const idx = batchTasks.value.findIndex(t => t.id === task.value!.id)
+  if (idx < 0) return null
+  return { current: idx + 1, total: batchTasks.value.length }
+})
+
+const prevTaskId = computed<string>(() => {
+  if (!batchProgress.value) return ''
+  const idx = batchProgress.value.current - 1
+  return idx > 0 ? (batchTasks.value[idx - 1].id ?? '') : ''
+})
+
+const nextTaskId = computed<string>(() => {
+  if (!batchProgress.value) return ''
+  const idx = batchProgress.value.current - 1
+  return idx < batchTasks.value.length - 1 ? (batchTasks.value[idx + 1].id ?? '') : ''
+})
+
+function goToTask(targetTaskId: string): void {
+  if (!targetTaskId) return
+  void router.push({
+    name: 'TeacherMarkingTaskDetail',
+    params: { taskId: targetTaskId },
+    query: route.query,
+  })
+}
 
 async function loadTask(): Promise<void> {
   if (!taskId.value) return
@@ -298,6 +369,11 @@ function formatTime(value?: string): string {
 }
 
 watch(taskId, () => {
+  // 切题时清空上一题的表单状态与切片，避免误带入下一题
+  form.score = undefined
+  form.annotationNote = ''
+  task.value = null
+  releaseSliceImage()
   void loadTask()
 })
 
@@ -314,6 +390,38 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .marking-task-detail-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__progress {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--dp-text-secondary, #475569);
+    padding: 0 4px;
+    white-space: nowrap;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

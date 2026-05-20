@@ -1,166 +1,167 @@
 <template>
-  <GiPageLayout>
-    <div class="roster-page">
-      <PageHeader title="考生名册">
-        <template #tags>
-          <UiTag v-if="selectedExamId" tone="blue" size="md">{{ candidates.length }} 名考生</UiTag>
-          <UiTag v-if="selectedExamId && pendingCount > 0" tone="orange" size="md">
-            待保存 {{ pendingCount }}
-          </UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="roster-page__context">
+        <div class="roster-page__context-left">
           <a-select
-            v-model:value="selectedExamId"
-            style="width: 280px"
+            :value="selectedExamId"
+            class="roster-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
-            :loading="examOptionsLoading"
+            :loading="examLoading"
             show-search
             option-filter-prop="label"
             allow-clear
             @change="handleExamChange"
           />
+          <UiTag v-if="selectedExamId" tone="blue" size="sm">{{ candidates.length }} 名考生</UiTag>
+          <UiTag v-if="selectedExamId && pendingCount > 0" tone="orange" size="sm">
+            待保存 {{ pendingCount }}
+          </UiTag>
+        </div>
+        <div class="roster-page__context-right">
           <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
             <template #icon><SaveOutlined /></template>
             保存
           </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
+
+    <a-spin v-else :spinning="loading">
+      <UiCard class="info-card">
+        <template #title>
+          <TeamOutlined />
+          <span>班级范围</span>
+          <UiBadge tone="blue">{{ classIds.length }}</UiBadge>
         </template>
-      </PageHeader>
-
-      <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="empty-block" />
-
-      <a-spin v-else :spinning="loading">
-        <UiCard class="info-card">
-          <template #title>
-            <TeamOutlined />
-            <span>班级范围</span>
-            <UiBadge tone="blue">{{ classIds.length }}</UiBadge>
-          </template>
-          <template #extra>
-            <a-space>
-              <a-input
-                v-model:value="newClassIdInput"
-                placeholder="班级ID（数字）"
-                style="width: 180px"
-                @press-enter="addClassId"
-              />
-              <UiButton size="sm" variant="outline" @click="addClassId">添加</UiButton>
-            </a-space>
-          </template>
-
-          <UiEmpty v-if="!classIds.length" description="当前未配置班级范围" />
-          <a-space v-else wrap>
-            <UiTag
-              v-for="classId in classIds"
-              :key="classId"
-              tone="blue"
-              size="sm"
-              closable
-              @close="removeClassId(classId)"
-            >
-              班级 #{{ classId }}
-            </UiTag>
+        <template #extra>
+          <a-space>
+            <a-input
+              v-model:value="newClassIdInput"
+              placeholder="班级ID（数字）"
+              style="width: 180px"
+              @press-enter="addClassId"
+            />
+            <UiButton size="sm" variant="outline" @click="addClassId">添加</UiButton>
           </a-space>
-        </UiCard>
+        </template>
 
-        <UiCard class="info-card">
-          <template #title>
-            <UserOutlined />
-            <span>考生名册</span>
-            <UiBadge tone="blue">{{ candidates.length }}</UiBadge>
-          </template>
-          <template #extra>
-            <a-space>
-              <UiButton size="sm" variant="outline" @click="openBatchModal">
-                <template #icon>
-                  <ImportOutlined />
-                </template>
-                批量粘贴
-              </UiButton>
-              <UiButton size="sm" @click="addCandidate">
-                <template #icon>
-                  <PlusOutlined />
-                </template>
-                新增考生
-              </UiButton>
-            </a-space>
-          </template>
-
-          <a-table
-            :columns="columns"
-            :data-source="candidates"
-            :pagination="false"
-            row-key="rowKey"
-            size="middle"
-            class="roster-table"
-            bordered
+        <UiEmpty v-if="!classIds.length" description="当前未配置班级范围" />
+        <a-space v-else wrap>
+          <UiTag
+            v-for="classId in classIds"
+            :key="classId"
+            tone="blue"
+            size="sm"
+            closable
+            @close="removeClassId(classId)"
           >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'studentNo'">
-                <a-input v-model:value="record.studentNo" placeholder="学号（必填）" size="small" />
+            班级 #{{ classId }}
+          </UiTag>
+        </a-space>
+      </UiCard>
+
+      <UiCard class="info-card">
+        <template #title>
+          <UserOutlined />
+          <span>考生名册</span>
+          <UiBadge tone="blue">{{ candidates.length }}</UiBadge>
+        </template>
+        <template #extra>
+          <a-space>
+            <UiButton size="sm" variant="outline" @click="openBatchModal">
+              <template #icon>
+                <ImportOutlined />
               </template>
-              <template v-else-if="column.key === 'studentName'">
-                <a-input
-                  v-model:value="record.studentName"
-                  placeholder="姓名（必填）"
-                  size="small"
-                />
+              批量粘贴
+            </UiButton>
+            <UiButton size="sm" @click="addCandidate">
+              <template #icon>
+                <PlusOutlined />
               </template>
-              <template v-else-if="column.key === 'studentUserId'">
-                <a-input
-                  v-model:value="record.studentUserId"
-                  placeholder="学生用户ID（必填）"
-                  size="small"
-                />
-              </template>
-              <template v-else-if="column.key === 'classId'">
-                <a-input v-model:value="record.classId" placeholder="班级ID（可选）" size="small" />
-              </template>
-              <template v-else-if="column.key === 'serverStatus'">
-                <UiTag v-if="record.candidateRosterId" tone="green" size="sm">已存在</UiTag>
-                <UiTag v-else tone="orange" size="sm">待保存</UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiButton size="sm" variant="ghost" @click="removeCandidate(index)">
-                  删除
-                </UiButton>
-              </template>
+              新增考生
+            </UiButton>
+          </a-space>
+        </template>
+
+        <UiDataTable
+          :columns="columns"
+          :data-source="candidates"
+          :show-pagination="false"
+          flat
+          :total="candidates.length"
+          row-key="rowKey"
+          size="middle"
+          class="roster-table"
+          bordered
+        >
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'studentNo'">
+              <a-input v-model:value="record.studentNo" placeholder="学号（必填）" size="small" />
             </template>
-          </a-table>
+            <template v-else-if="column.key === 'studentName'">
+              <a-input
+                v-model:value="record.studentName"
+                placeholder="姓名（必填）"
+                size="small"
+              />
+            </template>
+            <template v-else-if="column.key === 'studentUserId'">
+              <a-input
+                v-model:value="record.studentUserId"
+                placeholder="学生用户ID（必填）"
+                size="small"
+              />
+            </template>
+            <template v-else-if="column.key === 'classId'">
+              <a-input v-model:value="record.classId" placeholder="班级ID（可选）" size="small" />
+            </template>
+            <template v-else-if="column.key === 'serverStatus'">
+              <UiTag v-if="record.candidateRosterId" tone="green" size="sm">已存在</UiTag>
+              <UiTag v-else tone="orange" size="sm">待保存</UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiButton size="sm" variant="ghost" @click="removeCandidate(index)">
+                删除
+              </UiButton>
+            </template>
+          </template>
+        </UiDataTable>
 
-          <div class="roster-summary">共 {{ candidates.length }} 名考生</div>
-        </UiCard>
-      </a-spin>
-    </div>
+        <div class="roster-summary">共 {{ candidates.length }} 名考生</div>
+      </UiCard>
+    </a-spin>
+  </StageWorkbenchShell>
 
-    <a-modal
-      v-model:open="batchModalOpen"
-      title="批量粘贴考生"
-      ok-text="追加到名册"
-      :destroy-on-close="true"
-      width="640px"
-      @ok="handleBatchImport"
-    >
-      <a-alert
-        type="info"
-        show-icon
-        message="粘贴格式"
-        description="每行一名考生，使用英文逗号或制表符分隔：学号,姓名,班级ID,学生用户ID。班级ID 可留空，学号/姓名/学生用户ID 为必填。"
-        style="margin-bottom: 12px"
-      />
-      <a-textarea
-        v-model:value="batchText"
-        :rows="10"
-        placeholder="20240001,张三,101,1001&#10;20240002,李四,101,1002"
-      />
-    </a-modal>
-  </GiPageLayout>
+  <a-modal
+    v-model:open="batchModalOpen"
+    title="批量粘贴考生"
+    ok-text="追加到名册"
+    :destroy-on-close="true"
+    width="640px"
+    @ok="handleBatchImport"
+  >
+    <a-alert
+      type="info"
+      show-icon
+      message="粘贴格式"
+      description="每行一名考生，使用英文逗号或制表符分隔：学号,姓名,班级ID,学生用户ID。班级ID 可留空，学号/姓名/学生用户ID 为必填。"
+      style="margin-bottom: 12px"
+    />
+    <a-textarea
+      v-model:value="batchText"
+      :rows="10"
+      placeholder="20240001,张三,101,1001&#10;20240002,李四,101,1002"
+    />
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamCandidateRosterPayload, ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamCandidateRosterPayload } from '@/apis/mark/exam'
 import ImportOutlined from '@ant-design/icons-vue/ImportOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
@@ -168,16 +169,12 @@ import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getExamDetail, listExamCandidates, pageExams, saveExamScope } from '@/apis/mark/exam'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { getExamDetail, listExamCandidates, saveExamScope } from '@/apis/mark/exam'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherCandidateRoster' })
-
-const route = useRoute()
-const router = useRouter()
 
 interface CandidateRow {
   rowKey: string
@@ -194,11 +191,14 @@ function nextRowKey(): string {
   return `row-${rowSeq}-${Date.now()}`
 }
 
-const selectedExamId = ref<string | undefined>(
-  route.query.examId ? String(route.query.examId) : undefined,
-)
-const examOptions = ref<Array<{ label: string, value: string }>>([])
-const examOptionsLoading = ref(false)
+// B-8 统一考试选择器
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExamSelector,
+} = useMarkExamSelector()
 
 const classIds = ref<string[]>([])
 const candidates = reactive<CandidateRow[]>([])
@@ -217,24 +217,6 @@ const columns: ColumnType<CandidateRow>[] = [
   { title: '状态', key: 'serverStatus', width: 100 },
   { title: '操作', key: 'actions', width: 80, fixed: 'right' },
 ]
-
-async function loadExamOptions(): Promise<void> {
-  examOptionsLoading.value = true
-  try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    examOptions.value = (result.list ?? [])
-      .filter((item: ExamSummaryVO) => item.status === 'ACTIVE')
-      .map((item: ExamSummaryVO) => ({
-        label: `${item.examName}（${item.statusMessage}）`,
-        value: item.examId,
-      }))
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '加载考试列表失败'
-    message.error(errMsg)
-  } finally {
-    examOptionsLoading.value = false
-  }
-}
 
 async function loadRoster(): Promise<void> {
   if (!selectedExamId.value) return
@@ -264,11 +246,10 @@ async function loadRoster(): Promise<void> {
   }
 }
 
-function handleExamChange(value: SelectValue, _option: DefaultOptionType | DefaultOptionType[]): void {
-  const next = value != null ? String(value) : undefined
-  selectedExamId.value = next
-  void router.replace({ query: next ? { examId: next } : {} })
-  if (next) {
+function handleExamChange(value: unknown): void {
+  // 委托给 useMarkExamSelector 完成 URL/Store 同步
+  onExamChange(value as string | number | undefined)
+  if (selectedExamId.value) {
     void loadRoster()
   } else {
     classIds.value = []
@@ -415,21 +396,18 @@ async function handleSave(): Promise<void> {
   }
 }
 
-watch(
-  () => route.query.examId,
-  (value) => {
-    const next = value ? String(value) : undefined
-    if (next !== selectedExamId.value) {
-      selectedExamId.value = next
-      if (next) {
-        void loadRoster()
-      }
-    }
-  },
-)
+// B-8 selectedExamId 由 useMarkExamSelector 与 URL 双向同步，业务层只需 watch 一次去加载数据
+watch(selectedExamId, (value) => {
+  if (value) {
+    void loadRoster()
+  } else {
+    classIds.value = []
+    candidates.splice(0, candidates.length)
+  }
+})
 
 onMounted(async () => {
-  await loadExamOptions()
+  await initExamSelector()
   if (selectedExamId.value) {
     await loadRoster()
   }
@@ -438,6 +416,33 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .roster-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

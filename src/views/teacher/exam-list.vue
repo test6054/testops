@@ -1,14 +1,14 @@
 <template>
-  <GiPageLayout>
-    <div class="exam-list-page">
-      <PageHeader title="考试列表">
-        <template #tags>
-          <UiTag tone="blue" size="md">{{ pagination.total ?? 0 }} 场</UiTag>
-          <UiTag v-if="isAdminView" tone="purple" size="md">管理员视角</UiTag>
-          <UiTag v-else tone="gray" size="md">仅看本人创建</UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="exam-list-page__context">
+        <div class="exam-list-page__context-left">
+          <UiTag tone="blue" size="sm">{{ pagination.total ?? 0 }} 场</UiTag>
+          <UiTag v-if="isAdminView" tone="purple" size="sm">管理员视角</UiTag>
+          <UiTag v-else tone="gray" size="sm">仅看本人创建</UiTag>
+        </div>
+        <div class="exam-list-page__context-right">
+          <UiButton variant="outline" size="sm" :loading="loading" @click="reloadAll">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
@@ -16,188 +16,217 @@
             <template #icon><PlusOutlined /></template>
             新建考试
           </UiButton>
-        </template>
-      </PageHeader>
+        </div>
+      </div>
+    </template>
 
-      <!-- 筛选 -->
-      <UiCard class="exam-list-page__filter-card">
-        <template #title>
-          <SearchOutlined />
-          <span>筛选条件</span>
-        </template>
+    <!-- KPI 概览：总场次 / 进行中 / 已关闭 / 超期未完成 -->
+    <UiStatPanel
+      :items="kpiItems"
+      :columns="4"
+      variant="grid"
+      compact
+      class="exam-list-page__kpi"
+    />
 
-        <a-form
-          layout="inline"
-          :model="filterForm"
-          class="filter-form"
-          @submit.prevent="handleSearch"
-        >
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="filterForm.status"
-              style="width: 140px"
-              placeholder="全部状态"
-              allow-clear
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item label="关键词">
-            <a-input
-              v-model:value="filterForm.keyword"
-              placeholder="考试名称 / 编号"
-              allow-clear
-              style="width: 220px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item label="创建时间">
-            <a-range-picker
-              v-model:value="filterForm.dateRange"
-              style="width: 260px"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              :placeholder="['开始日期', '结束日期']"
-              allow-clear
-            />
-          </a-form-item>
-          <a-form-item>
-            <a-space>
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </UiCard>
+    <!-- 行动提示：当存在超期待推进考试时显示 -->
+    <UiAlertStrip
+      v-if="staleExamCount > 0"
+      tone="warning"
+      :title="`${staleExamCount} 场进行中考试创建超过 7 天，建议核查推进状态`"
+      description="未配置考试时间窗或长期未关闭的考试可能存在配置疏漏，请进入「准备工作台」检查模板、答案、考生名册是否完整。"
+      dense
+      class="exam-list-page__alert"
+    />
 
-      <!-- 列表 -->
-      <UiCard class="exam-list-page__table-card">
-        <template #title>
-          <FileOutlined />
-          <span>考试列表</span>
-          <UiBadge tone="blue">{{ pagination.total ?? 0 }} 条</UiBadge>
-        </template>
+    <!-- 筛选 -->
+    <UiCard class="exam-list-page__filter-card">
+      <template #title>
+        <SearchOutlined />
+        <span>筛选条件</span>
+      </template>
 
-        <UiEmpty v-if="!loading && dataSource.length === 0" description="暂无考试数据" />
-
-        <a-table
-          v-else
-          :columns="columns"
-          :data-source="dataSource"
-          :loading="loading"
-          :pagination="pagination"
-          row-key="examId"
-          size="middle"
-          class="exam-table"
-          @change="handleTableChange"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'examName'">
-              <button type="button" class="link-cell" @click="goDetail(dataSource[index])">
-                {{ dataSource[index].examName || '未命名考试' }}
-              </button>
-              <div v-if="dataSource[index].examNo" class="link-cell__sub">
-                编号：{{ dataSource[index].examNo }}
-              </div>
-            </template>
-            <template v-else-if="column.key === 'status'">
-              <UiTag :tone="examStatusTone(dataSource[index])" size="sm">
-                {{ examStatusLabel(dataSource[index]) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'examWindow'">
-              <span v-if="dataSource[index].examStartTime || dataSource[index].examEndTime">
-                {{ formatTime(dataSource[index].examStartTime) }}
-                <span class="time-divider">~</span>
-                {{ formatTime(dataSource[index].examEndTime) }}
-              </span>
-              <span v-else class="muted">未设置</span>
-            </template>
-            <template v-else-if="column.key === 'createTime'">
-              {{ formatTime(dataSource[index].createTime) }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <a-space>
-                <UiButton size="sm" variant="ghost" @click="goDetail(dataSource[index])">
-                  详情
-                </UiButton>
-                <UiButton
-                  v-if="dataSource[index].status !== 'CLOSED'"
-                  size="sm"
-                  variant="ghost"
-                  @click="goTemplate(dataSource[index])"
-                >
-                  配置模板
-                </UiButton>
-                <UiButton
-                  v-if="dataSource[index].status !== 'CLOSED'"
-                  size="sm"
-                  variant="ghost"
-                  @click="goRoster(dataSource[index])"
-                >
-                  考生名册
-                </UiButton>
-              </a-space>
-            </template>
-          </template>
-        </a-table>
-      </UiCard>
-    </div>
-
-    <!-- 创建考试弹窗 -->
-    <a-modal
-      v-model:open="createModalOpen"
-      title="新建考试"
-      :confirm-loading="creating"
-      :destroy-on-close="true"
-      :mask-closable="false"
-      width="560px"
-      @ok="handleCreate"
-    >
-      <a-form ref="createFormRef" :model="createForm" :rules="createFormRules" layout="vertical">
-        <a-form-item label="考试名称" name="examName">
-          <a-input
-            v-model:value="createForm.examName"
-            placeholder="例如：2026 春《工程制图》期末"
-            :maxlength="100"
-            show-count
+      <a-form
+        layout="inline"
+        :model="filterForm"
+        class="filter-form"
+        @submit.prevent="handleSearch"
+      >
+        <a-form-item label="状态">
+          <a-select
+            v-model:value="filterForm.status"
+            style="width: 140px"
+            placeholder="全部状态"
+            allow-clear
+            :options="statusOptions"
           />
         </a-form-item>
-        <a-form-item label="考试编号（可选）" name="examNo">
+        <a-form-item label="关键词">
           <a-input
-            v-model:value="createForm.examNo"
-            placeholder="教务系统编号或自定义编号"
-            :maxlength="64"
+            v-model:value="filterForm.keyword"
+            placeholder="考试名称 / 编号"
+            allow-clear
+            style="width: 220px"
+            @press-enter="handleSearch"
           />
         </a-form-item>
-        <a-form-item label="考试时间窗">
+        <a-form-item label="创建时间">
           <a-range-picker
-            v-model:value="createForm.examWindow"
-            style="width: 100%"
-            show-time
-            format="YYYY-MM-DD HH:mm"
+            v-model:value="filterForm.dateRange"
+            style="width: 260px"
+            format="YYYY-MM-DD"
             value-format="YYYY-MM-DD HH:mm:ss"
-            :placeholder="['开始时间', '结束时间']"
+            :placeholder="['开始日期', '结束日期']"
+            allow-clear
           />
         </a-form-item>
-        <a-form-item label="批改策略（可选）" name="gradingStrategy">
-          <a-input
-            v-model:value="createForm.gradingStrategy"
-            placeholder="如 SINGLE / DOUBLE_BLIND，留空使用租户默认"
-            :maxlength="64"
-          />
-        </a-form-item>
-        <a-form-item label="备注" name="remark">
-          <a-textarea
-            v-model:value="createForm.remark"
-            :rows="3"
-            placeholder="可填写考试用途、班级范围说明等"
-            :maxlength="500"
-            show-count
-          />
+        <a-form-item>
+          <a-space>
+            <UiButton size="sm" @click="handleSearch">查询</UiButton>
+            <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
+          </a-space>
         </a-form-item>
       </a-form>
-    </a-modal>
-  </GiPageLayout>
+    </UiCard>
+
+    <!-- 列表 -->
+    <UiCard class="exam-list-page__table-card">
+      <template #title>
+        <FileOutlined />
+        <span>考试列表</span>
+        <UiBadge tone="blue">{{ pagination.total ?? 0 }} 条</UiBadge>
+      </template>
+
+      <UiEmpty v-if="!loading && dataSource.length === 0" description="暂无考试数据" />
+
+      <UiDataTable
+        v-else
+        v-model:current="pagination.current"
+        v-model:page-size="pagination.pageSize"
+        :columns="columns"
+        :data-source="dataSource"
+        :loading="loading"
+        :total="pagination.total"
+        row-key="examId"
+        size="middle"
+        flat
+        class="exam-table"
+        @page-change="handleUiPageChange"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'examName'">
+            <button type="button" class="link-cell" @click="goDetail(dataSource[index])">
+              {{ dataSource[index].examName || '未命名考试' }}
+            </button>
+            <div v-if="dataSource[index].examNo" class="link-cell__sub">
+              编号：{{ dataSource[index].examNo }}
+            </div>
+          </template>
+          <template v-else-if="column.key === 'status'">
+            <UiTag :tone="examStatusTone(dataSource[index])" size="sm">
+              {{ examStatusLabel(dataSource[index]) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'examWindow'">
+            <span v-if="dataSource[index].examStartTime || dataSource[index].examEndTime">
+              {{ formatTime(dataSource[index].examStartTime) }}
+              <span class="time-divider">~</span>
+              {{ formatTime(dataSource[index].examEndTime) }}
+            </span>
+            <span v-else class="muted">未设置</span>
+          </template>
+          <template v-else-if="column.key === 'createTime'">
+            {{ formatTime(dataSource[index].createTime) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <a-space>
+              <UiButton size="sm" variant="ghost" @click="goDetail(dataSource[index])">
+                详情
+              </UiButton>
+              <UiButton
+                v-if="dataSource[index].status !== 'CLOSED'"
+                size="sm"
+                @click="goPrepWorkbench(dataSource[index])"
+              >
+                准备工作台
+              </UiButton>
+              <UiButton
+                v-if="dataSource[index].status !== 'CLOSED'"
+                size="sm"
+                variant="ghost"
+                @click="goTemplate(dataSource[index])"
+              >
+                配置模板
+              </UiButton>
+              <UiButton
+                v-if="dataSource[index].status !== 'CLOSED'"
+                size="sm"
+                variant="ghost"
+                @click="goRoster(dataSource[index])"
+              >
+                考生名册
+              </UiButton>
+            </a-space>
+          </template>
+        </template>
+      </UiDataTable>
+    </UiCard>
+  </StageWorkbenchShell>
+
+  <!-- 创建考试弹窗 -->
+  <a-modal
+    v-model:open="createModalOpen"
+    title="新建考试"
+    :confirm-loading="creating"
+    :destroy-on-close="true"
+    :mask-closable="false"
+    width="560px"
+    @ok="handleCreate"
+  >
+    <a-form ref="createFormRef" :model="createForm" :rules="createFormRules" layout="vertical">
+      <a-form-item label="考试名称" name="examName">
+        <a-input
+          v-model:value="createForm.examName"
+          placeholder="例如：2026 春《工程制图》期末"
+          :maxlength="100"
+          show-count
+        />
+      </a-form-item>
+      <a-form-item label="考试编号（可选）" name="examNo">
+        <a-input
+          v-model:value="createForm.examNo"
+          placeholder="教务系统编号或自定义编号"
+          :maxlength="64"
+        />
+      </a-form-item>
+      <a-form-item label="考试时间窗">
+        <a-range-picker
+          v-model:value="createForm.examWindow"
+          style="width: 100%"
+          show-time
+          format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          :placeholder="['开始时间', '结束时间']"
+        />
+      </a-form-item>
+      <a-form-item label="批改策略（可选）" name="gradingStrategy">
+        <a-input
+          v-model:value="createForm.gradingStrategy"
+          placeholder="如 SINGLE / DOUBLE_BLIND，留空使用租户默认"
+          :maxlength="64"
+        />
+      </a-form-item>
+      <a-form-item label="备注" name="remark">
+        <a-textarea
+          v-model:value="createForm.remark"
+          :rows="3"
+          placeholder="可填写考试用途、班级范围说明等"
+          :maxlength="500"
+          show-count
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
@@ -214,9 +243,17 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiAlertStrip,
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -322,6 +359,12 @@ function handleTableChange(next: TablePaginationConfig): void {
   void loadExams()
 }
 
+function handleUiPageChange(payload: { current: number, pageSize: number }): void {
+  pagination.current = payload.current
+  pagination.pageSize = payload.pageSize
+  void loadExams()
+}
+
 function goDetail(exam: ExamSummaryVO): void {
   void router.push({ name: 'TeacherExamDetail', params: { examId: exam.examId } })
 }
@@ -333,6 +376,71 @@ function goTemplate(exam: ExamSummaryVO): void {
 function goRoster(exam: ExamSummaryVO): void {
   void router.push({ name: 'TeacherCandidateRoster', query: { examId: exam.examId } })
 }
+
+function goPrepWorkbench(exam: ExamSummaryVO): void {
+  void router.push({ name: 'TeacherExamPrepWorkbench', query: { examId: exam.examId } })
+}
+
+// ─── KPI 概览：单独维护进行中 / 已关闭的全量计数 ─────────────────
+// 复用 pageExams 的 status 维度查询，pageSize=1 仅取 total，避免额外列表传输。
+const activeTotal = ref<number>(0)
+const closedTotal = ref<number>(0)
+
+async function loadStatusTotals(): Promise<void> {
+  const createUserId = isAdminView.value ? null : userStore.userInfo.userId || undefined
+  try {
+    const [activeRes, closedRes] = await Promise.all([
+      pageExams({ pageNum: 1, pageSize: 1, status: 'ACTIVE', createUserId }),
+      pageExams({ pageNum: 1, pageSize: 1, status: 'CLOSED', createUserId }),
+    ])
+    activeTotal.value = activeRes.total ?? 0
+    closedTotal.value = closedRes.total ?? 0
+  } catch {
+    // 计数加载失败不阻塞主列表，KPI 静默回退到 0
+    activeTotal.value = 0
+    closedTotal.value = 0
+  }
+}
+
+// 当前页中创建超过 7 天且仍 ACTIVE 的考试数（推进风险信号，仅本页采样）
+const staleExamCount = computed<number>(() => {
+  const threshold = dayjs().subtract(7, 'day')
+  return dataSource.value.filter((item) => {
+    if (item.status !== 'ACTIVE' || !item.createTime) return false
+    return dayjs(item.createTime).isBefore(threshold)
+  }).length
+})
+
+const kpiItems = computed(() => [
+  {
+    key: 'filtered',
+    label: '当前筛选命中',
+    value: pagination.total ?? 0,
+    helper: '受顶部筛选条件影响',
+    tone: 'blue' as BadgeTone,
+  },
+  {
+    key: 'active',
+    label: '进行中考试',
+    value: activeTotal.value,
+    helper: isAdminView.value ? '租户全部 ACTIVE' : '本人创建 ACTIVE',
+    tone: 'green' as BadgeTone,
+  },
+  {
+    key: 'closed',
+    label: '已关闭',
+    value: closedTotal.value,
+    helper: isAdminView.value ? '租户全部 CLOSED' : '本人创建 CLOSED',
+    tone: 'gray' as BadgeTone,
+  },
+  {
+    key: 'stale',
+    label: '本页待推进',
+    value: staleExamCount.value,
+    helper: '创建超 7 天且未关闭',
+    tone: (staleExamCount.value > 0 ? 'orange' : 'gray') as BadgeTone,
+  },
+])
 
 // 创建考试弹窗
 const createModalOpen = ref(false)
@@ -392,7 +500,7 @@ async function handleCreate(): Promise<void> {
     message.success('考试已创建，进入草稿态')
     createModalOpen.value = false
     pagination.current = 1
-    await loadExams()
+    await Promise.all([loadExams(), loadStatusTotals()])
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '创建考试失败'
     message.error(errMsg)
@@ -401,18 +509,53 @@ async function handleCreate(): Promise<void> {
   }
 }
 
+// 统一刷新入口：列表 + KPI 同步加载，避免顶部计数滞后于列表
+async function reloadAll(): Promise<void> {
+  await Promise.all([loadExams(), loadStatusTotals()])
+}
+
 onMounted(() => {
-  void loadExams()
+  void reloadAll()
 })
 </script>
 
 <style lang="scss" scoped>
 .exam-list-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
   min-height: 100vh;
+}
+
+.exam-list-page__kpi {
+  margin-bottom: 4px;
+}
+
+.exam-list-page__alert {
+  margin-bottom: 4px;
 }
 
 .filter-form {

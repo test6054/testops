@@ -3,8 +3,8 @@
  * 移除复杂的主题系统和未使用的配置，专注性能
  */
 
-import {defineStore} from 'pinia'
-import {computed, reactive, toRefs} from 'vue'
+import { defineStore } from 'pinia'
+import { computed, reactive, toRefs } from 'vue'
 
 // 基础配置类型
 interface BasicConfig {
@@ -22,7 +22,6 @@ interface SimplifiedAppSettings {
     menuAccordion: boolean // 菜单手风琴模式，默认开启
     animate: boolean
     animateMode: string
-    layout: 'left' | 'mix'
     watermarkEnabled: boolean // 水印开关，默认关闭
     copyrightDisplay: boolean // 版权信息显示开关，默认开启
 }
@@ -34,7 +33,6 @@ const storeSetup = () => {
         menuAccordion: true, // 默认开启菜单手风琴模式
         animate: false, // 默认关闭动画提升性能
         animateMode: 'fade', // 使用最简单的动画
-        layout: 'mix',
         watermarkEnabled: false, // 默认关闭水印功能
         copyrightDisplay: true // 默认显示版权信息
     })
@@ -114,7 +112,7 @@ const storeSetup = () => {
 
 export const useAppStore = defineStore('app', storeSetup, {
     persist: {
-        pick: ['menuCollapse', 'menuAccordion', 'animate', 'animateMode', 'layout', 'watermarkEnabled', 'copyrightDisplay'],
+        pick: ['menuCollapse', 'menuAccordion', 'animate', 'animateMode', 'watermarkEnabled', 'copyrightDisplay'],
         storage: localStorage,
     }
 }

@@ -16,13 +16,15 @@
       </a-space>
     </template>
 
-    <a-table
+    <UiDataTable
       :columns="columns"
       :data-source="rows"
       :loading="loading"
       row-key="id"
       size="small"
-      :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
+      :page-size="20"
+      :total="rows.length"
+      flat
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'correctionType'">
@@ -33,11 +35,17 @@
             {{ approvalStatusLabel(rows[index]) }}
           </a-tag>
         </template>
-        <template v-else-if="column.key === 'approvedTime'">{{fmt(rows[index].approvedTime) }}</template>
-        <template v-else-if="column.key === 'executedTime'">{{fmt(rows[index].executedTime) }}</template>
-        <template v-else-if="column.key === 'createTime'">{{fmt(rows[index].createTime) }}</template>
+        <template v-else-if="column.key === 'approvedTime'">{{
+          fmt(rows[index].approvedTime)
+        }}</template>
+        <template v-else-if="column.key === 'executedTime'">{{
+          fmt(rows[index].executedTime)
+        }}</template>
+        <template v-else-if="column.key === 'createTime'">{{
+          fmt(rows[index].createTime)
+        }}</template>
       </template>
-    </a-table>
+    </UiDataTable>
   </a-card>
 </template>
 
@@ -48,20 +56,21 @@ import type {
   ExamBatchGradeCorrectionPlanVO,
   GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { ref, watch } from 'vue'
 import {
   BATCH_CORRECTION_STATUS_COLOR,
   BATCH_CORRECTION_STATUS_LABEL,
   GRADE_CORRECTION_TYPE_LABEL,
   listBatchCorrectionPlans,
 } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { ref, watch } from 'vue'
+import { UiDataTable } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const rows = ref<ExamBatchGradeCorrectionPlanVO[]>([])
 const loading = ref(false)

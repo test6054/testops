@@ -1,15 +1,11 @@
 <template>
-  <GiPageLayout>
-    <div class="marking-task-pool-page">
-      <PageHeader title="阅卷任务池">
-        <template #tags>
-          <UiTag tone="blue" size="md">我的任务 {{ tasks.length }}</UiTag>
-          <UiTag v-if="inProgressCount > 0" tone="orange" size="md">阅卷中 {{ inProgressCount }}</UiTag>
-        </template>
-        <template #actions>
+  <StageWorkbenchShell>
+    <template #context>
+      <div class="marking-task-pool-page__context">
+        <div class="marking-task-pool-page__context-left">
           <a-select
             :value="selectedExamId"
-            style="width: 280px"
+            class="marking-task-pool-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
             :loading="examLoading"
@@ -18,6 +14,10 @@
             allow-clear
             @change="onExamChange"
           />
+          <UiTag tone="blue" size="sm">我的任务 {{ tasks.length }}</UiTag>
+          <UiTag v-if="inProgressCount > 0" tone="orange" size="sm">阅卷中 {{ inProgressCount }}</UiTag>
+        </div>
+        <div class="marking-task-pool-page__context-right">
           <UiButton
             variant="outline"
             size="sm"
@@ -28,173 +28,175 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
+        </div>
+      </div>
+    </template>
+
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请选择考试以查看 / 领取阅卷任务"
+      class="marking-task-pool-page__empty"
+    />
+
+    <template v-else>
+      <UiCard class="claim-card">
+        <template #title>
+          <ThunderboltOutlined />
+          <span>领取任务</span>
+          <UiBadge tone="green"> {{ claimContext?.groups.length ?? 0 }} 个可领取题组 </UiBadge>
         </template>
-      </PageHeader>
 
-      <UiEmpty
-        v-if="!selectedExamId"
-        description="请选择考试以查看 / 领取阅卷任务"
-        class="empty-block"
-      />
-
-      <template v-else>
-        <UiCard class="claim-card">
-          <template #title>
-            <ThunderboltOutlined />
-            <span>领取任务</span>
-            <UiBadge tone="green"> {{ claimContext?.groups.length ?? 0 }} 个可领取题组 </UiBadge>
-          </template>
-
-          <a-spin :spinning="claimContextLoading">
-            <UiEmpty
-              v-if="!claimContextLoading && (claimContext?.groups.length ?? 0) === 0"
-              description="您当前未被分配到任何活跃题组，请联系阅卷组织管理员"
-            />
-            <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
-              <a-form-item label="题组" required>
-                <a-select
-                  v-model:value="claimForm.groupId"
-                  :options="claimGroupOptions"
-                  :loading="claimContextLoading"
-                  placeholder="选择题组"
-                  style="width: 240px"
-                  show-search
-                  option-filter-prop="label"
-                  @change="onClaimGroupChange"
-                />
-              </a-form-item>
-              <a-form-item label="正评会话" required>
-                <a-select
-                  v-model:value="claimForm.sessionId"
-                  :options="claimSessionOptions"
-                  :disabled="!claimForm.groupId"
-                  placeholder="选择该题组下的活跃会话"
-                  style="width: 280px"
-                  allow-clear
-                />
-              </a-form-item>
-              <a-form-item>
-                <a-space>
-                  <UiButton :disabled="!canClaim" :loading="claiming" @click="submitClaim">
-                    <template #icon><PlusOutlined /></template>
-                    批量领取一批
-                  </UiButton>
-                  <UiButton
-                    variant="outline"
-                    size="sm"
-                    :loading="claimContextLoading"
-                    @click="loadClaimContext"
-                  >
-                    <template #icon><ReloadOutlined /></template>
-                    刷新可领取题组
-                  </UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </a-spin>
-        </UiCard>
-
-        <UiCard class="filter-card">
-          <template #title>
-            <FilterOutlined />
-            <span>筛选条件</span>
-          </template>
-
-          <a-form layout="inline" :model="filterForm">
-            <a-form-item label="任务状态">
+        <a-spin :spinning="claimContextLoading">
+          <UiEmpty
+            v-if="!claimContextLoading && (claimContext?.groups.length ?? 0) === 0"
+            description="您当前未被分配到任何活跃题组，请联系阅卷组织管理员"
+          />
+          <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
+            <a-form-item label="题组" required>
               <a-select
-                v-model:value="filterForm.taskStatus"
-                style="width: 160px"
-                placeholder="全部状态"
-                :options="statusOptions"
-                allow-clear
-                @change="loadTasks"
+                v-model:value="claimForm.groupId"
+                :options="claimGroupOptions"
+                :loading="claimContextLoading"
+                placeholder="选择题组"
+                style="width: 240px"
+                show-search
+                option-filter-prop="label"
+                @change="onClaimGroupChange"
               />
             </a-form-item>
-            <a-form-item label="题组ID">
-              <a-input
-                v-model:value="filterForm.groupId"
-                placeholder="精确匹配"
+            <a-form-item label="正评会话" required>
+              <a-select
+                v-model:value="claimForm.sessionId"
+                :options="claimSessionOptions"
+                :disabled="!claimForm.groupId"
+                placeholder="选择该题组下的活跃会话"
+                style="width: 280px"
                 allow-clear
-                style="width: 180px"
-                @press-enter="loadTasks"
-              />
-            </a-form-item>
-            <a-form-item label="正评会话ID">
-              <a-input
-                v-model:value="filterForm.sessionId"
-                placeholder="精确匹配"
-                allow-clear
-                style="width: 180px"
-                @press-enter="loadTasks"
               />
             </a-form-item>
             <a-form-item>
               <a-space>
-                <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
-                <UiButton size="sm" variant="outline" @click="resetFilter">重置</UiButton>
+                <UiButton :disabled="!canClaim" :loading="claiming" @click="submitClaim">
+                  <template #icon><PlusOutlined /></template>
+                  批量领取一批
+                </UiButton>
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  :loading="claimContextLoading"
+                  @click="loadClaimContext"
+                >
+                  <template #icon><ReloadOutlined /></template>
+                  刷新可领取题组
+                </UiButton>
               </a-space>
             </a-form-item>
           </a-form>
-        </UiCard>
+        </a-spin>
+      </UiCard>
 
-        <UiCard class="table-card">
-          <template #title>
-            <TableOutlined />
-            <span>任务列表</span>
-            <UiBadge tone="blue">{{ tasks.length }} 条</UiBadge>
-          </template>
+      <UiCard class="filter-card">
+        <template #title>
+          <FilterOutlined />
+          <span>筛选条件</span>
+        </template>
 
-          <UiEmpty v-if="!loading && tasks.length === 0" description="暂无任务" />
-          <a-table
-            v-else
-            :columns="columns"
-            :data-source="tasks"
-            :loading="loading"
-            :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
-            row-key="id"
-            size="middle"
-          >
-            <template #bodyCell="{ column, index }">
-              <template v-if="column.key === 'id'">
-                <a-typography-text strong>#{{ tasks[index].id }}</a-typography-text>
-              </template>
-              <template v-else-if="column.key === 'taskStatus'">
-                <UiTag :tone="taskStatusTone(tasks[index].taskStatus)" size="sm">
-                  {{ taskStatusLabel(tasks[index].taskStatus) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'reviewRound'">
-                <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound || 1 }} 轮</UiTag>
-              </template>
-              <template v-else-if="column.key === 'allocatedAt'">
-                {{ formatTime(tasks[index].allocatedAt) }}
-              </template>
-              <template v-else-if="column.key === 'submittedAt'">
-                {{ formatTime(tasks[index].submittedAt) }}
-              </template>
-              <template v-else-if="column.key === 'score'">
-                <span v-if="tasks[index].score !== undefined && tasks[index].score !== null">{{
-                  tasks[index].score
-                }}</span>
-                <span v-else class="muted">-</span>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiButton
-                  v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus ?? '')"
-                  size="sm"
-                  @click="goDetail(tasks[index])"
-                >
-                  进入批阅
-                </UiButton>
-                <span v-else class="muted">已结束</span>
-              </template>
+        <a-form layout="inline" :model="filterForm">
+          <a-form-item label="任务状态">
+            <a-select
+              v-model:value="filterForm.taskStatus"
+              style="width: 160px"
+              placeholder="全部状态"
+              :options="statusOptions"
+              allow-clear
+              @change="loadTasks"
+            />
+          </a-form-item>
+          <a-form-item label="题组ID">
+            <a-input
+              v-model:value="filterForm.groupId"
+              placeholder="精确匹配"
+              allow-clear
+              style="width: 180px"
+              @press-enter="loadTasks"
+            />
+          </a-form-item>
+          <a-form-item label="正评会话ID">
+            <a-input
+              v-model:value="filterForm.sessionId"
+              placeholder="精确匹配"
+              allow-clear
+              style="width: 180px"
+              @press-enter="loadTasks"
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
+              <UiButton size="sm" variant="outline" @click="resetFilter">重置</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </UiCard>
+
+      <UiCard class="table-card">
+        <template #title>
+          <TableOutlined />
+          <span>任务列表</span>
+          <UiBadge tone="blue">{{ tasks.length }} 条</UiBadge>
+        </template>
+
+        <UiEmpty v-if="!loading && tasks.length === 0" description="暂无任务" />
+        <UiDataTable
+          v-else
+          :columns="columns"
+          :data-source="tasks"
+          :loading="loading"
+          :page-size="20"
+          :total="tasks.length"
+          row-key="id"
+          size="middle"
+          flat
+        >
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'id'">
+              <a-typography-text strong>#{{ tasks[index].id }}</a-typography-text>
             </template>
-          </a-table>
-        </UiCard>
-      </template>
-    </div>
-  </GiPageLayout>
+            <template v-else-if="column.key === 'taskStatus'">
+              <UiTag :tone="taskStatusTone(tasks[index].taskStatus)" size="sm">
+                {{ taskStatusLabel(tasks[index].taskStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'reviewRound'">
+              <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound || 1 }} 轮</UiTag>
+            </template>
+            <template v-else-if="column.key === 'allocatedAt'">
+              {{ formatTime(tasks[index].allocatedAt) }}
+            </template>
+            <template v-else-if="column.key === 'submittedAt'">
+              {{ formatTime(tasks[index].submittedAt) }}
+            </template>
+            <template v-else-if="column.key === 'score'">
+              <span v-if="tasks[index].score !== undefined && tasks[index].score !== null">{{
+                tasks[index].score
+              }}</span>
+              <span v-else class="muted">-</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiButton
+                v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus ?? '')"
+                size="sm"
+                @click="goDetail(tasks[index])"
+              >
+                进入批阅
+              </UiButton>
+              <span v-else class="muted">已结束</span>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </template>
+  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -216,15 +218,13 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  claimMarkingTasks,
-  getTeacherClaimContext,
-  listMarkingTasks,
   MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
   MARKING_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/marking-organization'
-import PageHeader from '@/components/common/PageHeader.vue'
-import GiPageLayout from '@/components/GiPageLayout/index.vue'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { useMarkTaskStore } from '@/stores/modules/markTask'
+import { storeToRefs } from 'pinia'
+import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useUserStore } from '@/stores/modules/user'
 
@@ -243,8 +243,8 @@ const {
 
 const currentUserId = computed(() => userStore.userInfo.userId || '')
 
-const tasks = ref<MarkingTaskVO[]>([])
-const loading = ref(false)
+const markTaskStore = useMarkTaskStore()
+const { tasks, tasksLoading: loading, claimContextLoading } = storeToRefs(markTaskStore)
 
 const filterForm = reactive<{
   taskStatus?: MarkingTaskStatusCode
@@ -293,7 +293,7 @@ async function loadTasks(): Promise<void> {
       sessionId: filterForm.sessionId?.trim() || undefined,
       taskStatus: filterForm.taskStatus,
     }
-    tasks.value = await listMarkingTasks(payload)
+    await markTaskStore.loadTasks(payload)
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '任务列表加载失败'
     message.error(errMsg)
@@ -316,8 +316,9 @@ const claimForm = reactive<MarkingTaskClaimPayload>({
 
 const canClaim = computed(() => !!claimForm.sessionId.trim() && !!claimForm.groupId.trim())
 
-const claimContext = ref<TeacherClaimContextVO | null>(null)
-const claimContextLoading = ref(false)
+const claimContext = computed<TeacherClaimContextVO | null>(
+  () => (selectedExamId.value ? markTaskStore.getClaimContext(selectedExamId.value) : null),
+)
 
 const claimGroupOptions = computed(() =>
   (claimContext.value?.groups ?? []).map((g) => ({
@@ -336,19 +337,12 @@ const claimSessionOptions = computed(() => {
 })
 
 async function loadClaimContext(): Promise<void> {
-  if (!selectedExamId.value) {
-    claimContext.value = null
-    return
-  }
-  claimContextLoading.value = true
+  if (!selectedExamId.value) return
   try {
-    claimContext.value = await getTeacherClaimContext({ examId: selectedExamId.value })
+    await markTaskStore.loadClaimContext({ examId: selectedExamId.value })
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '领取上下文加载失败'
     message.error(errMsg)
-    claimContext.value = null
-  } finally {
-    claimContextLoading.value = false
   }
 }
 
@@ -366,7 +360,7 @@ async function submitClaim(): Promise<void> {
   }
   claiming.value = true
   try {
-    const claimed = await claimMarkingTasks({
+    const claimed = await markTaskStore.claimTasks({
       sessionId: claimForm.sessionId.trim(),
       groupId: claimForm.groupId.trim(),
     })
@@ -453,6 +447,33 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .marking-task-pool-page {
+  &__context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__context-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__context-right {
+    flex-shrink: 0;
+  }
+
+  &__exam-select {
+    width: 280px;
+  }
+
+  &__empty {
+    padding: 60px 0;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;

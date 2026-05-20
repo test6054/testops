@@ -1,11 +1,33 @@
 <script lang="ts" setup>
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import theme from 'ant-design-vue/es/theme'
+import { onBeforeUnmount, watch } from 'vue'
+import { GlobalConfirmDialog } from '@/components/workbench'
 import { useAppStore, useUserStore } from '@/stores'
+import { useNotificationStore } from '@/stores/modules/notification'
 
 defineOptions({ name: 'App' })
 const userStore = useUserStore()
 const appStore = useAppStore()
+const notificationStore = useNotificationStore()
+
+// 登录后启动未读轮询；登出 / 会话失效 → 停止 + reset
+watch(
+  () => userStore?.userInfo?.userId,
+  (userId, prevUserId) => {
+    if (userId && !prevUserId) {
+      notificationStore.startPolling()
+    }
+    else if (!userId && prevUserId) {
+      notificationStore.reset()
+    }
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(() => {
+  notificationStore.stopPolling()
+})
 
 const themeConfig = {
   cssVar: true,
@@ -52,6 +74,7 @@ appStore?.initSiteConfig?.()
       <router-view />
     </a-watermark>
     <router-view v-else />
+    <GlobalConfirmDialog />
   </a-config-provider>
 </template>
 
