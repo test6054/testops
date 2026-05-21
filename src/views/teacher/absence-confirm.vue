@@ -54,7 +54,13 @@
             <UiRingProgress
               :percent="attendancePercent"
               size="lg"
-              :color="attendancePercent >= 90 ? '#16a34a' : attendancePercent >= 70 ? '#3b82f6' : '#f59e0b'"
+              :color="
+                attendancePercent >= 90
+                  ? '#16a34a'
+                  : attendancePercent >= 70
+                    ? '#3b82f6'
+                    : '#f59e0b'
+              "
               label="出勤率"
             />
           </div>
@@ -96,7 +102,16 @@
         </UiDataTable>
       </UiCard>
 
-      <UiCard class="info-card">
+      <!-- D-9 错误态：缺考记录加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="recordsLoadError"
+        :error="recordsLoadError"
+        title="缺考记录加载失败"
+        :helper="`考试 ID：${selectedExamId}`"
+        compact
+        @retry="loadRecords"
+      />
+      <UiCard v-else class="info-card">
         <template #title>
           <SolutionOutlined />
           <span>缺考记录</span>
@@ -134,9 +149,7 @@
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'absenceStatus'">
               <UiTag :tone="statusTone(records[index].absenceStatus)" size="sm">
-                {{
-                  statusLabel(records[index].absenceStatus)
-                }}
+                {{ statusLabel(records[index].absenceStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'absenceReason'">
@@ -189,11 +202,7 @@
       </a-form-item>
       <a-form-item label="缺考原因" required>
         <a-select v-model:value="confirmForm.absenceReason" placeholder="选择缺考原因">
-          <a-select-option
-            v-for="(label, code) in ABSENCE_REASON_LABEL"
-            :key="code"
-            :value="code"
-          >
+          <a-select-option v-for="(label, code) in ABSENCE_REASON_LABEL" :key="code" :value="code">
             {{ label }}
           </a-select-option>
         </a-select>
@@ -245,15 +254,6 @@ import type {
   AbsenceStatusCode,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
-import type { ExamCandidateVO } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -264,8 +264,27 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
+import type { ExamCandidateVO } from '@/apis/mark/exam'
 import { listExamCandidates } from '@/apis/mark/exam'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiRingProgress, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiRingProgress,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -293,6 +312,8 @@ const reconciling = ref(false)
 
 const records = ref<AbsenceRecordVO[]>([])
 const recordLoading = ref(false)
+// D-9 错误态：缺考记录加载失败时 UiErrorRetryPanel 重试 + 上报
+const recordsLoadError = ref<unknown>(null)
 const statusFilter = ref<AbsenceStatusCode | undefined>(undefined)
 
 const absentStudents = computed<AbsentStudentRow[]>(() => {
@@ -323,10 +344,30 @@ const attendancePercent = computed(() => {
 })
 
 const reconcileMetrics = computed(() => [
-  { label: '应考人数', value: reconcileVO.value?.expectedCount ?? 0, unit: '人', tone: 'blue' as const },
-  { label: '已绑定试卷', value: reconcileVO.value?.attendedCount ?? 0, unit: '人', tone: 'green' as const },
-  { label: '缺考人数', value: reconcileVO.value?.absentCount ?? 0, unit: '人', tone: (reconcileVO.value?.absentCount ?? 0) > 0 ? 'orange' as const : 'green' as const },
-  { label: '本次新建 PENDING', value: reconcileVO.value?.createdPendingCount ?? 0, unit: '条', tone: (reconcileVO.value?.createdPendingCount ?? 0) > 0 ? 'blue' as const : 'gray' as const },
+  {
+    label: '应考人数',
+    value: reconcileVO.value?.expectedCount ?? 0,
+    unit: '人',
+    tone: 'blue' as const,
+  },
+  {
+    label: '已绑定试卷',
+    value: reconcileVO.value?.attendedCount ?? 0,
+    unit: '人',
+    tone: 'green' as const,
+  },
+  {
+    label: '缺考人数',
+    value: reconcileVO.value?.absentCount ?? 0,
+    unit: '人',
+    tone: (reconcileVO.value?.absentCount ?? 0) > 0 ? ('orange' as const) : ('green' as const),
+  },
+  {
+    label: '本次新建 PENDING',
+    value: reconcileVO.value?.createdPendingCount ?? 0,
+    unit: '条',
+    tone: (reconcileVO.value?.createdPendingCount ?? 0) > 0 ? ('blue' as const) : ('gray' as const),
+  },
 ])
 
 const absentColumns: ColumnType<AbsentStudentRow>[] = [
@@ -393,6 +434,7 @@ async function loadCandidates(): Promise<void> {
 async function loadRecords(): Promise<void> {
   if (!selectedExamId.value) {
     records.value = []
+    recordsLoadError.value = null
     return
   }
   recordLoading.value = true
@@ -401,7 +443,9 @@ async function loadRecords(): Promise<void> {
       examId: selectedExamId.value,
       absenceStatus: statusFilter.value,
     })
+    recordsLoadError.value = null
   } catch (error) {
+    recordsLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载缺考记录失败')
   } finally {
     recordLoading.value = false
@@ -482,7 +526,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })

@@ -142,9 +142,10 @@ export interface AiTaskSubmitPayload {
   question?: string
 }
 
-/** 提交响应 */
+/** 提交响应 - 严格对齐后端 AiTaskSubmitVO */
 export interface AiTaskSubmitResponseVO {
-  aiTaskId: string
+  taskId: string
+  status: string
 }
 
 /** AI 结果保存请求 - 严格对齐后端 AiResultSaveRequest */

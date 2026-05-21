@@ -58,7 +58,15 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <a-empty v-if="!record" description="暂无校级质量分析，请填写参数后生成。" />
+      <!-- D-9 错误态：AI 校级质量加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        title="AI 校级质量分析加载失败"
+        compact
+        @retry="reload"
+      />
+      <a-empty v-else-if="!record" description="暂无校级质量分析，请填写参数后生成。" />
       <div v-else class="ai-record">
         <a-row :gutter="12" class="metric-row">
           <a-col :span="8">
@@ -152,16 +160,17 @@ import type {
   SchoolQualityAnalysisVO,
   SchoolQualityDimensionCode,
 } from '@/apis/mark/school-quality'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
 } from '@/apis/mark/school-quality'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref } from 'vue'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
+import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'SchoolQualityCard' })
 
@@ -182,6 +191,8 @@ const form = reactive<SchoolQualityForm>({
 
 const record = ref<SchoolQualityAnalysisVO | null>(null)
 const loading = ref(false)
+// D-9 错误态：AI 校级质量加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 const generating = ref(false)
 
 const parsedItems = computed(() => {
@@ -203,6 +214,7 @@ function parseExamIds(): string[] {
 
 async function reload(): Promise<void> {
   loading.value = true
+  loadError.value = null
   try {
     const list = await listQualityAnalysis({
       analysisDimension: form.analysisDimension,
@@ -211,6 +223,7 @@ async function reload(): Promise<void> {
     record.value = list[0] ?? null
     if (list.length === 0) message.info('暂无历史记录')
   } catch (e) {
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '加载失败')
   } finally {
     loading.value = false

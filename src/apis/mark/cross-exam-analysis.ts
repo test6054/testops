@@ -1,4 +1,4 @@
-import type { AiAnalysisStatusCode } from './teaching-analysis'
+import type {AiAnalysisStatusCode} from './teaching-analysis'
 
 /**
  * AI 跨考试纵向分析 API - 对接 edu-mark 模块 CrossExamAnalysisController
@@ -79,7 +79,7 @@ export interface CourseObjectiveAchievementVO {
 }
 
 /**
- * 将多个 examId 拼接为 List<Long> 兼容的 URLSearchParams 字符串
+ * 按后端 List<Long> 参数格式序列化多个 examId
  * Spring 接收 `examIds=1&examIds=2` 形式
  */
 function buildExamIdsParam(examIds: string[]): string {

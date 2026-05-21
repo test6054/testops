@@ -3,9 +3,7 @@
     <template #context>
       <div class="marking-overview__context">
         <div class="marking-overview__context-info">
-          <h2 class="marking-overview__title">
-            阅卷交付 - 考试总览
-          </h2>
+          <h2 class="marking-overview__title">阅卷交付 - 考试总览</h2>
         </div>
         <div class="marking-overview__context-actions">
           <a-input
@@ -23,12 +21,8 @@
             :options="statusOptions"
             @change="reload"
           />
-          <UiButton variant="ghost" size="sm" @click="resetQuery">
-            重置
-          </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
-            查询
-          </UiButton>
+          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查询 </UiButton>
         </div>
       </div>
     </template>
@@ -41,9 +35,22 @@
       :description="urgentBanner.description"
       class="marking-overview__urgent"
     />
+    <UiAlertStrip
+      v-if="progressLoadError"
+      tone="error"
+      title="部分考试进度加载失败"
+      :description="progressLoadError"
+      class="marking-overview__urgent"
+    />
 
     <!-- 今日待办 KPI（任务驱动入口，每张卡可点击直跳） -->
-    <UiStatPanel :items="statMetrics" :columns="4" variant="grid" compact class="marking-overview__signals" />
+    <UiStatPanel
+      :items="statMetrics"
+      :columns="4"
+      variant="grid"
+      compact
+      class="marking-overview__signals"
+    />
 
     <StageRail :stages="stages" compact class="marking-overview__stages" />
 
@@ -68,16 +75,14 @@
               <strong class="marking-overview__recommend-title">
                 {{ item.examName || '未命名考试' }}
               </strong>
-              <span v-if="item.examNo" class="marking-overview__recommend-no">#{{ item.examNo }}</span>
+              <span v-if="item.examNo" class="marking-overview__recommend-no"
+                >#{{ item.examNo }}</span
+              >
               <UiTag v-if="item.attention > 0" tone="red" size="sm">
                 {{ item.attention }} 条扫描异常
               </UiTag>
-              <UiTag tone="orange" size="sm">
-                待批阅 {{ item.pending }} 题
-              </UiTag>
-              <UiTag tone="blue" size="sm">
-                完成率 {{ item.completeRate }}%
-              </UiTag>
+              <UiTag tone="orange" size="sm"> 待批阅 {{ item.pending }} 题 </UiTag>
+              <UiTag tone="blue" size="sm"> 完成率 {{ item.completeRate }}% </UiTag>
             </div>
             <div class="marking-overview__recommend-meta">
               已确认 {{ item.confirmedGrades }} / {{ item.totalGrades }} 题
@@ -87,9 +92,7 @@
             <UiButton size="sm" variant="outline" @click="goReviewProgress(item.examId)">
               查看进度
             </UiButton>
-            <UiButton size="sm" @click="goMarkingTaskPool(item.examId)">
-              进入阅卷
-            </UiButton>
+            <UiButton size="sm" @click="goMarkingTaskPool(item.examId)"> 进入阅卷 </UiButton>
           </div>
         </li>
       </ul>
@@ -97,15 +100,20 @@
 
     <section class="marking-overview__panel">
       <header class="marking-overview__panel-header">
-        <h3 class="marking-overview__panel-title">
-          考试列表
-        </h3>
-        <span class="marking-overview__panel-meta">
-          共 {{ total }} 场考试
-        </span>
+        <h3 class="marking-overview__panel-title">考试列表</h3>
+        <span class="marking-overview__panel-meta"> 共 {{ total }} 场考试 </span>
       </header>
 
+      <!-- D-9 错误态：考试列表加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="examsLoadError"
+        :error="examsLoadError"
+        title="考试列表加载失败"
+        compact
+        @retry="loadExams"
+      />
       <UiDataTable
+        v-else
         :columns="tableColumns"
         :data-source="exams"
         :loading="loading"
@@ -140,9 +148,7 @@
           </template>
           <template v-else-if="column.dataIndex === 'actions'">
             <a-space :size="4" wrap>
-              <UiButton size="sm" @click="goPrepWorkbench(record.examId)">
-                准备工作台
-              </UiButton>
+              <UiButton size="sm" @click="goPrepWorkbench(record.examId)"> 准备工作台 </UiButton>
               <UiButton size="sm" variant="ghost" @click="goScanMonitor(record.examId)">
                 扫描监控
               </UiButton>
@@ -175,6 +181,12 @@
  */
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO, MarkingProgressVO } from '@/apis/mark/exam'
+import {
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  getMarkingProgress,
+  pageExams,
+} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 
@@ -182,19 +194,13 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-
-import {
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  getMarkingProgress,
-  pageExams,
-} from '@/apis/mark/exam'
 import {
   UiAlertStrip,
   UiBadge,
   UiButton,
   UiCard,
   UiDataTable,
+  UiErrorRetryPanel,
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
@@ -218,7 +224,7 @@ function examStatusTone(value: unknown): BadgeTone {
   return 'gray'
 }
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -239,6 +245,8 @@ const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
+// D-9 错误态：考试列表加载失败时 UiErrorRetryPanel 重试 + 上报
+const examsLoadError = ref<unknown>(null)
 const keyword = ref('')
 const statusFilter = ref<ExamStatusCode | undefined>(undefined)
 
@@ -249,6 +257,7 @@ const statusFilter = ref<ExamStatusCode | undefined>(undefined)
  */
 const examProgressMap = ref<Map<string, MarkingProgressVO>>(new Map())
 const progressLoading = ref(false)
+const progressLoadError = ref('')
 
 /** 是否所有进度都已就绪，用于 KPI 数字"…"占位 */
 const progressReady = computed<boolean>(() => !progressLoading.value)
@@ -288,7 +297,7 @@ const statMetrics = computed(() => {
     {
       key: 'pending-review',
       label: '待批改任务',
-      value: progressReady.value ? a.pendingReview : '…',
+      value: progressLoadError.value ? '不可用' : progressReady.value ? a.pendingReview : '…',
       unit: '份',
       helper: '同题剩余 PENDING 总数',
       tone: (a.pendingReview > 0 ? 'orange' : 'gray') as BadgeTone,
@@ -298,7 +307,7 @@ const statMetrics = computed(() => {
     {
       key: 'in-progress',
       label: '我的进行中批阅',
-      value: progressReady.value ? a.inProgressReview : '…',
+      value: progressLoadError.value ? '不可用' : progressReady.value ? a.inProgressReview : '…',
       unit: '份',
       helper: '已认领尚未提交',
       tone: (a.inProgressReview > 0 ? 'blue' : 'gray') as BadgeTone,
@@ -308,7 +317,11 @@ const statMetrics = computed(() => {
     {
       key: 'unconfirmed',
       label: '待确认成绩',
-      value: progressReady.value ? a.unconfirmedQuestionGrades : '…',
+      value: progressLoadError.value
+        ? '不可用'
+        : progressReady.value
+          ? a.unconfirmedQuestionGrades
+          : '…',
       unit: '题',
       helper: '需进入「成绩确认」推进',
       tone: (a.unconfirmedQuestionGrades > 0 ? 'purple' : 'gray') as BadgeTone,
@@ -318,7 +331,7 @@ const statMetrics = computed(() => {
     {
       key: 'scan-attention',
       label: '扫描异常待处理',
-      value: progressReady.value ? a.scanAttention : '…',
+      value: progressLoadError.value ? '不可用' : progressReady.value ? a.scanAttention : '…',
       unit: '条',
       helper: '影响阅卷推进',
       tone: (a.scanAttention > 0 ? 'red' : 'gray') as BadgeTone,
@@ -398,9 +411,10 @@ const stages = computed<WorkbenchStage[]>(() => {
       key: 'review',
       title: '批阅工作区',
       status: inferStageStatus(() => a.pendingReview > 0 || a.inProgressReview > 0),
-      statusText: a.pendingReview + a.inProgressReview > 0
-        ? `${a.pendingReview + a.inProgressReview} 份待批 / 进行中`
-        : '主阅 / 他阅 / 进度',
+      statusText:
+        a.pendingReview + a.inProgressReview > 0
+          ? `${a.pendingReview + a.inProgressReview} 份待批 / 进行中`
+          : '主阅 / 他阅 / 进度',
     },
     {
       key: 'quality',
@@ -412,16 +426,17 @@ const stages = computed<WorkbenchStage[]>(() => {
       key: 'publish',
       title: '成绩发布',
       status: inferStageStatus(() => a.unconfirmedQuestionGrades > 0),
-      statusText: a.unconfirmedQuestionGrades > 0
-        ? `${a.unconfirmedQuestionGrades} 题待确认`
-        : '确认 / 发布 / 导出',
+      statusText:
+        a.unconfirmedQuestionGrades > 0
+          ? `${a.unconfirmedQuestionGrades} 题待确认`
+          : '确认 / 发布 / 导出',
     },
     { key: 'archive', title: '考后归档', status: 'pending', statusText: '归档 / 鉴定 / 销毁' },
   ]
 })
 
 /** 是否需要展示「需立即关注」红色横幅 */
-const urgentBanner = computed<{ title: string, description: string } | null>(() => {
+const urgentBanner = computed<{ title: string; description: string } | null>(() => {
   const a = aggregate.value
   if (a.scanAttention > 0) {
     return {
@@ -445,6 +460,7 @@ function formatTime(value?: string): string {
 
 async function loadExams(): Promise<void> {
   loading.value = true
+  examsLoadError.value = null
   try {
     const result = await pageExams({
       pageNum: pageNum.value,
@@ -454,24 +470,21 @@ async function loadExams(): Promise<void> {
     })
     exams.value = result.list ?? []
     total.value = result.total ?? 0
-  }
-  catch (error) {
+  } catch (error) {
+    examsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
   // 列表就位后即可启动跨考试进度聚合（独立 loading 不阻塞表格渲染）
   await loadAggregateProgress()
 }
 
-/**
- * D-1 聚合加载：对当前页所有 ACTIVE 考试并行调用 getMarkingProgress，
- * 失败的考试静默跳过（不阻塞其他考试），保证 KPI 至少显示局部聚合结果。
- */
+/** D-1 聚合加载：任一考试进度失败都暴露诊断，避免任务 KPI 呈现伪完整状态。 */
 async function loadAggregateProgress(): Promise<void> {
-  const activeExams = exams.value.filter(e => e.status === 'ACTIVE')
+  const activeExams = exams.value.filter((e) => e.status === 'ACTIVE')
+  progressLoadError.value = ''
   if (activeExams.length === 0) {
     examProgressMap.value = new Map()
     return
@@ -479,7 +492,7 @@ async function loadAggregateProgress(): Promise<void> {
   progressLoading.value = true
   try {
     const settled = await Promise.allSettled(
-      activeExams.map(e => getMarkingProgress(e.examId).then(p => ({ examId: e.examId, p }))),
+      activeExams.map((e) => getMarkingProgress(e.examId).then((p) => ({ examId: e.examId, p }))),
     )
     const nextMap = new Map<string, MarkingProgressVO>()
     for (const r of settled) {
@@ -488,8 +501,11 @@ async function loadAggregateProgress(): Promise<void> {
       }
     }
     examProgressMap.value = nextMap
-  }
-  finally {
+    const failedCount = settled.length - nextMap.size
+    if (failedCount > 0) {
+      progressLoadError.value = `${failedCount} 场进行中考试的批改进度未能读取，今日待办和阶段状态可能不完整，请刷新后重试。`
+    }
+  } finally {
     progressLoading.value = false
   }
 }
@@ -648,7 +664,9 @@ onMounted(() => {
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: var(--dp-radius-md, 6px);
     background: var(--dp-surface, #fff);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
 
     &:hover {
       border-color: rgba(22, 119, 255, 0.3);

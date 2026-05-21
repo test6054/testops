@@ -16,7 +16,16 @@
       </a-space>
     </template>
 
+    <!-- D-9 错误态：批量更正计划加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      title="批量更正计划加载失败"
+      compact
+      @retry="reload"
+    />
     <UiDataTable
+      v-else
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -36,19 +45,13 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'approvedTime'">
-          {{
-            fmt(rows[index].approvedTime)
-          }}
+          {{ fmt(rows[index].approvedTime) }}
         </template>
         <template v-else-if="column.key === 'executedTime'">
-          {{
-            fmt(rows[index].executedTime)
-          }}
+          {{ fmt(rows[index].executedTime) }}
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{
-            fmt(rows[index].createTime)
-          }}
+          {{ fmt(rows[index].createTime) }}
         </template>
       </template>
     </UiDataTable>
@@ -62,24 +65,26 @@ import type {
   ExamBatchGradeCorrectionPlanVO,
   GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { ref, watch } from 'vue'
 import {
   BATCH_CORRECTION_STATUS_COLOR,
   BATCH_CORRECTION_STATUS_LABEL,
   GRADE_CORRECTION_TYPE_LABEL,
   listBatchCorrectionPlans,
 } from '@/apis/mark/grade-review'
-import { UiDataTable } from '@/components/ui-guide/ui'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { ref, watch } from 'vue'
+import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const rows = ref<ExamBatchGradeCorrectionPlanVO[]>([])
 const loading = ref(false)
+// D-9 错误态：批量更正计划加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 const statusFilter = ref<BatchCorrectionApprovalStatusCode | undefined>(undefined)
 
 // 从后端枚举 LABEL 对象直接派生 select options。
@@ -108,6 +113,7 @@ const columns: ColumnType<ExamBatchGradeCorrectionPlanVO>[] = [
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
+  loadError.value = null
   try {
     rows.value = await listBatchCorrectionPlans({
       examId: props.examId,
@@ -115,6 +121,7 @@ async function reload(): Promise<void> {
     })
   } catch (e) {
     rows.value = []
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '批量更正计划加载失败')
   } finally {
     loading.value = false

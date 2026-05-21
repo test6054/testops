@@ -34,8 +34,17 @@
         <UiBadge tone="blue">{{ appealableExams.length }} 场</UiBadge>
       </template>
 
+      <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
+      <UiErrorRetryPanel
+        v-if="examsLoadError"
+        :error="examsLoadError"
+        title="考试列表加载失败"
+        :show-report="false"
+        compact
+        @retry="loadExams"
+      />
       <UiEmpty
-        v-if="!loadingExams && appealableExams.length === 0"
+        v-else-if="!loadingExams && appealableExams.length === 0"
         description="当前没有可发起复核的考试（仅成绩已发布且复核窗口处于开放状态的考试可发起复核）"
       />
 
@@ -108,8 +117,17 @@
         </a-space>
       </template>
 
+      <!-- D-9 错误态：复核申请加载失败时提供重试入口 -->
+      <UiErrorRetryPanel
+        v-if="requestsLoadError"
+        :error="requestsLoadError"
+        title="复核申请加载失败"
+        :show-report="false"
+        compact
+        @retry="loadRequests"
+      />
       <UiEmpty
-        v-if="!loadingRequests && filteredRequests.length === 0"
+        v-else-if="!loadingRequests && filteredRequests.length === 0"
         description="暂无复核申请记录"
       />
 
@@ -131,7 +149,9 @@
               <strong class="exam-cell__title">{{
                 filteredRequests[index].examName || '未命名考试'
               }}</strong>
-              <span v-if="filteredRequests[index].examNo" class="exam-cell__sub">编号：{{ filteredRequests[index].examNo }}</span>
+              <span v-if="filteredRequests[index].examNo" class="exam-cell__sub"
+                >编号：{{ filteredRequests[index].examNo }}</span
+              >
             </div>
           </template>
           <template v-else-if="column.key === 'reasonType'">
@@ -227,7 +247,14 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
+import {
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -239,13 +266,14 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'StudentAppeal' })
@@ -259,6 +287,9 @@ const submitModalOpen = ref(false)
 
 const exams = ref<StudentExamItemVO[]>([])
 const requests = ref<StudentGradeReviewRequestItemVO[]>([])
+// D-9 错误态：考试 / 复核申请列表加载失败时 UiErrorRetryPanel 重试入口
+const examsLoadError = ref<unknown>(null)
+const requestsLoadError = ref<unknown>(null)
 const selectedExamId = ref<string | undefined>(undefined)
 const filterExamId = ref<string | undefined>(undefined)
 const filterStatus = ref<GradeReviewRequestStatusCode | undefined>(undefined)
@@ -279,7 +310,7 @@ const reasonTypeOptions = [
   { value: 'OTHER', label: '其他' },
 ]
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -325,6 +356,7 @@ const columns = [
 
 async function loadExams() {
   loadingExams.value = true
+  examsLoadError.value = null
   try {
     exams.value = await listMyExams()
     if (!selectedExamId.value && appealableExams.value.length > 0) {
@@ -336,6 +368,7 @@ async function loadExams() {
       }
     }
   } catch (error) {
+    examsLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载考试失败'
     message.error(msg)
   } finally {
@@ -350,11 +383,13 @@ async function loadExams() {
  */
 async function loadRequests() {
   loadingRequests.value = true
+  requestsLoadError.value = null
   try {
     requests.value = await listMyReviewRequests({
       requestStatus: filterStatus.value,
     })
   } catch (error) {
+    requestsLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载复核申请失败'
     message.error(msg)
   } finally {

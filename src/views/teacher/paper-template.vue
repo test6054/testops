@@ -34,7 +34,20 @@
       </div>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="paper-template-page__empty" />
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请选择需要维护的考试"
+      class="paper-template-page__empty"
+    />
+
+    <!-- D-9 错误态：题目模板加载遇到非“未配置”错误时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-else-if="templateLoadError"
+      :error="templateLoadError"
+      title="题目模板加载失败"
+      :helper="`考试 ID：${selectedExamId}`"
+      @retry="loadTemplate"
+    />
 
     <a-spin v-else :spinning="loading">
       <UiCard class="info-card">
@@ -144,9 +157,7 @@
               />
             </template>
             <template v-else-if="column.key === 'pageActions'">
-              <a-button type="link" danger size="small" @click="removePage(index)">
-                删除
-              </a-button>
+              <a-button type="link" danger size="small" @click="removePage(index)"> 删除 </a-button>
             </template>
           </template>
         </UiDataTable>
@@ -217,20 +228,10 @@
               />
             </template>
             <template v-else-if="column.key === 'x'">
-              <a-input-number
-                v-model:value="record.x"
-                :min="0"
-                size="small"
-                style="width: 100%"
-              />
+              <a-input-number v-model:value="record.x" :min="0" size="small" style="width: 100%" />
             </template>
             <template v-else-if="column.key === 'y'">
-              <a-input-number
-                v-model:value="record.y"
-                :min="0"
-                size="small"
-                style="width: 100%"
-              />
+              <a-input-number v-model:value="record.y" :min="0" size="small" style="width: 100%" />
             </template>
             <template v-else-if="column.key === 'width'">
               <a-input-number
@@ -355,6 +356,7 @@ import type {
   ExamQuestionTemplatePayload,
   ExamQuestionTemplateVO,
 } from '@/apis/mark/exam'
+import { getExamTemplate, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -364,8 +366,15 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
-import { getExamTemplate, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -420,7 +429,7 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -429,6 +438,8 @@ const questions = reactive<QuestionRow[]>([])
 
 const loading = ref(false)
 const saving = ref(false)
+// D-9 错误态：仅当后端返回非“未配置”类错误时才上报（“未配置模板”是合法空态）
+const templateLoadError = ref<unknown>(null)
 
 const totalScore = computed(() =>
   questions.reduce((sum, row) => sum + (Number(row.fullScore) || 0), 0).toFixed(2),
@@ -502,18 +513,18 @@ function applyTemplate(
 async function loadTemplate(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
+  templateLoadError.value = null
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
     applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages ?? [], tpl.questions ?? [])
   } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
-    if (
-      errMsg
-      && !errMsg.includes('未找到')
-      && !errMsg.includes('不存在')
-      && !errMsg.includes('当前模板')
-    ) {
+    const isNotConfigured =
+      errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
+    if (errMsg && !isNotConfigured) {
+      // 真实加载失败：D-9 错误态 + 警告提示
+      templateLoadError.value = error
       message.warning(`当前考试尚未配置完整模板：${errMsg}`)
     }
   } finally {

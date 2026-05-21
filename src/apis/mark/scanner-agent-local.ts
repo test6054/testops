@@ -1,3 +1,5 @@
+import type { ExamScannerKioskContextVO, ScannerKioskScanMode } from './scanner-kiosk'
+
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 
 export interface LocalApiResult<T> {
@@ -61,13 +63,26 @@ export interface ScannerAgentActivateResponse {
   tenantId?: string
   deviceName: string
   gatewayBaseUrl: string
+  /** edu-mark 整批推送相对路径（multipart 网络扫描仪入口） */
   pushUrl: string
+  /** edu-mark 逐页 JSON 上报相对路径（断点续传主链） */
   pushPageUrl: string
+  /** edu-mark 批次提交相对路径 */
   pushCommitUrl: string
+  /** 设备级 push token（edu-mark 验签） */
   pushToken: string
-  authorizationHeader: string
+  /** edu-mark 推送接口 Authorization 请求头模板，例如 "Bearer xxx" */
+  pushAuthorizationHeader: string
+  /** edu-storage 扫描页上传相对路径 */
+  storageUploadUrl: string
+  /** edu-storage 设备级上传 token（edu-storage 验签） */
+  storageUploadToken: string
+  /** edu-storage 上传 Authorization 请求头模板 */
+  storageUploadAuthorizationHeader: string
   defaultExamId?: string
   defaultClassIds: string[]
+  /** 一体机 Kiosk 锁是否启用 */
+  kioskLockEnabled?: boolean
   activatedAt: string
   minimumAgentVersion: string
   latestAgentVersion: string
@@ -104,16 +119,12 @@ function tryParseBusyError(message: string): ScannerBusyError | null {
 }
 
 export interface StartScanJobRequest {
-  examId: string
-  declaredClassIds: string[]
-  scannerDeviceId: string
-  scannerStationId: string
+  context: ExamScannerKioskContextVO
   localScannerId: string
-  dpi: number
-  colorMode: 'COLOR' | 'GRAY' | 'LINEART'
-  duplexMode: 'SIMPLEX' | 'DUPLEX'
   expectedPages?: number
-  blankPageDetectionEnabled: boolean
+  scanMode: ScannerKioskScanMode
+  targetPageNo?: number
+  supplementReason?: string
 }
 
 export interface ScanPageInfo {
@@ -127,6 +138,9 @@ export interface ScanPageInfo {
 
 export interface ScanJobResponse {
   scanJobId: string
+  scanMode: ScannerKioskScanMode
+  targetPageNo?: number
+  supplementReason?: string
   status: string
   scannedPages: number
   uploadedPages: number
@@ -137,7 +151,9 @@ export interface ScanJobResponse {
 
 export function getLocalAgentBaseUrl() {
   const value = import.meta.env.VITE_SCANNER_AGENT_URL
-  return typeof value === 'string' && value.trim() ? value.trim().replace(/\/$/, '') : DEFAULT_AGENT_BASE_URL
+  return typeof value === 'string' && value.trim()
+    ? value.trim().replace(/\/$/, '')
+    : DEFAULT_AGENT_BASE_URL
 }
 
 export async function getAgentHealth(): Promise<AgentHealthResponse> {
@@ -148,8 +164,13 @@ export async function listLocalScanners(): Promise<ScannerListResponse> {
   return await localAgentGet<ScannerListResponse>('/api/scanners')
 }
 
-export async function activateLocalAgent(payload: ActivateLocalAgentRequest): Promise<ScannerAgentActivateResponse> {
-  return await localAgentPost<ScannerAgentActivateResponse, ActivateLocalAgentRequest>('/api/agent/activate', payload)
+export async function activateLocalAgent(
+  payload: ActivateLocalAgentRequest,
+): Promise<ScannerAgentActivateResponse> {
+  return await localAgentPost<ScannerAgentActivateResponse, ActivateLocalAgentRequest>(
+    '/api/agent/activate',
+    payload,
+  )
 }
 
 export async function unbindLocalAgent(): Promise<{ success: boolean }> {
@@ -165,11 +186,17 @@ export async function getScanJob(scanJobId: string): Promise<ScanJobResponse> {
 }
 
 export async function cancelScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, Record<string, never>>(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`, {})
+  return await localAgentPost<ScanJobResponse, Record<string, never>>(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`,
+    {},
+  )
 }
 
 export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, Record<string, never>>(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`, {})
+  return await localAgentPost<ScanJobResponse, Record<string, never>>(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`,
+    {},
+  )
 }
 
 export function getPageImageUrl(scanJobId: string, pageNo: number): string {
@@ -207,7 +234,8 @@ async function parseLocalAgentResponse<T>(response: Response): Promise<T> {
     throw new Error(text || `本地 Scanner Agent 响应格式错误：${response.status}`)
   }
   if (!response.ok || !result.success || result.data === undefined) {
-    const message = result.message || `本地 Scanner Agent 请求失败：${result.code || response.status}`
+    const message =
+      result.message || `本地 Scanner Agent 请求失败：${result.code || response.status}`
     const busyError = tryParseBusyError(message)
     if (busyError) {
       throw busyError

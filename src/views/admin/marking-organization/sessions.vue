@@ -28,8 +28,16 @@
       </div>
     </template>
 
+    <!-- D-9 错误态：阅卷组织 / 会话列表加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="sessionsLoadError"
+      :error="sessionsLoadError"
+      title="阅卷会话加载失败"
+      :helper="`组织 ID：${organizationId}`"
+      @retry="reloadAll"
+    />
     <UiEmpty
-      v-if="!organization && !loading"
+      v-else-if="!organization && !loading"
       description="未找到阅卷组织"
       class="org-sessions__empty"
     />
@@ -70,15 +78,12 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import type {
   FormalSessionVO,
   MarkingOrganizationVO,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   getOrganizationById,
   listFormalSessions,
@@ -86,10 +91,13 @@ import {
   MARKING_ORGANIZATION_STATUS_LABEL as ORG_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE as ORG_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
-import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import FormalSessionPanel from './components/FormalSessionPanel.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })
@@ -102,6 +110,8 @@ const organization = ref<MarkingOrganizationVO | null>(null)
 const trialSessions = ref<TrialSessionVO[]>([])
 const formalSessions = ref<FormalSessionVO[]>([])
 const loading = ref(false)
+// D-9 错误态：任一加载失败时 UiErrorRetryPanel 重试 + 上报
+const sessionsLoadError = ref<unknown>(null)
 const filterGroupId = ref<string | undefined>(undefined)
 
 const groupOptions = computed(() =>
@@ -117,6 +127,7 @@ async function loadOrganization(): Promise<void> {
     organization.value = await getOrganizationById({ organizationId: organizationId.value })
   } catch (error) {
     organization.value = null
+    sessionsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '阅卷组织加载失败'
     message.error(errMsg)
   }
@@ -125,12 +136,14 @@ async function loadOrganization(): Promise<void> {
 async function loadTrialSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
+    sessionsLoadError.value = null
     trialSessions.value = await listTrialSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
   } catch (error) {
     trialSessions.value = []
+    sessionsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '试评会话列表加载失败'
     message.error(errMsg)
   }
@@ -139,12 +152,14 @@ async function loadTrialSessions(): Promise<void> {
 async function loadFormalSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
+    sessionsLoadError.value = null
     formalSessions.value = await listFormalSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
   } catch (error) {
     formalSessions.value = []
+    sessionsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '正评会话列表加载失败'
     message.error(errMsg)
   }
@@ -152,6 +167,8 @@ async function loadFormalSessions(): Promise<void> {
 
 async function reloadAll(): Promise<void> {
   loading.value = true
+  // D-9：重试前清空错误态，让 UiErrorRetryPanel 在新失败时重新渲染
+  sessionsLoadError.value = null
   try {
     await Promise.all([loadOrganization(), loadTrialSessions(), loadFormalSessions()])
   } finally {

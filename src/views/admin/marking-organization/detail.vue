@@ -25,8 +25,16 @@
       </div>
     </template>
 
+    <!-- D-9 错误态：阅卷组织详情加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="organizationLoadError"
+      :error="organizationLoadError"
+      title="阅卷组织加载失败"
+      :helper="`组织 ID：${organizationId}`"
+      @retry="loadOrganization"
+    />
     <UiEmpty
-      v-if="!organization && !loading"
+      v-else-if="!organization && !loading"
       description="未找到阅卷组织"
       class="org-detail__empty"
     />
@@ -314,6 +322,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   AllocationPolicySavePayload,
   AnonymousTokenPolicyCode,
@@ -326,16 +335,6 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySavePayload,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { getExamTemplate } from '@/apis/mark/exam'
 import {
   ANONYMOUS_TOKEN_POLICY_LABEL,
   getOrganizationById,
@@ -350,7 +349,16 @@ import {
   saveRecyclePolicy,
   updateOrganizationStatus,
 } from '@/apis/mark/marking-organization'
-import { UiButton, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getExamTemplate } from '@/apis/mark/exam'
+import { UiButton, UiDataTable, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
@@ -363,6 +371,8 @@ const organizationId = computed(() => String(route.params.organizationId || ''))
 const organization = ref<MarkingOrganizationVO | null>(null)
 const examId = computed(() => String(organization.value?.examId || ''))
 const loading = ref(false)
+// D-9 错误态：仅当后端返回非“未找到”类错误时才上报
+const organizationLoadError = ref<unknown>(null)
 const activeTab = ref<'info' | 'policy' | 'status'>('info')
 
 const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
@@ -373,10 +383,16 @@ async function loadOrganization(): Promise<void> {
     return
   }
   loading.value = true
+  organizationLoadError.value = null
   try {
     organization.value = await getOrganizationById({ organizationId: organizationId.value })
-  } catch {
+  } catch (error) {
     organization.value = null
+    const errMsg = error instanceof Error ? error.message : ''
+    const isNotFound = errMsg.includes('未找到') || errMsg.includes('不存在')
+    if (errMsg && !isNotFound) {
+      organizationLoadError.value = error
+    }
   } finally {
     loading.value = false
   }

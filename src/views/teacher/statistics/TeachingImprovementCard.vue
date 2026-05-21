@@ -10,7 +10,15 @@
     </template>
 
     <a-spin :spinning="loading">
-      <a-empty v-if="!record" description="暂无 AI 教学改进建议，可点击重新生成。" />
+      <!-- D-9 错误态：教学改进建议加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        title="AI 教学改进建议加载失败"
+        compact
+        @retry="reload"
+      />
+      <a-empty v-else-if="!record" description="暂无 AI 教学改进建议，可点击重新生成。" />
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -64,24 +72,27 @@
 
 <script lang="ts" setup>
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
   generateTeachingImprovement,
   getLatestTeachingImprovement,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
+import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'TeachingImprovementCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
 const generating = ref(false)
+// D-9 错误态：教学改进建议加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 
 const parsedItems = computed(() => {
   if (!record.value?.improvementItems) return []
@@ -96,10 +107,12 @@ const parsedItems = computed(() => {
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
+  loadError.value = null
   try {
     record.value = await getLatestTeachingImprovement(props.examId)
   } catch (e) {
     record.value = null
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '加载失败')
   } finally {
     loading.value = false

@@ -20,9 +20,6 @@ import type {
   ProcessEvaluationRecordSavePayload,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
@@ -33,6 +30,10 @@ import {
   processNodeApi,
   processRecordApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import {
   AssessmentItemSelector,
   CourseGoalSelector,
@@ -204,8 +205,8 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    records.value
-      = (await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value)) || []
+    records.value =
+      (await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value)) || []
   } finally {
     recordsLoading.value = false
   }
@@ -291,68 +292,32 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
   })
 }
 
-/* ========== 批量录入 ========== */
+/* ========== 节点记录 Excel 导入（同步） ========== */
 
-const batchRecordVisible = ref(false)
-const batchRecordSubmitting = ref(false)
-const batchRecordText = ref('')
-const BATCH_RECORD_PLACEHOLDER = `[
-  {
-    "studentNumber": "2021001",
-    "rawScore": 85,
-    "convertedScore": 0.85,
-    "sourceMode": "MANUAL_CONFIRMATION",
-    "notes": "课堂汇报得分"
-  },
-  {
-    "studentNumber": "2021002",
-    "rawScore": 92,
-    "convertedScore": 0.92
-  }
-]`
+const importExcelVisible = ref(false)
 
-function openBatchRecord() {
+function openImportExcel() {
   if (!selectedNode.value) return
   if (selectedNode.value.confirmationStatus !== 'CONFIRMED') {
-    message.warning('节点未确认，无法批量录入')
+    message.warning('节点未确认，无法导入数据')
     return
   }
-  batchRecordText.value = ''
-  batchRecordVisible.value = true
+  importExcelVisible.value = true
 }
 
-async function submitBatchRecord() {
-  if (!selectedNode.value) return
-  const text = batchRecordText.value.trim()
-  if (!text) {
-    message.error('请粘贴记录 JSON 数组')
-    return
+function importTemplateApi() {
+  return processRecordApi.downloadTemplate()
+}
+
+function importUploadApi(file: File) {
+  if (!selectedNode.value) {
+    return Promise.reject(new Error('未选定节点'))
   }
-  let parsed: ProcessEvaluationRecordSavePayload[]
-  try {
-    const raw = JSON.parse(text)
-    if (!Array.isArray(raw)) throw new Error('根节点必须是数组')
-    parsed = raw.map((item, idx) => {
-      if (item.rawScore == null) throw new Error(`第 ${idx + 1} 行缺少 rawScore`)
-      return {
-        nodeId: selectedNode.value!.id,
-        qualityCourseId: qualityStore.currentQualityCourseId,
-        ...item,
-      } as ProcessEvaluationRecordSavePayload
-    })
-  } catch (err) {
-    message.error(`JSON 解析失败：${(err as Error).message}`)
-    return
-  }
-  batchRecordSubmitting.value = true
-  try {
-    await processRecordApi.batchCreate(selectedNode.value.id, parsed)
-    message.success(`已批量录入 ${parsed.length} 条记录`)
-    batchRecordVisible.value = false
-    await loadRecords()
-  } finally {
-    batchRecordSubmitting.value = false
-  }
+  return processRecordApi.importExcel(selectedNode.value.id, file)
+}
+
+async function handleImportFinished() {
+  await loadRecords()
 }
 
 /* ========== 按课程目标查已确认记录 ========== */
@@ -376,8 +341,8 @@ async function queryConfirmedByGoal() {
   }
   confirmedByGoalLoading.value = true
   try {
-    confirmedByGoalRecords.value
-      = (await processRecordApi.listConfirmedByCourseGoal(
+    confirmedByGoalRecords.value =
+      (await processRecordApi.listConfirmedByCourseGoal(
         qualityStore.currentQualityCourseId,
         confirmedByGoalId.value,
       )) || []
@@ -599,7 +564,12 @@ function handleCourseChange(courseId: string | null) {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <UiButton variant="ghost" status="danger" size="sm" @click.stop="handleNodeDelete(record)">
+                  <UiButton
+                    variant="ghost"
+                    status="danger"
+                    size="sm"
+                    @click.stop="handleNodeDelete(record)"
+                  >
                     删除
                   </UiButton>
                 </a-space>
@@ -639,9 +609,9 @@ function handleCourseChange(courseId: string | null) {
                 variant="outline"
                 size="sm"
                 :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
-                @click="openBatchRecord"
+                @click="openImportExcel"
               >
-                批量录入
+                Excel 导入
               </UiButton>
               <UiButton variant="outline" size="sm" @click="openConfirmedByGoal">
                 按课程目标查有效
@@ -879,29 +849,20 @@ function handleCourseChange(courseId: string | null) {
       </a-form>
     </a-modal>
 
-    <!-- 批量录入 -->
-    <a-modal
-      v-model:open="batchRecordVisible"
-      :title="`批量录入节点记录（${selectedNode?.nodeName || ''}）`"
-      :confirm-loading="batchRecordSubmitting"
-      width="780px"
-      ok-text="提交批量录入"
-      @ok="submitBatchRecord"
-    >
-      <a-alert
-        type="info"
-        show-icon
-        message="粘贴 JSON 数组，每条为一个节点记录"
-        description="必填：rawScore；可选：studentNumber、studentUserId、convertedScore、evidenceFileId、sourceMode、notes。nodeId 与 qualityCourseId 由页面自动填入。"
-        style="margin-bottom: 12px"
-      />
-      <a-textarea
-        v-model:value="batchRecordText"
-        :rows="14"
-        :placeholder="BATCH_RECORD_PLACEHOLDER"
-        :style="{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
-      />
-    </a-modal>
+    <!-- Excel 批量导入节点记录 -->
+    <QualityImportPanel
+      v-model:open="importExcelVisible"
+      :title="`Excel 导入节点记录（${selectedNode?.nodeName || ''}）`"
+      accept=".xlsx,.xls"
+      accept-hint="支持 .xlsx / .xls 格式"
+      description-title="模板说明"
+      description="Excel 列顺序：学号 | 姓名（可选） | 原始得分 | 换算得分（可选 0-1） | 备注（可选）。学号和原始得分必填；行级校验失败的行不会入库，可在导入完成后下载错误清单修订后重传。"
+      template-button-label="下载节点记录模板"
+      template-file-name="过程性评价记录导入模板.xlsx"
+      :template-api="importTemplateApi"
+      :upload-api="importUploadApi"
+      @imported="handleImportFinished"
+    />
 
     <!-- 按课程目标查已确认记录 -->
     <a-modal

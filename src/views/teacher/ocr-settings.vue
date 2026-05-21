@@ -6,12 +6,6 @@ import type {
   MarkOcrProviderTypeCode,
   MarkOcrRecognizeVO,
 } from '@/apis/mark/ocr'
-import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
@@ -22,7 +16,13 @@ import {
   recognizeMarkOcr,
   saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
-import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'TeacherOcrSettings' })
@@ -43,6 +43,8 @@ interface DebugFormState {
 const configFormRef = ref<FormInstance | null>(null)
 const debugFormRef = ref<FormInstance | null>(null)
 const loading = ref(false)
+// D-9 错误态：OCR 配置加载失败时 UiErrorRetryPanel 重试 + 上报
+const configLoadError = ref<unknown>(null)
 const saving = ref(false)
 const checking = ref(false)
 const recognizing = ref(false)
@@ -92,8 +94,13 @@ function applyConfig(config: MarkOcrConfigVO): void {
 
 async function loadConfig(): Promise<void> {
   loading.value = true
+  configLoadError.value = null
   try {
     applyConfig(await getCurrentMarkOcrConfig())
+  } catch (error) {
+    configLoadError.value = error
+    const errMsg = error instanceof Error ? error.message : 'OCR 配置加载失败'
+    message.error(errMsg)
   } finally {
     loading.value = false
   }
@@ -153,9 +160,7 @@ onMounted(loadConfig)
     <template #context>
       <div class="ocr-settings__context">
         <div class="ocr-settings__context-info">
-          <h2 class="ocr-settings__title">
-            阅卷交付 - OCR 设置与调用检测
-          </h2>
+          <h2 class="ocr-settings__title">阅卷交付 - OCR 设置与调用检测</h2>
           <UiTag :tone="currentConfig?.enabled ? 'green' : 'gray'" size="sm">
             {{ currentConfig?.enabled ? '已启用' : '未启用' }}
           </UiTag>
@@ -172,7 +177,15 @@ onMounted(loadConfig)
       </div>
     </template>
 
-    <div class="ocr-grid">
+    <!-- D-9 错误态：OCR 配置加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="configLoadError"
+      :error="configLoadError"
+      title="OCR 配置加载失败"
+      @retry="loadConfig"
+    />
+
+    <div v-else class="ocr-grid">
       <UiCard class="info-card">
         <template #title>
           <ApiOutlined />
@@ -181,11 +194,7 @@ onMounted(loadConfig)
         <a-form ref="configFormRef" :model="configForm" :rules="configRules" layout="vertical">
           <a-form-item label="当前渠道" name="providerType" required>
             <a-radio-group v-model:value="configForm.providerType" class="provider-group">
-              <a-radio-button
-                v-for="item in providerOptions"
-                :key="item.value"
-                :value="item.value"
-              >
+              <a-radio-button v-for="item in providerOptions" :key="item.value" :value="item.value">
                 {{ item.label }}
               </a-radio-button>
             </a-radio-group>

@@ -30,6 +30,15 @@
 
     <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
 
+    <!-- D-9 错误态：名册加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-else-if="rosterLoadError"
+      :error="rosterLoadError"
+      title="考生名册加载失败"
+      :helper="`考试 ID：${selectedExamId}`"
+      @retry="loadRoster"
+    />
+
     <a-spin v-else :spinning="loading">
       <UiCard class="info-card">
         <template #title>
@@ -103,11 +112,7 @@
               <a-input v-model:value="record.studentNo" placeholder="学号（必填）" size="small" />
             </template>
             <template v-else-if="column.key === 'studentName'">
-              <a-input
-                v-model:value="record.studentName"
-                placeholder="姓名（必填）"
-                size="small"
-              />
+              <a-input v-model:value="record.studentName" placeholder="姓名（必填）" size="small" />
             </template>
             <template v-else-if="column.key === 'studentUserId'">
               <a-input
@@ -124,9 +129,7 @@
               <UiTag v-else tone="orange" size="sm">待保存</UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton size="sm" variant="ghost" @click="removeCandidate(index)">
-                删除
-              </UiButton>
+              <UiButton size="sm" variant="ghost" @click="removeCandidate(index)"> 删除 </UiButton>
             </template>
           </template>
         </UiDataTable>
@@ -162,6 +165,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateRosterPayload } from '@/apis/mark/exam'
+import { getExamDetail, listExamCandidates, saveExamScope } from '@/apis/mark/exam'
 import ImportOutlined from '@ant-design/icons-vue/ImportOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
@@ -169,8 +173,15 @@ import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { getExamDetail, listExamCandidates, saveExamScope } from '@/apis/mark/exam'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -206,6 +217,8 @@ const newClassIdInput = ref('')
 
 const loading = ref(false)
 const saving = ref(false)
+// D-9 错误态：名册加载失败时 UiErrorRetryPanel 重试 + 上报
+const rosterLoadError = ref<unknown>(null)
 
 const pendingCount = computed(() => candidates.filter((c) => !c.candidateRosterId).length)
 
@@ -221,6 +234,7 @@ const columns: ColumnType<CandidateRow>[] = [
 async function loadRoster(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
+  rosterLoadError.value = null
   try {
     const [detail, list] = await Promise.all([
       getExamDetail(selectedExamId.value),
@@ -239,6 +253,7 @@ async function loadRoster(): Promise<void> {
       })
     })
   } catch (error) {
+    rosterLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '加载名册失败'
     message.error(errMsg)
   } finally {

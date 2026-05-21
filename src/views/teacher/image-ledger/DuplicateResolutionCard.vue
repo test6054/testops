@@ -11,7 +11,16 @@
         <template #icon><ReloadOutlined /></template>刷新
       </a-button>
     </template>
+    <!-- D-9 错误态：重复列表加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      title="重复列表加载失败"
+      compact
+      @retry="reload"
+    />
     <UiDataTable
+      v-else
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -45,15 +54,15 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_COLOR,
   DUPLICATE_RESOLUTION_STATUS_LABEL,
   listPendingDuplicates,
 } from '@/apis/mark/image-ledger'
-import { UiDataTable } from '@/components/ui-guide/ui'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'DuplicateResolutionCard' })
 
@@ -63,6 +72,8 @@ defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()
 
 const rows = ref<ExamPaperDuplicateResolutionVO[]>([])
 const loading = ref(false)
+// D-9 错误态：重复列表加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 
 const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
   { title: '页面哈希', dataIndex: 'pageHash', key: 'pageHash', width: 220, ellipsis: true },
@@ -101,10 +112,12 @@ const pendingCount = computed(
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
+  loadError.value = null
   try {
     rows.value = await listPendingDuplicates({ examId: props.examId })
   } catch (e) {
     rows.value = []
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '重复列表加载失败')
   } finally {
     loading.value = false

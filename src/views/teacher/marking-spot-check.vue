@@ -30,7 +30,7 @@
     <UiAlertStrip
       tone="info"
       title="抽检处理说明"
-      description="此处展示当前账号作为「被抽检教师」尚未处理的抽检记录（PENDING / IN_PROGRESS）。点击行尾「处理结论」可内联完成结论提交，无需再手输抽检记录ID。"
+      description="此处展示当前账号作为「被抽检教师」尚未处理的抽检记录（PENDING / IN_PROGRESS）。点击行尾「处理结论」可直接完成结论提交。"
       dense
       class="spot-check-page__alert"
     />
@@ -44,8 +44,16 @@
         </UiBadge>
       </template>
 
+      <!-- D-9 错误态：待处理抽检加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="listLoadError"
+        :error="listLoadError"
+        title="待处理抽检加载失败"
+        compact
+        @retry="loadList"
+      />
       <UiEmpty
-        v-if="!loading && pendingItems.length === 0"
+        v-else-if="!loading && pendingItems.length === 0"
         description="当前没有待处理的抽检任务"
       />
 
@@ -87,9 +95,7 @@
             {{ formatTime(pendingItems[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" @click="openHandleModal(pendingItems[index])">
-              处理结论
-            </UiButton>
+            <UiButton size="sm" @click="openHandleModal(pendingItems[index])"> 处理结论 </UiButton>
           </template>
         </template>
       </UiDataTable>
@@ -174,13 +180,13 @@ import type {
   MyPendingSpotCheckStatusCode,
   SpotCheckConclusionCode,
 } from '@/apis/mark/marking-quality'
+import { handleSpotCheck, listMyPendingSpotChecks } from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { handleSpotCheck, listMyPendingSpotChecks } from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,
@@ -188,6 +194,7 @@ import {
   UiCard,
   UiDataTable,
   UiEmpty,
+  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
@@ -208,26 +215,28 @@ const {
 // 题号 / 考试名缓存：从 exams 列表派生
 function examNameOf(examId?: string): string {
   if (!examId) return '-'
-  const exam = exams.value.find(item => item.examId === examId)
+  const exam = exams.value.find((item) => item.examId === examId)
   return exam?.examName || `考试 #${examId}`
 }
 
 // ─── 待处理抽检列表 ──────────────────────────────────────
 const pendingItems = ref<MyPendingSpotCheckItemVO[]>([])
 const loading = ref(false)
+// D-9 错误态：待处理抽检加载失败时 UiErrorRetryPanel 重试 + 上报
+const listLoadError = ref<unknown>(null)
 
 async function loadList(): Promise<void> {
   loading.value = true
+  listLoadError.value = null
   try {
     pendingItems.value = await listMyPendingSpotChecks({
       examId: selectedExamId.value || undefined,
     })
-  }
-  catch (error) {
+  } catch (error) {
+    listLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载待处理抽检失败')
     pendingItems.value = []
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -303,14 +312,12 @@ async function submitConclusion(): Promise<void> {
     })
     message.success('已提交抽检处理结论')
     // 从本地列表移除已处理项，避免重复显示直至下次 loadList
-    pendingItems.value = pendingItems.value.filter(item => item.id !== targetItem.value?.id)
+    pendingItems.value = pendingItems.value.filter((item) => item.id !== targetItem.value?.id)
     modalOpen.value = false
     targetItem.value = null
-  }
-  catch (error) {
+  } catch (error) {
     message.error(error instanceof Error ? error.message : '处理抽检结论失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }

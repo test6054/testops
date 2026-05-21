@@ -57,7 +57,16 @@
           </UiBadge>
         </template>
 
-        <UiEmpty v-if="!loading && tasks.length === 0" description="当前无驳回任务" />
+        <!-- D-9 错误态：驳回任务加载失败时提供重试 + 上报入口 -->
+        <UiErrorRetryPanel
+          v-if="tasksLoadError"
+          :error="tasksLoadError"
+          title="驳回任务加载失败"
+          :helper="`考试 ID：${selectedExamId}`"
+          compact
+          @retry="loadTasks"
+        />
+        <UiEmpty v-else-if="!loading && tasks.length === 0" description="当前无驳回任务" />
 
         <UiDataTable
           v-else
@@ -134,9 +143,18 @@ import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
@@ -159,6 +177,8 @@ const currentUserId = computed(() => userStore.userInfo.userId || '')
 
 const markTaskStore = useMarkTaskStore()
 const { reviewTasks: tasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
+// D-9 错误态：驳回任务加载失败时 UiErrorRetryPanel 重试 + 上报
+const tasksLoadError = ref<unknown>(null)
 
 const columns: ColumnType<ReviewTaskItemVO>[] = [
   { title: '匿名号', key: 'anonymousNo', width: 140 },
@@ -174,12 +194,12 @@ const columns: ColumnType<ReviewTaskItemVO>[] = [
 const kpiItems = computed(() => {
   const total = tasks.value.length
   const distinctQuestions = new Set(
-    tasks.value.map(t => t.questionNo || t.questionTemplateId).filter(Boolean),
+    tasks.value.map((t) => t.questionNo || t.questionTemplateId).filter(Boolean),
   ).size
   const assignedToMe = currentUserId.value
-    ? tasks.value.filter(t => t.assignedTeacherUserId === currentUserId.value).length
+    ? tasks.value.filter((t) => t.assignedTeacherUserId === currentUserId.value).length
     : 0
-  const unassigned = tasks.value.filter(t => !t.assignedTeacherUserId).length
+  const unassigned = tasks.value.filter((t) => !t.assignedTeacherUserId).length
   return [
     {
       key: 'total',
@@ -240,12 +260,14 @@ function getSuggestedRatioTone(record: ReviewTaskItemVO): BadgeTone {
 
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
+  tasksLoadError.value = null
   try {
     await markTaskStore.loadReviewTasks({
       examId: selectedExamId.value,
       status: 'REJECTED',
     })
   } catch (error) {
+    tasksLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '驳回任务加载失败'
     message.error(errMsg)
   } finally {

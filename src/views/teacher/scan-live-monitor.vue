@@ -3,9 +3,7 @@
     <template #context>
       <div class="scan-live__context">
         <div class="scan-live__context-info">
-          <h2 class="scan-live__title">
-            阅卷交付 - 扫描识别实时工作台
-          </h2>
+          <h2 class="scan-live__title">阅卷交付 - 扫描识别实时工作台</h2>
           <a-select
             :value="selectedExamId"
             class="scan-live__exam-select"
@@ -38,12 +36,7 @@
     <!-- 实时监控概览 -->
     <div class="scan-live__overview">
       <div class="scan-live__health-ring">
-        <UiRingProgress
-          :percent="healthPercent"
-          size="lg"
-          :color="healthColor"
-          label="健康度"
-        />
+        <UiRingProgress :percent="healthPercent" size="lg" :color="healthColor" label="健康度" />
       </div>
       <UiStatPanel
         :items="statMetrics"
@@ -84,12 +77,8 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <UiButton size="sm" @click="handleFilterChange">
-              应用过滤
-            </UiButton>
-            <UiButton size="sm" variant="outline" @click="resetFilter">
-              重置
-            </UiButton>
+            <UiButton size="sm" @click="handleFilterChange"> 应用过滤 </UiButton>
+            <UiButton size="sm" variant="outline" @click="resetFilter"> 重置 </UiButton>
           </a-space>
         </a-form-item>
       </a-form>
@@ -113,7 +102,11 @@
       />
 
       <div v-else class="scan-live__station-grid">
-        <article v-for="group in groupedByStation" :key="group.stationId" class="scan-live__station">
+        <article
+          v-for="group in groupedByStation"
+          :key="group.stationId"
+          class="scan-live__station"
+        >
           <header class="scan-live__station-header">
             <DesktopOutlined />
             <span class="scan-live__station-id">{{ group.stationId }}</span>
@@ -156,26 +149,20 @@
       :title="`扫描事件 #${currentEvent?.eventId ?? ''}`"
       :width="520"
       hide-footer
-      @update:open="(v: boolean) => drawerOpen = v"
+      @update:open="(v: boolean) => (drawerOpen = v)"
       @close="drawerOpen = false"
     >
       <a-descriptions v-if="currentEvent" :column="1" size="small" bordered>
         <a-descriptions-item label="事件ID">{{ currentEvent.eventId }}</a-descriptions-item>
         <a-descriptions-item label="考试ID">{{ currentEvent.examId || '-' }}</a-descriptions-item>
         <a-descriptions-item label="工位机">
-          {{
-            currentEvent.scannerStationId || '-'
-          }}
+          {{ currentEvent.scannerStationId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描设备">
-          {{
-            currentEvent.scannerDeviceId || '-'
-          }}
+          {{ currentEvent.scannerDeviceId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="设备IP">
-          {{
-            currentEvent.scannerIp || '-'
-          }}
+          {{ currentEvent.scannerIp || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="页数">{{ currentEvent.pageCount ?? 0 }}</a-descriptions-item>
         <a-descriptions-item label="状态">
@@ -184,47 +171,30 @@
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="扫描批次ID">
-          {{
-            currentEvent.scanBatchId || '-'
-          }}
+          {{ currentEvent.scanBatchId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描端报告ID">
-          {{
-            currentEvent.reportId || '-'
-          }}
+          {{ currentEvent.reportId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描端批次号">
-          {{
-            currentEvent.batchExternalNo || '-'
-          }}
+          {{ currentEvent.batchExternalNo || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="来源文件">
           <span v-if="!currentEvent.sourceFileIds?.length" class="scan-live__hint">-</span>
           <a-space v-else wrap>
-            <UiTag
-              v-for="fileId in currentEvent.sourceFileIds"
-              :key="fileId"
-              tone="blue"
-              size="sm"
-            >
+            <UiTag v-for="fileId in currentEvent.sourceFileIds" :key="fileId" tone="blue" size="sm">
               {{ fileId }}
             </UiTag>
           </a-space>
         </a-descriptions-item>
         <a-descriptions-item label="扫描开始时间">
-          {{
-            formatTime(currentEvent.scanStartTime)
-          }}
+          {{ formatTime(currentEvent.scanStartTime) }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描结束时间">
-          {{
-            formatTime(currentEvent.scanEndTime)
-          }}
+          {{ formatTime(currentEvent.scanEndTime) }}
         </a-descriptions-item>
         <a-descriptions-item label="入库时间">
-          {{
-            formatTime(currentEvent.createTime)
-          }}
+          {{ formatTime(currentEvent.createTime) }}
         </a-descriptions-item>
       </a-descriptions>
     </UiDrawer>
@@ -245,7 +215,15 @@ import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { UiBadge, UiButton, UiDrawer, UiEmpty, UiRingProgress, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiBadge,
+  UiButton,
+  UiDrawer,
+  UiEmpty,
+  UiRingProgress,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
@@ -294,8 +272,8 @@ const connectionLabel = computed(() => {
   return '未连接'
 })
 
-const batchedCount = computed(() => events.value.filter(e => e.status === 'BATCHED').length)
-const pendingCount = computed(() => events.value.filter(e => e.status !== 'BATCHED').length)
+const batchedCount = computed(() => events.value.filter((e) => e.status === 'BATCHED').length)
+const pendingCount = computed(() => events.value.filter((e) => e.status !== 'BATCHED').length)
 
 const totalPageCount = computed(() => events.value.reduce((sum, e) => sum + (e.pageCount ?? 0), 0))
 
@@ -317,12 +295,36 @@ const healthColor = computed(() => {
 })
 
 const statMetrics = computed(() => [
-  { label: '当前事件数', value: events.value.length, unit: '条', tone: events.value.length > 0 ? 'blue' as const : 'gray' as const },
-  { label: '已聚合', value: batchedCount.value, unit: '条', tone: batchedCount.value > 0 ? 'green' as const : 'gray' as const },
-  { label: '待聚合', value: pendingCount.value, unit: '条', tone: pendingCount.value > 0 ? 'orange' as const : 'gray' as const },
+  {
+    label: '当前事件数',
+    value: events.value.length,
+    unit: '条',
+    tone: events.value.length > 0 ? ('blue' as const) : ('gray' as const),
+  },
+  {
+    label: '已聚合',
+    value: batchedCount.value,
+    unit: '条',
+    tone: batchedCount.value > 0 ? ('green' as const) : ('gray' as const),
+  },
+  {
+    label: '待聚合',
+    value: pendingCount.value,
+    unit: '条',
+    tone: pendingCount.value > 0 ? ('orange' as const) : ('gray' as const),
+  },
   { label: '总页数', value: totalPageCount.value, unit: '页', tone: 'blue' as const },
-  { label: '工位机数', value: groupedByStation.value.length, unit: '个', tone: groupedByStation.value.length > 0 ? 'blue' as const : 'gray' as const },
-  { label: '连接状态', value: connectionLabel.value, tone: connectionTone.value as 'green' | 'orange' | 'red' | 'gray' },
+  {
+    label: '工位机数',
+    value: groupedByStation.value.length,
+    unit: '个',
+    tone: groupedByStation.value.length > 0 ? ('blue' as const) : ('gray' as const),
+  },
+  {
+    label: '连接状态',
+    value: connectionLabel.value,
+    tone: connectionTone.value as 'green' | 'orange' | 'red' | 'gray',
+  },
 ])
 
 /** 按工位机分组当前事件，工位机内部按 events 顺序（最新在前） */
@@ -351,7 +353,7 @@ function openDetail(event: ScanLiveEventVO): void {
 }
 
 async function onExamChange(value: unknown, option: unknown): Promise<void> {
-  // 兼容 useMarkExamSelector 签名：必须把第二个参数传进去保持其内部 URL 同步逻辑
+  // 按 useMarkExamSelector 的同步参数传递选中考试，保持内部 URL 同步逻辑
   onExamSelectorChange(value as never, option as never)
   await refresh()
 }

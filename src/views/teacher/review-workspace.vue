@@ -3,12 +3,8 @@
     <template #context>
       <div class="review-workspace__context">
         <div class="review-workspace__context-info">
-          <UiButton variant="ghost" size="sm" @click="goBack">
-            返回
-          </UiButton>
-          <h2 class="review-workspace__title">
-            阅卷交付 - 沉浸式批阅工作区
-          </h2>
+          <UiButton variant="ghost" size="sm" @click="goBack"> 返回 </UiButton>
+          <h2 class="review-workspace__title">阅卷交付 - 沉浸式批阅工作区</h2>
           <UiTag v-if="detail?.anonymousNo" tone="gray" size="sm">
             {{ detail.anonymousNo }}
           </UiTag>
@@ -42,15 +38,32 @@
       class="review-workspace__empty"
     />
 
+    <!-- D-9 错误态：任务详情加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-else-if="taskLoadError"
+      :error="taskLoadError"
+      title="复核任务详情加载失败"
+      :helper="`任务 ID：${taskId} · 考试 ID：${examId}`"
+      @retry="loadTask"
+    />
+
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
-      <UiStatPanel v-if="detail" :items="statMetrics" :columns="3" variant="grid" compact class="review-workspace__signals" />
+      <UiStatPanel
+        v-if="detail"
+        :items="statMetrics"
+        :columns="3"
+        variant="grid"
+        compact
+        class="review-workspace__signals"
+      />
 
       <!-- B-7 流水线进度：当前任务在同题队列中的位次 -->
       <div v-if="queueTotal > 0" class="review-workspace__queue-progress">
         <div class="review-workspace__queue-progress-meta">
           <span class="review-workspace__queue-progress-title">本题批阅流水线</span>
           <span class="review-workspace__queue-progress-text">
-            当前第 {{ currentQueueIndex }} 份，剩余 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待批
+            当前第 {{ currentQueueIndex }} 份，剩余
+            {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待批
           </span>
         </div>
         <a-progress
@@ -60,6 +73,14 @@
           :status="queueProgressPercent >= 100 ? 'success' : 'active'"
         />
       </div>
+      <UiAlertStrip
+        v-if="queueLoadError"
+        tone="error"
+        title="同题流水线加载失败"
+        :description="queueLoadError"
+        dense
+        class="review-workspace__alert"
+      />
 
       <a-row :gutter="16" class="review-workspace__row">
         <!-- 左：切片图 + 识别答案 + AI 诊断 -->
@@ -117,7 +138,14 @@
             </template>
             <a-spin :spinning="analysisLoading">
               <UiAlertStrip
-                v-if="!analysisLoading && !questionAnalysis"
+                v-if="analysisLoadError"
+                tone="error"
+                title="题目质量参考加载失败"
+                :description="analysisLoadError"
+                dense
+              />
+              <UiAlertStrip
+                v-else-if="!analysisLoading && !questionAnalysis"
                 tone="info"
                 title="尚未生成本题质量分析"
                 description="教师可在「成绩统计 → 题目质量分析」中为本场考试一键生成；生成后此处会展示难度、区分度与分数分布。"
@@ -134,7 +162,9 @@
                 </a-descriptions-item>
                 <a-descriptions-item label="均分">
                   {{ formatNum(questionAnalysis.avgScore) }}
-                  <span class="review-workspace__hint">/ {{ questionAnalysis.fullScore ?? '-' }}</span>
+                  <span class="review-workspace__hint"
+                    >/ {{ questionAnalysis.fullScore ?? '-' }}</span
+                  >
                 </a-descriptions-item>
                 <a-descriptions-item label="标准差">
                   {{ formatNum(questionAnalysis.scoreStddev) }}
@@ -146,7 +176,8 @@
                   {{ formatNum(questionAnalysis.discriminationIndex) }}
                 </a-descriptions-item>
                 <a-descriptions-item label="满分 / 零分">
-                  {{ questionAnalysis.fullScoreCount ?? 0 }} / {{ questionAnalysis.zeroScoreCount ?? 0 }}
+                  {{ questionAnalysis.fullScoreCount ?? 0 }} /
+                  {{ questionAnalysis.zeroScoreCount ?? 0 }}
                 </a-descriptions-item>
               </a-descriptions>
             </a-spin>
@@ -241,8 +272,12 @@
                     </template>
                     <template #description>
                       <div class="review-workspace__annotation-meta">
-                        <span v-if="item.anchorText" class="review-workspace__hint">锚点：{{ item.anchorText }}</span>
-                        <span class="review-workspace__hint">{{ formatTime(item.createTime) }}</span>
+                        <span v-if="item.anchorText" class="review-workspace__hint"
+                          >锚点：{{ item.anchorText }}</span
+                        >
+                        <span class="review-workspace__hint">{{
+                          formatTime(item.createTime)
+                        }}</span>
                       </div>
                     </template>
                   </a-list-item-meta>
@@ -265,9 +300,7 @@
         </span>
       </div>
       <div class="review-workspace__sticky-actions">
-        <UiButton variant="ghost" size="md" @click="goBack">
-          返回
-        </UiButton>
+        <UiButton variant="ghost" size="md" @click="goBack"> 返回 </UiButton>
         <UiButton
           variant="outline"
           size="md"
@@ -294,7 +327,15 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationVO, ReviewTaskDetailVO, ReviewTaskItemVO } from '@/apis/mark/exam'
+import {
+  claimReviewTask,
+  confirmQuestionGrade,
+  getReviewTaskDetail,
+  listAnnotations,
+  listReviewTasks,
+} from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -307,14 +348,15 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
-  claimReviewTask,
-  confirmQuestionGrade,
-  getReviewTaskDetail,
-  listAnnotations,
-  listReviewTasks,
-} from '@/apis/mark/exam'
-import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
-import { UiAlertStrip, UiBadge, UiButton, UiCard, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+  UiAlertStrip,
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 
@@ -344,10 +386,10 @@ const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
 function reviewStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
+    value === 'PENDING' ||
+    value === 'IN_PROGRESS' ||
+    value === 'APPROVED' ||
+    value === 'REJECTED'
   ) {
     return STATUS_TONE[value]
   }
@@ -357,10 +399,10 @@ function reviewStatusTone(value: unknown): ToneCode {
 function reviewStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return ''
   if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
+    value === 'PENDING' ||
+    value === 'IN_PROGRESS' ||
+    value === 'APPROVED' ||
+    value === 'REJECTED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -376,8 +418,7 @@ const taskId = computed(() => (route.query.taskId ? String(route.query.taskId) :
 function goBack(): void {
   if (window.history.length > 1) {
     router.back()
-  }
-  else {
+  } else {
     void router.push({ name: 'TeacherMarkingOverview' })
   }
 }
@@ -385,6 +426,7 @@ function goBack(): void {
 // ─── 任务详情 ─────────────────────────────
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
+const taskLoadError = ref<unknown>(null)
 
 const canSubmit = computed(() => !!examId.value && !!taskId.value)
 
@@ -440,6 +482,7 @@ async function loadAnnotations(): Promise<void> {
 // ─── B-7 同题剩余任务队列（用于「提交并取下一份」流水线接力） ────────
 const reviewQueue = ref<ReviewTaskItemVO[]>([])
 const queueLoading = ref(false)
+const queueLoadError = ref('')
 
 /**
  * 加载当前考试 + 当前题目下仍可批阅的任务集合（PENDING + IN_PROGRESS）。
@@ -451,6 +494,7 @@ async function loadReviewQueue(): Promise<void> {
     return
   }
   queueLoading.value = true
+  queueLoadError.value = ''
   try {
     // 后端 ReviewTaskQueryPayload.status 可选；同题下分别拉 PENDING / IN_PROGRESS 后合并去重
     const [pending, inProgress] = await Promise.all([
@@ -470,8 +514,9 @@ async function loadReviewQueue(): Promise<void> {
       merged.set(item.reviewTaskId, item)
     }
     reviewQueue.value = Array.from(merged.values())
-  } catch {
-    // 队列加载失败不阻塞批改主流程；底部"取下一份"按钮会因为队列为空自动禁用
+  } catch (error) {
+    queueLoadError.value =
+      error instanceof Error ? error.message : '同题流水线加载失败，提交并取下一份暂不可用。'
     reviewQueue.value = []
   } finally {
     queueLoading.value = false
@@ -483,9 +528,7 @@ async function loadReviewQueue(): Promise<void> {
  */
 const currentQueueIndex = computed<number>(() => {
   if (!detail.value || reviewQueue.value.length === 0) return 0
-  const idx = reviewQueue.value.findIndex(
-    item => item.reviewTaskId === taskId.value,
-  )
+  const idx = reviewQueue.value.findIndex((item) => item.reviewTaskId === taskId.value)
   return idx >= 0 ? idx + 1 : 1
 })
 
@@ -506,6 +549,7 @@ const queueProgressPercent = computed<number>(() => {
 // ─── B-1 题目质量参考（注入批改决策环节） ────────────────────────
 const questionAnalysis = ref<ExamQuestionAnalysisRecordVO | null>(null)
 const analysisLoading = ref(false)
+const analysisLoadError = ref('')
 
 /**
  * 加载当前题目的质量分析快照（难度/区分度/均分/分布）。
@@ -518,6 +562,7 @@ async function loadQuestionAnalysis(): Promise<void> {
     return
   }
   analysisLoading.value = true
+  analysisLoadError.value = ''
   try {
     const list = await listQuestionAnalysis({
       examId: examId.value,
@@ -525,8 +570,8 @@ async function loadQuestionAnalysis(): Promise<void> {
     })
     // 后端按 questionTemplateId 过滤返回最多一条；取第一条作为当前题快照
     questionAnalysis.value = list[0] ?? null
-  } catch {
-    // 题目分析尚未生成时返回空对象或抛错都属于正常路径；UI 用 v-if 兜底
+  } catch (error) {
+    analysisLoadError.value = error instanceof Error ? error.message : '题目质量参考加载失败'
     questionAnalysis.value = null
   } finally {
     analysisLoading.value = false
@@ -534,7 +579,7 @@ async function loadQuestionAnalysis(): Promise<void> {
 }
 
 /** 难度系数文案 + 色调（难度区间参照教育测量学经验阈值） */
-const difficultyBadge = computed<{ label: string, tone: ToneCode } | null>(() => {
+const difficultyBadge = computed<{ label: string; tone: ToneCode } | null>(() => {
   const v = questionAnalysis.value?.difficultyIndex
   if (v == null) return null
   if (v < 0.3) return { label: '偏难', tone: 'red' }
@@ -543,7 +588,7 @@ const difficultyBadge = computed<{ label: string, tone: ToneCode } | null>(() =>
 })
 
 /** 区分度文案 + 色调（区分度 < 0.2 视为不足） */
-const discriminationBadge = computed<{ label: string, tone: ToneCode } | null>(() => {
+const discriminationBadge = computed<{ label: string; tone: ToneCode } | null>(() => {
   const v = questionAnalysis.value?.discriminationIndex
   if (v == null) return null
   if (v < 0.2) return { label: '区分度不足', tone: 'red' }
@@ -555,6 +600,7 @@ const discriminationBadge = computed<{ label: string, tone: ToneCode } | null>((
 async function loadTask(): Promise<void> {
   if (!canSubmit.value) return
   loading.value = true
+  taskLoadError.value = null
   try {
     detail.value = await getReviewTaskDetail({
       examId: examId.value,
@@ -565,20 +611,17 @@ async function loadTask(): Promise<void> {
       void loadSliceImage(detail.value.sliceFileId)
     }
     // 批注 + 题目质量分析 + 同题队列：并行加载，互不阻塞
-    await Promise.all([
-      loadAnnotations(),
-      loadQuestionAnalysis(),
-      loadReviewQueue(),
-    ])
+    await Promise.all([loadAnnotations(), loadQuestionAnalysis(), loadReviewQueue()])
     // 默认填充建议分（仅当表单空时；avoid 覆盖教师正在编辑的值）
     if (
-      gradeForm.finalScore === undefined
-      && detail.value?.suggestedScore !== undefined
-      && detail.value?.suggestedScore !== null
+      gradeForm.finalScore === undefined &&
+      detail.value?.suggestedScore !== undefined &&
+      detail.value?.suggestedScore !== null
     ) {
       gradeForm.finalScore = detail.value.suggestedScore
     }
   } catch (error) {
+    taskLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '任务详情加载失败'
     message.error(errMsg)
   } finally {
@@ -640,15 +683,15 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   if (!gradeFormRef.value) return
   try {
     await gradeFormRef.value.validate()
-  }
-  catch {
+  } catch {
     return
   }
   const fullScore = detail.value.fullScore
   const finalScore = gradeForm.finalScore
-  const ratio = (fullScore && fullScore > 0 && typeof finalScore === 'number')
-    ? `${Math.round((finalScore / fullScore) * 100)}%`
-    : '-'
+  const ratio =
+    fullScore && fullScore > 0 && typeof finalScore === 'number'
+      ? `${Math.round((finalScore / fullScore) * 100)}%`
+      : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚批阅会继续
   const remaining = Math.max(0, queueTotal.value - 1)
   const tailHint = advanceToNext
@@ -680,13 +723,11 @@ async function submitGrade(): Promise<boolean> {
       anchorText: gradeForm.anchorText?.trim() || undefined,
     })
     return true
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '确认批改失败'
     message.error(errMsg)
     return false
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -718,8 +759,9 @@ async function takeNextTask(): Promise<void> {
     await loadReviewQueue()
     const currentTaskId = taskId.value
     const candidate = reviewQueue.value.find(
-      item => item.reviewTaskId !== currentTaskId
-        && (item.status === 'PENDING' || item.status === 'IN_PROGRESS'),
+      (item) =>
+        item.reviewTaskId !== currentTaskId &&
+        (item.status === 'PENDING' || item.status === 'IN_PROGRESS'),
     )
     if (!candidate) {
       message.success('同题剩余任务批阅完毕，返回阅卷概览')
@@ -742,8 +784,7 @@ async function takeNextTask(): Promise<void> {
       },
     })
     // watch(examId, taskId) 会自动触发 loadTask，无需手动调用
-  }
-  catch (error) {
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : '取下一份任务失败'
     message.error(errMsg)
   }
@@ -755,9 +796,24 @@ const statMetrics = computed(() => {
   return [
     { label: '题号', value: d.questionNo ?? '-', tone: 'blue' as const },
     { label: '满分', value: d.fullScore ?? '-', unit: '分', tone: 'gray' as const },
-    { label: '建议得分', value: d.suggestedScore ?? '-', unit: '分', tone: (d.suggestedScore != null ? 'purple' : 'gray') as 'purple' | 'gray' },
-    { label: '当前填入', value: gradeForm.finalScore ?? '-', unit: '分', tone: (gradeForm.finalScore != null ? 'green' : 'orange') as 'green' | 'orange' },
-    { label: '批注记录', value: annotations.value.length, unit: '条', tone: (annotations.value.length > 0 ? 'blue' : 'gray') as 'blue' | 'gray' },
+    {
+      label: '建议得分',
+      value: d.suggestedScore ?? '-',
+      unit: '分',
+      tone: (d.suggestedScore != null ? 'purple' : 'gray') as 'purple' | 'gray',
+    },
+    {
+      label: '当前填入',
+      value: gradeForm.finalScore ?? '-',
+      unit: '分',
+      tone: (gradeForm.finalScore != null ? 'green' : 'orange') as 'green' | 'orange',
+    },
+    {
+      label: '批注记录',
+      value: annotations.value.length,
+      unit: '条',
+      tone: (annotations.value.length > 0 ? 'blue' : 'gray') as 'blue' | 'gray',
+    },
     { label: '状态', value: reviewStatusLabel(d.status) || '-', tone: reviewStatusTone(d.status) },
   ]
 })

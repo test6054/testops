@@ -97,7 +97,16 @@
       </template>
 
       <a-spin :spinning="loading">
-        <UiEmpty v-if="!loading && exams.length === 0" description="您当前没有任何考试记录" />
+        <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
+        <UiErrorRetryPanel
+          v-if="examsLoadError"
+          :error="examsLoadError"
+          title="考试列表加载失败"
+          :show-report="false"
+          compact
+          @retry="loadExams"
+        />
+        <UiEmpty v-else-if="!loading && exams.length === 0" description="您当前没有任何考试记录" />
 
         <div v-else class="exam-card-list">
           <article
@@ -202,6 +211,12 @@
 
 <script lang="ts" setup>
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -213,18 +228,22 @@ import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-} from '@/apis/mark/student-exam'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'StudentScore' })
 
 const router = useRouter()
 const loading = ref(false)
+// D-9 错误态：学生考试列表加载失败时 UiErrorRetryPanel 重试（学生侧不提供上报入口）
+const examsLoadError = ref<unknown>(null)
 const exams = ref<StudentExamItemVO[]>([])
 
 const latestPublished = computed<StudentExamItemVO | null>(() => {
@@ -262,7 +281,7 @@ const unpublishedCount = computed<number>(() => {
 })
 
 /** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
   const latest = list[0].finalScore
@@ -361,9 +380,11 @@ const insightItems = computed(() => {
 
 async function loadExams() {
   loading.value = true
+  examsLoadError.value = null
   try {
     exams.value = await listMyExams()
   } catch (error) {
+    examsLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载考试失败'
     message.error(msg)
   } finally {

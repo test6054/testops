@@ -33,8 +33,16 @@
       </div>
     </template>
 
+    <!-- D-9 错误态：复核进度加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="selectedExamId && progressLoadError"
+      :error="progressLoadError"
+      title="复核进度加载失败"
+      :helper="`考试 ID：${selectedExamId}`"
+      @retry="loadAll"
+    />
     <UiEmpty
-      v-if="!selectedExamId"
+      v-else-if="!selectedExamId"
       description="请选择一场考试以查看复核进度"
       class="progress-page__empty"
     />
@@ -70,7 +78,9 @@
                 </div>
                 <div>
                   <span class="meta-label">可阅卷试卷：</span>
-                  <a-typography-text strong>{{ progress?.gradablePaperCount ?? 0 }}</a-typography-text>
+                  <a-typography-text strong>{{
+                    progress?.gradablePaperCount ?? 0
+                  }}</a-typography-text>
                   <span class="meta-hint">（已绑定身份，完成率分母真源）</span>
                 </div>
               </div>
@@ -191,14 +201,22 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { MarkingProgressVO, ReviewTaskItemVO } from '@/apis/mark/exam'
+import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
-import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -235,6 +253,8 @@ const primaryColor = 'var(--ant-color-primary, #2563eb)'
 const progress = ref<MarkingProgressVO | null>(null)
 const tasks = ref<ReviewTaskItemVO[]>([])
 const loading = ref(false)
+// D-9 错误态：复核进度加载失败时 UiErrorRetryPanel 重试 + 上报
+const progressLoadError = ref<unknown>(null)
 
 /** 题目维度聚合行 */
 interface QuestionRow {
@@ -267,10 +287,10 @@ const statusBreakdown = computed(() => {
     // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄，零 as。
     const status = task.status
     if (
-      status === 'PENDING'
-      || status === 'IN_PROGRESS'
-      || status === 'APPROVED'
-      || status === 'REJECTED'
+      status === 'PENDING' ||
+      status === 'IN_PROGRESS' ||
+      status === 'APPROVED' ||
+      status === 'REJECTED'
     ) {
       counter[status]++
     }
@@ -339,6 +359,7 @@ const questionColumns: ColumnType<QuestionRow>[] = [
 async function loadAll(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
+  progressLoadError.value = null
   try {
     const [progressData, taskList] = await Promise.all([
       getMarkingProgress(selectedExamId.value),
@@ -347,6 +368,7 @@ async function loadAll(): Promise<void> {
     progress.value = progressData
     tasks.value = taskList
   } catch (error) {
+    progressLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '复核进度加载失败'
     message.error(errMsg)
   } finally {

@@ -71,7 +71,18 @@
             </a-space>
           </div>
 
-          <UiEmpty v-if="!logLoading && operationLogs.length === 0" description="暂无审计日志" />
+          <!-- D-9 错误态：审计日志加载失败时提供重试 + 上报入口 -->
+          <UiErrorRetryPanel
+            v-if="logsLoadError"
+            :error="logsLoadError"
+            title="审计日志加载失败"
+            compact
+            @retry="loadLogs"
+          />
+          <UiEmpty
+            v-else-if="!logLoading && operationLogs.length === 0"
+            description="暂无审计日志"
+          />
           <UiDataTable
             v-else
             :columns="logColumns"
@@ -129,7 +140,18 @@
             </a-space>
           </div>
 
-          <UiEmpty v-if="!incidentLoading && incidents.length === 0" description="暂无重大事件" />
+          <!-- D-9 错误态：重大事件加载失败时提供重试 + 上报入口 -->
+          <UiErrorRetryPanel
+            v-if="incidentsLoadError"
+            :error="incidentsLoadError"
+            title="重大事件加载失败"
+            compact
+            @retry="loadIncidents"
+          />
+          <UiEmpty
+            v-else-if="!incidentLoading && incidents.length === 0"
+            description="暂无重大事件"
+          />
           <UiDataTable
             v-else
             :columns="incidentColumns"
@@ -205,8 +227,16 @@
             </a-space>
           </div>
 
+          <!-- D-9 错误态：诊断样本加载失败时提供重试 + 上报入口 -->
+          <UiErrorRetryPanel
+            v-if="samplesLoadError"
+            :error="samplesLoadError"
+            title="诊断样本加载失败"
+            compact
+            @retry="loadDiagnosticSamples"
+          />
           <UiEmpty
-            v-if="!sampleLoading && diagnosticSamples.length === 0"
+            v-else-if="!sampleLoading && diagnosticSamples.length === 0"
             description="暂无诊断样本"
           />
           <UiDataTable
@@ -225,9 +255,9 @@
               <template v-if="column.key === 'sampleType'">
                 <UiTag tone="purple" size="sm">
                   {{
-                    DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || '']
-                      || record.sampleType
-                      || '-'
+                    DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || ''] ||
+                    record.sampleType ||
+                    '-'
                   }}
                 </UiTag>
               </template>
@@ -289,13 +319,6 @@
 
 <script lang="ts" setup>
 import type { DiagnosticSampleVO, OperationLogVO } from '@/apis/mark/admin-audit'
-import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -305,8 +328,23 @@ import {
   OPERATION_TYPE_LABEL,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
+import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -324,6 +362,7 @@ const activeTab = ref<'logs' | 'incidents' | 'diagnostic-samples'>('logs')
 
 // ─── 审计日志 ──────────────────────────────────
 const logLoading = ref(false)
+const logsLoadError = ref<unknown>(null)
 const operationLogs = ref<OperationLogVO[]>([])
 const logFilter = reactive<{ operationType?: string }>({})
 const operationTypeOptions = computed(() =>
@@ -342,12 +381,14 @@ const logColumns = [
 async function loadLogs() {
   if (!selectedExamId.value) return
   logLoading.value = true
+  logsLoadError.value = null
   try {
     operationLogs.value = await listOperationLogs({
       examId: selectedExamId.value,
       operationType: logFilter.operationType,
     })
   } catch (error) {
+    logsLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载审计日志失败'
     message.error(msg)
   } finally {
@@ -357,6 +398,7 @@ async function loadLogs() {
 
 // ─── 重大事件 ──────────────────────────────────
 const incidentLoading = ref(false)
+const incidentsLoadError = ref<unknown>(null)
 const incidents = ref<IncidentRecordVO[]>([])
 const incidentFilter = reactive({ unresolvedOnly: false })
 const incidentColumns = [
@@ -369,20 +411,18 @@ const incidentColumns = [
   { title: '解决时间', key: 'resolvedTime', dataIndex: 'resolvedTime', width: 170 },
   { title: '操作', key: 'actions', fixed: 'right' as const, width: 110 },
 ]
-const resolveModalOpen = ref(false)
-const resolving = ref(false)
-const resolvingIncident = ref<IncidentRecordVO | null>(null)
-const resolveNote = ref('')
 
 async function loadIncidents() {
   if (!selectedExamId.value) return
   incidentLoading.value = true
+  incidentsLoadError.value = null
   try {
     incidents.value = await listIncidents({
       examId: selectedExamId.value,
       unresolvedOnly: incidentFilter.unresolvedOnly,
     })
   } catch (error) {
+    incidentsLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载重大事件失败'
     message.error(msg)
   } finally {
@@ -390,25 +430,32 @@ async function loadIncidents() {
   }
 }
 
-function openResolveModal(record: IncidentRecordVO) {
-  resolvingIncident.value = record
+// ─── 解决重大事件弹窗 ──────────────────────────────────
+const resolveModalOpen = ref(false)
+const resolving = ref(false)
+const resolvingIncident = ref<IncidentRecordVO | null>(null)
+const resolveNote = ref('')
+
+function openResolveModal(incident: IncidentRecordVO) {
+  resolvingIncident.value = incident
   resolveNote.value = ''
   resolveModalOpen.value = true
 }
 
 async function submitResolve() {
   if (!resolvingIncident.value) return
-  if (!resolveNote.value.trim()) {
-    message.warning('请填写处置说明')
+  const note = resolveNote.value.trim()
+  if (note.length < 5) {
+    message.warning('处置说明至少 5 个字')
     return
   }
   resolving.value = true
   try {
     await resolveIncident({
       incidentId: resolvingIncident.value.id,
-      resolveNote: resolveNote.value.trim(),
+      resolveNote: note,
     })
-    message.success('事件已标记为解决')
+    message.success('事件已解决')
     resolveModalOpen.value = false
     await loadIncidents()
   } catch (error) {
@@ -421,6 +468,7 @@ async function submitResolve() {
 
 // ─── 诊断样本 ──────────────────────────────────
 const sampleLoading = ref(false)
+const samplesLoadError = ref<unknown>(null)
 const diagnosticSamples = ref<DiagnosticSampleVO[]>([])
 const sampleFilter = reactive<{ sampleType?: string }>({})
 const sampleColumns = [
@@ -436,12 +484,14 @@ const sampleColumns = [
 async function loadDiagnosticSamples() {
   if (!selectedExamId.value) return
   sampleLoading.value = true
+  samplesLoadError.value = null
   try {
     diagnosticSamples.value = await listDiagnosticSamples({
       examId: selectedExamId.value,
       sampleType: sampleFilter.sampleType?.trim() || undefined,
     })
   } catch (error) {
+    samplesLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载诊断样本失败'
     message.error(msg)
   } finally {

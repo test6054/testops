@@ -17,7 +17,16 @@
     <!-- 提交成功 -->
     <div v-else-if="submitted" class="d-survey__status d-survey__status--success">
       <div class="d-survey__icon d-survey__icon--success">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
       </div>
       <p class="d-survey__status-title">{{ thankYouMessage }}</p>
       <p class="d-survey__status-text">您的回答已成功提交，感谢参与！</p>
@@ -37,9 +46,11 @@
       <!-- 粘性进度条 -->
       <div class="d-survey__progress-wrap">
         <div class="d-survey__progress">
-          <div class="d-survey__progress-bar" :style="{ width: progressPercent + '%' }" />
+          <div class="d-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
         </div>
-        <span class="d-survey__progress-label">已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span>
+        <span class="d-survey__progress-label"
+          >已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span
+        >
       </div>
 
       <!-- 内容区 -->
@@ -52,34 +63,51 @@
 
           <!-- 截止时间 -->
           <div v-if="survey.endTime" class="d-survey__meta">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              width="14"
+              height="14"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
             <span>截止时间：{{ survey.endTime }}</span>
           </div>
 
           <!-- 身份信息 -->
           <div v-if="!survey.allowAnonymous" class="d-survey__identity">
             <div class="d-survey__identity-header">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                width="18"
+                height="18"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
               <span>填写人信息</span>
             </div>
             <div class="d-survey__identity-fields">
-              <div class="d-survey__field">
-                <label class="d-survey__field-label">姓名 <span class="d-survey__required-dot">*</span></label>
+              <div
+                v-for="field in survey.identityFields"
+                :key="field.fieldKey"
+                class="d-survey__field"
+              >
+                <label class="d-survey__field-label">
+                  {{ field.fieldLabel }}
+                  <span v-if="field.required" class="d-survey__required-dot">*</span>
+                </label>
                 <input
-                  v-model="formState.respondentName"
+                  v-model="identityValues[field.fieldKey]"
                   type="text"
                   class="d-survey__input"
-                  placeholder="请输入您的姓名"
-                  maxlength="100"
-                />
-              </div>
-              <div class="d-survey__field">
-                <label class="d-survey__field-label">联系方式</label>
-                <input
-                  v-model="formState.respondentContact"
-                  type="text"
-                  class="d-survey__input"
-                  placeholder="手机号或邮箱（选填）"
+                  :placeholder="`请输入${field.fieldLabel}`"
                   maxlength="200"
                 />
               </div>
@@ -89,7 +117,7 @@
           <!-- 题目列表 -->
           <div
             v-for="(item, index) in survey.items"
-            :key="item.id"
+            :key="item.itemToken"
             :ref="(el) => setItemRef(index, el as HTMLElement)"
             class="d-survey__item"
             :class="{
@@ -128,8 +156,10 @@
                     v-for="opt in getScaleOptions(item)"
                     :key="opt.value"
                     class="d-survey__scale-btn"
-                    :class="{ 'd-survey__scale-btn--active': answers[item.id] === String(opt.value) }"
-                    @click="answers[item.id] = String(opt.value)"
+                    :class="{
+                      'd-survey__scale-btn--active': answers[item.itemToken] === String(opt.value),
+                    }"
+                    @click="answers[item.itemToken] = String(opt.value)"
                   >
                     {{ opt.value }}
                   </button>
@@ -139,30 +169,46 @@
               <!-- 单选题 -->
               <div v-else-if="item.itemType === 'SINGLE_CHOICE'" class="d-survey__choices">
                 <button
-                  v-for="(opt, oi) in parseOptions(item.choiceOptions)"
-                  :key="opt"
+                  v-for="(opt, oi) in choiceOptionsOf(item)"
+                  :key="opt.optionValue"
                   class="d-survey__choice"
-                  :class="{ 'd-survey__choice--active': answers[item.id] === opt }"
-                  @click="answers[item.id] = opt"
+                  :class="{
+                    'd-survey__choice--active': answers[item.itemToken] === opt.optionValue,
+                  }"
+                  @click="answers[item.itemToken] = opt.optionValue"
                 >
                   <span class="d-survey__choice-letter">{{ String.fromCharCode(65 + oi) }}</span>
-                  <span class="d-survey__choice-text">{{ opt }}</span>
-                  <span v-if="answers[item.id] === opt" class="d-survey__choice-check">✓</span>
+                  <span class="d-survey__choice-text">{{ opt.optionLabel }}</span>
+                  <span
+                    v-if="answers[item.itemToken] === opt.optionValue"
+                    class="d-survey__choice-check"
+                  >
+                    ✓
+                  </span>
                 </button>
               </div>
 
               <!-- 多选题 -->
               <div v-else-if="item.itemType === 'MULTI_CHOICE'" class="d-survey__choices">
                 <button
-                  v-for="(opt, oi) in parseOptions(item.choiceOptions)"
-                  :key="opt"
+                  v-for="(opt, oi) in choiceOptionsOf(item)"
+                  :key="opt.optionValue"
                   class="d-survey__choice"
-                  :class="{ 'd-survey__choice--active': (multiAnswers[item.id] || []).includes(opt) }"
-                  @click="toggleMulti(item.id, opt)"
+                  :class="{
+                    'd-survey__choice--active': (multiAnswers[item.itemToken] || []).includes(
+                      opt.optionValue,
+                    ),
+                  }"
+                  @click="toggleMulti(item.itemToken, opt.optionValue)"
                 >
                   <span class="d-survey__choice-letter">{{ String.fromCharCode(65 + oi) }}</span>
-                  <span class="d-survey__choice-text">{{ opt }}</span>
-                  <span v-if="(multiAnswers[item.id] || []).includes(opt)" class="d-survey__choice-check">✓</span>
+                  <span class="d-survey__choice-text">{{ opt.optionLabel }}</span>
+                  <span
+                    v-if="(multiAnswers[item.itemToken] || []).includes(opt.optionValue)"
+                    class="d-survey__choice-check"
+                  >
+                    ✓
+                  </span>
                 </button>
                 <p class="d-survey__hint">可多选</p>
               </div>
@@ -170,13 +216,15 @@
               <!-- 开放文本 -->
               <div v-else-if="item.itemType === 'OPEN_TEXT'" class="d-survey__open">
                 <textarea
-                  v-model="openTexts[item.id]"
+                  v-model="openTexts[item.itemToken]"
                   class="d-survey__textarea"
                   rows="4"
                   placeholder="请输入您的回答…"
                   maxlength="2000"
                 />
-                <div class="d-survey__char-count">{{ (openTexts[item.id] || '').length }} / 2000</div>
+                <div class="d-survey__char-count">
+                  {{ (openTexts[item.itemToken] || '').length }} / 2000
+                </div>
               </div>
             </div>
           </div>
@@ -198,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
 import { useSurveyFill } from '@/composables/useSurveyFill'
 
 const {
@@ -208,7 +256,7 @@ const {
   submitted,
   submitting,
   thankYouMessage,
-  formState,
+  identityValues,
   answers,
   multiAnswers,
   openTexts,
@@ -217,7 +265,7 @@ const {
   progressPercent,
   isItemAnswered,
   getScaleOptions,
-  parseOptions,
+  choiceOptionsOf,
   findFirstUnansweredRequired,
   submitSurvey,
 } = useSurveyFill()
@@ -260,7 +308,9 @@ async function handleSubmit() {
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-    setTimeout(() => { shakingIndex.value = -1 }, 600)
+    setTimeout(() => {
+      shakingIndex.value = -1
+    }, 600)
     return
   }
   await submitSurvey()
@@ -274,7 +324,9 @@ async function handleSubmit() {
 .d-survey {
   min-height: 100vh;
   background: #f0f2f5;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -298,7 +350,9 @@ async function handleSubmit() {
 }
 
 @keyframes d-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .d-survey__icon {
@@ -322,7 +376,10 @@ async function handleSubmit() {
   background: #e8f5e9;
   color: #43a047;
 
-  svg { width: 36px; height: 36px; }
+  svg {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 .d-survey__status-title {
@@ -515,7 +572,9 @@ async function handleSubmit() {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
   }
 
-  &::placeholder { color: #bbb; }
+  &::placeholder {
+    color: #bbb;
+  }
 }
 
 /* --- 题目卡片 --- */
@@ -545,11 +604,22 @@ async function handleSubmit() {
 }
 
 @keyframes item-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 .d-survey__item-sidebar {
@@ -753,7 +823,9 @@ async function handleSubmit() {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
   }
 
-  &::placeholder { color: #bbb; }
+  &::placeholder {
+    color: #bbb;
+  }
 }
 
 .d-survey__char-count {

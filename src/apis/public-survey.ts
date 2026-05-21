@@ -13,34 +13,63 @@ export interface PublicSurveyVO {
   startTime?: string
   endTime?: string
   allowAnonymous?: boolean
-  requireIdentityFields?: string
+  identityFields: SurveyIdentityFieldVO[]
   items: PublicSurveyItemVO[]
 }
 
+export interface SurveyIdentityFieldVO {
+  fieldKey: string
+  fieldLabel: string
+  fieldType: string
+  required: boolean
+}
+
+export interface SurveyScaleLabelVO {
+  scaleValue: number
+  label: string
+}
+
+export interface SurveyChoiceOptionVO {
+  optionValue: string
+  optionLabel: string
+}
+
+export interface SurveyRespondentIdentityItemVO {
+  fieldKey: string
+  fieldValue: string
+}
+
+export interface SurveyRespondentIdentityVO {
+  fields: SurveyRespondentIdentityItemVO[]
+}
+
 export interface PublicSurveyItemVO {
-  id: string
+  itemToken: string
   itemCode: string
   itemText: string
   itemType: 'SCALE' | 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'OPEN_TEXT'
   scaleMin?: number
   scaleMax?: number
-  scaleLabels?: string
-  choiceOptions?: string
+  scaleLabels?: SurveyScaleLabelVO[]
+  choiceOptions?: SurveyChoiceOptionVO[]
   required: boolean
   sortOrder?: number
 }
 
 export interface PublicSurveySubmitPayload {
-  respondentName?: string
-  respondentContact?: string
-  respondentIdentity?: string
+  respondentIdentity?: SurveyRespondentIdentityVO
   answers: PublicSurveyAnswerItem[]
 }
 
 export interface PublicSurveyAnswerItem {
-  itemId: string
+  itemToken: string
   rawValue?: string
   openText?: string
+}
+
+export interface PublicSurveySubmitResultVO {
+  submissionId: string
+  thankYouMessage: string
 }
 
 const PUBLIC_SURVEY = '/api/public/survey'
@@ -49,5 +78,5 @@ export const publicSurveyApi = {
   getSurvey: (token: string) =>
     http.get<PublicSurveyVO>(`${PUBLIC_SURVEY}/${token}`),
   submit: (token: string, data: PublicSurveySubmitPayload) =>
-    http.post<string>(`${PUBLIC_SURVEY}/${token}/submit`, data),
+    http.post<PublicSurveySubmitResultVO>(`${PUBLIC_SURVEY}/${token}/submit`, data),
 }

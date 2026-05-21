@@ -80,7 +80,16 @@
           <UiBadge tone="blue">{{ tasks.length }} 条</UiBadge>
         </template>
 
-        <UiEmpty v-if="!loading && tasks.length === 0" description="暂无符合条件的任务" />
+        <!-- D-9 错误态：复核任务列表加载失败时提供重试 + 上报入口 -->
+        <UiErrorRetryPanel
+          v-if="tasksLoadError"
+          :error="tasksLoadError"
+          title="复核任务加载失败"
+          :helper="`考试 ID：${selectedExamId}`"
+          compact
+          @retry="loadTasks"
+        />
+        <UiEmpty v-else-if="!loading && tasks.length === 0" description="暂无符合条件的任务" />
 
         <UiDataTable
           v-else
@@ -107,8 +116,7 @@
             <template v-else-if="column.key === 'suggestedScore'">
               <span
                 v-if="
-                  tasks[index].suggestedScore !== undefined
-                    && tasks[index].suggestedScore !== null
+                  tasks[index].suggestedScore !== undefined && tasks[index].suggestedScore !== null
                 "
               >
                 {{ tasks[index].suggestedScore }}
@@ -182,7 +190,15 @@ import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
@@ -240,10 +256,10 @@ const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({ va
 function reviewStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
+    value === 'PENDING' ||
+    value === 'IN_PROGRESS' ||
+    value === 'APPROVED' ||
+    value === 'REJECTED'
   ) {
     return STATUS_TONE[value]
   }
@@ -253,10 +269,10 @@ function reviewStatusTone(value: unknown): ToneCode {
 function reviewStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '-'
   if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
+    value === 'PENDING' ||
+    value === 'IN_PROGRESS' ||
+    value === 'APPROVED' ||
+    value === 'REJECTED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -265,6 +281,8 @@ function reviewStatusLabel(value: unknown): string {
 
 const markTaskStore = useMarkTaskStore()
 const { reviewTasks: tasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
+// D-9 错误态：复核任务加载失败时 UiErrorRetryPanel 重试 + 上报
+const tasksLoadError = ref<unknown>(null)
 computed(() => {
   const counter: Record<ReviewTaskStatusCode, number> = {
     PENDING: 0,
@@ -276,10 +294,10 @@ computed(() => {
     // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄。
     const status = task.status
     if (
-      status === 'PENDING'
-      || status === 'IN_PROGRESS'
-      || status === 'APPROVED'
-      || status === 'REJECTED'
+      status === 'PENDING' ||
+      status === 'IN_PROGRESS' ||
+      status === 'APPROVED' ||
+      status === 'REJECTED'
     ) {
       counter[status]++
     }
@@ -309,6 +327,7 @@ function formatTime(value?: string): string {
 
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
+  tasksLoadError.value = null
   try {
     await markTaskStore.loadReviewTasks({
       examId: selectedExamId.value,
@@ -316,6 +335,7 @@ async function loadTasks(): Promise<void> {
       questionTemplateId: filterForm.questionTemplateId?.trim() || undefined,
     })
   } catch (error) {
+    tasksLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '复核任务加载失败'
     message.error(errMsg)
   } finally {

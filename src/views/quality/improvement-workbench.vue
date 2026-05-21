@@ -39,9 +39,6 @@ import type {
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -60,6 +57,9 @@ import {
   isAuditSupervisionType,
   isImprovementTaskStatus,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,
@@ -234,7 +234,7 @@ async function loadImprovementList() {
   }
 }
 
-function handleImprovementPageChange(payload: { current: number, pageSize: number }) {
+function handleImprovementPageChange(payload: { current: number; pageSize: number }) {
   improvementQuery.pageNum = payload.current
   improvementQuery.pageSize = payload.pageSize
   loadImprovementList()
@@ -390,9 +390,9 @@ async function handleImprovementAiSuggestion(record: ImprovementTaskVO) {
         qualityCourseId: record.qualityCourseId,
         achievementResultId: record.achievementResultId,
       })
-      message.success(`已提交 AI 任务 ${res.aiTaskId}`)
+      message.success(`已提交 AI 任务 ${res.taskId}`)
       // 启动轮询：后续 AI 任务中心 / 详情抽屉能同步看到状态跳转。
-      if (res.aiTaskId) aiTaskStore.startPolling(res.aiTaskId)
+      if (res.taskId) aiTaskStore.startPolling(res.taskId)
     },
   })
 }
@@ -494,7 +494,7 @@ async function loadIssueList() {
   }
 }
 
-function handleIssuePageChange(payload: { current: number, pageSize: number }) {
+function handleIssuePageChange(payload: { current: number; pageSize: number }) {
   issueQuery.pageNum = payload.current
   issueQuery.pageSize = payload.pageSize
   loadIssueList()
@@ -561,10 +561,10 @@ function openIssueEdit(record: AuditIssueVO) {
 
 async function submitIssueEditor() {
   if (
-    !issueEditor.issueCode.trim()
-    || !issueEditor.issueTitle.trim()
-    || !issueEditor.issueSource
-    || !issueEditor.severity
+    !issueEditor.issueCode.trim() ||
+    !issueEditor.issueTitle.trim() ||
+    !issueEditor.issueSource ||
+    !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -679,7 +679,7 @@ async function loadRectList() {
   }
 }
 
-function handleRectPageChange(payload: { current: number, pageSize: number }) {
+function handleRectPageChange(payload: { current: number; pageSize: number }) {
   rectQuery.pageNum = payload.current
   rectQuery.pageSize = payload.pageSize
   loadRectList()
@@ -726,11 +726,11 @@ function openRectEdit(record: AuditRectificationVO) {
 
 async function submitRectEditor() {
   if (
-    !rectEditor.auditIssueId
-    || !rectEditor.rectificationCode.trim()
-    || !rectEditor.rectificationTitle.trim()
-    || !rectEditor.ownerUserId
-    || !rectEditor.dueDate
+    !rectEditor.auditIssueId ||
+    !rectEditor.rectificationCode.trim() ||
+    !rectEditor.rectificationTitle.trim() ||
+    !rectEditor.ownerUserId ||
+    !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -878,7 +878,7 @@ async function loadSupList() {
   }
 }
 
-function handleSupPageChange(payload: { current: number, pageSize: number }) {
+function handleSupPageChange(payload: { current: number; pageSize: number }) {
   supQuery.pageNum = payload.current
   supQuery.pageSize = payload.pageSize
   loadSupList()
@@ -943,9 +943,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim()
-    || !supEditor.supervisionTitle.trim()
-    || !supEditor.supervisionType
+    !supEditor.supervisionCode.trim() ||
+    !supEditor.supervisionTitle.trim() ||
+    !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return
@@ -1205,10 +1205,10 @@ onMounted(async () => {
             <template #bodyCell="{ column, record, text }">
               <template
                 v-if="
-                  column.key === 'qualityCourseId'
-                    || column.key === 'ownerUserId'
-                    || column.key === 'ownerRole'
-                    || column.key === 'dueDate'
+                  column.key === 'qualityCourseId' ||
+                  column.key === 'ownerUserId' ||
+                  column.key === 'ownerRole' ||
+                  column.key === 'dueDate'
                 "
               >
                 {{ text || '-' }}
@@ -1363,7 +1363,12 @@ onMounted(async () => {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <UiButton variant="ghost" status="danger" size="sm" @click="handleIssueDelete(record)">
+                  <UiButton
+                    variant="ghost"
+                    status="danger"
+                    size="sm"
+                    @click="handleIssueDelete(record)"
+                  >
                     删除
                   </UiButton>
                 </a-space>
@@ -1495,7 +1500,12 @@ onMounted(async () => {
                   >
                     闭环
                   </UiButton>
-                  <UiButton variant="ghost" status="danger" size="sm" @click="handleRectDelete(record)">
+                  <UiButton
+                    variant="ghost"
+                    status="danger"
+                    size="sm"
+                    @click="handleRectDelete(record)"
+                  >
                     删除
                   </UiButton>
                 </a-space>
@@ -1578,7 +1588,12 @@ onMounted(async () => {
               <template v-else-if="column.key === 'actions'">
                 <a-space>
                   <UiButton variant="ghost" size="sm" @click="openSupEdit(record)"> 编辑 </UiButton>
-                  <UiButton variant="ghost" status="danger" size="sm" @click="handleSupDelete(record)">
+                  <UiButton
+                    variant="ghost"
+                    status="danger"
+                    size="sm"
+                    @click="handleSupDelete(record)"
+                  >
                     删除
                   </UiButton>
                 </a-space>

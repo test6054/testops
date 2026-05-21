@@ -17,7 +17,16 @@
     <!-- 提交成功 -->
     <div v-else-if="submitted" class="m-survey__status m-survey__status--success">
       <div class="m-survey__icon m-survey__icon--success">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
       </div>
       <p class="m-survey__status-title">{{ thankYouMessage }}</p>
       <p class="m-survey__status-text">您的回答已成功提交，感谢参与！</p>
@@ -33,9 +42,21 @@
         <div class="m-survey__cover-body">
           <h1 class="m-survey__cover-title">{{ survey.formName }}</h1>
           <p v-if="survey.description" class="m-survey__cover-desc">{{ survey.description }}</p>
-          <p v-if="survey.welcomeMessage" class="m-survey__cover-welcome">{{ survey.welcomeMessage }}</p>
+          <p v-if="survey.welcomeMessage" class="m-survey__cover-welcome">
+            {{ survey.welcomeMessage }}
+          </p>
           <div v-if="survey.endTime" class="m-survey__cover-meta">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              width="14"
+              height="14"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
             <span>截止时间：{{ survey.endTime }}</span>
           </div>
           <div class="m-survey__cover-info">
@@ -44,7 +65,10 @@
           </div>
         </div>
         <div class="m-survey__cover-action">
-          <button class="m-survey__btn m-survey__btn--primary m-survey__btn--lg" @click="startSurvey">
+          <button
+            class="m-survey__btn m-survey__btn--primary m-survey__btn--lg"
+            @click="startSurvey"
+          >
             开始答题
           </button>
         </div>
@@ -57,38 +81,41 @@
         </div>
         <div class="m-survey__page-body">
           <div class="m-survey__identity-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="32" height="32"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              width="32"
+              height="32"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
           </div>
           <h2 class="m-survey__page-title">请填写您的信息</h2>
           <p class="m-survey__page-subtitle">以便我们更好地分析问卷结果</p>
-          <div class="m-survey__field">
+          <div v-for="field in survey.identityFields" :key="field.fieldKey" class="m-survey__field">
             <label class="m-survey__field-label">
-              姓名 <span class="m-survey__required">*</span>
+              {{ field.fieldLabel }}
+              <span v-if="field.required" class="m-survey__required">*</span>
             </label>
             <input
-              v-model="formState.respondentName"
+              v-model="identityValues[field.fieldKey]"
               type="text"
               class="m-survey__input"
-              placeholder="请输入您的姓名"
-              maxlength="100"
-            />
-          </div>
-          <div class="m-survey__field">
-            <label class="m-survey__field-label">联系方式</label>
-            <input
-              v-model="formState.respondentContact"
-              type="text"
-              class="m-survey__input"
-              placeholder="手机号或邮箱（选填）"
+              :placeholder="`请输入${field.fieldLabel}`"
               maxlength="200"
             />
           </div>
         </div>
         <div class="m-survey__nav">
-          <button class="m-survey__btn m-survey__btn--ghost" @click="currentStep = 'cover'">返回</button>
+          <button class="m-survey__btn m-survey__btn--ghost" @click="currentStep = 'cover'">
+            返回
+          </button>
           <button
             class="m-survey__btn m-survey__btn--primary"
-            :disabled="!survey.allowAnonymous && !formState.respondentName.trim()"
+            :disabled="!hasRequiredIdentityFilled()"
             @click="goToQuestion(0)"
           >
             下一步
@@ -99,7 +126,7 @@
       <!-- 题目页 -->
       <div v-else-if="currentStep === 'question'" class="m-survey__page">
         <div class="m-survey__progress">
-          <div class="m-survey__progress-bar" :style="{ width: progressPercent + '%' }" />
+          <div class="m-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
           <span class="m-survey__progress-text">{{ currentIndex + 1 }} / {{ totalCount }}</span>
         </div>
 
@@ -123,8 +150,11 @@
                   v-for="opt in scaleOptions"
                   :key="opt.value"
                   class="m-survey__scale-btn"
-                  :class="{ 'm-survey__scale-btn--active': answers[currentItem.id] === String(opt.value) }"
-                  @click="answers[currentItem.id] = String(opt.value)"
+                  :class="{
+                    'm-survey__scale-btn--active':
+                      answers[currentItem.itemToken] === String(opt.value),
+                  }"
+                  @click="answers[currentItem.itemToken] = String(opt.value)"
                 >
                   {{ opt.value }}
                 </button>
@@ -135,14 +165,21 @@
             <div v-else-if="currentItem?.itemType === 'SINGLE_CHOICE'" class="m-survey__choices">
               <button
                 v-for="(opt, oi) in choiceOptions"
-                :key="opt"
+                :key="opt.optionValue"
                 class="m-survey__choice"
-                :class="{ 'm-survey__choice--active': answers[currentItem.id] === opt }"
-                @click="answers[currentItem.id] = opt"
+                :class="{
+                  'm-survey__choice--active': answers[currentItem.itemToken] === opt.optionValue,
+                }"
+                @click="answers[currentItem.itemToken] = opt.optionValue"
               >
                 <span class="m-survey__choice-letter">{{ String.fromCharCode(65 + oi) }}</span>
-                <span class="m-survey__choice-text">{{ opt }}</span>
-                <span v-if="answers[currentItem.id] === opt" class="m-survey__choice-check">✓</span>
+                <span class="m-survey__choice-text">{{ opt.optionLabel }}</span>
+                <span
+                  v-if="answers[currentItem.itemToken] === opt.optionValue"
+                  class="m-survey__choice-check"
+                >
+                  ✓
+                </span>
               </button>
             </div>
 
@@ -150,14 +187,23 @@
             <div v-else-if="currentItem?.itemType === 'MULTI_CHOICE'" class="m-survey__choices">
               <button
                 v-for="(opt, oi) in choiceOptions"
-                :key="opt"
+                :key="opt.optionValue"
                 class="m-survey__choice m-survey__choice--multi"
-                :class="{ 'm-survey__choice--active': (multiAnswers[currentItem.id] || []).includes(opt) }"
-                @click="toggleMulti(currentItem.id, opt)"
+                :class="{
+                  'm-survey__choice--active': (multiAnswers[currentItem.itemToken] || []).includes(
+                    opt.optionValue,
+                  ),
+                }"
+                @click="toggleMulti(currentItem.itemToken, opt.optionValue)"
               >
                 <span class="m-survey__choice-letter">{{ String.fromCharCode(65 + oi) }}</span>
-                <span class="m-survey__choice-text">{{ opt }}</span>
-                <span v-if="(multiAnswers[currentItem.id] || []).includes(opt)" class="m-survey__choice-check">✓</span>
+                <span class="m-survey__choice-text">{{ opt.optionLabel }}</span>
+                <span
+                  v-if="(multiAnswers[currentItem.itemToken] || []).includes(opt.optionValue)"
+                  class="m-survey__choice-check"
+                >
+                  ✓
+                </span>
               </button>
               <p class="m-survey__hint">可多选</p>
             </div>
@@ -165,24 +211,21 @@
             <!-- 开放文本 -->
             <div v-else-if="currentItem?.itemType === 'OPEN_TEXT'" class="m-survey__open">
               <textarea
-                v-model="openTexts[currentItem.id]"
+                v-model="openTexts[currentItem.itemToken]"
                 class="m-survey__textarea"
                 rows="5"
                 placeholder="请输入您的回答…"
                 maxlength="2000"
               />
               <div class="m-survey__char-count">
-                {{ (openTexts[currentItem.id] || '').length }} / 2000
+                {{ (openTexts[currentItem.itemToken] || '').length }} / 2000
               </div>
             </div>
           </div>
         </transition>
 
         <div class="m-survey__nav">
-          <button
-            class="m-survey__btn m-survey__btn--ghost"
-            @click="goPrev"
-          >
+          <button class="m-survey__btn m-survey__btn--ghost" @click="goPrev">
             {{ currentIndex === 0 ? '返回' : '上一题' }}
           </button>
           <button
@@ -207,8 +250,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
 import { message } from 'ant-design-vue'
+import { computed, ref } from 'vue'
 import { useSurveyFill } from '@/composables/useSurveyFill'
 
 const {
@@ -218,7 +261,7 @@ const {
   submitted,
   submitting,
   thankYouMessage,
-  formState,
+  identityValues,
   answers,
   multiAnswers,
   openTexts,
@@ -226,7 +269,8 @@ const {
   progressPercent,
   isItemAnswered,
   getScaleOptions,
-  parseOptions,
+  choiceOptionsOf,
+  hasRequiredIdentityFilled,
   submitSurvey,
 } = useSurveyFill()
 
@@ -236,8 +280,8 @@ const currentIndex = ref(0)
 const slideDirection = ref<'slide-left' | 'slide-right'>('slide-left')
 
 const currentItem = computed(() => survey.value?.items[currentIndex.value] ?? null)
-const scaleOptions = computed(() => currentItem.value ? getScaleOptions(currentItem.value) : [])
-const choiceOptions = computed(() => currentItem.value ? parseOptions(currentItem.value.choiceOptions) : [])
+const scaleOptions = computed(() => (currentItem.value ? getScaleOptions(currentItem.value) : []))
+const choiceOptions = computed(() => (currentItem.value ? choiceOptionsOf(currentItem.value) : []))
 
 function startSurvey() {
   if (survey.value && !survey.value.allowAnonymous) {
@@ -312,7 +356,9 @@ async function handleSubmit() {
   min-height: 100vh;
   min-height: 100dvh;
   background: #f0f2f5;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -339,7 +385,9 @@ async function handleSubmit() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .m-survey__icon {
@@ -458,7 +506,9 @@ async function handleSubmit() {
   color: rgba(255, 255, 255, 0.7);
   margin-bottom: 8px;
 
-  svg { opacity: 0.7; }
+  svg {
+    opacity: 0.7;
+  }
 }
 
 .m-survey__cover-info {
@@ -563,7 +613,9 @@ async function handleSubmit() {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
 
-  &::placeholder { color: #bbb; }
+  &::placeholder {
+    color: #bbb;
+  }
 }
 
 /* --- 题目区 --- */
@@ -759,7 +811,9 @@ async function handleSubmit() {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
 
-  &::placeholder { color: #bbb; }
+  &::placeholder {
+    color: #bbb;
+  }
 }
 
 .m-survey__char-count {

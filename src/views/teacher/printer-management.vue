@@ -3,17 +3,11 @@
     <template #context>
       <div class="printer-management__context">
         <div class="printer-management__context-info">
-          <h2 class="printer-management__title">
-            阅卷交付 - 打印机 / 扫描仪管理
-          </h2>
-          <a-tag color="blue">
-            共 {{ devices.length }} 台设备
-          </a-tag>
+          <h2 class="printer-management__title">阅卷交付 - 打印机 / 扫描仪管理</h2>
+          <a-tag color="blue"> 共 {{ devices.length }} 台设备 </a-tag>
         </div>
         <div class="printer-management__context-actions">
-          <a-button @click="loadDevices">
-            刷新
-          </a-button>
+          <a-button @click="loadDevices"> 刷新 </a-button>
           <a-button type="primary" @click="handleCreate">
             <template #icon>
               <PlusOutlined />
@@ -52,8 +46,18 @@
         <a-button style="margin-left: 8px" @click="handleResetSearch">重置</a-button>
       </div>
 
+      <!-- D-9 错误态：设备列表加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="devicesLoadError"
+        :error="devicesLoadError"
+        title="扫描设备列表加载失败"
+        compact
+        @retry="loadDevices"
+      />
+
       <!-- 设备表格 -->
       <UiDataTable
+        v-if="!devicesLoadError"
         :columns="columns"
         :data-source="devices"
         :loading="loading"
@@ -392,14 +396,21 @@
             {{ endpointOnlineStatusLabelOf(detailInfo.endpointOnlineStatus) }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="Agent 版本">{{ detailInfo.agentVersion || '未激活' }}</a-descriptions-item>
-        <a-descriptions-item label="客户端版本">{{ detailInfo.clientVersion || '—' }}</a-descriptions-item>
-        <a-descriptions-item label="端点名称">{{ detailInfo.endpointName || '—' }}</a-descriptions-item>
+        <a-descriptions-item label="Agent 版本">{{
+          detailInfo.agentVersion || '未激活'
+        }}</a-descriptions-item>
+        <a-descriptions-item label="客户端版本">{{
+          detailInfo.clientVersion || '—'
+        }}</a-descriptions-item>
+        <a-descriptions-item label="端点名称">{{
+          detailInfo.endpointName || '—'
+        }}</a-descriptions-item>
         <a-descriptions-item label="扫描仪连接">
           {{ detailInfo.scannerConnected === true ? '已连接' : '未连接或未上报' }}
         </a-descriptions-item>
         <a-descriptions-item label="本地队列">
-          任务 {{ detailInfo.pendingJobCount ?? 0 }} / 待上传页 {{ detailInfo.pendingUploadPageCount ?? 0 }}
+          任务 {{ detailInfo.pendingJobCount ?? 0 }} / 待上传页
+          {{ detailInfo.pendingUploadPageCount ?? 0 }}
         </a-descriptions-item>
         <a-descriptions-item label="最近心跳">
           {{ detailInfo.lastHeartbeatAt || '从未心跳' }}
@@ -496,9 +507,7 @@
           <a-button type="primary" @click="copyText(activationCodeInfo.activationCode)">
             复制激活码
           </a-button>
-          <a-button @click="showActivationCodeModal = false">
-            关闭
-          </a-button>
+          <a-button @click="showActivationCodeModal = false"> 关闭 </a-button>
         </a-space>
       </div>
     </a-modal>
@@ -596,7 +605,7 @@ import type {
   ScannerDeviceStatusCode,
   ScannerDuplexModeCode,
   ScannerEndpointOnlineStatusCode,
-  ScannerInterfaceModeCode
+  ScannerInterfaceModeCode,
 } from '@/apis/mark/exam-mark-scanner'
 import {
   createScannerActivationCode,
@@ -613,13 +622,13 @@ import {
   SCANNER_INTERFACE_MODE_COLOR,
   SCANNER_INTERFACE_MODE_LABEL,
   triggerSaneScan,
-  updateScannerDevice
+  updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { UiDataTable } from '@/components/ui-guide/ui'
+import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/modules/auth'
@@ -632,6 +641,7 @@ const userStore = useUserStore()
 
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
+const devicesLoadError = ref<unknown>(null)
 const devices = ref<ExamScannerDeviceVO[]>([])
 const searchForm = ref<ExamScannerDeviceQueryPayload>({})
 const classListLoading = ref(false)
@@ -719,9 +729,14 @@ function endpointOnlineStatusColorOf(status?: ScannerEndpointOnlineStatusCode): 
 
 async function loadDevices(): Promise<void> {
   loading.value = true
+  devicesLoadError.value = null
   try {
     const result = await listScannerDevices(searchForm.value)
     devices.value = Array.isArray(result) ? result : []
+  } catch (error) {
+    devicesLoadError.value = error
+    const errMsg = error instanceof Error ? error.message : '设备列表加载失败'
+    message.error(errMsg)
   } finally {
     loading.value = false
   }

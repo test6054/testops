@@ -20,9 +20,6 @@ import type {
   IndirectEvaluationResponseVO,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   indirectFormApi,
@@ -33,6 +30,9 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   CourseGoalSelector,
   GraduationRequirementSelector,
@@ -44,6 +44,8 @@ import {
 import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import ImportResponseDocumentModal from './components/ImportResponseDocumentModal.vue'
+import ImportResponseExcelModal from './components/ImportResponseExcelModal.vue'
 
 const formColumns: ColumnsType = [
   { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120 },
@@ -101,6 +103,12 @@ const respondentTypeOptions = Object.entries(RESPONDENT_TYPE_LABEL).map(([value,
   value,
   label,
 }))
+const itemTypeOptions = [
+  { value: 'SCALE', label: '量表题' },
+  { value: 'SINGLE_CHOICE', label: '单选题' },
+  { value: 'MULTI_CHOICE', label: '多选题' },
+  { value: 'OPEN_TEXT', label: '开放文本' },
+]
 
 /* ========== 问卷分页 ========== */
 
@@ -189,7 +197,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(payload: { current: number, pageSize: number }) {
+function handleFormPageChange(payload: { current: number; pageSize: number }) {
   formQuery.pageNum = payload.current
   formQuery.pageSize = payload.pageSize
   loadForms()
@@ -231,7 +239,27 @@ const itemEditor = ref<IndirectEvaluationItemSavePayload>({
   scaleRuleId: undefined,
   weight: 1,
   sortOrder: 0,
+  itemType: 'SCALE',
+  scaleMin: 1,
+  scaleMax: 5,
+  scaleLabels: [
+    { scaleValue: 1, label: '1分' },
+    { scaleValue: 2, label: '2分' },
+    { scaleValue: 3, label: '3分' },
+    { scaleValue: 4, label: '4分' },
+    { scaleValue: 5, label: '5分' },
+  ],
+  choiceOptions: [],
+  required: true,
 })
+
+function defaultScaleLabels(min: number, max: number) {
+  const labels = []
+  for (let value = min; value <= max; value++) {
+    labels.push({ scaleValue: value, label: `${value}分` })
+  }
+  return labels
+}
 
 function openItemCreate() {
   if (!selectedForm.value) return
@@ -245,14 +273,55 @@ function openItemCreate() {
     scaleRuleId: undefined,
     weight: 1,
     sortOrder: (items.value.length + 1) * 10,
+    itemType: 'SCALE',
+    scaleMin: 1,
+    scaleMax: 5,
+    scaleLabels: defaultScaleLabels(1, 5),
+    choiceOptions: [],
+    required: true,
   }
   itemEditorVisible.value = true
 }
 
 function openItemEdit(record: IndirectEvaluationItemVO) {
   itemEditorMode.value = 'edit'
-  itemEditor.value = { ...record }
+  itemEditor.value = {
+    ...record,
+    itemType: record.itemType || 'SCALE',
+    scaleMin: record.scaleMin ?? 1,
+    scaleMax: record.scaleMax ?? 5,
+    scaleLabels: record.scaleLabels?.length
+      ? record.scaleLabels.map((label) => ({ ...label }))
+      : defaultScaleLabels(record.scaleMin ?? 1, record.scaleMax ?? 5),
+    choiceOptions: record.choiceOptions?.map((option) => ({ ...option })) || [],
+    required: record.required ?? true,
+  }
   itemEditorVisible.value = true
+}
+
+function syncScaleLabels() {
+  const v = itemEditor.value
+  const min = v.scaleMin ?? 1
+  const max = v.scaleMax ?? 5
+  v.scaleLabels = defaultScaleLabels(min, max).map((label) => {
+    const existing = v.scaleLabels?.find((item) => item.scaleValue === label.scaleValue)
+    return { scaleValue: label.scaleValue, label: existing?.label || label.label }
+  })
+}
+
+function addChoiceOption() {
+  const options = itemEditor.value.choiceOptions || []
+  const index = options.length + 1
+  itemEditor.value.choiceOptions = [
+    ...options,
+    { optionValue: `option_${index}`, optionLabel: `选项${index}` },
+  ]
+}
+
+function removeChoiceOption(index: number) {
+  itemEditor.value.choiceOptions = (itemEditor.value.choiceOptions || []).filter(
+    (_, i) => i !== index,
+  )
 }
 
 async function submitItem() {
@@ -260,6 +329,36 @@ async function submitItem() {
   if (!v.itemCode.trim() || !v.itemText.trim()) {
     message.error('请填写编码和题面')
     return
+  }
+  if (v.itemType === 'SCALE') {
+    if ((v.scaleMin ?? 0) >= (v.scaleMax ?? 0)) {
+      message.error('量表最大值必须大于最小值')
+      return
+    }
+    syncScaleLabels()
+    v.choiceOptions = []
+  } else if (v.itemType === 'SINGLE_CHOICE' || v.itemType === 'MULTI_CHOICE') {
+    const options = v.choiceOptions || []
+    if (
+      options.length < 2 ||
+      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+    ) {
+      message.error('选择题至少配置 2 个完整选项')
+      return
+    }
+    const optionValues = new Set(options.map((option) => option.optionValue.trim()))
+    if (optionValues.size !== options.length) {
+      message.error('选项值不能重复')
+      return
+    }
+    v.scaleMin = undefined
+    v.scaleMax = undefined
+    v.scaleLabels = []
+  } else if (v.itemType === 'OPEN_TEXT') {
+    v.scaleMin = undefined
+    v.scaleMax = undefined
+    v.scaleLabels = []
+    v.choiceOptions = []
   }
   if (itemEditorMode.value === 'create') await indirectItemApi.create(v)
   else await indirectItemApi.update(v)
@@ -361,78 +460,32 @@ async function deleteResponse(record: IndirectEvaluationResponseVO) {
   })
 }
 
-/* ========== 按问卷批量录入答卷 ========== */
+/* ========== Excel 导入答卷（弹窗封装在 ImportResponseExcelModal） ========== */
 
-const batchResponseVisible = ref(false)
-const batchResponseSubmitting = ref(false)
-const batchResponseText = ref('')
-const BATCH_RESPONSE_PLACEHOLDER = `[
-  {
-    "itemId": "1",
-    "respondentType": "STUDENT",
-    "respondentId": "1001",
-    "rawValue": "4",
-    "convertedScore": 0.75,
-    "validFlag": true
-  },
-  {
-    "itemId": "2",
-    "respondentType": "STUDENT",
-    "respondentId": "1001",
-    "rawValue": "5",
-    "convertedScore": 1.0
-  }
-]`
+const importExcelVisible = ref(false)
 
-function openBatchResponse() {
+function openImportExcel() {
   if (!selectedForm.value) return
-  batchResponseText.value = ''
-  batchResponseVisible.value = true
+  importExcelVisible.value = true
 }
 
-async function submitBatchResponse() {
+async function handleImportExcelDone() {
+  await loadResponses()
+  await refreshValidCounts()
+}
+
+/* ========== PDF / DOCX / 图片 AI 异步导入（弹窗封装在 ImportResponseDocumentModal） ========== */
+
+const importDocumentVisible = ref(false)
+
+async function handleAiDocParseDone() {
+  await loadResponses()
+  await refreshValidCounts()
+}
+
+function openImportDocument() {
   if (!selectedForm.value) return
-  const text = batchResponseText.value.trim()
-  if (!text) {
-    message.error('请粘贴答卷 JSON 数组')
-    return
-  }
-  let raw: unknown
-  try {
-    raw = JSON.parse(text)
-  } catch {
-    message.error('JSON 解析失败：格式错误')
-    return
-  }
-  if (!Array.isArray(raw)) {
-    message.error('JSON 解析失败：根节点必须是数组')
-    return
-  }
-  const parsed: IndirectEvaluationResponseSavePayload[] = []
-  for (let idx = 0; idx < raw.length; idx++) {
-    const item = raw[idx]
-    if (!item.itemId) {
-      message.error(`JSON 解析失败：第 ${idx + 1} 行缺少 itemId`)
-      return
-    }
-    if (!item.respondentType) {
-      message.error(`JSON 解析失败：第 ${idx + 1} 行缺少 respondentType`)
-      return
-    }
-    parsed.push({
-      formId: selectedForm.value!.id,
-      ...item,
-    } as IndirectEvaluationResponseSavePayload)
-  }
-  batchResponseSubmitting.value = true
-  try {
-    await indirectResponseApi.batchCreate(selectedForm.value.id, parsed)
-    message.success(`已批量录入 ${parsed.length} 条答卷`)
-    batchResponseVisible.value = false
-    await loadResponses()
-  } finally {
-    batchResponseSubmitting.value = false
-  }
+  importDocumentVisible.value = true
 }
 
 /* ========== 题项有效样本统计 ========== */
@@ -467,8 +520,8 @@ const signals = computed<SignalMetric[]>(() => {
   const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample || 0), 0)
   const validResponses = responses.value.filter((r) => r.validFlag).length
   const invalidResponses = responses.value.filter((r) => !r.validFlag).length
-  const sampleRatio
-    = expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+  const sampleRatio =
+    expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
 
   return [
     { key: 'forms-total', label: '问卷总数', value: forms.value.length, tone: 'blue' },
@@ -592,7 +645,12 @@ onMounted(async () => {
               <UiButton variant="ghost" size="sm" @click.stop="openFormEdit(record)">
                 编辑
               </UiButton>
-              <UiButton variant="ghost" status="danger" size="sm" @click.stop="handleFormDelete(record)">
+              <UiButton
+                variant="ghost"
+                status="danger"
+                size="sm"
+                @click.stop="handleFormDelete(record)"
+              >
                 删除
               </UiButton>
             </a-space>
@@ -644,7 +702,12 @@ onMounted(async () => {
                   <UiButton variant="ghost" size="sm" @click.stop="openItemEdit(record)">
                     编辑
                   </UiButton>
-                  <UiButton variant="ghost" status="danger" size="sm" @click.stop="deleteItem(record)">
+                  <UiButton
+                    variant="ghost"
+                    status="danger"
+                    size="sm"
+                    @click.stop="deleteItem(record)"
+                  >
                     删除
                   </UiButton>
                 </a-space>
@@ -663,7 +726,10 @@ onMounted(async () => {
               「{{ selectedItem.itemCode }} · {{ selectedItem.itemText.substring(0, 24) }}…」答卷
             </h3>
             <div class="ie__panel-actions">
-              <UiButton variant="outline" size="sm" @click="openBatchResponse"> 批量录入 </UiButton>
+              <UiButton variant="outline" size="sm" @click="openImportExcel"> Excel 导入 </UiButton>
+              <UiButton variant="outline" size="sm" @click="openImportDocument">
+                PDF / Word / 图片
+              </UiButton>
               <UiButton variant="primary" size="sm" @click="openResponseCreate">
                 新增答卷
               </UiButton>
@@ -698,7 +764,12 @@ onMounted(async () => {
                   <UiButton variant="ghost" size="sm" @click="openResponseEdit(record)">
                     编辑
                   </UiButton>
-                  <UiButton variant="ghost" status="danger" size="sm" @click="deleteResponse(record)">
+                  <UiButton
+                    variant="ghost"
+                    status="danger"
+                    size="sm"
+                    @click="deleteResponse(record)"
+                  >
                     删除
                   </UiButton>
                 </a-space>
@@ -824,6 +895,18 @@ onMounted(async () => {
             </a-form-item>
           </a-col>
         </a-row>
+        <a-row :gutter="12">
+          <a-col :span="12">
+            <a-form-item label="题型" required>
+              <a-select v-model:value="itemEditor.itemType" :options="itemTypeOptions" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="必填">
+              <a-switch v-model:checked="itemEditor.required" />
+            </a-form-item>
+          </a-col>
+        </a-row>
         <a-form-item label="题面" required>
           <a-textarea v-model:value="itemEditor.itemText" :rows="3" />
         </a-form-item>
@@ -881,6 +964,67 @@ onMounted(async () => {
               {{ r.ruleCode }} · {{ r.ruleName }}
             </a-select-option>
           </a-select>
+        </a-form-item>
+        <template v-if="itemEditor.itemType === 'SCALE'">
+          <a-row :gutter="12">
+            <a-col :span="12">
+              <a-form-item label="量表最小值" required>
+                <a-input-number
+                  v-model:value="itemEditor.scaleMin"
+                  :min="0"
+                  style="width: 100%"
+                  @change="syncScaleLabels"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item label="量表最大值" required>
+                <a-input-number
+                  v-model:value="itemEditor.scaleMax"
+                  :min="1"
+                  style="width: 100%"
+                  @change="syncScaleLabels"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-form-item label="量表标签">
+            <div class="ie__config-list">
+              <div
+                v-for="label in itemEditor.scaleLabels"
+                :key="label.scaleValue"
+                class="ie__config-row"
+              >
+                <a-input-number :value="label.scaleValue" disabled class="ie__config-value" />
+                <a-input v-model:value="label.label" placeholder="标签" />
+              </div>
+            </div>
+          </a-form-item>
+        </template>
+        <a-form-item
+          v-if="itemEditor.itemType === 'SINGLE_CHOICE' || itemEditor.itemType === 'MULTI_CHOICE'"
+          label="选项配置"
+          required
+        >
+          <div class="ie__config-list">
+            <div
+              v-for="(option, optionIndex) in itemEditor.choiceOptions"
+              :key="optionIndex"
+              class="ie__config-row"
+            >
+              <a-input v-model:value="option.optionValue" placeholder="选项值" />
+              <a-input v-model:value="option.optionLabel" placeholder="选项文案" />
+              <UiButton
+                variant="ghost"
+                status="danger"
+                size="sm"
+                @click="removeChoiceOption(optionIndex)"
+              >
+                删除
+              </UiButton>
+            </div>
+            <UiButton variant="outline" size="sm" @click="addChoiceOption">新增选项</UiButton>
+          </div>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -963,29 +1107,19 @@ onMounted(async () => {
       </a-form>
     </a-modal>
 
-    <!-- 批量录入答卷 -->
-    <a-modal
-      v-model:open="batchResponseVisible"
-      :title="`批量录入答卷（${selectedForm?.formName || ''}）`"
-      :confirm-loading="batchResponseSubmitting"
-      width="780px"
-      ok-text="提交批量录入"
-      @ok="submitBatchResponse"
-    >
-      <a-alert
-        type="info"
-        show-icon
-        message="粘贴 JSON 数组，每条为一个答卷"
-        description="必填：itemId、respondentType；可选：respondentId、rawValue、convertedScore、openText、validFlag、invalidReason。formId 由页面自动填入。"
-        class="ie__alert"
-      />
-      <a-textarea
-        v-model:value="batchResponseText"
-        :rows="14"
-        :placeholder="BATCH_RESPONSE_PLACEHOLDER"
-        class="ie__monospace"
-      />
-    </a-modal>
+    <!-- Excel 批量导入答卷 -->
+    <ImportResponseExcelModal
+      v-model:open="importExcelVisible"
+      :form-id="selectedForm?.id ?? null"
+      @imported="handleImportExcelDone"
+    />
+
+    <!-- PDF / DOCX / 图片 文档抽取 -->
+    <ImportResponseDocumentModal
+      v-model:open="importDocumentVisible"
+      :form-id="selectedForm?.id ?? null"
+      @refresh="handleAiDocParseDone"
+    />
   </StageWorkbenchShell>
 </template>
 
@@ -1088,12 +1222,25 @@ onMounted(async () => {
     color: var(--dp-text-muted, #94a3b8);
   }
 
-  &__alert {
-    margin-bottom: 12px;
+  &__config-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  &__monospace {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  &__config-row {
+    display: grid;
+    grid-template-columns: minmax(96px, 1fr) minmax(160px, 2fr) auto;
+    gap: 8px;
+    align-items: center;
+
+    &:has(.ie__config-value) {
+      grid-template-columns: 96px 1fr;
+    }
+  }
+
+  &__config-value {
+    width: 100%;
   }
 }
 

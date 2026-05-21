@@ -41,9 +41,19 @@
       </div>
     </template>
 
+    <!-- D-9 错误态：成绩详情加载失败时提供重试入口（学生侧无上报入口） -->
+    <UiErrorRetryPanel
+      v-if="detailLoadError"
+      :error="detailLoadError"
+      title="成绩详情加载失败"
+      :helper="`考试 ID：${examId}`"
+      :show-report="false"
+      @retry="loadDetail"
+    />
+
     <!-- 主工作面 -->
     <UiEmpty
-      v-if="!loading && !detail"
+      v-else-if="!loading && !detail"
       description="未查询到该考试的成绩详情"
       class="score-detail__empty"
     />
@@ -175,7 +185,14 @@
 
         <a-spin :spinning="profileLoading">
           <UiAlertStrip
-            v-if="!profileLoading && !profileRecord"
+            v-if="profileLoadError"
+            tone="error"
+            title="AI 学情画像加载失败"
+            :description="profileLoadError"
+            dense
+          />
+          <UiAlertStrip
+            v-else-if="!profileLoading && !profileRecord"
             tone="info"
             title="尚未生成 AI 学情画像"
             description="教师可在「成绩统计 → AI 学生个体学情分析」中为本场考试生成；生成后此处会自动显示个性化诊断与学习建议。"
@@ -241,7 +258,18 @@
 
 <script lang="ts" setup>
 import type { StudentQuestionScoreVO, StudentScoreDetailVO } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  getMyScoreDetail,
+} from '@/apis/mark/student-exam'
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import {
+  AI_ANALYSIS_STATUS_COLOR,
+  AI_ANALYSIS_STATUS_LABEL,
+  getLatestStudentLearningProfile,
+} from '@/apis/mark/teaching-analysis'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
@@ -250,23 +278,13 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  getMyScoreDetail,
-} from '@/apis/mark/student-exam'
-import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-  getLatestStudentLearningProfile,
-} from '@/apis/mark/teaching-analysis'
-import {
   UiAlertStrip,
   UiBadge,
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
+  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
@@ -278,6 +296,8 @@ type GradeStatusTone = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+// D-9 错误态：学生成绩详情加载失败时 UiErrorRetryPanel 重试入口
+const detailLoadError = ref<unknown>(null)
 const detail = ref<StudentScoreDetailVO | null>(null)
 
 // computed 派生强类型题目数组，模板侧用 detailQuestions[index] 取 VO，避免 a-table slot record:any。
@@ -325,7 +345,9 @@ const questionColumns = computed(() => {
 
 const correctCount = computed(() => (detail.value?.questions ?? []).filter(isFullMark).length)
 const partialCount = computed(
-  () => (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q)).length,
+  () =>
+    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q))
+      .length,
 )
 const zeroCount = computed(() => (detail.value?.questions ?? []).filter(isZero).length)
 
@@ -385,9 +407,11 @@ async function loadDetail() {
     return
   }
   loading.value = true
+  detailLoadError.value = null
   try {
     detail.value = await getMyScoreDetail(examId.value)
   } catch (error) {
+    detailLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载成绩详情失败'
     message.error(msg)
     detail.value = null
@@ -445,6 +469,7 @@ interface ProfileAiResponse {
 
 const profileRecord = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const profileLoading = ref(false)
+const profileLoadError = ref('')
 
 const profileResponse = computed<ProfileAiResponse | null>(() => {
   const raw = profileRecord.value?.aiRawResponse
@@ -466,20 +491,23 @@ async function loadProfile(): Promise<void> {
   // 仅当成绩已发布且 detail 已加载时拉取教师生成的最新画像
   if (!detail.value || detail.value.finalScoreStatus !== 'PUBLISHED') {
     profileRecord.value = null
+    profileLoadError.value = ''
     return
   }
   if (!detail.value.examId || !detail.value.studentUserId) {
     profileRecord.value = null
+    profileLoadError.value = '成绩详情缺少 examId 或 studentUserId，无法读取 AI 学情画像。'
     return
   }
   profileLoading.value = true
+  profileLoadError.value = ''
   try {
     profileRecord.value = await getLatestStudentLearningProfile({
       examId: detail.value.examId,
       studentUserId: detail.value.studentUserId,
     })
-  } catch {
-    // 学情画像加载失败不影响主成绩展示，UI 已用 errorMessage 兜底
+  } catch (error) {
+    profileLoadError.value = error instanceof Error ? error.message : 'AI 学情画像加载失败'
     profileRecord.value = null
   } finally {
     profileLoading.value = false

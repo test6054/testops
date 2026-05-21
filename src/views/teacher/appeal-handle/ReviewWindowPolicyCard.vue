@@ -11,7 +11,15 @@
       </a-space>
     </template>
 
-    <a-spin :spinning="loading">
+    <!-- D-9 错误态：复核窗口加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      title="复核窗口加载失败"
+      compact
+      @retry="reload"
+    />
+    <a-spin v-else :spinning="loading">
       <a-form layout="vertical" :model="form">
         <a-row :gutter="16">
           <a-col :span="12">
@@ -40,7 +48,12 @@
         <a-row :gutter="16">
           <a-col :span="8">
             <a-form-item label="最大申请次数">
-              <a-input-number v-model:value="form.maxRequestCount" :min="1" :max="10" style="width: 100%" />
+              <a-input-number
+                v-model:value="form.maxRequestCount"
+                :min="1"
+                :max="10"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -50,7 +63,10 @@
           </a-col>
           <a-col :span="8">
             <a-form-item label="允许的原因类型 JSON">
-              <a-input v-model:value="form.allowedReasonTypes" placeholder="如 [&quot;SCORE_ERROR&quot;,&quot;RUBRIC&quot;]" />
+              <a-input
+                v-model:value="form.allowedReasonTypes"
+                placeholder='如 ["SCORE_ERROR","RUBRIC"]'
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -59,13 +75,16 @@
       <a-space>
         <a-button type="primary" :loading="saving" @click="handleSave">保存策略</a-button>
         <a-button
-          :loading="activating" :disabled="!policy || policy.policyStatus === 'ACTIVE'"
+          :loading="activating"
+          :disabled="!policy || policy.policyStatus === 'ACTIVE'"
           @click="handleActivate"
         >
           激活窗口
         </a-button>
         <a-button
-          danger :loading="closing" :disabled="!policy || policy.policyStatus === 'CLOSED'"
+          danger
+          :loading="closing"
+          :disabled="!policy || policy.policyStatus === 'CLOSED'"
           @click="handleClose"
         >
           关闭窗口
@@ -77,9 +96,6 @@
 
 <script lang="ts" setup>
 import type { ExamReviewWindowPolicyVO, VisibleMaterialScopeCode } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -88,13 +104,19 @@ import {
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
+import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const policy = ref<ExamReviewWindowPolicyVO | null>(null)
 const loading = ref(false)
+// D-9 错误态：复核窗口加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 const saving = ref(false)
 const activating = ref(false)
 const closing = ref(false)
@@ -113,7 +135,7 @@ const form = reactive<{
   allowedReasonTypes: '',
 })
 
-const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
   { label: '仅分数', value: 'SCORE_ONLY' },
   { label: '分数+批注', value: 'SCORE_AND_ANNOTATION' },
   { label: '完整材料', value: 'FULL' },
@@ -122,6 +144,7 @@ const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
+  loadError.value = null
   try {
     const data = await getReviewWindowPolicy(props.examId)
     policy.value = data
@@ -134,6 +157,7 @@ async function reload(): Promise<void> {
     }
   } catch (e) {
     policy.value = null
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '复核窗口加载失败')
   } finally {
     loading.value = false
@@ -193,7 +217,11 @@ async function handleClose(): Promise<void> {
   }
 }
 
-watch(() => [props.examId, props.reloadToken], () => {
-  if (props.examId) void reload()
-}, { immediate: true })
+watch(
+  () => [props.examId, props.reloadToken],
+  () => {
+    if (props.examId) void reload()
+  },
+  { immediate: true },
+)
 </script>

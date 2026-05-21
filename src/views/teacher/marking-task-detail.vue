@@ -41,10 +41,27 @@
       </div>
     </template>
 
-    <UiEmpty v-if="!taskId" description="缺少必要参数 taskId" class="marking-task-detail-page__empty" />
+    <UiEmpty
+      v-if="!taskId"
+      description="缺少必要参数 taskId"
+      class="marking-task-detail-page__empty"
+    />
+
+    <!-- D-9 错误态：阅卷任务详情加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-else-if="taskLoadError"
+      :error="taskLoadError"
+      title="阅卷任务详情加载失败"
+      :helper="`任务 ID：${taskId}`"
+      @retry="loadTask"
+    />
 
     <a-spin v-else :spinning="loading">
-      <UiEmpty v-if="!loading && !task" description="未找到匹配的阅卷任务" class="marking-task-detail-page__empty" />
+      <UiEmpty
+        v-if="!loading && !task"
+        description="未找到匹配的阅卷任务"
+        class="marking-task-detail-page__empty"
+      />
 
       <a-row v-if="task" :gutter="16">
         <a-col :xs="24" :lg="14">
@@ -55,15 +72,16 @@
             </template>
             <UiEmpty v-if="!task.sliceFileId" description="该任务暂无切片文件" />
             <a-spin v-else :spinning="sliceLoading" tip="加载切片中...">
-              <a-image
-                v-if="sliceImageUrl"
-                :src="sliceImageUrl"
-                :preview="{}"
-                class="slice-image"
-              >
+              <a-image v-if="sliceImageUrl" :src="sliceImageUrl" :preview="{}" class="slice-image">
                 <template #previewMask>点击查看原图</template>
               </a-image>
-              <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
+              <UiErrorRetryPanel
+                v-else-if="!sliceLoading && sliceLoadError"
+                :error="sliceLoadError"
+                title="切片图加载失败"
+                compact
+                @retry="retryLoadSliceImage"
+              />
             </a-spin>
           </UiCard>
 
@@ -90,29 +108,25 @@
               </a-descriptions-item>
               <a-descriptions-item label="题目模板ID">
                 <a-typography-text copyable>
-                  {{
-                    task.questionTemplateId || '-'
-                  }}
+                  {{ task.questionTemplateId || '-' }}
                 </a-typography-text>
               </a-descriptions-item>
               <a-descriptions-item label="试卷实例ID">
                 <a-typography-text copyable>{{ task.paperInstanceId || '-' }}</a-typography-text>
               </a-descriptions-item>
-              <a-descriptions-item label="评阅轮次">第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item>
+              <a-descriptions-item label="评阅轮次"
+                >第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item
+              >
               <a-descriptions-item label="任务状态">
                 <UiTag :tone="task.taskStatus ? STATUS_TONE[task.taskStatus] : 'gray'" size="sm">
                   {{ task.taskStatus ? STATUS_LABEL[task.taskStatus] : '-' }}
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="分配时间">
-                {{
-                  formatTime(task.allocatedAt)
-                }}
+                {{ formatTime(task.allocatedAt) }}
               </a-descriptions-item>
               <a-descriptions-item label="提交时间">
-                {{
-                  formatTime(task.submittedAt)
-                }}
+                {{ formatTime(task.submittedAt) }}
               </a-descriptions-item>
               <a-descriptions-item
                 v-if="task.score !== undefined && task.score !== null"
@@ -192,6 +206,12 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
+import {
+  getMarkingTaskDetail,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+  submitMarkingTask,
+} from '@/apis/mark/marking-organization'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
@@ -204,13 +224,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import {
-  getMarkingTaskDetail,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-  submitMarkingTask,
-} from '@/apis/mark/marking-organization'
-import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 
@@ -222,6 +236,8 @@ const taskId = computed(() => (route.params.taskId ? String(route.params.taskId)
 
 const task = ref<MarkingTaskVO | null>(null)
 const loading = ref(false)
+// D-9 错误态：阅卷任务详情加载失败时 UiErrorRetryPanel 重试 + 上报
+const taskLoadError = ref<unknown>(null)
 
 const canSubmit = computed(() => {
   // task.value?.taskStatus 本身就是 MarkingTaskStatusCode | undefined，无需任何 cast。
@@ -243,7 +259,7 @@ interface BatchProgress {
 
 const batchProgress = computed<BatchProgress | null>(() => {
   if (!task.value || batchTasks.value.length === 0) return null
-  const idx = batchTasks.value.findIndex(t => t.id === task.value!.id)
+  const idx = batchTasks.value.findIndex((t) => t.id === task.value!.id)
   if (idx < 0) return null
   return { current: idx + 1, total: batchTasks.value.length }
 })
@@ -272,6 +288,7 @@ function goToTask(targetTaskId: string): void {
 async function loadTask(): Promise<void> {
   if (!taskId.value) return
   loading.value = true
+  taskLoadError.value = null
   try {
     const detail = await getMarkingTaskDetail({ taskId: taskId.value })
     task.value = detail
@@ -286,6 +303,7 @@ async function loadTask(): Promise<void> {
     }
   } catch (error) {
     task.value = null
+    taskLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '任务详情加载失败'
     message.error(errMsg)
   } finally {
@@ -295,18 +313,26 @@ async function loadTask(): Promise<void> {
 
 const sliceImageUrl = ref<string | null>(null)
 const sliceLoading = ref(false)
+const sliceLoadError = ref<unknown>(null)
 
 async function loadSliceImage(fileId: string): Promise<void> {
   releaseSliceImage()
   sliceLoading.value = true
+  sliceLoadError.value = null
   try {
     sliceImageUrl.value = await getImageBlobUrl(fileId)
   } catch (error) {
+    sliceLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '切片图加载失败'
     message.error(errMsg)
   } finally {
     sliceLoading.value = false
   }
+}
+
+function retryLoadSliceImage(): void {
+  if (!task.value?.sliceFileId) return
+  void loadSliceImage(task.value.sliceFileId)
 }
 
 function releaseSliceImage(): void {
@@ -317,7 +343,7 @@ function releaseSliceImage(): void {
 }
 
 const formRef = ref<FormInstance>()
-const form = reactive<{ score?: number, annotationNote?: string }>({
+const form = reactive<{ score?: number; annotationNote?: string }>({
   score: undefined,
   annotationNote: '',
 })
@@ -373,6 +399,7 @@ watch(taskId, () => {
   form.score = undefined
   form.annotationNote = ''
   task.value = null
+  sliceLoadError.value = null
   releaseSliceImage()
   void loadTask()
 })

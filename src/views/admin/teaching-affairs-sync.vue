@@ -4,11 +4,11 @@
       <div class="sync-page__context">
         <div class="sync-page__context-left">
           <a-select
-            v-model:value="selectedExamId"
+            :value="selectedExamId"
             class="sync-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
-            :loading="examOptionsLoading"
+            :loading="examLoading"
             show-search
             option-filter-prop="label"
             allow-clear
@@ -47,7 +47,16 @@
     />
 
     <template v-else>
-      <UiCard class="info-card">
+      <!-- D-9 错误态：同步任务加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="syncTasksLoadError"
+        :error="syncTasksLoadError"
+        title="同步任务加载失败"
+        :helper="`考试 ID：${selectedExamId}`"
+        compact
+        @retry="loadSyncTasks"
+      />
+      <UiCard v-else class="info-card">
         <template #title>
           <SyncOutlined />
           <span>同步任务</span>
@@ -150,7 +159,16 @@
         </UiDataTable>
       </UiCard>
 
-      <UiCard class="info-card">
+      <!-- D-9 错误态：回写记录加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="passbackLoadError"
+        :error="passbackLoadError"
+        title="回写记录加载失败"
+        :helper="`考试 ID：${selectedExamId}`"
+        compact
+        @retry="loadPassbackRecords"
+      />
+      <UiCard v-else class="info-card">
         <template #title>
           <FileSyncOutlined />
           <span>回写记录</span>
@@ -285,7 +303,7 @@
         <a-textarea
           v-model:value="createForm.syncConfig"
           :rows="4"
-          placeholder="{&quot;endpoint&quot;:&quot;https://sis.school/api&quot;,&quot;apiKey&quot;:&quot;xxx&quot;}"
+          placeholder='{"endpoint":"https://sis.school/api","apiKey":"xxx"}'
         />
       </a-form-item>
     </a-form>
@@ -327,7 +345,9 @@
         {{ detailTask.lastSyncTime ?? '-' }}
       </a-descriptions-item>
       <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-        <span class="error-text">[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span>
+        <span class="error-text"
+          >[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span
+        >
       </a-descriptions-item>
       <a-descriptions-item label="操作" :span="1">
         <a-space>
@@ -349,7 +369,6 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type {
   ExternalSystemTypeCode,
   PassbackRecordVO,
@@ -359,16 +378,6 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -386,19 +395,36 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'AdminTeachingAffairsSync' })
 
-const route = useRoute()
-const router = useRouter()
-
-const selectedExamId = ref<string | undefined>(
-  route.query.examId ? String(route.query.examId) : undefined,
-)
-const examOptions = ref<Array<{ label: string, value: string }>>([])
-const examOptionsLoading = ref(false)
+// B-8 统一考试选择器
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExamSelector,
+} = useMarkExamSelector()
 const loading = ref(false)
 
 // ─── 同步任务 ─────────────────────────────────
@@ -420,12 +446,18 @@ const syncColumns: ColumnType<SyncTaskVO>[] = [
   { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
+// D-9 错误态：同步任务 / 回写记录加载失败时 UiErrorRetryPanel 重试 + 上报
+const syncTasksLoadError = ref<unknown>(null)
+const passbackLoadError = ref<unknown>(null)
+
 async function loadSyncTasks(): Promise<void> {
   if (!selectedExamId.value) return
   syncLoading.value = true
+  syncTasksLoadError.value = null
   try {
     syncTasks.value = await listSyncTasks(selectedExamId.value, syncStatusFilter.value)
   } catch (error) {
+    syncTasksLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载同步任务失败')
   } finally {
     syncLoading.value = false
@@ -574,6 +606,7 @@ const passbackColumns: ColumnType<PassbackRecordVO>[] = [
 async function loadPassbackRecords(): Promise<void> {
   if (!selectedExamId.value) return
   passbackLoading.value = true
+  passbackLoadError.value = null
   try {
     passbackRecords.value = await listPassbackRecords({
       examId: selectedExamId.value,
@@ -581,6 +614,7 @@ async function loadPassbackRecords(): Promise<void> {
       passbackStatus: passbackStatusFilter.value,
     })
   } catch (error) {
+    passbackLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载回写记录失败')
   } finally {
     passbackLoading.value = false
@@ -609,21 +643,6 @@ function ellipsis(text: string | undefined, len = 40): string {
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 
-async function loadExamOptions(): Promise<void> {
-  examOptionsLoading.value = true
-  try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    examOptions.value = (result.list ?? []).map((item: ExamSummaryVO) => ({
-      label: `${item.examName}（${item.statusMessage}）`,
-      value: item.examId,
-    }))
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '加载考试列表失败')
-  } finally {
-    examOptionsLoading.value = false
-  }
-}
-
 async function loadAll(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
@@ -635,8 +654,7 @@ async function loadAll(): Promise<void> {
 }
 
 function handleExamChange(value: unknown): void {
-  selectedExamId.value = value != null ? String(value) : undefined
-  void router.replace({ query: selectedExamId.value ? { examId: selectedExamId.value } : {} })
+  onExamChange(value as string | number | undefined, [])
   syncTasks.value = []
   passbackRecords.value = []
   if (selectedExamId.value) {
@@ -644,8 +662,17 @@ function handleExamChange(value: unknown): void {
   }
 }
 
+// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
+watch(selectedExamId, (value) => {
+  syncTasks.value = []
+  passbackRecords.value = []
+  if (value) {
+    void loadAll()
+  }
+})
+
 onMounted(async () => {
-  await loadExamOptions()
+  await initExamSelector()
   if (selectedExamId.value) {
     await loadAll()
   }

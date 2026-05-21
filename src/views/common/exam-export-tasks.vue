@@ -4,11 +4,11 @@
       <div class="export-page__context">
         <div class="export-page__context-left">
           <a-select
-            v-model:value="selectedExamId"
+            :value="selectedExamId"
             class="export-page__exam-select"
             placeholder="选择考试"
             :options="examOptions"
-            :loading="examOptionsLoading"
+            :loading="examLoading"
             show-search
             option-filter-prop="label"
             allow-clear
@@ -225,23 +225,12 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type {
   ExportScopeCode,
   ExportTaskStatusCode,
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
-import type { BadgeTone } from '@/components/ui-guide/ui'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
-import { pageExams } from '@/apis/mark/exam'
 import {
   createExportTask,
   EXPORT_SCOPE_LABEL,
@@ -250,19 +239,27 @@ import {
   EXPORT_TYPE_LABEL,
   listExportTasks,
 } from '@/apis/mark/exam-export'
+import type { BadgeTone } from '@/components/ui-guide/ui'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'ExamExportTasks' })
 
-const route = useRoute()
-const router = useRouter()
-
-const selectedExamId = ref<string | undefined>(
-  route.query.examId ? String(route.query.examId) : undefined,
-)
-const examOptions = ref<Array<{ label: string, value: string }>>([])
-const examOptionsLoading = ref(false)
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExamSelector,
+} = useMarkExamSelector()
 
 const tasks = ref<ExportTaskVO[]>([])
 const loading = ref(false)
@@ -274,8 +271,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value)
-      && (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
+      (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 
@@ -327,21 +324,6 @@ function formatBytes(size: number): string {
   return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
 
-async function loadExamOptions(): Promise<void> {
-  examOptionsLoading.value = true
-  try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    examOptions.value = (result.list ?? []).map((item: ExamSummaryVO) => ({
-      label: `${item.examName}（${item.statusMessage}）`,
-      value: item.examId,
-    }))
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '加载考试列表失败')
-  } finally {
-    examOptionsLoading.value = false
-  }
-}
-
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) {
     tasks.value = []
@@ -358,10 +340,8 @@ async function loadTasks(): Promise<void> {
 }
 
 function handleExamChange(value: unknown): void {
-  const next = value != null ? String(value) : undefined
-  selectedExamId.value = next
-  void router.replace({ query: next ? { examId: next } : {} })
-  if (next) {
+  onExamChange(value as string | number | undefined, [])
+  if (selectedExamId.value) {
     void loadTasks()
   } else {
     tasks.value = []
@@ -468,8 +448,17 @@ async function handleDownload(record: ExportTaskVO): Promise<void> {
   }
 }
 
+// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
+watch(selectedExamId, (value) => {
+  if (value) {
+    void loadTasks()
+  } else {
+    tasks.value = []
+  }
+})
+
 onMounted(async () => {
-  await loadExamOptions()
+  await initExamSelector()
   if (selectedExamId.value) {
     await loadTasks()
   }

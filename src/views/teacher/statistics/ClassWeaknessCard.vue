@@ -23,7 +23,15 @@
     </template>
 
     <a-spin :spinning="loading">
-      <a-empty v-if="!hasQueried" description="请输入班级ID后查看或生成。" />
+      <!-- D-9 错误态：AI 班级薄弱题型加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        title="AI 班级薄弱题型加载失败"
+        compact
+        @retry="reload"
+      />
+      <a-empty v-else-if="!hasQueried" description="请输入班级ID后查看或生成。" />
       <a-empty v-else-if="!record" description="该班级暂无 AI 薄弱题型分析。" />
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
@@ -79,20 +87,21 @@
 
 <script lang="ts" setup>
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
+import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ClassWeaknessCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 /**
  * B-12 联动：本卡每次成功查询/生成后，把当前 classId 上抛给父级 statistics.vue，
@@ -102,6 +111,8 @@ const emit = defineEmits<{ (e: 'class-change', classId: string): void }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
+// D-9 错误态：AI 班级薄弱题型加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 const generating = ref(false)
 const classIdInput = ref('')
 const hasQueried = ref(false)
@@ -120,6 +131,7 @@ async function reload(): Promise<void> {
   const classId = classIdInput.value.trim()
   if (!props.examId || !classId) return
   hasQueried.value = true
+  loadError.value = null
   loading.value = true
   try {
     record.value = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
@@ -127,6 +139,7 @@ async function reload(): Promise<void> {
     emit('class-change', classId)
   } catch (e) {
     record.value = null
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '加载失败')
   } finally {
     loading.value = false

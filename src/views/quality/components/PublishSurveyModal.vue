@@ -101,7 +101,7 @@
             </div>
             <div class="publish-result-item qr-section">
               <span class="label">二维码：</span>
-              <div ref="qrContainer" class="qr-container" />
+              <a-qrcode :value="publicUrl" :size="200" />
             </div>
             <div style="text-align: center; margin-top: 16px">
               <a-button type="primary" @click="handleCancel">完成</a-button>
@@ -116,10 +116,13 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type dayjs from 'dayjs'
-import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-evaluation'
-import { message } from 'ant-design-vue'
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import type {
+  IndirectEvaluationFormVO,
+  IndirectEvaluationPublishResultVO,
+} from '@/apis/quality/indirect-evaluation'
 import { indirectFormApi } from '@/apis/quality/indirect-evaluation'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 const props = defineProps<{
   open: boolean
@@ -142,7 +145,7 @@ const modalTitle = computed(() => {
 
 const formRef = ref<FormInstance>()
 const publishing = ref(false)
-const publishResult = ref<{ accessToken: string, publicUrl: string } | null>(null)
+const publishResult = ref<IndirectEvaluationPublishResultVO | null>(null)
 
 const formState = reactive({
   startTime: undefined as dayjs.Dayjs | undefined,
@@ -159,11 +162,8 @@ const rules: Record<string, Rule[]> = {
   endTime: [{ required: true, message: '请选择截止时间' }],
 }
 
-const qrContainer = ref<HTMLDivElement>()
-
 const publicUrl = computed(() => {
-  if (!publishResult.value) return ''
-  return `${window.location.origin}/survey/${publishResult.value.accessToken}`
+  return publishResult.value?.publicUrl || ''
 })
 
 watch(
@@ -191,34 +191,23 @@ async function handlePublish() {
       endTime: formState.endTime!.format('YYYY-MM-DD HH:mm:ss'),
       accessMode: formState.accessMode,
       allowAnonymous: formState.allowAnonymous,
+      requireIdentityFields: formState.allowAnonymous
+        ? []
+        : [
+            { fieldKey: 'name', fieldLabel: '姓名', fieldType: 'TEXT', required: true },
+            { fieldKey: 'contact', fieldLabel: '联系方式', fieldType: 'TEXT', required: false },
+          ],
       maxSubmissionsPerRespondent: formState.maxSubmissionsPerRespondent,
       welcomeMessage: formState.welcomeMessage || undefined,
       thankYouMessage: formState.thankYouMessage || undefined,
     })
     emit('published')
-
-    // 生成二维码
-    await nextTick()
-    generateQrCode()
   } catch (err: unknown) {
     const e = err as { message?: string }
     message.error(e.message || '发布失败')
   } finally {
     publishing.value = false
   }
-}
-
-function generateQrCode() {
-  if (!qrContainer.value || !publicUrl.value) return
-  // 使用简单 Canvas 绘制二维码占位，生产环境可替换为 qrcode 库
-  const container = qrContainer.value
-  container.innerHTML = ''
-  const img = document.createElement('img')
-  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(publicUrl.value)}`
-  img.alt = '问卷二维码'
-  img.style.width = '200px'
-  img.style.height = '200px'
-  container.appendChild(img)
 }
 
 function copyUrl() {

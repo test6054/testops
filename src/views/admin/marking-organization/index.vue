@@ -48,8 +48,16 @@
       </div>
     </template>
 
+    <!-- D-9 错误态：阅卷组织加载遇到非“未创建”错误时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="selectedExamId && organizationLoadError"
+      :error="organizationLoadError"
+      title="阅卷组织加载失败"
+      :helper="`考试 ID：${selectedExamId}`"
+      @retry="loadOrganization"
+    />
     <UiEmpty
-      v-if="!selectedExamId"
+      v-else-if="!selectedExamId"
       description="请先选择考试以查看 / 创建阅卷组织"
       class="org-index__empty"
     />
@@ -182,9 +190,16 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreatePayload,
+} from '@/apis/mark/marking-organization'
+import {
+  createOrganization,
+  getOrganization,
+  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
+  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
@@ -193,14 +208,14 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import {
-  createOrganization,
-  getOrganization,
-  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
-  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
-import { UiBadge, UiButton, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+  UiBadge,
+  UiButton,
+  UiDrawer,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -225,6 +240,8 @@ const selectedExamLabel = computed(() => {
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const loading = ref(false)
+// D-9 错误态：仅当后端返回非“未创建”类错误时才上报
+const organizationLoadError = ref<unknown>(null)
 
 async function loadOrganization(): Promise<void> {
   if (!selectedExamId.value) {
@@ -232,10 +249,17 @@ async function loadOrganization(): Promise<void> {
     return
   }
   loading.value = true
+  organizationLoadError.value = null
   try {
     organization.value = await getOrganization({ examId: selectedExamId.value })
-  } catch {
+  } catch (error) {
     organization.value = null
+    const errMsg = error instanceof Error ? error.message : ''
+    const isNotCreated =
+      errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('未创建')
+    if (errMsg && !isNotCreated) {
+      organizationLoadError.value = error
+    }
   } finally {
     loading.value = false
   }

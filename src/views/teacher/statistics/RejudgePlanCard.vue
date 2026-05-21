@@ -16,7 +16,16 @@
       </a-space>
     </template>
 
+    <!-- D-9 错误态：重判计划加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      title="重判计划加载失败"
+      compact
+      @retry="reload"
+    />
     <UiDataTable
+      v-else
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -36,19 +45,13 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'approvedTime'">
-          {{
-            fmt(rows[index].approvedTime)
-          }}
+          {{ fmt(rows[index].approvedTime) }}
         </template>
         <template v-else-if="column.key === 'executedTime'">
-          {{
-            fmt(rows[index].executedTime)
-          }}
+          {{ fmt(rows[index].executedTime) }}
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{
-            fmt(rows[index].createTime)
-          }}
+          {{ fmt(rows[index].createTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-popconfirm title="确认审批通过？" @confirm="handleApprove(rows[index].id)">
@@ -76,11 +79,6 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   listRejudgePlans,
@@ -88,14 +86,21 @@ import {
   REJUDGE_PLAN_STATUS_LABEL,
   REJUDGE_TRIGGER_TYPE_LABEL,
 } from '@/apis/mark/question-analysis'
-import { UiDataTable } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { ref, watch } from 'vue'
+import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'RejudgePlanCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const rows = ref<ExamRejudgePlanVO[]>([])
 const loading = ref(false)
+// D-9 错误态：重判计划加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 const statusFilter = ref<RejudgePlanStatusCode | undefined>(undefined)
 const approvingId = ref<string>('')
 
@@ -126,6 +131,7 @@ const columns: ColumnType<ExamRejudgePlanVO>[] = [
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
+  loadError.value = null
   try {
     rows.value = await listRejudgePlans({
       examId: props.examId,
@@ -133,6 +139,7 @@ async function reload(): Promise<void> {
     })
   } catch (e) {
     rows.value = []
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '重判计划加载失败')
   } finally {
     loading.value = false

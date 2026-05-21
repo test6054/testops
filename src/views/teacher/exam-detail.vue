@@ -31,7 +31,19 @@
     </template>
 
     <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !detail" description="未查询到考试数据" class="exam-detail-page__empty" />
+      <!-- D-9 错误态：考试详情加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="detailLoadError"
+        :error="detailLoadError"
+        title="考试详情加载失败"
+        :helper="`考试 ID：${examId}`"
+        @retry="loadDetail"
+      />
+      <UiEmpty
+        v-else-if="!loading && !detail"
+        description="未查询到考试数据"
+        class="exam-detail-page__empty"
+      />
 
       <a-row v-if="detail" :gutter="16">
         <!-- 基本信息 -->
@@ -44,9 +56,7 @@
             <a-descriptions :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
               <a-descriptions-item label="考试名称">{{ detail.examName }}</a-descriptions-item>
               <a-descriptions-item label="考试编号">
-                {{
-                  detail.examNo || '-'
-                }}
+                {{ detail.examNo || '-' }}
               </a-descriptions-item>
               <a-descriptions-item label="状态">
                 <UiTag :tone="EXAM_STATUS_TONE[detail.status]" size="sm">
@@ -54,34 +64,22 @@
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="批改策略">
-                {{
-                  detail.gradingStrategy || '默认'
-                }}
+                {{ detail.gradingStrategy || '默认' }}
               </a-descriptions-item>
               <a-descriptions-item label="开始时间">
-                {{
-                  formatTime(detail.examStartTime)
-                }}
+                {{ formatTime(detail.examStartTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="结束时间">
-                {{
-                  formatTime(detail.examEndTime)
-                }}
+                {{ formatTime(detail.examEndTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="创建时间">
-                {{
-                  formatTime(detail.createTime)
-                }}
+                {{ formatTime(detail.createTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="更新时间">
-                {{
-                  formatTime(detail.updateTime)
-                }}
+                {{ formatTime(detail.updateTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="备注" :span="2">
-                {{
-                  detail.remark || '-'
-                }}
+                {{ detail.remark || '-' }}
               </a-descriptions-item>
             </a-descriptions>
           </UiCard>
@@ -103,14 +101,10 @@
             <a-descriptions v-else :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
               <a-descriptions-item label="模板ID">{{ detail.templateId }}</a-descriptions-item>
               <a-descriptions-item label="模板名称">
-                {{
-                  detail.templateName || '-'
-                }}
+                {{ detail.templateName || '-' }}
               </a-descriptions-item>
               <a-descriptions-item label="总页数">
-                {{
-                  detail.totalPages ?? '-'
-                }}
+                {{ detail.totalPages ?? '-' }}
               </a-descriptions-item>
             </a-descriptions>
           </UiCard>
@@ -131,9 +125,7 @@
               </UiTag>
             </div>
             <a-divider />
-            <UiButton size="sm" variant="outline" block @click="goRoster">
-              管理考生名册
-            </UiButton>
+            <UiButton size="sm" variant="outline" block @click="goRoster"> 管理考生名册 </UiButton>
           </UiCard>
 
           <UiCard class="info-card">
@@ -164,7 +156,9 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
@@ -173,10 +167,15 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
-import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'TeacherExamDetail' })
@@ -187,6 +186,8 @@ const router = useRouter()
 const examId = computed<string>(() => String(route.params.examId ?? ''))
 const detail = ref<ExamDetailVO | null>(null)
 const loading = ref(false)
+// D-9 错误态：考试详情加载失败时 UiErrorRetryPanel 重试 + 上报
+const detailLoadError = ref<unknown>(null)
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '88px' }
 
@@ -201,10 +202,12 @@ async function loadDetail(): Promise<void> {
     return
   }
   loading.value = true
+  detailLoadError.value = null
   try {
     detail.value = await getExamDetail(examId.value)
   } catch (error) {
     detail.value = null
+    detailLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '加载考试详情失败'
     message.error(errMsg)
   } finally {

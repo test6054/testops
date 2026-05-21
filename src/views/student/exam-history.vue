@@ -46,7 +46,19 @@
         </a-space>
       </template>
 
-      <UiEmpty v-if="!loading && filteredExams.length === 0" description="没有符合条件的考试" />
+      <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
+      <UiErrorRetryPanel
+        v-if="examsLoadError"
+        :error="examsLoadError"
+        title="考试列表加载失败"
+        :show-report="false"
+        compact
+        @retry="loadExams"
+      />
+      <UiEmpty
+        v-else-if="!loading && filteredExams.length === 0"
+        description="没有符合条件的考试"
+      />
 
       <UiDataTable
         v-else
@@ -142,6 +154,12 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode, StudentExamItemVO } from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+} from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -151,23 +169,27 @@ import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-} from '@/apis/mark/student-exam'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'StudentExamHistory' })
 
 const router = useRouter()
 const loading = ref(false)
+// D-9 错误态：学生考试列表加载失败时 UiErrorRetryPanel 重试入口
+const examsLoadError = ref<unknown>(null)
 const exams = ref<StudentExamItemVO[]>([])
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
-const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
+const statusOptions: Array<{ value: FinalScoreStatusCode; label: string }> = [
   { value: 'PENDING', label: '待计算' },
   { value: 'CALCULATED', label: '已计算' },
   { value: 'CONFIRMED', label: '已确认' },
@@ -215,9 +237,11 @@ const publishedCount = computed(
 
 async function loadExams() {
   loading.value = true
+  examsLoadError.value = null
   try {
     exams.value = await listMyExams()
   } catch (error) {
+    examsLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载考试失败'
     message.error(msg)
   } finally {

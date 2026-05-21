@@ -2,11 +2,11 @@
  * 公开问卷填写共享逻辑。
  * 供移动端（一题一页）和 PC 端（全页展示）共用。
  */
-import { ref, reactive, computed, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
+import type { PublicSurveyItemVO, PublicSurveyVO } from '@/apis/public-survey'
 import { publicSurveyApi } from '@/apis/public-survey'
-import type { PublicSurveyVO, PublicSurveyItemVO } from '@/apis/public-survey'
 
 export function useSurveyFill() {
   const route = useRoute()
@@ -19,11 +19,7 @@ export function useSurveyFill() {
   const submitting = ref(false)
   const thankYouMessage = ref('感谢您的参与！')
 
-  const formState = reactive({
-    respondentName: '',
-    respondentContact: '',
-  })
-
+  const identityValues = reactive<Record<string, string>>({})
   const answers = reactive<Record<string, string>>({})
   const multiAnswers = reactive<Record<string, string[]>>({})
   const openTexts = reactive<Record<string, string>>({})
@@ -46,13 +42,13 @@ export function useSurveyFill() {
 
   function isItemAnswered(item: PublicSurveyItemVO): boolean {
     if (item.itemType === 'SCALE' || item.itemType === 'SINGLE_CHOICE') {
-      return !!answers[item.id]
+      return !!answers[item.itemToken]
     }
     if (item.itemType === 'MULTI_CHOICE') {
-      return !!(multiAnswers[item.id] && multiAnswers[item.id].length > 0)
+      return !!(multiAnswers[item.itemToken] && multiAnswers[item.itemToken].length > 0)
     }
     if (item.itemType === 'OPEN_TEXT') {
-      return !!(openTexts[item.id] && openTexts[item.id].trim())
+      return !!(openTexts[item.itemToken] && openTexts[item.itemToken].trim())
     }
     return false
   }
@@ -60,32 +56,26 @@ export function useSurveyFill() {
   function getScaleOptions(item: PublicSurveyItemVO) {
     const min = item.scaleMin ?? 1
     const max = item.scaleMax ?? 5
-    let labels: string[] = []
-    if (item.scaleLabels) {
-      try {
-        labels = JSON.parse(item.scaleLabels)
-      } catch {
-        labels = []
-      }
-    }
+    const labels = item.scaleLabels || []
     const options = []
     for (let i = min; i <= max; i++) {
-      const labelIndex = i - min
       options.push({
         value: i,
-        label: labels[labelIndex] || '',
+        label: labels.find((label) => label.scaleValue === i)?.label || '',
       })
     }
     return options
   }
 
-  function parseOptions(optionsJson?: string): string[] {
-    if (!optionsJson) return []
-    try {
-      return JSON.parse(optionsJson)
-    } catch {
-      return []
-    }
+  function choiceOptionsOf(item: PublicSurveyItemVO) {
+    return item.choiceOptions || []
+  }
+
+  function hasRequiredIdentityFilled() {
+    if (!survey.value || survey.value.allowAnonymous) return true
+    return survey.value.identityFields.every((field) => {
+      return !field.required || !!identityValues[field.fieldKey]?.trim()
+    })
   }
 
   function findFirstUnansweredRequired(): number {
@@ -107,15 +97,15 @@ export function useSurveyFill() {
         let openText: string | undefined
 
         if (item.itemType === 'SCALE' || item.itemType === 'SINGLE_CHOICE') {
-          rawValue = answers[item.id]
+          rawValue = answers[item.itemToken]
         } else if (item.itemType === 'MULTI_CHOICE') {
-          const selected = multiAnswers[item.id]
+          const selected = multiAnswers[item.itemToken]
           rawValue = selected && selected.length > 0 ? JSON.stringify(selected) : undefined
         } else if (item.itemType === 'OPEN_TEXT') {
-          openText = openTexts[item.id]
+          openText = openTexts[item.itemToken]
         }
 
-        return { itemId: item.id, rawValue, openText }
+        return { itemToken: item.itemToken, rawValue, openText }
       })
       .filter((a) => a.rawValue || a.openText)
   }
@@ -141,15 +131,25 @@ export function useSurveyFill() {
       message.warning(`请完成第 ${unansweredIdx + 1} 题（必填）`)
       return false
     }
+    if (!hasRequiredIdentityFilled()) {
+      message.warning('请填写必填身份信息')
+      return false
+    }
 
     submitting.value = true
     try {
       const result = await publicSurveyApi.submit(token, {
-        respondentName: formState.respondentName || undefined,
-        respondentContact: formState.respondentContact || undefined,
+        respondentIdentity: survey.value.allowAnonymous
+          ? undefined
+          : {
+              fields: survey.value.identityFields.map((field) => ({
+                fieldKey: field.fieldKey,
+                fieldValue: identityValues[field.fieldKey]?.trim() || '',
+              })),
+            },
         answers: buildAnswerList(),
       })
-      thankYouMessage.value = result || '感谢您的参与！'
+      thankYouMessage.value = result.thankYouMessage || '感谢您的参与！'
       submitted.value = true
       return true
     } catch (err: unknown) {
@@ -173,7 +173,7 @@ export function useSurveyFill() {
     submitted,
     submitting,
     thankYouMessage,
-    formState,
+    identityValues,
     answers,
     multiAnswers,
     openTexts,
@@ -182,7 +182,8 @@ export function useSurveyFill() {
     progressPercent,
     isItemAnswered,
     getScaleOptions,
-    parseOptions,
+    choiceOptionsOf,
+    hasRequiredIdentityFilled,
     findFirstUnansweredRequired,
     submitSurvey,
   }

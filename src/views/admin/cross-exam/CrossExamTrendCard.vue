@@ -46,7 +46,15 @@
     </div>
 
     <a-spin :spinning="loading || generating">
-      <a-empty v-if="!record" description="暂无趋势分析记录，请填写参数后生成。" />
+      <!-- D-9 错误态：AI 跨考试趋势加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        title="AI 跨考试趋势加载失败"
+        compact
+        @retry="reload"
+      />
+      <a-empty v-else-if="!record" description="暂无趋势分析记录，请填写参数后生成。" />
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -106,16 +114,17 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisVO } from '@/apis/mark/cross-exam-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref } from 'vue'
 import {
   generateClassTrend,
   generateCourseTrend,
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref } from 'vue'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
+import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'CrossExamTrendCard' })
 
@@ -129,6 +138,8 @@ const form = reactive({
 
 const record = ref<CrossExamTrendAnalysisVO | null>(null)
 const loading = ref(false)
+// D-9 错误态：AI 跨考试趋势加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 const generating = ref(false)
 
 const parsedItems = computed(() => {
@@ -153,12 +164,14 @@ async function reload(): Promise<void> {
     message.warning('请输入课程ID')
     return
   }
+  loadError.value = null
   loading.value = true
   try {
     const list = await listTrends({ scopeType: scopeMode.value, courseId: form.courseId.trim() })
     record.value = list[0] ?? null
     if (list.length === 0) message.info('暂无历史记录')
   } catch (e) {
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '加载失败')
   } finally {
     loading.value = false
@@ -182,8 +195,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    record.value
-      = scopeMode.value === 'COURSE'
+    record.value =
+      scopeMode.value === 'COURSE'
         ? await generateCourseTrend({ courseId, examIds })
         : await generateClassTrend({ courseId, classId: form.classId.trim(), examIds })
     message.success('已生成趋势分析')

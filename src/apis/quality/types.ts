@@ -137,6 +137,7 @@ export type AiTaskType
     | 'PROGRAM_REPORT_GENERATE'
     | 'IMPROVEMENT_SUGGESTION_GENERATE'
     | 'MATERIAL_QA'
+    | 'INDIRECT_RESPONSE_DOC_PARSE'
 
 export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
   SYLLABUS_PARSE: '课程大纲解析',
@@ -146,6 +147,7 @@ export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
   PROGRAM_REPORT_GENERATE: '专业质量分析报告生成',
   IMPROVEMENT_SUGGESTION_GENERATE: '改进建议生成',
   MATERIAL_QA: '材料问答',
+  INDIRECT_RESPONSE_DOC_PARSE: '间接评价答卷文档解析',
 }
 
 /** AI 输出校验结果 - AiOutputValidationEnum */
@@ -769,6 +771,7 @@ export function isAiTaskType(value: unknown): value is AiTaskType {
     || value === 'PROGRAM_REPORT_GENERATE'
     || value === 'IMPROVEMENT_SUGGESTION_GENERATE'
     || value === 'MATERIAL_QA'
+    || value === 'INDIRECT_RESPONSE_DOC_PARSE'
   )
 }
 

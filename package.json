@@ -9,10 +9,10 @@
     "dev": "node scripts/kill-port.js 5273 && vite --host --port 5273",
     "dev:simple": "vite --host --port 5273",
     "kill-port": "node scripts/kill-port.js",
-    "build": "vue-tsc --noEmit && NODE_OPTIONS=--max-old-space-size=8192 vite build",
-    "build:test": "vue-tsc --noEmit && vite build --mode test",
+    "build": "vue-tsc -p tsconfig.app.json --noEmit && NODE_OPTIONS=--max-old-space-size=8192 vite build",
+    "build:test": "vue-tsc -p tsconfig.app.json --noEmit && vite build --mode test",
     "preview": "vite preview --port 5050",
-    "typecheck": "pnpm exec vue-tsc --noEmit",
+    "typecheck": "pnpm exec vue-tsc -p tsconfig.app.json --noEmit",
     "lint": "eslint",
     "lint:fix": "eslint . --fix"
   },
@@ -60,7 +60,7 @@
     "vite": "^7.3.1",
     "vite-plugin-compression2": "^2.5.0",
     "vite-plugin-vue-devtools": "^8.0.7",
-    "vue-tsc": "^2.2.12"
+    "vue-tsc": "^3.2.9"
   },
   "pnpm": {
     "overrides": {

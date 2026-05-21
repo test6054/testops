@@ -12,13 +12,14 @@ import type {
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
 } from '@/apis/quality'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
 import type { MajorCategoryVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
-import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
+import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
@@ -48,8 +49,9 @@ const columns: ColumnsType = [
   { title: '专业大类', dataIndex: 'programId', key: 'programId', width: 160 },
   { title: '层级', dataIndex: 'levelCode', key: 'levelCode', width: 100 },
   { title: '召集人', dataIndex: 'convenerUserId', key: 'convenerUserId', width: 120 },
+  { title: '成员数', key: 'memberCount', width: 90 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
 /**
@@ -63,10 +65,10 @@ function workgroupLevelLabel(value: unknown): string {
     return ''
   }
   if (
-    value === 'UNIVERSITY'
-    || value === 'COLLEGE'
-    || value === 'PROGRAM'
-    || value === 'INDUSTRY'
+    value === 'UNIVERSITY' ||
+    value === 'COLLEGE' ||
+    value === 'PROGRAM' ||
+    value === 'INDUSTRY'
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
@@ -137,7 +139,7 @@ async function loadDicts() {
   programs.value = (await majorCategoryCatalogApi.listAll()) || []
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -164,7 +166,6 @@ function handleResetSearch() {
   loadList()
 }
 
-
 function openCreate() {
   editorMode.value = 'create'
   Object.assign(editor, {
@@ -189,10 +190,10 @@ function openEdit(record: EvaluationWorkgroupVO) {
 
 async function submitEditor() {
   if (
-    !editor.programId
-    || !editor.workgroupCode.trim()
-    || !editor.workgroupName.trim()
-    || !editor.convenerUserId
+    !editor.programId ||
+    !editor.workgroupCode.trim() ||
+    !editor.workgroupName.trim() ||
+    !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -224,6 +225,60 @@ async function handleDelete(record: EvaluationWorkgroupVO) {
 function convenerDisplay(uid: string) {
   const t = teacherCache.value.get(uid)
   return t ? t.nickName || t.userName : uid
+}
+
+/* ========== 工作组成员 Excel 导入与查看 ========== */
+
+const importVisible = ref(false)
+const importTargetWorkgroup = ref<EvaluationWorkgroupVO | null>(null)
+const membersDrawerVisible = ref(false)
+const membersDrawerTarget = ref<EvaluationWorkgroupVO | null>(null)
+
+const memberColumns: ColumnsType = [
+  { title: '工号/编号', dataIndex: 'userCode', key: 'userCode', width: 140 },
+  { title: '姓名', dataIndex: 'userName', key: 'userName', width: 120 },
+  { title: '角色', dataIndex: 'role', key: 'role', width: 140 },
+  { title: '备注', dataIndex: 'note', key: 'note' },
+]
+
+const ROLE_LABEL: Record<string, string> = {
+  CONVENER: '召集人',
+  MEMBER: '成员',
+  EXTERNAL_EXPERT: '外部专家',
+}
+
+function memberRoleLabel(role: unknown): string {
+  if (typeof role !== 'string' || !role) return '-'
+  return ROLE_LABEL[role] || role
+}
+
+function memberCountOf(record: EvaluationWorkgroupVO): number {
+  return Array.isArray(record.parsedMembers) ? record.parsedMembers.length : 0
+}
+
+function openImportMembers(record: EvaluationWorkgroupVO) {
+  importTargetWorkgroup.value = record
+  importVisible.value = true
+}
+
+function openMembersDrawer(record: EvaluationWorkgroupVO) {
+  membersDrawerTarget.value = record
+  membersDrawerVisible.value = true
+}
+
+function importTemplateApi() {
+  return evaluationWorkgroupApi.downloadMembersTemplate()
+}
+
+function importUploadApi(file: File) {
+  if (!importTargetWorkgroup.value) {
+    return Promise.reject(new Error('未选定工作组'))
+  }
+  return evaluationWorkgroupApi.importMembersExcel(importTargetWorkgroup.value.id, file)
+}
+
+async function handleImportFinished() {
+  await loadList()
 }
 
 /* ========== 信号指标：评价工作组健康度 ========== */
@@ -322,6 +377,11 @@ onMounted(async () => {
           <template v-else-if="column.key === 'convenerUserId'">
             {{ convenerDisplay(text) }}
           </template>
+          <template v-else-if="column.key === 'memberCount'">
+            <a-tag :color="memberCountOf(record) > 0 ? 'blue' : 'default'">
+              {{ memberCountOf(record) }} 人
+            </a-tag>
+          </template>
           <template v-else-if="column.key === 'enabled'">
             <a-tag :color="text ? 'green' : 'default'">
               {{ text ? '启用' : '停用' }}
@@ -329,6 +389,12 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
+              <UiButton variant="ghost" size="sm" @click="openMembersDrawer(record)">
+                成员
+              </UiButton>
+              <UiButton variant="ghost" size="sm" @click="openImportMembers(record)">
+                Excel 导入
+              </UiButton>
               <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
               <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                 删除
@@ -374,11 +440,12 @@ onMounted(async () => {
             @change="(v) => (editor.convenerUserId = v ?? '')"
           />
         </a-form-item>
-        <a-form-item label="成员（JSON 数组或自由文本）">
-          <a-textarea
-            v-model:value="editor.members"
-            :rows="3"
-            placeholder="例如 [&quot;张三&quot;, &quot;李四&quot;, &quot;王五&quot;]"
+        <a-form-item label="成员清单">
+          <a-alert
+            type="info"
+            show-icon
+            message="成员清单通过 Excel 导入维护"
+            description="保存当前工作组后，在「工作组台账」操作列点击「Excel 导入」上传成员名单。模板可在导入弹窗中下载。"
           />
         </a-form-item>
         <a-form-item label="职责">
@@ -387,6 +454,52 @@ onMounted(async () => {
         <a-checkbox v-model:checked="editor.enabled">启用</a-checkbox>
       </a-form>
     </a-modal>
+
+    <!-- Excel 批量导入成员 -->
+    <QualityImportPanel
+      v-model:open="importVisible"
+      :title="`Excel 导入工作组成员（${importTargetWorkgroup?.workgroupName || ''}）`"
+      accept=".xlsx,.xls"
+      accept-hint="支持 .xlsx / .xls 格式"
+      description-title="模板说明"
+      description="Excel 列顺序：工号/编号 | 姓名 | 角色（CONVENER / MEMBER / EXTERNAL_EXPERT，留空默认 MEMBER） | 备注。前两列必填。导入后将覆盖该工作组现有成员。"
+      template-button-label="下载工作组成员模板"
+      template-file-name="工作组成员导入模板.xlsx"
+      :template-api="importTemplateApi"
+      :upload-api="importUploadApi"
+      @imported="handleImportFinished"
+    />
+
+    <!-- 查看成员清单 -->
+    <a-drawer
+      v-model:open="membersDrawerVisible"
+      :title="`成员清单（${membersDrawerTarget?.workgroupName || ''}）`"
+      :width="720"
+      placement="right"
+    >
+      <a-empty
+        v-if="!membersDrawerTarget?.parsedMembers?.length"
+        description="该工作组尚无成员，请通过「Excel 导入」上传"
+      />
+      <UiDataTable
+        v-else
+        :columns="memberColumns"
+        :data-source="membersDrawerTarget?.parsedMembers || []"
+        row-key="userCode"
+        size="middle"
+        :total="(membersDrawerTarget?.parsedMembers || []).length"
+        :page-size="20"
+        flat
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'role'">
+            <a-tag :color="record.role === 'CONVENER' ? 'blue' : 'default'">
+              {{ memberRoleLabel(record.role) }}
+            </a-tag>
+          </template>
+        </template>
+      </UiDataTable>
+    </a-drawer>
   </StageWorkbenchShell>
 </template>
 

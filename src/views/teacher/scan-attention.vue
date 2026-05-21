@@ -3,9 +3,7 @@
     <template #context>
       <div class="scan-attention__context">
         <div class="scan-attention__context-info">
-          <h2 class="scan-attention__title">
-            阅卷交付 - 扫描异常队列
-          </h2>
+          <h2 class="scan-attention__title">阅卷交付 - 扫描异常队列</h2>
           <a-select
             :value="selectedExamId"
             class="scan-attention__exam-select"
@@ -65,9 +63,7 @@
 
       <section class="scan-attention__panel">
         <header class="scan-attention__panel-header">
-          <h3 class="scan-attention__panel-title">
-            筛选条件
-          </h3>
+          <h3 class="scan-attention__panel-title">筛选条件</h3>
         </header>
         <a-form
           layout="inline"
@@ -105,12 +101,8 @@
           </a-form-item>
           <a-form-item>
             <a-space>
-              <UiButton size="sm" :loading="loading" @click="loadAttentions">
-                查询
-              </UiButton>
-              <UiButton size="sm" variant="outline" @click="resetFilter">
-                重置
-              </UiButton>
+              <UiButton size="sm" :loading="loading" @click="loadAttentions"> 查询 </UiButton>
+              <UiButton size="sm" variant="outline" @click="resetFilter"> 重置 </UiButton>
             </a-space>
           </a-form-item>
         </a-form>
@@ -118,14 +110,20 @@
 
       <section class="scan-attention__panel">
         <header class="scan-attention__panel-header">
-          <h3 class="scan-attention__panel-title">
-            异常待办列表
-          </h3>
-          <span class="scan-attention__panel-meta">
-            共 {{ attentions.length }} 条
-          </span>
+          <h3 class="scan-attention__panel-title">异常待办列表</h3>
+          <span class="scan-attention__panel-meta"> 共 {{ attentions.length }} 条 </span>
         </header>
+        <!-- D-9 错误态：扫描异常列表加载失败时提供重试 + 上报入口 -->
+        <UiErrorRetryPanel
+          v-if="attentionsLoadError"
+          :error="attentionsLoadError"
+          title="扫描异常列表加载失败"
+          :helper="`考试 ID：${selectedExamId}`"
+          compact
+          @retry="loadAttentions"
+        />
         <UiDataTable
+          v-else
           :columns="columns"
           :data-source="attentions"
           :loading="loading"
@@ -157,8 +155,12 @@
             </template>
             <template v-else-if="column.key === 'sourceInfo'">
               <div class="scan-attention__source-cell">
-                <span v-if="record.sourceType"><b>{{ record.sourceType }}</b></span>
-                <span v-if="record.sourceId" class="scan-attention__hint">#{{ record.sourceId }}</span>
+                <span v-if="record.sourceType"
+                  ><b>{{ record.sourceType }}</b></span
+                >
+                <span v-if="record.sourceId" class="scan-attention__hint"
+                  >#{{ record.sourceId }}</span
+                >
               </div>
             </template>
             <template v-else-if="column.key === 'paperInstanceId'">
@@ -205,7 +207,7 @@
       title="试卷身份绑定"
       :width="560"
       :confirm-loading="binding"
-      @update:open="(v: boolean) => bindDrawerOpen = v"
+      @update:open="(v: boolean) => (bindDrawerOpen = v)"
       @close="bindDrawerOpen = false"
       @confirm="handleBind"
     >
@@ -270,7 +272,7 @@
       title="异常详情"
       :width="560"
       hide-footer
-      @update:open="(v: boolean) => detailDrawerOpen = v"
+      @update:open="(v: boolean) => (detailDrawerOpen = v)"
       @close="detailDrawerOpen = false"
     >
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
@@ -318,16 +320,25 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateVO, ScanAttentionItemVO } from '@/apis/mark/exam'
+import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindItemPayload } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import type { UiChartSliceItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-
-import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
-import { UiAlertStrip, UiButton, UiDataTable, UiDonutChart, UiDrawer, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiAlertStrip,
+  UiButton,
+  UiDataTable,
+  UiDonutChart,
+  UiDrawer,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -356,6 +367,8 @@ const filterForm = reactive<{
 
 const attentions = ref<ScanAttentionItemVO[]>([])
 const loading = ref(false)
+// D-9 错误态：扫描异常列表加载失败时 UiErrorRetryPanel 重试 + 上报
+const attentionsLoadError = ref<unknown>(null)
 
 const attentionTypeOptions = [
   { label: '质量阻断', value: 'QUALITY_BLOCK' },
@@ -375,7 +388,6 @@ const columns: ColumnType<ScanAttentionItemVO>[] = [
   { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
 
-
 function formatTime(value?: string): string {
   if (!value) return '-'
   return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
@@ -384,6 +396,7 @@ function formatTime(value?: string): string {
 async function loadAttentions(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
+  attentionsLoadError.value = null
   try {
     attentions.value = await listScanAttentions({
       examId: selectedExamId.value,
@@ -392,6 +405,7 @@ async function loadAttentions(): Promise<void> {
       paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
     })
   } catch (error) {
+    attentionsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '异常列表加载失败'
     message.error(errMsg)
   } finally {
@@ -448,17 +462,52 @@ const typeCounts = computed(() => {
 })
 
 const statPanelMetrics = computed(() => [
-  { label: '质量阻断', value: typeCounts.value.QUALITY_BLOCK, unit: '条', tone: typeCounts.value.QUALITY_BLOCK > 0 ? 'red' as const : 'gray' as const },
-  { label: '处理阻断', value: typeCounts.value.PROCESSING_BLOCK, unit: '条', tone: typeCounts.value.PROCESSING_BLOCK > 0 ? 'orange' as const : 'gray' as const },
-  { label: '重复待处置', value: typeCounts.value.DUPLICATE_PENDING, unit: '条', tone: typeCounts.value.DUPLICATE_PENDING > 0 ? 'purple' as const : 'gray' as const },
-  { label: '识别复核', value: typeCounts.value.RECOGNITION_REVIEW, unit: '条', tone: typeCounts.value.RECOGNITION_REVIEW > 0 ? 'blue' as const : 'gray' as const },
+  {
+    label: '质量阻断',
+    value: typeCounts.value.QUALITY_BLOCK,
+    unit: '条',
+    tone: typeCounts.value.QUALITY_BLOCK > 0 ? ('red' as const) : ('gray' as const),
+  },
+  {
+    label: '处理阻断',
+    value: typeCounts.value.PROCESSING_BLOCK,
+    unit: '条',
+    tone: typeCounts.value.PROCESSING_BLOCK > 0 ? ('orange' as const) : ('gray' as const),
+  },
+  {
+    label: '重复待处置',
+    value: typeCounts.value.DUPLICATE_PENDING,
+    unit: '条',
+    tone: typeCounts.value.DUPLICATE_PENDING > 0 ? ('purple' as const) : ('gray' as const),
+  },
+  {
+    label: '识别复核',
+    value: typeCounts.value.RECOGNITION_REVIEW,
+    unit: '条',
+    tone: typeCounts.value.RECOGNITION_REVIEW > 0 ? ('blue' as const) : ('gray' as const),
+  },
 ])
 
 const donutItems = computed<UiChartSliceItem[]>(() => [
   { key: 'quality', label: '质量阻断', value: typeCounts.value.QUALITY_BLOCK, tone: 'red' },
-  { key: 'processing', label: '处理阻断', value: typeCounts.value.PROCESSING_BLOCK, tone: 'orange' },
-  { key: 'duplicate', label: '重复待处置', value: typeCounts.value.DUPLICATE_PENDING, tone: 'purple' },
-  { key: 'recognition', label: '识别复核', value: typeCounts.value.RECOGNITION_REVIEW, tone: 'blue' },
+  {
+    key: 'processing',
+    label: '处理阻断',
+    value: typeCounts.value.PROCESSING_BLOCK,
+    tone: 'orange',
+  },
+  {
+    key: 'duplicate',
+    label: '重复待处置',
+    value: typeCounts.value.DUPLICATE_PENDING,
+    tone: 'purple',
+  },
+  {
+    key: 'recognition',
+    label: '识别复核',
+    value: typeCounts.value.RECOGNITION_REVIEW,
+    tone: 'blue',
+  },
 ])
 
 function resetFilter(): void {
@@ -512,8 +561,8 @@ function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   if (!kw || !option) return true
   const raw = option.raw as ExamCandidateVO
   return (
-    (raw.studentName ?? '').toLowerCase().includes(kw)
-    || (raw.studentNo ?? '').toLowerCase().includes(kw)
+    (raw.studentName ?? '').toLowerCase().includes(kw) ||
+    (raw.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
@@ -621,8 +670,7 @@ async function handleBatchBind(): Promise<void> {
     return
   }
   const selected = attentions.value.filter(
-    (item) =>
-      selectedRowKeys.value.includes(item.id) && item.paperInstanceId && item.scanBatchId,
+    (item) => selectedRowKeys.value.includes(item.id) && item.paperInstanceId && item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择有试卷实例的异常项')

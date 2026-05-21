@@ -13,9 +13,6 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   isScoreBatchStatus,
@@ -24,6 +21,9 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   CourseSelector,
   StudentSelector,
@@ -137,8 +137,8 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value
-    = (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+  assessmentItems.value =
+    (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
 }
 
 /* ========== 信号指标带（SignalBand） ========== */
@@ -240,81 +240,6 @@ async function handleDelete(record: ScoreRecordVO) {
   })
 }
 
-/* ========== 批量录入 ========== */
-
-const batchCreateVisible = ref(false)
-const batchCreateSubmitting = ref(false)
-const batchCreateText = ref('')
-const BATCH_CREATE_PLACEHOLDER = `[
-  {
-    "assessmentItemId": "1",
-    "studentNumber": "2021001",
-    "studentName": "张三",
-    "rawScore": 85,
-    "fullScore": 100,
-    "validFlag": true
-  },
-  {
-    "assessmentItemId": "1",
-    "studentNumber": "2021002",
-    "studentName": "李四",
-    "rawScore": 92,
-    "fullScore": 100
-  }
-]`
-
-function openBatchCreate() {
-  if (!selectedBatch.value) return
-  batchCreateText.value = ''
-  batchCreateVisible.value = true
-}
-
-async function submitBatchCreate() {
-  if (!selectedBatch.value) return
-  const text = batchCreateText.value.trim()
-  if (!text) {
-    message.error('请粘贴明细 JSON 数组')
-    return
-  }
-  let raw: unknown
-  try {
-    raw = JSON.parse(text)
-  } catch (err) {
-    message.error(`JSON 解析失败：${(err as Error).message}`)
-    return
-  }
-  if (!Array.isArray(raw)) {
-    message.error('JSON 解析失败：根节点必须是数组')
-    return
-  }
-  const parsed: ScoreRecordSavePayload[] = []
-  for (let idx = 0; idx < raw.length; idx++) {
-    const item = raw[idx] as Partial<ScoreRecordSavePayload> | null
-    if (!item || !item.assessmentItemId) {
-      message.error(`第 ${idx + 1} 行缺少 assessmentItemId`)
-      return
-    }
-    if (item.rawScore == null || item.fullScore == null) {
-      message.error(`第 ${idx + 1} 行缺少 rawScore / fullScore`)
-      return
-    }
-    parsed.push({
-      batchId: selectedBatch.value.id,
-      qualityCourseId: qualityStore.currentQualityCourseId,
-      ...item,
-    } as ScoreRecordSavePayload)
-  }
-  batchCreateSubmitting.value = true
-  try {
-    await scoreRecordApi.batchCreate(selectedBatch.value.id, parsed)
-    message.success(`已批量创建 ${parsed.length} 条明细`)
-    batchCreateVisible.value = false
-    await loadRecords()
-  } finally {
-    batchCreateSubmitting.value = false
-  }
-}
-
 /* ========== 按考核环节查已确认的有效明细 ========== */
 
 const validByItemVisible = ref(false)
@@ -336,8 +261,8 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value
-      = (await scoreRecordApi.listValidByItem(
+    validByItemRecords.value =
+      (await scoreRecordApi.listValidByItem(
         validByItemId.value,
         qualityStore.currentQualityCourseId,
       )) || []
@@ -493,7 +418,9 @@ function handleCourseChange(courseId: string | null) {
                 <UiButton variant="ghost" size="sm" @click="openValidByItem">
                   按考核环节查有效
                 </UiButton>
-                <UiButton variant="outline" size="sm" @click="openBatchCreate"> 批量录入 </UiButton>
+                <router-link :to="{ name: 'QualityScoreBatch' }" class="score-record__import-link">
+                  <UiButton variant="outline" size="sm"> 批量导入（Excel） </UiButton>
+                </router-link>
                 <UiButton variant="primary" size="sm" @click="openCreate"> 新增明细 </UiButton>
               </div>
             </header>
@@ -536,7 +463,12 @@ function handleCourseChange(courseId: string | null) {
                 <template v-else-if="column.key === 'actions'">
                   <a-space>
                     <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-                    <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
+                    <UiButton
+                      variant="ghost"
+                      status="danger"
+                      size="sm"
+                      @click="handleDelete(record)"
+                    >
                       删除
                     </UiButton>
                   </a-space>
@@ -608,7 +540,7 @@ function handleCourseChange(courseId: string | null) {
           <a-textarea
             v-model:value="editor.rubricBreakdown"
             :rows="3"
-            placeholder="{&quot;rubricItemId&quot;: score, ...}"
+            placeholder='{"rubricItemId": score, ...}'
             class="score-record__mono"
           />
         </a-form-item>
@@ -628,30 +560,6 @@ function handleCourseChange(courseId: string | null) {
           <a-input v-model:value="editor.errorCodes" placeholder="如 SCORE_OVERFLOW, DUP_STUDENT" />
         </a-form-item>
       </a-form>
-    </UiDrawer>
-
-    <UiDrawer
-      v-model:open="batchCreateVisible"
-      :title="`批量录入成绩明细（${selectedBatch?.batchName || ''}）`"
-      :width="780"
-      :confirm-loading="batchCreateSubmitting"
-      :hide-footer="false"
-      ok-text="提交批量录入"
-      @ok="submitBatchCreate"
-    >
-      <a-alert
-        type="info"
-        show-icon
-        message="粘贴 JSON 数组，每行一个明细对象"
-        description="必填：assessmentItemId、rawScore、fullScore；可选：studentNumber、studentName、classId、studentUserId、rubricBreakdown、validFlag、invalidReason、errorCodes。batchId 与 qualityCourseId 由页面自动填入。"
-        class="score-record__batch-alert"
-      />
-      <a-textarea
-        v-model:value="batchCreateText"
-        :rows="14"
-        :placeholder="BATCH_CREATE_PLACEHOLDER"
-        class="score-record__mono"
-      />
     </UiDrawer>
 
     <UiDrawer
@@ -837,8 +745,9 @@ function handleCourseChange(courseId: string | null) {
     }
   }
 
-  &__batch-alert {
-    margin-bottom: 12px;
+  &__import-link {
+    text-decoration: none;
+    color: inherit;
   }
 }
 

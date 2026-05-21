@@ -11,7 +11,16 @@
       </a-space>
     </template>
 
+    <!-- D-9 错误态：更正记录加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      title="更正记录加载失败"
+      compact
+      @retry="reload"
+    />
     <UiDataTable
+      v-else
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -31,14 +40,10 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'effectiveTime'">
-          {{
-            fmt(rows[index].effectiveTime)
-          }}
+          {{ fmt(rows[index].effectiveTime) }}
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{
-            fmt(rows[index].createTime)
-          }}
+          {{ fmt(rows[index].createTime) }}
         </template>
       </template>
     </UiDataTable>
@@ -105,11 +110,6 @@ import type {
   GradeCorrectionStatusCode,
   GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { reactive, ref, watch } from 'vue'
 import {
   createCorrection,
   GRADE_CORRECTION_STATUS_COLOR,
@@ -117,15 +117,22 @@ import {
   GRADE_CORRECTION_TYPE_LABEL,
   listCorrections,
 } from '@/apis/mark/grade-review'
-import { UiDataTable } from '@/components/ui-guide/ui'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { reactive, ref, watch } from 'vue'
+import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])
 const loading = ref(false)
+// D-9 错误态：更正记录加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 
 const columns: ColumnType<ExamGradeCorrectionRecordVO>[] = [
   { title: '更正ID', dataIndex: 'id', key: 'id', width: 140 },
@@ -172,10 +179,12 @@ function openCreateModal(): void {
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
+  loadError.value = null
   try {
     rows.value = await listCorrections({ examId: props.examId })
   } catch (e) {
     rows.value = []
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '更正记录加载失败')
   } finally {
     loading.value = false

@@ -34,7 +34,16 @@
       />
     </div>
 
+    <!-- D-9 错误态：题目质量分析加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      title="题目质量分析加载失败"
+      compact
+      @retry="reload"
+    />
     <UiDataTable
+      v-else
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -81,6 +90,11 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import {
+  generateAllQuestionAnalysis,
+  generateQuestionAnalysis,
+  listQuestionAnalysis,
+} from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
@@ -95,24 +109,28 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
-import {
-  generateAllQuestionAnalysis,
-  generateQuestionAnalysis,
-  listQuestionAnalysis,
-} from '@/apis/mark/question-analysis'
-import { UiDataTable } from '@/components/ui-guide/ui'
+import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
 // 按需注册 ECharts 模块（散点图 + tooltip + grid + legend + title）
-use([CanvasRenderer, ScatterChart, GridComponent, LegendComponent, TitleComponent, TooltipComponent])
+use([
+  CanvasRenderer,
+  ScatterChart,
+  GridComponent,
+  LegendComponent,
+  TitleComponent,
+  TooltipComponent,
+])
 
 const rows = ref<ExamQuestionAnalysisRecordVO[]>([])
 const loading = ref(false)
+// D-9 错误态：题目质量分析加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 const generatingAll = ref(false)
 const generatingId = ref<string>('')
 const qFilter = ref('')
@@ -132,6 +150,7 @@ const columns: ColumnType<ExamQuestionAnalysisRecordVO>[] = [
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
+  loadError.value = null
   try {
     rows.value = await listQuestionAnalysis({
       examId: props.examId,
@@ -139,6 +158,7 @@ async function reload(): Promise<void> {
     })
   } catch (e) {
     rows.value = []
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '题目质量分析加载失败')
   } finally {
     loading.value = false
@@ -234,12 +254,14 @@ const scatterPoints = computed<ScatterSeriesGroup[]>(() => {
       ideal.push(point)
     }
   }
-  return ([
-    { name: '理想（难度 0.3-0.8 且 区分度 ≥ 0.4）', color: '#16a34a', data: ideal },
-    { name: '偏难（难度 < 0.3）', color: '#dc2626', data: tooHard },
-    { name: '偏易（难度 > 0.8）', color: '#ea580c', data: tooEasy },
-    { name: '区分度不足（< 0.4）', color: '#a855f7', data: lowDiscrim },
-  ] as ScatterSeriesGroup[]).filter(g => g.data.length > 0)
+  return (
+    [
+      { name: '理想（难度 0.3-0.8 且 区分度 ≥ 0.4）', color: '#16a34a', data: ideal },
+      { name: '偏难（难度 < 0.3）', color: '#dc2626', data: tooHard },
+      { name: '偏易（难度 > 0.8）', color: '#ea580c', data: tooEasy },
+      { name: '区分度不足（< 0.4）', color: '#a855f7', data: lowDiscrim },
+    ] as ScatterSeriesGroup[]
+  ).filter((g) => g.data.length > 0)
 })
 
 /** ECharts 配置：4 分组 scatter，symbolSize 反映已批人数；hover 显示完整指标 */
@@ -280,7 +302,7 @@ const chartOption = computed(() => ({
     axisLine: { lineStyle: { color: '#94a3b8' } },
     splitLine: { lineStyle: { color: '#e2e8f0' } },
   },
-  series: scatterPoints.value.map(g => ({
+  series: scatterPoints.value.map((g) => ({
     type: 'scatter',
     name: g.name,
     // 点大小随已批人数线性放大但不超过 40px，避免大题挤占小题视觉

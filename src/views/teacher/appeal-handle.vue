@@ -41,6 +41,16 @@
         class="appeal-page__summary"
       />
 
+      <!-- D-9 错误态：复核汇总加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="summaryLoadError"
+        :error="summaryLoadError"
+        title="复核汇总加载失败"
+        :helper="`考试 ID：${selectedExamId}`"
+        compact
+        @retry="loadSummary"
+      />
+
       <UiAlertStrip
         v-if="pendingCount > 0"
         tone="warning"
@@ -74,7 +84,14 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { listCorrections, listReviewRequests } from '@/apis/mark/grade-review'
-import { UiAlertStrip, UiButton, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiAlertStrip,
+  UiButton,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import BatchCorrectionPlansCard from './appeal-handle/BatchCorrectionPlansCard.vue'
@@ -98,6 +115,7 @@ const correctionReloadToken = ref(0)
 const batchReloadToken = ref(0)
 
 // ─── P2 顶部汇总：复核 + 更正聚合统计 ─────────────────────────────
+const summaryLoadError = ref<unknown>(null)
 const pendingCount = ref(0)
 const inReviewCount = ref(0)
 const approvedCount = ref(0)
@@ -106,7 +124,12 @@ const correctedCount = ref(0)
 const correctionRecordCount = ref(0)
 
 const summaryMetrics = computed<UiStatPanelItem[]>(() => [
-  { key: 'pending', label: '待处理', value: pendingCount.value, tone: pendingCount.value > 0 ? 'orange' : 'gray' },
+  {
+    key: 'pending',
+    label: '待处理',
+    value: pendingCount.value,
+    tone: pendingCount.value > 0 ? 'orange' : 'gray',
+  },
   { key: 'inReview', label: '处理中', value: inReviewCount.value, tone: 'blue' },
   { key: 'approved', label: '通过', value: approvedCount.value, tone: 'green' },
   { key: 'rejected', label: '驳回', value: rejectedCount.value, tone: 'red' },
@@ -117,19 +140,21 @@ const summaryMetrics = computed<UiStatPanelItem[]>(() => [
 async function loadSummary(): Promise<void> {
   if (!selectedExamId.value) return
   const examId = selectedExamId.value
+  summaryLoadError.value = null
   try {
     const [requests, corrections] = await Promise.all([
       listReviewRequests({ examId }),
       listCorrections({ examId }),
     ])
     const reqs = requests ?? []
-    pendingCount.value = reqs.filter(r => r.requestStatus === 'PENDING').length
-    inReviewCount.value = reqs.filter(r => r.requestStatus === 'IN_REVIEW').length
-    approvedCount.value = reqs.filter(r => r.requestStatus === 'APPROVED').length
-    rejectedCount.value = reqs.filter(r => r.requestStatus === 'REJECTED').length
-    correctedCount.value = reqs.filter(r => r.requestStatus === 'CORRECTED').length
+    pendingCount.value = reqs.filter((r) => r.requestStatus === 'PENDING').length
+    inReviewCount.value = reqs.filter((r) => r.requestStatus === 'IN_REVIEW').length
+    approvedCount.value = reqs.filter((r) => r.requestStatus === 'APPROVED').length
+    rejectedCount.value = reqs.filter((r) => r.requestStatus === 'REJECTED').length
+    correctedCount.value = reqs.filter((r) => r.requestStatus === 'CORRECTED').length
     correctionRecordCount.value = corrections?.length ?? 0
   } catch (error) {
+    summaryLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '复核汇总加载失败'
     message.warning(errMsg)
   }

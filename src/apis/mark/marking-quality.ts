@@ -246,7 +246,7 @@ export interface MyPendingSpotCheckItemVO {
 
 /**
  * 查询当前教师作为被抽检对象的待处理抽检列表（PENDING + IN_PROGRESS）。
- * 教师端用于替代「输入 spotCheckId + 提交结论」的笨拙做法。
+ * 教师端用于按当前账号聚合需要处理的抽检任务。
  * POST /api/mark/quality/spotcheck/my-pending
  */
 export function listMyPendingSpotChecks(

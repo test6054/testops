@@ -31,7 +31,20 @@
       </div>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择需要维护母版的考试" class="paper-master-page__empty" />
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请选择需要维护母版的考试"
+      class="paper-master-page__empty"
+    />
+
+    <!-- D-9 错误态：试卷母版加载遇到非“未配置”错误时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-else-if="masterLoadError"
+      :error="masterLoadError"
+      title="试卷母版加载失败"
+      :helper="`考试 ID：${selectedExamId}`"
+      @retry="loadMasterData"
+    />
 
     <a-spin v-else :spinning="loading">
       <!-- PDF 预览区 -->
@@ -243,6 +256,7 @@ import type {
   PaperMasterObjectiveAreaPayload,
   PaperMasterVO,
 } from '@/apis/mark/paper-master'
+import { getPaperMaster, savePaperMaster } from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -252,8 +266,14 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
-import { getPaperMaster, savePaperMaster } from '@/apis/mark/paper-master'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -272,6 +292,8 @@ const {
 
 const loading = ref(false)
 const saving = ref(false)
+// D-9 错误态：仅当后端返回非“未配置”类错误时才上报
+const masterLoadError = ref<unknown>(null)
 const uploading = ref(false)
 const uploadedFileName = ref('')
 const masterData = ref<PaperMasterVO | null>(null)
@@ -373,6 +395,7 @@ const objectiveColumns: ColumnType[] = [
 async function loadMasterData() {
   if (!selectedExamId.value) return
   loading.value = true
+  masterLoadError.value = null
   try {
     const res = await getPaperMaster(selectedExamId.value)
     masterData.value = res
@@ -407,8 +430,15 @@ async function loadMasterData() {
       }))
       objectiveSeq = objectiveAreas.value.length
     }
-  } catch {
+  } catch (error) {
     masterData.value = null
+    const errMsg = error instanceof Error ? error.message : ''
+    const isNotConfigured =
+      errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('未配置')
+    if (errMsg && !isNotConfigured) {
+      // 真实加载失败：D-9 错误态 + 警告提示
+      masterLoadError.value = error
+    }
   } finally {
     loading.value = false
   }

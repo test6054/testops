@@ -5,11 +5,11 @@
         <div class="quality-dashboard__context-info">
           <h2 class="quality-dashboard__title">阅卷交付 - 阅卷质量控制台</h2>
           <a-select
-            v-model:value="selectedExamId"
+            :value="selectedExamId"
             class="quality-dashboard__exam-select"
             placeholder="选择考试"
             :options="examOptions"
-            :loading="examOptionsLoading"
+            :loading="examLoading"
             show-search
             option-filter-prop="label"
             allow-clear
@@ -96,6 +96,15 @@
               description="进度监控按 (考试 + 阅卷组织 + 题组) 维度统计；题组留空表示组织级合计。"
               dense
               class="quality-dashboard__alert"
+            />
+            <!-- D-9 错误态：进度快照加载失败时给出可恢复 + 可上报路径 -->
+            <UiErrorRetryPanel
+              v-else-if="progressLoadError"
+              :error="progressLoadError"
+              title="进度快照加载失败"
+              :helper="`考试 ${selectedExamId} · 组织 ${organizationIdInput || '-'}`"
+              compact
+              @retry="loadProgress"
             />
             <UiAlertStrip
               v-else-if="!progress"
@@ -194,7 +203,17 @@
               </a-space>
             </template>
 
+            <!-- D-9 错误态：教师质量指标加载失败时给出可恢复 + 可上报路径 -->
+            <UiErrorRetryPanel
+              v-if="reviewerMetricsLoadError"
+              :error="reviewerMetricsLoadError"
+              title="教师质量指标加载失败"
+              :helper="`考试 ${selectedExamId} · 组织 ${organizationIdInput || '-'}`"
+              compact
+              @retry="loadReviewerMetrics"
+            />
             <UiDataTable
+              v-else
               :columns="reviewerColumns"
               :data-source="reviewerMetrics"
               :loading="reviewerLoading"
@@ -345,13 +364,24 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import type {
   BatchReprocessScopeCode,
   ProgressMonitorRecordVO,
   ProgressRiskLevelCode,
   ReviewerMetricStatusCode,
   ReviewerQualityMetricVO,
+} from '@/apis/mark/marking-quality'
+import {
+  createSpotCheckTasks,
+  getLatestProgress,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_LABEL,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_LABEL,
+  takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -365,19 +395,6 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
-import {
-  createSpotCheckTasks,
-  getLatestProgress,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_COLOR,
-  PROGRESS_RISK_LEVEL_LABEL,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_COLOR,
-  REVIEWER_METRIC_STATUS_LABEL,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,
@@ -385,24 +402,29 @@ import {
   UiCard,
   UiDataTable,
   UiEmpty,
+  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
 
 const route = useRoute()
 const router = useRouter()
 
-const selectedExamId = ref<string | undefined>(
-  route.query.examId ? String(route.query.examId) : undefined,
-)
+// B-8 统一考试选择器
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  onExamChange,
+  init: initExamSelector,
+} = useMarkExamSelector()
 const organizationIdInput = ref<string>(
   route.query.organizationId ? String(route.query.organizationId) : '',
 )
 const groupIdInput = ref<string>(route.query.groupId ? String(route.query.groupId) : '')
-const examOptions = ref<Array<{ label: string, value: string }>>([])
-const examOptionsLoading = ref(false)
 
 const activeTab = ref<'progress' | 'reviewer' | 'spotcheck' | 'reprocess'>('progress')
 
@@ -413,10 +435,13 @@ const scopeValid = computed(() => Boolean(selectedExamId.value && organizationId
 const progress = ref<ProgressMonitorRecordVO | null>(null)
 const progressLoading = ref(false)
 const snapshotting = ref(false)
+// D-9 错误态：进度快照加载失败时，UiErrorRetryPanel 上报 + 重试
+const progressLoadError = ref<unknown>(null)
 
 async function loadProgress(): Promise<void> {
   if (!scopeValid.value) return
   progressLoading.value = true
+  progressLoadError.value = null
   try {
     progress.value = await getLatestProgress({
       examId: selectedExamId.value!,
@@ -424,6 +449,7 @@ async function loadProgress(): Promise<void> {
       groupId: groupIdInput.value.trim() || undefined,
     })
   } catch (error) {
+    progressLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载进度快照失败')
   } finally {
     progressLoading.value = false
@@ -453,6 +479,8 @@ const reviewerMetrics = ref<ReviewerQualityMetricVO[]>([])
 const reviewerLoading = ref(false)
 const refreshing = ref(false)
 const metricStatusFilter = ref<ReviewerMetricStatusCode | undefined>(undefined)
+// D-9 错误态：教师质量指标加载失败时，UiErrorRetryPanel 上报 + 重试
+const reviewerMetricsLoadError = ref<unknown>(null)
 
 const reviewerColumns: ColumnType<ReviewerQualityMetricVO>[] = [
   { title: '教师用户ID', key: 'reviewerUserId', dataIndex: 'reviewerUserId', width: 130 },
@@ -472,6 +500,7 @@ const reviewerColumns: ColumnType<ReviewerQualityMetricVO>[] = [
 async function loadReviewerMetrics(): Promise<void> {
   if (!selectedExamId.value) return
   reviewerLoading.value = true
+  reviewerMetricsLoadError.value = null
   try {
     reviewerMetrics.value = await listReviewerMetrics({
       examId: selectedExamId.value,
@@ -480,6 +509,7 @@ async function loadReviewerMetrics(): Promise<void> {
       metricStatus: metricStatusFilter.value,
     })
   } catch (error) {
+    reviewerMetricsLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载教师质量指标失败')
   } finally {
     reviewerLoading.value = false
@@ -596,8 +626,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0
@@ -649,21 +679,6 @@ function formatDecimal(value: number | undefined): string {
   return n.toFixed(2)
 }
 
-async function loadExamOptions(): Promise<void> {
-  examOptionsLoading.value = true
-  try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    examOptions.value = (result.list ?? []).map((item: ExamSummaryVO) => ({
-      label: `${item.examName}（${item.statusMessage}）`,
-      value: item.examId,
-    }))
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '加载考试列表失败')
-  } finally {
-    examOptionsLoading.value = false
-  }
-}
-
 function syncRouteQuery(): void {
   void router.replace({
     query: {
@@ -675,7 +690,8 @@ function syncRouteQuery(): void {
 }
 
 function handleExamChange(value: unknown): void {
-  selectedExamId.value = value != null ? String(value) : undefined
+  onExamChange(value as string | number | undefined, [])
+  // composable 会自动同步 examId 到 URL；此处补充写回以保证 organizationId/groupId 不丢失
   syncRouteQuery()
   reloadActiveTab()
 }
@@ -695,8 +711,13 @@ watch(activeTab, () => {
   reloadActiveTab()
 })
 
+// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
+watch(selectedExamId, () => {
+  reloadActiveTab()
+})
+
 onMounted(async () => {
-  await loadExamOptions()
+  await initExamSelector()
   reloadActiveTab()
 })
 </script>

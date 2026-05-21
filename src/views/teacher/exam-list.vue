@@ -28,6 +28,14 @@
       compact
       class="exam-list-page__kpi"
     />
+    <UiAlertStrip
+      v-if="statusTotalsError"
+      tone="error"
+      title="考试状态计数加载失败"
+      :description="statusTotalsError"
+      dense
+      class="exam-list-page__alert"
+    />
 
     <!-- 行动提示：当存在超期待推进考试时显示 -->
     <UiAlertStrip
@@ -97,7 +105,15 @@
         <UiBadge tone="blue">{{ pagination.total ?? 0 }} 条</UiBadge>
       </template>
 
-      <UiEmpty v-if="!loading && dataSource.length === 0" description="暂无考试数据" />
+      <!-- D-9 错误态：考试列表加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="examsLoadError"
+        :error="examsLoadError"
+        title="考试列表加载失败"
+        compact
+        @retry="loadExams"
+      />
+      <UiEmpty v-else-if="!loading && dataSource.length === 0" description="暂无考试数据" />
 
       <UiDataTable
         v-else
@@ -233,6 +249,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -242,7 +259,6 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import {
   UiAlertStrip,
   UiBadge,
@@ -250,6 +266,7 @@ import {
   UiCard,
   UiDataTable,
   UiEmpty,
+  UiErrorRetryPanel,
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
@@ -279,13 +296,15 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
 
 const dataSource = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
+// D-9 错误态：考试列表加载失败时 UiErrorRetryPanel 重试 + 上报
+const examsLoadError = ref<unknown>(null)
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
   pageSize: 10,
@@ -319,6 +338,7 @@ function formatTime(value?: string): string {
 
 async function loadExams(): Promise<void> {
   loading.value = true
+  examsLoadError.value = null
   try {
     const [startTime, endTime] = filterForm.dateRange ?? []
     const result = await pageExams({
@@ -333,6 +353,7 @@ async function loadExams(): Promise<void> {
     dataSource.value = result.list ?? []
     pagination.total = result.total ?? 0
   } catch (error) {
+    examsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
     message.error(errMsg)
   } finally {
@@ -359,7 +380,7 @@ function handleTableChange(next: TablePaginationConfig): void {
   void loadExams()
 }
 
-function handleUiPageChange(payload: { current: number, pageSize: number }): void {
+function handleUiPageChange(payload: { current: number; pageSize: number }): void {
   pagination.current = payload.current
   pagination.pageSize = payload.pageSize
   void loadExams()
@@ -385,9 +406,11 @@ function goPrepWorkbench(exam: ExamSummaryVO): void {
 // 复用 pageExams 的 status 维度查询，pageSize=1 仅取 total，避免额外列表传输。
 const activeTotal = ref<number>(0)
 const closedTotal = ref<number>(0)
+const statusTotalsError = ref('')
 
 async function loadStatusTotals(): Promise<void> {
   const createUserId = isAdminView.value ? null : userStore.userInfo.userId || undefined
+  statusTotalsError.value = ''
   try {
     const [activeRes, closedRes] = await Promise.all([
       pageExams({ pageNum: 1, pageSize: 1, status: 'ACTIVE', createUserId }),
@@ -395,10 +418,9 @@ async function loadStatusTotals(): Promise<void> {
     ])
     activeTotal.value = activeRes.total ?? 0
     closedTotal.value = closedRes.total ?? 0
-  } catch {
-    // 计数加载失败不阻塞主列表，KPI 静默回退到 0
-    activeTotal.value = 0
-    closedTotal.value = 0
+  } catch (error) {
+    statusTotalsError.value =
+      error instanceof Error ? error.message : '进行中 / 已关闭考试计数加载失败'
   }
 }
 
@@ -422,14 +444,14 @@ const kpiItems = computed(() => [
   {
     key: 'active',
     label: '进行中考试',
-    value: activeTotal.value,
+    value: statusTotalsError.value ? '不可用' : activeTotal.value,
     helper: isAdminView.value ? '租户全部 ACTIVE' : '本人创建 ACTIVE',
     tone: 'green' as BadgeTone,
   },
   {
     key: 'closed',
     label: '已关闭',
-    value: closedTotal.value,
+    value: statusTotalsError.value ? '不可用' : closedTotal.value,
     helper: isAdminView.value ? '租户全部 CLOSED' : '本人创建 CLOSED',
     tone: 'gray' as BadgeTone,
   },

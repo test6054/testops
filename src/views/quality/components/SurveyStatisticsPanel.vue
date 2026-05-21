@@ -17,7 +17,9 @@
             <a-col :span="8">
               <a-statistic
                 title="总体达成度"
-                :value="statistics.overallScore != null ? (statistics.overallScore * 100).toFixed(1) : '-'"
+                :value="
+                  statistics.overallScore != null ? (statistics.overallScore * 100).toFixed(1) : '-'
+                "
                 suffix="%"
               />
             </a-col>
@@ -49,18 +51,35 @@
             </template>
             <template v-else-if="column.dataIndex === 'convertedScore'">
               <span :class="scoreClass(record.convertedScore)">
-                {{ record.convertedScore != null ? `${(record.convertedScore * 100).toFixed(1)}%` : '-' }}
+                {{
+                  record.convertedScore != null
+                    ? `${(record.convertedScore * 100).toFixed(1)}%`
+                    : '-'
+                }}
               </span>
             </template>
-            <template v-else-if="column.dataIndex === 'distribution'">
-              <div v-if="record.distribution" class="distribution-bar">
+            <template v-else-if="column.dataIndex === 'distributionBuckets'">
+              <div v-if="record.distributionBuckets?.length" class="distribution-bar">
                 <span
-                  v-for="(count, val) in record.distribution"
-                  :key="val"
+                  v-for="bucket in record.distributionBuckets"
+                  :key="`${bucket.scaleValue ?? bucket.label}`"
                   class="distribution-item"
-                  :title="`${val}: ${count}人`"
+                  :title="`${bucket.label ?? bucket.scaleValue}: ${bucket.count}人`"
                 >
-                  {{ val }}({{ count }})
+                  {{ bucket.label ?? bucket.scaleValue }}({{ bucket.count }})
+                </span>
+              </div>
+              <span v-else>-</span>
+            </template>
+            <template v-else-if="column.dataIndex === 'openTextSummaries'">
+              <div v-if="record.openTextSummaries?.length" class="open-text-list">
+                <span
+                  v-for="summary in record.openTextSummaries"
+                  :key="summary.content"
+                  class="open-text-item"
+                  :title="summary.content"
+                >
+                  {{ summary.content }}({{ summary.count }})
                 </span>
               </div>
               <span v-else>-</span>
@@ -74,8 +93,8 @@
 
 <script setup lang="ts">
 import type { IndirectEvaluationStatisticsVO } from '@/apis/quality/indirect-evaluation'
-import { computed, ref, watch } from 'vue'
 import { indirectFormApi } from '@/apis/quality/indirect-evaluation'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   open: boolean
@@ -103,21 +122,26 @@ const columns = [
   { title: '中位数', dataIndex: 'median', width: 70 },
   { title: '标准差', dataIndex: 'stdDev', width: 70 },
   { title: '达成度', dataIndex: 'convertedScore', width: 80 },
-  { title: '分布', dataIndex: 'distribution', width: 160 },
+  { title: '分布', dataIndex: 'distributionBuckets', width: 180 },
+  { title: '文本摘要', dataIndex: 'openTextSummaries', width: 180 },
 ]
 
-watch(() => ({ open: props.open, formId: props.formId }), async ({ open, formId }) => {
-  if (open && formId) {
-    loading.value = true
-    try {
-      statistics.value = await indirectFormApi.statistics(formId)
-    } catch {
-      statistics.value = null
-    } finally {
-      loading.value = false
+watch(
+  () => ({ open: props.open, formId: props.formId }),
+  async ({ open, formId }) => {
+    if (open && formId) {
+      loading.value = true
+      try {
+        statistics.value = await indirectFormApi.statistics(formId)
+      } catch {
+        statistics.value = null
+      } finally {
+        loading.value = false
+      }
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+)
 
 function scoreClass(score?: number): string {
   if (score == null) return ''
@@ -157,7 +181,31 @@ function handleClose() {
   color: #1890ff;
 }
 
-.score-good { color: #52c41a; font-weight: 600; }
-.score-warn { color: #faad14; font-weight: 600; }
-.score-low { color: #ff4d4f; font-weight: 600; }
+.open-text-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.open-text-item {
+  max-width: 160px;
+  overflow: hidden;
+  color: #595959;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score-good {
+  color: #52c41a;
+  font-weight: 600;
+}
+.score-warn {
+  color: #faad14;
+  font-weight: 600;
+}
+.score-low {
+  color: #ff4d4f;
+  font-weight: 600;
+}
 </style>

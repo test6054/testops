@@ -18,17 +18,6 @@ import type {
   AiTaskSubmitPayload,
   AiTaskVO,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   AI_OUTPUT_VALIDATION_COLOR,
   AI_OUTPUT_VALIDATION_LABEL,
@@ -42,6 +31,17 @@ import {
   isAiTaskStatus,
   isAiTaskType,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   CourseSelector,
   ProgramSelector,
@@ -145,7 +145,7 @@ const statusOptions = Object.entries(AI_TASK_STATUS_LABEL).map(([value, label]) 
   value,
   label,
 }))
-const validationOptions: { value: AiOutputValidation, label: string, color: string }[] = [
+const validationOptions: { value: AiOutputValidation; label: string; color: string }[] = [
   { value: 'PASSED', label: '通过（接受）', color: 'green' },
   { value: 'WARN', label: '警告（需人工审核）', color: 'orange' },
   { value: 'REJECTED', label: '退回（拒绝）', color: 'red' },
@@ -177,7 +177,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -241,10 +241,10 @@ async function submitTask() {
       fileNodeId: submitForm.fileNodeId?.trim() || undefined,
       question: submitForm.question?.trim() || undefined,
     })
-    message.success(`已提交 AI 任务 ${result.aiTaskId}`)
+    message.success(`已提交 AI 任务 ${result.taskId}`)
     submitVisible.value = false
     // 提交后启动轮询：任务达到终态后自动停止，其他页面能同步看到状态跳转
-    if (result.aiTaskId) aiTaskStore.startPolling(result.aiTaskId)
+    if (result.taskId) aiTaskStore.startPolling(result.taskId)
     await loadList()
   } finally {
     submitting.value = false
@@ -326,10 +326,10 @@ watch(
     if (cached.id !== detailRecord.value.id) return
     // 仅在状态变化时赋值，避免不必要的引用改变
     if (
-      cached.status !== detailRecord.value.status
-      || cached.failurePhase !== detailRecord.value.failurePhase
-      || cached.failureReason !== detailRecord.value.failureReason
-      || cached.finishedAt !== detailRecord.value.finishedAt
+      cached.status !== detailRecord.value.status ||
+      cached.failurePhase !== detailRecord.value.failurePhase ||
+      cached.failureReason !== detailRecord.value.failureReason ||
+      cached.finishedAt !== detailRecord.value.finishedAt
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -420,7 +420,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleTaskResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
+function handleTaskResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((t) => t.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -443,7 +443,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatus, title: string, completed?: boolean }> = [
+  const order: Array<{ key: AiTaskStatus; title: string; completed?: boolean }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PROCESSING', title: '运行中' },
     { key: 'SUCCEEDED', title: '成功', completed: true },

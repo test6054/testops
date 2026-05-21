@@ -77,7 +77,14 @@
         <UiBadge tone="blue">{{ archives.length }} 条</UiBadge>
       </template>
 
-      <UiEmpty v-if="!loading && archives.length === 0" description="尚未创建任何归档包" />
+      <UiErrorRetryPanel
+        v-if="archiveLoadError"
+        :error="archiveLoadError"
+        title="归档列表加载失败"
+        compact
+        @retry="loadArchives"
+      />
+      <UiEmpty v-else-if="!loading && archives.length === 0" description="尚未创建任何归档包" />
 
       <UiDataTable
         v-else
@@ -104,8 +111,8 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
               {{
-                archives[index].archiveStatusMessage
-                  || archiveStatusLabel(archives[index].archiveStatus)
+                archives[index].archiveStatusMessage ||
+                archiveStatusLabel(archives[index].archiveStatus)
               }}
             </UiTag>
             <div
@@ -145,8 +152,8 @@
               </UiButton>
               <UiButton
                 v-if="
-                  archives[index].archiveStatus === 'DRAFT'
-                    || archives[index].archiveStatus === 'PACKAGING_FAILED'
+                  archives[index].archiveStatus === 'DRAFT' ||
+                  archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
                 size="sm"
                 @click="confirmPackage(archives[index])"
@@ -221,6 +228,14 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
+import {
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  createArchive,
+  listArchives,
+  packageArchive,
+} from '@/apis/mark/archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -231,20 +246,13 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
-  ARCHIVE_STATUS_TONE,
-  createArchive,
-  listArchives,
-  packageArchive,
-} from '@/apis/mark/archive'
-import {
   UiAlertStrip,
   UiBadge,
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
+  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
@@ -263,6 +271,7 @@ const archives = ref<ArchivePackageVO[]>([])
 const loading = ref(false)
 const creating = ref(false)
 const createModalOpen = ref(false)
+const archiveLoadError = ref<unknown>(null)
 
 const filterForm = reactive<{
   examId?: string
@@ -307,13 +316,14 @@ interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
   description: string
-  action: { label: string, handler: () => void }
+  action: { label: string; handler: () => void }
 }
 
 const archiveAlert = computed<ArchiveAlert | null>(() => {
   const examId = filterForm.examId
   if (!examId) return null
   if (loading.value) return null
+  if (archiveLoadError.value) return null
   // 1) 已选考试但归档列表为空：可能是「成绩已发布但归档未启动」
   if (archives.value.length === 0) {
     return {
@@ -364,11 +374,11 @@ function syncArchiveStageToStore(): void {
   const statuses = archives.value.map((a) => a.archiveStatus)
   const hasCompleted = statuses.some(
     (s) =>
-      s === 'APPRAISAL_DECIDED'
-      || s === 'DESTRUCTION_PENDING'
-      || s === 'DESTRUCTION_APPROVED'
-      || s === 'DESTRUCTION_REJECTED'
-      || s === 'DESTROYED',
+      s === 'APPRAISAL_DECIDED' ||
+      s === 'DESTRUCTION_PENDING' ||
+      s === 'DESTRUCTION_APPROVED' ||
+      s === 'DESTRUCTION_REJECTED' ||
+      s === 'DESTROYED',
   )
   const hasActive = statuses.some(
     (s) => s === 'PACKAGING' || s === 'ACTIVE' || s === 'APPRAISAL_PENDING',
@@ -381,11 +391,11 @@ function syncArchiveStageToStore(): void {
     hint = `已鉴定存档 ${
       statuses.filter(
         (s) =>
-          s === 'APPRAISAL_DECIDED'
-          || s === 'DESTRUCTION_PENDING'
-          || s === 'DESTRUCTION_APPROVED'
-          || s === 'DESTRUCTION_REJECTED'
-          || s === 'DESTROYED',
+          s === 'APPRAISAL_DECIDED' ||
+          s === 'DESTRUCTION_PENDING' ||
+          s === 'DESTRUCTION_APPROVED' ||
+          s === 'DESTRUCTION_REJECTED' ||
+          s === 'DESTROYED',
       ).length
     } / ${archives.value.length}`
   } else if (hasActive) {
@@ -403,15 +413,20 @@ function syncArchiveStageToStore(): void {
 
 async function loadArchives(): Promise<void> {
   loading.value = true
+  archiveLoadError.value = null
   try {
     const list = await listArchives({
       examId: filterForm.examId || undefined,
       archiveStatus: filterForm.archiveStatus,
     })
-    archives.value = list ?? []
+    if (!Array.isArray(list)) {
+      throw new Error('归档列表接口返回格式错误')
+    }
+    archives.value = list
     syncArchiveStageToStore()
     if (filterForm.examId) examContextStore.currentExamId = filterForm.examId
   } catch (error) {
+    archiveLoadError.value = error
     message.error(error instanceof Error ? error.message : '归档列表加载失败')
   } finally {
     loading.value = false
@@ -448,9 +463,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans
-    && !createForm.includeMarkedSlices
-    && !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans &&
+    !createForm.includeMarkedSlices &&
+    !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return

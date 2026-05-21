@@ -1,4 +1,10 @@
+import type { AiTaskSubmitResponseVO } from './ai-task'
 import type { AchievementTargetType, RespondentType } from './types'
+import type {
+  SurveyChoiceOptionVO,
+  SurveyIdentityFieldVO,
+  SurveyScaleLabelVO,
+} from '@/apis/public-survey'
 /**
  * 间接评价 API - 问卷 + 题项 + 答卷
  *
@@ -34,7 +40,7 @@ export interface IndirectEvaluationFormVO {
   endTime?: string
   accessMode?: string
   allowAnonymous?: boolean
-  requireIdentityFields?: string
+  requireIdentityFields?: SurveyIdentityFieldVO[]
   maxSubmissionsPerRespondent?: number
   welcomeMessage?: string
   thankYouMessage?: string
@@ -76,8 +82,8 @@ export interface IndirectEvaluationItemVO {
   itemType?: string
   scaleMin?: number
   scaleMax?: number
-  scaleLabels?: string
-  choiceOptions?: string
+  scaleLabels?: SurveyScaleLabelVO[]
+  choiceOptions?: SurveyChoiceOptionVO[]
   required?: boolean
   createTime?: string
   updateTime?: string
@@ -96,8 +102,8 @@ export interface IndirectEvaluationItemSavePayload {
   itemType?: string
   scaleMin?: number
   scaleMax?: number
-  scaleLabels?: string
-  choiceOptions?: string
+  scaleLabels?: SurveyScaleLabelVO[]
+  choiceOptions?: SurveyChoiceOptionVO[]
   required?: boolean
 }
 
@@ -139,12 +145,17 @@ export interface IndirectEvaluationFormPublishPayload {
   id: string
   startTime: string
   endTime: string
-  accessMode?: string
+  accessMode: string
   allowAnonymous?: boolean
-  requireIdentityFields?: string
-  maxSubmissionsPerRespondent?: number
+  requireIdentityFields?: SurveyIdentityFieldVO[]
+  maxSubmissionsPerRespondent: number
   welcomeMessage?: string
   thankYouMessage?: string
+}
+
+export interface IndirectEvaluationPublishResultVO {
+  accessToken: string
+  publicUrl: string
 }
 
 export interface IndirectEvaluationProgressVO {
@@ -152,6 +163,7 @@ export interface IndirectEvaluationProgressVO {
   formName: string
   status: string
   submissionCount: number
+  validCount: number
   expectedSample?: number
   completionRate?: number
   startTime?: string
@@ -175,27 +187,34 @@ export interface IndirectEvaluationItemStatistics {
   mean?: number
   median?: number
   stdDev?: number
-  distribution?: Record<string, number>
+  distributionBuckets?: ScaleDistributionBucketVO[]
+  openTextSummaries?: OpenTextSummaryVO[]
   convertedScore?: number
+}
+
+export interface ScaleDistributionBucketVO {
+  scaleValue?: number
+  label?: string
+  count: number
+  ratio?: number
+}
+
+export interface OpenTextSummaryVO {
+  content: string
+  count: number
 }
 
 export const indirectFormApi = {
   page: (data: IndirectEvaluationFormQueryPayload) =>
     http.post<PageResult<IndirectEvaluationFormVO>>(`${FORM}/page`, data),
-  detail: (id: string) =>
-    http.post<IndirectEvaluationFormVO>(`${FORM}/detail`, { id }),
-  create: (data: IndirectEvaluationFormSavePayload) =>
-    http.post<string>(`${FORM}/create`, data),
-  update: (data: IndirectEvaluationFormSavePayload) =>
-    http.post<void>(`${FORM}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${FORM}/delete`, { id }),
+  detail: (id: string) => http.post<IndirectEvaluationFormVO>(`${FORM}/detail`, { id }),
+  create: (data: IndirectEvaluationFormSavePayload) => http.post<string>(`${FORM}/create`, data),
+  update: (data: IndirectEvaluationFormSavePayload) => http.post<void>(`${FORM}/update`, data),
+  delete: (id: string) => http.post<void>(`${FORM}/delete`, { id }),
   publish: (data: IndirectEvaluationFormPublishPayload) =>
-    http.post<{ accessToken: string; publicUrl: string }>(`${FORM}/publish`, data),
-  close: (id: string) =>
-    http.post<void>(`${FORM}/close`, { id }),
-  progress: (id: string) =>
-    http.post<IndirectEvaluationProgressVO>(`${FORM}/progress`, { id }),
+    http.post<IndirectEvaluationPublishResultVO>(`${FORM}/publish`, data),
+  close: (id: string) => http.post<void>(`${FORM}/close`, { id }),
+  progress: (id: string) => http.post<IndirectEvaluationProgressVO>(`${FORM}/progress`, { id }),
   statistics: (id: string) =>
     http.post<IndirectEvaluationStatisticsVO>(`${FORM}/statistics`, { id }),
 }
@@ -205,14 +224,10 @@ export const indirectItemApi = {
     http.post<IndirectEvaluationItemVO[]>(`${ITEM}/list-by-form`, { id: formId }),
   listByTarget: (targetType: AchievementTargetType, targetId: string) =>
     http.post<IndirectEvaluationItemVO[]>(`${ITEM}/list-by-target`, { targetType, targetId }),
-  detail: (id: string) =>
-    http.post<IndirectEvaluationItemVO>(`${ITEM}/detail`, { id }),
-  create: (data: IndirectEvaluationItemSavePayload) =>
-    http.post<string>(`${ITEM}/create`, data),
-  update: (data: IndirectEvaluationItemSavePayload) =>
-    http.post<void>(`${ITEM}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${ITEM}/delete`, { id }),
+  detail: (id: string) => http.post<IndirectEvaluationItemVO>(`${ITEM}/detail`, { id }),
+  create: (data: IndirectEvaluationItemSavePayload) => http.post<string>(`${ITEM}/create`, data),
+  update: (data: IndirectEvaluationItemSavePayload) => http.post<void>(`${ITEM}/update`, data),
+  delete: (id: string) => http.post<void>(`${ITEM}/delete`, { id }),
 }
 
 export const indirectResponseApi = {
@@ -220,8 +235,7 @@ export const indirectResponseApi = {
     http.post<IndirectEvaluationResponseVO[]>(`${RESPONSE}/list-by-form`, { id: formId }),
   listByItem: (itemId: string) =>
     http.post<IndirectEvaluationResponseVO[]>(`${RESPONSE}/list-by-item`, { id: itemId }),
-  detail: (id: string) =>
-    http.post<IndirectEvaluationResponseVO>(`${RESPONSE}/detail`, { id }),
+  detail: (id: string) => http.post<IndirectEvaluationResponseVO>(`${RESPONSE}/detail`, { id }),
   create: (data: IndirectEvaluationResponseSavePayload) =>
     http.post<string>(`${RESPONSE}/create`, data),
   /** 按问卷批量录入答卷 */
@@ -229,8 +243,7 @@ export const indirectResponseApi = {
     http.post<void>(`${RESPONSE}/batch-create`, { formId, responses }),
   update: (data: IndirectEvaluationResponseSavePayload) =>
     http.post<void>(`${RESPONSE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${RESPONSE}/delete`, { id }),
+  delete: (id: string) => http.post<void>(`${RESPONSE}/delete`, { id }),
   /** 统计某题项的有效样本数（用于覆盖率计算） */
   countValidByItem: (itemId: string) =>
     http.post<number>(`${RESPONSE}/count-valid-by-item`, { id: itemId }),
@@ -240,6 +253,29 @@ export const indirectResponseApi = {
     formData.append('formId', formId)
     formData.append('file', file)
     return http.post<IndirectResponseImportResult>(`${RESPONSE}/import-excel`, formData)
+  },
+  /**
+   * 从 PDF / DOCX / 图片中抽取答卷原文（同步）。
+   * 后端走 edu-mark 统一文档抽取服务（图片 OCR + PDF 文本 + 扫描页 OCR）。
+   * 返回结构化文本，由前端展示给教师对照原文档手工录入答卷。
+   */
+  importDocument: (formId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('formId', formId)
+    formData.append('file', file)
+    return http.post<IndirectResponseDocumentExtraction>(`${RESPONSE}/import-document`, formData)
+  },
+  /**
+   * AI 异步文档解析导入答卷。
+   * 上传文件 → 创建 PENDING 状态 AI 任务 → 立即返回 taskId。
+   * 后台异步：下载文件 → 文本提取 → AI 解析 → 写入答卷草稿。
+   * 前端通过轮询 aiTaskApi.detail 跟踪进度。
+   */
+  importDocumentAi: (formId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('formId', formId)
+    formData.append('file', file)
+    return http.post<AiTaskSubmitResponseVO>(`${RESPONSE}/import-document-ai`, formData)
   },
 }
 
@@ -254,4 +290,44 @@ export interface IndirectResponseImportRowError {
   rowIndex: number
   itemCode: string
   errorMessage: string
+}
+
+/**
+ * 后端 IndirectResponseDocumentExtractionVO 投影。
+ */
+export interface IndirectResponseDocumentExtraction {
+  formId: string
+  fileName: string
+  extraction: MarkDocumentExtractionResult
+}
+
+export interface MarkDocumentExtractionResult {
+  fullText?: string
+  pages?: MarkDocumentPageText[]
+  ocrBlocks?: MarkDocumentOcrBlock[]
+  diagnostic?: MarkDocumentExtractionDiagnostic
+}
+
+export interface MarkDocumentPageText {
+  pageIndex?: number
+  charCount?: number
+  text?: string
+}
+
+export interface MarkDocumentOcrBlock {
+  pageIndex?: number
+  providerType?: string
+  recognizedText?: string
+  engineTraceId?: string
+  diagnostic?: string
+}
+
+export interface MarkDocumentExtractionDiagnostic {
+  mimeType?: string
+  fileExtension?: string
+  pageCount?: number
+  textCharCount?: number
+  ocrPageIndices?: number[]
+  costMillis?: number
+  warningMessages?: string[]
 }

@@ -29,8 +29,16 @@
       </div>
     </template>
 
+    <!-- D-9 错误态：阅卷概览加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="overviewLoadError"
+      :error="overviewLoadError"
+      title="阅卷概览加载失败"
+      @retry="loadOverview"
+    />
+
     <!-- 批改进度 + 异常告警 -->
-    <a-row :gutter="16">
+    <a-row v-if="!overviewLoadError" :gutter="16">
       <a-col :xs="24" :lg="14">
         <UiCard class="metric-card">
           <template #title>
@@ -103,7 +111,7 @@
     </a-row>
 
     <!-- 最近考试 + 最近事件 -->
-    <a-row :gutter="16">
+    <a-row v-if="!overviewLoadError" :gutter="16">
       <a-col :xs="24" :lg="14">
         <UiCard class="recent-exams-card">
           <template #title>
@@ -202,6 +210,11 @@ import type {
   IncidentRecordVO,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
+import {
+  INCIDENT_LEVEL_LABEL,
+  INCIDENT_LEVEL_TONE,
+  loadDashboardOverview,
+} from '@/apis/mark/admin-dashboard'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
@@ -212,19 +225,23 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  INCIDENT_LEVEL_LABEL,
-  INCIDENT_LEVEL_TONE,
-  loadDashboardOverview,
-} from '@/apis/mark/admin-dashboard'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'AdminDashboard' })
 
 const router = useRouter()
 const loading = ref(false)
+// D-9 错误态：阅卷概览加载失败时 UiErrorRetryPanel 重试 + 上报
+const overviewLoadError = ref<unknown>(null)
 const recentLimit = ref(5)
 const overview = ref<MarkDashboardOverviewVO | null>(null)
 
@@ -265,9 +282,11 @@ const recentIncidents = computed<IncidentRecordVO[]>(() => overview.value?.recen
 
 async function loadOverview() {
   loading.value = true
+  overviewLoadError.value = null
   try {
     overview.value = await loadDashboardOverview(recentLimit.value)
   } catch (error) {
+    overviewLoadError.value = error
     const msg = error instanceof Error ? error.message : '加载阅卷概览失败'
     message.error(msg)
   } finally {

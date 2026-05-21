@@ -40,8 +40,12 @@
       <div class="ledger-page__attention-body">
         <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
         <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
-        <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
-        <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
+        <span v-if="attentionContext.scanBatchId"
+          >扫描批次：{{ attentionContext.scanBatchId }}</span
+        >
+        <span v-if="attentionContext.paperInstanceId"
+          >试卷实例：{{ attentionContext.paperInstanceId }}</span
+        >
         <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
       </div>
       <template #actions>
@@ -55,6 +59,15 @@
       v-if="!selectedExamId"
       description="请选择一场考试以查看影像账本"
       class="ledger-page__empty"
+    />
+
+    <!-- D-9 错误态：影像账本加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-else-if="ledgerLoadError"
+      :error="ledgerLoadError"
+      title="影像账本加载失败"
+      :helper="`考试 ID：${selectedExamId}`"
+      @retry="loadAll"
     />
 
     <div v-else class="ledger-page__cards">
@@ -80,15 +93,12 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  executeImageLedgerBalance,
-  getImageLedgerDetail,
-} from '@/apis/mark/image-ledger'
-import { UiAlertStrip, UiButton, UiEmpty } from '@/components/ui-guide/ui'
+import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
@@ -119,6 +129,8 @@ function goBackToScanAttention(): void {
 const ledger = ref<ImageLedgerDetailVO | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)
+// D-9 错误态：影像账本加载失败时 UiErrorRetryPanel 重试 + 上报
+const ledgerLoadError = ref<unknown>(null)
 
 interface ScanAttentionContext {
   attentionType: string
@@ -152,9 +164,11 @@ const attentionContext = computed<ScanAttentionContext | null>(() => {
 async function loadDetail(): Promise<void> {
   if (!selectedExamId.value) return
   loadingDetail.value = true
+  ledgerLoadError.value = null
   try {
     ledger.value = await getImageLedgerDetail({ examId: selectedExamId.value })
   } catch (e) {
+    ledgerLoadError.value = e
     const msg = e instanceof Error ? e.message : '账本加载失败'
     message.error(msg)
   } finally {

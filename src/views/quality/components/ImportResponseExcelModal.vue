@@ -16,11 +16,7 @@
         style="margin-bottom: 16px"
       />
 
-      <a-upload-dragger
-        :before-upload="beforeUpload"
-        :show-upload-list="false"
-        accept=".xlsx,.xls"
-      >
+      <a-upload-dragger :before-upload="beforeUpload" :show-upload-list="false" accept=".xlsx,.xls">
         <p class="ant-upload-drag-icon">
           <InboxOutlined />
         </p>
@@ -30,7 +26,12 @@
 
       <div v-if="selectedFile" class="selected-file">
         <span>已选择：{{ selectedFile.name }}</span>
-        <a-button type="primary" :loading="uploading" style="margin-left: 12px" @click="handleUpload">
+        <a-button
+          type="primary"
+          :loading="uploading"
+          style="margin-left: 12px"
+          @click="handleUpload"
+        >
           开始导入
         </a-button>
       </div>
@@ -56,9 +57,7 @@
             />
           </template>
 
-          <a-button type="primary" style="margin-top: 16px" @click="handleClose">
-            完成
-          </a-button>
+          <a-button type="primary" style="margin-top: 16px" @click="handleClose"> 完成 </a-button>
         </template>
       </a-result>
     </template>
@@ -66,11 +65,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evaluation'
+import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
-import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evaluation'
+import { computed, ref } from 'vue'
 
 const props = defineProps<{
   open: boolean

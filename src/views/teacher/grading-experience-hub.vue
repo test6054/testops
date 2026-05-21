@@ -49,18 +49,23 @@
                 <template #icon><ReloadOutlined /></template>
                 刷新
               </UiButton>
-              <UiButton
-                size="sm"
-                :loading="generatingSignatures"
-                @click="handleGenerateSignatures"
-              >
+              <UiButton size="sm" :loading="generatingSignatures" @click="handleGenerateSignatures">
                 <template #icon><ThunderboltOutlined /></template>
                 生成 / 重算签名
               </UiButton>
             </a-space>
           </template>
 
+          <!-- D-9 错误态：题目签名加载失败时提供重试 + 上报入口 -->
+          <UiErrorRetryPanel
+            v-if="signaturesLoadError"
+            :error="signaturesLoadError"
+            title="题目签名加载失败"
+            compact
+            @retry="loadSignatures"
+          />
           <UiDataTable
+            v-else
             :columns="signatureColumns"
             :data-source="signatures"
             :loading="signaturesLoading"
@@ -130,7 +135,16 @@
             </a-space>
           </template>
 
+          <!-- D-9 错误态：AI 批改经验案例加载失败时提供重试 + 上报入口 -->
+          <UiErrorRetryPanel
+            v-if="experiencesLoadError"
+            :error="experiencesLoadError"
+            title="批改经验案例加载失败"
+            compact
+            @retry="loadExperiences"
+          />
           <UiDataTable
+            v-else
             :columns="experienceColumns"
             :data-source="experiences"
             :loading="experienceLoading"
@@ -218,8 +232,16 @@
             </a-space>
           </template>
 
+          <!-- D-9 错误态：AI 答案聚类加载失败时提供重试 + 上报入口 -->
+          <UiErrorRetryPanel
+            v-if="clusterLoadError"
+            :error="clusterLoadError"
+            title="AI 答案聚类加载失败"
+            compact
+            @retry="loadLatestCluster"
+          />
           <a-empty
-            v-if="!latestCluster"
+            v-else-if="!latestCluster"
             description="尚无聚类结果，请先指定题目模板ID 并点击「AI 聚类」"
           />
 
@@ -263,10 +285,7 @@
     :destroy-on-close="true"
   >
     <a-spin :spinning="similarLoading">
-      <a-empty
-        v-if="!similarLoading && similarResults.length === 0"
-        description="未检索到相似题"
-      />
+      <a-empty v-if="!similarLoading && similarResults.length === 0" description="未检索到相似题" />
       <a-list v-else :data-source="similarResults" item-layout="vertical">
         <template #renderItem="{ item }: { item: QuestionSignatureVO }">
           <a-list-item>
@@ -344,14 +363,6 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -367,7 +378,23 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref, watch } from 'vue'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -399,12 +426,18 @@ const signatureColumns: ColumnType<QuestionSignatureVO>[] = [
   { title: '操作', key: 'actions', width: 120, fixed: 'right' },
 ]
 
+// D-9 错误态：三个标签页各自加载失败时由 UiErrorRetryPanel 重试 + 上报
+const signaturesLoadError = ref<unknown>(null)
+const experiencesLoadError = ref<unknown>(null)
+
 async function loadSignatures(): Promise<void> {
   if (!selectedExamId.value) return
   signaturesLoading.value = true
+  signaturesLoadError.value = null
   try {
     signatures.value = await listSignatures(selectedExamId.value)
   } catch (error) {
+    signaturesLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载题目签名失败')
   } finally {
     signaturesLoading.value = false
@@ -472,6 +505,7 @@ const experienceColumns: ColumnType<GradingExperienceCaseVO>[] = [
 async function loadExperiences(): Promise<void> {
   if (!selectedExamId.value) return
   experienceLoading.value = true
+  experiencesLoadError.value = null
   try {
     if (experienceQuestionFilter.value.trim()) {
       experiences.value = await listExperiencesByQuestion(
@@ -482,6 +516,7 @@ async function loadExperiences(): Promise<void> {
       experiences.value = await listExperiences(selectedExamId.value)
     }
   } catch (error) {
+    experiencesLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载经验案例失败')
   } finally {
     experienceLoading.value = false
@@ -518,16 +553,20 @@ const clusterQuestionId = ref('')
 const latestCluster = ref<AnswerClusterRecordVO | null>(null)
 const clusterLoading = ref(false)
 const clustering = ref(false)
+// D-9 错误态：AI 答案聚类加载失败时 UiErrorRetryPanel 重试 + 上报
+const clusterLoadError = ref<unknown>(null)
 
 async function loadLatestCluster(): Promise<void> {
   if (!selectedExamId.value || !clusterQuestionId.value.trim()) return
   clusterLoading.value = true
+  clusterLoadError.value = null
   try {
     latestCluster.value = await getLatestAnswerCluster(
       selectedExamId.value,
       clusterQuestionId.value.trim(),
     )
   } catch (error) {
+    clusterLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载聚类结果失败')
   } finally {
     clusterLoading.value = false

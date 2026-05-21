@@ -6,8 +6,8 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PageResult, QueryDto } from '@/types'
+import type {BadgeTone} from '@/components/ui-guide/ui/types'
+import type {PageResult, QueryDto} from '@/types'
 import http from '@/config/axios'
 
 /** 考试状态编码 - 对应后端 ExamStatus 枚举（仅保留批改链有意义的状态） */
@@ -459,9 +459,6 @@ export interface ExamScannerBatchVO {
   eventCount?: number
 }
 
-// ExamScannerDeviceVO 完整定义在 exam-mark-scanner.ts，此处再导出保持现有消费者兼容
-export type { ExamScannerDeviceVO } from './exam-mark-scanner'
-
 /** 扫描批次创建响应 - 对应 ExamScannerBatchCreateResponse */
 export interface ExamScannerBatchCreateVO {
   scanBatchId: string
@@ -496,9 +493,6 @@ export interface ExamScannerBatchQueryPayload extends QueryDto {
   scanStartTimeFrom?: string
   scanStartTimeTo?: string
 }
-
-// ExamScannerDeviceQueryPayload 完整定义在 exam-mark-scanner.ts，此处再导出
-export type { ExamScannerDeviceQueryPayload } from './exam-mark-scanner'
 
 /**
  * 教师按扫描仪集合 + 时间区间聚合扫描事件成批次
@@ -547,9 +541,6 @@ export function pageScannerBatches(
 ): Promise<PageResult<ExamScannerBatchVO>> {
   return http.post<PageResult<ExamScannerBatchVO>>('/api/mark/exams/scanner-batches/page', payload)
 }
-
-// listScannerDevices 完整实现在 exam-mark-scanner.ts，此处再导出
-export { listScannerDevices } from './exam-mark-scanner'
 
 /**
  * 登记扫描页并返回试卷实例

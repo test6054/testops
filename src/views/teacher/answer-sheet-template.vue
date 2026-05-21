@@ -32,6 +32,15 @@
 
     <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="sheet-page__empty" />
 
+    <!-- D-9 错误态：答题卡模板加载遇到非“未配置”错误时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-else-if="templateLoadError"
+      :error="templateLoadError"
+      title="答题卡模板加载失败"
+      :helper="`考试 ID：${selectedExamId}`"
+      @retry="loadTemplate"
+    />
+
     <a-spin v-else :spinning="loading">
       <UiAlertStrip
         v-if="!hasQuestions"
@@ -174,6 +183,7 @@ import type {
   ExamQuestionTemplatePayload,
   ExamQuestionTemplateVO,
 } from '@/apis/mark/exam'
+import { getExamTemplate, saveExamTemplate } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -183,8 +193,16 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
-import { getExamTemplate, saveExamTemplate } from '@/apis/mark/exam'
-import { UiAlertStrip, UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiAlertStrip,
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -218,7 +236,7 @@ function nextRowKey(): string {
   return `p-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -229,6 +247,8 @@ const serverQuestions = ref<ExamQuestionTemplateVO[]>([])
 const hasQuestions = computed(() => serverQuestions.value.length > 0)
 const loading = ref(false)
 const saving = ref(false)
+// D-9 错误态：仅当后端返回非“未配置”类错误时才上报
+const templateLoadError = ref<unknown>(null)
 
 const pageColumns: ColumnType<PageRow>[] = [
   { title: '页号', key: 'pageNo', width: 100 },
@@ -269,18 +289,18 @@ function applyTemplate(
 async function loadTemplate(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
+  templateLoadError.value = null
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
     applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages ?? [], tpl.questions ?? [])
   } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
-    if (
-      errMsg
-      && !errMsg.includes('未找到')
-      && !errMsg.includes('不存在')
-      && !errMsg.includes('当前模板')
-    ) {
+    const isNotConfigured =
+      errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
+    if (errMsg && !isNotConfigured) {
+      // 真实加载失败：D-9 错误态 + 警告提示
+      templateLoadError.value = error
       message.warning(`当前考试尚未配置完整模板：${errMsg}`)
     }
   } finally {

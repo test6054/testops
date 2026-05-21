@@ -34,7 +34,11 @@
       </div>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请先选择需要管理的考试" class="scan-batch-page__empty" />
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请先选择需要管理的考试"
+      class="scan-batch-page__empty"
+    />
 
     <template v-else>
       <!-- 扫描进度概览 KPI + 卷面绑定率环 -->
@@ -142,15 +146,19 @@
           </a-row>
         </a-form>
 
+        <UiAlertStrip
+          v-if="devicesLoadError"
+          tone="error"
+          title="扫描设备列表加载失败"
+          :description="devicesLoadError"
+          dense
+          class="scan-batch-page__alert"
+        />
+
         <!-- 预览结果 -->
         <a-divider class="divider" />
         <div v-if="previewLoaded" class="preview-section">
-          <UiStatPanel
-            :items="previewMetrics"
-            :columns="4"
-            variant="strip"
-            compact
-          />
+          <UiStatPanel :items="previewMetrics" :columns="4" variant="strip" compact />
           <UiDataTable
             v-if="(previewData?.deviceBreakdown?.length ?? 0) > 0"
             :columns="deviceBreakdownColumns"
@@ -169,7 +177,16 @@
         </div>
       </UiCard>
 
-      <UiCard class="info-card">
+      <!-- D-9 错误态：扫描批次加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="batchesLoadError"
+        :error="batchesLoadError"
+        title="扫描批次加载失败"
+        :helper="`考试 ID：${selectedExamId}`"
+        compact
+        @retry="() => loadBatches(1)"
+      />
+      <UiCard v-else class="info-card">
         <template #title>
           <UnorderedListOutlined />
           <span>已创建批次</span>
@@ -202,8 +219,8 @@
               <a-typography-text strong :content="batches[index].batchNo || '-'" />
               <div
                 v-if="
-                  batches[index].batchExternalNo
-                    && batches[index].batchExternalNo !== batches[index].batchNo
+                  batches[index].batchExternalNo &&
+                  batches[index].batchExternalNo !== batches[index].batchNo
                 "
                 class="muted"
               >
@@ -273,10 +290,17 @@ import type {
   ExamScannerBatchPreviewVO,
   ExamScannerBatchQueryPayload,
   ExamScannerBatchVO,
-  ExamScannerDeviceVO,
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
+import {
+  createScanBatchByCondition,
+  getMarkingProgress,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+} from '@/apis/mark/exam'
+import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
+import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -290,13 +314,17 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  createScanBatchByCondition,
-  getMarkingProgress,
-  listScannerDevices,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiRingProgress, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+  UiAlertStrip,
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiRingProgress,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -366,9 +394,24 @@ const progressMetrics = computed(() => {
   const scanAttention = progress.value?.scanAttentionCount ?? 0
   return [
     { label: '已创建批次', value: batchTotal.value, unit: '个', tone: 'blue' as const },
-    { label: '待聚合事件', value: pendingEventTotal.value, unit: '条', tone: pendingEventTotal.value > 0 ? 'orange' as const : 'green' as const },
-    { label: '待处理任务', value: progress.value?.openProcessingTaskCount ?? 0, unit: '条', tone: hasOpenTasks.value ? 'red' as const : 'green' as const },
-    { label: '扫描异常', value: scanAttention, unit: '条', tone: scanAttention > 0 ? 'red' as const : 'green' as const },
+    {
+      label: '待聚合事件',
+      value: pendingEventTotal.value,
+      unit: '条',
+      tone: pendingEventTotal.value > 0 ? ('orange' as const) : ('green' as const),
+    },
+    {
+      label: '待处理任务',
+      value: progress.value?.openProcessingTaskCount ?? 0,
+      unit: '条',
+      tone: hasOpenTasks.value ? ('red' as const) : ('green' as const),
+    },
+    {
+      label: '扫描异常',
+      value: scanAttention,
+      unit: '条',
+      tone: scanAttention > 0 ? ('red' as const) : ('green' as const),
+    },
   ]
 })
 
@@ -400,15 +443,31 @@ const paperBindingHint = computed<string>(() => {
 })
 
 const previewMetrics = computed(() => [
-  { label: '待聚合事件', value: previewData.value?.eventCount ?? 0, unit: '条', tone: (previewData.value?.eventCount ?? 0) > 0 ? 'orange' as const : 'gray' as const },
-  { label: '覆盖文件数', value: previewData.value?.fileCount ?? 0, unit: '份', tone: 'blue' as const },
-  { label: '累计页数', value: previewData.value?.pageCount ?? 0, unit: '页', tone: 'blue' as const },
+  {
+    label: '待聚合事件',
+    value: previewData.value?.eventCount ?? 0,
+    unit: '条',
+    tone: (previewData.value?.eventCount ?? 0) > 0 ? ('orange' as const) : ('gray' as const),
+  },
+  {
+    label: '覆盖文件数',
+    value: previewData.value?.fileCount ?? 0,
+    unit: '份',
+    tone: 'blue' as const,
+  },
+  {
+    label: '累计页数',
+    value: previewData.value?.pageCount ?? 0,
+    unit: '页',
+    tone: 'blue' as const,
+  },
   { label: '时间跨度', value: previewTimeSpan.value, tone: 'gray' as const },
 ])
 
 // ─── 扫描设备列表 ─────────────────────────────
 const devices = ref<ExamScannerDeviceVO[]>([])
 const devicesLoading = ref(false)
+const devicesLoadError = ref('')
 
 const deviceSelectOptions = computed(() =>
   devices.value
@@ -423,10 +482,12 @@ const deviceSelectOptions = computed(() =>
 
 async function loadDevices(): Promise<void> {
   devicesLoading.value = true
+  devicesLoadError.value = ''
   try {
     devices.value = await listScannerDevices()
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '扫描设备列表加载失败'
+    devicesLoadError.value = errMsg
     message.error(errMsg)
   } finally {
     devicesLoading.value = false
@@ -454,10 +515,11 @@ const batchFormRules: Record<string, Rule[]> = {
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value
-    && batchForm.scannerDeviceIds.length > 0
-    && !!batchForm.scanWindow
-    && batchForm.scanWindow.length === 2,
+    !!selectedExamId.value &&
+    !devicesLoadError.value &&
+    batchForm.scannerDeviceIds.length > 0 &&
+    !!batchForm.scanWindow &&
+    batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -559,7 +621,8 @@ async function handleCreateBatch(): Promise<void> {
 const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchesLoadError = ref<unknown>(null)
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -584,6 +647,7 @@ async function loadBatches(pageNum?: number): Promise<void> {
   if (!selectedExamId.value) return
   if (pageNum) batchQuery.pageNum = pageNum
   batchLoading.value = true
+  batchesLoadError.value = null
   try {
     const payload: ExamScannerBatchQueryPayload = {
       examId: selectedExamId.value,
@@ -591,9 +655,13 @@ async function loadBatches(pageNum?: number): Promise<void> {
       pageSize: batchQuery.pageSize,
     }
     const result = await pageScannerBatches(payload)
-    batches.value = result.list ?? []
+    if (!Array.isArray(result.list)) {
+      throw new Error('扫描批次列表接口返回格式错误')
+    }
+    batches.value = result.list
     batchTotal.value = result.total ?? 0
   } catch (error) {
+    batchesLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '扫描批次列表加载失败'
     message.error(errMsg)
   } finally {

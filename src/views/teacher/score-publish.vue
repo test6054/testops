@@ -3,9 +3,7 @@
     <template #context>
       <div class="score-publish__context">
         <div class="score-publish__context-info">
-          <h2 class="score-publish__title">
-            阅卷交付 - 成绩发布
-          </h2>
+          <h2 class="score-publish__title">阅卷交付 - 成绩发布</h2>
           <a-select
             :value="selectedExamId"
             class="score-publish__exam-select"
@@ -37,12 +35,7 @@
             <template #icon><ThunderboltOutlined /></template>
             批量发布
           </UiButton>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            @click="goAnalytics"
-          >
+          <UiButton variant="outline" size="sm" :disabled="!selectedExamId" @click="goAnalytics">
             <template #icon><BarChartOutlined /></template>
             教学质量分析
           </UiButton>
@@ -60,7 +53,22 @@
     />
 
     <template v-else>
-      <UiStatPanel :items="statMetrics" :columns="3" variant="grid" compact class="score-publish__signals" />
+      <UiStatPanel
+        :items="statMetrics"
+        :columns="3"
+        variant="grid"
+        compact
+        class="score-publish__signals"
+      />
+      <!-- D-9 错误态引导：成绩汇总加载失败时给出可恢复 + 可上报路径，避免空表格让教师无从下手 -->
+      <UiErrorRetryPanel
+        v-if="candidatesLoadError"
+        :error="candidatesLoadError"
+        title="成绩汇总加载失败"
+        :helper="`考试 ID：${selectedExamId}`"
+        compact
+        @retry="loadCandidates"
+      />
       <a-form layout="inline" class="score-publish__filter-form">
         <a-form-item>
           <a-input
@@ -110,18 +118,20 @@
           row-key="candidateRosterId"
           size="middle"
           class="score-publish__table"
-          @page-change="(p) => { pagination.current = p.current; pagination.pageSize = p.pageSize; loadCandidates() }"
+          @page-change="
+            (p) => {
+              pagination.current = p.current
+              pagination.pageSize = p.pageSize
+              loadCandidates()
+            }
+          "
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'studentName'">
               <a-typography-text strong :content="candidates[index].studentName || '-'" />
             </template>
             <template v-else-if="column.key === 'finalScore'">
-              <a-typography-text
-                v-if="candidates[index].finalScore != null"
-                strong
-                type="success"
-              >
+              <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
                 {{ candidates[index].finalScore }} 分
               </a-typography-text>
               <span v-else class="score-publish__hint">-</span>
@@ -163,8 +173,8 @@
                   size="sm"
                   variant="ghost"
                   :disabled="
-                    !candidates[index].paperInstanceId
-                      || candidates[index].finalScoreStatus !== 'PUBLISHED'
+                    !candidates[index].paperInstanceId ||
+                    candidates[index].finalScoreStatus !== 'PUBLISHED'
                   "
                   @click="handleDeanonymize(candidates[index])"
                 >
@@ -183,7 +193,7 @@
       title="试卷成绩明细"
       :width="640"
       hide-footer
-      @update:open="(v: boolean) => detailOpen = v"
+      @update:open="(v: boolean) => (detailOpen = v)"
       @close="detailOpen = false"
     >
       <a-spin :spinning="detailLoading" tip="加载明细中...">
@@ -243,7 +253,7 @@
       title="撤回最终成绩"
       :width="520"
       :confirm-loading="withdrawing"
-      @update:open="(v: boolean) => withdrawOpen = v"
+      @update:open="(v: boolean) => (withdrawOpen = v)"
       @close="withdrawOpen = false"
       @confirm="handleWithdraw"
     >
@@ -296,21 +306,19 @@
       />
       <div v-if="bulkProgress.total > 0" class="score-publish__bulk-progress">
         <a-progress
-          :percent="bulkProgress.total > 0
-            ? Math.round((bulkProgress.completed / bulkProgress.total) * 100)
-            : 0"
+          :percent="
+            bulkProgress.total > 0
+              ? Math.round((bulkProgress.completed / bulkProgress.total) * 100)
+              : 0
+          "
           :status="bulkProgress.failed > 0 ? 'exception' : 'active'"
         />
         <div class="score-publish__bulk-meta">
-          已发布 {{ bulkProgress.completed }} / {{ bulkProgress.total }} ·
-          失败 {{ bulkProgress.failed }} 条
+          已发布 {{ bulkProgress.completed }} / {{ bulkProgress.total }} · 失败
+          {{ bulkProgress.failed }} 条
         </div>
       </div>
-      <a-list
-        size="small"
-        :data-source="bulkCandidates"
-        class="score-publish__bulk-list"
-      >
+      <a-list size="small" :data-source="bulkCandidates" class="score-publish__bulk-list">
         <template #renderItem="{ item, index }">
           <a-list-item>
             <a-list-item-meta>
@@ -347,6 +355,14 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
+import {
+  deanonymizePaper,
+  FINAL_SCORE_STATUS_LABEL,
+  getPaperScore,
+  pageExamScoreSummary,
+  publishFinalScore,
+  withdrawFinalScore,
+} from '@/apis/mark/exam'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -356,14 +372,17 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  deanonymizePaper,
-  FINAL_SCORE_STATUS_LABEL,
-  getPaperScore,
-  pageExamScoreSummary,
-  publishFinalScore,
-  withdrawFinalScore,
-} from '@/apis/mark/exam'
-import { UiAlertStrip, UiBadge, UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+  UiAlertStrip,
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiDrawer,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiStatPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
@@ -388,12 +407,12 @@ const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, ToneCode> = {
 function finalScoreStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING'
-    || value === 'CALCULATED'
-    || value === 'CONFIRMED'
-    || value === 'CORRECTED'
-    || value === 'PUBLISHED'
-    || value === 'WITHDRAWN'
+    value === 'PENDING' ||
+    value === 'CALCULATED' ||
+    value === 'CONFIRMED' ||
+    value === 'CORRECTED' ||
+    value === 'PUBLISHED' ||
+    value === 'WITHDRAWN'
   ) {
     return FINAL_SCORE_STATUS_TONE[value]
   }
@@ -403,12 +422,12 @@ function finalScoreStatusTone(value: unknown): ToneCode {
 function finalScoreStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '未生成'
   if (
-    value === 'PENDING'
-    || value === 'CALCULATED'
-    || value === 'CONFIRMED'
-    || value === 'CORRECTED'
-    || value === 'PUBLISHED'
-    || value === 'WITHDRAWN'
+    value === 'PENDING' ||
+    value === 'CALCULATED' ||
+    value === 'CONFIRMED' ||
+    value === 'CORRECTED' ||
+    value === 'PUBLISHED' ||
+    value === 'WITHDRAWN'
   ) {
     return FINAL_SCORE_STATUS_LABEL[value]
   }
@@ -436,6 +455,8 @@ const markStageStore = useMarkStageStore()
 // ─── 数据加载（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemVO[]>([])
 const loading = ref(false)
+// D-9 错误态：捕获 loadCandidates 失败原因，给 UiErrorRetryPanel 渲染重试 + 上报入口
+const candidatesLoadError = ref<unknown>(null)
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
@@ -465,6 +486,8 @@ function formatTime(value?: string): string {
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
+  // D-9：每次重试前清空错误态，让 UiErrorRetryPanel 在新失败时重新渲染
+  candidatesLoadError.value = null
   try {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
@@ -476,6 +499,7 @@ async function loadCandidates(): Promise<void> {
     candidates.value = result.list || []
     pagination.total = result.total ?? 0
   } catch (error) {
+    candidatesLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '成绩汇总加载失败'
     message.error(errMsg)
   } finally {
@@ -514,10 +538,10 @@ function goAnalytics(): void {
 
 // ─── B-5 批量发布 ─────────────────────────────
 /** 本页中处于「可发布」状态（CONFIRMED / WITHDRAWN / CORRECTED）且具备 paperInstanceId 的候选 */
-const bulkCandidates = computed<ExamScoreSummaryItemVO[]>(() =>
-  candidates.value.filter(canPublish),
+const bulkCandidates = computed<ExamScoreSummaryItemVO[]>(() => candidates.value.filter(canPublish))
+const canBulkPublish = computed(
+  () => Boolean(selectedExamId.value) && bulkCandidates.value.length > 0,
 )
-const canBulkPublish = computed(() => Boolean(selectedExamId.value) && bulkCandidates.value.length > 0)
 
 const bulkOpen = ref(false)
 const bulkRunning = ref(false)
@@ -610,24 +634,20 @@ function syncPublishStageToStore(buckets: Record<FinalScoreStatusCode, number>):
   if (withdrawn > 0) {
     stageStatus = 'blocked'
     hint = `${withdrawn} 人已撤回，需重新发布`
-  }
-  else if (published > 0 && pendingPipeline === 0) {
+  } else if (published > 0 && pendingPipeline === 0) {
     stageStatus = 'completed'
     hint = `全部 ${published} 人已发布`
-  }
-  else if (published > 0) {
+  } else if (published > 0) {
     stageStatus = 'active'
     hint = `已发布 ${published} / 待发布 ${pendingPipeline}`
-  }
-  else if (buckets.CONFIRMED > 0 || buckets.CALCULATED > 0) {
+  } else if (buckets.CONFIRMED > 0 || buckets.CALCULATED > 0) {
     stageStatus = 'active'
     hint = `已确认 ${buckets.CONFIRMED}，待发布`
   }
   markStageStore.setStageStatus(examId, 'SCORE_PUBLISH', stageStatus, hint)
   if (stageStatus === 'completed') {
     markStageStore.setCurrentStage(examId, 'GRADE_REVIEW')
-  }
-  else if (stageStatus !== 'pending') {
+  } else if (stageStatus !== 'pending') {
     markStageStore.setCurrentStage(examId, 'SCORE_PUBLISH')
   }
 }
@@ -650,11 +670,36 @@ const statMetrics = computed(() => {
   const publishable = buckets.CONFIRMED + buckets.WITHDRAWN + buckets.CORRECTED
   return [
     { label: '考生总数', value: total, unit: '人', tone: 'blue' as const },
-    { label: '可发布', value: publishable, unit: '人', tone: (publishable > 0 ? 'orange' : 'gray') as 'orange' | 'gray' },
-    { label: '已发布', value: buckets.PUBLISHED, unit: '人', tone: (buckets.PUBLISHED > 0 ? 'green' : 'gray') as 'green' | 'gray' },
-    { label: '已订正', value: buckets.CORRECTED, unit: '人', tone: (buckets.CORRECTED > 0 ? 'purple' : 'gray') as 'purple' | 'gray' },
-    { label: '已撤回', value: buckets.WITHDRAWN, unit: '人', tone: (buckets.WITHDRAWN > 0 ? 'red' : 'gray') as 'red' | 'gray' },
-    { label: '未确认', value: buckets.PENDING + buckets.CALCULATED, unit: '人', tone: 'gray' as const },
+    {
+      label: '可发布',
+      value: publishable,
+      unit: '人',
+      tone: (publishable > 0 ? 'orange' : 'gray') as 'orange' | 'gray',
+    },
+    {
+      label: '已发布',
+      value: buckets.PUBLISHED,
+      unit: '人',
+      tone: (buckets.PUBLISHED > 0 ? 'green' : 'gray') as 'green' | 'gray',
+    },
+    {
+      label: '已订正',
+      value: buckets.CORRECTED,
+      unit: '人',
+      tone: (buckets.CORRECTED > 0 ? 'purple' : 'gray') as 'purple' | 'gray',
+    },
+    {
+      label: '已撤回',
+      value: buckets.WITHDRAWN,
+      unit: '人',
+      tone: (buckets.WITHDRAWN > 0 ? 'red' : 'gray') as 'red' | 'gray',
+    },
+    {
+      label: '未确认',
+      value: buckets.PENDING + buckets.CALCULATED,
+      unit: '人',
+      tone: 'gray' as const,
+    },
   ]
 })
 

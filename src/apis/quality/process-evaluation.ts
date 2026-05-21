@@ -10,11 +10,8 @@
  * 2. 记录 CONFIRMED 后禁止修改/删除
  * 3. 已确认记录才进入达成度计算
  */
-import type {
-  ConfirmationStatus,
-  DataSourceMode,
-  ProcessNodeType,
-} from './types'
+import type { ImportResult } from './importing'
+import type { ConfirmationStatus, DataSourceMode, ProcessNodeType } from './types'
 import http from '@/config/axios'
 
 const NODE = '/api/quality/process-nodes'
@@ -120,6 +117,11 @@ export const processRecordApi = {
     http.post<ProcessEvaluationRecordVO>(`${RECORD}/detail`, { id }),
   create: (data: ProcessEvaluationRecordSavePayload) =>
     http.post<string>(`${RECORD}/create`, data),
+  /**
+   * @deprecated 前端不再调用本端点。批量录入请走「Excel 导入」流程：
+   * 调用 `processRecordApi.importExcel(nodeId, file)` 上传 Excel；后端解析 + 行级校验 + DRAFT 入库。
+   * 后端端点保留供 service 内部链路（如 ProcessEvaluationRecordExcelImportService）使用。
+   */
   batchCreate: (nodeId: string, records: ProcessEvaluationRecordSavePayload[]) =>
     http.post<void>(`${RECORD}/batch-create`, { nodeId, records }),
   update: (data: ProcessEvaluationRecordSavePayload) =>
@@ -129,4 +131,14 @@ export const processRecordApi = {
   /** DRAFT/SUBMITTED → CONFIRMED */
   confirm: (id: string) =>
     http.post<void>(`${RECORD}/confirm`, { id }),
+  /** Excel 批量导入节点记录（节点必须 CONFIRMED） */
+  importExcel: (nodeId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('nodeId', nodeId)
+    formData.append('file', file)
+    return http.upload<ImportResult>(`${RECORD}/import-excel`, formData)
+  },
+  /** 下载节点记录导入 Excel 模板 */
+  downloadTemplate: () =>
+    http.download(`${RECORD}/template-download`),
 }

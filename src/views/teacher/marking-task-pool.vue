@@ -15,7 +15,9 @@
             @change="onExamChange"
           />
           <UiTag tone="blue" size="sm">我的任务 {{ tasks.length }}</UiTag>
-          <UiTag v-if="inProgressCount > 0" tone="orange" size="sm">阅卷中 {{ inProgressCount }}</UiTag>
+          <UiTag v-if="inProgressCount > 0" tone="orange" size="sm"
+            >阅卷中 {{ inProgressCount }}</UiTag
+          >
         </div>
         <div class="marking-task-pool-page__context-right">
           <UiButton
@@ -146,7 +148,16 @@
           <UiBadge tone="blue">{{ tasks.length }} 条</UiBadge>
         </template>
 
-        <UiEmpty v-if="!loading && tasks.length === 0" description="暂无任务" />
+        <!-- D-9 错误态：任务列表加载失败时提供重试 + 上报入口 -->
+        <UiErrorRetryPanel
+          v-if="tasksLoadError"
+          :error="tasksLoadError"
+          title="任务列表加载失败"
+          :helper="`考试 ID：${selectedExamId}`"
+          compact
+          @retry="loadTasks"
+        />
+        <UiEmpty v-else-if="!loading && tasks.length === 0" description="暂无任务" />
         <UiDataTable
           v-else
           :columns="columns"
@@ -208,6 +219,10 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
+import {
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -219,10 +234,14 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
@@ -245,6 +264,8 @@ const currentUserId = computed(() => userStore.userInfo.userId || '')
 
 const markTaskStore = useMarkTaskStore()
 const { tasks, tasksLoading: loading, claimContextLoading } = storeToRefs(markTaskStore)
+// D-9 错误态：任务列表加载失败时 UiErrorRetryPanel 重试 + 上报
+const tasksLoadError = ref<unknown>(null)
 
 const filterForm = reactive<{
   taskStatus?: MarkingTaskStatusCode
@@ -285,6 +306,7 @@ async function loadTasks(): Promise<void> {
     return
   }
   loading.value = true
+  tasksLoadError.value = null
   try {
     const payload: MarkingTaskQueryPayload = {
       examId: selectedExamId.value,
@@ -295,6 +317,7 @@ async function loadTasks(): Promise<void> {
     }
     await markTaskStore.loadTasks(payload)
   } catch (error) {
+    tasksLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '任务列表加载失败'
     message.error(errMsg)
   } finally {
@@ -316,8 +339,8 @@ const claimForm = reactive<MarkingTaskClaimPayload>({
 
 const canClaim = computed(() => !!claimForm.sessionId.trim() && !!claimForm.groupId.trim())
 
-const claimContext = computed<TeacherClaimContextVO | null>(
-  () => (selectedExamId.value ? markTaskStore.getClaimContext(selectedExamId.value) : null),
+const claimContext = computed<TeacherClaimContextVO | null>(() =>
+  selectedExamId.value ? markTaskStore.getClaimContext(selectedExamId.value) : null,
 )
 
 const claimGroupOptions = computed(() =>
@@ -400,11 +423,11 @@ function formatTime(value?: string): string {
 function taskStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '-'
   if (
-    value === 'ALLOCATED'
-    || value === 'IN_PROGRESS'
-    || value === 'SUBMITTED'
-    || value === 'FINALIZED'
-    || value === 'RECYCLED'
+    value === 'ALLOCATED' ||
+    value === 'IN_PROGRESS' ||
+    value === 'SUBMITTED' ||
+    value === 'FINALIZED' ||
+    value === 'RECYCLED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -419,11 +442,11 @@ function taskStatusLabel(value: unknown): string {
 function taskStatusTone(value: unknown): 'gray' | 'blue' | 'orange' | 'green' | 'red' {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'ALLOCATED'
-    || value === 'IN_PROGRESS'
-    || value === 'SUBMITTED'
-    || value === 'FINALIZED'
-    || value === 'RECYCLED'
+    value === 'ALLOCATED' ||
+    value === 'IN_PROGRESS' ||
+    value === 'SUBMITTED' ||
+    value === 'FINALIZED' ||
+    value === 'RECYCLED'
   ) {
     return STATUS_TONE[value]
   }

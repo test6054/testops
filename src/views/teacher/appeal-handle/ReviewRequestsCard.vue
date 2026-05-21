@@ -22,7 +22,16 @@
       </a-space>
     </template>
 
+    <!-- D-9 错误态：复核申请加载失败时提供重试 + 上报入口 -->
+    <UiErrorRetryPanel
+      v-if="loadError"
+      :error="loadError"
+      title="复核申请加载失败"
+      compact
+      @retry="reload"
+    />
     <UiDataTable
+      v-else
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -53,9 +62,9 @@
               type="link"
               size="small"
               :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'APPROVED')"
             >
@@ -66,9 +75,9 @@
               size="small"
               danger
               :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'REJECTED')"
             >
@@ -128,26 +137,28 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import {
   handleReviewRequest,
   listReviewRequests,
   REVIEW_REQUEST_STATUS_COLOR,
   REVIEW_REQUEST_STATUS_LABEL,
 } from '@/apis/mark/grade-review'
-import { UiDataTable } from '@/components/ui-guide/ui'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
+import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
 const rows = ref<ExamGradeReviewRequestVO[]>([])
 const loading = ref(false)
+// D-9 错误态：复核申请加载失败时 UiErrorRetryPanel 重试 + 上报
+const loadError = ref<unknown>(null)
 const statusFilter = ref<GradeReviewRequestStatusCode | undefined>(undefined)
 
 // 从后端枚举 LABEL 对象直接派生 select options。
@@ -195,6 +206,7 @@ function openHandleModal(record: ExamGradeReviewRequestVO, conclusion: ReviewCon
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
+  loadError.value = null
   try {
     rows.value = await listReviewRequests({
       examId: props.examId,
@@ -202,6 +214,7 @@ async function reload(): Promise<void> {
     })
   } catch (e) {
     rows.value = []
+    loadError.value = e
     message.error(e instanceof Error ? e.message : '复核申请加载失败')
   } finally {
     loading.value = false
