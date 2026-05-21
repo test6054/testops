@@ -33,11 +33,14 @@ const query = reactive<ScaleConversionRuleQueryPayload>({
 })
 
 const scaleTypeOptions: { value: ScaleType, label: string }[] = (
-  Object.keys(SCALE_TYPE_LABEL) as ScaleType[]
-).map((value) => ({
-  value,
-  label: SCALE_TYPE_LABEL[value],
-}))
+  [
+    { value: 'FIVE_LEVEL', label: SCALE_TYPE_LABEL.FIVE_LEVEL },
+    { value: 'FOUR_LEVEL', label: SCALE_TYPE_LABEL.FOUR_LEVEL },
+    { value: 'TEN_POINT', label: SCALE_TYPE_LABEL.TEN_POINT },
+    { value: 'PERCENTAGE', label: SCALE_TYPE_LABEL.PERCENTAGE },
+    { value: 'CUSTOM', label: SCALE_TYPE_LABEL.CUSTOM },
+  ]
+)
 
 // UiSearchForm 状态仓库：enabled 在表单使用字符串，@search 时映射回 query.enabled (boolean | undefined)
 const filterModel = ref<Record<string, unknown>>({

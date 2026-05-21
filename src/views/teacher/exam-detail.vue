@@ -156,9 +156,7 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
@@ -167,7 +165,9 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,

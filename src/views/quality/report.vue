@@ -14,6 +14,7 @@ import type {
   ReportQueryPayload,
   ReportSavePayload,
   ReportStatus,
+  ReportType,
   ReportVO,
 } from '@/apis/quality'
 import type {
@@ -55,31 +56,34 @@ import {
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 
-/* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
-
 function reportTypeLabel(value: unknown): string {
   if (isReportType(value)) return REPORT_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('报告类型不符合前后端契约')
 }
 
 function reportStatusLabel(value: unknown): string {
   if (isReportStatus(value)) return REPORT_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('报告状态不符合前后端契约')
 }
 
 function reportStatusColor(value: unknown): string {
   if (isReportStatus(value)) return REPORT_STATUS_COLOR[value]
-  return 'default'
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('报告状态不符合前后端契约')
 }
 
 function exportStatusLabel(value: unknown): string {
   if (isReportExportStatus(value)) return REPORT_EXPORT_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('报告导出状态不符合前后端契约')
 }
 
 function exportStatusColor(value: unknown): string {
   if (isReportExportStatus(value)) return REPORT_EXPORT_STATUS_COLOR[value]
-  return 'default'
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('报告导出状态不符合前后端契约')
 }
 
 const qualityStore = useQualityStore()
@@ -114,18 +118,38 @@ const editor = reactive<ReportSavePayload>({
 })
 const submitting = ref(false)
 
+function handleEditorProgramChange(value: string | null): void {
+  editor.programId = value ?? ''
+}
+
+function handleEditorTrainingPlanChange(value: string | null): void {
+  editor.trainingPlanId = value ?? ''
+}
+
+function handleEditorQualityCourseChange(value: string | null): void {
+  editor.qualityCourseId = value ?? ''
+}
+
 const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions = Object.entries(REPORT_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-const statusOptions = Object.entries(REPORT_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const reportTypeOptions: Array<{ value: ReportType, label: string }> = [
+  { value: 'COURSE_ACHIEVEMENT', label: REPORT_TYPE_LABEL.COURSE_ACHIEVEMENT },
+  { value: 'PROGRAM_QUALITY', label: REPORT_TYPE_LABEL.PROGRAM_QUALITY },
+  { value: 'IMPROVEMENT', label: REPORT_TYPE_LABEL.IMPROVEMENT },
+  {
+    value: 'AUDIT_EVALUATION_RECTIFICATION',
+    label: REPORT_TYPE_LABEL.AUDIT_EVALUATION_RECTIFICATION,
+  },
+]
+const statusOptions: Array<{ value: ReportStatus, label: string }> = [
+  { value: 'DRAFT', label: REPORT_STATUS_LABEL.DRAFT },
+  { value: 'SUBMITTED', label: REPORT_STATUS_LABEL.SUBMITTED },
+  { value: 'CONFIRMED', label: REPORT_STATUS_LABEL.CONFIRMED },
+  { value: 'RETURNED', label: REPORT_STATUS_LABEL.RETURNED },
+  { value: 'ARCHIVED', label: REPORT_STATUS_LABEL.ARCHIVED },
+]
 
 const transitMap: Record<ReportStatus, ReportStatus[]> = {
   DRAFT: ['SUBMITTED'],
@@ -506,7 +530,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
       id: r.id,
       title: r.title || `报告 #${r.id}`,
       statusLabel: r.status === 'RETURNED' ? '已驳回' : '导出失败',
-      statusTone: 'red' as const,
+      statusTone: 'red',
       description:
         r.status === 'RETURNED'
           ? '审核驳回，需修订后重新提交'
@@ -727,7 +751,7 @@ onMounted(loadList)
               <ProgramSelector
                 :value="editor.programId || null"
                 placeholder="选择专业"
-                @change="(v) => (editor.programId = v ?? '')"
+                @change="handleEditorProgramChange"
               />
             </a-form-item>
           </a-col>
@@ -736,7 +760,7 @@ onMounted(loadList)
               <TrainingPlanSelector
                 :value="editor.trainingPlanId || null"
                 placeholder="选择培养方案（可选）"
-                @change="(v) => (editor.trainingPlanId = v ?? '')"
+                @change="handleEditorTrainingPlanChange"
               />
             </a-form-item>
           </a-col>
@@ -746,7 +770,7 @@ onMounted(loadList)
                 :value="editor.qualityCourseId || null"
                 :training-plan-id="editor.trainingPlanId || null"
                 placeholder="选择质量评价课程（可选）"
-                @change="(v) => (editor.qualityCourseId = v ?? '')"
+                @change="handleEditorQualityCourseChange"
               />
             </a-form-item>
           </a-col>

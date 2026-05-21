@@ -231,6 +231,14 @@ import type {
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
+import type { BadgeTone } from '@/components/ui-guide/ui'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   createExportTask,
   EXPORT_SCOPE_LABEL,
@@ -239,15 +247,7 @@ import {
   EXPORT_TYPE_LABEL,
   listExportTasks,
 } from '@/apis/mark/exam-export'
-import type { BadgeTone } from '@/components/ui-guide/ui'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
@@ -271,8 +271,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
-      (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value)
+      && (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 

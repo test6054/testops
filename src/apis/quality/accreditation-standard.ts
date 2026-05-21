@@ -1,3 +1,4 @@
+import type { AccreditationType } from './types'
 /**
  * 认证标准配置 API - 对应 AccreditationStandardController
  * 后端路径：/api/quality/accreditation-standards
@@ -11,7 +12,7 @@ export interface AccreditationStandardVO {
   id: string
   standardCode: string
   standardName: string
-  accreditationType: string
+  accreditationType: AccreditationType
   standardYear?: string
   issuingAuthority?: string
   documentNumber?: string
@@ -27,7 +28,7 @@ export interface AccreditationStandardSavePayload {
   id?: string
   standardCode: string
   standardName: string
-  accreditationType: string
+  accreditationType: AccreditationType
   standardYear?: string
   issuingAuthority?: string
   documentNumber?: string
@@ -38,7 +39,7 @@ export interface AccreditationStandardSavePayload {
 }
 
 export interface AccreditationStandardQueryPayload extends QueryDto {
-  accreditationType?: string
+  accreditationType?: AccreditationType
   standardYear?: string
   enabled?: boolean
   keyword?: string

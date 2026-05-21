@@ -6,7 +6,7 @@
     :confirm-loading="props.confirmLoading"
     :ok-text="props.okText"
     :cancel-text="props.cancelText"
-    @update:open="(value) => emit('update:open', value)"
+    @update:open="handleOpenChange"
     @cancel="emit('cancel')"
   >
     <div class="ui-search-table-dialog">
@@ -16,8 +16,8 @@
         :fields="props.fields"
         :search-text="props.searchText"
         :reset-text="props.resetText"
-        @search="(value) => emit('search', value)"
-        @reset="(value) => emit('reset', value)"
+        @search="handleSearch"
+        @reset="handleReset"
       >
         <template
           v-for="name in forwardedFieldSlots"
@@ -49,8 +49,8 @@
         :empty-title="props.emptyTitle"
         :empty-description="props.emptyDescription"
         @page-change="handlePageChange"
-        @selection-change="(rowKeys) => emit('selection-change', rowKeys)"
-        @change="(payload) => emit('table-change', payload)"
+        @selection-change="handleSelectionChange"
+        @change="handleTableChange"
       >
         <template
           v-for="name in forwardedTableSlots"
@@ -170,6 +170,26 @@ const forwardedTableSlots = computed(() => {
 
 const handlePageChange = (payload: { current: number, pageSize: number }) => {
   emit('page-change', payload)
+}
+
+function handleOpenChange(value: boolean): void {
+  emit('update:open', value)
+}
+
+function handleSearch(value: Record<string, unknown>): void {
+  emit('search', value)
+}
+
+function handleReset(value: Record<string, unknown>): void {
+  emit('reset', value)
+}
+
+function handleSelectionChange(rowKeys: Key[]): void {
+  emit('selection-change', rowKeys)
+}
+
+function handleTableChange(payload: UiDataTableChangePayload): void {
+  emit('table-change', payload)
 }
 </script>
 

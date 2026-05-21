@@ -16,10 +16,10 @@
         <div class="org-sessions__context-actions">
           <UiTag
             v-if="organization?.organizationStatus"
-            :tone="ORG_STATUS_TONE[organization.organizationStatus]"
+            :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
             size="sm"
           >
-            {{ ORG_STATUS_LABEL[organization.organizationStatus] }}
+            {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
           </UiTag>
           <UiButton variant="outline" size="sm" :loading="loading" @click="reloadAll">
             刷新
@@ -78,26 +78,26 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import type {
   FormalSessionVO,
   MarkingOrganizationVO,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import {
-  getOrganizationById,
-  listFormalSessions,
-  listTrialSessions,
-  MARKING_ORGANIZATION_STATUS_LABEL as ORG_STATUS_LABEL,
-  MARKING_ORGANIZATION_STATUS_TONE as ORG_STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  getOrganizationById,
+  listFormalSessions,
+  listTrialSessions,
+  MARKING_ORGANIZATION_STATUS_LABEL,
+  MARKING_ORGANIZATION_STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import { UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import FormalSessionPanel from './components/FormalSessionPanel.vue'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })
@@ -194,10 +194,10 @@ const signalMetrics = computed<SignalMetric[]>(() => [
     key: 'status',
     label: '组织状态',
     value: organization.value?.organizationStatus
-      ? ORG_STATUS_LABEL[organization.value.organizationStatus]
+      ? MARKING_ORGANIZATION_STATUS_LABEL[organization.value.organizationStatus]
       : '-',
     tone: organization.value?.organizationStatus
-      ? ORG_STATUS_TONE[organization.value.organizationStatus]
+      ? MARKING_ORGANIZATION_STATUS_TONE[organization.value.organizationStatus]
       : 'gray',
   },
 ])

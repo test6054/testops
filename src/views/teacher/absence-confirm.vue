@@ -254,6 +254,15 @@ import type {
   AbsenceStatusCode,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
+import type { ExamCandidateVO } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -264,16 +273,7 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
-import type { ExamCandidateVO } from '@/apis/mark/exam'
 import { listExamCandidates } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -526,7 +526,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })

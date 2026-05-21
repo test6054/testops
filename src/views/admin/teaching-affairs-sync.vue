@@ -303,7 +303,7 @@
         <a-textarea
           v-model:value="createForm.syncConfig"
           :rows="4"
-          placeholder='{"endpoint":"https://sis.school/api","apiKey":"xxx"}'
+          placeholder="{&quot;endpoint&quot;:&quot;https://sis.school/api&quot;,&quot;apiKey&quot;:&quot;xxx&quot;}"
         />
       </a-form-item>
     </a-form>
@@ -345,9 +345,7 @@
         {{ detailTask.lastSyncTime ?? '-' }}
       </a-descriptions-item>
       <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-        <span class="error-text"
-          >[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span
-        >
+        <span class="error-text">[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span>
       </a-descriptions-item>
       <a-descriptions-item label="操作" :span="1">
         <a-space>
@@ -378,6 +376,14 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -395,14 +401,6 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,

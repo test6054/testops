@@ -14,6 +14,7 @@ import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
  */
 import type {
   AssessmentItemVO,
+  DataSourceMode,
   QualityCourseVO,
   ScoreBatchQueryPayload,
   ScoreBatchSavePayload,
@@ -33,6 +34,8 @@ import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   assessmentItemApi,
+  DATA_SOURCE_MODE_LABEL,
+  isDataSourceMode,
   isScoreBatchStatus,
   qualityCourseApi,
   SCORE_BATCH_STATUS_COLOR,
@@ -61,11 +64,18 @@ const previewVisible = ref(false)
 const previewLoading = ref(false)
 const diagnostics = ref<ScoreImportRowDiagnostic[]>([])
 const previewBatch = ref<ScoreBatchVO | null>(null)
-const previewSummary = reactive({
+interface ScoreImportPreviewSummary {
+  totalRows: number
+  successRows: number
+  errorRows: number
+  errorSummary?: string
+}
+
+const previewSummary = reactive<ScoreImportPreviewSummary>({
   totalRows: 0,
   successRows: 0,
   errorRows: 0,
-  errorSummary: '' as string | undefined,
+  errorSummary: undefined,
 })
 
 const courseOptions = ref<QualityCourseVO[]>([])
@@ -86,12 +96,17 @@ const query = reactive<ScoreBatchQueryPayload>({
   keyword: '',
 })
 
-const SOURCE_MODE_OPTIONS = [
-  { value: 'EXCEL_IMPORT', label: 'Excel 异步导入' },
-  { value: 'EXTERNAL_AI_CONNECTOR', label: '外部 AI 解析草稿' },
-  { value: 'READ_ONLY_DATABASE_PULL', label: '只读数据库主动拔取' },
-  { value: 'MANUAL_CONFIRMATION', label: '人工录入与确认' },
+const DATA_SOURCE_MODES: DataSourceMode[] = [
+  'EXCEL_IMPORT',
+  'EXTERNAL_AI_CONNECTOR',
+  'READ_ONLY_DATABASE_PULL',
+  'MANUAL_CONFIRMATION',
 ]
+
+const SOURCE_MODE_OPTIONS = DATA_SOURCE_MODES.map((value) => ({
+  value,
+  label: DATA_SOURCE_MODE_LABEL[value],
+}))
 
 const uploadForm = reactive<ScoreBatchSavePayload & { fileName?: string }>({
   qualityCourseId: '',
@@ -104,26 +119,37 @@ const uploadForm = reactive<ScoreBatchSavePayload & { fileName?: string }>({
   fileName: '',
 })
 
-const statusOptions = Object.entries(SCORE_BATCH_STATUS_LABEL).map(([value, label]) => ({
+const SCORE_BATCH_STATUSES: ScoreBatchStatus[] = [
+  'PENDING',
+  'PARSING',
+  'PREVIEW_READY',
+  'VALIDATED',
+  'CONFIRMED',
+  'FAILED',
+  'CANCELLED',
+]
+
+const statusOptions = SCORE_BATCH_STATUSES.map((value) => ({
   value,
-  label,
+  label: SCORE_BATCH_STATUS_LABEL[value],
 }))
 
-// ─── 状态守卫 helper：禁止 as 类型断言 ─────────────────────────────
 function statusLabel(value: unknown): string {
   if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === undefined || value === null || value === '') return '-'
+  throw new Error(`成绩批次状态不在后端枚举内：${String(value)}`)
 }
 
 function statusColor(value: unknown): string {
   if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_COLOR[value]
-  return 'default'
+  if (value === undefined || value === null || value === '') return 'default'
+  throw new Error(`成绩批次状态不在后端枚举内：${String(value)}`)
 }
 
 function sourceModeLabel(value: unknown): string {
-  if (typeof value !== 'string') return '-'
-  const opt = SOURCE_MODE_OPTIONS.find((o) => o.value === value)
-  return opt ? opt.label : value || '-'
+  if (value === undefined || value === null || value === '') return '-'
+  if (isDataSourceMode(value)) return DATA_SOURCE_MODE_LABEL[value]
+  throw new Error(`数据接入模式不在后端枚举内：${String(value)}`)
 }
 
 // ─── 阶段状态分布（用于 StageRail） ─────────────────────────────
@@ -323,7 +349,10 @@ async function handleUpload(options: UploadRequestOption) {
   }
   uploading.value = true
   try {
-    const file = options.file as File
+    const { file } = options
+    if (!(file instanceof File)) {
+      throw new TypeError('无效的成绩批次上传文件')
+    }
     // 步骤 1：上传 Excel 到 edu-storage 拿 sourceFileId
     const uploaded = await uploadFile(file, { businessType: 'QUALITY_SCORE_IMPORT' })
     const sourceFileId = String(uploaded.id)
@@ -345,7 +374,7 @@ async function handleUpload(options: UploadRequestOption) {
     options.onSuccess?.({})
     await loadBatches()
   } catch (err) {
-    options.onError?.(err as Error)
+    options.onError?.(err instanceof Error ? err : new Error(String(err)))
   } finally {
     uploading.value = false
   }

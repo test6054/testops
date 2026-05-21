@@ -249,7 +249,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
-import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -259,6 +258,7 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
 import {
   UiAlertStrip,
   UiBadge,
@@ -296,7 +296,7 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -373,14 +373,7 @@ function handleReset(): void {
   pagination.current = 1
   void loadExams()
 }
-
-function handleTableChange(next: TablePaginationConfig): void {
-  pagination.current = next.current ?? 1
-  pagination.pageSize = next.pageSize ?? 10
-  void loadExams()
-}
-
-function handleUiPageChange(payload: { current: number; pageSize: number }): void {
+function handleUiPageChange(payload: { current: number, pageSize: number }): void {
   pagination.current = payload.current
   pagination.pageSize = payload.pageSize
   void loadExams()
@@ -419,8 +412,8 @@ async function loadStatusTotals(): Promise<void> {
     activeTotal.value = activeRes.total ?? 0
     closedTotal.value = closedRes.total ?? 0
   } catch (error) {
-    statusTotalsError.value =
-      error instanceof Error ? error.message : '进行中 / 已关闭考试计数加载失败'
+    statusTotalsError.value
+      = error instanceof Error ? error.message : '进行中 / 已关闭考试计数加载失败'
   }
 }
 

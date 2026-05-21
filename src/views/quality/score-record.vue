@@ -13,6 +13,9 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   isScoreBatchStatus,
@@ -21,9 +24,6 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   CourseSelector,
   StudentSelector,
@@ -137,8 +137,7 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value =
-    (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+  assessmentItems.value = (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
 }
 
 /* ========== 信号指标带（SignalBand） ========== */
@@ -181,6 +180,10 @@ const editor = ref<ScoreRecordSavePayload>({
   invalidReason: '',
   errorCodes: '',
 })
+
+function handleEditorStudentChange(value: string | null): void {
+  editor.value.studentUserId = value ?? ''
+}
 
 function openCreate() {
   if (!selectedBatch.value) return
@@ -261,8 +264,8 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value =
-      (await scoreRecordApi.listValidByItem(
+    validByItemRecords.value
+      = (await scoreRecordApi.listValidByItem(
         validByItemId.value,
         qualityStore.currentQualityCourseId,
       )) || []
@@ -514,7 +517,7 @@ function handleCourseChange(courseId: string | null) {
               <StudentSelector
                 :value="editor.studentUserId || null"
                 placeholder="选择学生"
-                @change="(v) => (editor.studentUserId = v ?? '')"
+                @change="handleEditorStudentChange"
               />
             </a-form-item>
           </a-col>
@@ -540,7 +543,7 @@ function handleCourseChange(courseId: string | null) {
           <a-textarea
             v-model:value="editor.rubricBreakdown"
             :rows="3"
-            placeholder='{"rubricItemId": score, ...}'
+            placeholder="{&quot;rubricItemId&quot;: score, ...}"
             class="score-record__mono"
           />
         </a-form-item>

@@ -6,6 +6,12 @@ import type {
   MarkOcrProviderTypeCode,
   MarkOcrRecognizeVO,
 } from '@/apis/mark/ocr'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
@@ -16,12 +22,6 @@ import {
   recognizeMarkOcr,
   saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
-import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
 import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 

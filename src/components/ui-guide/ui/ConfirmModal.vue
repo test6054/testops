@@ -12,7 +12,7 @@
     :mask-closable="props.maskClosable"
     :confirm-loading="props.confirmLoading"
     v-bind="$attrs"
-    @update:open="(value) => emit('update:open', value)"
+    @update:open="handleOpenUpdate"
     @ok="emit('ok')"
     @cancel="emit('cancel')"
   >
@@ -58,6 +58,10 @@ const emit = defineEmits<{
   (e: 'ok'): void
   (e: 'cancel'): void
 }>()
+
+function handleOpenUpdate(value: boolean) {
+  emit('update:open', value)
+}
 
 type ModalType = 'warning' | 'info' | 'success' | 'error'
 </script>

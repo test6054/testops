@@ -93,8 +93,8 @@
 
 <script setup lang="ts">
 import type { IndirectEvaluationStatisticsVO } from '@/apis/quality/indirect-evaluation'
-import { indirectFormApi } from '@/apis/quality/indirect-evaluation'
 import { computed, ref, watch } from 'vue'
+import { indirectFormApi } from '@/apis/quality/indirect-evaluation'
 
 const props = defineProps<{
   open: boolean

@@ -8,7 +8,7 @@
     :ok-text="props.okText"
     :cancel-text="props.cancelText"
     v-bind="$attrs"
-    @update:open="(value) => emit('update:open', value)"
+    @update:open="handleOpenUpdate"
     @ok="emit('ok')"
     @cancel="emit('cancel')"
   >
@@ -59,6 +59,10 @@ const emit = defineEmits<{
   (e: 'ok'): void
   (e: 'cancel'): void
 }>()
+
+function handleOpenUpdate(value: boolean) {
+  emit('update:open', value)
+}
 </script>
 
 <style lang="scss" scoped>

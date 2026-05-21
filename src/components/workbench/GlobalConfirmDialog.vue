@@ -14,6 +14,10 @@ import {
 defineOptions({ name: 'GlobalConfirmDialog' })
 
 const { state } = useConfirmDialogState()
+
+function handleOpenUpdate(value: boolean) {
+  if (!value) handleConfirmCancel()
+}
 </script>
 
 <template>
@@ -27,11 +31,7 @@ const { state } = useConfirmDialogState()
     :cancel-text="state.options.cancelText"
     :hide-cancel="state.options.hideCancel"
     :confirm-loading="state.loading"
-    @update:open="
-      (value) => {
-        if (!value) handleConfirmCancel()
-      }
-    "
+    @update:open="handleOpenUpdate"
     @ok="handleConfirmOk"
     @cancel="handleConfirmCancel"
   />

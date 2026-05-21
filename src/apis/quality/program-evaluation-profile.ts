@@ -1,3 +1,4 @@
+import type { AccreditationType, EvaluationMethod } from './types'
 /**
  * 专业评价口径 API - 对应 ProgramEvaluationProfileController
  * 后端路径：/api/quality/program-evaluation-profiles
@@ -15,11 +16,11 @@ export interface ProgramEvaluationProfileVO {
   programName: string
   schoolId?: string
   departmentId?: string
-  accreditationType: string
+  accreditationType: AccreditationType
   standardId?: string
   standardYear?: string
   accreditationLevel?: string
-  evaluationMethod: string
+  evaluationMethod: EvaluationMethod
   evaluationCycle: string
   sampleScope?: string
   reviewChain?: string
@@ -35,11 +36,11 @@ export interface ProgramEvaluationProfileSavePayload {
   programName: string
   schoolId?: string
   departmentId?: string
-  accreditationType: string
+  accreditationType: AccreditationType
   standardId?: string
   standardYear?: string
   accreditationLevel?: string
-  evaluationMethod: string
+  evaluationMethod: EvaluationMethod
   evaluationCycle: string
   sampleScope?: string
   reviewChain?: string
@@ -50,7 +51,7 @@ export interface ProgramEvaluationProfileSavePayload {
 export interface ProgramEvaluationProfileQueryPayload extends QueryDto {
   schoolId?: string
   departmentId?: string
-  accreditationType?: string
+  accreditationType?: AccreditationType
   enabled?: boolean
   keyword?: string
 }

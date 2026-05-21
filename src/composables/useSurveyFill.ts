@@ -1,12 +1,12 @@
+import type {PublicSurveyItemVO, PublicSurveyVO} from '@/apis/public-survey'
+import {message} from 'ant-design-vue'
 /**
  * 公开问卷填写共享逻辑。
  * 供移动端（一题一页）和 PC 端（全页展示）共用。
  */
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { message } from 'ant-design-vue'
-import type { PublicSurveyItemVO, PublicSurveyVO } from '@/apis/public-survey'
-import { publicSurveyApi } from '@/apis/public-survey'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {useRoute} from 'vue-router'
+import {publicSurveyApi} from '@/apis/public-survey'
 
 export function useSurveyFill() {
   const route = useRoute()
@@ -45,7 +45,7 @@ export function useSurveyFill() {
       return !!answers[item.itemToken]
     }
     if (item.itemType === 'MULTI_CHOICE') {
-      return !!(multiAnswers[item.itemToken] && multiAnswers[item.itemToken].length > 0)
+      return multiAnswers[item.itemToken] && multiAnswers[item.itemToken].length > 0
     }
     if (item.itemType === 'OPEN_TEXT') {
       return !!(openTexts[item.itemToken] && openTexts[item.itemToken].trim())
@@ -113,8 +113,7 @@ export function useSurveyFill() {
   async function loadSurvey() {
     loading.value = true
     try {
-      const res = await publicSurveyApi.getSurvey(token)
-      survey.value = res
+      survey.value = await publicSurveyApi.getSurvey(token)
     } catch (err: unknown) {
       const e = err as { message?: string }
       errorMessage.value = e.message || '问卷加载失败'

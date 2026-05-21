@@ -30,6 +30,7 @@ import type {
   AssessmentItemSavePayload,
   AssessmentItemType,
   AssessmentItemVO,
+  AggregationFunction,
   CourseGoalAssessmentRuleSavePayload,
   CourseGoalRequirementSavePayload,
   CourseGoalRequirementVO,
@@ -43,6 +44,11 @@ import type {
   RubricItemVO,
   SupportLevel,
 } from '@/apis/quality'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AGGREGATION_FUNCTION_LABEL,
   ASSESSMENT_ITEM_TYPE_LABEL,
@@ -57,13 +63,10 @@ import {
   rubricItemApi,
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
+  isAggregationFunction,
+  isAssessmentItemType,
+  isSupportLevel,
 } from '@/apis/quality'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
@@ -71,6 +74,7 @@ import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 
@@ -106,6 +110,18 @@ const rubricColumns: ColumnsType = [
 const qualityStore = useQualityStore()
 
 const WEIGHT_EPSILON = 1e-3
+
+function assessmentItemTypeLabel(value: unknown): string {
+  if (isAssessmentItemType(value)) return ASSESSMENT_ITEM_TYPE_LABEL[value]
+  if (value === undefined || value === null || value === '') return '-'
+  throw new Error('考核环节类型不符合前后端契约')
+}
+
+function aggregationFunctionLabel(value: unknown): string {
+  if (isAggregationFunction(value)) return AGGREGATION_FUNCTION_LABEL[value]
+  if (value === undefined || value === null || value === '') return '-'
+  throw new Error('课程目标聚合函数不符合前后端契约')
+}
 
 /* ========== 当前课程 ========== */
 
@@ -443,7 +459,7 @@ const assessMatrixRows = computed<MatrixRow[]>(() =>
     return {
       key: it.id,
       label: it.itemCode,
-      hint: `${it.itemName}（${ASSESSMENT_ITEM_TYPE_LABEL[it.itemType as AssessmentItemType] || it.itemType}）`,
+      hint: `${it.itemName}（${assessmentItemTypeLabel(it.itemType)}）`,
       badge: `Σw=${sum.toFixed(3)}`,
       badgeTone: healthy ? 'green' : 'red',
       warning: healthy
@@ -554,6 +570,26 @@ function handleCatalogCourseChange(value: string | null, option?: CourseListVO) 
     if (!courseEditor.courseCode) courseEditor.courseCode = option.courseCode || ''
     if (!courseEditor.courseName) courseEditor.courseName = option.courseName || ''
   }
+}
+
+function handleProgramChange(value: string | null) {
+  courseEditor.programId = value ?? ''
+  courseEditor.trainingPlanId = ''
+  courseEditor.courseId = ''
+  courseEditor.courseCode = ''
+  courseEditor.courseName = ''
+}
+
+function handleTrainingPlanChange(value: string | null) {
+  courseEditor.trainingPlanId = value ?? ''
+}
+
+function handleTeacherChange(value: string | null) {
+  courseEditor.teacherUserId = value ?? ''
+}
+
+function handleClassChange(value: string | null) {
+  courseEditor.classId = value ?? ''
 }
 
 async function submitCourse() {
@@ -709,7 +745,7 @@ function openSupportCreate(rowKey: string, colKey: string) {
     courseGoalId: rowKey,
     requirementId: colMeta.reqId,
     indicatorId: colMeta.indicatorId,
-    supportLevel: 'MEDIUM' as SupportLevel,
+    supportLevel: 'MEDIUM',
     supportWeight: SUPPORT_LEVEL_DEFAULT_FACTOR.MEDIUM,
   })
   supportEditorVisible.value = true
@@ -762,13 +798,27 @@ async function deleteSupport(record: CourseGoalRequirementVO) {
 
 function handleDeleteSupportClick() {
   if (supportEditor.id) {
-    deleteSupport({ id: supportEditor.id } as CourseGoalRequirementVO)
+    const record: CourseGoalRequirementVO = {
+      id: supportEditor.id,
+      courseGoalId: supportEditor.courseGoalId,
+      requirementId: supportEditor.requirementId,
+      indicatorId: supportEditor.indicatorId,
+      supportLevel: supportEditor.supportLevel,
+      supportWeight: supportEditor.supportWeight,
+    }
+    deleteSupport(record)
   }
 }
 
 function handleSupportLevelChange(level: SupportLevel) {
   supportEditor.supportLevel = level
   supportEditor.supportWeight = SUPPORT_LEVEL_DEFAULT_FACTOR[level]
+}
+
+function handleSupportLevelRadioChange(event: { target: { value: unknown } }) {
+  const value = event.target.value
+  if (!isSupportLevel(value)) throw new Error('课程目标支撑等级不符合前后端契约')
+  handleSupportLevelChange(value)
 }
 
 function handleSupportCellClick(payload: {
@@ -1149,25 +1199,34 @@ onMounted(async () => {
 
 /* ========== 字典 ========== */
 
-const supportLevelOptions = [
-  { value: 'HIGH' as const, label: SUPPORT_LEVEL_LABEL.HIGH },
-  { value: 'MEDIUM' as const, label: SUPPORT_LEVEL_LABEL.MEDIUM },
-  { value: 'LOW' as const, label: SUPPORT_LEVEL_LABEL.LOW },
+const supportLevelOptions: { value: SupportLevel, label: string }[] = [
+  { value: 'HIGH', label: SUPPORT_LEVEL_LABEL.HIGH },
+  { value: 'MEDIUM', label: SUPPORT_LEVEL_LABEL.MEDIUM },
+  { value: 'LOW', label: SUPPORT_LEVEL_LABEL.LOW },
 ]
 
-const aggregationOptions = [
+const aggregationOptions: { value: AggregationFunction, label: string }[] = [
   { value: 'WEIGHTED_SUM', label: AGGREGATION_FUNCTION_LABEL.WEIGHTED_SUM },
   { value: 'MINIMUM', label: AGGREGATION_FUNCTION_LABEL.MINIMUM },
   { value: 'WEIGHTED_MINIMUM_MIXED', label: AGGREGATION_FUNCTION_LABEL.WEIGHTED_MINIMUM_MIXED },
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
 ]
 
-const itemTypeOptions = (Object.keys(ASSESSMENT_ITEM_TYPE_LABEL) as AssessmentItemType[]).map(
-  (k) => ({
-    value: k,
-    label: ASSESSMENT_ITEM_TYPE_LABEL[k],
-  }),
-)
+const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
+  { value: 'FINAL_EXAM', label: ASSESSMENT_ITEM_TYPE_LABEL.FINAL_EXAM },
+  { value: 'HOMEWORK', label: ASSESSMENT_ITEM_TYPE_LABEL.HOMEWORK },
+  { value: 'EXPERIMENT', label: ASSESSMENT_ITEM_TYPE_LABEL.EXPERIMENT },
+  { value: 'COURSE_DESIGN', label: ASSESSMENT_ITEM_TYPE_LABEL.COURSE_DESIGN },
+  { value: 'INTERNSHIP', label: ASSESSMENT_ITEM_TYPE_LABEL.INTERNSHIP },
+  { value: 'DISSERTATION', label: ASSESSMENT_ITEM_TYPE_LABEL.DISSERTATION },
+  { value: 'PROCESS_NODE', label: ASSESSMENT_ITEM_TYPE_LABEL.PROCESS_NODE },
+  { value: 'PROJECT_MILESTONE', label: ASSESSMENT_ITEM_TYPE_LABEL.PROJECT_MILESTONE },
+  { value: 'CASE_STUDY', label: ASSESSMENT_ITEM_TYPE_LABEL.CASE_STUDY },
+  { value: 'DEFENSE', label: ASSESSMENT_ITEM_TYPE_LABEL.DEFENSE },
+  { value: 'WORK_PORTFOLIO', label: ASSESSMENT_ITEM_TYPE_LABEL.WORK_PORTFOLIO },
+  { value: 'FIELD_TRIAL', label: ASSESSMENT_ITEM_TYPE_LABEL.FIELD_TRIAL },
+  { value: 'CLINICAL_PRACTICE', label: ASSESSMENT_ITEM_TYPE_LABEL.CLINICAL_PRACTICE },
+]
 </script>
 
 <template>
@@ -1305,10 +1364,7 @@ const itemTypeOptions = (Object.keys(ASSESSMENT_ITEM_TYPE_LABEL) as AssessmentIt
           >
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.key === 'itemType'">
-                {{
-                  ASSESSMENT_ITEM_TYPE_LABEL[record.itemType as AssessmentItemType] ||
-                  record.itemType
-                }}
+                {{ assessmentItemTypeLabel(record.itemType) }}
               </template>
               <template v-else-if="column.key === 'fullScore'">
                 {{ Number(text).toFixed(0) }}
@@ -1373,11 +1429,7 @@ const itemTypeOptions = (Object.keys(ASSESSMENT_ITEM_TYPE_LABEL) as AssessmentIt
                 {{ text == null ? '-' : Number(text).toFixed(2) }}
               </template>
               <template v-else-if="column.key === 'aggregation'">
-                {{
-                  text
-                    ? AGGREGATION_FUNCTION_LABEL[text as keyof typeof AGGREGATION_FUNCTION_LABEL]
-                    : '-'
-                }}
+                {{ aggregationFunctionLabel(text) }}
               </template>
               <template v-else-if="column.key === 'supportCount'">
                 {{ supportsOfGoal(record.id).length }}
@@ -1431,15 +1483,7 @@ const itemTypeOptions = (Object.keys(ASSESSMENT_ITEM_TYPE_LABEL) as AssessmentIt
               <ProgramSelector
                 :value="courseEditor.programId || null"
                 placeholder="请选择 edu-user 专业大类"
-                @change="
-                  (v) => {
-                    courseEditor.programId = v ?? ''
-                    courseEditor.trainingPlanId = ''
-                    courseEditor.courseId = ''
-                    courseEditor.courseCode = ''
-                    courseEditor.courseName = ''
-                  }
-                "
+                @change="handleProgramChange"
               />
             </a-form-item>
           </a-col>
@@ -1452,7 +1496,7 @@ const itemTypeOptions = (Object.keys(ASSESSMENT_ITEM_TYPE_LABEL) as AssessmentIt
                 :only-confirmed="false"
                 :only-enabled="true"
                 placeholder="选定专业后可选培养方案"
-                @change="(v) => (courseEditor.trainingPlanId = v ?? '')"
+                @change="handleTrainingPlanChange"
               />
             </a-form-item>
           </a-col>
@@ -1531,7 +1575,7 @@ const itemTypeOptions = (Object.keys(ASSESSMENT_ITEM_TYPE_LABEL) as AssessmentIt
               <TeacherSelector
                 :value="courseEditor.teacherUserId || null"
                 placeholder="请选择教师"
-                @change="(v) => (courseEditor.teacherUserId = v ?? '')"
+                @change="handleTeacherChange"
               />
             </a-form-item>
           </a-col>
@@ -1540,7 +1584,7 @@ const itemTypeOptions = (Object.keys(ASSESSMENT_ITEM_TYPE_LABEL) as AssessmentIt
               <ClassSelector
                 :value="courseEditor.classId || null"
                 placeholder="请选择班级"
-                @change="(v) => (courseEditor.classId = v ?? '')"
+                @change="handleClassChange"
               />
             </a-form-item>
           </a-col>
@@ -1682,7 +1726,7 @@ const itemTypeOptions = (Object.keys(ASSESSMENT_ITEM_TYPE_LABEL) as AssessmentIt
             <a-form-item label="支撑度" required>
               <a-radio-group
                 :value="supportEditor.supportLevel"
-                @change="(e) => handleSupportLevelChange(e.target.value as SupportLevel)"
+                @change="handleSupportLevelRadioChange"
               >
                 <a-radio-button
                   v-for="opt in supportLevelOptions"

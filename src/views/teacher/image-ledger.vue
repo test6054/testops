@@ -40,12 +40,8 @@
       <div class="ledger-page__attention-body">
         <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
         <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
-        <span v-if="attentionContext.scanBatchId"
-          >扫描批次：{{ attentionContext.scanBatchId }}</span
-        >
-        <span v-if="attentionContext.paperInstanceId"
-          >试卷实例：{{ attentionContext.paperInstanceId }}</span
-        >
+        <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
+        <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
         <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
       </div>
       <template #actions>
@@ -93,11 +89,11 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
-import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'

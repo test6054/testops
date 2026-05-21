@@ -75,9 +75,7 @@
               <strong class="marking-overview__recommend-title">
                 {{ item.examName || '未命名考试' }}
               </strong>
-              <span v-if="item.examNo" class="marking-overview__recommend-no"
-                >#{{ item.examNo }}</span
-              >
+              <span v-if="item.examNo" class="marking-overview__recommend-no">#{{ item.examNo }}</span>
               <UiTag v-if="item.attention > 0" tone="red" size="sm">
                 {{ item.attention }} 条扫描异常
               </UiTag>
@@ -181,19 +179,19 @@
  */
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO, MarkingProgressVO } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+
+import dayjs from 'dayjs'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
   getMarkingProgress,
   pageExams,
 } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
-
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -224,7 +222,7 @@ function examStatusTone(value: unknown): BadgeTone {
   return 'gray'
 }
 
-const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -436,7 +434,7 @@ const stages = computed<WorkbenchStage[]>(() => {
 })
 
 /** 是否需要展示「需立即关注」红色横幅 */
-const urgentBanner = computed<{ title: string; description: string } | null>(() => {
+const urgentBanner = computed<{ title: string, description: string } | null>(() => {
   const a = aggregate.value
   if (a.scanAttention > 0) {
     return {

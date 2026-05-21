@@ -160,15 +160,15 @@ import type {
   SchoolQualityAnalysisVO,
   SchoolQualityDimensionCode,
 } from '@/apis/mark/school-quality'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, reactive, ref } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
 } from '@/apis/mark/school-quality'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, reactive, ref } from 'vue'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 

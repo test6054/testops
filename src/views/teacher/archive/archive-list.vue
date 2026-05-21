@@ -111,8 +111,8 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
               {{
-                archives[index].archiveStatusMessage ||
-                archiveStatusLabel(archives[index].archiveStatus)
+                archives[index].archiveStatusMessage
+                  || archiveStatusLabel(archives[index].archiveStatus)
               }}
             </UiTag>
             <div
@@ -152,8 +152,8 @@
               </UiButton>
               <UiButton
                 v-if="
-                  archives[index].archiveStatus === 'DRAFT' ||
-                  archives[index].archiveStatus === 'PACKAGING_FAILED'
+                  archives[index].archiveStatus === 'DRAFT'
+                    || archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
                 size="sm"
                 @click="confirmPackage(archives[index])"
@@ -223,18 +223,11 @@
 </template>
 
 <script lang="ts" setup>
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchivePackageStatusCode,
   ArchivePackageVO,
   ArchivePackagingPhase,
-} from '@/apis/mark/archive'
-import {
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
-  ARCHIVE_STATUS_TONE,
-  createArchive,
-  listArchives,
-  packageArchive,
 } from '@/apis/mark/archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -245,6 +238,14 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  createArchive,
+  listArchives,
+  packageArchive,
+} from '@/apis/mark/archive'
 import {
   UiAlertStrip,
   UiBadge,
@@ -290,13 +291,26 @@ const createForm = reactive({
   includeAnswerBooklet: true,
 })
 
-// 从后端枚举 LABEL 对象直接派生 select options。
-const statusOptions = Object.entries(ARCHIVE_STATUS_LABEL).map(([value, label]) => ({
+const archivePackageStatuses: ArchivePackageStatusCode[] = [
+  'DRAFT',
+  'PACKAGING',
+  'PACKAGING_FAILED',
+  'STORED',
+  'ACTIVE',
+  'APPRAISAL_PENDING',
+  'APPRAISAL_DECIDED',
+  'DESTRUCTION_PENDING',
+  'DESTRUCTION_APPROVED',
+  'DESTRUCTION_REJECTED',
+  'DESTROYED',
+]
+
+const statusOptions = archivePackageStatuses.map((value) => ({
   value,
-  label,
+  label: ARCHIVE_STATUS_LABEL[value],
 }))
 
-const columns = [
+const columns: ColumnsType = [
   { title: '归档编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 220 },
   { title: '所属考试', key: 'examId', dataIndex: 'examId', width: 110 },
   { title: '状态', key: 'status', dataIndex: 'archiveStatus', width: 200 },
@@ -304,7 +318,7 @@ const columns = [
   { title: 'ZIP 大小', key: 'fileSize', dataIndex: 'archiveFileSize', width: 110 },
   { title: '清单数', key: 'itemCount', dataIndex: 'itemCount', width: 90 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 200, align: 'right' as const },
+  { title: '操作', key: 'actions', width: 200, align: 'right' },
 ]
 
 const canCreate = computed(() => Boolean(filterForm.examId))
@@ -316,7 +330,7 @@ interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
   description: string
-  action: { label: string; handler: () => void }
+  action: { label: string, handler: () => void }
 }
 
 const archiveAlert = computed<ArchiveAlert | null>(() => {
@@ -374,11 +388,11 @@ function syncArchiveStageToStore(): void {
   const statuses = archives.value.map((a) => a.archiveStatus)
   const hasCompleted = statuses.some(
     (s) =>
-      s === 'APPRAISAL_DECIDED' ||
-      s === 'DESTRUCTION_PENDING' ||
-      s === 'DESTRUCTION_APPROVED' ||
-      s === 'DESTRUCTION_REJECTED' ||
-      s === 'DESTROYED',
+      s === 'APPRAISAL_DECIDED'
+      || s === 'DESTRUCTION_PENDING'
+      || s === 'DESTRUCTION_APPROVED'
+      || s === 'DESTRUCTION_REJECTED'
+      || s === 'DESTROYED',
   )
   const hasActive = statuses.some(
     (s) => s === 'PACKAGING' || s === 'ACTIVE' || s === 'APPRAISAL_PENDING',
@@ -391,11 +405,11 @@ function syncArchiveStageToStore(): void {
     hint = `已鉴定存档 ${
       statuses.filter(
         (s) =>
-          s === 'APPRAISAL_DECIDED' ||
-          s === 'DESTRUCTION_PENDING' ||
-          s === 'DESTRUCTION_APPROVED' ||
-          s === 'DESTRUCTION_REJECTED' ||
-          s === 'DESTROYED',
+          s === 'APPRAISAL_DECIDED'
+          || s === 'DESTRUCTION_PENDING'
+          || s === 'DESTRUCTION_APPROVED'
+          || s === 'DESTRUCTION_REJECTED'
+          || s === 'DESTROYED',
       ).length
     } / ${archives.value.length}`
   } else if (hasActive) {
@@ -420,7 +434,11 @@ async function loadArchives(): Promise<void> {
       archiveStatus: filterForm.archiveStatus,
     })
     if (!Array.isArray(list)) {
-      throw new Error('归档列表接口返回格式错误')
+      const error = new TypeError('归档列表接口返回格式错误')
+      archives.value = []
+      archiveLoadError.value = error
+      message.error(error.message)
+      return
     }
     archives.value = list
     syncArchiveStageToStore()
@@ -463,9 +481,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans &&
-    !createForm.includeMarkedSlices &&
-    !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans
+    && !createForm.includeMarkedSlices
+    && !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return
@@ -520,19 +538,50 @@ function formatTime(value?: string): string {
 }
 
 // 严格 typed helper：模板侧的 archives[index] 字段都是后端 VO 字面联合，避免 slot record:any。
+function isArchivePackageStatusCode(value: unknown): value is ArchivePackageStatusCode {
+  return (
+    value === 'DRAFT'
+    || value === 'PACKAGING'
+    || value === 'PACKAGING_FAILED'
+    || value === 'STORED'
+    || value === 'ACTIVE'
+    || value === 'APPRAISAL_PENDING'
+    || value === 'APPRAISAL_DECIDED'
+    || value === 'DESTRUCTION_PENDING'
+    || value === 'DESTRUCTION_APPROVED'
+    || value === 'DESTRUCTION_REJECTED'
+    || value === 'DESTROYED'
+  )
+}
+
+function isArchivePackagingPhase(value: unknown): value is ArchivePackagingPhase {
+  return (
+    value === 'QUEUED'
+    || value === 'AGGREGATING'
+    || value === 'WRITING_ZIP'
+    || value === 'UPLOADING_PARTS'
+    || value === 'FINALIZING'
+    || value === 'COMPLETED'
+    || value === 'FAILED'
+  )
+}
+
 function archiveStatusTone(status?: ArchivePackageStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return ARCHIVE_STATUS_TONE[status] ?? 'gray'
+  if (isArchivePackageStatusCode(status)) return ARCHIVE_STATUS_TONE[status]
+  throw new Error('归档包状态不符合前后端契约')
 }
 
 function archiveStatusLabel(status?: ArchivePackageStatusCode): string {
   if (!status) return '-'
-  return ARCHIVE_STATUS_LABEL[status] ?? status
+  if (isArchivePackageStatusCode(status)) return ARCHIVE_STATUS_LABEL[status]
+  throw new Error('归档包状态不符合前后端契约')
 }
 
 function archivePhaseLabel(phase?: ArchivePackagingPhase): string {
   if (!phase) return ''
-  return ARCHIVE_PHASE_LABEL[phase] ?? phase
+  if (isArchivePackagingPhase(phase)) return ARCHIVE_PHASE_LABEL[phase]
+  throw new Error('归档包打包阶段不符合前后端契约')
 }
 
 function formatBytes(bytes: number): string {

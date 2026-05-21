@@ -114,9 +114,7 @@
               <a-descriptions-item label="试卷实例ID">
                 <a-typography-text copyable>{{ task.paperInstanceId || '-' }}</a-typography-text>
               </a-descriptions-item>
-              <a-descriptions-item label="评阅轮次"
-                >第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item
-              >
+              <a-descriptions-item label="评阅轮次">第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item>
               <a-descriptions-item label="任务状态">
                 <UiTag :tone="task.taskStatus ? STATUS_TONE[task.taskStatus] : 'gray'" size="sm">
                   {{ task.taskStatus ? STATUS_LABEL[task.taskStatus] : '-' }}
@@ -206,12 +204,6 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
-import {
-  getMarkingTaskDetail,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-  submitMarkingTask,
-} from '@/apis/mark/marking-organization'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
@@ -224,6 +216,12 @@ import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import {
+  getMarkingTaskDetail,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+  submitMarkingTask,
+} from '@/apis/mark/marking-organization'
 import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
@@ -343,7 +341,7 @@ function releaseSliceImage(): void {
 }
 
 const formRef = ref<FormInstance>()
-const form = reactive<{ score?: number; annotationNote?: string }>({
+const form = reactive<{ score?: number, annotationNote?: string }>({
   score: undefined,
   annotationNote: '',
 })

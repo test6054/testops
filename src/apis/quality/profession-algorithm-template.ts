@@ -1,4 +1,4 @@
-import type { AggregationFunction } from './types'
+import type { AccreditationType, AggregationFunction } from './types'
 /**
  * 专业算法模板 API - 对应 ProfessionAlgorithmTemplateController
  * 后端路径：/api/quality/profession-algorithm-templates
@@ -15,7 +15,7 @@ export interface ProfessionAlgorithmTemplateVO {
   tenantId: string
   templateCode: string
   templateName: string
-  accreditationType: string
+  accreditationType: AccreditationType
   disciplineCategory?: string
   standardId?: string
   standardYear?: string
@@ -45,7 +45,7 @@ export interface ProfessionAlgorithmTemplateSavePayload {
   id?: string
   templateCode: string
   templateName: string
-  accreditationType: string
+  accreditationType: AccreditationType
   disciplineCategory?: string
   standardId?: string
   standardYear?: string
@@ -70,7 +70,7 @@ export interface ProfessionAlgorithmTemplateSavePayload {
 }
 
 export interface ProfessionAlgorithmTemplateQueryPayload extends QueryDto {
-  accreditationType?: string
+  accreditationType?: AccreditationType
   enabled?: boolean
   keyword?: string
 }

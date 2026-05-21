@@ -54,14 +54,14 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_COLOR,
   DUPLICATE_RESOLUTION_STATUS_LABEL,
   listPendingDuplicates,
 } from '@/apis/mark/image-ledger'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'DuplicateResolutionCard' })

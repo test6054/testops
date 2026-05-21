@@ -68,12 +68,16 @@
           <a-descriptions :column="3" size="small" bordered>
             <a-descriptions-item label="编号">{{ pkg.packageNo }}</a-descriptions-item>
             <a-descriptions-item label="生成人数">{{ pkg.itemCount }}</a-descriptions-item>
-            <a-descriptions-item label="生成时间">{{
-              pkg.generatedTime ?? '-'
-            }}</a-descriptions-item>
-            <a-descriptions-item label="备注" :span="3">{{
-              pkg.sealRemark || '-'
-            }}</a-descriptions-item>
+            <a-descriptions-item label="生成时间">
+              {{
+                pkg.generatedTime ?? '-'
+              }}
+            </a-descriptions-item>
+            <a-descriptions-item label="备注" :span="3">
+              {{
+                pkg.sealRemark || '-'
+              }}
+            </a-descriptions-item>
           </a-descriptions>
 
           <div class="package-actions">
@@ -179,12 +183,12 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/paper-master'
-import { generatePrintPackage, getPrintPackage, pagePrintPackages } from '@/apis/mark/paper-master'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
+import { generatePrintPackage, getPrintPackage, pagePrintPackages } from '@/apis/mark/paper-master'
 import {
   UiButton,
   UiCard,

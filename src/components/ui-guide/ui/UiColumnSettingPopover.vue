@@ -25,7 +25,7 @@
           <UiCheckbox
             :model-value="isChecked(item.key) || !!item.fixed"
             :disabled="item.fixed"
-            @update:model-value="(checked) => handleToggle(item.key, checked)"
+            @update:model-value="handleColumnCheckedChange(item.key)"
           >
             {{ item.title }}
           </UiCheckbox>
@@ -115,6 +115,10 @@ const handleToggle = (key: string, checked: boolean) => {
   else
     next.delete(key)
   localChecked.value = next
+}
+
+const handleColumnCheckedChange = (key: string) => {
+  return (checked: boolean) => handleToggle(key, checked)
 }
 
 const handleReset = () => {

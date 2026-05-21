@@ -33,12 +33,16 @@ import type {
   AuditRectificationVO,
   AuditSupervisionQueryPayload,
   AuditSupervisionSavePayload,
+  AuditSupervisionType,
   AuditSupervisionVO,
   ImprovementTaskQueryPayload,
   ImprovementTaskSavePayload,
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -57,9 +61,6 @@ import {
   isAuditSupervisionType,
   isImprovementTaskStatus,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,
@@ -125,41 +126,140 @@ const aiTaskStore = useAiTaskStore()
 
 const activeTab = ref<'improvement' | 'issue' | 'rectification' | 'supervision'>('improvement')
 
-/* ========== 状态守卫 helper（禁用 as 断言） ========== */
-
 function improvementStatusLabel(value: unknown): string {
   if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('改进任务状态不符合前后端契约')
 }
 
 function improvementStatusColor(value: unknown): string {
   if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_COLOR[value]
-  return 'default'
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('改进任务状态不符合前后端契约')
 }
 
 function issueStatusLabel(value: unknown): string {
   if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('审核评估问题状态不符合前后端契约')
 }
 
 function issueStatusColor(value: unknown): string {
   if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_COLOR[value]
-  return 'default'
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('审核评估问题状态不符合前后端契约')
 }
 
 function rectificationStatusLabel(value: unknown): string {
   if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('审核整改状态不符合前后端契约')
 }
 
 function rectificationStatusColor(value: unknown): string {
   if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_COLOR[value]
-  return 'default'
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('审核整改状态不符合前后端契约')
 }
 
 function supervisionTypeLabel(value: unknown): string {
   if (isAuditSupervisionType(value)) return AUDIT_SUPERVISION_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('督导类型不符合前后端契约')
+}
+
+function selectedId(value: string | null | undefined): string {
+  return value ?? ''
+}
+
+function handleImprovementOwnerChange(value: string | null | undefined) {
+  improvementEditor.ownerUserId = selectedId(value)
+}
+
+function handleImprovementProgramChange(value: string | null | undefined) {
+  improvementEditor.programId = selectedId(value)
+  improvementEditor.qualityCourseId = ''
+  improvementEditor.achievementResultId = ''
+}
+
+function handleImprovementCourseChange(value: string | null | undefined) {
+  improvementEditor.qualityCourseId = selectedId(value)
+}
+
+function handleImprovementAchievementResultChange(value: string | null | undefined) {
+  improvementEditor.achievementResultId = selectedId(value)
+}
+
+function handleImprovementReportChange(value: string | null | undefined) {
+  improvementEditor.reportId = selectedId(value)
+}
+
+function handleIssueProgramChange(value: string | null | undefined) {
+  issueEditor.programId = selectedId(value)
+  issueEditor.qualityCourseId = ''
+  issueEditor.requirementIndicatorId = ''
+}
+
+function handleIssueTrainingPlanChange(value: string | null | undefined) {
+  issueEditor.trainingPlanId = selectedId(value)
+}
+
+function handleIssueCourseChange(value: string | null | undefined) {
+  issueEditor.qualityCourseId = selectedId(value)
+}
+
+function handleIssueRequirementIndicatorChange(value: string | null | undefined) {
+  issueEditor.requirementIndicatorId = selectedId(value)
+}
+
+function handleIssueCourseGoalChange(value: string | null | undefined) {
+  issueEditor.courseGoalId = selectedId(value)
+}
+
+function handleIssueAchievementResultChange(value: string | null | undefined) {
+  issueEditor.achievementResultId = selectedId(value)
+}
+
+function handleRectQueryAuditIssueChange(value: string | null | undefined) {
+  rectQuery.auditIssueId = value ?? undefined
+  loadRectList()
+}
+
+function handleRectEditorAuditIssueChange(value: string | null | undefined) {
+  rectEditor.auditIssueId = selectedId(value)
+}
+
+function handleRectEditorOwnerChange(value: string | null | undefined) {
+  rectEditor.ownerUserId = selectedId(value)
+}
+
+function handleSupSupervisorChange(value: string | null | undefined) {
+  supEditor.supervisorUserId = selectedId(value)
+}
+
+function handleSupArchiveChange(value: string | null | undefined) {
+  supEditor.archiveId = selectedId(value)
+}
+
+function handleSupAuditIssueChange(value: string | null | undefined) {
+  supEditor.auditIssueId = selectedId(value)
+}
+
+function handleSupRectificationChange(value: string | null | undefined) {
+  supEditor.rectificationId = selectedId(value)
+}
+
+function handleSupProgramChange(value: string | null | undefined) {
+  supEditor.programId = selectedId(value)
+  supEditor.qualityCourseId = ''
+}
+
+function handleSupTrainingPlanChange(value: string | null | undefined) {
+  supEditor.trainingPlanId = selectedId(value)
+}
+
+function handleSupCourseChange(value: string | null | undefined) {
+  supEditor.qualityCourseId = selectedId(value)
 }
 
 /* ========== Tab 1: 改进任务 ========== */
@@ -177,9 +277,14 @@ const improvementQuery = reactive<ImprovementTaskQueryPayload>({
   keyword: '',
 })
 
-const improvementStatusOptions = Object.entries(IMPROVEMENT_TASK_STATUS_LABEL).map(
-  ([value, label]) => ({ value, label }),
-)
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: string }> = [
+  { value: 'OPEN', label: IMPROVEMENT_TASK_STATUS_LABEL.OPEN },
+  { value: 'IN_PROGRESS', label: IMPROVEMENT_TASK_STATUS_LABEL.IN_PROGRESS },
+  { value: 'SUBMITTED', label: IMPROVEMENT_TASK_STATUS_LABEL.SUBMITTED },
+  { value: 'REVIEWED', label: IMPROVEMENT_TASK_STATUS_LABEL.REVIEWED },
+  { value: 'CLOSED', label: IMPROVEMENT_TASK_STATUS_LABEL.CLOSED },
+  { value: 'RETURNED', label: IMPROVEMENT_TASK_STATUS_LABEL.RETURNED },
+]
 
 const improvementEditorVisible = ref(false)
 const improvementEditorMode = ref<'create' | 'edit'>('create')
@@ -234,7 +339,7 @@ async function loadImprovementList() {
   }
 }
 
-function handleImprovementPageChange(payload: { current: number; pageSize: number }) {
+function handleImprovementPageChange(payload: { current: number, pageSize: number }) {
   improvementQuery.pageNum = payload.current
   improvementQuery.pageSize = payload.pageSize
   loadImprovementList()
@@ -494,7 +599,7 @@ async function loadIssueList() {
   }
 }
 
-function handleIssuePageChange(payload: { current: number; pageSize: number }) {
+function handleIssuePageChange(payload: { current: number, pageSize: number }) {
   issueQuery.pageNum = payload.current
   issueQuery.pageSize = payload.pageSize
   loadIssueList()
@@ -561,10 +666,10 @@ function openIssueEdit(record: AuditIssueVO) {
 
 async function submitIssueEditor() {
   if (
-    !issueEditor.issueCode.trim() ||
-    !issueEditor.issueTitle.trim() ||
-    !issueEditor.issueSource ||
-    !issueEditor.severity
+    !issueEditor.issueCode.trim()
+    || !issueEditor.issueTitle.trim()
+    || !issueEditor.issueSource
+    || !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -615,8 +720,15 @@ async function handleIssueDelete(record: AuditIssueVO) {
 
 async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatus) {
   await auditIssueApi.transitStatus(record.id, target)
-  message.success(`已切换到「${AUDIT_ISSUE_STATUS_LABEL[target]}」`)
+  message.success(`已切换到「${issueStatusLabel(target)}」`)
   await loadIssueList()
+}
+
+function handleIssueStatusMenuClick(record: AuditIssueVO, event: { key: unknown }) {
+  if (!isAuditIssueStatus(event.key)) {
+    throw new Error('审核评估问题状态不符合前后端契约')
+  }
+  changeIssueStatus(record, event.key)
 }
 
 /* ========== Tab 3: 整改任务台账 ========== */
@@ -679,7 +791,7 @@ async function loadRectList() {
   }
 }
 
-function handleRectPageChange(payload: { current: number; pageSize: number }) {
+function handleRectPageChange(payload: { current: number, pageSize: number }) {
   rectQuery.pageNum = payload.current
   rectQuery.pageSize = payload.pageSize
   loadRectList()
@@ -726,11 +838,11 @@ function openRectEdit(record: AuditRectificationVO) {
 
 async function submitRectEditor() {
   if (
-    !rectEditor.auditIssueId ||
-    !rectEditor.rectificationCode.trim() ||
-    !rectEditor.rectificationTitle.trim() ||
-    !rectEditor.ownerUserId ||
-    !rectEditor.dueDate
+    !rectEditor.auditIssueId
+    || !rectEditor.rectificationCode.trim()
+    || !rectEditor.rectificationTitle.trim()
+    || !rectEditor.ownerUserId
+    || !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -826,9 +938,12 @@ const supQuery = reactive<AuditSupervisionQueryPayload>({
   keyword: '',
 })
 
-const supervisionTypeOptions = Object.entries(AUDIT_SUPERVISION_TYPE_LABEL).map(
-  ([value, label]) => ({ value, label }),
-)
+const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string }> = [
+  { value: 'DAILY', label: AUDIT_SUPERVISION_TYPE_LABEL.DAILY },
+  { value: 'SPECIAL', label: AUDIT_SUPERVISION_TYPE_LABEL.SPECIAL },
+  { value: 'PRE_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.PRE_AUDIT },
+  { value: 'SITE_VISIT', label: AUDIT_SUPERVISION_TYPE_LABEL.SITE_VISIT },
+]
 const supScopeOptions = [
   { value: 'COURSE', label: '课程' },
   { value: 'PROGRAM', label: '专业' },
@@ -878,7 +993,7 @@ async function loadSupList() {
   }
 }
 
-function handleSupPageChange(payload: { current: number; pageSize: number }) {
+function handleSupPageChange(payload: { current: number, pageSize: number }) {
   supQuery.pageNum = payload.current
   supQuery.pageSize = payload.pageSize
   loadSupList()
@@ -943,9 +1058,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim() ||
-    !supEditor.supervisionTitle.trim() ||
-    !supEditor.supervisionType
+    !supEditor.supervisionCode.trim()
+    || !supEditor.supervisionTitle.trim()
+    || !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return
@@ -1205,10 +1320,10 @@ onMounted(async () => {
             <template #bodyCell="{ column, record, text }">
               <template
                 v-if="
-                  column.key === 'qualityCourseId' ||
-                  column.key === 'ownerUserId' ||
-                  column.key === 'ownerRole' ||
-                  column.key === 'dueDate'
+                  column.key === 'qualityCourseId'
+                    || column.key === 'ownerUserId'
+                    || column.key === 'ownerRole'
+                    || column.key === 'dueDate'
                 "
               >
                 {{ text || '-' }}
@@ -1290,7 +1405,7 @@ onMounted(async () => {
                 class="iwb__filter"
               >
                 <a-select-option v-for="s in issueStatusOptions" :key="s" :value="s">
-                  {{ AUDIT_ISSUE_STATUS_LABEL[s] }}
+                  {{ issueStatusLabel(s) }}
                 </a-select-option>
               </a-select>
               <a-input
@@ -1354,11 +1469,9 @@ onMounted(async () => {
                   <a-dropdown>
                     <UiButton variant="outline" size="sm"> 状态 </UiButton>
                     <template #overlay>
-                      <a-menu
-                        @click="(e: any) => changeIssueStatus(record, e.key as AuditIssueStatus)"
-                      >
+                      <a-menu @click="handleIssueStatusMenuClick(record, $event)">
                         <a-menu-item v-for="s in issueStatusOptions" :key="s">
-                          {{ AUDIT_ISSUE_STATUS_LABEL[s] }}
+                          {{ issueStatusLabel(s) }}
                         </a-menu-item>
                       </a-menu>
                     </template>
@@ -1391,19 +1504,14 @@ onMounted(async () => {
                 class="iwb__filter"
               >
                 <a-select-option v-for="s in rectStatusOptions" :key="s" :value="s">
-                  {{ AUDIT_RECTIFICATION_STATUS_LABEL[s] }}
+                  {{ rectificationStatusLabel(s) }}
                 </a-select-option>
               </a-select>
               <AuditIssueSelector
                 :value="rectQuery.auditIssueId || null"
                 placeholder="关联问题"
                 :width="220"
-                @change="
-                  (v) => {
-                    rectQuery.auditIssueId = v ?? undefined
-                    loadRectList()
-                  }
-                "
+                @change="handleRectQueryAuditIssueChange"
               />
               <a-input
                 v-model:value="rectQuery.keyword"
@@ -1632,7 +1740,7 @@ onMounted(async () => {
             <a-form-item label="负责人">
               <TeacherSelector
                 :value="improvementEditor.ownerUserId || null"
-                @change="(v) => (improvementEditor.ownerUserId = v ?? '')"
+                @change="handleImprovementOwnerChange"
               />
             </a-form-item>
           </a-col>
@@ -1650,13 +1758,7 @@ onMounted(async () => {
             <a-form-item label="关联专业">
               <ProgramSelector
                 :value="improvementEditor.programId || null"
-                @change="
-                  (v) => {
-                    improvementEditor.programId = v ?? ''
-                    improvementEditor.qualityCourseId = ''
-                    improvementEditor.achievementResultId = ''
-                  }
-                "
+                @change="handleImprovementProgramChange"
               />
             </a-form-item>
           </a-col>
@@ -1666,7 +1768,7 @@ onMounted(async () => {
                 :value="improvementEditor.qualityCourseId || null"
                 :program-id="improvementEditor.programId || null"
                 :training-plan-id="improvementEditor.trainingPlanId || null"
-                @change="(v) => (improvementEditor.qualityCourseId = v ?? '')"
+                @change="handleImprovementCourseChange"
               />
             </a-form-item>
           </a-col>
@@ -1677,7 +1779,7 @@ onMounted(async () => {
                 :program-id="improvementEditor.programId || null"
                 :training-plan-id="improvementEditor.trainingPlanId || null"
                 :quality-course-id="improvementEditor.qualityCourseId || null"
-                @change="(v) => (improvementEditor.achievementResultId = v ?? '')"
+                @change="handleImprovementAchievementResultChange"
               />
             </a-form-item>
           </a-col>
@@ -1689,7 +1791,7 @@ onMounted(async () => {
                 :value="improvementEditor.reportId || null"
                 :program-id="improvementEditor.programId || null"
                 :training-plan-id="improvementEditor.trainingPlanId || null"
-                @change="(v) => (improvementEditor.reportId = v ?? '')"
+                @change="handleImprovementReportChange"
               />
             </a-form-item>
           </a-col>
@@ -1836,13 +1938,7 @@ onMounted(async () => {
             <a-form-item label="所属专业">
               <ProgramSelector
                 :value="issueEditor.programId || null"
-                @change="
-                  (v) => {
-                    issueEditor.programId = v ?? ''
-                    issueEditor.qualityCourseId = ''
-                    issueEditor.requirementIndicatorId = ''
-                  }
-                "
+                @change="handleIssueProgramChange"
               />
             </a-form-item>
           </a-col>
@@ -1851,7 +1947,7 @@ onMounted(async () => {
               <TrainingPlanSelector
                 :value="issueEditor.trainingPlanId || null"
                 :program-id="issueEditor.programId || null"
-                @change="(v) => (issueEditor.trainingPlanId = v ?? '')"
+                @change="handleIssueTrainingPlanChange"
               />
             </a-form-item>
           </a-col>
@@ -1861,7 +1957,7 @@ onMounted(async () => {
                 :value="issueEditor.qualityCourseId || null"
                 :program-id="issueEditor.programId || null"
                 :training-plan-id="issueEditor.trainingPlanId || null"
-                @change="(v) => (issueEditor.qualityCourseId = v ?? '')"
+                @change="handleIssueCourseChange"
               />
             </a-form-item>
           </a-col>
@@ -1872,7 +1968,7 @@ onMounted(async () => {
               <RequirementIndicatorSelector
                 :value="issueEditor.requirementIndicatorId || null"
                 :training-plan-id="issueEditor.trainingPlanId || null"
-                @change="(v) => (issueEditor.requirementIndicatorId = v ?? '')"
+                @change="handleIssueRequirementIndicatorChange"
               />
             </a-form-item>
           </a-col>
@@ -1881,7 +1977,7 @@ onMounted(async () => {
               <CourseGoalSelector
                 :value="issueEditor.courseGoalId || null"
                 :quality-course-id="issueEditor.qualityCourseId || null"
-                @change="(v) => (issueEditor.courseGoalId = v ?? '')"
+                @change="handleIssueCourseGoalChange"
               />
             </a-form-item>
           </a-col>
@@ -1892,7 +1988,7 @@ onMounted(async () => {
                 :program-id="issueEditor.programId || null"
                 :training-plan-id="issueEditor.trainingPlanId || null"
                 :quality-course-id="issueEditor.qualityCourseId || null"
-                @change="(v) => (issueEditor.achievementResultId = v ?? '')"
+                @change="handleIssueAchievementResultChange"
               />
             </a-form-item>
           </a-col>
@@ -1920,7 +2016,7 @@ onMounted(async () => {
               <AuditIssueSelector
                 :value="rectEditor.auditIssueId || null"
                 placeholder="选择审核评估问题"
-                @change="(v) => (rectEditor.auditIssueId = v ?? '')"
+                @change="handleRectEditorAuditIssueChange"
               />
             </a-form-item>
           </a-col>
@@ -1936,7 +2032,7 @@ onMounted(async () => {
             <a-form-item label="责任人" required>
               <TeacherSelector
                 :value="rectEditor.ownerUserId || null"
-                @change="(v) => (rectEditor.ownerUserId = v ?? '')"
+                @change="handleRectEditorOwnerChange"
               />
             </a-form-item>
           </a-col>
@@ -1994,7 +2090,7 @@ onMounted(async () => {
         <a-form-item label="督导人">
           <TeacherSelector
             :value="supEditor.supervisorUserId || null"
-            @change="(v) => (supEditor.supervisorUserId = v ?? '')"
+            @change="handleSupSupervisorChange"
           />
         </a-form-item>
         <a-form-item label="督导摘要">
@@ -2017,7 +2113,7 @@ onMounted(async () => {
             <a-form-item label="关联归档">
               <ArchiveSelector
                 :value="supEditor.archiveId || null"
-                @change="(v) => (supEditor.archiveId = v ?? '')"
+                @change="handleSupArchiveChange"
               />
             </a-form-item>
           </a-col>
@@ -2028,7 +2124,7 @@ onMounted(async () => {
             <a-form-item label="关联问题">
               <AuditIssueSelector
                 :value="supEditor.auditIssueId || null"
-                @change="(v) => (supEditor.auditIssueId = v ?? '')"
+                @change="handleSupAuditIssueChange"
               />
             </a-form-item>
           </a-col>
@@ -2037,7 +2133,7 @@ onMounted(async () => {
               <AuditRectificationSelector
                 :value="supEditor.rectificationId || null"
                 :audit-issue-id="supEditor.auditIssueId || null"
-                @change="(v) => (supEditor.rectificationId = v ?? '')"
+                @change="handleSupRectificationChange"
               />
             </a-form-item>
           </a-col>
@@ -2045,12 +2141,7 @@ onMounted(async () => {
             <a-form-item label="所属专业">
               <ProgramSelector
                 :value="supEditor.programId || null"
-                @change="
-                  (v) => {
-                    supEditor.programId = v ?? ''
-                    supEditor.qualityCourseId = ''
-                  }
-                "
+                @change="handleSupProgramChange"
               />
             </a-form-item>
           </a-col>
@@ -2061,7 +2152,7 @@ onMounted(async () => {
               <TrainingPlanSelector
                 :value="supEditor.trainingPlanId || null"
                 :program-id="supEditor.programId || null"
-                @change="(v) => (supEditor.trainingPlanId = v ?? '')"
+                @change="handleSupTrainingPlanChange"
               />
             </a-form-item>
           </a-col>
@@ -2071,7 +2162,7 @@ onMounted(async () => {
                 :value="supEditor.qualityCourseId || null"
                 :program-id="supEditor.programId || null"
                 :training-plan-id="supEditor.trainingPlanId || null"
-                @change="(v) => (supEditor.qualityCourseId = v ?? '')"
+                @change="handleSupCourseChange"
               />
             </a-form-item>
           </a-col>

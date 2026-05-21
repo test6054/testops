@@ -27,7 +27,7 @@
         :description="props.uploadDescription"
         :button-text="props.buttonText"
         @change="handleUploadChange"
-        @preview="(file) => emit('preview', file)"
+        @preview="handlePreview"
       />
     </div>
 
@@ -92,13 +92,28 @@ import UiActionLink from './UiActionLink.vue'
 import UiPanelHeader from './UiPanelHeader.vue'
 import UiUpload from './Upload.vue'
 
+interface UploadResponsePayload {
+  id?: string | number
+  fileId?: string | number
+  fileName?: string
+  nodeName?: string
+  fileSize?: number
+  fileType?: string
+}
+
+interface UploadResponseEnvelope {
+  data?: UploadResponsePayload
+}
+
+type UiAttachmentUploadFile = UploadFile<UploadResponseEnvelope | UploadResponsePayload>
+
 defineOptions({
   name: 'UiAttachmentManager',
   inheritAttrs: false,
 })
 
 const modelValue = defineModel<UiAttachmentItem[]>({ default: () => [] })
-const fileList = defineModel<UploadFile[]>('fileList', { default: () => [] })
+const fileList = defineModel<UiAttachmentUploadFile[]>('fileList', { default: () => [] })
 
 const props = withDefaults(defineProps<{
   title?: string
@@ -137,7 +152,7 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  (e: 'preview', file: UploadFile): void
+  (e: 'preview', file: UiAttachmentUploadFile): void
   (e: 'preview-item', item: UiAttachmentItem): void
   (e: 'remove', item: UiAttachmentItem): void
   (e: 'download', item: UiAttachmentItem): void
@@ -163,19 +178,6 @@ watch(modelValue, (items) => {
   }))
 }, { immediate: true })
 
-interface UploadResponsePayload {
-  id?: string | number
-  fileId?: string | number
-  fileName?: string
-  nodeName?: string
-  fileSize?: number
-  fileType?: string
-}
-
-interface UploadResponseEnvelope {
-  data?: UploadResponsePayload
-}
-
 function isUploadResponseEnvelope(
   response: UploadResponseEnvelope | UploadResponsePayload,
 ): response is UploadResponseEnvelope {
@@ -198,9 +200,8 @@ function extractUploadResponsePayload(
   return isUploadResponsePayload(response) ? response : undefined
 }
 
-const normalizeAttachment = (file: UploadFile, index: number): UiAttachmentItem => {
-  const response = file.response as UploadResponseEnvelope | UploadResponsePayload | undefined
-  const responseData = extractUploadResponsePayload(response)
+const normalizeAttachment = (file: UiAttachmentUploadFile, index: number): UiAttachmentItem => {
+  const responseData = extractUploadResponsePayload(file.response)
   const id = String(responseData?.id || responseData?.fileId || file.uid)
   const size = Number(responseData?.fileSize || file.size || 0)
 
@@ -221,6 +222,10 @@ const handleUploadChange = (info: UploadChangeParam) => {
   const attachments = info.fileList.map(normalizeAttachment)
   modelValue.value = attachments
   emit('change', attachments)
+}
+
+const handlePreview = (file: UiAttachmentUploadFile) => {
+  emit('preview', file)
 }
 
 const handleRemove = (item: UiAttachmentItem) => {

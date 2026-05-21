@@ -256,10 +256,10 @@ const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({ va
 function reviewStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_TONE[value]
   }
@@ -269,10 +269,10 @@ function reviewStatusTone(value: unknown): ToneCode {
 function reviewStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '-'
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -294,10 +294,10 @@ computed(() => {
     // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄。
     const status = task.status
     if (
-      status === 'PENDING' ||
-      status === 'IN_PROGRESS' ||
-      status === 'APPROVED' ||
-      status === 'REJECTED'
+      status === 'PENDING'
+      || status === 'IN_PROGRESS'
+      || status === 'APPROVED'
+      || status === 'REJECTED'
     ) {
       counter[status]++
     }

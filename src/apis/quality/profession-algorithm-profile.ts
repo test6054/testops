@@ -1,4 +1,4 @@
-import type { AggregationFunction, ConfirmationStatus } from './types'
+import type { AccreditationType, AggregationFunction, ConfirmationStatus } from './types'
 /**
  * 专业算法实例 API - 对应 ProfessionAlgorithmProfileController
  * 后端路径：/api/quality/profession-algorithm-profiles
@@ -20,7 +20,7 @@ export interface ProfessionAlgorithmProfileVO {
   templateId: string
   programId: string
   standardId?: string
-  accreditationType: string
+  accreditationType: AccreditationType
   accreditationLevel?: string
   standardYear?: string
   courseGoalAggregation: AggregationFunction
@@ -51,7 +51,7 @@ export interface ProfessionAlgorithmProfileSavePayload {
   templateId: string
   programId: string
   standardId?: string
-  accreditationType: string
+  accreditationType: AccreditationType
   accreditationLevel?: string
   standardYear?: string
   courseGoalAggregation: AggregationFunction
@@ -72,7 +72,7 @@ export interface ProfessionAlgorithmProfileSavePayload {
 
 export interface ProfessionAlgorithmProfileQueryPayload extends QueryDto {
   programId?: string
-  accreditationType?: string
+  accreditationType?: AccreditationType
   confirmationStatus?: ConfirmationStatus
   enabled?: boolean
   keyword?: string

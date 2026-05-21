@@ -25,9 +25,9 @@
       v-bind="$attrs"
       @input="handleInput"
       @change="handleChange"
-      @keyup.enter="(event) => emit('enter', event)"
-      @focus="(event) => emit('focus', event)"
-      @blur="(event) => emit('blur', event)"
+      @keyup.enter="handleEnter"
+      @focus="handleFocus"
+      @blur="handleBlur"
     />
     <button
       v-if="props.visibilityToggle && !props.disabled"
@@ -128,11 +128,26 @@ const displayValue = computed(() => modelValue.value ?? '')
 const inputType = computed(() => passwordVisible.value ? 'text' : 'password')
 
 const handleInput = (event: Event) => {
-  modelValue.value = (event.target as HTMLInputElement).value
+  if (!(event.target instanceof HTMLInputElement)) {
+    throw new TypeError('密码输入框事件来源不符合前端组件契约')
+  }
+  modelValue.value = event.target.value
 }
 
 const handleChange = (event: Event) => {
   emit('change', modelValue.value || undefined, event)
+}
+
+const handleEnter = (event: KeyboardEvent) => {
+  emit('enter', event)
+}
+
+const handleFocus = (event: FocusEvent) => {
+  emit('focus', event)
+}
+
+const handleBlur = (event: FocusEvent) => {
+  emit('blur', event)
 }
 
 const handleClear = () => {

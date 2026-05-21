@@ -7,6 +7,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 权限：通常由系统管理员或平台运维维护；该页面只做 CRUD。
  */
 import type {
+  AccreditationType,
   AccreditationStandardQueryPayload,
   AccreditationStandardSavePayload,
   AccreditationStandardVO,
@@ -15,7 +16,7 @@ import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
+import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi, isAccreditationType } from '@/apis/quality'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -47,9 +48,20 @@ const editor = reactive<AccreditationStandardSavePayload>({
 })
 const submitting = ref(false)
 
-const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([value, label]) => ({
+const ACCREDITATION_TYPES: AccreditationType[] = [
+  'ENGINEERING_ACCREDITATION',
+  'TEACHER_ACCREDITATION',
+  'MEDICAL_HEALTH_ACCREDITATION',
+  'ART_DESIGN_QUALITY_EVALUATION',
+  'ECONOMICS_FINANCE_QUALITY_EVALUATION',
+  'LAW_QUALITY_EVALUATION',
+  'AGRICULTURE_ACCREDITATION',
+  'GENERAL_QUALITY_EVALUATION',
+]
+
+const accreditationOptions = ACCREDITATION_TYPES.map((value) => ({
   value,
-  label,
+  label: ACCREDITATION_TYPE_LABEL[value],
 }))
 
 const columns: ColumnsType = [
@@ -100,15 +112,8 @@ const filterModel = ref<Record<string, unknown>>({
   keyword: '',
 })
 
-/**
- * 表格认证类型列的标签渲染。
- * 真实 VO.accreditationType 是 string，ACCREDITATION_TYPE_LABEL 是 Record<AccreditationType, string>。
- * 通过类型注解将字典宽化为 Record<string, string> 安全读取，未匹配返回原值，
- * 不使用 as / 反射 / 泛型推断。
- */
-function accreditationTypeLabel(value: string): string {
-  const dict: Record<string, string> = ACCREDITATION_TYPE_LABEL
-  return dict[value] || value
+function accreditationTypeLabel(value: AccreditationType): string {
+  return ACCREDITATION_TYPE_LABEL[value]
 }
 
 async function loadList() {
@@ -133,7 +138,7 @@ function handlePageChange(payload: { current: number, pageSize: number }) {
 
 function syncFilterToQuery() {
   const accTypeRaw = filterModel.value.accreditationType
-  query.accreditationType = typeof accTypeRaw === 'string' && accTypeRaw ? accTypeRaw : undefined
+  query.accreditationType = isAccreditationType(accTypeRaw) ? accTypeRaw : undefined
   const enabledRaw = filterModel.value.enabled
   query.enabled = enabledRaw === 'enabled' ? true : enabledRaw === 'disabled' ? false : undefined
   query.keyword = typeof filterModel.value.keyword === 'string' ? filterModel.value.keyword : ''

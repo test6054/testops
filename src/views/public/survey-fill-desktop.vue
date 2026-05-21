@@ -48,9 +48,7 @@
         <div class="d-survey__progress">
           <div class="d-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
         </div>
-        <span class="d-survey__progress-label"
-          >已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span
-        >
+        <span class="d-survey__progress-label">已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span>
       </div>
 
       <!-- 内容区 -->
@@ -118,7 +116,7 @@
           <div
             v-for="(item, index) in survey.items"
             :key="item.itemToken"
-            :ref="(el) => setItemRef(index, el as HTMLElement)"
+            :ref="bindItemRef(index)"
             class="d-survey__item"
             :class="{
               'd-survey__item--answered': isItemAnswered(item),
@@ -246,6 +244,7 @@
 </template>
 
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
 import { nextTick, ref } from 'vue'
 import { useSurveyFill } from '@/composables/useSurveyFill'
 
@@ -273,8 +272,12 @@ const {
 const itemRefs = ref<(HTMLElement | null)[]>([])
 const shakingIndex = ref(-1)
 
-function setItemRef(index: number, el: HTMLElement | null) {
-  itemRefs.value[index] = el
+function setItemRef(index: number, el: Element | ComponentPublicInstance | null) {
+  itemRefs.value[index] = el instanceof HTMLElement ? el : null
+}
+
+function bindItemRef(index: number) {
+  return (el: Element | ComponentPublicInstance | null) => setItemRef(index, el)
 }
 
 function toggleMulti(itemId: string, opt: string) {

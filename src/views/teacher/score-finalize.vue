@@ -124,13 +124,7 @@
           size="middle"
           flat
           class="score-finalize__table"
-          @page-change="
-            (p) => {
-              pagination.current = p.current
-              pagination.pageSize = p.pageSize
-              loadCandidates()
-            }
-          "
+          @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'studentName'">
@@ -440,13 +434,22 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogVO } from '@/apis/mark/admin-audit'
-import { listOperationLogs } from '@/apis/mark/admin-audit'
 import type {
   ExamPaperScoreVO,
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
+import type { BadgeTone, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { listOperationLogs } from '@/apis/mark/admin-audit'
 import {
   confirmFinalScore,
   deanonymizePaper,
@@ -457,14 +460,6 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import type { BadgeTone, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   UiActivityTimeline,
   UiAlertStrip,
@@ -503,12 +498,12 @@ const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, ToneCode> = {
 function finalScoreStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING' ||
-    value === 'CALCULATED' ||
-    value === 'CONFIRMED' ||
-    value === 'CORRECTED' ||
-    value === 'PUBLISHED' ||
-    value === 'WITHDRAWN'
+    value === 'PENDING'
+    || value === 'CALCULATED'
+    || value === 'CONFIRMED'
+    || value === 'CORRECTED'
+    || value === 'PUBLISHED'
+    || value === 'WITHDRAWN'
   ) {
     return FINAL_SCORE_STATUS_TONE[value]
   }
@@ -518,12 +513,12 @@ function finalScoreStatusTone(value: unknown): ToneCode {
 function finalScoreStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '未生成'
   if (
-    value === 'PENDING' ||
-    value === 'CALCULATED' ||
-    value === 'CONFIRMED' ||
-    value === 'CORRECTED' ||
-    value === 'PUBLISHED' ||
-    value === 'WITHDRAWN'
+    value === 'PENDING'
+    || value === 'CALCULATED'
+    || value === 'CONFIRMED'
+    || value === 'CORRECTED'
+    || value === 'PUBLISHED'
+    || value === 'WITHDRAWN'
   ) {
     return FINAL_SCORE_STATUS_LABEL[value]
   }
@@ -613,6 +608,12 @@ function handleReset(): void {
   void loadCandidates()
 }
 
+function handlePageChange(payload: { current: number, pageSize: number }): void {
+  pagination.current = payload.current
+  pagination.pageSize = payload.pageSize
+  void loadCandidates()
+}
+
 // ─── 状态机按钮可用性 ─────────────────────────────
 function canConfirm(record: ExamScoreSummaryItemVO): boolean {
   if (!record.paperInstanceId) return false
@@ -637,35 +638,39 @@ function publishButtonLabel(record: ExamScoreSummaryItemVO): string {
 
 /* ========== 信号指标：核定流程状态分布 ========== */
 
-const statMetrics = computed(() => {
+const statMetrics = computed<SignalMetric[]>(() => {
   const buckets = candidateBuckets.value
   const total = pagination.total ?? 0
   return [
-    { label: '考生总数', value: total, unit: '人', tone: 'blue' as const },
-    { label: '待计算', value: buckets.PENDING, unit: '人', tone: 'gray' as const },
+    { key: 'total', label: '考生总数', value: total, unit: '人', tone: 'blue' },
+    { key: 'pending', label: '待计算', value: buckets.PENDING, unit: '人', tone: 'gray' },
     {
+      key: 'calculated',
       label: '已计算',
       value: buckets.CALCULATED,
       unit: '人',
-      tone: (buckets.CALCULATED > 0 ? 'blue' : 'gray') as 'blue' | 'gray',
+      tone: buckets.CALCULATED > 0 ? 'blue' : 'gray',
     },
     {
+      key: 'confirmed',
       label: '已确认',
       value: buckets.CONFIRMED,
       unit: '人',
-      tone: (buckets.CONFIRMED > 0 ? 'blue' : 'gray') as 'blue' | 'gray',
+      tone: buckets.CONFIRMED > 0 ? 'blue' : 'gray',
     },
     {
+      key: 'published',
       label: '已发布',
       value: buckets.PUBLISHED,
       unit: '人',
-      tone: (buckets.PUBLISHED > 0 ? 'green' : 'gray') as 'green' | 'gray',
+      tone: buckets.PUBLISHED > 0 ? 'green' : 'gray',
     },
     {
+      key: 'withdrawn',
       label: '已撤回',
       value: buckets.WITHDRAWN,
       unit: '人',
-      tone: (buckets.WITHDRAWN > 0 ? 'orange' : 'gray') as 'orange' | 'gray',
+      tone: buckets.WITHDRAWN > 0 ? 'orange' : 'gray',
     },
   ]
 })
@@ -693,7 +698,7 @@ const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
  * 因后端为服务端分页，统计口径在视觉上限定为「当前页」，避免误导教师把页内异常当作整考试异常。
  * 当样本数 < 3 或方差为 0 时，stddev 返回 0，模板侧降级为「样本不足」展示。
  */
-const pageScoreStats = computed<{ count: number; mean: number; stddev: number }>(() => {
+const pageScoreStats = computed<{ count: number, mean: number, stddev: number }>(() => {
   const scores = candidates.value
     .map((c) => c.finalScore)
     .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
@@ -721,25 +726,25 @@ function classifyBias(score: number | undefined): BiasLevel {
 }
 
 const BIAS_LEVEL_LABEL: Record<BiasLevel, string> = {
-  normal: '≈ 正常',
+  "normal": '≈ 正常',
   'mild-high': '↑ 偏高',
   'mild-low': '↓ 偏低',
   'severe-high': '⇈ 显著偏高',
   'severe-low': '⇊ 显著偏低',
-  insufficient: '-',
+  "insufficient": '-',
 }
 
 const BIAS_LEVEL_TONE: Record<BiasLevel, BadgeTone> = {
-  normal: 'gray',
+  "normal": 'gray',
   'mild-high': 'blue',
   'mild-low': 'orange',
   'severe-high': 'purple',
   'severe-low': 'red',
-  insufficient: 'gray',
+  "insufficient": 'gray',
 }
 
 /** D-3 顶部偏差提示：当前页严重偏离样本数 */
-const biasAlert = computed<{ visible: boolean; severeCount: number; message: string }>(() => {
+const biasAlert = computed<{ visible: boolean, severeCount: number, message: string }>(() => {
   const { count, mean, stddev } = pageScoreStats.value
   if (count < 3 || stddev === 0) {
     return { visible: false, severeCount: 0, message: '' }
@@ -854,19 +859,40 @@ const paperItemColumns: ColumnType<ExamQuestionScoreVO>[] = [
 const auditLogs = ref<OperationLogVO[]>([])
 const auditLoading = ref(false)
 
+type ScoreAuditOperationType = 'SCORE_CONFIRM' | 'SCORE_PUBLISH' | 'SCORE_WITHDRAW' | 'SCORE_CHANGE'
+
 /** 后端真实操作类型与文案（admin-audit 中的 OPERATION_TYPE_LABEL 用的是不同 key，本页按真实落库口径再列一次） */
-const SCORE_AUDIT_LABEL: Record<string, string> = {
+const SCORE_AUDIT_LABEL: Record<ScoreAuditOperationType, string> = {
   SCORE_CONFIRM: '确认最终成绩',
   SCORE_PUBLISH: '发布最终成绩',
   SCORE_WITHDRAW: '撤回最终成绩',
   SCORE_CHANGE: '题目得分变更',
 }
 
-const SCORE_AUDIT_TONE: Record<string, BadgeTone> = {
+const SCORE_AUDIT_TONE: Record<ScoreAuditOperationType, BadgeTone> = {
   SCORE_CONFIRM: 'blue',
   SCORE_PUBLISH: 'green',
   SCORE_WITHDRAW: 'red',
   SCORE_CHANGE: 'orange',
+}
+
+function isScoreAuditOperationType(value: unknown): value is ScoreAuditOperationType {
+  return (
+    value === 'SCORE_CONFIRM'
+    || value === 'SCORE_PUBLISH'
+    || value === 'SCORE_WITHDRAW'
+    || value === 'SCORE_CHANGE'
+  )
+}
+
+function scoreAuditTitle(log: OperationLogVO): string {
+  if (isScoreAuditOperationType(log.operationType)) return SCORE_AUDIT_LABEL[log.operationType]
+  return '审计操作类型异常'
+}
+
+function scoreAuditTone(log: OperationLogVO): BadgeTone {
+  if (isScoreAuditOperationType(log.operationType)) return SCORE_AUDIT_TONE[log.operationType]
+  return 'red'
 }
 
 /**
@@ -875,15 +901,18 @@ const SCORE_AUDIT_TONE: Record<string, BadgeTone> = {
  * 与 beforeValue 中匹配；任一字段命中均视为同一试卷。
  */
 function extractPaperInstanceFromAuditLog(log: OperationLogVO): string | undefined {
+  function readPaperInstanceId(value: object): string | undefined {
+    const paperInstanceId = Reflect.get(value, 'paperInstanceId')
+    if (typeof paperInstanceId === 'string') return paperInstanceId
+    if (typeof paperInstanceId === 'number') return String(paperInstanceId)
+    return undefined
+  }
+
   function parseJsonField(raw: string | undefined): string | undefined {
     if (!raw) return undefined
     try {
       const obj: unknown = JSON.parse(raw)
-      if (obj && typeof obj === 'object' && 'paperInstanceId' in obj) {
-        const v = (obj as { paperInstanceId: unknown }).paperInstanceId
-        if (typeof v === 'string') return v
-        if (typeof v === 'number') return String(v)
-      }
+      if (obj && typeof obj === 'object') return readPaperInstanceId(obj)
     } catch {
       // afterValue 不一定是 JSON（如部分非成绩操作类型），忽略解析失败
     }
@@ -923,16 +952,15 @@ async function loadPaperAuditLogs(): Promise<void> {
 /** 把审计日志聚合到一个时间分组，喂给 UiActivityTimeline */
 const auditTimelineGroups = computed(() => {
   const items = auditLogs.value.map((log, idx) => {
-    const code = log.operationType ?? ''
     return {
       key: log.id ?? idx,
-      title: SCORE_AUDIT_LABEL[code] ?? (code || '未知操作'),
+      title: scoreAuditTitle(log),
       content: log.reason || undefined,
       time: log.createTime ? dayjs(log.createTime).format('YYYY-MM-DD HH:mm:ss') : undefined,
       actor: log.operatorRole ? `操作角色：${log.operatorRole}` : undefined,
-      tone: (SCORE_AUDIT_TONE[code] ?? 'gray') as BadgeTone,
+      tone: scoreAuditTone(log),
       tags: log.traceId
-        ? [{ label: `traceId ${log.traceId.slice(0, 8)}…`, tone: 'gray' as BadgeTone }]
+        ? [{ label: `traceId ${log.traceId.slice(0, 8)}…`, tone: 'gray' }]
         : undefined,
     }
   })
@@ -1155,8 +1183,8 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next =
-    candidates.value.find(
+  const next
+    = candidates.value.find(
       (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
     ) ?? null
   if (next) {

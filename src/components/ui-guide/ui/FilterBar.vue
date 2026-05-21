@@ -12,7 +12,7 @@
           :allow-clear="field.allowClear !== false"
           :disabled="field.disabled"
           :size="resolveAntSize(field.size)"
-          @update:model-value="(value) => updateField(field.key, value, field)"
+          @update:model-value="handleFieldUpdate(field, $event)"
           @search="handleSearchBoxSearch"
           @clear="() => handleInputClear(field.key)"
         />
@@ -23,7 +23,7 @@
           :disabled="field.disabled"
           :size="field.size"
           :status="field.status"
-          @update:model-value="(value) => updateField(field.key, value, field)"
+          @update:model-value="handleFieldUpdate(field, $event)"
           @enter="() => triggerSearch()"
         />
         <UiMultiSelect
@@ -36,7 +36,7 @@
           :disabled="field.disabled"
           :size="field.size"
           :status="field.status"
-          @update:model-value="(value) => updateField(field.key, value, field)"
+          @update:model-value="handleFieldUpdate(field, $event)"
         />
         <UiSelect
           v-else-if="field.type === 'select'"
@@ -48,7 +48,7 @@
           :disabled="field.disabled"
           :size="field.size"
           :status="field.status"
-          @update:model-value="(value) => updateField(field.key, value, field)"
+          @update:model-value="handleFieldUpdate(field, $event)"
         />
         <UiDatePicker
           v-else-if="field.type === 'date'"
@@ -61,7 +61,7 @@
           :show-time="field.showTime"
           :format="field.format"
           :value-format="field.valueFormat"
-          @update:model-value="(value) => updateField(field.key, value, field)"
+          @update:model-value="handleFieldUpdate(field, $event)"
         />
         <UiYearPicker
           v-else-if="field.type === 'year'"
@@ -73,7 +73,7 @@
           :status="field.status"
           :format="field.format"
           :value-format="field.valueFormat"
-          @update:model-value="(value) => updateField(field.key, value, field)"
+          @update:model-value="handleFieldUpdate(field, $event)"
         />
         <slot
           v-else
@@ -162,6 +162,10 @@ const updateField = (key: string, value: unknown, field?: FilterField) => {
   if (shouldTriggerSearchOnChange(field)) {
     queueMicrotask(() => triggerSearch(nextModel))
   }
+}
+
+const handleFieldUpdate = (field: FilterField, value: unknown) => {
+  updateField(field.key, value, field)
 }
 
 const handleSearchBoxSearch = () => {

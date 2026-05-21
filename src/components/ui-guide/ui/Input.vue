@@ -25,8 +25,8 @@
       @input="handleInput"
       @change="handleChange"
       @keyup.enter="handleEnter"
-      @focus="(event) => emit('focus', event)"
-      @blur="(event) => emit('blur', event)"
+      @focus="handleFocus"
+      @blur="handleBlur"
       @compositionstart="handleCompositionStart"
       @compositionend="handleCompositionEnd"
     />
@@ -95,14 +95,20 @@ const handleCompositionStart = () => {
 const handleCompositionEnd = (event: CompositionEvent) => {
   isComposing.value = false
   // 组合结束后手动更新值
-  const nextValue = (event.target as HTMLInputElement).value
+  if (!(event.target instanceof HTMLInputElement)) {
+    throw new TypeError('输入框组合事件来源不符合前端组件契约')
+  }
+  const nextValue = event.target.value
   modelValue.value = normalizeValue(nextValue)
 }
 
 const handleInput = (event: Event) => {
   // 中文输入组合中不更新，等组合结束再更新
   if (isComposing.value) return
-  const nextValue = (event.target as HTMLInputElement).value
+  if (!(event.target instanceof HTMLInputElement)) {
+    throw new TypeError('输入框输入事件来源不符合前端组件契约')
+  }
+  const nextValue = event.target.value
   modelValue.value = normalizeValue(nextValue)
 }
 
@@ -114,6 +120,14 @@ const handleEnter = (event: KeyboardEvent) => {
   // 中文输入组合中不触发回车
   if (isComposing.value) return
   emit('enter', event)
+}
+
+const handleFocus = (event: FocusEvent) => {
+  emit('focus', event)
+}
+
+const handleBlur = (event: FocusEvent) => {
+  emit('blur', event)
 }
 
 const handleClear = () => {

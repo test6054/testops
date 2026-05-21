@@ -65,7 +65,7 @@
             <a-form-item label="允许的原因类型 JSON">
               <a-input
                 v-model:value="form.allowedReasonTypes"
-                placeholder='如 ["SCORE_ERROR","RUBRIC"]'
+                placeholder="如 [&quot;SCORE_ERROR&quot;,&quot;RUBRIC&quot;]"
               />
             </a-form-item>
           </a-col>
@@ -96,6 +96,9 @@
 
 <script lang="ts" setup>
 import type { ExamReviewWindowPolicyVO, VisibleMaterialScopeCode } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -104,14 +107,11 @@ import {
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const policy = ref<ExamReviewWindowPolicyVO | null>(null)
 const loading = ref(false)
@@ -135,7 +135,7 @@ const form = reactive<{
   allowedReasonTypes: '',
 })
 
-const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
   { label: '仅分数', value: 'SCORE_ONLY' },
   { label: '分数+批注', value: 'SCORE_AND_ANNOTATION' },
   { label: '完整材料', value: 'FULL' },

@@ -21,7 +21,7 @@
       :list-type="props.listType"
       v-bind="$attrs"
       @change="handleChange"
-      @preview="(file: any) => emit('preview', file)"
+      @preview="handlePreview"
       @remove="handleRemove"
     >
       <slot>
@@ -107,6 +107,10 @@ const emit = defineEmits<{
 const handleChange = (info: UploadChangeParam<UploadFile>) => {
   fileList.value = info.fileList
   emit('change', info)
+}
+
+const handlePreview = (file: UploadFile) => {
+  emit('preview', file)
 }
 
 const handleRemove = (file: UploadFile) => {

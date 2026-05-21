@@ -66,10 +66,10 @@
 
 <script setup lang="ts">
 import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evaluation'
-import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
+import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 
 const props = defineProps<{
   open: boolean
@@ -112,8 +112,8 @@ async function handleUpload() {
       emit('imported')
     }
   } catch (err: unknown) {
-    const e = err as { message?: string }
-    message.error(e.message || '导入失败')
+    const errMessage = typeof err === 'object' && err ? Reflect.get(err, 'message') : undefined
+    message.error(typeof errMessage === 'string' && errMessage ? errMessage : '导入失败')
   } finally {
     uploading.value = false
   }

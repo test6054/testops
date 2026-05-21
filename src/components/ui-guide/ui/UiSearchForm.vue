@@ -19,8 +19,8 @@
       :reset-text="props.resetText"
       :actions-align="props.actionsAlign"
       :show-labels="props.showLabels"
-      @search="(value) => emit('search', value)"
-      @reset="(value) => emit('reset', value)"
+      @search="handleSearch"
+      @reset="handleResetValue"
     >
       <template v-if="$slots.default" #default>
         <slot />
@@ -151,6 +151,14 @@ const handleReset = () => {
   const nextModel = { ...defaultModel.value }
   modelValue.value = nextModel
   emit('reset', nextModel)
+}
+
+function handleSearch(value: Record<string, unknown>): void {
+  emit('search', value)
+}
+
+function handleResetValue(value: Record<string, unknown>): void {
+  emit('reset', value)
 }
 </script>
 

@@ -17,7 +17,10 @@ import type {
   AchievementAuditStatus,
   AchievementResultQueryPayload,
   AchievementResultVO,
+  AchievementStatus,
+  AchievementTargetType,
 } from '@/apis/quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -52,31 +55,34 @@ import {
 import { useQualityStore } from '@/stores/modules/quality'
 import { promptModal } from './_helpers'
 
-/* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
-
 function targetTypeLabel(value: unknown): string {
   if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('达成度目标类型不符合前后端契约')
 }
 
 function auditStatusLabel(value: unknown): string {
   if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('达成度审核状态不符合前后端契约')
 }
 
 function auditStatusColor(value: unknown): string {
   if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
-  return 'default'
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('达成度审核状态不符合前后端契约')
 }
 
 function achievementStatusLabel(value: unknown): string {
   if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('达成度结论不符合前后端契约')
 }
 
 function achievementStatusColor(value: unknown): string {
   if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
-  return 'default'
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('达成度结论不符合前后端契约')
 }
 
 const router = useRouter()
@@ -108,18 +114,40 @@ const triggerForm = reactive({
   programId: qualityStore.currentProgramId,
 })
 
-const targetTypeOptions = Object.entries(ACHIEVEMENT_TARGET_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-const auditStatusOptions = Object.entries(ACHIEVEMENT_AUDIT_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-const achievementStatusOptions = Object.entries(ACHIEVEMENT_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+function handleQualityCourseChange(value: string | null) {
+  triggerForm.qualityCourseId = value ?? ''
+}
+
+function handleProgramChange(value: string | null) {
+  triggerForm.programId = value ?? ''
+}
+
+const targetTypeOptions: Array<{ value: AchievementTargetType, label: string }> = [
+  { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
+  { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
+  { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
+  { value: 'TRAINING_OBJECTIVE', label: ACHIEVEMENT_TARGET_TYPE_LABEL.TRAINING_OBJECTIVE },
+  { value: 'PROGRAM_SUMMARY', label: ACHIEVEMENT_TARGET_TYPE_LABEL.PROGRAM_SUMMARY },
+  { value: 'CIVIC_GOAL_AGGREGATE', label: ACHIEVEMENT_TARGET_TYPE_LABEL.CIVIC_GOAL_AGGREGATE },
+  {
+    value: 'COMPLEX_ENGINEERING_AGGREGATE',
+    label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
+  },
+]
+const auditStatusOptions: Array<{ value: AchievementAuditStatus, label: string }> = [
+  { value: 'DRAFT', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.DRAFT },
+  { value: 'CALCULATED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.CALCULATED },
+  { value: 'SUBMITTED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.SUBMITTED },
+  { value: 'CONFIRMED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.CONFIRMED },
+  { value: 'RETURNED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.RETURNED },
+  { value: 'ARCHIVED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.ARCHIVED },
+]
+const achievementStatusOptions: Array<{ value: AchievementStatus, label: string }> = [
+  { value: 'ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.ACHIEVED },
+  { value: 'PARTIALLY_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.PARTIALLY_ACHIEVED },
+  { value: 'NOT_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.NOT_ACHIEVED },
+  { value: 'INSUFFICIENT_EVIDENCE', label: ACHIEVEMENT_STATUS_LABEL.INSUFFICIENT_EVIDENCE },
+]
 
 const trainingPlanRequired = computed(() => !qualityStore.currentTrainingPlanId)
 const programRequired = computed(
@@ -328,7 +356,10 @@ const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> 
 
 function nextStatuses(current: AchievementAuditStatus | undefined): AchievementAuditStatus[] {
   if (!current) return []
-  return auditTransitMap[current] || []
+  if (!isAchievementAuditStatus(current)) {
+    throw new Error('达成度审核状态不符合前后端契约')
+  }
+  return auditTransitMap[current]
 }
 
 async function handleTransit(record: AchievementResultVO, to: AchievementAuditStatus) {
@@ -471,6 +502,7 @@ async function openAuditDrawer(record: AchievementResultVO) {
 }
 
 const achievementResultItems = computed<TaskResultItem[]>(() => {
+  const abnormalTone: BadgeTone = 'red'
   return list.value
     .filter(
       (r) =>
@@ -482,7 +514,7 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
       id: r.id,
       title: `${targetTypeLabel(r.targetType)} #${r.targetId || r.id}`,
       statusLabel: r.auditStatus === 'RETURNED' ? '已驳回' : '未达成',
-      statusTone: 'red' as const,
+      statusTone: abnormalTone,
       description:
         r.auditStatus === 'RETURNED'
           ? `审核驳回，需修正后重新提交`
@@ -707,7 +739,7 @@ onMounted(async () => {
                 :value="triggerForm.qualityCourseId || null"
                 :training-plan-id="qualityStore.currentTrainingPlanId || null"
                 placeholder="选择质量评价课程"
-                @change="(v) => (triggerForm.qualityCourseId = v ?? '')"
+                @change="handleQualityCourseChange"
               />
             </a-form-item>
           </a-col>
@@ -716,7 +748,7 @@ onMounted(async () => {
               <ProgramSelector
                 :value="triggerForm.programId || null"
                 placeholder="选择专业覆盖上下文"
-                @change="(v) => (triggerForm.programId = v ?? '')"
+                @change="handleProgramChange"
               />
             </a-form-item>
           </a-col>

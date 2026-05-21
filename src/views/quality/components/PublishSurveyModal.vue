@@ -120,9 +120,9 @@ import type {
   IndirectEvaluationFormVO,
   IndirectEvaluationPublishResultVO,
 } from '@/apis/quality/indirect-evaluation'
-import { indirectFormApi } from '@/apis/quality/indirect-evaluation'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
+import { indirectFormApi } from '@/apis/quality/indirect-evaluation'
 
 const props = defineProps<{
   open: boolean
@@ -147,9 +147,19 @@ const formRef = ref<FormInstance>()
 const publishing = ref(false)
 const publishResult = ref<IndirectEvaluationPublishResultVO | null>(null)
 
-const formState = reactive({
-  startTime: undefined as dayjs.Dayjs | undefined,
-  endTime: undefined as dayjs.Dayjs | undefined,
+interface PublishFormState {
+  startTime?: dayjs.Dayjs
+  endTime?: dayjs.Dayjs
+  accessMode: string
+  allowAnonymous: boolean
+  maxSubmissionsPerRespondent: number
+  welcomeMessage: string
+  thankYouMessage: string
+}
+
+const formState = reactive<PublishFormState>({
+  startTime: undefined,
+  endTime: undefined,
   accessMode: 'PUBLIC_LINK',
   allowAnonymous: false,
   maxSubmissionsPerRespondent: 1,
@@ -203,8 +213,8 @@ async function handlePublish() {
     })
     emit('published')
   } catch (err: unknown) {
-    const e = err as { message?: string }
-    message.error(e.message || '发布失败')
+    const errMessage = typeof err === 'object' && err ? Reflect.get(err, 'message') : undefined
+    message.error(typeof errMessage === 'string' && errMessage ? errMessage : '发布失败')
   } finally {
     publishing.value = false
   }

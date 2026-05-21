@@ -5,22 +5,7 @@ import type {
   ScannerAgentActivateResponse,
   ScannerDeviceInfo,
 } from '@/apis/mark/scanner-agent-local'
-import {
-  activateLocalAgent,
-  cancelScanJob,
-  getAgentHealth,
-  getLocalAgentBaseUrl,
-  getPageImageUrl,
-  getScanJob,
-  listLocalScanners,
-  openDiagnosticsExport,
-  retryUpload,
-  ScannerBusyError,
-  startScanJob,
-  unbindLocalAgent,
-} from '@/apis/mark/scanner-agent-local'
 import type { ExamScannerKioskContextVO, ScannerKioskScanMode } from '@/apis/mark/scanner-kiosk'
-import { getScannerKioskContext } from '@/apis/mark/scanner-kiosk'
 import {
   ApiOutlined,
   CheckCircleOutlined,
@@ -40,6 +25,21 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  activateLocalAgent,
+  cancelScanJob,
+  getAgentHealth,
+  getLocalAgentBaseUrl,
+  getPageImageUrl,
+  getScanJob,
+  listLocalScanners,
+  openDiagnosticsExport,
+  retryUpload,
+  ScannerBusyError,
+  startScanJob,
+  unbindLocalAgent,
+} from '@/apis/mark/scanner-agent-local'
+import { getScannerKioskContext } from '@/apis/mark/scanner-kiosk'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 
 const route = useRoute()
@@ -63,7 +63,7 @@ const expectedPages = ref<number | undefined>()
 const scanMode = ref<ScannerKioskScanMode>('DIRECT')
 const supplementTargetPageNo = ref<number | undefined>()
 const supplementReason = ref('')
-const busyState = ref<{ active: boolean; activeJobId: string; activeJob: ScanJobResponse | null }>({
+const busyState = ref<{ active: boolean, activeJobId: string, activeJob: ScanJobResponse | null }>({
   active: false,
   activeJobId: '',
   activeJob: null,
@@ -652,9 +652,11 @@ function handleError(error: unknown) {
           <span>服务端扫描策略</span>
         </div>
         <div class="policy-row">
-          <span>DPI</span><strong>{{ kioskContext?.policy?.dpi || '-' }}</strong> <span>色彩</span
-          ><strong>{{ kioskContext?.policy?.colorMode || '-' }}</strong> <span>单双面</span
-          ><strong>{{ kioskContext?.policy?.duplexMode || '-' }}</strong>
+          <span>DPI</span><strong>{{ kioskContext?.policy?.dpi || '-' }}</strong>
+          <span>色彩</span>
+          <strong>{{ kioskContext?.policy?.colorMode || '-' }}</strong>
+          <span>单双面</span>
+          <strong>{{ kioskContext?.policy?.duplexMode || '-' }}</strong>
         </div>
         <label class="expected-input">
           <span>预计页数</span>

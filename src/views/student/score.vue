@@ -120,10 +120,10 @@
                 <h3 class="exam-card__title">{{ item.examName || '未命名考试' }}</h3>
                 <UiTag
                   v-if="item.finalScoreStatus"
-                  :tone="FINAL_SCORE_STATUS_TONE[item.finalScoreStatus]"
+                  :tone="finalScoreStatusTone(item)"
                   size="sm"
                 >
-                  {{ FINAL_SCORE_STATUS_LABEL[item.finalScoreStatus] }}
+                  {{ finalScoreStatusLabel(item) }}
                 </UiTag>
                 <UiTag v-else tone="gray" size="sm">未生成</UiTag>
                 <UiTag v-if="item.reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm">
@@ -211,12 +211,6 @@
 
 <script lang="ts" setup>
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-} from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -227,6 +221,12 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+} from '@/apis/mark/student-exam'
 import {
   UiBadge,
   UiButton,
@@ -245,6 +245,16 @@ const loading = ref(false)
 // D-9 错误态：学生考试列表加载失败时 UiErrorRetryPanel 重试（学生侧不提供上报入口）
 const examsLoadError = ref<unknown>(null)
 const exams = ref<StudentExamItemVO[]>([])
+
+function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
+  if (!item.finalScoreStatus) return 'gray'
+  return FINAL_SCORE_STATUS_TONE[item.finalScoreStatus]
+}
+
+function finalScoreStatusLabel(item: StudentExamItemVO): string {
+  if (!item.finalScoreStatus) return ''
+  return FINAL_SCORE_STATUS_LABEL[item.finalScoreStatus]
+}
 
 const latestPublished = computed<StudentExamItemVO | null>(() => {
   return exams.value.find((e) => e.finalScoreStatus === 'PUBLISHED') ?? null
@@ -281,7 +291,7 @@ const unpublishedCount = computed<number>(() => {
 })
 
 /** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
   const latest = list[0].finalScore

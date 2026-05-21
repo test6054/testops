@@ -129,8 +129,8 @@
             <article v-for="exam in recentExams" :key="exam.examId" class="recent-exam-item">
               <div class="recent-exam-item__title-row">
                 <h3 class="recent-exam-item__title">{{ exam.examName || '未命名考试' }}</h3>
-                <UiTag v-if="exam.status" :tone="EXAM_STATUS_TONE[exam.status]" size="sm">
-                  {{ EXAM_STATUS_LABEL[exam.status] }}
+                <UiTag v-if="exam.status" :tone="examStatusTone(exam.status)" size="sm">
+                  {{ examStatusLabel(exam.status) }}
                 </UiTag>
               </div>
               <div class="recent-exam-item__meta">
@@ -180,10 +180,10 @@
             <article v-for="incident in recentIncidents" :key="incident.id" class="incident-item">
               <UiTag
                 v-if="incident.incidentLevel"
-                :tone="INCIDENT_LEVEL_TONE[incident.incidentLevel]"
+                :tone="incidentLevelTone(incident.incidentLevel)"
                 size="sm"
               >
-                {{ INCIDENT_LEVEL_LABEL[incident.incidentLevel] }}
+                {{ incidentLevelLabel(incident.incidentLevel) }}
               </UiTag>
               <div class="incident-item__main">
                 <h4 class="incident-item__title">{{ incident.summary || '未提供摘要' }}</h4>
@@ -207,14 +207,12 @@ import type {
   DashboardGradingMetricsVO,
   DashboardIncidentMetricsVO,
   DashboardRecentExamItemVO,
+  IncidentLevelCode,
   IncidentRecordVO,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
-import {
-  INCIDENT_LEVEL_LABEL,
-  INCIDENT_LEVEL_TONE,
-  loadDashboardOverview,
-} from '@/apis/mark/admin-dashboard'
+import type { ExamStatusCode } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
@@ -225,6 +223,11 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  INCIDENT_LEVEL_LABEL,
+  INCIDENT_LEVEL_TONE,
+  loadDashboardOverview,
+} from '@/apis/mark/admin-dashboard'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import {
   UiBadge,
@@ -279,6 +282,34 @@ const incidentMetrics = computed<DashboardIncidentMetricsVO>(
 
 const recentExams = computed<DashboardRecentExamItemVO[]>(() => overview.value?.recentExams ?? [])
 const recentIncidents = computed<IncidentRecordVO[]>(() => overview.value?.recentIncidents ?? [])
+
+function isExamStatusCode(value: unknown): value is ExamStatusCode {
+  return value === 'ACTIVE' || value === 'CLOSED'
+}
+
+function examStatusTone(value: unknown): BadgeTone {
+  if (isExamStatusCode(value)) return EXAM_STATUS_TONE[value]
+  return 'gray'
+}
+
+function examStatusLabel(value: unknown): string {
+  if (isExamStatusCode(value)) return EXAM_STATUS_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
+
+function isIncidentLevelCode(value: unknown): value is IncidentLevelCode {
+  return value === 'BLOCKING' || value === 'CRITICAL' || value === 'WARNING' || value === 'INFO'
+}
+
+function incidentLevelTone(value: unknown): BadgeTone {
+  if (isIncidentLevelCode(value)) return INCIDENT_LEVEL_TONE[value]
+  return 'gray'
+}
+
+function incidentLevelLabel(value: unknown): string {
+  if (isIncidentLevelCode(value)) return INCIDENT_LEVEL_LABEL[value]
+  return typeof value === 'string' && value ? value : '-'
+}
 
 async function loadOverview() {
   loading.value = true

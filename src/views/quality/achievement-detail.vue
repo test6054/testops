@@ -17,8 +17,6 @@ import type {
   AchievementDetailVO,
   AchievementManualReviewVO,
   AchievementResultVO,
-  AchievementStatus,
-  AchievementTargetType,
   ManualReviewDecision,
 } from '@/apis/quality'
 import type { SignalMetric } from '@/types/workbench'
@@ -35,6 +33,9 @@ import {
   achievementAuditApi,
   achievementDetailApi,
   achievementManualReviewApi,
+  isAchievementAuditStatus,
+  isAchievementStatus,
+  isAchievementTargetType,
 } from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
@@ -65,47 +66,34 @@ const reviewForm = reactive<{ decision: ManualReviewDecision, reviewRemark: stri
   reviewRemark: '',
 })
 
-/**
- * 表格标签 helper：遵循后端真实 DTO 字段类型，避免模板内 as / 反射 / 泛型推断。
- * - targetType 必填字面量联合，直接索引。
- * - achievementStatus / auditStatus 可选字面量联合，需 if 守护 fallback。
- * - auditStatusFrom / auditStatusTo 后端真实类型是 string，通过类型注解将字典宽化为
- *   Record<string, string> 安全读取，未匹配返回原值 / 默认 tag color。
- */
-function targetTypeLabel(value: AchievementTargetType): string {
-  return ACHIEVEMENT_TARGET_TYPE_LABEL[value] ?? value
+function targetTypeLabel(value: unknown): string {
+  if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('达成度目标类型不符合前后端契约')
 }
 
-function achievementStatusLabel(status: AchievementStatus | undefined): string {
-  if (!status) return '-'
-  return ACHIEVEMENT_STATUS_LABEL[status] ?? status
+function achievementStatusLabel(value: unknown): string {
+  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_LABEL[value]
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('达成度结论不符合前后端契约')
 }
 
-function achievementStatusColor(status: AchievementStatus | undefined): string {
-  if (!status) return 'default'
-  return ACHIEVEMENT_STATUS_COLOR[status] ?? 'default'
+function achievementStatusColor(value: unknown): string {
+  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('达成度结论不符合前后端契约')
 }
 
-function auditStatusLabel(status: AchievementAuditStatus | undefined): string {
-  if (!status) return '-'
-  return ACHIEVEMENT_AUDIT_STATUS_LABEL[status] ?? status
+function auditStatusLabel(value: unknown): string {
+  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('达成度审核状态不符合前后端契约')
 }
 
-function auditStatusColor(status: AchievementAuditStatus | undefined): string {
-  if (!status) return 'default'
-  return ACHIEVEMENT_AUDIT_STATUS_COLOR[status] ?? 'default'
-}
-
-function auditStatusLabelLoose(value: string | undefined): string {
-  if (!value) return '-'
-  const dict: Record<string, string> = ACHIEVEMENT_AUDIT_STATUS_LABEL
-  return dict[value] ?? value
-}
-
-function auditStatusColorLoose(value: string | undefined): string {
-  if (!value) return 'default'
-  const dict: Record<string, string> = ACHIEVEMENT_AUDIT_STATUS_COLOR
-  return dict[value] ?? 'default'
+function auditStatusColor(value: unknown): string {
+  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('达成度审核状态不符合前后端契约')
 }
 
 const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
@@ -120,7 +108,10 @@ const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> 
 const nextStatuses = computed<AchievementAuditStatus[]>(() => {
   const status = result.value?.auditStatus
   if (!status) return []
-  return auditTransitMap[status] || []
+  if (!isAchievementAuditStatus(status)) {
+    throw new Error('达成度审核状态不符合前后端契约')
+  }
+  return auditTransitMap[status]
 })
 
 async function loadAll() {
@@ -146,8 +137,11 @@ async function handleTransit(to: AchievementAuditStatus) {
   if (!result.value) return
   const fromStatus = result.value.auditStatus
   if (!fromStatus) return
+  if (!isAchievementAuditStatus(fromStatus)) {
+    throw new Error('达成度审核状态不符合前后端契约')
+  }
   const remark = await promptModal({
-    title: `${ACHIEVEMENT_AUDIT_STATUS_LABEL[fromStatus]} → ${ACHIEVEMENT_AUDIT_STATUS_LABEL[to]}`,
+    title: `${auditStatusLabel(fromStatus)} → ${auditStatusLabel(to)}`,
     placeholder: '审核备注（驳回时必填）',
     required: to === 'RETURNED',
     okType: to === 'RETURNED' ? 'danger' : 'primary',
@@ -271,7 +265,7 @@ onMounted(loadAll)
             size="sm"
             @click="handleTransit(to)"
           >
-            -> {{ ACHIEVEMENT_AUDIT_STATUS_LABEL[to] }}
+            -> {{ auditStatusLabel(to) }}
           </UiButton>
         </div>
       </div>
@@ -389,16 +383,16 @@ onMounted(loadAll)
             <a-timeline-item
               v-for="audit in audits"
               :key="audit.id"
-              :color="auditStatusColorLoose(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
+              :color="auditStatusColor(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
             >
               <p class="achievement-detail__audit-line">
                 <a-tag>{{ audit.auditEvent }}</a-tag>
                 <strong v-if="audit.auditStatusFrom">
-                  {{ auditStatusLabelLoose(audit.auditStatusFrom) }}
+                  {{ auditStatusLabel(audit.auditStatusFrom) }}
                 </strong>
                 <span v-if="audit.auditStatusFrom && audit.auditStatusTo"> -> </span>
                 <strong v-if="audit.auditStatusTo">
-                  {{ auditStatusLabelLoose(audit.auditStatusTo) }}
+                  {{ auditStatusLabel(audit.auditStatusTo) }}
                 </strong>
               </p>
               <p class="achievement-detail__audit-meta">

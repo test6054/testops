@@ -162,9 +162,7 @@
                 </a-descriptions-item>
                 <a-descriptions-item label="均分">
                   {{ formatNum(questionAnalysis.avgScore) }}
-                  <span class="review-workspace__hint"
-                    >/ {{ questionAnalysis.fullScore ?? '-' }}</span
-                  >
+                  <span class="review-workspace__hint">/ {{ questionAnalysis.fullScore ?? '-' }}</span>
                 </a-descriptions-item>
                 <a-descriptions-item label="标准差">
                   {{ formatNum(questionAnalysis.scoreStddev) }}
@@ -272,9 +270,7 @@
                     </template>
                     <template #description>
                       <div class="review-workspace__annotation-meta">
-                        <span v-if="item.anchorText" class="review-workspace__hint"
-                          >锚点：{{ item.anchorText }}</span
-                        >
+                        <span v-if="item.anchorText" class="review-workspace__hint">锚点：{{ item.anchorText }}</span>
                         <span class="review-workspace__hint">{{
                           formatTime(item.createTime)
                         }}</span>
@@ -327,15 +323,7 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationVO, ReviewTaskDetailVO, ReviewTaskItemVO } from '@/apis/mark/exam'
-import {
-  claimReviewTask,
-  confirmQuestionGrade,
-  getReviewTaskDetail,
-  listAnnotations,
-  listReviewTasks,
-} from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
-import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -347,6 +335,14 @@ import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import {
+  claimReviewTask,
+  confirmQuestionGrade,
+  getReviewTaskDetail,
+  listAnnotations,
+  listReviewTasks,
+} from '@/apis/mark/exam'
+import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
 import {
   UiAlertStrip,
   UiBadge,
@@ -386,10 +382,10 @@ const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
 function reviewStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_TONE[value]
   }
@@ -399,10 +395,10 @@ function reviewStatusTone(value: unknown): ToneCode {
 function reviewStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return ''
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -515,8 +511,8 @@ async function loadReviewQueue(): Promise<void> {
     }
     reviewQueue.value = Array.from(merged.values())
   } catch (error) {
-    queueLoadError.value =
-      error instanceof Error ? error.message : '同题流水线加载失败，提交并取下一份暂不可用。'
+    queueLoadError.value
+      = error instanceof Error ? error.message : '同题流水线加载失败，提交并取下一份暂不可用。'
     reviewQueue.value = []
   } finally {
     queueLoading.value = false
@@ -579,7 +575,7 @@ async function loadQuestionAnalysis(): Promise<void> {
 }
 
 /** 难度系数文案 + 色调（难度区间参照教育测量学经验阈值） */
-const difficultyBadge = computed<{ label: string; tone: ToneCode } | null>(() => {
+const difficultyBadge = computed<{ label: string, tone: ToneCode } | null>(() => {
   const v = questionAnalysis.value?.difficultyIndex
   if (v == null) return null
   if (v < 0.3) return { label: '偏难', tone: 'red' }
@@ -588,7 +584,7 @@ const difficultyBadge = computed<{ label: string; tone: ToneCode } | null>(() =>
 })
 
 /** 区分度文案 + 色调（区分度 < 0.2 视为不足） */
-const discriminationBadge = computed<{ label: string; tone: ToneCode } | null>(() => {
+const discriminationBadge = computed<{ label: string, tone: ToneCode } | null>(() => {
   const v = questionAnalysis.value?.discriminationIndex
   if (v == null) return null
   if (v < 0.2) return { label: '区分度不足', tone: 'red' }
@@ -614,9 +610,9 @@ async function loadTask(): Promise<void> {
     await Promise.all([loadAnnotations(), loadQuestionAnalysis(), loadReviewQueue()])
     // 默认填充建议分（仅当表单空时；avoid 覆盖教师正在编辑的值）
     if (
-      gradeForm.finalScore === undefined &&
-      detail.value?.suggestedScore !== undefined &&
-      detail.value?.suggestedScore !== null
+      gradeForm.finalScore === undefined
+      && detail.value?.suggestedScore !== undefined
+      && detail.value?.suggestedScore !== null
     ) {
       gradeForm.finalScore = detail.value.suggestedScore
     }
@@ -688,8 +684,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const finalScore = gradeForm.finalScore
-  const ratio =
-    fullScore && fullScore > 0 && typeof finalScore === 'number'
+  const ratio
+    = fullScore && fullScore > 0 && typeof finalScore === 'number'
       ? `${Math.round((finalScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚批阅会继续
@@ -760,8 +756,8 @@ async function takeNextTask(): Promise<void> {
     const currentTaskId = taskId.value
     const candidate = reviewQueue.value.find(
       (item) =>
-        item.reviewTaskId !== currentTaskId &&
-        (item.status === 'PENDING' || item.status === 'IN_PROGRESS'),
+        item.reviewTaskId !== currentTaskId
+        && (item.status === 'PENDING' || item.status === 'IN_PROGRESS'),
     )
     if (!candidate) {
       message.success('同题剩余任务批阅完毕，返回阅卷概览')

@@ -15,9 +15,9 @@
             @change="onExamChange"
           />
           <UiTag tone="blue" size="sm">我的任务 {{ tasks.length }}</UiTag>
-          <UiTag v-if="inProgressCount > 0" tone="orange" size="sm"
-            >阅卷中 {{ inProgressCount }}</UiTag
-          >
+          <UiTag v-if="inProgressCount > 0" tone="orange" size="sm">
+            阅卷中 {{ inProgressCount }}
+          </UiTag>
         </div>
         <div class="marking-task-pool-page__context-right">
           <UiButton
@@ -219,10 +219,6 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import {
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -233,6 +229,10 @@ import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,
@@ -423,11 +423,11 @@ function formatTime(value?: string): string {
 function taskStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '-'
   if (
-    value === 'ALLOCATED' ||
-    value === 'IN_PROGRESS' ||
-    value === 'SUBMITTED' ||
-    value === 'FINALIZED' ||
-    value === 'RECYCLED'
+    value === 'ALLOCATED'
+    || value === 'IN_PROGRESS'
+    || value === 'SUBMITTED'
+    || value === 'FINALIZED'
+    || value === 'RECYCLED'
   ) {
     return STATUS_LABEL[value]
   }
@@ -442,11 +442,11 @@ function taskStatusLabel(value: unknown): string {
 function taskStatusTone(value: unknown): 'gray' | 'blue' | 'orange' | 'green' | 'red' {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'ALLOCATED' ||
-    value === 'IN_PROGRESS' ||
-    value === 'SUBMITTED' ||
-    value === 'FINALIZED' ||
-    value === 'RECYCLED'
+    value === 'ALLOCATED'
+    || value === 'IN_PROGRESS'
+    || value === 'SUBMITTED'
+    || value === 'FINALIZED'
+    || value === 'RECYCLED'
   ) {
     return STATUS_TONE[value]
   }

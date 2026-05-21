@@ -62,9 +62,9 @@
               type="link"
               size="small"
               :disabled="
-                rows[index].requestStatus === 'APPROVED' ||
-                rows[index].requestStatus === 'REJECTED' ||
-                rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED'
+                  || rows[index].requestStatus === 'REJECTED'
+                  || rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'APPROVED')"
             >
@@ -75,9 +75,9 @@
               size="small"
               danger
               :disabled="
-                rows[index].requestStatus === 'APPROVED' ||
-                rows[index].requestStatus === 'REJECTED' ||
-                rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED'
+                  || rows[index].requestStatus === 'REJECTED'
+                  || rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'REJECTED')"
             >
@@ -137,22 +137,22 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, ref, watch } from 'vue'
 import {
   handleReviewRequest,
   listReviewRequests,
   REVIEW_REQUEST_STATUS_COLOR,
   REVIEW_REQUEST_STATUS_LABEL,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
 const rows = ref<ExamGradeReviewRequestVO[]>([])

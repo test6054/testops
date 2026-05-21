@@ -180,13 +180,13 @@ import type {
   MyPendingSpotCheckStatusCode,
   SpotCheckConclusionCode,
 } from '@/apis/mark/marking-quality'
-import { handleSpotCheck, listMyPendingSpotChecks } from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { handleSpotCheck, listMyPendingSpotChecks } from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,

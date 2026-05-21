@@ -234,8 +234,8 @@ async function parseLocalAgentResponse<T>(response: Response): Promise<T> {
     throw new Error(text || `本地 Scanner Agent 响应格式错误：${response.status}`)
   }
   if (!response.ok || !result.success || result.data === undefined) {
-    const message =
-      result.message || `本地 Scanner Agent 请求失败：${result.code || response.status}`
+    const message
+      = result.message || `本地 Scanner Agent 请求失败：${result.code || response.status}`
     const busyError = tryParseBusyError(message)
     if (busyError) {
       throw busyError

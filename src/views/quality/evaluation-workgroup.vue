@@ -12,13 +12,13 @@ import type {
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
 } from '@/apis/quality'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
 import type { MajorCategoryVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
+import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
@@ -43,6 +43,8 @@ const filterModel = ref<Record<string, unknown>>({
   levelCode: undefined,
 })
 
+type SearchFieldUpdate = (value: unknown) => void
+
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'workgroupCode', key: 'workgroupCode', width: 140 },
   { title: '名称', dataIndex: 'workgroupName', key: 'workgroupName' },
@@ -65,10 +67,10 @@ function workgroupLevelLabel(value: unknown): string {
     return ''
   }
   if (
-    value === 'UNIVERSITY' ||
-    value === 'COLLEGE' ||
-    value === 'PROGRAM' ||
-    value === 'INDUSTRY'
+    value === 'UNIVERSITY'
+    || value === 'COLLEGE'
+    || value === 'PROGRAM'
+    || value === 'INDUSTRY'
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
@@ -139,7 +141,7 @@ async function loadDicts() {
   programs.value = (await majorCategoryCatalogApi.listAll()) || []
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -166,6 +168,10 @@ function handleResetSearch() {
   loadList()
 }
 
+function handleFilterProgramChange(value: string | null, update: SearchFieldUpdate) {
+  update(value ?? undefined)
+}
+
 function openCreate() {
   editorMode.value = 'create'
   Object.assign(editor, {
@@ -188,12 +194,20 @@ function openEdit(record: EvaluationWorkgroupVO) {
   editorVisible.value = true
 }
 
+function handleEditorProgramChange(value: string | null) {
+  editor.programId = value ?? ''
+}
+
+function handleEditorConvenerChange(value: string | null) {
+  editor.convenerUserId = value ?? ''
+}
+
 async function submitEditor() {
   if (
-    !editor.programId ||
-    !editor.workgroupCode.trim() ||
-    !editor.workgroupName.trim() ||
-    !editor.convenerUserId
+    !editor.programId
+    || !editor.workgroupCode.trim()
+    || !editor.workgroupName.trim()
+    || !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -241,15 +255,22 @@ const memberColumns: ColumnsType = [
   { title: '备注', dataIndex: 'note', key: 'note' },
 ]
 
-const ROLE_LABEL: Record<string, string> = {
+type WorkgroupMemberRole = 'CONVENER' | 'MEMBER' | 'EXTERNAL_EXPERT'
+
+const ROLE_LABEL: Record<WorkgroupMemberRole, string> = {
   CONVENER: '召集人',
   MEMBER: '成员',
   EXTERNAL_EXPERT: '外部专家',
 }
 
+function isWorkgroupMemberRole(role: unknown): role is WorkgroupMemberRole {
+  return role === 'CONVENER' || role === 'MEMBER' || role === 'EXTERNAL_EXPERT'
+}
+
 function memberRoleLabel(role: unknown): string {
   if (typeof role !== 'string' || !role) return '-'
-  return ROLE_LABEL[role] || role
+  if (isWorkgroupMemberRole(role)) return ROLE_LABEL[role]
+  return role
 }
 
 function memberCountOf(record: EvaluationWorkgroupVO): number {
@@ -340,7 +361,7 @@ onMounted(async () => {
             :value="typeof value === 'string' ? value : null"
             placeholder="专业大类"
             :width="200"
-            @change="(v) => update(v ?? undefined)"
+            @change="handleFilterProgramChange($event, update)"
           />
         </template>
         <template #field-levelCode="{ value, update }">
@@ -431,13 +452,13 @@ onMounted(async () => {
         <a-form-item label="专业大类" required>
           <ProgramSelector
             :value="editor.programId || null"
-            @change="(v) => (editor.programId = v ?? '')"
+            @change="handleEditorProgramChange"
           />
         </a-form-item>
         <a-form-item label="召集人" required>
           <TeacherSelector
             :value="editor.convenerUserId || null"
-            @change="(v) => (editor.convenerUserId = v ?? '')"
+            @change="handleEditorConvenerChange"
           />
         </a-form-item>
         <a-form-item label="成员清单">

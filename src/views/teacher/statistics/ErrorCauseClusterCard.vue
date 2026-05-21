@@ -73,20 +73,20 @@
 
 <script lang="ts" setup>
 import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
-import {
-  generateErrorCauseCluster,
-  getLatestErrorCauseCluster,
-} from '@/apis/mark/error-cause-cluster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
+import {
+  generateErrorCauseCluster,
+  getLatestErrorCauseCluster,
+} from '@/apis/mark/error-cause-cluster'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)

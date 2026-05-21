@@ -8,7 +8,7 @@
     :ok-text="props.okText"
     :cancel-text="props.cancelText"
     :hide-footer="false"
-    @update:open="(value) => emit('update:open', value)"
+    @update:open="handleOpenChange"
     @close="emit('cancel')"
   >
     <div class="ui-tree-selection-drawer">
@@ -46,7 +46,7 @@
               v-if="props.treeData.length"
               class="ui-tree-selection-drawer__tree"
               :tree-data="props.treeData"
-              :checked-keys="props.checkedKeys as any"
+              :checked-keys="props.checkedKeys"
               :selected-keys="props.selectedKeys"
               :default-expand-all="props.defaultExpandAll"
               :default-expanded-keys="props.defaultExpandedKeys"
@@ -96,6 +96,8 @@
 </template>
 
 <script lang="ts" setup>
+import type { Key } from 'ant-design-vue/es/vc-tree/interface'
+import type { CheckInfo } from 'ant-design-vue/es/vc-tree/props'
 import type { UiTreeNode } from './types'
 import { computed } from 'vue'
 import UiButton from './Button.vue'
@@ -118,7 +120,7 @@ const props = withDefaults(defineProps<{
   searchPlaceholder?: string
   loading?: boolean
   treeData?: UiTreeNode[]
-  checkedKeys?: unknown
+  checkedKeys?: Key[] | { checked: Key[], halfChecked: Key[] }
   selectedKeys?: Array<string | number>
   defaultExpandAll?: boolean
   defaultExpandedKeys?: Array<string | number>
@@ -171,8 +173,8 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
   (e: 'search', value: string): void
   (e: 'clear'): void
-  (e: 'check', checkedKeys: unknown, info: unknown): void
-  (e: 'select', selectedKeys: Array<string | number>, info: unknown): void
+  (e: 'check', checkedKeys: Key[] | { checked: Key[], halfChecked: Key[] }, info: CheckInfo): void
+  (e: 'select', selectedKeys: Key[], info: unknown): void
   (e: 'confirm'): void
   (e: 'cancel'): void
 }>()
@@ -194,11 +196,15 @@ const handleClear = () => {
   emit('clear')
 }
 
-const handleCheck = (checkedKeys: unknown, info: unknown) => {
+function handleOpenChange(value: boolean): void {
+  emit('update:open', value)
+}
+
+const handleCheck = (checkedKeys: Key[] | { checked: Key[], halfChecked: Key[] }, info: CheckInfo) => {
   emit('check', checkedKeys, info)
 }
 
-const handleSelect = (selectedKeys: Array<string | number>, info: unknown) => {
+const handleSelect = (selectedKeys: Key[], info: unknown) => {
   emit('select', selectedKeys, info)
 }
 </script>

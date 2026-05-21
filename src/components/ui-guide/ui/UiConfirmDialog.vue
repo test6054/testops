@@ -9,7 +9,7 @@
     :ok-text="props.okText"
     :cancel-text="props.cancelText"
     :hide-cancel="props.hideCancel"
-    @update:open="(value) => emit('update:open', value)"
+    @update:open="handleOpenUpdate"
     @ok="emit('ok')"
     @cancel="emit('cancel')"
   >
@@ -91,6 +91,10 @@ const iconComponent = computed(() => {
 })
 
 const okVariant = computed(() => props.type === 'error' ? 'destructive' : 'primary')
+
+const handleOpenUpdate = (value: boolean) => {
+  emit('update:open', value)
+}
 
 const handleCancel = () => {
   emit('update:open', false)

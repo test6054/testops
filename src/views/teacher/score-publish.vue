@@ -118,13 +118,7 @@
           row-key="candidateRosterId"
           size="middle"
           class="score-publish__table"
-          @page-change="
-            (p) => {
-              pagination.current = p.current
-              pagination.pageSize = p.pageSize
-              loadCandidates()
-            }
-          "
+          @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'studentName'">
@@ -173,8 +167,8 @@
                   size="sm"
                   variant="ghost"
                   :disabled="
-                    !candidates[index].paperInstanceId ||
-                    candidates[index].finalScoreStatus !== 'PUBLISHED'
+                    !candidates[index].paperInstanceId
+                      || candidates[index].finalScoreStatus !== 'PUBLISHED'
                   "
                   @click="handleDeanonymize(candidates[index])"
                 >
@@ -355,14 +349,6 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
-import {
-  deanonymizePaper,
-  FINAL_SCORE_STATUS_LABEL,
-  getPaperScore,
-  pageExamScoreSummary,
-  publishFinalScore,
-  withdrawFinalScore,
-} from '@/apis/mark/exam'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -371,6 +357,14 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  deanonymizePaper,
+  FINAL_SCORE_STATUS_LABEL,
+  getPaperScore,
+  pageExamScoreSummary,
+  publishFinalScore,
+  withdrawFinalScore,
+} from '@/apis/mark/exam'
 import {
   UiAlertStrip,
   UiBadge,
@@ -407,12 +401,12 @@ const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, ToneCode> = {
 function finalScoreStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING' ||
-    value === 'CALCULATED' ||
-    value === 'CONFIRMED' ||
-    value === 'CORRECTED' ||
-    value === 'PUBLISHED' ||
-    value === 'WITHDRAWN'
+    value === 'PENDING'
+    || value === 'CALCULATED'
+    || value === 'CONFIRMED'
+    || value === 'CORRECTED'
+    || value === 'PUBLISHED'
+    || value === 'WITHDRAWN'
   ) {
     return FINAL_SCORE_STATUS_TONE[value]
   }
@@ -422,12 +416,12 @@ function finalScoreStatusTone(value: unknown): ToneCode {
 function finalScoreStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return '未生成'
   if (
-    value === 'PENDING' ||
-    value === 'CALCULATED' ||
-    value === 'CONFIRMED' ||
-    value === 'CORRECTED' ||
-    value === 'PUBLISHED' ||
-    value === 'WITHDRAWN'
+    value === 'PENDING'
+    || value === 'CALCULATED'
+    || value === 'CONFIRMED'
+    || value === 'CORRECTED'
+    || value === 'PUBLISHED'
+    || value === 'WITHDRAWN'
   ) {
     return FINAL_SCORE_STATUS_LABEL[value]
   }
@@ -519,12 +513,11 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handleTableChange(pag: TablePaginationConfig): void {
-  pagination.current = pag.current ?? 1
-  pagination.pageSize = pag.pageSize ?? 20
+function handlePageChange(payload: { current: number, pageSize: number }): void {
+  pagination.current = payload.current
+  pagination.pageSize = payload.pageSize
   void loadCandidates()
 }
-
 function goFinalize(): void {
   if (!selectedExamId.value) return
   void router.push({ name: 'TeacherScoreFinalize', query: { examId: selectedExamId.value } })

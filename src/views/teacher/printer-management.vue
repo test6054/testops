@@ -591,7 +591,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
-import { getAllClasses } from '@/apis/edu/class'
 import type {
   ExamScannerActivationCodeVO,
   ExamScannerDeviceCreatePayload,
@@ -607,6 +606,11 @@ import type {
   ScannerEndpointOnlineStatusCode,
   ScannerInterfaceModeCode,
 } from '@/apis/mark/exam-mark-scanner'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { getAllClasses } from '@/apis/edu/class'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -624,10 +628,6 @@ import {
   triggerSaneScan,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'

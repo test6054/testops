@@ -120,11 +120,11 @@
 
 <script lang="ts" setup>
 import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
-import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { reactive, ref } from 'vue'
+import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 

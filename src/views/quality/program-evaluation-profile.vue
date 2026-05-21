@@ -9,6 +9,8 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AccreditationStandardVO,
+  AccreditationType,
+  EvaluationMethod,
   ProgramEvaluationProfileQueryPayload,
   ProgramEvaluationProfileSavePayload,
   ProgramEvaluationProfileVO,
@@ -54,13 +56,30 @@ const query = reactive<ProgramEvaluationProfileQueryPayload>({
   keyword: '',
 })
 
-const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([value, label]) => ({
+const accreditationTypes: AccreditationType[] = [
+  'ENGINEERING_ACCREDITATION',
+  'TEACHER_ACCREDITATION',
+  'MEDICAL_HEALTH_ACCREDITATION',
+  'ART_DESIGN_QUALITY_EVALUATION',
+  'ECONOMICS_FINANCE_QUALITY_EVALUATION',
+  'LAW_QUALITY_EVALUATION',
+  'AGRICULTURE_ACCREDITATION',
+  'GENERAL_QUALITY_EVALUATION',
+]
+
+const evaluationMethods: EvaluationMethod[] = [
+  'DIRECT_ONLY',
+  'DIRECT_INDIRECT_WEIGHTED',
+  'MANUAL_REVIEW_CONFIRMED',
+]
+
+const accreditationOptions = accreditationTypes.map((value) => ({
   value,
-  label,
+  label: ACCREDITATION_TYPE_LABEL[value],
 }))
-const evaluationMethodOptions = Object.entries(EVALUATION_METHOD_LABEL).map(([value, label]) => ({
+const evaluationMethodOptions = evaluationMethods.map((value) => ({
   value,
-  label,
+  label: EVALUATION_METHOD_LABEL[value],
 }))
 const evaluationCycleOptions = [
   { value: 'SEMESTER', label: '按学期' },
@@ -106,13 +125,15 @@ async function loadList() {
 
 // 枚举守卫 helper：禁止 as 类型断言
 function accreditationLabel(value: unknown): string {
+  if (value == null || value === '') return '-'
   if (isAccreditationType(value)) return ACCREDITATION_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('专业评价口径认证类型不符合前后端契约')
 }
 
 function evaluationMethodLabel(value: unknown): string {
+  if (value == null || value === '') return '-'
   if (isEvaluationMethod(value)) return EVALUATION_METHOD_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('专业评价口径评价方法不符合前后端契约')
 }
 
 function evaluationCycleLabel(value: unknown): string {

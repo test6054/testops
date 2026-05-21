@@ -33,7 +33,7 @@
                 :allow-clear="props.allowClear"
                 :get-popup-container="getPopupContainer"
                 popup-class-name="ui-select-dropdown"
-                @change="(val: any) => handleCellChange(record, column, val, index)"
+                @change="handleSelectChange(record, column, index)"
               />
             </template>
             <template v-else>
@@ -215,11 +215,19 @@ const handleCellChange = (
   column: TableFormCellColumn,
   value: unknown,
   index: number,
-) => {
+): void => {
   const field = resolveField(column)
   if (!field) return
 
   emit('change', { record, field, value, index })
+}
+
+const handleSelectChange = (
+  record: TableFormRow,
+  column: TableFormCellColumn,
+  index: number,
+) => (value: SelectValue): void => {
+  handleCellChange(record, column, value, index)
 }
 </script>
 

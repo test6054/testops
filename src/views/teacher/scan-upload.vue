@@ -209,7 +209,7 @@
           :loading="batchLoading"
           :total="batchTotal"
           flat
-          @page-change="(p) => onBatchPageChange(p.current, p.pageSize)"
+          @page-change="onBatchPageChange"
           row-key="scanBatchId"
           size="small"
           class="batch-table"
@@ -219,8 +219,8 @@
               <a-typography-text strong :content="batches[index].batchNo || '-'" />
               <div
                 v-if="
-                  batches[index].batchExternalNo &&
-                  batches[index].batchExternalNo !== batches[index].batchNo
+                  batches[index].batchExternalNo
+                    && batches[index].batchExternalNo !== batches[index].batchNo
                 "
                 class="muted"
               >
@@ -293,14 +293,7 @@ import type {
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
-import {
-  createScanBatchByCondition,
-  getMarkingProgress,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
 import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
-import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -313,6 +306,13 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  createScanBatchByCondition,
+  getMarkingProgress,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+} from '@/apis/mark/exam'
+import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import {
   UiAlertStrip,
   UiBadge,
@@ -515,11 +515,11 @@ const batchFormRules: Record<string, Rule[]> = {
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value &&
-    !devicesLoadError.value &&
-    batchForm.scannerDeviceIds.length > 0 &&
-    !!batchForm.scanWindow &&
-    batchForm.scanWindow.length === 2,
+    !!selectedExamId.value
+    && !devicesLoadError.value
+    && batchForm.scannerDeviceIds.length > 0
+    && !!batchForm.scanWindow
+    && batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -622,7 +622,7 @@ const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
 const batchesLoadError = ref<unknown>(null)
-const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -656,7 +656,12 @@ async function loadBatches(pageNum?: number): Promise<void> {
     }
     const result = await pageScannerBatches(payload)
     if (!Array.isArray(result.list)) {
-      throw new Error('扫描批次列表接口返回格式错误')
+      const error = new TypeError('扫描批次列表接口返回格式错误')
+      batches.value = []
+      batchTotal.value = 0
+      batchesLoadError.value = error
+      message.error(error.message)
+      return
     }
     batches.value = result.list
     batchTotal.value = result.total ?? 0
@@ -669,9 +674,9 @@ async function loadBatches(pageNum?: number): Promise<void> {
   }
 }
 
-function onBatchPageChange(page: number, pageSize: number): void {
-  batchQuery.pageNum = page
-  batchQuery.pageSize = pageSize
+function onBatchPageChange(payload: { current: number, pageSize: number }): void {
+  batchQuery.pageNum = payload.current
+  batchQuery.pageSize = payload.pageSize
   void loadBatches()
 }
 

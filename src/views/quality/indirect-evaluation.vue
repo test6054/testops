@@ -11,6 +11,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 设计：先选问卷 → 显示题项 → 选题项查看答卷
  */
 import type {
+  AchievementTargetType,
   IndirectEvaluationFormQueryPayload,
   IndirectEvaluationFormSavePayload,
   IndirectEvaluationFormVO,
@@ -18,8 +19,12 @@ import type {
   IndirectEvaluationItemVO,
   IndirectEvaluationResponseSavePayload,
   IndirectEvaluationResponseVO,
+  RespondentType,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   indirectFormApi,
@@ -30,9 +35,6 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   CourseGoalSelector,
   GraduationRequirementSelector,
@@ -73,16 +75,16 @@ const responseColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
 ]
 
-/* ========== 状态守卫 helper（禁用 as 类型断言） ========== */
-
 function targetTypeLabel(value: unknown): string {
   if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('达成度目标类型不符合前后端契约')
 }
 
 function respondentTypeLabel(value: unknown): string {
   if (isRespondentType(value)) return RESPONDENT_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('应答人类型不符合前后端契约')
 }
 
 const formTypeOptions = [
@@ -95,14 +97,26 @@ const formTypeOptions = [
   { value: 'INTERNSHIP_SUPERVISOR', label: '实习导师' },
 ]
 
-const targetTypeOptions = Object.entries(ACHIEVEMENT_TARGET_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-const respondentTypeOptions = Object.entries(RESPONDENT_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
+  { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
+  { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
+  { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
+  { value: 'TRAINING_OBJECTIVE', label: ACHIEVEMENT_TARGET_TYPE_LABEL.TRAINING_OBJECTIVE },
+  { value: 'PROGRAM_SUMMARY', label: ACHIEVEMENT_TARGET_TYPE_LABEL.PROGRAM_SUMMARY },
+  { value: 'CIVIC_GOAL_AGGREGATE', label: ACHIEVEMENT_TARGET_TYPE_LABEL.CIVIC_GOAL_AGGREGATE },
+  {
+    value: 'COMPLEX_ENGINEERING_AGGREGATE',
+    label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
+  },
+]
+const respondentTypeOptions: { value: RespondentType, label: string }[] = [
+  { value: 'STUDENT', label: RESPONDENT_TYPE_LABEL.STUDENT },
+  { value: 'GRADUATE', label: RESPONDENT_TYPE_LABEL.GRADUATE },
+  { value: 'EMPLOYER', label: RESPONDENT_TYPE_LABEL.EMPLOYER },
+  { value: 'TEACHER', label: RESPONDENT_TYPE_LABEL.TEACHER },
+  { value: 'EXPERT', label: RESPONDENT_TYPE_LABEL.EXPERT },
+  { value: 'SUPERVISOR', label: RESPONDENT_TYPE_LABEL.SUPERVISOR },
+]
 const itemTypeOptions = [
   { value: 'SCALE', label: '量表题' },
   { value: 'SINGLE_CHOICE', label: '单选题' },
@@ -123,6 +137,26 @@ const formQuery = reactive<IndirectEvaluationFormQueryPayload>({
   enabled: undefined,
 })
 const selectedForm = ref<IndirectEvaluationFormVO | null>(null)
+
+function selectedId(value: string | null | undefined): string {
+  return value ?? ''
+}
+
+function handleFormTargetChange(value: string | null | undefined) {
+  formEditor.targetId = selectedId(value)
+}
+
+function handleFormProgramChange(value: string | null | undefined) {
+  formEditor.programId = selectedId(value)
+}
+
+function handleItemTargetChange(value: string | null | undefined) {
+  itemEditor.value.targetId = selectedId(value)
+}
+
+function handleResponseRespondentChange(value: string | null | undefined) {
+  responseEditor.value.respondentId = selectedId(value)
+}
 
 async function loadForms() {
   formsLoading.value = true
@@ -197,7 +231,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(payload: { current: number; pageSize: number }) {
+function handleFormPageChange(payload: { current: number, pageSize: number }) {
   formQuery.pageNum = payload.current
   formQuery.pageSize = payload.pageSize
   loadForms()
@@ -340,8 +374,8 @@ async function submitItem() {
   } else if (v.itemType === 'SINGLE_CHOICE' || v.itemType === 'MULTI_CHOICE') {
     const options = v.choiceOptions || []
     if (
-      options.length < 2 ||
-      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+      options.length < 2
+      || options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
     ) {
       message.error('选择题至少配置 2 个完整选项')
       return
@@ -501,8 +535,8 @@ async function refreshValidCounts() {
       items.value.map((item) =>
         indirectResponseApi
           .countValidByItem(item.id)
-          .then((count) => [item.id, count] as const)
-          .catch(() => [item.id, 0] as const),
+          .then((count): [string, number] => [item.id, count])
+          .catch((): [string, number] => [item.id, 0]),
       ),
     )
     validCountMap.value = new Map(results)
@@ -520,8 +554,8 @@ const signals = computed<SignalMetric[]>(() => {
   const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample || 0), 0)
   const validResponses = responses.value.filter((r) => r.validFlag).length
   const invalidResponses = responses.value.filter((r) => !r.validFlag).length
-  const sampleRatio =
-    expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+  const sampleRatio
+    = expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
 
   return [
     { key: 'forms-total', label: '问卷总数', value: forms.value.length, tone: 'blue' },
@@ -828,19 +862,19 @@ onMounted(async () => {
                 v-if="formEditor.targetType === 'COURSE_GOAL'"
                 :value="formEditor.targetId || null"
                 placeholder="选择课程目标"
-                @change="(v) => (formEditor.targetId = v ?? '')"
+                @change="handleFormTargetChange"
               />
               <RequirementIndicatorSelector
                 v-else-if="formEditor.targetType === 'REQUIREMENT_INDICATOR'"
                 :value="formEditor.targetId || null"
                 placeholder="选择观测点"
-                @change="(v) => (formEditor.targetId = v ?? '')"
+                @change="handleFormTargetChange"
               />
               <GraduationRequirementSelector
                 v-else-if="formEditor.targetType === 'GRADUATION_REQUIREMENT'"
                 :value="formEditor.targetId || null"
                 placeholder="选择毕业要求"
-                @change="(v) => (formEditor.targetId = v ?? '')"
+                @change="handleFormTargetChange"
               />
               <a-input
                 v-else
@@ -853,7 +887,7 @@ onMounted(async () => {
             <a-form-item label="所属专业">
               <ProgramSelector
                 :value="formEditor.programId || null"
-                @change="(v) => (formEditor.programId = v ?? '')"
+                @change="handleFormProgramChange"
               />
             </a-form-item>
           </a-col>
@@ -926,19 +960,19 @@ onMounted(async () => {
                 v-if="itemEditor.targetType === 'COURSE_GOAL'"
                 :value="itemEditor.targetId || null"
                 placeholder="选择课程目标"
-                @change="(v) => (itemEditor.targetId = v ?? '')"
+                @change="handleItemTargetChange"
               />
               <RequirementIndicatorSelector
                 v-else-if="itemEditor.targetType === 'REQUIREMENT_INDICATOR'"
                 :value="itemEditor.targetId || null"
                 placeholder="选择观测点"
-                @change="(v) => (itemEditor.targetId = v ?? '')"
+                @change="handleItemTargetChange"
               />
               <GraduationRequirementSelector
                 v-else-if="itemEditor.targetType === 'GRADUATION_REQUIREMENT'"
                 :value="itemEditor.targetId || null"
                 placeholder="选择毕业要求"
-                @change="(v) => (itemEditor.targetId = v ?? '')"
+                @change="handleItemTargetChange"
               />
               <a-input
                 v-else
@@ -1052,13 +1086,13 @@ onMounted(async () => {
                 v-if="responseEditor.respondentType === 'STUDENT'"
                 :value="responseEditor.respondentId || null"
                 placeholder="选择在校学生"
-                @change="(v) => (responseEditor.respondentId = v ?? '')"
+                @change="handleResponseRespondentChange"
               />
               <TeacherSelector
                 v-else-if="responseEditor.respondentType === 'TEACHER'"
                 :value="responseEditor.respondentId || null"
                 placeholder="选择教师"
-                @change="(v) => (responseEditor.respondentId = v ?? '')"
+                @change="handleResponseRespondentChange"
               />
               <a-input
                 v-else

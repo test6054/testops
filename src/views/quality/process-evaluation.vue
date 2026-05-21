@@ -15,24 +15,26 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   ConfirmationStatus,
+  DataSourceMode,
   ProcessEvaluationNodeSavePayload,
   ProcessEvaluationNodeVO,
   ProcessEvaluationRecordSavePayload,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
   DATA_SOURCE_MODE_LABEL,
   isConfirmationStatus,
+  isDataSourceMode,
   isProcessNodeType,
   PROCESS_NODE_TYPE_LABEL,
   processNodeApi,
   processRecordApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import {
   AssessmentItemSelector,
@@ -92,6 +94,17 @@ function processNodeTypeLabel(value: unknown): string {
   return typeof value === 'string' && value ? value : '-'
 }
 
+function dataSourceModeLabel(record: ProcessEvaluationRecordVO): string {
+  const value = record.sourceMode
+  if (!value) return '-'
+  if (isDataSourceMode(value)) return DATA_SOURCE_MODE_LABEL[value]
+  return dataSourceModeContractError(value)
+}
+
+function dataSourceModeContractError(value: Exclude<ProcessEvaluationRecordVO['sourceMode'], DataSourceMode | undefined>): string {
+  throw new Error(`过程性评价记录数据来源类型异常：${String(value)}`)
+}
+
 /* ========== 节点列表 ========== */
 
 const nodes = ref<ProcessEvaluationNodeVO[]>([])
@@ -132,6 +145,18 @@ const nodeEditor = ref<ProcessEvaluationNodeSavePayload>({
   coverageRequired: 0.8,
   description: '',
 })
+
+function handleNodeAssessmentItemChange(value: string | null): void {
+  nodeEditor.value.assessmentItemId = value ?? ''
+}
+
+function handleNodeCourseGoalChange(value: string | null): void {
+  nodeEditor.value.courseGoalId = value ?? ''
+}
+
+function handleNodeIndicatorChange(value: string | null): void {
+  nodeEditor.value.indicatorId = value ?? ''
+}
 
 function openNodeCreate() {
   if (!qualityStore.currentQualityCourseId) {
@@ -205,8 +230,8 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    records.value =
-      (await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value)) || []
+    records.value
+      = (await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value)) || []
   } finally {
     recordsLoading.value = false
   }
@@ -225,6 +250,10 @@ const recordEditor = ref<ProcessEvaluationRecordSavePayload>({
   sourceMode: 'MANUAL_CONFIRMATION',
   notes: '',
 })
+
+function handleRecordStudentChange(value: string | null): void {
+  recordEditor.value.studentUserId = value ?? ''
+}
 
 function openRecordCreate() {
   if (!selectedNode.value) return
@@ -327,6 +356,10 @@ const confirmedByGoalLoading = ref(false)
 const confirmedByGoalId = ref<string>('')
 const confirmedByGoalRecords = ref<ProcessEvaluationRecordVO[]>([])
 
+function handleConfirmedByGoalChange(value: string | null): void {
+  confirmedByGoalId.value = value ?? ''
+}
+
 function openConfirmedByGoal() {
   if (!qualityStore.currentQualityCourseId) return
   confirmedByGoalId.value = ''
@@ -341,8 +374,8 @@ async function queryConfirmedByGoal() {
   }
   confirmedByGoalLoading.value = true
   try {
-    confirmedByGoalRecords.value =
-      (await processRecordApi.listConfirmedByCourseGoal(
+    confirmedByGoalRecords.value
+      = (await processRecordApi.listConfirmedByCourseGoal(
         qualityStore.currentQualityCourseId,
         confirmedByGoalId.value,
       )) || []
@@ -554,13 +587,25 @@ function handleCourseChange(courseId: string | null) {
                   <a-dropdown>
                     <UiButton variant="outline" size="sm" @click.stop> 状态 </UiButton>
                     <template #overlay>
-                      <a-menu
-                        @click="(e: any) => changeNodeStatus(record, e.key as ConfirmationStatus)"
-                      >
-                        <a-menu-item key="DRAFT">起草</a-menu-item>
-                        <a-menu-item key="SUBMITTED">提交</a-menu-item>
-                        <a-menu-item key="CONFIRMED">确认</a-menu-item>
-                        <a-menu-item key="RETURNED">退回</a-menu-item>
+                      <a-menu>
+                        <a-menu-item key="DRAFT" @click.stop="changeNodeStatus(record, 'DRAFT')">
+                          起草
+                        </a-menu-item>
+                        <a-menu-item
+                          key="SUBMITTED"
+                          @click.stop="changeNodeStatus(record, 'SUBMITTED')"
+                        >
+                          提交
+                        </a-menu-item>
+                        <a-menu-item
+                          key="CONFIRMED"
+                          @click.stop="changeNodeStatus(record, 'CONFIRMED')"
+                        >
+                          确认
+                        </a-menu-item>
+                        <a-menu-item key="RETURNED" @click.stop="changeNodeStatus(record, 'RETURNED')">
+                          退回
+                        </a-menu-item>
                       </a-menu>
                     </template>
                   </a-dropdown>
@@ -645,9 +690,7 @@ function handleCourseChange(courseId: string | null) {
                 {{ text == null ? '-' : Number(text).toFixed(2) }}
               </template>
               <template v-else-if="column.key === 'sourceMode'">
-                {{
-                  DATA_SOURCE_MODE_LABEL[text as keyof typeof DATA_SOURCE_MODE_LABEL] || text || '-'
-                }}
+                {{ dataSourceModeLabel(record) }}
               </template>
               <template v-else-if="column.key === 'confirmationStatus'">
                 <a-tag :color="confirmationStatusColor(text)">
@@ -724,7 +767,7 @@ function handleCourseChange(courseId: string | null) {
                 :value="nodeEditor.assessmentItemId || null"
                 :quality-course-id="qualityStore.currentQualityCourseId || null"
                 placeholder="可选"
-                @change="(v) => (nodeEditor.assessmentItemId = v ?? '')"
+                @change="handleNodeAssessmentItemChange"
               />
             </a-form-item>
           </a-col>
@@ -734,7 +777,7 @@ function handleCourseChange(courseId: string | null) {
                 :value="nodeEditor.courseGoalId || null"
                 :quality-course-id="qualityStore.currentQualityCourseId || null"
                 placeholder="可选"
-                @change="(v) => (nodeEditor.courseGoalId = v ?? '')"
+                @change="handleNodeCourseGoalChange"
               />
             </a-form-item>
           </a-col>
@@ -743,7 +786,7 @@ function handleCourseChange(courseId: string | null) {
               <RequirementIndicatorSelector
                 :value="nodeEditor.indicatorId || null"
                 placeholder="可选"
-                @change="(v) => (nodeEditor.indicatorId = v ?? '')"
+                @change="handleNodeIndicatorChange"
               />
             </a-form-item>
           </a-col>
@@ -808,7 +851,7 @@ function handleCourseChange(courseId: string | null) {
               <StudentSelector
                 :value="recordEditor.studentUserId || null"
                 placeholder="按学生选择"
-                @change="(v) => (recordEditor.studentUserId = v ?? '')"
+                @change="handleRecordStudentChange"
               />
             </a-form-item>
           </a-col>
@@ -878,7 +921,7 @@ function handleCourseChange(courseId: string | null) {
           :quality-course-id="qualityStore.currentQualityCourseId || null"
           placeholder="选择课程目标"
           :width="320"
-          @change="(v) => (confirmedByGoalId = v ?? '')"
+          @change="handleConfirmedByGoalChange"
         />
         <UiButton
           variant="primary"

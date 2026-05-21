@@ -183,7 +183,6 @@ import type {
   ExamQuestionTemplatePayload,
   ExamQuestionTemplateVO,
 } from '@/apis/mark/exam'
-import { getExamTemplate, saveExamTemplate } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -193,6 +192,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
+import { getExamTemplate, saveExamTemplate } from '@/apis/mark/exam'
 import {
   UiAlertStrip,
   UiBadge,
@@ -236,7 +236,7 @@ function nextRowKey(): string {
   return `p-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string; totalPages?: number }>({
+const form = reactive<{ templateName: string, totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -296,8 +296,8 @@ async function loadTemplate(): Promise<void> {
   } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
-    const isNotConfigured =
-      errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
+    const isNotConfigured
+      = errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
     if (errMsg && !isNotConfigured) {
       // 真实加载失败：D-9 错误态 + 警告提示
       templateLoadError.value = error

@@ -30,6 +30,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AccreditationStandardVO,
+  CivicDimension,
   ConfirmationStatus,
   GraduationRequirementSavePayload,
   GraduationRequirementVO,
@@ -109,8 +110,6 @@ const qualityStore = useQualityStore()
 
 const WEIGHT_EPSILON = 1e-3
 
-/* ========== 当前方案 ========== */
-
 const currentPlan = ref<TrainingPlanVO | null>(null)
 const planLoading = ref(false)
 
@@ -127,8 +126,6 @@ async function loadCurrentPlan() {
     planLoading.value = false
   }
 }
-
-/* ========== 培养目标 ========== */
 
 const objectives = ref<TrainingObjectiveVO[]>([])
 const objectivesLoading = ref(false)
@@ -154,8 +151,6 @@ async function loadObjectives() {
   }
 }
 
-/* ========== 毕业要求 ========== */
-
 const requirements = ref<GraduationRequirementVO[]>([])
 const requirementsLoading = ref(false)
 const selectedRequirement = ref<GraduationRequirementVO | null>(null)
@@ -180,8 +175,6 @@ async function loadRequirements() {
   }
 }
 
-/* ========== 观测点（按要求加载） ========== */
-
 const indicatorsByReq = ref<Map<string, RequirementIndicatorVO[]>>(new Map())
 const indicatorsLoading = ref(false)
 
@@ -204,8 +197,6 @@ const indicatorsOfSelected = computed<RequirementIndicatorVO[]>(() => {
   if (!selectedRequirement.value) return []
   return indicatorsByReq.value.get(selectedRequirement.value.id) || []
 })
-
-/* ========== 培养目标 → 毕业要求映射 ========== */
 
 const objectiveRequirementMappings = ref<TrainingObjectiveRequirementVO[]>([])
 const mappingLoading = ref(false)
@@ -245,8 +236,6 @@ function objectiveMappingSum(objectiveId: string): number {
     .reduce((acc, m) => acc + (Number(m.weight) || 0), 0)
 }
 
-/* ========== 标准条款映射（仅当前选中要求） ========== */
-
 const standardMappings = ref<RequirementStandardMappingVO[]>([])
 const standardMappingsLoading = ref(false)
 const standardOptions = ref<AccreditationStandardVO[]>([])
@@ -279,8 +268,6 @@ const standardMap = computed(() => {
   standardOptions.value.forEach((s) => map.set(s.id, s))
   return map
 })
-
-/* ========== 信号指标 ========== */
 
 function indicatorWeightSumByReq(reqId: string): number {
   const list = indicatorsByReq.value.get(reqId) || []
@@ -352,8 +339,6 @@ const signals = computed<SignalMetric[]>(() => [
   },
 ])
 
-/* ========== 矩阵：培养目标 × 毕业要求 ========== */
-
 const objectiveMatrixRows = computed<MatrixRow[]>(() =>
   objectives.value.map((o) => {
     const sum = objectiveMappingSum(o.id)
@@ -398,8 +383,6 @@ const objectiveMatrixCells = computed<MatrixCell[]>(() => {
     }
   })
 })
-
-/* ========== 编辑器：培养方案 ========== */
 
 const planEditorVisible = ref(false)
 const planEditorMode = ref<'create' | 'edit'>('create')
@@ -629,6 +612,38 @@ function openObjMappingEdit(record: TrainingObjectiveRequirementVO) {
     weight: Number(record.weight) || 0,
     sortOrder: record.sortOrder ?? 0,
     notes: record.notes || '',
+  })
+  objMappingEditorVisible.value = true
+}
+
+function handleObjectiveRequirementCellClick(payload: {
+  row: MatrixRow
+  col: MatrixCol
+  cell: MatrixCell | undefined
+}): void {
+  const objective = objectives.value.find((item) => item.id === payload.row.key)
+  if (!objective) return
+  selectedObjective.value = objective
+
+  if (payload.cell) {
+    const mapping = objectiveRequirementMappings.value.find(
+      (item) =>
+        item.trainingObjectiveId === payload.row.key
+        && item.graduationRequirementId === payload.col.key,
+    )
+    if (mapping) openObjMappingEdit(mapping)
+    return
+  }
+
+  objMappingEditorMode.value = 'create'
+  objMappingEditingId.value = undefined
+  Object.assign(objMappingEditor, {
+    id: undefined,
+    trainingObjectiveId: payload.row.key,
+    graduationRequirementId: payload.col.key,
+    weight: 0,
+    sortOrder: (mappingsOfSelectedObjective.value.length + 1) * 10,
+    notes: '',
   })
   objMappingEditorVisible.value = true
 }
@@ -965,12 +980,13 @@ const aggregationOptions = [
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
 ]
 
-const civicDimensionOptions = (
-  Object.keys(CIVIC_DIMENSION_LABEL) as Array<keyof typeof CIVIC_DIMENSION_LABEL>
-).map((k) => ({
-  value: k,
-  label: CIVIC_DIMENSION_LABEL[k],
-}))
+const civicDimensionOptions: Array<{ value: CivicDimension, label: string }> = [
+  { value: 'MORAL', label: CIVIC_DIMENSION_LABEL.MORAL },
+  { value: 'INTELLECTUAL', label: CIVIC_DIMENSION_LABEL.INTELLECTUAL },
+  { value: 'PHYSICAL', label: CIVIC_DIMENSION_LABEL.PHYSICAL },
+  { value: 'AESTHETIC', label: CIVIC_DIMENSION_LABEL.AESTHETIC },
+  { value: 'LABOR', label: CIVIC_DIMENSION_LABEL.LABOR },
+]
 
 function parseCsv(value?: string): string[] {
   return value
@@ -983,6 +999,23 @@ function parseCsv(value?: string): string[] {
 
 function joinCsv(values: string[]): string {
   return values.join(',')
+}
+
+function handlePlanProgramChange(value: string | null): void {
+  planEditor.programId = value ?? ''
+  planEditor.accreditationProfileId = ''
+}
+
+function handlePlanAccreditationProfileChange(value: string | null): void {
+  planEditor.accreditationProfileId = value ?? ''
+}
+
+function handleRequirementCivicDimensionsChange(value: CivicDimension[]): void {
+  requirementEditor.civicDimensions = joinCsv(value)
+}
+
+function handleIndicatorCivicDimensionsChange(value: CivicDimension[]): void {
+  indicatorEditor.civicDimensions = joinCsv(value)
 }
 </script>
 
@@ -1206,34 +1239,7 @@ function joinCsv(values: string[]): string {
             :cells="objectiveMatrixCells"
             :loading="objectivesLoading || mappingLoading"
             empty-text="尚无培养目标或毕业要求"
-            @cell-click="
-              (payload) => {
-                const obj = objectives.find((o) => o.id === payload.row.key)
-                if (!obj) return
-                selectedObjective = obj
-                if (payload.cell) {
-                  const m = objectiveRequirementMappings.find(
-                    (x) =>
-                      x.trainingObjectiveId === payload.row.key
-                      && x.graduationRequirementId === payload.col.key,
-                  )
-                  if (m) openObjMappingEdit(m)
-                }
-                else {
-                  objMappingEditorMode = 'create'
-                  objMappingEditingId = undefined
-                  Object.assign(objMappingEditor, {
-                    id: undefined,
-                    trainingObjectiveId: payload.row.key,
-                    graduationRequirementId: payload.col.key,
-                    weight: 0,
-                    sortOrder: (mappingsOfSelectedObjective.length + 1) * 10,
-                    notes: '',
-                  })
-                  objMappingEditorVisible = true
-                }
-              }
-            "
+            @cell-click="handleObjectiveRequirementCellClick"
           />
         </div>
       </div>
@@ -1448,12 +1454,7 @@ function joinCsv(values: string[]): string {
               <ProgramSelector
                 :value="planEditor.programId || null"
                 placeholder="请选择 edu-user 专业大类"
-                @change="
-                  (v) => {
-                    planEditor.programId = v ?? ''
-                    planEditor.accreditationProfileId = ''
-                  }
-                "
+                @change="handlePlanProgramChange"
               />
             </a-form-item>
           </a-col>
@@ -1465,7 +1466,7 @@ function joinCsv(values: string[]): string {
                 :disabled="!planEditor.programId"
                 :only-enabled="true"
                 placeholder="选定专业后可选；不选表示通用评价"
-                @change="(v) => (planEditor.accreditationProfileId = v ?? '')"
+                @change="handlePlanAccreditationProfileChange"
               />
             </a-form-item>
           </a-col>
@@ -1655,7 +1656,7 @@ function joinCsv(values: string[]): string {
             :options="civicDimensionOptions"
             placeholder="德 智 体 美 劳 维度（如适用）"
             style="width: 100%"
-            @change="(_val: any) => (requirementEditor.civicDimensions = joinCsv(_val as string[]))"
+            @change="handleRequirementCivicDimensionsChange"
           />
         </a-form-item>
       </a-form>
@@ -1725,7 +1726,7 @@ function joinCsv(values: string[]): string {
             :options="civicDimensionOptions"
             placeholder="可选"
             style="width: 100%"
-            @change="(_val: any) => (indicatorEditor.civicDimensions = joinCsv(_val as string[]))"
+            @change="handleIndicatorCivicDimensionsChange"
           />
         </a-form-item>
       </a-form>

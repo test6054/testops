@@ -11,8 +11,7 @@ function isMobileDevice(): boolean {
   const ua = navigator.userAgent || ''
   const mobileRe = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|CriOS/i
   if (mobileRe.test(ua)) return true
-  if ('ontouchstart' in window && window.innerWidth <= 820) return true
-  return false
+  return 'ontouchstart' in window && window.innerWidth <= 820
 }
 
 const activeComponent = shallowRef(SurveyFillDesktop)

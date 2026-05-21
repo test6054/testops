@@ -128,9 +128,7 @@
                     </template>
                     <template #description>
                       <div class="annotation-meta">
-                        <span v-if="item.anchorText" class="muted"
-                          >锚点：{{ item.anchorText }}</span
-                        >
+                        <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
                         <span class="muted">{{ formatTime(item.createTime) }}</span>
                       </div>
                     </template>
@@ -147,9 +145,7 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AnnotationVO, ReviewTaskDetailVO } from '@/apis/mark/exam'
-import { getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -159,8 +155,10 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import { getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -197,10 +195,10 @@ const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
 function reviewStatusTone(value: unknown): ToneCode {
   if (typeof value !== 'string') return 'gray'
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_TONE[value]
   }
@@ -210,10 +208,10 @@ function reviewStatusTone(value: unknown): ToneCode {
 function reviewStatusLabel(value: unknown): string {
   if (typeof value !== 'string') return ''
   if (
-    value === 'PENDING' ||
-    value === 'IN_PROGRESS' ||
-    value === 'APPROVED' ||
-    value === 'REJECTED'
+    value === 'PENDING'
+    || value === 'IN_PROGRESS'
+    || value === 'APPROVED'
+    || value === 'REJECTED'
   ) {
     return STATUS_LABEL[value]
   }

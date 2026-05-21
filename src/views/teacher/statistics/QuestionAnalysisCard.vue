@@ -90,11 +90,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
-import {
-  generateAllQuestionAnalysis,
-  generateQuestionAnalysis,
-  listQuestionAnalysis,
-} from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
@@ -109,11 +104,16 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
+import {
+  generateAllQuestionAnalysis,
+  generateQuestionAnalysis,
+  listQuestionAnalysis,
+} from '@/apis/mark/question-analysis'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const emit = defineEmits<{ (e: 'generated'): void }>()
 

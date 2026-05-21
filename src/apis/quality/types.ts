@@ -150,6 +150,22 @@ export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
   INDIRECT_RESPONSE_DOC_PARSE: '间接评价答卷文档解析',
 }
 
+/** AI 任务业务类型 - AiTaskSubmitRequest.businessType */
+export type AiTaskBusinessType
+  = | 'ACHIEVEMENT_RESULT'
+    | 'QUALITY_COURSE'
+    | 'TRAINING_PLAN'
+    | 'REPORT'
+    | 'INDIRECT_FORM'
+
+export const AI_TASK_BUSINESS_TYPE_LABEL: Record<AiTaskBusinessType, string> = {
+  ACHIEVEMENT_RESULT: '达成度计算结果',
+  QUALITY_COURSE: '质量评价课程',
+  TRAINING_PLAN: '培养方案',
+  REPORT: '质量报告',
+  INDIRECT_FORM: '间接评价问卷',
+}
+
 /** AI 输出校验结果 - AiOutputValidationEnum */
 export type AiOutputValidation = 'PASSED' | 'REJECTED' | 'WARN'
 
@@ -1039,6 +1055,16 @@ export function isArchiveBusinessType(value: unknown): value is ArchiveBusinessT
     || value === 'IMPROVEMENT_TASK'
     || value === 'EXPERT_PACKAGE'
     || value === 'AUDIT_RECTIFICATION'
+  )
+}
+
+export function isAiTaskBusinessType(value: unknown): value is AiTaskBusinessType {
+  return (
+    value === 'ACHIEVEMENT_RESULT'
+    || value === 'QUALITY_COURSE'
+    || value === 'TRAINING_PLAN'
+    || value === 'REPORT'
+    || value === 'INDIRECT_FORM'
   )
 }
 

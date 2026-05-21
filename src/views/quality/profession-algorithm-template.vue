@@ -9,6 +9,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AccreditationStandardVO,
+  AccreditationType,
   ProfessionAlgorithmTemplateQueryPayload,
   ProfessionAlgorithmTemplateSavePayload,
   ProfessionAlgorithmTemplateVO,
@@ -19,6 +20,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
+  isAccreditationType,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
@@ -39,9 +41,9 @@ const columns: ColumnsType = [
 /* ========== 状态守卫 helper（避免 as 断言） ========== */
 
 function accreditationTypeLabel(value: unknown): string {
-  if (typeof value !== 'string') return '-'
-  const dict: Record<string, string> = ACCREDITATION_TYPE_LABEL
-  return dict[value] || value
+  if (value == null || value === '') return '-'
+  if (isAccreditationType(value)) return ACCREDITATION_TYPE_LABEL[value]
+  throw new Error('专业算法模板认证类型不符合前后端契约')
 }
 
 const list = ref<ProfessionAlgorithmTemplateVO[]>([])
@@ -87,9 +89,20 @@ const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailRecord = ref<ProfessionAlgorithmTemplateVO | null>(null)
 
-const accreditationOptions = Object.entries(ACCREDITATION_TYPE_LABEL).map(([value, label]) => ({
+const accreditationTypes: AccreditationType[] = [
+  'ENGINEERING_ACCREDITATION',
+  'TEACHER_ACCREDITATION',
+  'MEDICAL_HEALTH_ACCREDITATION',
+  'ART_DESIGN_QUALITY_EVALUATION',
+  'ECONOMICS_FINANCE_QUALITY_EVALUATION',
+  'LAW_QUALITY_EVALUATION',
+  'AGRICULTURE_ACCREDITATION',
+  'GENERAL_QUALITY_EVALUATION',
+]
+
+const accreditationOptions = accreditationTypes.map((value) => ({
   value,
-  label,
+  label: ACCREDITATION_TYPE_LABEL[value],
 }))
 const aggregationOptions = [
   { value: 'WEIGHTED_SUM', label: '加权平均' },

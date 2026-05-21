@@ -165,7 +165,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateRosterPayload } from '@/apis/mark/exam'
-import { getExamDetail, listExamCandidates, saveExamScope } from '@/apis/mark/exam'
 import ImportOutlined from '@ant-design/icons-vue/ImportOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
@@ -173,6 +172,7 @@ import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { getExamDetail, listExamCandidates, saveExamScope } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,

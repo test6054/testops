@@ -103,7 +103,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   retry: []
-  report: [{ message: string; route: string }]
+  report: [{ message: string, route: string }]
 }>()
 
 const router = useRouter()
@@ -114,8 +114,8 @@ const errorMessage = computed<string>(() => {
   if (!e) return ''
   if (typeof e === 'string') return e
   if (e instanceof Error) return e.message
-  if (typeof e === 'object' && e !== null && 'message' in e) {
-    return String((e as { message?: unknown }).message ?? '')
+  if (typeof e === 'object') {
+    return String(Reflect.get(e, 'message') ?? '')
   }
   return ''
 })

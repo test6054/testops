@@ -1,4 +1,4 @@
-import type { ScoreBatchStatus } from './types'
+import type { DataSourceMode, ScoreBatchStatus } from './types'
 /**
  * 成绩导入批次 API - 对接 edu-quality / ScoreBatchController
  *
@@ -30,8 +30,8 @@ export interface ScoreBatchVO {
   assessmentItemName?: string
   batchCode: string
   batchName: string
-  /** 取值见 ScoreBatchSourceModeEnum；后端 String 透传 */
-  sourceMode: string
+  /** 取值见后端 DataSourceModeEnum */
+  sourceMode: DataSourceMode
   sourceFileId?: string
   externalPullTaskId?: string
   schoolYear?: string
@@ -75,7 +75,7 @@ export interface ScoreBatchQueryPayload extends QueryDto {
   qualityCourseId?: string
   assessmentItemId?: string
   status?: ScoreBatchStatus
-  sourceMode?: string
+  sourceMode?: DataSourceMode
   keyword?: string
 }
 
@@ -87,7 +87,7 @@ export interface ScoreBatchSavePayload {
   assessmentItemId: string
   batchCode: string
   batchName: string
-  sourceMode: string
+  sourceMode: DataSourceMode
   sourceFileId?: string
   externalPullTaskId?: string
   schoolYear?: string
