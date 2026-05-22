@@ -55,6 +55,7 @@ import {
   CIVIC_DIMENSION_LABEL,
   CONFIRMATION_STATUS_LABEL,
   graduationRequirementApi,
+  isCivicDimension,
   requirementIndicatorApi,
   requirementStandardMappingApi,
   trainingObjectiveApi,
@@ -1010,12 +1011,17 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
   planEditor.accreditationProfileId = value ?? ''
 }
 
-function handleRequirementCivicDimensionsChange(value: CivicDimension[]): void {
-  requirementEditor.civicDimensions = joinCsv(value)
+function handleRequirementCivicDimensionsChange(value: unknown): void {
+  requirementEditor.civicDimensions = joinCsv(coerceCivicDimensions(value))
 }
 
-function handleIndicatorCivicDimensionsChange(value: CivicDimension[]): void {
-  indicatorEditor.civicDimensions = joinCsv(value)
+function handleIndicatorCivicDimensionsChange(value: unknown): void {
+  indicatorEditor.civicDimensions = joinCsv(coerceCivicDimensions(value))
+}
+
+function coerceCivicDimensions(value: unknown): CivicDimension[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is CivicDimension => isCivicDimension(item))
 }
 </script>
 

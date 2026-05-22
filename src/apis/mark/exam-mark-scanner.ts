@@ -160,6 +160,8 @@ export interface ExamScannerDeviceCreatePayload {
   model?: string
   location?: string
   remark?: string
+  /** 一体机 Kiosk 锁是否启用，不传时服务端按启用处理 */
+  kioskLockEnabled?: boolean
 }
 
 /** 扫描设备更新请求 - 对应 ExamScannerDeviceUpdateRequest */
@@ -181,6 +183,8 @@ export interface ExamScannerDeviceUpdatePayload {
   model?: string
   location?: string
   remark?: string
+  /** 一体机 Kiosk 锁是否启用 */
+  kioskLockEnabled?: boolean
 }
 
 /** SANE 主动采集触发请求 - 对应 ExamScannerSaneTriggerRequest */
@@ -282,6 +286,14 @@ export function deleteScannerDevice(id: string): Promise<boolean> {
 }
 
 /**
+ * 解绑扫描设备当前 Agent 端点
+ * POST /api/mark/exams/scan-devices/agent-unbind
+ */
+export function unbindScannerDeviceAgent(id: string): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/scan-devices/agent-unbind', { id })
+}
+
+/**
  * 查询扫描设备详情（HTTP_PUSH 模式包含明文 push_token 与推荐推送 URL）
  * POST /api/mark/exams/scan-devices/detail
  */
@@ -341,6 +353,8 @@ export interface MarkExamSummaryVO {
   examId: string
   examName: string
   examNo?: string
+  academicYear?: string
+  semester?: string
   status: string
   statusMessage?: string
   examStartTime?: string
@@ -352,7 +366,11 @@ export interface MarkExamSummaryVO {
 export interface MarkExamPageQueryPayload {
   pageNum: number
   pageSize: number
+  /** 课程ID（可选筛选） */
+  courseId?: string
   status?: string
+  academicYear?: string
+  semester?: string
   createUserId?: string | null
   keyword?: string
 }

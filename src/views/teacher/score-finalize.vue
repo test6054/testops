@@ -440,8 +440,7 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
-import type { BadgeTone, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
+import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -638,7 +637,7 @@ function publishButtonLabel(record: ExamScoreSummaryItemVO): string {
 
 /* ========== 信号指标：核定流程状态分布 ========== */
 
-const statMetrics = computed<SignalMetric[]>(() => {
+const statMetrics = computed<UiStatPanelItem[]>(() => {
   const buckets = candidateBuckets.value
   const total = pagination.total ?? 0
   return [
@@ -960,7 +959,7 @@ const auditTimelineGroups = computed(() => {
       actor: log.operatorRole ? `操作角色：${log.operatorRole}` : undefined,
       tone: scoreAuditTone(log),
       tags: log.traceId
-        ? [{ label: `traceId ${log.traceId.slice(0, 8)}…`, tone: 'gray' }]
+        ? [{ label: `traceId ${log.traceId.slice(0, 8)}…`, tone: 'gray' as BadgeTone }]
         : undefined,
     }
   })

@@ -44,6 +44,21 @@
           <UiButton v-if="organization" variant="primary" size="sm" @click="goDetail">
             进入详情
           </UiButton>
+          <UiButton v-if="organization" variant="outline" size="sm" @click="openEditDrawer">
+            编辑组织
+          </UiButton>
+          <a-popconfirm
+            v-if="organization"
+            title="确认删除该阅卷组织？"
+            ok-text="删除"
+            cancel-text="取消"
+            :ok-button-props="{ danger: true, loading: deleting }"
+            @confirm="submitDelete"
+          >
+            <UiButton variant="outline" size="sm" status="danger" :loading="deleting">
+              删除组织
+            </UiButton>
+          </a-popconfirm>
         </div>
       </div>
     </template>
@@ -118,7 +133,19 @@
 
         <div class="org-index__actions">
           <UiButton size="sm" @click="goDetail"> 管理题组与策略 </UiButton>
+          <UiButton size="sm" variant="outline" @click="openEditDrawer"> 编辑组织 </UiButton>
           <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
+          <a-popconfirm
+            title="确认删除该阅卷组织？"
+            ok-text="删除"
+            cancel-text="取消"
+            :ok-button-props="{ danger: true, loading: deleting }"
+            @confirm="submitDelete"
+          >
+            <UiButton size="sm" variant="outline" status="danger" :loading="deleting">
+              删除组织
+            </UiButton>
+          </a-popconfirm>
         </div>
       </section>
 
@@ -145,7 +172,7 @@
       :confirm-loading="creating"
       @update:open="(v: boolean) => (createDrawerOpen = v)"
       @close="createDrawerOpen = false"
-      @confirm="submitCreate"
+      @ok="submitCreate"
     >
       <a-form ref="createFormRef" :model="createForm" :rules="createRules" layout="vertical">
         <a-form-item label="关联考试">
@@ -177,6 +204,46 @@
         </a-form-item>
       </a-form>
     </UiDrawer>
+
+    <UiDrawer
+      :open="editDrawerOpen"
+      title="编辑阅卷组织"
+      :width="520"
+      :confirm-loading="updating"
+      @update:open="(v: boolean) => (editDrawerOpen = v)"
+      @close="editDrawerOpen = false"
+      @ok="submitUpdate"
+    >
+      <a-form ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
+        <a-form-item label="关联考试">
+          <a-input :value="selectedExamLabel" disabled />
+        </a-form-item>
+        <a-form-item label="阅卷组长" name="leaderUserId" required>
+          <a-select
+            v-model:value="editForm.leaderUserId"
+            placeholder="选择组长（仅教师）"
+            show-search
+            option-filter-prop="label"
+            :options="teacherOptions"
+            :loading="teacherLoading"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
+          <a-switch v-model:checked="editForm.anonymousMode" />
+          <span class="org-index__switch-hint">启用后阅卷教师不可见考生身份</span>
+        </a-form-item>
+        <a-form-item label="备注" name="remark">
+          <a-textarea
+            v-model:value="editForm.remark"
+            :rows="3"
+            :maxlength="200"
+            placeholder="可选，记录组织目的 / 范围"
+            show-count
+          />
+        </a-form-item>
+      </a-form>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -193,6 +260,7 @@ import type { UserListItemDto } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreatePayload,
+  OrganizationUpdatePayload,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
@@ -204,9 +272,11 @@ import { useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
 import {
   createOrganization,
+  deleteOrganization,
   getOrganization,
   MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
+  updateOrganization,
 } from '@/apis/mark/marking-organization'
 import {
   UiBadge,
@@ -336,6 +406,28 @@ const createRules: Record<string, Rule[]> = {
   remark: [{ max: 200, message: '备注最多 200 字', trigger: 'blur' }],
 }
 
+const editDrawerOpen = ref(false)
+const updating = ref(false)
+const deleting = ref(false)
+const editFormRef = ref<FormInstance>()
+
+interface EditForm {
+  leaderUserId?: string
+  anonymousMode: boolean
+  remark?: string
+}
+
+const editForm = reactive<EditForm>({
+  leaderUserId: undefined,
+  anonymousMode: true,
+  remark: '',
+})
+
+const editRules: Record<string, Rule[]> = {
+  leaderUserId: [{ required: true, message: '请选择阅卷组长', trigger: 'change' }],
+  remark: [{ max: 200, message: '备注最多 200 字', trigger: 'blur' }],
+}
+
 function openCreateDrawer(): void {
   if (!selectedExamId.value) {
     message.warning('请先选择考试')
@@ -373,6 +465,58 @@ async function submitCreate(): Promise<void> {
     message.error(errMsg)
   } finally {
     creating.value = false
+  }
+}
+
+function openEditDrawer(): void {
+  if (!organization.value) return
+  editForm.leaderUserId = organization.value.leaderUserId
+  editForm.anonymousMode = Boolean(organization.value.anonymousMode)
+  editForm.remark = organization.value.remark || ''
+  editDrawerOpen.value = true
+  if (teacherList.value.length === 0) {
+    void loadTeachers()
+  }
+}
+
+async function submitUpdate(): Promise<void> {
+  if (!organization.value || !editFormRef.value) return
+  try {
+    await editFormRef.value.validate()
+  } catch {
+    return
+  }
+  updating.value = true
+  try {
+    const payload: OrganizationUpdatePayload = {
+      organizationId: organization.value.id,
+      leaderUserId: editForm.leaderUserId!,
+      anonymousMode: editForm.anonymousMode,
+      remark: editForm.remark?.trim() || undefined,
+    }
+    organization.value = await updateOrganization(payload)
+    message.success('阅卷组织已更新')
+    editDrawerOpen.value = false
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '更新阅卷组织失败'
+    message.error(errMsg)
+  } finally {
+    updating.value = false
+  }
+}
+
+async function submitDelete(): Promise<void> {
+  if (!organization.value) return
+  deleting.value = true
+  try {
+    await deleteOrganization({ organizationId: organization.value.id })
+    organization.value = null
+    message.success('阅卷组织已删除')
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '删除阅卷组织失败'
+    message.error(errMsg)
+  } finally {
+    deleting.value = false
   }
 }
 

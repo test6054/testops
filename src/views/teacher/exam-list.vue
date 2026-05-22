@@ -69,6 +69,24 @@
             :options="statusOptions"
           />
         </a-form-item>
+        <a-form-item label="学年">
+          <a-input
+            v-model:value="filterForm.academicYear"
+            placeholder="2024-2025"
+            allow-clear
+            style="width: 150px"
+            @press-enter="handleSearch"
+          />
+        </a-form-item>
+        <a-form-item label="学期">
+          <a-select
+            v-model:value="filterForm.semester"
+            style="width: 140px"
+            placeholder="全部学期"
+            allow-clear
+            :options="semesterOptions"
+          />
+        </a-form-item>
         <a-form-item label="关键词">
           <a-input
             v-model:value="filterForm.keyword"
@@ -138,6 +156,12 @@
               编号：{{ dataSource[index].examNo }}
             </div>
           </template>
+          <template v-else-if="column.key === 'academicTerm'">
+            <span v-if="formatAcademicTerm(dataSource[index])">
+              {{ formatAcademicTerm(dataSource[index]) }}
+            </span>
+            <span v-else class="muted">未设置</span>
+          </template>
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="examStatusTone(dataSource[index])" size="sm">
               {{ examStatusLabel(dataSource[index]) }}
@@ -158,6 +182,23 @@
             <a-space>
               <UiButton size="sm" variant="ghost" @click="goDetail(dataSource[index])">
                 详情
+              </UiButton>
+              <UiButton
+                v-if="dataSource[index].status !== 'CLOSED'"
+                size="sm"
+                variant="ghost"
+                @click="openEditModal(dataSource[index])"
+              >
+                编辑
+              </UiButton>
+              <UiButton
+                v-if="dataSource[index].status !== 'CLOSED'"
+                size="sm"
+                variant="ghost"
+                status="danger"
+                @click="confirmDelete(dataSource[index])"
+              >
+                删除
               </UiButton>
               <UiButton
                 v-if="dataSource[index].status !== 'CLOSED'"
@@ -189,35 +230,57 @@
     </UiCard>
   </StageWorkbenchShell>
 
-  <!-- 创建考试弹窗 -->
+  <!-- 考试维护弹窗 -->
   <a-modal
-    v-model:open="createModalOpen"
-    title="新建考试"
-    :confirm-loading="creating"
+    v-model:open="formModalOpen"
+    :title="isEditMode ? '编辑考试' : '新建考试'"
+    :confirm-loading="saving"
     :destroy-on-close="true"
     :mask-closable="false"
     width="560px"
-    @ok="handleCreate"
+    @ok="handleSave"
   >
-    <a-form ref="createFormRef" :model="createForm" :rules="createFormRules" layout="vertical">
+    <a-form ref="formRef" :model="examForm" :rules="examFormRules" layout="vertical">
+      <a-form-item label="课程" name="courseId">
+        <CatalogCourseSelector
+          v-model:value="examForm.courseId"
+          placeholder="选择课程"
+          :allow-clear="false"
+        />
+      </a-form-item>
       <a-form-item label="考试名称" name="examName">
         <a-input
-          v-model:value="createForm.examName"
+          v-model:value="examForm.examName"
           placeholder="例如：2026 春《工程制图》期末"
           :maxlength="100"
           show-count
         />
       </a-form-item>
-      <a-form-item label="考试编号（可选）" name="examNo">
+      <a-form-item label="考试编号" name="examNo">
         <a-input
-          v-model:value="createForm.examNo"
+          v-model:value="examForm.examNo"
           placeholder="教务系统编号或自定义编号"
           :maxlength="64"
         />
       </a-form-item>
-      <a-form-item label="考试时间窗">
+      <a-form-item label="学年" name="academicYear">
+        <a-input
+          v-model:value="examForm.academicYear"
+          placeholder="2024-2025"
+          :maxlength="9"
+        />
+      </a-form-item>
+      <a-form-item label="学期" name="semester">
+        <a-select
+          v-model:value="examForm.semester"
+          placeholder="选择学期"
+          allow-clear
+          :options="semesterOptions"
+        />
+      </a-form-item>
+      <a-form-item label="考试时间窗" name="examWindow">
         <a-range-picker
-          v-model:value="createForm.examWindow"
+          v-model:value="examForm.examWindow"
           style="width: 100%"
           show-time
           format="YYYY-MM-DD HH:mm"
@@ -227,14 +290,14 @@
       </a-form-item>
       <a-form-item label="批改策略（可选）" name="gradingStrategy">
         <a-input
-          v-model:value="createForm.gradingStrategy"
+          v-model:value="examForm.gradingStrategy"
           placeholder="如 SINGLE / DOUBLE_BLIND，留空使用租户默认"
           :maxlength="64"
         />
       </a-form-item>
       <a-form-item label="备注" name="remark">
         <a-textarea
-          v-model:value="createForm.remark"
+          v-model:value="examForm.remark"
           :rows="3"
           placeholder="可填写考试用途、班级范围说明等"
           :maxlength="500"
@@ -248,17 +311,26 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
-import type { ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamCreatePayload, ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { createExam, EXAM_STATUS_LABEL, EXAM_STATUS_TONE, pageExams } from '@/apis/mark/exam'
+import {
+  createExam,
+  deleteExam,
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  pageExams,
+  updateExam,
+} from '@/apis/mark/exam'
+import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import {
   UiAlertStrip,
   UiBadge,
@@ -288,10 +360,14 @@ const isAdminView = computed(() => authStore.isAdmin || userStore.isTenantAdmin)
 
 const filterForm = reactive<{
   status?: ExamStatusCode
+  academicYear?: string
+  semester?: string
   keyword?: string
   dateRange?: [string, string]
 }>({
   status: undefined,
+  academicYear: '',
+  semester: undefined,
   keyword: '',
   dateRange: undefined,
 })
@@ -299,6 +375,11 @@ const filterForm = reactive<{
 const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
+]
+
+const semesterOptions: Array<{ label: string, value: string }> = [
+  { label: '秋季学期', value: '1' },
+  { label: '春季学期', value: '2' },
 ]
 
 const dataSource = ref<ExamSummaryVO[]>([])
@@ -315,10 +396,11 @@ const pagination = reactive<TablePaginationConfig>({
 
 const columns: ColumnType<ExamSummaryVO>[] = [
   { title: '考试名称', dataIndex: 'examName', key: 'examName', ellipsis: true, width: 240 },
+  { title: '学年学期', key: 'academicTerm', width: 180 },
   { title: '状态', key: 'status', width: 100 },
   { title: '考试时间', key: 'examWindow', width: 280 },
   { title: '创建时间', key: 'createTime', width: 180 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 420, fixed: 'right' },
 ]
 
 // helper 严格 typed 接收后端 API 对象 ExamSummaryVO。
@@ -336,6 +418,15 @@ function formatTime(value?: string): string {
   return dayjs(value).format('YYYY-MM-DD HH:mm')
 }
 
+function formatSemester(value?: string): string {
+  return semesterOptions.find((item) => item.value === value)?.label ?? ''
+}
+
+function formatAcademicTerm(exam: ExamSummaryVO): string {
+  if (!exam.academicYear && !exam.semester) return ''
+  return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
+}
+
 async function loadExams(): Promise<void> {
   loading.value = true
   examsLoadError.value = null
@@ -345,6 +436,8 @@ async function loadExams(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 10,
       status: filterForm.status,
+      academicYear: filterForm.academicYear?.trim() || undefined,
+      semester: filterForm.semester,
       keyword: filterForm.keyword?.trim() || undefined,
       startTime: startTime || undefined,
       endTime: endTime || undefined,
@@ -368,6 +461,8 @@ function handleSearch(): void {
 
 function handleReset(): void {
   filterForm.status = undefined
+  filterForm.academicYear = ''
+  filterForm.semester = undefined
   filterForm.keyword = ''
   filterForm.dateRange = undefined
   pagination.current = 1
@@ -457,71 +552,180 @@ const kpiItems = computed(() => [
   },
 ])
 
-// 创建考试弹窗
-const createModalOpen = ref(false)
-const creating = ref(false)
-const createFormRef = ref<FormInstance>()
-const createForm = reactive<{
+const formModalOpen = ref(false)
+const saving = ref(false)
+const editingExamId = ref<string | null>(null)
+const isEditMode = computed(() => !!editingExamId.value)
+const formRef = ref<FormInstance>()
+const examForm = reactive<{
+  courseId: string | null
   examName: string
-  examNo?: string
+  examNo: string
+  academicYear?: string
+  semester?: string
   examWindow?: [string, string]
   gradingStrategy?: string
   remark?: string
 }>({
+  courseId: null,
   examName: '',
   examNo: '',
+  academicYear: '',
+  semester: undefined,
   examWindow: undefined,
   gradingStrategy: '',
   remark: '',
 })
 
-const createFormRules: Record<string, Rule[]> = {
+const examFormRules: Record<string, Rule[]> = {
+  courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
   examName: [
     { required: true, message: '请输入考试名称', trigger: 'blur' },
     { max: 100, message: '考试名称最多 100 个字符', trigger: 'blur' },
   ],
-  examNo: [{ max: 64, message: '考试编号最多 64 个字符', trigger: 'blur' }],
+  examNo: [
+    { required: true, message: '请输入考试编号', trigger: 'blur' },
+    { max: 64, message: '考试编号最多 64 个字符', trigger: 'blur' },
+  ],
+  academicYear: [
+    {
+      validator: async (): Promise<void> => {
+        const academicYear = examForm.academicYear?.trim()
+        if (!academicYear && !examForm.semester) return
+        if (!academicYear || !examForm.semester) {
+          throw new Error('学年与学期必须同时填写或同时留空')
+        }
+        const match = /^(\d{4})-(\d{4})$/.exec(academicYear)
+        if (!match || Number(match[2]) !== Number(match[1]) + 1) {
+          throw new Error('学年格式应为 2024-2025')
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
+  semester: [
+    {
+      validator: async (): Promise<void> => {
+        const academicYear = examForm.academicYear?.trim()
+        if (!academicYear && !examForm.semester) return
+        if (!academicYear || !examForm.semester) {
+          throw new Error('学年与学期必须同时填写或同时留空')
+        }
+      },
+      trigger: 'change',
+    },
+  ],
+  examWindow: [
+    {
+      validator: async (): Promise<void> => {
+        const [startTime, endTime] = examForm.examWindow ?? []
+        if (!startTime || !endTime) {
+          throw new Error('请选择考试时间窗')
+        }
+      },
+      trigger: 'change',
+    },
+  ],
   gradingStrategy: [{ max: 64, message: '批改策略最多 64 个字符', trigger: 'blur' }],
   remark: [{ max: 500, message: '备注最多 500 个字符', trigger: 'blur' }],
 }
 
-function openCreateModal(): void {
-  createForm.examName = ''
-  createForm.examNo = ''
-  createForm.examWindow = undefined
-  createForm.gradingStrategy = ''
-  createForm.remark = ''
-  createModalOpen.value = true
+function resetExamForm(): void {
+  editingExamId.value = null
+  examForm.courseId = null
+  examForm.examName = ''
+  examForm.examNo = ''
+  examForm.academicYear = ''
+  examForm.semester = undefined
+  examForm.examWindow = undefined
+  examForm.gradingStrategy = ''
+  examForm.remark = ''
+  formRef.value?.clearValidate()
 }
 
-async function handleCreate(): Promise<void> {
-  if (!createFormRef.value) return
+function openCreateModal(): void {
+  resetExamForm()
+  formModalOpen.value = true
+}
+
+function openEditModal(exam: ExamSummaryVO): void {
+  resetExamForm()
+  editingExamId.value = exam.examId
+  examForm.courseId = exam.courseId ?? null
+  examForm.examName = exam.examName
+  examForm.examNo = exam.examNo ?? ''
+  examForm.academicYear = exam.academicYear ?? ''
+  examForm.semester = exam.semester
+  examForm.examWindow = exam.examStartTime && exam.examEndTime
+    ? [exam.examStartTime, exam.examEndTime]
+    : undefined
+  examForm.gradingStrategy = exam.gradingStrategy ?? ''
+  examForm.remark = exam.remark ?? ''
+  formModalOpen.value = true
+}
+
+function buildExamPayload(): ExamCreatePayload {
+  const [startTime, endTime] = examForm.examWindow ?? []
+  if (!examForm.courseId || !startTime || !endTime) {
+    throw new Error('考试课程与时间窗不能为空')
+  }
+  return {
+    courseId: examForm.courseId,
+    examName: examForm.examName.trim(),
+    examNo: examForm.examNo.trim(),
+    academicYear: examForm.academicYear?.trim() || undefined,
+    semester: examForm.semester,
+    examStartTime: startTime,
+    examEndTime: endTime,
+    gradingStrategy: examForm.gradingStrategy?.trim() || undefined,
+    remark: examForm.remark?.trim() || undefined,
+  }
+}
+
+async function handleSave(): Promise<void> {
+  if (!formRef.value) return
   try {
-    await createFormRef.value.validate()
+    await formRef.value.validate()
   } catch {
     return
   }
-  creating.value = true
+  saving.value = true
   try {
-    const [startTime, endTime] = createForm.examWindow ?? []
-    await createExam({
-      examName: createForm.examName.trim(),
-      examNo: createForm.examNo?.trim() || undefined,
-      examStartTime: startTime || undefined,
-      examEndTime: endTime || undefined,
-      gradingStrategy: createForm.gradingStrategy?.trim() || undefined,
-      remark: createForm.remark?.trim() || undefined,
-    })
-    message.success('考试已创建，进入草稿态')
-    createModalOpen.value = false
-    pagination.current = 1
+    const payload = buildExamPayload()
+    if (editingExamId.value) {
+      await updateExam({ examId: editingExamId.value, ...payload })
+      message.success('考试已更新')
+    } else {
+      await createExam(payload)
+      message.success('考试已创建')
+      pagination.current = 1
+    }
+    formModalOpen.value = false
     await Promise.all([loadExams(), loadStatusTotals()])
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '创建考试失败'
+    const errMsg = error instanceof Error ? error.message : '保存考试失败'
     message.error(errMsg)
   } finally {
-    creating.value = false
+    saving.value = false
   }
+}
+
+function confirmDelete(exam: ExamSummaryVO): void {
+  Modal.confirm({
+    title: `删除考试 ${exam.examName}？`,
+    content: '已配置模板、考生、印刷、扫描或成绩的考试会由后端拒绝删除。',
+    okText: '删除',
+    okType: 'danger',
+    cancelText: '取消',
+    async onOk() {
+      await deleteExam({ examId: exam.examId })
+      message.success('考试已删除')
+      if (dataSource.value.length === 1 && (pagination.current ?? 1) > 1) {
+        pagination.current = (pagination.current ?? 1) - 1
+      }
+      await Promise.all([loadExams(), loadStatusTotals()])
+    },
+  })
 }
 
 // 统一刷新入口：列表 + KPI 同步加载，避免顶部计数滞后于列表

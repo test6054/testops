@@ -151,6 +151,19 @@ export interface OrganizationQueryByIdPayload {
   organizationId: string
 }
 
+/** 更新阅卷组织主信息请求 - 对应后端 OrganizationUpdateRequest */
+export interface OrganizationUpdatePayload {
+  organizationId: string
+  leaderUserId: string
+  anonymousMode?: boolean
+  remark?: string
+}
+
+/** 删除阅卷组织请求 - 对应后端 OrganizationDeleteRequest */
+export interface OrganizationDeletePayload {
+  organizationId: string
+}
+
 /** 更新阅卷组织状态请求 - 对应后端 OrganizationStatusUpdateRequest */
 export interface OrganizationStatusUpdatePayload {
   organizationId: string
@@ -160,10 +173,21 @@ export interface OrganizationStatusUpdatePayload {
 /** 保存题目阅卷小组请求 - 对应后端 QuestionGroupSaveRequest */
 export interface QuestionGroupSavePayload {
   organizationId: string
+  groupId?: string
   groupName: string
   questionTemplateIds: string[]
   leaderUserId: string
   reviewerUserIds: string[]
+}
+
+/** 删除题目阅卷小组请求 - 对应后端 QuestionGroupDeleteRequest */
+export interface QuestionGroupDeletePayload {
+  groupId: string
+}
+
+/** 关闭题目阅卷小组请求 - 对应后端 QuestionGroupCloseRequest */
+export interface QuestionGroupClosePayload {
+  groupId: string
 }
 
 /** 保存任务分配策略请求 - 对应后端 AllocationPolicySaveRequest */
@@ -412,6 +436,22 @@ export function getOrganizationById(payload: OrganizationQueryByIdPayload): Prom
 }
 
 /**
+ * 更新阅卷组织主信息。
+ * POST /api/mark/organization/update
+ */
+export function updateOrganization(payload: OrganizationUpdatePayload): Promise<MarkingOrganizationVO> {
+  return http.post<MarkingOrganizationVO>('/api/mark/organization/update', payload)
+}
+
+/**
+ * 删除阅卷组织。
+ * POST /api/mark/organization/delete
+ */
+export function deleteOrganization(payload: OrganizationDeletePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/delete', payload)
+}
+
+/**
  * 更新阅卷组织状态（管理员推进 / 撤销组织阶段）。
  * POST /api/mark/organization/updateStatus
  */
@@ -427,6 +467,22 @@ export function updateOrganizationStatus(payload: OrganizationStatusUpdatePayloa
  */
 export function saveQuestionGroup(payload: QuestionGroupSavePayload): Promise<string> {
   return http.post<string>('/api/mark/organization/group/save', payload)
+}
+
+/**
+ * 删除草稿题目阅卷小组。
+ * POST /api/mark/organization/group/delete
+ */
+export function deleteQuestionGroup(payload: QuestionGroupDeletePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/group/delete', payload)
+}
+
+/**
+ * 关闭题目阅卷小组。
+ * POST /api/mark/organization/group/close
+ */
+export function closeQuestionGroup(payload: QuestionGroupClosePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/organization/group/close', payload)
 }
 
 // ===================== 策略配置 =====================

@@ -119,10 +119,129 @@
             <template #title>
               <RobotOutlined />
               <span>AI 诊断</span>
+              <UiTag v-if="currentAiSourceLabel" :tone="currentAiSourceTone" size="sm">
+                {{ currentAiSourceLabel }}
+              </UiTag>
+              <UiTag v-if="detail?.aiTraceId" tone="gray" size="sm" class="review-workspace__trace">
+                trace {{ detail.aiTraceId }}
+              </UiTag>
+              <UiTag v-if="detail?.aiLimited" tone="orange" size="sm">AI 限流/阻断</UiTag>
+            </template>
+            <template #extra>
+              <a-space>
+                <UiButton
+                  size="sm"
+                  variant="ghost"
+                  :loading="executionsLoading"
+                  :disabled="!detail?.gradeResultId"
+                  @click="openExecutionsDrawer"
+                >
+                  查看 AI 历史
+                </UiButton>
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :disabled="!canRescoreByAi"
+                  :loading="rescoring"
+                  @click="openRescoreConfirm"
+                >
+                  <template #icon><RobotOutlined /></template>
+                  重新生成 AI 复评
+                </UiButton>
+              </a-space>
             </template>
             <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 诊断信息" />
             <pre v-else class="review-workspace__code-block">{{ detail.aiDiagnostic }}</pre>
+            <UiAlertStrip
+              v-if="!canRescoreByAi && detail?.gradeResultId"
+              tone="info"
+              :title="rescoreBlockReason || '当前状态不允许重新生成 AI 复评'"
+              description="仅 PENDING / IN_PROGRESS 状态的复核任务在教师异议时可以重新调用单题 AI 复评。"
+              dense
+            />
+            <div class="review-workspace__ai-actions">
+              <UiButton
+                size="sm"
+                variant="primary"
+                :disabled="!canAdoptAiSuggestion"
+                @click="adoptAiSuggestion"
+              >
+                采纳 AI 建议 ({{ detail?.suggestedScore ?? '-' }} 分)
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="ghost"
+                :disabled="!canConfirm"
+                @click="clearAiSuggestionToManual"
+              >
+                清空建议改人工
+              </UiButton>
+              <span class="review-workspace__ai-actions-hint">
+                采纳后表单中 finalScore 会填为 AI 建议分；最终分仍需点击提交批改才写入。
+              </span>
+            </div>
           </UiCard>
+
+          <!-- AI 历次执行记录抽屉：教师异议决策时提供完整审计证据 -->
+          <a-drawer
+            v-model:open="executionsDrawerOpen"
+            title="本题 AI 历次执行记录"
+            width="720"
+            placement="right"
+            :closable="true"
+            destroy-on-close
+          >
+            <a-spin :spinning="executionsLoading" tip="加载 AI 历史...">
+              <UiAlertStrip
+                v-if="executionsLoadError"
+                tone="error"
+                title="AI 执行记录加载失败"
+                :description="executionsLoadError"
+                dense
+              />
+              <UiEmpty
+                v-else-if="!executionsLoading && aiExecutions.length === 0"
+                description="本题还未产生 AI 执行记录"
+              />
+              <a-timeline v-else>
+                <a-timeline-item
+                  v-for="(item, index) in aiExecutions"
+                  :key="`${item.traceId}-${index}`"
+                  :color="timelineColor(item.status)"
+                >
+                  <div class="review-workspace__execution-item">
+                    <div class="review-workspace__execution-meta">
+                      <UiTag :tone="abilityTone(item.abilityCode)" size="sm">
+                        {{ abilityLabel(item.abilityCode) }}
+                      </UiTag>
+                      <UiTag :tone="statusTone(item.status)" size="sm">
+                        {{ statusLabel(item.status) }}
+                      </UiTag>
+                      <span class="review-workspace__execution-time">
+                        {{ formatTime(item.createTime) }}
+                      </span>
+                      <span v-if="item.latencyMs != null" class="review-workspace__execution-latency">
+                        耗时 {{ item.latencyMs }} ms
+                      </span>
+                    </div>
+                    <div v-if="item.traceId" class="review-workspace__execution-trace">
+                      trace: {{ item.traceId }}
+                    </div>
+                    <div v-if="item.modelName" class="review-workspace__execution-model">
+                      模型：{{ item.modelName }}
+                      <span v-if="item.providerType"> / {{ item.providerType }}</span>
+                    </div>
+                    <div v-if="item.diagnostic" class="review-workspace__execution-diag">
+                      <strong>诊断：</strong>{{ item.diagnostic }}
+                    </div>
+                    <div v-if="item.responseSummary" class="review-workspace__execution-summary">
+                      <strong>响应摘要：</strong>{{ item.responseSummary }}
+                    </div>
+                  </div>
+                </a-timeline-item>
+              </a-timeline>
+            </a-spin>
+          </a-drawer>
 
           <!-- B-1 题目质量参考：注入题目难度/区分度/分布，辅助评分尺度 -->
           <UiCard class="review-workspace__card">
@@ -335,12 +454,24 @@ import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import type {
+  AiAbilityCode,
+  AiExecutionStatusCode,
+  ExamQuestionAiExecutionItemVO,
+} from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
+  AI_ABILITY_LABEL,
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_LABEL,
+  AI_EXECUTION_STATUS_TONE,
   claimReviewTask,
   confirmQuestionGrade,
   getReviewTaskDetail,
+  listAiExecutionsForQuestion,
   listAnnotations,
   listReviewTasks,
+  rescoreQuestionByAi,
 } from '@/apis/mark/exam'
 import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
 import {
@@ -669,6 +800,182 @@ const gradeFormRules: Record<string, Rule[]> = {
 }
 
 const submitting = ref(false)
+
+// 单题 AI 复评状态：17B 文档设定仅在教师异议阶段允许调用，服务端守门 CONFIRMED 不可复评
+const rescoring = ref(false)
+
+/** 复评可用不可用的原因，用于异议阶段以外状态提示教师 */
+const rescoreBlockReason = computed<string>(() => {
+  if (!detail.value?.gradeResultId) return '复核任务尚未载入题目批改结果'
+  if (detail.value.status === 'APPROVED' || detail.value.status === 'REJECTED') {
+    return '任务已关闭，禁止重新生成 AI 复评'
+  }
+  return ''
+})
+
+/** 是否可以调用单题 AI 复评，需同时满足：存在 gradeResultId、状态为 PENDING/IN_PROGRESS、未提交中 */
+const canRescoreByAi = computed<boolean>(() => {
+  if (rescoring.value || submitting.value) return false
+  if (!examId.value) return false
+  if (!detail.value?.gradeResultId) return false
+  return detail.value.status === 'PENDING' || detail.value.status === 'IN_PROGRESS'
+})
+
+/**
+ * 二次确认 → 调用 rescoreQuestionByAi → 成功后 loadTask 刷新详情。
+ * 后端只会重写 suggestedScore / aiTraceId / aiDiagnostic / aiLimited 等辅助字段，
+ * gradeStatus 保持 NEED_REVIEW、finalScore 置空；最终分仍需教师确认入口写入。
+ */
+function openRescoreConfirm(): void {
+  if (!canRescoreByAi.value) return
+  void confirmAsync({
+    title: '重新生成单题 AI 复评？',
+    content: '后端会重新调用单题 AI 评分服务。复评仅覆盖 AI 建议分、 trace 与诊断信息，不会写入最终得分。',
+    type: 'info',
+    okText: '调用 AI 复评',
+    cancelText: '取消',
+    onOk: () => doRescoreByAi(),
+  })
+}
+
+/** 实际发起调用，成功后由 loadTask 重拉全量详情以同步重写后的 suggestedScore / aiDiagnostic */
+async function doRescoreByAi(): Promise<void> {
+  if (!canRescoreByAi.value || !examId.value || !detail.value?.gradeResultId) return
+  rescoring.value = true
+  try {
+    const result = await rescoreQuestionByAi({
+      examId: examId.value,
+      gradeResultId: detail.value.gradeResultId,
+    })
+    if (Boolean(result.suggested) && result.suggestedScore != null) {
+      message.success(`AI 复评完成，建议得分 ${result.suggestedScore}`)
+    } else {
+      message.warning(
+        result.diagnostic || 'AI 未产出可复核建议，请人工复核',
+      )
+    }
+    await loadTask()
+    if (executionsDrawerOpen.value) {
+      void loadAiExecutions()
+    }
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : 'AI 复评调用失败'
+    message.error(errMsg)
+  } finally {
+    rescoring.value = false
+  }
+}
+
+// ─── AI 建议采纳 / 清空 / 历史折街分支 ──────────────────────────────
+
+/** 当前 AI 建议来源文案：凭 trace 前缀识别整卷 AI 还是单题复评 */
+const currentAiSourceLabel = computed<string>(() => {
+  const traceId = detail.value?.aiTraceId
+  if (!traceId) return ''
+  if (traceId.startsWith('MARK_PAPER_GRADE_AI')) return AI_ABILITY_LABEL.PAPER_GRADE_SUGGESTION
+  if (traceId.startsWith('MARK_SUBJECTIVE_AI')) return AI_ABILITY_LABEL.SUBJECTIVE_GRADE_SUGGESTION
+  return 'AI 建议'
+})
+
+/** 当前 AI 建议来源色调，与 currentAiSourceLabel 保持一致区分 */
+const currentAiSourceTone = computed<BadgeTone>(() => {
+  const traceId = detail.value?.aiTraceId
+  if (!traceId) return 'gray'
+  if (traceId.startsWith('MARK_PAPER_GRADE_AI')) return AI_ABILITY_TONE.PAPER_GRADE_SUGGESTION
+  if (traceId.startsWith('MARK_SUBJECTIVE_AI')) return AI_ABILITY_TONE.SUBJECTIVE_GRADE_SUGGESTION
+  return 'gray'
+})
+
+/** 是否可采纳 AI 建议分：同时要求任务可提交、存在建议分 */
+const canAdoptAiSuggestion = computed<boolean>(() => {
+  if (!canConfirm.value) return false
+  return detail.value?.suggestedScore != null
+})
+
+/** 一键采纳当前 AI 建议分到最终得分表单，并重走表1 校验 */
+function adoptAiSuggestion(): void {
+  if (!canAdoptAiSuggestion.value) return
+  const suggested = detail.value?.suggestedScore
+  if (suggested == null) return
+  gradeForm.finalScore = suggested
+  void gradeFormRef.value?.validateFields(['finalScore'])
+  message.success(`已采纳 AI 建议分 ${suggested}，请点击提交批改完成确认`)
+}
+
+/** 清空 AI 建议分转人工评分，仅重置表单不会反向写库 */
+function clearAiSuggestionToManual(): void {
+  gradeForm.finalScore = undefined
+  message.info('已清空建议分，请按题目原则手工输入最终得分')
+}
+
+// AI 历史执行记录抽屉状态
+const executionsDrawerOpen = ref<boolean>(false)
+const executionsLoading = ref<boolean>(false)
+const executionsLoadError = ref<string>('')
+const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
+
+/** 打开抽屉后拉取历史记录 */
+function openExecutionsDrawer(): void {
+  if (!detail.value?.gradeResultId || !examId.value) return
+  executionsDrawerOpen.value = true
+  void loadAiExecutions()
+}
+
+async function loadAiExecutions(): Promise<void> {
+  if (!examId.value || !detail.value?.gradeResultId) return
+  executionsLoading.value = true
+  executionsLoadError.value = ''
+  try {
+    aiExecutions.value = await listAiExecutionsForQuestion({
+      examId: examId.value,
+      gradeResultId: detail.value.gradeResultId,
+    })
+  } catch (error) {
+    executionsLoadError.value
+      = error instanceof Error ? error.message : 'AI 历史加载失败'
+    aiExecutions.value = []
+  } finally {
+    executionsLoading.value = false
+  }
+}
+
+/** 能力编码 -> 来源文案 */
+function abilityLabel(code?: AiAbilityCode): string {
+  if (!code) return 'AI'
+  return AI_ABILITY_LABEL[code] ?? code
+}
+
+/** 能力编码 -> 来源色调 */
+function abilityTone(code?: AiAbilityCode): BadgeTone {
+  if (!code) return 'gray'
+  return AI_ABILITY_TONE[code] ?? 'gray'
+}
+
+/** 状态编码 -> 文案 */
+function statusLabel(status?: AiExecutionStatusCode): string {
+  if (!status) return '-'
+  return AI_EXECUTION_STATUS_LABEL[status] ?? status
+}
+
+/** 状态编码 -> 色调 */
+function statusTone(status?: AiExecutionStatusCode): BadgeTone {
+  if (!status) return 'gray'
+  return AI_EXECUTION_STATUS_TONE[status] ?? 'gray'
+}
+
+/** 时间线节点色彩，与状态一致 */
+function timelineColor(status?: AiExecutionStatusCode): string {
+  switch (status) {
+    case 'SUCCESS':
+      return 'green'
+    case 'BLOCKED':
+      return 'orange'
+    case 'FAILED':
+      return 'red'
+    default:
+      return 'gray'
+  }
+}
 
 /**
  * 确认提交：先走表单校验，再弹出二次确认 modal（防误提）。
@@ -1006,6 +1313,64 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  &__trace {
+    font-family: 'Monaco', 'Menlo', Consolas, monospace;
+  }
+
+  &__ai-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--dp-border, #e2e8f0);
+  }
+
+  &__ai-actions-hint {
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+    margin-left: 8px;
+  }
+
+  &__execution-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__execution-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__execution-time {
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__execution-latency {
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+  }
+
+  &__execution-trace {
+    font-family: 'Monaco', 'Menlo', Consolas, monospace;
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
+    word-break: break-all;
+  }
+
+  &__execution-model,
+  &__execution-diag,
+  &__execution-summary {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
   }
 }
 </style>

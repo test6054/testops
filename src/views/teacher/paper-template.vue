@@ -263,6 +263,9 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
+                <a-button type="link" size="small" @click="openStemModal(index)">
+                  {{ questions[index].questionStem ? '编辑题干' : '录入题干' }}
+                </a-button>
                 <a-button
                   type="link"
                   size="small"
@@ -303,15 +306,20 @@
           v-model:value="answerForm.standardAnswer"
           :rows="3"
           :maxlength="2000"
-          placeholder="客观题填写选项（如 A / AB / 1 / 0），主观题填写参考答案要点"
+          :placeholder="standardAnswerPlaceholder"
           show-count
         />
       </a-form-item>
-      <a-form-item v-if="answerContext.questionType === 'OBJECTIVE'" label="比较策略">
-        <a-input
+      <a-form-item
+        v-if="answerContext.questionType === 'OBJECTIVE'"
+        label="比较策略"
+        name="comparePolicy"
+      >
+        <a-select
           v-model:value="answerForm.comparePolicy"
-          placeholder="如 EQUALS / IGNORE_ORDER / NUMERIC_TOLERANCE，留空使用默认"
-          :maxlength="64"
+          :options="OBJECTIVE_COMPARE_POLICY_OPTIONS"
+          placeholder="选择客观题评分策略（必选）"
+          allow-clear
         />
       </a-form-item>
       <a-form-item label="答案解析">
@@ -345,6 +353,30 @@
       </a-form-item>
     </a-form>
   </a-modal>
+
+  <a-modal
+    v-model:open="stemModalOpen"
+    title="录入题干"
+    :destroy-on-close="true"
+    :mask-closable="false"
+    width="640px"
+    @ok="handleSaveStem"
+  >
+    <a-alert
+      type="info"
+      show-icon
+      message="题干用于 AI 评分上下文圈定"
+      description="教师在制卷阶段录入；保存后随顶部「保存模板」一同落库。AI 评分链路缺失题干时按 QUESTION_CONTEXT_MISSING 阻断。"
+      style="margin-bottom: 12px"
+    />
+    <a-textarea
+      v-model:value="stemDraft"
+      :rows="8"
+      :maxlength="4000"
+      placeholder="请录入完整题干（含选项、图表说明等关键上下文）；多空题请保留空格占位以便 OCR 识别"
+      show-count
+    />
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
@@ -365,7 +397,13 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
-import { getExamTemplate, saveExamTemplate, saveStandardAnswer } from '@/apis/mark/exam'
+import {
+  getExamTemplate,
+  saveExamTemplate,
+  saveStandardAnswer,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  type ObjectiveComparePolicyCode,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -411,6 +449,8 @@ interface QuestionRow {
   width?: number
   height?: number
   sortNo?: number
+  /** 题干文本：AI 评分上下文圈定。 */
+  questionStem?: string
 }
 
 const QUESTION_TYPE_LABEL: Record<string, string> = {
@@ -506,6 +546,7 @@ function applyTemplate(
       width: q.width,
       height: q.height,
       sortNo: q.sortNo,
+      questionStem: q.questionStem,
     })
   })
 }
@@ -688,6 +729,7 @@ function buildQuestionsPayload(): ExamQuestionTemplatePayload[] | null {
       width: row.width ?? undefined,
       height: row.height ?? undefined,
       sortNo: row.sortNo,
+      questionStem: row.questionStem?.trim() || undefined,
     })
   }
   return payload
@@ -744,24 +786,96 @@ const answerContext = reactive<AnswerContext>({
 })
 const answerForm = reactive<{
   standardAnswer: string
-  comparePolicy?: string
+  comparePolicy?: ObjectiveComparePolicyCode
   answerExplain?: string
   aiHint?: string
   answerPayload?: string
   effectiveNow: boolean
 }>({
   standardAnswer: '',
-  comparePolicy: '',
+  comparePolicy: undefined,
   answerExplain: '',
   aiHint: '',
   answerPayload: '',
   effectiveNow: true,
 })
+
+/**
+ * 标答输入框的占位提示。客观题 AI_GRADE 策略下允许不填标答，由 AI 评分给出建议得分后老师审核。
+ */
+const standardAnswerPlaceholder = computed(() => {
+  if (
+    answerContext.questionType === 'OBJECTIVE'
+    && answerForm.comparePolicy === 'AI_GRADE'
+  ) {
+    return '客观题 AI 评分策略下可不填标答；AI 会依据考试上下文给出建议得分，老师审核后生效'
+  }
+  return '客观题填写选项（如 A / AB / 1 / 0），主观题填写参考答案要点'
+})
+
 const answerFormRules: Record<string, Rule[]> = {
   standardAnswer: [
-    { required: true, message: '请填写标准答案', trigger: 'blur' },
-    { max: 2000, message: '标准答案最多 2000 个字符', trigger: 'blur' },
+    {
+      validator: async (_rule: Rule, value: string) => {
+        const trimmed = (value ?? '').trim()
+        if (
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy !== 'AI_GRADE'
+          && !trimmed
+        ) {
+          return Promise.reject(new Error('客观题需填写标准答案（选 AI 评分策略可留空）'))
+        }
+        if (trimmed.length > 2000) {
+          return Promise.reject(new Error('标准答案最多 2000 个字符'))
+        }
+        return Promise.resolve()
+      },
+      trigger: 'blur',
+    },
   ],
+  comparePolicy: [
+    {
+      validator: async (_rule: Rule, value: string) => {
+        if (answerContext.questionType === 'OBJECTIVE' && !value) {
+          return Promise.reject(new Error('请选择客观题比较策略'))
+        }
+        return Promise.resolve()
+      },
+      trigger: 'change',
+    },
+  ],
+}
+
+/**
+ * 题干编辑 modal 状态。题干在制卷阶段录入后随试卷模板一同保存，所以本 modal 只写内存，
+ * 不调用独立 API；老师保存后需点顶部“保存模板”全量落库。
+ */
+const stemModalOpen = ref(false)
+const stemEditingIndex = ref<number | null>(null)
+const stemDraft = ref('')
+
+function openStemModal(index: number): void {
+  if (index < 0 || index >= questions.length) return
+  stemEditingIndex.value = index
+  stemDraft.value = questions[index].questionStem ?? ''
+  stemModalOpen.value = true
+}
+
+function handleSaveStem(): void {
+  const idx = stemEditingIndex.value
+  if (idx == null) {
+    stemModalOpen.value = false
+    return
+  }
+  const trimmed = stemDraft.value.trim()
+  if (trimmed.length > 4000) {
+    message.error('题干最多 4000 个字符')
+    return
+  }
+  questions[idx].questionStem = trimmed || undefined
+  stemModalOpen.value = false
+  stemEditingIndex.value = null
+  message.success('题干已暂存，请点顶部“保存模板”提交落库')
 }
 
 // 入参就是表格 data-source（QuestionRow[]）中的真实视图模型，不是后端 ExamQuestionTemplateVO。
@@ -774,7 +888,7 @@ function openAnswerModal(row: QuestionRow): void {
   answerContext.questionNo = row.questionNo
   answerContext.questionType = row.questionType
   answerForm.standardAnswer = ''
-  answerForm.comparePolicy = ''
+  answerForm.comparePolicy = undefined
   answerForm.answerExplain = ''
   answerForm.aiHint = ''
   answerForm.answerPayload = ''
@@ -792,11 +906,12 @@ async function handleSaveAnswer(): Promise<void> {
   }
   answerSaving.value = true
   try {
+    const trimmedAnswer = answerForm.standardAnswer.trim()
     await saveStandardAnswer({
       examId: selectedExamId.value,
       questionTemplateId: answerContext.questionTemplateId,
-      standardAnswer: answerForm.standardAnswer.trim(),
-      comparePolicy: answerForm.comparePolicy?.trim() || undefined,
+      standardAnswer: trimmedAnswer || undefined,
+      comparePolicy: answerForm.comparePolicy,
       answerExplain: answerForm.answerExplain?.trim() || undefined,
       aiHint: answerForm.aiHint?.trim() || undefined,
       answerPayload: answerForm.answerPayload?.trim() || undefined,

@@ -20,6 +20,21 @@
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadOrganization">
             刷新
           </UiButton>
+          <UiButton v-if="organization" variant="outline" size="sm" @click="openEditDrawer">
+            编辑组织
+          </UiButton>
+          <a-popconfirm
+            v-if="organization"
+            title="确认删除该阅卷组织？"
+            ok-text="删除"
+            cancel-text="取消"
+            :ok-button-props="{ danger: true, loading: deleting }"
+            @confirm="submitDelete"
+          >
+            <UiButton variant="outline" size="sm" status="danger" :loading="deleting">
+              删除组织
+            </UiButton>
+          </a-popconfirm>
           <UiButton variant="primary" size="sm" @click="goSessions"> 试评 / 正评 </UiButton>
         </div>
       </div>
@@ -100,29 +115,74 @@
               :total="groups.length"
               class="group-table"
             >
-              <template #bodyCell="{ column, index }">
+              <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'groupName'">
                   <a-typography-text strong>
-                    {{ groups[index].groupName || '-' }}
+                    {{ record.groupName || '-' }}
                   </a-typography-text>
                 </template>
                 <template v-else-if="column.key === 'questionTemplateIds'">
                   <UiTag tone="blue" size="sm">
-                    {{ groups[index].questionTemplateIds?.length ?? 0 }} 题
+                    {{ record.questionTemplateIds?.length ?? 0 }} 题
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'reviewerUserIds'">
                   <UiTag tone="purple" size="sm">
-                    {{ groups[index].reviewerUserIds?.length ?? 0 }} 人
+                    {{ record.reviewerUserIds?.length ?? 0 }} 人
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'groupStatus'">
-                  <UiTag :tone="groupStatusTone(groups[index].groupStatus)" size="sm">
-                    {{ groupStatusLabel(groups[index].groupStatus) }}
+                  <UiTag :tone="groupStatusTone(record.groupStatus)" size="sm">
+                    {{ groupStatusLabel(record.groupStatus) }}
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'createTime'">
-                  {{ formatTime(groups[index].createTime) }}
+                  {{ formatTime(record.createTime) }}
+                </template>
+                <template v-else-if="column.key === 'action'">
+                  <a-space size="small">
+                    <UiButton
+                      v-if="canEditGroup(record)"
+                      variant="outline"
+                      size="sm"
+                      @click="openGroupEdit(record)"
+                    >
+                      编辑
+                    </UiButton>
+                    <a-popconfirm
+                      v-if="canDeleteGroup(record)"
+                      title="确认删除该题组？"
+                      ok-text="删除"
+                      cancel-text="取消"
+                      :ok-button-props="{ danger: true, loading: groupActionLoadingId === record.id }"
+                      @confirm="submitGroupDelete(record)"
+                    >
+                      <UiButton
+                        variant="outline"
+                        size="sm"
+                        status="danger"
+                        :loading="groupActionLoadingId === record.id"
+                      >
+                        删除
+                      </UiButton>
+                    </a-popconfirm>
+                    <a-popconfirm
+                      v-if="canCloseGroup(record)"
+                      title="确认关闭该题组？"
+                      ok-text="关闭"
+                      cancel-text="取消"
+                      :ok-button-props="{ loading: groupActionLoadingId === record.id }"
+                      @confirm="submitGroupClose(record)"
+                    >
+                      <UiButton
+                        variant="outline"
+                        size="sm"
+                        :loading="groupActionLoadingId === record.id"
+                      >
+                        关闭
+                      </UiButton>
+                    </a-popconfirm>
+                  </a-space>
                 </template>
               </template>
             </UiDataTable>
@@ -266,7 +326,7 @@
 
     <a-modal
       v-model:open="groupModalOpen"
-      title="新建题组"
+      :title="groupModalTitle"
       :confirm-loading="savingGroup"
       ok-text="提交"
       cancel-text="取消"
@@ -315,6 +375,46 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <UiDrawer
+      :open="editDrawerOpen"
+      title="编辑阅卷组织"
+      :width="520"
+      :confirm-loading="updating"
+      @update:open="(v: boolean) => (editDrawerOpen = v)"
+      @close="editDrawerOpen = false"
+      @ok="submitUpdate"
+    >
+      <a-form ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
+        <a-form-item label="组织ID">
+          <a-input :value="organization?.id" disabled />
+        </a-form-item>
+        <a-form-item label="阅卷组长" name="leaderUserId" required>
+          <a-select
+            v-model:value="editForm.leaderUserId"
+            placeholder="选择组长（仅教师）"
+            show-search
+            option-filter-prop="label"
+            :options="teacherOptions"
+            :loading="teacherLoading"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
+          <a-switch v-model:checked="editForm.anonymousMode" />
+          <span class="org-detail__switch-hint">启用后阅卷教师不可见考生身份</span>
+        </a-form-item>
+        <a-form-item label="备注" name="remark">
+          <a-textarea
+            v-model:value="editForm.remark"
+            :rows="3"
+            :maxlength="200"
+            placeholder="可选，记录组织目的 / 范围"
+            show-count
+          />
+        </a-form-item>
+      </a-form>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -329,6 +429,7 @@ import type {
   MarkingOrganizationStatusCode,
   MarkingOrganizationVO,
   MarkingReassignModeCode,
+  OrganizationUpdatePayload,
   QuestionGroupSavePayload,
   QuestionMarkingGroupStatusCode,
   QuestionMarkingGroupVO,
@@ -346,6 +447,9 @@ import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { getExamTemplate } from '@/apis/mark/exam'
 import {
   ANONYMOUS_TOKEN_POLICY_LABEL,
+  closeQuestionGroup,
+  deleteQuestionGroup,
+  deleteOrganization,
   getOrganizationById,
   MARKING_ALLOCATION_MODE_LABEL,
   MARKING_ORGANIZATION_STATUS_LABEL,
@@ -356,9 +460,10 @@ import {
   saveAllocationPolicy,
   saveQuestionGroup,
   saveRecyclePolicy,
+  updateOrganization,
   updateOrganizationStatus,
 } from '@/apis/mark/marking-organization'
-import { UiButton, UiDataTable, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
@@ -376,6 +481,28 @@ const organizationLoadError = ref<unknown>(null)
 const activeTab = ref<'info' | 'policy' | 'status'>('info')
 
 const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
+
+const editDrawerOpen = ref(false)
+const updating = ref(false)
+const deleting = ref(false)
+const editFormRef = ref<FormInstance>()
+
+interface EditForm {
+  leaderUserId?: string
+  anonymousMode: boolean
+  remark?: string
+}
+
+const editForm = reactive<EditForm>({
+  leaderUserId: undefined,
+  anonymousMode: true,
+  remark: '',
+})
+
+const editRules: Record<string, Rule[]> = {
+  leaderUserId: [{ required: true, message: '请选择阅卷组长', trigger: 'change' }],
+  remark: [{ max: 200, message: '备注最多 200 字', trigger: 'blur' }],
+}
 
 async function loadOrganization(): Promise<void> {
   if (!organizationId.value) {
@@ -405,6 +532,7 @@ const groupColumns: ColumnType<QuestionMarkingGroupVO>[] = [
   { title: '组长ID', key: 'leaderUserId', dataIndex: 'leaderUserId', width: 140 },
   { title: '状态', key: 'groupStatus', width: 100 },
   { title: '创建时间', key: 'createTime', width: 170 },
+  { title: '操作', key: 'action', width: 220 },
 ]
 
 const teacherList = ref<UserListItemDto[]>([])
@@ -463,6 +591,7 @@ const savingGroup = ref(false)
 const groupFormRef = ref<FormInstance>()
 
 interface GroupForm {
+  groupId?: string
   groupName: string
   leaderUserId?: string
   questionTemplateIds: string[]
@@ -470,11 +599,14 @@ interface GroupForm {
 }
 
 const groupForm = reactive<GroupForm>({
+  groupId: undefined,
   groupName: '',
   leaderUserId: undefined,
   questionTemplateIds: [],
   reviewerUserIds: [],
 })
+const groupModalTitle = computed(() => (groupForm.groupId ? '编辑题组' : '新建题组'))
+const groupActionLoadingId = ref<string>()
 
 const groupRules: Record<string, Rule[]> = {
   groupName: [
@@ -497,10 +629,22 @@ const groupRules: Record<string, Rule[]> = {
 }
 
 function openGroupModal(): void {
+  groupForm.groupId = undefined
   groupForm.groupName = ''
   groupForm.leaderUserId = undefined
   groupForm.questionTemplateIds = []
   groupForm.reviewerUserIds = []
+  groupModalOpen.value = true
+  void loadTeachers()
+  void loadQuestionTemplates()
+}
+
+function openGroupEdit(record: QuestionMarkingGroupVO): void {
+  groupForm.groupId = record.id
+  groupForm.groupName = record.groupName || ''
+  groupForm.leaderUserId = record.leaderUserId
+  groupForm.questionTemplateIds = [...(record.questionTemplateIds ?? [])]
+  groupForm.reviewerUserIds = [...(record.reviewerUserIds ?? [])]
   groupModalOpen.value = true
   void loadTeachers()
   void loadQuestionTemplates()
@@ -517,20 +661,112 @@ async function submitGroup(): Promise<void> {
   try {
     const payload: QuestionGroupSavePayload = {
       organizationId: organizationId.value,
+      groupId: groupForm.groupId,
       groupName: groupForm.groupName,
       leaderUserId: groupForm.leaderUserId!,
       questionTemplateIds: groupForm.questionTemplateIds,
       reviewerUserIds: groupForm.reviewerUserIds,
     }
     await saveQuestionGroup(payload)
-    message.success('题组已创建')
+    message.success(groupForm.groupId ? '题组已更新' : '题组已创建')
     groupModalOpen.value = false
     await loadOrganization()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '创建题组失败'
+    const fallback = groupForm.groupId ? '更新题组失败' : '创建题组失败'
+    const errMsg = error instanceof Error ? error.message : fallback
     message.error(errMsg)
   } finally {
     savingGroup.value = false
+  }
+}
+
+function canEditGroup(record: QuestionMarkingGroupVO): boolean {
+  return record.groupStatus !== 'GROUP_CLOSED'
+}
+
+function canDeleteGroup(record: QuestionMarkingGroupVO): boolean {
+  return record.groupStatus === 'GROUP_DRAFT'
+}
+
+function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
+  return record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED'
+}
+
+async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> {
+  groupActionLoadingId.value = record.id
+  try {
+    await deleteQuestionGroup({ groupId: record.id })
+    message.success('题组已删除')
+    await loadOrganization()
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '删除题组失败'
+    message.error(errMsg)
+  } finally {
+    groupActionLoadingId.value = undefined
+  }
+}
+
+async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
+  groupActionLoadingId.value = record.id
+  try {
+    await closeQuestionGroup({ groupId: record.id })
+    message.success('题组已关闭')
+    await loadOrganization()
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '关闭题组失败'
+    message.error(errMsg)
+  } finally {
+    groupActionLoadingId.value = undefined
+  }
+}
+
+function openEditDrawer(): void {
+  if (!organization.value) return
+  editForm.leaderUserId = organization.value.leaderUserId
+  editForm.anonymousMode = Boolean(organization.value.anonymousMode)
+  editForm.remark = organization.value.remark || ''
+  editDrawerOpen.value = true
+  void loadTeachers()
+}
+
+async function submitUpdate(): Promise<void> {
+  if (!organization.value || !editFormRef.value) return
+  try {
+    await editFormRef.value.validate()
+  } catch {
+    return
+  }
+  updating.value = true
+  try {
+    const payload: OrganizationUpdatePayload = {
+      organizationId: organization.value.id,
+      leaderUserId: editForm.leaderUserId!,
+      anonymousMode: editForm.anonymousMode,
+      remark: editForm.remark?.trim() || undefined,
+    }
+    organization.value = await updateOrganization(payload)
+    message.success('阅卷组织已更新')
+    editDrawerOpen.value = false
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '更新阅卷组织失败'
+    message.error(errMsg)
+  } finally {
+    updating.value = false
+  }
+}
+
+async function submitDelete(): Promise<void> {
+  if (!organization.value) return
+  deleting.value = true
+  try {
+    await deleteOrganization({ organizationId: organization.value.id })
+    message.success('阅卷组织已删除')
+    await router.push({ name: 'AdminMarkingOrganizationIndex' })
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '删除阅卷组织失败'
+    message.error(errMsg)
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -628,8 +864,7 @@ const targetStatus = ref<MarkingOrganizationStatusCode | undefined>(undefined)
 const updatingStatus = ref(false)
 
 /**
- * 阅卷组织状态推进流转，与后端 OrganizationStatus enum 业务语义一致。
- * 后端 updateOrganizationStatus 未限制状态机，前端按业务阶段顺序推进可选项。
+ * 阅卷组织状态推进流转，与后端 OrganizationStatus 业务状态机保持一致。
  */
 const STATUS_TRANSITIONS: Record<MarkingOrganizationStatusCode, MarkingOrganizationStatusCode[]> = {
   ORG_DRAFT: ['ORG_CONFIGURED'],
@@ -736,6 +971,12 @@ onMounted(loadOrganization)
 
   &__empty {
     padding: 48px 0;
+  }
+
+  &__switch-hint {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
   }
 }
 

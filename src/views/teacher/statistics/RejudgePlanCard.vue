@@ -54,21 +54,65 @@
           {{ fmt(rows[index].createTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <a-popconfirm title="确认审批通过？" @confirm="handleApprove(rows[index].id)">
+          <a-space>
+            <a-popconfirm
+              title="确认审批通过？"
+              :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
+              @confirm="handleApprove(rows[index].id)"
+            >
+              <a-button
+                type="link"
+                size="small"
+                :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
+                :loading="operatingId === rows[index].id && operatingAction === 'approve'"
+              >
+                通过
+              </a-button>
+            </a-popconfirm>
             <a-button
               type="link"
+              danger
               size="small"
-              :disabled="
-                rows[index].planStatus !== 'DRAFT' && rows[index].planStatus !== 'PENDING_APPROVAL'
-              "
-              :loading="approvingId === rows[index].id"
+              :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
+              :loading="operatingId === rows[index].id && operatingAction === 'reject'"
+              @click="openRejectModal(rows[index].id)"
             >
-              审批通过
+              驳回
             </a-button>
-          </a-popconfirm>
+            <a-popconfirm
+              title="确认执行重判？执行后会重算受影响题目成绩与考试统计。"
+              :disabled="rows[index].planStatus !== 'APPROVED'"
+              @confirm="handleExecute(rows[index].id)"
+            >
+              <a-button
+                type="link"
+                size="small"
+                :disabled="rows[index].planStatus !== 'APPROVED'"
+                :loading="operatingId === rows[index].id && operatingAction === 'execute'"
+              >
+                执行
+              </a-button>
+            </a-popconfirm>
+          </a-space>
         </template>
       </template>
     </UiDataTable>
+    <a-modal
+      v-model:open="rejectModalOpen"
+      title="驳回重判计划"
+      ok-text="确认驳回"
+      cancel-text="取消"
+      :confirm-loading="operatingAction === 'reject'"
+      @ok="handleReject"
+    >
+      <a-textarea
+        v-model:value="rejectReason"
+        :maxlength="500"
+        :rows="4"
+        show-count
+        placeholder="请输入驳回原因"
+      />
+    </a-modal>
   </a-card>
 </template>
 
@@ -86,6 +130,7 @@ import dayjs from 'dayjs'
 import { ref, watch } from 'vue'
 import {
   approveRejudgePlan,
+  executeRejudgePlan,
   listRejudgePlans,
   REJUDGE_PLAN_STATUS_COLOR,
   REJUDGE_PLAN_STATUS_LABEL,
@@ -102,7 +147,11 @@ const loading = ref(false)
 // D-9 错误态：重判计划加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<unknown>(null)
 const statusFilter = ref<RejudgePlanStatusCode | undefined>(undefined)
-const approvingId = ref<string>('')
+const operatingId = ref<string>('')
+const operatingAction = ref<'approve' | 'reject' | 'execute' | ''>('')
+const rejectModalOpen = ref(false)
+const rejectPlanId = ref<string>('')
+const rejectReason = ref('')
 
 // 从后端枚举 LABEL 对象直接派生 select options。
 const statusOptions = Object.entries(REJUDGE_PLAN_STATUS_LABEL).map(([value, label]) => ({
@@ -125,7 +174,7 @@ const columns: ColumnType<ExamRejudgePlanVO>[] = [
   { title: '审批时间', key: 'approvedTime', width: 160 },
   { title: '执行时间', key: 'executedTime', width: 160 },
   { title: '创建时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'actions', width: 110, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
 
 async function reload(): Promise<void> {
@@ -147,15 +196,60 @@ async function reload(): Promise<void> {
 }
 
 async function handleApprove(planId: string): Promise<void> {
-  approvingId.value = planId
+  operatingId.value = planId
+  operatingAction.value = 'approve'
   try {
-    await approveRejudgePlan(planId)
+    await approveRejudgePlan({ planId, approved: true })
     message.success('已审批')
     await reload()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '审批失败')
   } finally {
-    approvingId.value = ''
+    operatingId.value = ''
+    operatingAction.value = ''
+  }
+}
+
+function openRejectModal(planId: string): void {
+  rejectPlanId.value = planId
+  rejectReason.value = ''
+  rejectModalOpen.value = true
+}
+
+async function handleReject(): Promise<void> {
+  const reason = rejectReason.value.trim()
+  if (!reason) {
+    message.warning('请输入驳回原因')
+    return
+  }
+  operatingId.value = rejectPlanId.value
+  operatingAction.value = 'reject'
+  try {
+    await approveRejudgePlan({ planId: rejectPlanId.value, approved: false, reason })
+    message.success('已驳回')
+    rejectModalOpen.value = false
+    await reload()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '驳回失败')
+  } finally {
+    operatingId.value = ''
+    operatingAction.value = ''
+    rejectPlanId.value = ''
+  }
+}
+
+async function handleExecute(planId: string): Promise<void> {
+  operatingId.value = planId
+  operatingAction.value = 'execute'
+  try {
+    await executeRejudgePlan({ planId, executeReason: '阅卷中心执行标准答案重判计划' })
+    message.success('重判执行完成')
+    await reload()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : '执行失败')
+  } finally {
+    operatingId.value = ''
+    operatingAction.value = ''
   }
 }
 

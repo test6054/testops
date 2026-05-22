@@ -5,16 +5,19 @@ import type {
   MarkOcrHealthStatusCode,
   MarkOcrProviderTypeCode,
   MarkOcrRecognizeVO,
+  PaddleOcrInstanceVO,
 } from '@/apis/mark/ocr'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
+  listPaddleOcrInstances,
   MARK_OCR_HEALTH_STATUS_COLOR,
   MARK_OCR_HEALTH_STATUS_LABEL,
   MARK_OCR_PROVIDER_DESCRIPTION,
@@ -22,7 +25,7 @@ import {
   recognizeMarkOcr,
   saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
-import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import { UiBadge, UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 
 defineOptions({ name: 'TeacherOcrSettings' })
@@ -52,6 +55,12 @@ const currentConfig = ref<MarkOcrConfigVO | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
 const configForm = ref<ConfigFormState>({ providerType: 'PADDLE', enabled: false })
 const debugForm = ref<DebugFormState>({})
+
+// 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
+// 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
+const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
+const paddleInstancesLoading = ref(false)
+const paddleInstancesError = ref<unknown>(null)
 
 // 直接从后端真实枚举 LABEL 对象派生 select options，零 as 断言。
 const providerOptions = Object.entries(MARK_OCR_PROVIDER_LABEL).map(([value, label]) => ({
@@ -152,6 +161,47 @@ async function handleRecognize(): Promise<void> {
   }
 }
 
+// PADDLE 实例列表：当当前渠道为 PADDLE 时显示，跟随 currentConfig.providerType 变化自动加载
+const isPaddleProvider = computed(() => currentConfig.value?.providerType === 'PADDLE')
+
+const paddleHealthyCount = computed(
+  () => paddleInstances.value.filter((it) => it.healthStatus === 'HEALTHY').length,
+)
+
+async function loadPaddleInstances(): Promise<void> {
+  paddleInstancesLoading.value = true
+  paddleInstancesError.value = null
+  try {
+    paddleInstances.value = await listPaddleOcrInstances()
+  } catch (error) {
+    paddleInstancesError.value = error
+    paddleInstances.value = []
+  } finally {
+    paddleInstancesLoading.value = false
+  }
+}
+
+watch(
+  isPaddleProvider,
+  (paddle) => {
+    if (paddle) {
+      void loadPaddleInstances()
+    } else {
+      paddleInstances.value = []
+      paddleInstancesError.value = null
+    }
+  },
+  { immediate: false },
+)
+
+function paddleInstanceHealthTone(status?: MarkOcrHealthStatusCode) {
+  return MARK_OCR_HEALTH_STATUS_COLOR[status ?? 'UNKNOWN']
+}
+
+function paddleInstanceHealthLabel(status?: MarkOcrHealthStatusCode): string {
+  return MARK_OCR_HEALTH_STATUS_LABEL[status ?? 'UNKNOWN']
+}
+
 onMounted(loadConfig)
 </script>
 
@@ -250,6 +300,71 @@ onMounted(loadConfig)
         />
       </UiCard>
     </div>
+
+    <!-- PaddleOCR 实例列表：仅当当前渠道为 PADDLE 时展示，按健康状态排序 -->
+    <UiCard v-if="isPaddleProvider" class="info-card paddle-card">
+      <template #title>
+        <ClusterOutlined />
+        <span>PaddleOCR 服务实例</span>
+        <UiBadge :tone="paddleHealthyCount > 0 ? 'green' : 'gray'">
+          健康 {{ paddleHealthyCount }} / {{ paddleInstances.length }}
+        </UiBadge>
+      </template>
+      <template #extra>
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="paddleInstancesLoading"
+          @click="loadPaddleInstances"
+        >
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
+      </template>
+
+      <UiErrorRetryPanel
+        v-if="paddleInstancesError"
+        :error="paddleInstancesError"
+        title="PaddleOCR 实例加载失败"
+        compact
+        @retry="loadPaddleInstances"
+      />
+      <a-skeleton v-else-if="paddleInstancesLoading && paddleInstances.length === 0" active />
+      <UiEmpty
+        v-else-if="paddleInstances.length === 0"
+        description="后端尚未注册任何 PaddleOCR 服务实例。请检查 mark-ocr-paddle 容器是否正常启动并完成自注册。"
+      />
+      <a-list v-else :data-source="paddleInstances" item-layout="horizontal">
+        <template #renderItem="{ item }: { item: PaddleOcrInstanceVO }">
+          <a-list-item>
+            <a-list-item-meta>
+              <template #title>
+                <span class="paddle-instance__name">{{ item.instanceName || `instance-${item.id}` }}</span>
+                <UiTag :tone="paddleInstanceHealthTone(item.healthStatus)" size="sm">
+                  {{ paddleInstanceHealthLabel(item.healthStatus) }}
+                </UiTag>
+                <UiTag v-if="item.localAutoDeploy" tone="blue" size="sm">本地自动部署</UiTag>
+                <UiTag v-if="item.deviceType" tone="gray" size="sm">{{ item.deviceType }}</UiTag>
+              </template>
+              <template #description>
+                <div class="paddle-instance__meta">
+                  <span class="paddle-instance__url">{{ item.serviceUrl || '-' }}</span>
+                  <span class="paddle-instance__sep">·</span>
+                  <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
+                  <template v-if="(item.consecutiveFailures ?? 0) > 0">
+                    <span class="paddle-instance__sep">·</span>
+                    <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
+                  </template>
+                </div>
+                <div v-if="item.lastHealthMessage" class="paddle-instance__msg">
+                  {{ item.lastHealthMessage }}
+                </div>
+              </template>
+            </a-list-item-meta>
+          </a-list-item>
+        </template>
+      </a-list>
+    </UiCard>
 
     <UiCard class="info-card">
       <template #title>
@@ -417,5 +532,44 @@ onMounted(loadConfig)
   overflow-y: auto;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.paddle-card {
+  margin-top: 12px;
+}
+
+.paddle-instance__name {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.paddle-instance__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.paddle-instance__url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.paddle-instance__sep {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.paddle-instance__failed {
+  color: #d4380d;
+  font-weight: 600;
+}
+
+.paddle-instance__msg {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.65);
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>

@@ -39,6 +39,10 @@ export interface ExamPageQueryPayload extends QueryDto {
   createUserId?: string | null
   /** 考试状态 */
   status?: ExamStatusCode
+  /** 学年，如 '2024-2025' */
+  academicYear?: string
+  /** 学期：1=秋季学期，2=春季学期 */
+  semester?: string
   /** 名称关键词（模糊匹配 exam_name / exam_no） */
   keyword?: string
 }
@@ -49,6 +53,8 @@ export interface ExamSummaryVO {
   courseId?: string
   examName: string
   examNo?: string
+  academicYear?: string
+  semester?: string
   status: ExamStatusCode
   statusMessage: string
   examStartTime?: string
@@ -65,6 +71,8 @@ export interface ExamDetailVO {
   courseId?: string
   examName: string
   examNo?: string
+  academicYear?: string
+  semester?: string
   status: ExamStatusCode
   statusMessage: string
   examStartTime?: string
@@ -90,14 +98,37 @@ export interface ExamDetailVO {
 
 /** 创建考试请求 - 对应 ExamCreateRequest */
 export interface ExamCreatePayload {
-  courseId?: string
+  /** 课程ID */
+  courseId: string
+  /**
+   * 学年，如 '2024-2025'。与 semester 必须同时填写或同时留空，
+   * 由后端 Service 联动校验。
+   */
+  academicYear?: string
+  /** 学期：1=秋季学期，2=春季学期。与 academicYear 必须同时填写或同时留空。 */
+  semester?: string
   /** 考试名称（必填） */
   examName: string
-  examNo?: string
-  examStartTime?: string
-  examEndTime?: string
+  /** 考试编号（必填） */
+  examNo: string
+  /** 考试开始时间 */
+  examStartTime: string
+  /** 考试结束时间 */
+  examEndTime: string
   gradingStrategy?: string
   remark?: string
+}
+
+/** 更新考试请求 - 对应 ExamUpdateRequest */
+export interface ExamUpdatePayload extends ExamCreatePayload {
+  /** 考试ID */
+  examId: string
+}
+
+/** 删除考试请求 - 对应 ExamDeleteRequest */
+export interface ExamDeletePayload {
+  /** 考试ID */
+  examId: string
 }
 
 /** 考生名册项 - 对应 ExamCandidateRosterRequest */
@@ -135,6 +166,11 @@ export interface ExamQuestionTemplatePayload {
   height?: number
   knowledgeId?: string
   sortNo?: number
+  /**
+   * 题干文本：教师制卷阶段录入或母版 PDF / 扫描页 OCR 提取。
+   * AI 评分联动使用本字段圈定评分范围，缺失时后端按 QUESTION_CONTEXT_MISSING 阐断。
+   */
+  questionStem?: string
 }
 
 /** 试卷模板保存请求 - 对应 ExamTemplateSaveRequest */
@@ -168,6 +204,8 @@ export interface ExamQuestionTemplateVO {
   height?: number
   knowledgeId?: string
   sortNo?: number
+  /** 题干文本 */
+  questionStem?: string
 }
 
 /** 模板查询响应 - 对应 ExamTemplateResponse */
@@ -181,13 +219,46 @@ export interface ExamTemplateVO {
   questions: ExamQuestionTemplateVO[]
 }
 
+/**
+ * 客观题比较策略编码 - 与后端 com.nybc.edu.common.enums.ObjectiveComparePolicy 一一对齐。
+ * <ul>
+ *   <li>EXACT_NORMALIZED：去空白并统一大小写后精确比较；</li>
+ *   <li>CHOICE_SET：选择题集合判等，忽略顺序与分隔符；</li>
+ *   <li>REGEX：教师配置正则表达式匹配 OCR 答案；</li>
+ *   <li>NUMERIC_TOLERANCE：数值题按标准值、容差和可选单位判等；</li>
+ *   <li>AI_GRADE：客观题未配标准答案或显式选 AI 评分时由 AI 给出建议得分（NEED_REVIEW），教师审核确认后落地。</li>
+ * </ul>
+ */
+export type ObjectiveComparePolicyCode =
+  | 'EXACT_NORMALIZED'
+  | 'CHOICE_SET'
+  | 'REGEX'
+  | 'NUMERIC_TOLERANCE'
+  | 'AI_GRADE'
+
+/** 客观题比较策略选项，供前端 a-select 渲染 */
+export const OBJECTIVE_COMPARE_POLICY_OPTIONS: Array<{
+  value: ObjectiveComparePolicyCode
+  label: string
+}> = [
+  { value: 'EXACT_NORMALIZED', label: '规范化精确比较（填空 / 单空对比）' },
+  { value: 'CHOICE_SET', label: '选择题集合判等（多选 / 顺序无关）' },
+  { value: 'REGEX', label: '正则匹配（自定义答案模式）' },
+  { value: 'NUMERIC_TOLERANCE', label: '数值容差（标准值 + 容差 + 单位）' },
+  { value: 'AI_GRADE', label: 'AI 评分（无标答时由 AI 给建议分，教师审核）' },
+]
+
 /** 标准答案保存请求 - 对应 ExamStandardAnswerSaveRequest */
 export interface ExamStandardAnswerSavePayload {
   examId: string
   questionTemplateId: string
-  standardAnswer: string
+  /**
+   * 客观题非 AI_GRADE 策略下必填；客观题 AI_GRADE 策略允许留空。
+   * 主观题 standardAnswer 一律可选。
+   */
+  standardAnswer?: string
   answerExplain?: string
-  comparePolicy?: string
+  comparePolicy?: ObjectiveComparePolicyCode
   answerPayload?: string
   aiHint?: string
   effectiveNow?: boolean
@@ -230,6 +301,22 @@ export function getExamDetail(examId: string): Promise<ExamDetailVO> {
  */
 export function createExam(payload: ExamCreatePayload): Promise<string> {
   return http.post<string>('/api/mark/exams/create', payload)
+}
+
+/**
+ * 更新考试主信息
+ * POST /api/mark/exams/update
+ */
+export function updateExam(payload: ExamUpdatePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/update', payload)
+}
+
+/**
+ * 删除尚未进入后续链路的考试
+ * POST /api/mark/exams/delete
+ */
+export function deleteExam(payload: ExamDeletePayload): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/delete', payload)
 }
 
 /**
@@ -433,8 +520,18 @@ export interface ScanAttentionItemVO {
 
 // ─── 扫描事件 / 批次 / 设备 模型重构（2026-05-06） ─────────────────
 
-/** 扫描批次状态码 - 对应后端 ScanBatchStatus 枚举 */
-export type ScanBatchStatusCode = 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED'
+/**
+ * 扫描批次状态码 - 对应后端 ScanBatchStatus 枚举。
+ *
+ * - DISCARDED：教师在扫描审阅 / 异常处置时显式废弃整批，与封存（sealed_at）互斥；
+ *   状态机进入 DISCARDED 后不再产生新页、不再纳入归档与统计。
+ */
+export type ScanBatchStatusCode
+  = | 'RECEIVED'
+    | 'BLOCKED'
+    | 'BOUND'
+    | 'COMPLETED'
+    | 'DISCARDED'
 
 /** 扫描批次视图 - 对应 ExamScannerBatchResponse */
 export interface ExamScannerBatchVO {
@@ -457,6 +554,18 @@ export interface ExamScannerBatchVO {
   updateTime?: string
   /** 批次内事件数量 */
   eventCount?: number
+  /** 是否替换目标页（仅 SUPPLEMENT 模式有意义） */
+  replaceTargetPage?: boolean
+  /** 批次封存时间（与 discardedAt 互斥） */
+  sealedAt?: string
+  /** 批次封存执行人 ID */
+  sealedBy?: string
+  /** 批次废弃时间 */
+  discardedAt?: string
+  /** 批次废弃执行人 ID */
+  discardedBy?: string
+  /** 批次废弃原因（教师可见） */
+  discardReason?: string
 }
 
 /** 扫描批次创建响应 - 对应 ExamScannerBatchCreateResponse */
@@ -492,6 +601,29 @@ export interface ExamScannerBatchQueryPayload extends QueryDto {
   status?: ScanBatchStatusCode
   scanStartTimeFrom?: string
   scanStartTimeTo?: string
+  /**
+   * 是否包含已废弃（DISCARDED）批次。
+   *
+   * 缺省（false / 不传）时后端列表自动屏蔽 DISCARDED 批次；教师在"扫描审计"页面
+   * 显式查看废弃记录时传 true。
+   */
+  includeDiscarded?: boolean
+}
+
+/** 扫描批次废弃请求 - 对应 ExamScanBatchDiscardRequest */
+export interface ExamScanBatchDiscardPayload {
+  /** 扫描批次 ID */
+  scanBatchId: string
+  /** 废弃原因（必填，1-255 字） */
+  discardReason: string
+}
+
+/** 扫描页废弃请求 - 对应 ExamScannedPageDiscardRequest */
+export interface ExamScannedPageDiscardPayload {
+  /** 扫描页 ID */
+  scannedPageId: string
+  /** 废弃原因（必填，1-255 字） */
+  discardReason: string
 }
 
 /**
@@ -540,6 +672,39 @@ export function pageScannerBatches(
   payload: ExamScannerBatchQueryPayload,
 ): Promise<PageResult<ExamScannerBatchVO>> {
   return http.post<PageResult<ExamScannerBatchVO>>('/api/mark/exams/scanner-batches/page', payload)
+}
+
+/**
+ * 教师在扫描审阅 / 扫描异常处置场景显式废弃整个扫描批次。
+ *
+ * <p>规则与后端 {@code ExamScannerKioskController#discardScanBatch} 一致：
+ *   - 已 sealed（封存）的批次拒绝废弃；
+ *   - 已 DISCARDED 的批次返回成功（幂等）；
+ *   - 联动把批次内全部扫描页 effective_status 置 DISCARDED；
+ *   - 联动把批次内 PENDING/PROCESSING 处理任务置 BLOCKED。</p>
+ *
+ * POST /api/mark/scanner/kiosk/batch/discard
+ */
+export function discardScanBatch(
+  payload: ExamScanBatchDiscardPayload,
+): Promise<boolean> {
+  return http.post<boolean>('/api/mark/scanner/kiosk/batch/discard', payload)
+}
+
+/**
+ * 教师对单张扫描页显式废弃（如 QUALITY_BLOCK 异常页确认作废）。
+ *
+ * <p>规则：
+ *   - 仅 ACTIVE 页可废弃；SUPERSEDED 视为已失效不再允许再次废弃；
+ *   - DISCARDED 页幂等返回；
+ *   - 不影响所属批次状态。</p>
+ *
+ * POST /api/mark/scanner/kiosk/page/discard
+ */
+export function discardScannedPage(
+  payload: ExamScannedPageDiscardPayload,
+): Promise<boolean> {
+  return http.post<boolean>('/api/mark/scanner/kiosk/page/discard', payload)
 }
 
 /**
@@ -715,6 +880,178 @@ export function confirmQuestionGrade(payload: ExamGradeConfirmPayload): Promise<
   return http.post<boolean>('/api/mark/exams/question-grades/confirm', payload)
 }
 
+/** 题目成绩批量确认条目 - 对应 ExamGradeBatchConfirmRequest.Item */
+export interface ExamGradeBatchConfirmItem {
+  /** 题目批改结果ID */
+  gradeResultId: string
+  /** 最终分（必填） */
+  finalScore: number
+  /** 评语，可空 */
+  commentText?: string
+  /** 批注内容，可空 */
+  annotationText?: string
+  /** 批注锚点，可空 */
+  anchorText?: string
+}
+
+/** 题目成绩批量确认请求 - 对应 ExamGradeBatchConfirmRequest */
+export interface ExamGradeBatchConfirmPayload {
+  examId: string
+  items: ExamGradeBatchConfirmItem[]
+}
+
+/** 题目成绩批量确认失败明细 - 对应 ExamGradeBatchConfirmResponse.FailureItem */
+export interface ExamGradeBatchConfirmFailureItem {
+  gradeResultId: string
+  /** 失败业务码（来自 ResultCodeEnum） */
+  code: number
+  /** 失败业务消息 */
+  message: string
+}
+
+/** 题目成绩批量确认响应 - 对应 ExamGradeBatchConfirmResponse */
+export interface ExamGradeBatchConfirmResponse {
+  totalCount: number
+  successCount: number
+  failureCount: number
+  successGradeResultIds: string[]
+  failures: ExamGradeBatchConfirmFailureItem[]
+}
+
+/**
+ * 教师批量确认题目得分。
+ * 阅卷工作台对识别后处于 NEED_REVIEW 状态的批改结果进行批量审核确认；
+ * 客观题硬比对、客观题 AI、主观题 AI 三类来源统一通过本接口闭环。
+ * 单题失败不阻塞其余条目，响应汇总成功条目和失败明细。
+ * POST /api/mark/exams/question-grades/batch-confirm
+ */
+export function batchConfirmQuestionGrades(
+  payload: ExamGradeBatchConfirmPayload,
+): Promise<ExamGradeBatchConfirmResponse> {
+  return http.post<ExamGradeBatchConfirmResponse>(
+    '/api/mark/exams/question-grades/batch-confirm',
+    payload,
+  )
+}
+
+/** 单题 AI 复评请求 - 对应 ExamQuestionAiRescoreRequest */
+export interface ExamQuestionAiRescorePayload {
+  examId: string
+  gradeResultId: string
+}
+
+/** AI 风险标记 - 对应 SubjectiveAiRiskFlag */
+export interface SubjectiveAiRiskFlagVO {
+  code?: string
+  message?: string
+}
+
+/** 单题 AI 复评结果 - 对应 SubjectiveGradeSuggestionResult */
+export interface SubjectiveGradeSuggestionResultVO {
+  suggested?: boolean
+  suggestedScore?: number
+  modelProfileId?: string
+  providerType?: string
+  modelName?: string
+  diagnostic?: string
+  evidenceSummary?: string
+  traceId?: string
+  limited?: boolean
+  riskFlags?: SubjectiveAiRiskFlagVO[]
+}
+
+/**
+ * 教师异议场景单题 AI 复评。
+ *
+ * 仅服务教师在阅卷工作台对整卷 AI 建议有异议时的题目级辅助复评；
+ * 不属于首次 OCR 后的整卷 AI 主链，也不对学生开放。
+ * 复评只覆盖 suggestedScore / aiTraceId / aiDiagnostic / aiLimited 与教师可读诊断；
+ * gradeStatus 保持 NEED_REVIEW，finalScore 保持为空，仍需教师确认入口写最终分。
+ *
+ * POST /api/mark/exams/question-grades/ai-rescore
+ */
+export function rescoreQuestionByAi(
+  payload: ExamQuestionAiRescorePayload,
+): Promise<SubjectiveGradeSuggestionResultVO> {
+  return http.post<SubjectiveGradeSuggestionResultVO>(
+    '/api/mark/exams/question-grades/ai-rescore',
+    payload,
+  )
+}
+
+/** AI 能力编码 - 17B 文档定义；首次整卷 AI / 教师异议单题 AI 复评 */
+export type AiAbilityCode =
+  | 'PAPER_GRADE_SUGGESTION'
+  | 'SUBJECTIVE_GRADE_SUGGESTION'
+  | string
+
+/** AI 能力编码 -> 来源中文文案 */
+export const AI_ABILITY_LABEL: Record<string, string> = {
+  PAPER_GRADE_SUGGESTION: '整卷 AI 批阅',
+  SUBJECTIVE_GRADE_SUGGESTION: '单题 AI 复评',
+}
+
+/** AI 能力编码 -> 来源徽标色调 */
+export const AI_ABILITY_TONE: Record<string, BadgeTone> = {
+  PAPER_GRADE_SUGGESTION: 'blue',
+  SUBJECTIVE_GRADE_SUGGESTION: 'purple',
+}
+
+/** AI 执行状态编码 - 对应后端 AiExecutionStatus */
+export type AiExecutionStatusCode = 'SUCCESS' | 'BLOCKED' | 'FAILED' | string
+
+/** AI 执行状态文案映射 */
+export const AI_EXECUTION_STATUS_LABEL: Record<string, string> = {
+  SUCCESS: '成功',
+  BLOCKED: '阻断',
+  FAILED: '失败',
+}
+
+/** AI 执行状态徽标色调 */
+export const AI_EXECUTION_STATUS_TONE: Record<string, BadgeTone> = {
+  SUCCESS: 'green',
+  BLOCKED: 'orange',
+  FAILED: 'red',
+}
+
+/** 单题历次 AI 执行查询请求 - 对应 ExamQuestionAiExecutionsRequest */
+export interface ExamQuestionAiExecutionsPayload {
+  examId: string
+  gradeResultId: string
+}
+
+/** 单题历次 AI 执行记录条目 - 对应 ExamQuestionAiExecutionItemResponse */
+export interface ExamQuestionAiExecutionItemVO {
+  traceId?: string
+  abilityCode?: AiAbilityCode
+  status?: AiExecutionStatusCode
+  providerType?: string
+  modelName?: string
+  requestSummary?: string
+  responseSummary?: string
+  diagnostic?: string
+  latencyMs?: number
+  createTime?: string
+  createUser?: string
+}
+
+/**
+ * 查询单题历次 AI 执行记录。
+ *
+ * 用于教师批阅工作台"查看 AI 历史"抽屉，展示首次整卷 AI 与教师异议阶段单题复评的全部审计记录。
+ * 仅暴露审计真源，不引入版本化业务读取；最终成绩仍由 confirmQuestionGrade 写入。
+ *
+ * POST /api/mark/exams/question-grades/ai-executions
+ */
+export function listAiExecutionsForQuestion(
+  payload: ExamQuestionAiExecutionsPayload,
+): Promise<ExamQuestionAiExecutionItemVO[]> {
+  return http.post<ExamQuestionAiExecutionItemVO[]>(
+    '/api/mark/exams/question-grades/ai-executions',
+    payload,
+  )
+}
+
 /**
  * 确认试卷最终成绩。
  * 状态机：未存在 / CALCULATED / WITHDRAWN / CORRECTED → CONFIRMED。
@@ -778,6 +1115,44 @@ export interface ReviewTaskQueryPayload {
   questionTemplateId?: string
 }
 
+/**
+ * 复核任务类型编码 - 与后端 com.nybc.edu.common.enums.TaskType 一一对齐。
+ * 仅复核任务相关 3 类（其它任务类型不会出现在复核任务列表中）。
+ */
+export type ReviewTaskTypeCode =
+  | 'OBJECTIVE_AUTO_REVIEW'
+  | 'OBJECTIVE_AI_REVIEW'
+  | 'SUBJECTIVE_AI_REVIEW'
+
+/** 复核任务类型中文标签与颜色，便于前端 tag 渲染 */
+export const REVIEW_TASK_TYPE_META: Record<
+  ReviewTaskTypeCode,
+  { label: string; color: 'blue' | 'green' | 'purple' }
+> = {
+  OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
+  OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
+  SUBJECTIVE_AI_REVIEW: { label: '主观题（AI 评分）', color: 'purple' },
+}
+
+/**
+ * 批改来源编码 - 与后端 com.nybc.edu.common.enums.GradeSource 一一对齐。
+ */
+export type GradeSourceCode =
+  | 'AUTO_OBJECTIVE'
+  | 'AUTO_OBJECTIVE_AI'
+  | 'LOCAL_SUBJECTIVE_AI'
+  | 'TEACHER'
+  | 'RECOGNITION_FAILURE'
+
+/** 批改来源中文标签 */
+export const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
+  AUTO_OBJECTIVE: '客观题硬比对',
+  AUTO_OBJECTIVE_AI: '客观题 AI 评分',
+  LOCAL_SUBJECTIVE_AI: '主观题 AI 评分',
+  TEACHER: '教师人工批改',
+  RECOGNITION_FAILURE: 'OCR 识别失败转人工',
+}
+
 /** 匿名批阅任务项 - 对应 ReviewTaskItemResponse */
 export interface ReviewTaskItemVO {
   reviewTaskId: string
@@ -791,6 +1166,10 @@ export interface ReviewTaskItemVO {
   suggestedScore?: number
   status?: string
   assignedTeacherUserId?: string
+  /** 复核任务类型编码，区分客观题硬比对 / 客观题 AI / 主观题 AI 三个通道 */
+  reviewType?: ReviewTaskTypeCode
+  /** 批改来源编码，便于前端按通道筛选与显示颜色标签 */
+  gradeSource?: GradeSourceCode
   updateTime?: string
 }
 
@@ -804,6 +1183,10 @@ export interface ReviewTaskActionPayload {
 export interface ReviewTaskDetailVO {
   reviewTaskId: string
   anonymousNo?: string
+  /** AI trace ID，便于教师在批阅工作台定位本题 AI 执行记录 */
+  aiTraceId?: string
+  /** AI 是否被限流或阻断，为 true 时教师需依赖人工复核 */
+  aiLimited?: boolean
   examId: string
   paperInstanceId?: string
   questionTemplateId?: string

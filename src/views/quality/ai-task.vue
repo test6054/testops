@@ -276,8 +276,13 @@ function handleReportChange(value: string | null) {
   submitForm.reportId = value ?? ''
 }
 
-function handleSubmitBusinessTypeChange(value: AiTaskBusinessType | null | undefined) {
-  submitForm.businessType = value ?? ''
+function handleSubmitBusinessTypeChange(value: unknown) {
+  if (value === undefined || value === null || value === '') {
+    submitForm.businessType = ''
+    return
+  }
+  if (!isAiTaskBusinessType(value)) throw new Error('AI 任务业务类型不符合前后端契约')
+  submitForm.businessType = value
 }
 
 async function submitTask() {

@@ -376,6 +376,36 @@ export interface ExamBatchGradeCorrectionPlanVO {
   updateTime?: string
 }
 
+export interface BatchCorrectionPlanItemPayload {
+  studentUserId: string
+  paperInstanceId: string
+  afterScore: number
+}
+
+export interface BatchCorrectionPlanCreatePayload {
+  examId: string
+  planName: string
+  correctionType: Exclude<GradeCorrectionTypeCode, 'SYSTEM_REJUDGE'>
+  questionTemplateId?: string
+  items: BatchCorrectionPlanItemPayload[]
+  reason: string
+}
+
+export interface BatchCorrectionPlanSubmitPayload {
+  planId: string
+}
+
+export interface BatchCorrectionPlanDecisionPayload {
+  planId: string
+  approved: boolean
+  reason?: string
+}
+
+export interface BatchCorrectionPlanExecutePayload {
+  planId: string
+  executeReason?: string
+}
+
 /**
  * 查询批量更正计划
  * GET /api/exam/grade-review/batch-correction/list?examId=&approvalStatus=
@@ -385,4 +415,31 @@ export function listBatchCorrectionPlans(params: {
   approvalStatus?: BatchCorrectionApprovalStatusCode
 }): Promise<ExamBatchGradeCorrectionPlanVO[]> {
   return http.get<ExamBatchGradeCorrectionPlanVO[]>('/api/exam/grade-review/batch-correction/list', { params })
+}
+
+export function createBatchCorrectionPlan(
+  payload: BatchCorrectionPlanCreatePayload,
+): Promise<ExamBatchGradeCorrectionPlanVO> {
+  return http.post<ExamBatchGradeCorrectionPlanVO>(
+    '/api/exam/grade-review/batch-correction/create',
+    payload,
+  )
+}
+
+export function submitBatchCorrectionPlan(
+  payload: BatchCorrectionPlanSubmitPayload,
+): Promise<void> {
+  return http.post<void>('/api/exam/grade-review/batch-correction/submit', payload)
+}
+
+export function approveBatchCorrectionPlan(
+  payload: BatchCorrectionPlanDecisionPayload,
+): Promise<void> {
+  return http.post<void>('/api/exam/grade-review/batch-correction/approve', payload)
+}
+
+export function executeBatchCorrectionPlan(
+  payload: BatchCorrectionPlanExecutePayload,
+): Promise<void> {
+  return http.post<void>('/api/exam/grade-review/batch-correction/execute', payload)
 }

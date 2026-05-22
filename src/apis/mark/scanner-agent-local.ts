@@ -125,6 +125,12 @@ export interface StartScanJobRequest {
   scanMode: ScannerKioskScanMode
   targetPageNo?: number
   supplementReason?: string
+  /**
+   * 是否替换目标页（仅 SUPPLEMENT 模式有效）。
+   * true 表示后端会把同一 (paperInstance, templatePageNo) 上的旧扫描页置为 SUPERSEDED，
+   * false 表示纯追加补扫（保留旧页）。
+   */
+  replaceTargetPage?: boolean
 }
 
 export interface ScanPageInfo {
@@ -141,6 +147,8 @@ export interface ScanJobResponse {
   scanMode: ScannerKioskScanMode
   targetPageNo?: number
   supplementReason?: string
+  /** 是否替换目标页（仅 SUPPLEMENT 模式生效） */
+  replaceTargetPage?: boolean
   status: string
   scannedPages: number
   uploadedPages: number
@@ -196,6 +204,78 @@ export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
   return await localAgentPost<ScanJobResponse, Record<string, never>>(
     `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`,
     {},
+  )
+}
+
+/**
+ * 暂停指定扫描任务（plan §3.3）。Agent 端将状态切换为 Paused，扫描循环停止追加页面，
+ * UploadWorker 也跳过该任务，直到调用 resumeScanJob 恢复。
+ */
+export async function pauseScanJob(scanJobId: string): Promise<ScanJobResponse> {
+  return await localAgentPost<ScanJobResponse, Record<string, never>>(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/pause`,
+    {},
+  )
+}
+
+/**
+ * 恢复被暂停的扫描任务（plan §3.3）。仅 Paused 任务可被恢复；其它状态原样返回。
+ */
+export async function resumeScanJob(scanJobId: string): Promise<ScanJobResponse> {
+  return await localAgentPost<ScanJobResponse, Record<string, never>>(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`,
+    {},
+  )
+}
+
+/**
+ * 结束本批次（plan §3.3）。手工停止仍在扫描的任务并把已采集页面交给上传链路，
+ * 不丢弃已扫页面（与 cancelScanJob 不同）。
+ */
+export async function endBatch(scanJobId: string): Promise<ScanJobResponse> {
+  return await localAgentPost<ScanJobResponse, Record<string, never>>(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/end-batch`,
+    {},
+  )
+}
+
+/**
+ * 重试 commit（plan §3.3）。把已 push 但 commit 未确认的任务重新放回 Retrying。
+ * 利用后端 reportId / batchExternalNo 唯一约束的幂等性。
+ */
+export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
+  return await localAgentPost<ScanJobResponse, Record<string, never>>(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-commit`,
+    {},
+  )
+}
+
+/**
+ * 删除尚未上报后端的 Agent 本地扫描任务（plan §M3）。仅清理本地 metadata + 影像文件，
+ * 不调用后端废弃接口。已 Reported 任务请改用 discardScanJob。
+ */
+export async function deleteScanJob(scanJobId: string): Promise<boolean> {
+  return await localAgentPost<boolean, Record<string, never>>(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`,
+    {},
+  )
+}
+
+/**
+ * 废弃已上报的扫描任务（plan §M3）：调用 Agent，
+ * 由 Agent 联动后端 /scanner/kiosk/batch/discard 把扫描批次置为 DISCARDED，
+ * 后端确认后清理 Agent 本地任务数据。
+ *
+ * @param scanJobId Agent 本地扫描任务 ID
+ * @param discardReason 废弃原因（必填，1-255 字）
+ */
+export async function discardScanJob(
+  scanJobId: string,
+  discardReason: string,
+): Promise<boolean> {
+  return await localAgentPost<boolean, { scanJobId: string, discardReason: string }>(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/discard`,
+    { scanJobId, discardReason },
   )
 }
 

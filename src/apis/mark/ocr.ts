@@ -65,6 +65,25 @@ export interface MarkOcrRecognizeVO {
   diagnostic?: string
 }
 
+/**
+ * PaddleOCR 服务实例视图 - 对应后端 PaddleOcrInstanceResponse。
+ *
+ * <p>{@code healthStatus} 复用 edu-common 的 AiHealthStatus，与 OCR 主配置健康状态共用枚举
+ * （UNKNOWN / HEALTHY / FAILED）。{@code localAutoDeploy} 标识该实例是否为
+ * Docker Compose 本地随服务一起自动拉起的实例。</p>
+ */
+export interface PaddleOcrInstanceVO {
+  id: string
+  instanceName?: string
+  serviceUrl?: string
+  deviceType?: string
+  healthStatus?: MarkOcrHealthStatusCode
+  lastHealthCheckAt?: string
+  lastHealthMessage?: string
+  consecutiveFailures?: number
+  localAutoDeploy?: boolean
+}
+
 export function getCurrentMarkOcrConfig(): Promise<MarkOcrConfigVO> {
   return http.get<MarkOcrConfigVO>('/api/mark/ocr/config/current')
 }
@@ -79,4 +98,17 @@ export function checkMarkOcrHealth(): Promise<MarkOcrConfigHealthCheckVO> {
 
 export function recognizeMarkOcr(payload: MarkOcrRecognizePayload): Promise<MarkOcrRecognizeVO> {
   return http.post<MarkOcrRecognizeVO>('/api/mark/ocr/recognize', payload)
+}
+
+/**
+ * 查询全部已注册的 PaddleOCR 服务实例（含健康状态、最近探活、连续失败次数）。
+ *
+ * <p>仅当租户当前 OCR 渠道为 PADDLE 时使用：用于在 OCR 设置页内嵌「实例列表」面板，
+ * 供管理员确认后端识别请求实际命中的服务实例。后端按 health_status asc, updated_at desc 排序，
+ * 健康实例排在前面。</p>
+ *
+ * GET /api/mark/ocr/paddle/instance/list
+ */
+export function listPaddleOcrInstances(): Promise<PaddleOcrInstanceVO[]> {
+  return http.get<PaddleOcrInstanceVO[]>('/api/mark/ocr/paddle/instance/list')
 }

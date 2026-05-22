@@ -141,6 +141,17 @@ export interface SyncTaskVO {
   updateTime?: string
 }
 
+/** 回写进度 VO - 对应 PassbackProgressResponse */
+export interface PassbackProgressVO {
+  syncTaskId: string
+  totalCount: number
+  pendingCount: number
+  sentCount: number
+  successCount: number
+  failedCount: number
+  withdrawnCount: number
+}
+
 /** 回写记录 VO - 对应 ExamGradebookPassbackRecord */
 export interface PassbackRecordVO {
   id?: string
@@ -224,6 +235,16 @@ export function listPassbackRecords(payload: PassbackRecordQueryPayload): Promis
  */
 export function reconcilePassback(syncTaskId: string): Promise<void> {
   return http.post<void>('/api/exam/teaching-affairs/passback/reconcile', null, {
+    params: { syncTaskId },
+  })
+}
+
+/**
+ * 查询回写进度汇总（同步任务下各 PassbackStatus 的记录计数）
+ * GET /api/exam/teaching-affairs/passback/progress?syncTaskId=
+ */
+export function getPassbackProgress(syncTaskId: string): Promise<PassbackProgressVO> {
+  return http.get<PassbackProgressVO>('/api/exam/teaching-affairs/passback/progress', {
     params: { syncTaskId },
   })
 }

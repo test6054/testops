@@ -311,6 +311,56 @@
 
   <!-- 任务详情抽屉 -->
   <a-drawer v-model:open="taskDetailOpen" title="同步任务详情" width="540" :destroy-on-close="true">
+    <!-- 回写进度面板：聚合 PENDING / SENT / SUCCESS / FAILED / WITHDRAWN 五种状态计数 -->
+    <UiCard v-if="detailTask" class="progress-card" size="small">
+      <template #title>
+        <FileSyncOutlined />
+        <span>回写进度</span>
+      </template>
+      <template #extra>
+        <UiButton size="sm" variant="outline" :loading="progressLoading" @click="handleRefreshProgress">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
+      </template>
+      <UiErrorRetryPanel
+        v-if="progressLoadError"
+        :error="progressLoadError"
+        title="回写进度加载失败"
+        compact
+        @retry="handleRefreshProgress"
+      />
+      <template v-else-if="detailProgress">
+        <a-progress
+          :percent="detailProgressPercent"
+          :status="detailProgressStatus"
+          :stroke-color="detailProgressFailed > 0 ? '#d4380d' : undefined"
+        />
+        <div class="progress-counts">
+          <UiTag tone="gray" size="sm">总数 {{ detailProgress.totalCount }}</UiTag>
+          <UiTag :tone="PASSBACK_STATUS_COLOR.PENDING" size="sm">
+            {{ PASSBACK_STATUS_LABEL.PENDING }} {{ detailProgress.pendingCount }}
+          </UiTag>
+          <UiTag :tone="PASSBACK_STATUS_COLOR.SENT" size="sm">
+            {{ PASSBACK_STATUS_LABEL.SENT }} {{ detailProgress.sentCount }}
+          </UiTag>
+          <UiTag :tone="PASSBACK_STATUS_COLOR.SUCCESS" size="sm">
+            {{ PASSBACK_STATUS_LABEL.SUCCESS }} {{ detailProgress.successCount }}
+          </UiTag>
+          <UiTag :tone="PASSBACK_STATUS_COLOR.FAILED" size="sm">
+            {{ PASSBACK_STATUS_LABEL.FAILED }} {{ detailProgress.failedCount }}
+          </UiTag>
+          <UiTag :tone="PASSBACK_STATUS_COLOR.WITHDRAWN" size="sm">
+            {{ PASSBACK_STATUS_LABEL.WITHDRAWN }} {{ detailProgress.withdrawnCount }}
+          </UiTag>
+        </div>
+        <div v-if="detailProgress.totalCount === 0" class="hint-text" style="margin-top: 8px">
+          该任务尚未生成回写记录，可能仍在 PENDING 状态等待执行回写。
+        </div>
+      </template>
+      <a-skeleton v-else active :paragraph="{ rows: 1 }" />
+    </UiCard>
+
     <a-descriptions v-if="detailTask" :column="1" bordered size="small">
       <a-descriptions-item label="任务ID">{{ detailTask.id }}</a-descriptions-item>
       <a-descriptions-item label="考试ID">{{ detailTask.examId }}</a-descriptions-item>
@@ -369,6 +419,7 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExternalSystemTypeCode,
+  PassbackProgressVO,
   PassbackRecordVO,
   PassbackStatusCode,
   ReconcileStatusCode,
@@ -389,6 +440,7 @@ import {
   createSyncTask,
   executeGradePassback,
   EXTERNAL_SYSTEM_TYPE_LABEL,
+  getPassbackProgress,
   listPassbackRecords,
   listSyncTasks,
   PASSBACK_STATUS_COLOR,
@@ -563,9 +615,56 @@ const taskDetailOpen = ref(false)
 const detailTask = ref<SyncTaskVO | null>(null)
 const reconciling = ref(false)
 
+// 同步任务详情抽屉中的回写进度面板：通过 GET /passback/progress 拉取该任务下
+// PENDING / SENT / SUCCESS / FAILED / WITHDRAWN 各状态的回写记录计数。
+const detailProgress = ref<PassbackProgressVO | null>(null)
+const progressLoading = ref(false)
+const progressLoadError = ref<unknown>(null)
+
+const detailProgressPercent = computed<number>(() => {
+  const p = detailProgress.value
+  if (!p || !p.totalCount) return 0
+  return Math.round(((p.successCount + p.withdrawnCount) / p.totalCount) * 100)
+})
+
+const detailProgressFailed = computed<number>(() => detailProgress.value?.failedCount ?? 0)
+
+const detailProgressStatus = computed<'success' | 'exception' | 'active' | 'normal'>(() => {
+  const p = detailProgress.value
+  if (!p) return 'normal'
+  if (p.failedCount > 0) return 'exception'
+  if (p.totalCount > 0 && p.successCount + p.withdrawnCount === p.totalCount) return 'success'
+  if (p.sentCount + p.pendingCount > 0) return 'active'
+  return 'normal'
+})
+
+async function loadProgress(syncTaskId: string): Promise<void> {
+  progressLoading.value = true
+  progressLoadError.value = null
+  try {
+    detailProgress.value = await getPassbackProgress(syncTaskId)
+  } catch (error) {
+    progressLoadError.value = error
+    detailProgress.value = null
+  } finally {
+    progressLoading.value = false
+  }
+}
+
 function openTaskDetail(record: SyncTaskVO): void {
   detailTask.value = record
   taskDetailOpen.value = true
+  detailProgress.value = null
+  progressLoadError.value = null
+  if (record.id) {
+    void loadProgress(record.id)
+  }
+}
+
+async function handleRefreshProgress(): Promise<void> {
+  if (detailTask.value?.id) {
+    await loadProgress(detailTask.value.id)
+  }
 }
 
 async function handleReconcile(record: SyncTaskVO): Promise<void> {
@@ -744,5 +843,16 @@ onMounted(async () => {
 .hint-text {
   color: rgba(0, 0, 0, 0.45);
   font-size: 12px;
+}
+
+.progress-card {
+  margin-bottom: 12px;
+}
+
+.progress-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 </style>

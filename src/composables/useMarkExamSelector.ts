@@ -76,7 +76,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const examOptions = computed<MarkExamSelectOption[]>(() =>
     exams.value.map((item) => ({
       value: item.examId,
-      label: item.examNo ? `${item.examName} (${item.examNo})` : item.examName,
+      label: [formatExamOptionLabel(item), formatAcademicTerm(item)].filter(Boolean).join(' · '),
     })),
   )
 
@@ -129,6 +129,20 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     if (syncUrl) {
       writeExamIdToUrl(examId)
     }
+  }
+
+  function formatSemester(value?: string): string {
+    if (value === '1') return '秋季学期'
+    if (value === '2') return '春季学期'
+    return value ?? ''
+  }
+
+  function formatAcademicTerm(exam: ExamSummaryVO): string {
+    return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
+  }
+
+  function formatExamOptionLabel(exam: ExamSummaryVO): string {
+    return exam.examNo ? `${exam.examName} (${exam.examNo})` : exam.examName
   }
 
   /** 便捷入口：加载考试列表（供 onMounted 调用） */

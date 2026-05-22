@@ -3,7 +3,7 @@
  *
  * 后端规则：
  * - 路径前缀 /api/exam/question-analysis
- * - 部分查询接口为 GET（@RequestParam），写操作为 POST（多数 @RequestParam，无 body）
+ * - 部分查询接口为 GET（@RequestParam），写操作为 POST
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -109,8 +109,16 @@ export function getStudentWrongBook(params: {
 
 // ─── 答案确认生效 ─────────────────────────────────
 
-/** 客观题比对策略 */
-export type ObjectiveComparePolicyCode = 'EXACT' | 'TRIM_EQUAL' | 'NUMERIC_TOLERANCE' | 'REGEX'
+/**
+ * 客观题比较策略编码 - 与后端 com.nybc.edu.common.enums.ObjectiveComparePolicy 一一对齐。
+ * 历史 EXACT / TRIM_EQUAL 已废弃，统一使用 EXACT_NORMALIZED / CHOICE_SET / REGEX / NUMERIC_TOLERANCE / AI_GRADE。
+ */
+export type ObjectiveComparePolicyCode =
+  | 'EXACT_NORMALIZED'
+  | 'CHOICE_SET'
+  | 'REGEX'
+  | 'NUMERIC_TOLERANCE'
+  | 'AI_GRADE'
 
 /** 生效状态 */
 export type EffectiveStatusCode = 'DRAFT' | 'ACTIVE'
@@ -241,6 +249,19 @@ export interface ExamRejudgePlanVO {
   updateTime?: string
 }
 
+/** 重判计划审批请求 - 对应 RejudgePlanDecisionRequest */
+export interface RejudgePlanDecisionPayload {
+  planId: string
+  approved: boolean
+  reason?: string
+}
+
+/** 重判计划执行请求 - 对应 RejudgePlanExecuteRequest */
+export interface RejudgePlanExecutePayload {
+  planId: string
+  executeReason?: string
+}
+
 /**
  * 查询重判计划列表
  * GET /api/exam/question-analysis/rejudge-plan/list
@@ -254,10 +275,16 @@ export function listRejudgePlans(params: {
 
 /**
  * 审批重判计划
- * POST /api/exam/question-analysis/rejudge-plan/approve?planId=
+ * POST /api/exam/question-analysis/rejudge-plan/approve
  */
-export function approveRejudgePlan(planId: string): Promise<void> {
-  return http.post<void>(
-    `/api/exam/question-analysis/rejudge-plan/approve?planId=${encodeURIComponent(planId)}`,
-  )
+export function approveRejudgePlan(payload: RejudgePlanDecisionPayload): Promise<void> {
+  return http.post<void>('/api/exam/question-analysis/rejudge-plan/approve', payload)
+}
+
+/**
+ * 执行重判计划
+ * POST /api/exam/question-analysis/rejudge-plan/execute
+ */
+export function executeRejudgePlan(payload: RejudgePlanExecutePayload): Promise<void> {
+  return http.post<void>('/api/exam/question-analysis/rejudge-plan/execute', payload)
 }

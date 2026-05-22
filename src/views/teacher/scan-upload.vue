@@ -242,6 +242,27 @@
             <template v-else-if="column.key === 'fileCount'">
               {{ batches[index].sourceFileIds?.length ?? 0 }} 份
             </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiButton
+                size="sm"
+                variant="outline"
+                tone="danger"
+                :loading="batchDiscarding === batches[index].scanBatchId"
+                :disabled="
+                  batches[index].status === 'DISCARDED'
+                    || Boolean(batches[index].sealedAt)
+                "
+                :title="batches[index].sealedAt
+                  ? '批次已封存，禁止废弃；请联系扫描终审角色'
+                  : (batches[index].status === 'DISCARDED' ? '批次已废弃' : '废弃整批')"
+                @click="onDiscardBatch(batches[index])"
+              >
+                <template #icon>
+                  <DeleteOutlined />
+                </template>
+                {{ batches[index].status === 'DISCARDED' ? '已废弃' : '废弃' }}
+              </UiButton>
+            </template>
           </template>
         </UiDataTable>
       </UiCard>
@@ -295,6 +316,7 @@ import type {
 } from '@/apis/mark/exam'
 import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -308,6 +330,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   createScanBatchByCondition,
+  discardScanBatch,
   getMarkingProgress,
   pageScannerBatches,
   previewScanBatchAggregation,
@@ -337,6 +360,7 @@ const BATCH_STATUS_LABEL: Record<ScanBatchStatusCode, string> = {
   BLOCKED: '已阻断',
   BOUND: '已绑定',
   COMPLETED: '已完成',
+  DISCARDED: '已废弃',
 }
 
 const BATCH_STATUS_TONE: Record<ScanBatchStatusCode, ToneCode> = {
@@ -344,6 +368,7 @@ const BATCH_STATUS_TONE: Record<ScanBatchStatusCode, ToneCode> = {
   BLOCKED: 'red',
   BOUND: 'green',
   COMPLETED: 'green',
+  DISCARDED: 'gray',
 }
 
 // helper 严格 typed 接收后端 API 对象 ExamScannerBatchVO。
@@ -641,7 +666,49 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '事件数', key: 'eventCount', width: 90 },
   { title: '文件数', key: 'fileCount', width: 90 },
   { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 80 },
+  { title: '操作', key: 'actions', width: 120, fixed: 'right' as const },
 ]
+
+/**
+ * 教师在扫描审阅场景对扫描批次发起废弃。
+ * 已 sealed/已 DISCARDED 的批次禁用入口；其余状态二次确认 + 必填理由后调用后端 discardScanBatch。
+ */
+const batchDiscarding = ref<string | null>(null)
+async function onDiscardBatch(batch: ExamScannerBatchVO): Promise<void> {
+  if (!batch.scanBatchId) return
+  if (batch.status === 'DISCARDED') {
+    message.info('批次已废弃，无需重复操作')
+    return
+  }
+  if (batch.sealedAt) {
+    message.warning('批次已封存，禁止废弃；请联系扫描终审角色解封后再处置')
+    return
+  }
+  // eslint-disable-next-line no-alert -- 教师场景的轻量二次确认；如后续接入项目级 confirm modal 再替换。
+  const reason = window.prompt(`确认废弃批次 ${batch.batchNo || batch.scanBatchId}？\n请输入废弃原因（必填，1-255 字）：`, '')
+  if (reason === null) return
+  const trimmed = reason.trim()
+  if (!trimmed) {
+    message.error('废弃原因不能为空')
+    return
+  }
+  if (trimmed.length > 255) {
+    message.error('废弃原因长度不能超过 255 字')
+    return
+  }
+  batchDiscarding.value = batch.scanBatchId
+  try {
+    await discardScanBatch({ scanBatchId: batch.scanBatchId, discardReason: trimmed })
+    message.success(`批次 ${batch.batchNo || batch.scanBatchId} 已废弃`)
+    await loadBatches()
+    await loadProgress()
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '扫描批次废弃失败'
+    message.error(errMsg)
+  } finally {
+    batchDiscarding.value = null
+  }
+}
 
 async function loadBatches(pageNum?: number): Promise<void> {
   if (!selectedExamId.value) return

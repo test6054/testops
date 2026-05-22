@@ -189,6 +189,17 @@
                   身份绑定
                 </UiButton>
                 <UiButton v-else size="sm" @click="openLedger(record)">处置入口</UiButton>
+                <UiButton
+                  v-if="record.sourceType === 'SCANNED_PAGE' && record.pageId"
+                  size="sm"
+                  tone="danger"
+                  variant="outline"
+                  :loading="pageDiscarding === record.pageId"
+                  title="把该扫描页 effective_status 置 DISCARDED；不影响所属批次"
+                  @click="onDiscardPage(record)"
+                >
+                  废弃此页
+                </UiButton>
                 <UiButton size="sm" variant="ghost" @click="openDetail(record)">详情</UiButton>
               </a-space>
             </template>
@@ -322,7 +333,7 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
+import { bindPaper, discardScannedPage, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
 import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import {
   UiAlertStrip,
@@ -511,6 +522,45 @@ function resetFilter(): void {
   filterForm.scanBatchId = ''
   filterForm.paperInstanceId = ''
   void loadAttentions()
+}
+
+/**
+ * 教师把扫描页（QUALITY_BLOCK / PROCESSING_BLOCK 等异常 SCANNED_PAGE）显式废弃。
+ *
+ * <p>仅对 sourceType === 'SCANNED_PAGE' 且持有 pageId 的记录可用；后端会校验：
+ *   - SUPERSEDED 页拒绝再次废弃；DISCARDED 页幂等返回；
+ *   - 所属批次已 sealed 时拒绝；
+ *   - 影响仅限当前扫描页 effective_status，不联动批次状态。</p>
+ */
+const pageDiscarding = ref<string | null>(null)
+async function onDiscardPage(record: ScanAttentionItemVO): Promise<void> {
+  if (record.sourceType !== 'SCANNED_PAGE' || !record.pageId) {
+    message.warning('该异常不是扫描页来源，无法废弃')
+    return
+  }
+  // eslint-disable-next-line no-alert -- 教师场景的轻量二次确认；后续接入项目级 confirm modal 再替换。
+  const reason = window.prompt(`确认废弃扫描页 ${record.pageId}？\n请输入废弃原因（必填，1-255 字）：`, '')
+  if (reason === null) return
+  const trimmed = reason.trim()
+  if (!trimmed) {
+    message.error('废弃原因不能为空')
+    return
+  }
+  if (trimmed.length > 255) {
+    message.error('废弃原因长度不能超过 255 字')
+    return
+  }
+  pageDiscarding.value = record.pageId
+  try {
+    await discardScannedPage({ scannedPageId: record.pageId, discardReason: trimmed })
+    message.success(`扫描页 ${record.pageId} 已废弃`)
+    await loadAttentions()
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : '扫描页废弃失败'
+    message.error(errMsg)
+  } finally {
+    pageDiscarding.value = null
+  }
 }
 
 // ─── 身份绑定弹窗 ────────────────────────────────

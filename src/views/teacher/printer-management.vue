@@ -123,6 +123,13 @@
               >
                 采集
               </a>
+              <a
+                v-if="devices[index].endpointMachineCode"
+                class="op-link op-link--danger"
+                @click="handleUnbindAgent(devices[index])"
+              >
+                解绑 Agent
+              </a>
               <a class="op-link op-link--danger" @click="handleDelete(devices[index])">删除</a>
             </div>
           </template>
@@ -264,12 +271,16 @@
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item name="saneResolution" label="扫描分辨率 DPI">
+              <a-form-item
+                name="saneResolution"
+                label="扫描分辨率 DPI"
+                extra="阅卷 OCR 下限 300 DPI；低于该阈值会损害手写体识别。"
+              >
                 <a-input-number
                   v-model:value="formData.saneResolution"
-                  :min="50"
+                  :min="300"
                   :max="1200"
-                  placeholder="默认 200"
+                  placeholder="默认 300；不能低于 300"
                   style="width: 100%"
                 />
               </a-form-item>
@@ -626,6 +637,7 @@ import {
   SCANNER_INTERFACE_MODE_COLOR,
   SCANNER_INTERFACE_MODE_LABEL,
   triggerSaneScan,
+  unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
@@ -656,7 +668,7 @@ const examListLoading = ref(false)
 const examList = ref<MarkExamSummaryVO[]>([])
 const examOptions = computed(() =>
   examList.value.map((item) => ({
-    label: item.examNo ? `${item.examName} (${item.examNo})` : item.examName,
+    label: [formatExamOptionLabel(item), formatAcademicTerm(item)].filter(Boolean).join(' · '),
     value: item.examId,
   })),
 )
@@ -788,7 +800,7 @@ function defaultFormState(): FormState {
     scannerIp: '',
     status: 'ACTIVE',
     sanePort: 6566,
-    saneResolution: 200,
+    saneResolution: 300,
     saneColorMode: 'COLOR',
     saneDuplexMode: 'SIMPLEX',
     defaultClassIds: [],
@@ -834,7 +846,7 @@ function handleEdit(record: ExamScannerDeviceVO): void {
     saneHost: record.saneHost ?? '',
     sanePort: record.sanePort ?? 6566,
     saneDeviceName: record.saneDeviceName ?? '',
-    saneResolution: record.saneResolution ?? 200,
+    saneResolution: record.saneResolution ?? 300,
     saneColorMode: record.saneColorMode ?? defaultColorMode,
     saneDuplexMode: record.saneDuplexMode ?? defaultDuplexMode,
     defaultExamId: record.defaultExamId ?? '',
@@ -956,6 +968,19 @@ async function handleCreateActivationCode(record: ExamScannerDeviceVO): Promise<
   activationCodeInfo.value = await createScannerActivationCode({ deviceId: record.id })
   activationCodeDeviceName.value = record.deviceName || record.scannerDeviceId || '扫描设备'
   showActivationCodeModal.value = true
+}
+
+function handleUnbindAgent(record: ExamScannerDeviceVO): void {
+  void confirmAsync({
+    title: '解绑扫描 Agent',
+    content: `确定解绑设备"${record.deviceName}"当前 Agent 吗？解绑后原一体机需要重新使用激活码绑定。`,
+    type: 'warning',
+    onOk: async () => {
+      await unbindScannerDeviceAgent(record.id)
+      message.success('扫描 Agent 已解绑')
+      await loadDevices()
+    },
+  })
 }
 
 function copyText(value?: string | null): void {
@@ -1087,6 +1112,20 @@ function filterExamOption(input: string, option?: DefaultOptionType): boolean {
   return String(option?.label ?? '')
     .toLowerCase()
     .includes(input.toLowerCase())
+}
+
+function formatSemester(value?: string): string {
+  if (value === '1') return '秋季学期'
+  if (value === '2') return '春季学期'
+  return value ?? ''
+}
+
+function formatAcademicTerm(exam: MarkExamSummaryVO): string {
+  return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
+}
+
+function formatExamOptionLabel(exam: MarkExamSummaryVO): string {
+  return exam.examNo ? `${exam.examName} (${exam.examNo})` : exam.examName
 }
 
 onMounted(() => {

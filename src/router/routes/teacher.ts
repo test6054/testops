@@ -317,6 +317,21 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'review-batch-confirm',
+        name: 'TeacherReviewBatchConfirm',
+        component: () => import('@/views/teacher/review-batch-confirm.vue'),
+        meta: {
+          title: '批量审核',
+          roles: TEACHER_ROLES,
+          icon: 'check-circle',
+          hideInMenu: false,
+          menuGroup: 'review',
+          menuGroupTitle: '批阅流程',
+          menuGroupIcon: 'edit',
+          menuGroupOrder: 4,
+        },
+      },
+      {
         path: 'review-arbitration',
         name: 'TeacherReviewArbitration',
         component: () => import('@/views/teacher/review-arbitration.vue'),

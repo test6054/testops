@@ -58,6 +58,9 @@
               <a-descriptions-item label="考试编号">
                 {{ detail.examNo || '-' }}
               </a-descriptions-item>
+              <a-descriptions-item label="学年学期">
+                {{ formatAcademicTerm(detail) || '未设置' }}
+              </a-descriptions-item>
               <a-descriptions-item label="状态">
                 <UiTag :tone="EXAM_STATUS_TONE[detail.status]" size="sm">
                   {{ detail.statusMessage || EXAM_STATUS_LABEL[detail.status] }}
@@ -194,6 +197,16 @@ const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', wid
 function formatTime(value?: string): string {
   if (!value) return '-'
   return dayjs(value).format('YYYY-MM-DD HH:mm')
+}
+
+function formatSemester(value?: string): string {
+  if (value === '1') return '秋季学期'
+  if (value === '2') return '春季学期'
+  return value ?? ''
+}
+
+function formatAcademicTerm(exam: ExamDetailVO): string {
+  return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
 }
 
 async function loadDetail(): Promise<void> {

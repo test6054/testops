@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { RadioChangeEvent } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
@@ -815,8 +816,8 @@ function handleSupportLevelChange(level: SupportLevel) {
   supportEditor.supportWeight = SUPPORT_LEVEL_DEFAULT_FACTOR[level]
 }
 
-function handleSupportLevelRadioChange(event: { target: { value: unknown } }) {
-  const value = event.target.value
+function handleSupportLevelRadioChange(event: RadioChangeEvent) {
+  const value = event.target?.value
   if (!isSupportLevel(value)) throw new Error('课程目标支撑等级不符合前后端契约')
   handleSupportLevelChange(value)
 }

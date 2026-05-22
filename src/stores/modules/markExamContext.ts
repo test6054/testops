@@ -52,7 +52,7 @@ export const useMarkExamContextStore = defineStore(
     const examOptions = computed(() =>
       exams.value.map((e) => ({
         value: e.examId,
-        label: e.examNo ? `${e.examName}（${e.examNo}）` : e.examName,
+        label: [formatExamOptionLabel(e), formatAcademicTerm(e)].filter(Boolean).join(' · '),
       })),
     )
 
@@ -137,6 +137,20 @@ export const useMarkExamContextStore = defineStore(
       currentExamId.value = ''
       exams.value = []
       detailCache.value = new Map()
+    }
+
+    function formatSemester(value?: string): string {
+      if (value === '1') return '秋季学期'
+      if (value === '2') return '春季学期'
+      return value ?? ''
+    }
+
+    function formatAcademicTerm(exam: ExamSummaryVO): string {
+      return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
+    }
+
+    function formatExamOptionLabel(exam: ExamSummaryVO): string {
+      return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
     }
 
     return {
