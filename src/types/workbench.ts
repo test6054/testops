@@ -3,7 +3,7 @@
  *
  * 设计原则：
  * - 本文件只定义工作台 UI 展示层类型，不重复后端 DTO / API 响应类型
- * - 后端状态码 → 工作台语义状态 的映射由 src/utils/status-tone.ts 负责
+ * - 后端状态码 → 工作台语义状态 的映射由各业务 API 模块或页面编排层显式完成
  * - UiArrowTimelineStage / UiArrowTimelineStatus 等底层渲染类型
  *   定义在 src/components/ui-guide/ui/types.ts，本文件引用但不重复定义
  */

@@ -22,7 +22,7 @@
               :percent="scanPercent"
               size="sm"
               :color="scanRingColor"
-              :label="`已扫 ${ledger.scannedPageCount ?? 0} / ${ledger.expectedPageCount ?? 0} 页`"
+              :label="`已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`"
               class="ledger-summary__scan-bar"
             />
             <div v-if="ledger.diagnostic" class="ledger-summary__diagnostic">
@@ -102,8 +102,10 @@ const statusTone = computed(() => {
 })
 
 const scanPercent = computed(() => {
-  const expected = props.ledger?.expectedPageCount ?? 0
-  const scanned = props.ledger?.scannedPageCount ?? 0
+  const ledger = props.ledger
+  if (!ledger) return 0
+  const expected = ledger.expectedPageCount
+  const scanned = ledger.scannedPageCount
   if (expected <= 0) return 0
   return Math.min(Math.round((scanned / expected) * 100), 100)
 })
@@ -114,69 +116,81 @@ const scanRingColor = computed(() => {
   return '#f59e0b'
 })
 
-const scanMetrics = computed(() => [
-  {
-    label: '应考人数',
-    value: props.ledger?.expectedCandidateCount ?? 0,
-    unit: '人',
-    tone: 'blue' as const,
-  },
-  {
-    label: '应有页数',
-    value: props.ledger?.expectedPageCount ?? 0,
-    unit: '页',
-    tone: 'blue' as const,
-  },
-  {
-    label: '已扫描页',
-    value: props.ledger?.scannedPageCount ?? 0,
-    unit: '页',
-    tone: scanPercent.value >= 100 ? ('green' as const) : ('orange' as const),
-  },
-  {
-    label: '扫描完成率',
-    value: `${scanPercent.value}`,
-    unit: '%',
-    tone: scanPercent.value >= 100 ? ('green' as const) : ('blue' as const),
-  },
-])
+const scanMetrics = computed(() => {
+  const ledger = props.ledger
+  if (!ledger) return []
+  return [
+    {
+      label: '应考人数',
+      value: ledger.expectedCandidateCount,
+      unit: '人',
+      tone: 'blue' as const,
+    },
+    {
+      label: '应有页数',
+      value: ledger.expectedPageCount,
+      unit: '页',
+      tone: 'blue' as const,
+    },
+    {
+      label: '已扫描页',
+      value: ledger.scannedPageCount,
+      unit: '页',
+      tone: scanPercent.value >= 100 ? ('green' as const) : ('orange' as const),
+    },
+    {
+      label: '扫描完成率',
+      value: `${scanPercent.value}`,
+      unit: '%',
+      tone: scanPercent.value >= 100 ? ('green' as const) : ('blue' as const),
+    },
+  ]
+})
 
-const bindMetrics = computed(() => [
-  {
-    label: '已重构试卷',
-    value: props.ledger?.reconstructedPaperCount ?? 0,
-    unit: '份',
-    tone: 'blue' as const,
-  },
-  {
-    label: '已绑定试卷',
-    value: props.ledger?.boundPaperCount ?? 0,
-    unit: '份',
-    tone: 'green' as const,
-  },
-  {
-    label: '未匹配考生',
-    value: props.ledger?.missingCandidateCount ?? 0,
-    unit: '人',
-    tone: (props.ledger?.missingCandidateCount ?? 0) > 0 ? ('red' as const) : ('green' as const),
-  },
-])
+const bindMetrics = computed(() => {
+  const ledger = props.ledger
+  if (!ledger) return []
+  return [
+    {
+      label: '已重构试卷',
+      value: ledger.reconstructedPaperCount,
+      unit: '份',
+      tone: 'blue' as const,
+    },
+    {
+      label: '已绑定试卷',
+      value: ledger.boundPaperCount,
+      unit: '份',
+      tone: 'green' as const,
+    },
+    {
+      label: '未匹配考生',
+      value: ledger.missingCandidateCount,
+      unit: '人',
+      tone: ledger.missingCandidateCount > 0 ? ('red' as const) : ('green' as const),
+    },
+  ]
+})
 
-const deviationMetrics = computed(() => [
-  {
-    label: '重复影像页',
-    value: props.ledger?.duplicatePageCount ?? 0,
-    unit: '页',
-    tone: (props.ledger?.duplicatePageCount ?? 0) > 0 ? ('orange' as const) : ('green' as const),
-  },
-  {
-    label: '待处置重复',
-    value: props.ledger?.pendingDuplicateCount ?? 0,
-    unit: '条',
-    tone: (props.ledger?.pendingDuplicateCount ?? 0) > 0 ? ('red' as const) : ('green' as const),
-  },
-  { label: '账本 ID', value: props.ledger?.ledgerId ?? '-', tone: 'gray' as const },
-])
+const deviationMetrics = computed(() => {
+  const ledger = props.ledger
+  if (!ledger) return []
+  return [
+    {
+      label: '重复影像页',
+      value: ledger.duplicatePageCount,
+      unit: '页',
+      tone: ledger.duplicatePageCount > 0 ? ('orange' as const) : ('green' as const),
+    },
+    {
+      label: '待处置重复',
+      value: ledger.pendingDuplicateCount,
+      unit: '条',
+      tone: ledger.pendingDuplicateCount > 0 ? ('red' as const) : ('green' as const),
+    },
+    { label: '账本 ID', value: ledger.ledgerId ?? '-', tone: 'gray' as const },
+  ]
+})
 
 function fmt(v?: string): string {
   if (!v) return '-'

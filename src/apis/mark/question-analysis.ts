@@ -113,12 +113,12 @@ export function getStudentWrongBook(params: {
  * 客观题比较策略编码 - 与后端 com.nybc.edu.common.enums.ObjectiveComparePolicy 一一对齐。
  * 历史 EXACT / TRIM_EQUAL 已废弃，统一使用 EXACT_NORMALIZED / CHOICE_SET / REGEX / NUMERIC_TOLERANCE / AI_GRADE。
  */
-export type ObjectiveComparePolicyCode =
-  | 'EXACT_NORMALIZED'
-  | 'CHOICE_SET'
-  | 'REGEX'
-  | 'NUMERIC_TOLERANCE'
-  | 'AI_GRADE'
+export type ObjectiveComparePolicyCode
+  = | 'EXACT_NORMALIZED'
+    | 'CHOICE_SET'
+    | 'REGEX'
+    | 'NUMERIC_TOLERANCE'
+    | 'AI_GRADE'
 
 /** 生效状态 */
 export type EffectiveStatusCode = 'DRAFT' | 'ACTIVE'

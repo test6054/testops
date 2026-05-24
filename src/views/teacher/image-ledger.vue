@@ -40,8 +40,12 @@
       <div class="ledger-page__attention-body">
         <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
         <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
-        <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
-        <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
+        <span v-if="attentionContext.scanBatchId"
+          >扫描批次：{{ attentionContext.scanBatchId }}</span
+        >
+        <span v-if="attentionContext.paperInstanceId"
+          >试卷实例：{{ attentionContext.paperInstanceId }}</span
+        >
         <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
       </div>
       <template #actions>
@@ -68,6 +72,14 @@
 
     <div v-else class="ledger-page__cards">
       <a-card title="账本概览" :bordered="false" size="small">
+        <UiAlertStrip
+          v-if="balanceError"
+          tone="error"
+          title="考试整体对账失败"
+          :description="balanceError"
+          dense
+          class="ledger-page__balance-error"
+        />
         <LedgerSummaryCard
           :ledger="ledger"
           :loading="loadingDetail"
@@ -89,11 +101,11 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -127,6 +139,7 @@ const loadingDetail = ref(false)
 const balancing = ref(false)
 // D-9 错误态：影像账本加载失败时 UiErrorRetryPanel 重试 + 上报
 const ledgerLoadError = ref<unknown>(null)
+const balanceError = ref('')
 
 interface ScanAttentionContext {
   attentionType: string
@@ -179,11 +192,13 @@ async function loadAll(): Promise<void> {
 async function handleBalance(): Promise<void> {
   if (!selectedExamId.value) return
   balancing.value = true
+  balanceError.value = ''
   try {
     ledger.value = await executeImageLedgerBalance({ examId: selectedExamId.value })
     message.success('已执行考试整体对账')
   } catch (e) {
     const msg = e instanceof Error ? e.message : '对账失败'
+    balanceError.value = msg
     message.error(msg)
   } finally {
     balancing.value = false
@@ -202,8 +217,12 @@ async function onChildSubmitted(): Promise<void> {
 }
 
 watch(selectedExamId, (v) => {
-  if (v) void loadAll()
-  else ledger.value = null
+  balanceError.value = ''
+  if (v) {
+    void loadAll()
+  } else {
+    ledger.value = null
+  }
 })
 
 onMounted(async () => {
@@ -258,5 +277,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.ledger-page__balance-error {
+  margin-bottom: 12px;
 }
 </style>

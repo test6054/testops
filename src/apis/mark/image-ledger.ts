@@ -25,16 +25,16 @@ export interface ImageLedgerDetailVO {
   ledgerId?: string
   examId: string
   ledgerStatus?: string
-  expectedCandidateCount?: number
-  expectedPageCount?: number
-  scannedPageCount?: number
-  reconstructedPaperCount?: number
-  boundPaperCount?: number
-  missingCandidateCount?: number
-  duplicatePageCount?: number
+  expectedCandidateCount: number
+  expectedPageCount: number
+  scannedPageCount: number
+  reconstructedPaperCount: number
+  boundPaperCount: number
+  missingCandidateCount: number
+  duplicatePageCount: number
   balancedTime?: string
   diagnostic?: string
-  pendingDuplicateCount?: number
+  pendingDuplicateCount: number
 }
 
 /** 账本状态文案映射 */
@@ -58,7 +58,7 @@ export const LEDGER_STATUS_COLOR: Record<string, BadgeTone> = {
 export function getImageLedgerDetail(
   payload: ImageLedgerDetailPayload,
 ): Promise<ImageLedgerDetailVO> {
-  return http.post<ImageLedgerDetailVO>('/api/mark/exams/image-ledger/detail', payload)
+  return http.post<unknown>('/api/mark/exams/image-ledger/detail', payload).then(validateImageLedgerDetail)
 }
 
 /** 影像账本对账请求 - 对应 ImageLedgerBalanceRequest */
@@ -73,7 +73,7 @@ export interface ImageLedgerBalancePayload {
 export function executeImageLedgerBalance(
   payload: ImageLedgerBalancePayload,
 ): Promise<ImageLedgerDetailVO> {
-  return http.post<ImageLedgerDetailVO>('/api/mark/exams/image-ledger/balance', payload)
+  return http.post<unknown>('/api/mark/exams/image-ledger/balance', payload).then(validateImageLedgerDetail)
 }
 
 // ─── 重复影像处置 ─────────────────────────────────────
@@ -93,10 +93,9 @@ export const DUPLICATE_RESOLUTION_STATUS_COLOR: Record<DuplicateResolutionStatus
   RESOLVED: 'green',
 }
 
-/** 重复影像处置记录 - 对应 ExamPaperDuplicateResolution */
+/** 重复影像处置记录 - 对应 ExamPaperDuplicateResolutionVO */
 export interface ExamPaperDuplicateResolutionVO {
   id: string
-  tenantId?: string
   examId: string
   pageHash?: string
   firstPageId?: string
@@ -119,10 +118,10 @@ export interface ExamPaperDuplicateResolutionVO {
 export function listPendingDuplicates(
   payload: ImageLedgerDetailPayload,
 ): Promise<ExamPaperDuplicateResolutionVO[]> {
-  return http.post<ExamPaperDuplicateResolutionVO[]>(
+  return http.post<unknown>(
     '/api/mark/exams/binding/duplicate-page',
     payload,
-  )
+  ).then(validateDuplicateResolutionList)
 }
 
 /** 重复影像处置请求 - 对应 DuplicateResolveRequest */
@@ -139,5 +138,98 @@ export interface DuplicateResolvePayload {
  * POST /api/mark/exams/binding/resolve-duplicate
  */
 export function resolveDuplicate(payload: DuplicateResolvePayload): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/binding/resolve-duplicate', payload)
+  return http.post<unknown>('/api/mark/exams/binding/resolve-duplicate', payload).then(validateBooleanResult)
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`影像账本接口缺少 ${fieldName}`)
+  }
+  return value
+}
+
+function optionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  if (typeof value !== 'string') {
+    throw new TypeError(`影像账本接口 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`影像账本接口 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function validateImageLedgerDetail(value: unknown): ImageLedgerDetailVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('影像账本详情返回格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    ledgerId: optionalString(record.ledgerId, 'ledgerId'),
+    examId: requireString(record.examId, 'examId'),
+    ledgerStatus: optionalString(record.ledgerStatus, 'ledgerStatus'),
+    expectedCandidateCount: requireFiniteNumber(record.expectedCandidateCount, 'expectedCandidateCount'),
+    expectedPageCount: requireFiniteNumber(record.expectedPageCount, 'expectedPageCount'),
+    scannedPageCount: requireFiniteNumber(record.scannedPageCount, 'scannedPageCount'),
+    reconstructedPaperCount: requireFiniteNumber(record.reconstructedPaperCount, 'reconstructedPaperCount'),
+    boundPaperCount: requireFiniteNumber(record.boundPaperCount, 'boundPaperCount'),
+    missingCandidateCount: requireFiniteNumber(record.missingCandidateCount, 'missingCandidateCount'),
+    duplicatePageCount: requireFiniteNumber(record.duplicatePageCount, 'duplicatePageCount'),
+    balancedTime: optionalString(record.balancedTime, 'balancedTime'),
+    diagnostic: optionalString(record.diagnostic, 'diagnostic'),
+    pendingDuplicateCount: requireFiniteNumber(record.pendingDuplicateCount, 'pendingDuplicateCount'),
+  }
+}
+
+function validateDuplicateResolutionStatus(value: unknown): DuplicateResolutionStatusCode | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  if (value !== 'PENDING' && value !== 'RESOLVED') {
+    throw new TypeError('重复影像处置状态格式错误')
+  }
+  return value
+}
+
+function validateDuplicateResolution(value: unknown): ExamPaperDuplicateResolutionVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('重复影像处置记录返回格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    id: requireString(record.id, 'id'),
+    examId: requireString(record.examId, 'examId'),
+    pageHash: optionalString(record.pageHash, 'pageHash'),
+    firstPageId: optionalString(record.firstPageId, 'firstPageId'),
+    secondPageId: optionalString(record.secondPageId, 'secondPageId'),
+    firstPaperInstanceId: optionalString(record.firstPaperInstanceId, 'firstPaperInstanceId'),
+    secondPaperInstanceId: optionalString(record.secondPaperInstanceId, 'secondPaperInstanceId'),
+    selectedPaperInstanceId: optionalString(record.selectedPaperInstanceId, 'selectedPaperInstanceId'),
+    resolutionStatus: validateDuplicateResolutionStatus(record.resolutionStatus),
+    resolutionReason: optionalString(record.resolutionReason, 'resolutionReason'),
+    resolvedBy: optionalString(record.resolvedBy, 'resolvedBy'),
+    resolvedTime: optionalString(record.resolvedTime, 'resolvedTime'),
+    createTime: optionalString(record.createTime, 'createTime'),
+    updateTime: optionalString(record.updateTime, 'updateTime'),
+  }
+}
+
+function validateDuplicateResolutionList(value: unknown): ExamPaperDuplicateResolutionVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('重复影像处置列表返回格式错误')
+  }
+  return value.map(validateDuplicateResolution)
+}
+
+function validateBooleanResult(value: unknown): boolean {
+  if (typeof value !== 'boolean') {
+    throw new TypeError('重复影像处置结果返回格式错误')
+  }
+  return value
 }

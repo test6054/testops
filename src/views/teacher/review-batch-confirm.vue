@@ -132,27 +132,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import type {
+  ExamGradeBatchConfirmItem,
+  ExamGradeBatchConfirmResponse,
+  ExamSummaryVO,
+  ReviewTaskItemVO,
+  ReviewTaskTypeCode,
+} from '@/apis/mark/exam'
+import {
+  batchConfirmQuestionGrades,
+  listReviewTasks,
+  pageExams,
+  REVIEW_TASK_TYPE_META,
+} from '@/apis/mark/exam'
 import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import StageWorkbenchShell from '@/components/layout/StageWorkbenchShell.vue'
 import UiAlertStrip from '@/components/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiCard from '@/components/ui/UiCard.vue'
 import UiEmpty from '@/components/ui/UiEmpty.vue'
 import UiTag from '@/components/ui/UiTag.vue'
-import {
-  batchConfirmQuestionGrades,
-  listReviewTasks,
-  pageExams,
-  REVIEW_TASK_TYPE_META,
-  type ExamGradeBatchConfirmItem,
-  type ExamGradeBatchConfirmResponse,
-  type ExamSummaryVO,
-  type ReviewTaskItemVO,
-  type ReviewTaskTypeCode,
-} from '@/apis/mark/exam'
 
 const router = useRouter()
 const examLoading = ref(false)
@@ -225,7 +227,9 @@ function formatSemester(value?: string): string {
 }
 
 function formatAcademicTerm(exam: ExamSummaryVO): string {
-  return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
+  return [exam.academicYear, formatSemester(exam.semester) || exam.semester]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 function formatExamOptionLabel(exam: ExamSummaryVO): string {
@@ -292,9 +296,7 @@ async function submitBatch() {
     }
     const finalScore = finalScoreMap.value[taskId]
     if (finalScore === undefined || finalScore === null || Number.isNaN(finalScore)) {
-      message.warning(
-        `匿名号 ${task.anonymousNo ?? task.reviewTaskId} 的最终分不能为空，请先填写`,
-      )
+      message.warning(`匿名号 ${task.anonymousNo ?? task.reviewTaskId} 的最终分不能为空，请先填写`)
       return
     }
     if (task.fullScore !== undefined && finalScore > task.fullScore) {
@@ -304,9 +306,7 @@ async function submitBatch() {
       return
     }
     if (finalScore < 0) {
-      message.warning(
-        `匿名号 ${task.anonymousNo ?? task.reviewTaskId} 的最终分不能为负`,
-      )
+      message.warning(`匿名号 ${task.anonymousNo ?? task.reviewTaskId} 的最终分不能为负`)
       return
     }
     items.push({

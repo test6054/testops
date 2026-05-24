@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import type {
   AgentHealthResponse,
+  AgentHealthStatus,
+  LocalScanPageStatus,
   ScanJobResponse,
-  ScannerAgentActivateResponse,
   ScannerDeviceInfo,
 } from '@/apis/mark/scanner-agent-local'
 import type {
+  ExamScannerBatchLifecycleVO,
   ExamScannerKioskContextVO,
   ExamScannerKioskExamOptionRequest,
   ExamScannerKioskExamOptionVO,
+  ExamScannerLedgerDataSource,
+  ExamScannerPageRegistrationStatus,
+  ScanAttentionTypeCode,
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
 import {
@@ -34,17 +39,17 @@ import { useRoute } from 'vue-router'
 import {
   activateLocalAgent,
   cancelScanJob,
+  deleteScanJob,
+  discardScanJob,
   endBatch,
   getAgentHealth,
-  getLocalAgentBaseUrl,
   getPageImageUrl,
   getScanJob,
+  listScanJobs,
   listLocalScanners,
   openDiagnosticsExport,
   pauseScanJob,
   resumeScanJob,
-  deleteScanJob,
-  discardScanJob,
   retryCommit,
   retryUpload,
   ScannerBusyError,
@@ -52,14 +57,19 @@ import {
   unbindLocalAgent,
 } from '@/apis/mark/scanner-agent-local'
 import {
+  closeScannerKioskBatch,
+  discardScannedPage,
+  discardScannerKioskBatch,
   getScannerKioskContext,
   pageScannerKioskExamOptions,
   sealScannerKioskBatch,
+  startScannerKioskBatch,
 } from '@/apis/mark/scanner-kiosk'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { promptModal } from '@/views/quality/_helpers'
 
 const route = useRoute()
-const agentBaseUrl = getLocalAgentBaseUrl()
 const gatewayBaseUrlEnv = import.meta.env.VITE_SCANNER_GATEWAY_BASE_URL
 const defaultGatewayBaseUrl = typeof gatewayBaseUrlEnv === 'string' ? gatewayBaseUrlEnv.trim() : ''
 
@@ -68,7 +78,6 @@ const scanners = ref<ScannerDeviceInfo[]>([])
 const selectedScannerId = ref('')
 const kioskContext = ref<ExamScannerKioskContextVO | null>(null)
 const currentJob = ref<ScanJobResponse | null>(null)
-const activationResponse = ref<ScannerAgentActivateResponse | null>(null)
 const loading = ref(false)
 const contextLoading = ref(false)
 const errorMessage = ref('')
@@ -79,6 +88,8 @@ const expectedPages = ref<number | undefined>()
 const scanMode = ref<ScannerKioskScanMode>('DIRECT')
 const supplementTargetPageNo = ref<number | undefined>()
 const supplementReason = ref('')
+const activeBatchExternalNo = ref('')
+const localJobRecoveryMessage = ref('')
 /**
  * 补扫子模式：true=替换目标页（旧扫描页 SUPERSEDED），false=纯追加补扫（保留旧页，仅新增）。
  * 仅在 scanMode==='SUPPLEMENT' 时有效；切到其他模式时由 changeScanMode 自动重置为 false。
@@ -100,6 +111,8 @@ let contextTimer: number | undefined
 let jobTimer: number | undefined
 let busyPollTimer: number | undefined
 let sseRefreshDebounce: number | undefined
+let busyPollFailureCount = 0
+let jobPollFailureCount = 0
 
 const {
   events: liveEvents,
@@ -118,12 +131,11 @@ const {
   }),
   initialLimit: 20,
   maxEvents: 50,
-  // Plan §4.3：当 kioskContext 中已有最近批次外部号时拉页级账本，由 useScanLiveStream
+  // 当当前活动任务或 kioskContext 中已有批次外部号时拉页级账本，由 useScanLiveStream
   // 在 start / onReady / refresh 时间点自动触发；批次切换由下方 watch 显式 refreshPageLedger。
   ledgerFilter: () => {
-    const device =
-      queryScannerDeviceId.value || kioskContext.value?.device?.scannerDeviceId || ''
-    const batchExternalNo = kioskContext.value?.latestBatch?.batchExternalNo || ''
+    const device = getActiveScannerDeviceId()
+    const batchExternalNo = getActiveBatchExternalNo()
     if (!examId.value || !device || !batchExternalNo) {
       return null
     }
@@ -173,8 +185,7 @@ const visiblePages = computed(
 )
 const exceptionPages = computed(() =>
   visiblePages.value.filter((item) => {
-    const status = item.status.toUpperCase()
-    return status === 'FAILED' || status === 'UPLOAD_FAILED' || Boolean(item.diagnostic)
+    return item.status === 'FAILED' || Boolean(item.diagnostic)
   }),
 )
 const previewImageUrl = computed(() => {
@@ -189,8 +200,60 @@ const scanProgress = computed(() => {
   return Math.min(Math.round(12 + uploadedRatio * 84), 96)
 })
 const jobIsTerminal = computed(() => {
-  const status = currentJob.value?.status.toUpperCase()
-  return status === 'REPORTED' || status === 'FAILED' || status === 'CANCELLED'
+  const status = currentJob.value?.status
+  return status === 'REPORTED' || status === 'CANCELLED'
+})
+const canCancelJob = computed(() => {
+  const status = currentJob.value?.status
+  return status === 'CREATED' || status === 'SCANNING' || status === 'PAUSED'
+})
+const canEndBatch = computed(() => {
+  const status = currentJob.value?.status
+  return status === 'SCANNING' || status === 'PAUSED'
+})
+const currentJobAllPagesUploadedButUnconfirmed = computed(() => {
+  const job = currentJob.value
+  if (!job || job.reported) return false
+  const uploadablePages = visiblePages.value.filter((page) => page.status !== 'DELETED')
+  if (uploadablePages.length === 0 || job.uploadedPages <= 0) return false
+  return uploadablePages.every((page) => page.status === 'UPLOADED')
+})
+const canRemoveCurrentJob = computed(() => {
+  const job = currentJob.value
+  if (!job) return false
+  if (job.reported) return true
+  if (currentJobAllPagesUploadedButUnconfirmed.value) return false
+  return !['READYTOUPLOAD', 'UPLOADING', 'RETRYING'].includes(job.status)
+})
+const removeCurrentJobTitle = computed(() => {
+  if (currentJob.value?.reported) {
+    return '调用后端废弃接口把扫描批次置为 DISCARDED，并清理 Agent 本地任务'
+  }
+  if (currentJobAllPagesUploadedButUnconfirmed.value) {
+    return '页面已上传完成但批次未确认，请先点击重试 commit'
+  }
+  return '仅清理 Agent 本地的未上报扫描任务；上传中任务需等待完成或失败后处理'
+})
+const canRetryUpload = computed(() => {
+  const job = currentJob.value
+  if (!job || job.reported) return false
+  const status = job.status
+  if (status === 'SCANNING' || status === 'PAUSED' || status === 'UPLOADING' || status === 'CANCELLED' || status === 'REPORTED') {
+    return false
+  }
+  if (exceptionPages.value.length > 0) return true
+  return ['FAILED', 'RETRYING', 'READYTOUPLOAD'].includes(status)
+})
+const canRetryCommit = computed(() => {
+  const job = currentJob.value
+  if (!job || job.reported) return false
+  const status = job.status
+  if (status === 'SCANNING' || status === 'PAUSED' || status === 'UPLOADING' || status === 'CANCELLED' || status === 'REPORTED') {
+    return false
+  }
+  const uploadablePages = visiblePages.value.filter((page) => page.status !== 'DELETED')
+  if (uploadablePages.length === 0 || job.uploadedPages <= 0) return false
+  return uploadablePages.every((page) => page.status === 'UPLOADED')
 })
 const scanBlockedReason = computed(() => {
   if (!examId.value) return '请先在顶部下拉中选择考试'
@@ -201,6 +264,7 @@ const scanBlockedReason = computed(() => {
   if (!health.value?.scanAllowed) return '服务端心跳未允许扫描'
   if (!selectedScannerId.value) return '未检测到可用本地扫描仪'
   if (!kioskContext.value) return '考试扫描上下文未加载'
+  if (currentJob.value && !jobIsTerminal.value) return '当前扫描任务未结束'
   if (!kioskContext.value.canStartScan)
     return kioskContext.value.blockReason || '服务端未允许启动扫描'
   if (scanMode.value === 'SUPPLEMENT') {
@@ -215,19 +279,28 @@ const scanBlockedReason = computed(() => {
   return ''
 })
 const canStartScan = computed(() => !scanBlockedReason.value && !loading.value)
+const canSwitchScanMode = computed(() => !currentJob.value || jobIsTerminal.value)
+const canSwitchExam = computed(() => !currentJob.value || jobIsTerminal.value)
+const canSwitchScanner = computed(() => !currentJob.value || jobIsTerminal.value)
+const canEditScanSetup = computed(() => !currentJob.value || jobIsTerminal.value)
+const canActivateAgent = computed(() => !currentJob.value || jobIsTerminal.value)
+const canUnbindAgent = computed(() => !currentJob.value || jobIsTerminal.value)
 const workState = computed(() => {
-  const status = currentJob.value?.status.toUpperCase()
+  const job = currentJob.value
+  const status = job?.status
   if (status === 'REPORTED') return { text: '已自动上传并提交批次', tone: 'success' }
   if (status === 'FAILED') return { text: '存在失败项', tone: 'danger' }
   if (status === 'CANCELLED') return { text: '已取消', tone: 'muted' }
-  if (currentJob.value)
-    return { text: scanModeText(currentJob.value.scanMode, '上传中'), tone: 'running' }
+  if (job && status === 'PAUSED') return { text: scanModeText(job.scanMode, '已暂停'), tone: 'running' }
+  if (job) return { text: scanModeText(job.scanMode, '上传中'), tone: 'running' }
   if (scanBlockedReason.value) return { text: '入口阻断', tone: 'danger' }
-  return { text: `可开始${scanModeText(scanMode.value, '')}`, tone: 'ready' }
+  return { text: `可开始${scanModeText(scanMode.value, '')}`, tone: 'success' }
 })
 const uploadStage = computed(() => {
   if (!currentJob.value) return '等待扫描'
   if (currentJob.value.reported) return '服务端已接收批次'
+  if (currentJob.value.status === 'FAILED') return '扫描上传失败，等待重试'
+  if (currentJob.value.status === 'PAUSED') return '扫描已暂停'
   if (currentJob.value.scannedPages === 0) return '等待扫描仪送纸'
   if (currentJob.value.uploadedPages < currentJob.value.scannedPages) return '页面自动上传中'
   return '批次自动提交中'
@@ -237,6 +310,52 @@ const latestBatchText = computed(() => {
   if (!batch) return '暂无批次'
   return `${batch.batchNo || batch.batchExternalNo || batch.scanBatchId} · ${batch.statusMessage || batch.status}`
 })
+const latestBatchModeText = computed(() => {
+  const batch = kioskContext.value?.latestBatch
+  if (!batch) return '-'
+  const mode = scanModeText(batch.scanMode, '')
+  if (batch.scanMode !== 'SUPPLEMENT') return mode
+  const replaceText = batch.replaceTargetPage ? '替换目标页' : '追加补扫'
+  const targetText = batch.targetPageNo ? `第 ${batch.targetPageNo} 页` : '未指定目标页'
+  return `${mode} · ${replaceText} · ${targetText}`
+})
+const latestBatchLifecycleItems = computed(() => {
+  const batch = kioskContext.value?.latestBatch
+  if (!batch) return [] as { label: string, value: string, danger?: boolean }[]
+  const items: { label: string, value: string, danger?: boolean }[] = []
+  if (batch.sealedAt) {
+    items.push({
+      label: '封存',
+      value: `${formatTime(batch.sealedAt)}${batch.sealedBy ? ` · #${batch.sealedBy}` : ''}`,
+    })
+  }
+  if (batch.discardedAt || batch.status === 'DISCARDED') {
+    items.push({
+      label: '废弃',
+      value: `${formatTime(batch.discardedAt)}${batch.discardedBy ? ` · #${batch.discardedBy}` : ''}`,
+      danger: true,
+    })
+  }
+  if (batch.discardReason) {
+    items.push({ label: '原因', value: batch.discardReason, danger: true })
+  }
+  if (batch.pendingUploadCount > 0) {
+    items.push({ label: '阻断', value: `仍有 ${batch.pendingUploadCount} 页待上传，不能封存`, danger: true })
+  }
+  return items
+})
+const latestBatchSealBlockedReason = computed(() => {
+  const batch = kioskContext.value?.latestBatch
+  const device = kioskContext.value?.device
+  if (!batch?.scanBatchId) return '当前考试尚无已落库扫描批次'
+  if (!device?.scannerDeviceId) return '考试扫描设备缺失'
+  if (currentJob.value && !jobIsTerminal.value) return '当前扫描任务未结束，不能封存批次'
+  if (batch.sealedAt) return '批次已封存'
+  if (batch.status === 'DISCARDED' || batch.discardedAt) return '批次已废弃'
+  if (batch.pendingUploadCount > 0) return `仍有 ${batch.pendingUploadCount} 页待上传`
+  return ''
+})
+const canSealLatestBatch = computed(() => !latestBatchSealBlockedReason.value && !loading.value)
 const examTermText = computed(() => {
   const exam = kioskContext.value?.exam
   if (!exam) return ''
@@ -250,22 +369,58 @@ const declaredClassChips = computed(() => {
   const ctx = kioskContext.value
   if (!ctx) return [] as { key: string, label: string, missing: boolean }[]
   return ctx.classIds.map((classId, idx) => {
-    const name = ctx.declaredClassNames?.[idx]
+    const name = ctx.declaredClassNames[idx]
     return {
       key: classId,
-      label: name ? name : `班级 #${classId}（已删除）`,
+      label: name || `班级 #${classId}（已删除）`,
       missing: !name,
     }
   })
+})
+const kioskMetrics = computed(() => {
+  const ctx = kioskContext.value
+  if (!ctx) {
+    return {
+      scannedPages: '-',
+      paperInstances: '-',
+      boundPaperInstances: '-',
+      attentionCount: '-',
+      scanBatchCount: '-',
+    }
+  }
+  return {
+    scannedPages: String(ctx.scannedPages),
+    paperInstances: String(ctx.paperInstances),
+    boundPaperInstances: String(ctx.boundPaperInstances),
+    attentionCount: String(ctx.attentionCount),
+    scanBatchCount: String(ctx.scanBatchCount),
+  }
 })
 const latestBatchPageStats = computed(() => {
   const batch = kioskContext.value?.latestBatch
   if (!batch) return null
   return {
-    declared: batch.pageCount ?? 0,
-    received: batch.receivedPageCount ?? 0,
-    pending: batch.pendingUploadCount ?? 0,
-    attention: batch.attentionItemCount ?? 0,
+    declared: batch.pageCount,
+    received: batch.receivedPageCount,
+    pending: batch.pendingUploadCount,
+    attention: batch.attentionItemCount,
+  }
+})
+const latestBatchStatsText = computed(() => {
+  const stats = latestBatchPageStats.value
+  if (!stats) {
+    return {
+      declared: '-',
+      received: '-',
+      pending: '-',
+      attention: '-',
+    }
+  }
+  return {
+    declared: String(stats.declared),
+    received: String(stats.received),
+    pending: String(stats.pending),
+    attention: String(stats.attention),
   }
 })
 const latestBatchPeriodText = computed(() => {
@@ -276,13 +431,35 @@ const latestBatchPeriodText = computed(() => {
   if (start === '-' && end === '-') return '-'
   return `${start} → ${end}`
 })
+const pendingUploadJobsText = computed(() => {
+  if (!health.value) return '未连接'
+  return `${health.value.pendingUploadJobs} 个任务`
+})
+const pendingUploadDiagnosticText = computed(() => {
+  if (!health.value || health.value.pendingUploadJobs <= 0 || currentJob.value) return ''
+  if (!localJobRecoveryMessage.value) {
+    return '本地 Agent 存在未完成上传任务，但不属于当前考试、设备或班级范围'
+  }
+  return localJobRecoveryMessage.value
+})
+const busyStateText = computed(() => {
+  const job = busyState.value.activeJob
+  if (job?.status === 'FAILED') {
+    return '扫描仪任务已失败，请先处理失败项'
+  }
+  return '扫描仪正在执行任务'
+})
 
 onMounted(async () => {
   // 先加载考试下拉，保证用户可以在工作台首屏立即看到可选考试列表。
   await loadExamOptions().catch(handleError)
   await refreshAll()
   healthTimer = window.setInterval(() => refreshHealth().catch(handleError), 5000)
-  contextTimer = window.setInterval(() => refreshKioskContext().catch(handleError), 15000)
+  contextTimer = window.setInterval(() => {
+    refreshKioskContext()
+      .then(recoverLocalScanJob)
+      .catch(handleError)
+  }, 15000)
   if (examId.value) {
     startSse().catch(handleError)
   }
@@ -292,18 +469,28 @@ onMounted(async () => {
 // 否则 latestBatch / classIds 等会停留在上一考试，导致扫描 / 启动决策错误。
 watch(examId, (newVal, oldVal) => {
   if (newVal === oldVal) return
-  refreshKioskContext().catch(handleError)
+  kioskContext.value = null
+  activeBatchExternalNo.value = ''
+  currentJob.value = null
+  previewPageNo.value = 0
+  if (jobTimer) {
+    window.clearInterval(jobTimer)
+    jobTimer = undefined
+  }
+  refreshKioskContext()
+    .then(recoverLocalScanJob)
+    .catch(handleError)
   if (newVal) {
-    startSse().catch(handleError)
+    refreshSse().catch(handleError)
   } else {
     stopSse()
   }
 })
 
-// Plan §4.3：批次切换（latestBatch.batchExternalNo 变化）时显式触发页级账本刷新；
+// 批次切换（活动批次 / 当前任务 / latestBatch 变化）时显式触发页级账本刷新；
 // useScanLiveStream 的 ledgerFilter getter 会在下次 refreshPageLedger 调用时读到新批次。
 watch(
-  () => kioskContext.value?.latestBatch?.batchExternalNo ?? '',
+  () => getActiveBatchExternalNo(),
   (newBatchNo, oldBatchNo) => {
     if (newBatchNo === oldBatchNo) return
     refreshPageLedger().catch(handleError)
@@ -341,6 +528,7 @@ async function refreshAll() {
   errorMessage.value = ''
   try {
     await Promise.all([refreshHealth(), refreshScanners(), refreshKioskContext()])
+    await recoverLocalScanJob()
   } catch (error) {
     handleError(error)
   } finally {
@@ -355,7 +543,7 @@ async function refreshHealth() {
 async function refreshScanners() {
   const response = await listLocalScanners()
   scanners.value = response.devices
-  if (!selectedScannerId.value && availableScanners.value.length > 0) {
+  if (!selectedScannerId.value && availableScanners.value.length > 0 && canSwitchScanner.value) {
     selectedScannerId.value = availableScanners.value[0].localScannerId
   }
 }
@@ -379,6 +567,59 @@ async function refreshKioskContext() {
 }
 
 /**
+ * 浏览器刷新后从 Agent 持久化任务中恢复当前工作台：只接管考试、设备、班级顺序全部一致
+ * 且仍可处理的任务，避免把其它考试或其它扫描设备的残留任务挂到当前页面。
+ */
+async function recoverLocalScanJob() {
+  const ctx = kioskContext.value
+  const deviceId = getActiveScannerDeviceId()
+  if (!examId.value || !ctx || !deviceId) {
+    localJobRecoveryMessage.value = ''
+    return
+  }
+  const response = await listScanJobs({
+    examId: examId.value,
+    scannerDeviceId: deviceId,
+    includeTerminal: false,
+  })
+  const currentJobId = currentJob.value?.scanJobId || ''
+  const hasActiveCurrentJob = Boolean(currentJob.value && !isTerminalJob(currentJob.value))
+  const recoverableJob = response.jobs.find((job) => job.scanJobId === currentJobId) || (!hasActiveCurrentJob
+    ? response.jobs.find((job) => {
+      return job.examId === examId.value
+        && job.scannerDeviceId === deviceId
+        && sameOrderedStringList(job.declaredClassIds, ctx.classIds)
+        && isRecoverableLocalJob(job)
+    })
+    : undefined)
+  if (hasActiveCurrentJob && recoverableJob) {
+    currentJob.value = recoverableJob
+    activeBatchExternalNo.value = recoverableJob.batchExternalNo
+    localJobRecoveryMessage.value = ''
+    if (shouldPollRecoveredJob(recoverableJob)) {
+      startJobPolling(recoverableJob.scanJobId)
+    }
+    return
+  }
+  if (hasActiveCurrentJob) {
+    return
+  }
+  if (!recoverableJob) {
+    localJobRecoveryMessage.value = response.jobs.length > 0
+      ? '本地任务与当前班级范围不一致，未自动接管'
+      : ''
+    return
+  }
+  currentJob.value = recoverableJob
+  activeBatchExternalNo.value = recoverableJob.batchExternalNo
+  localJobRecoveryMessage.value = ''
+  if (shouldPollRecoveredJob(recoverableJob)) {
+    startJobPolling(recoverableJob.scanJobId)
+  }
+  successMessage.value = '已恢复本地未完成扫描任务'
+}
+
+/**
  * 加载考试选择下拉项。后端 /exam-options 只返当前租户内 status=ACTIVE 的考试，
  * 已归档（CLOSED）一律不返回；筛选条件 keyword / academicYear / semester / classId
  * 由 examOptionFilter 承载，下拉中支持服务端搜索。
@@ -397,8 +638,8 @@ async function loadExamOptions() {
     if (examOptionFilter.semester) payload.semester = examOptionFilter.semester
     if (examOptionFilter.classId) payload.classId = examOptionFilter.classId
     const result = await pageScannerKioskExamOptions(payload)
-    examOptions.value = result.list ?? []
-    examOptionTotal.value = result.total ?? 0
+    examOptions.value = result.list
+    examOptionTotal.value = result.total
   } finally {
     examOptionLoading.value = false
   }
@@ -410,6 +651,10 @@ async function loadExamOptions() {
  */
 let examSelectSearchDebounce: number | undefined
 function onExamSelectSearch(value: string) {
+  if (!canSwitchExam.value) {
+    errorMessage.value = '当前扫描任务未结束，不能搜索考试'
+    return
+  }
   examOptionFilter.keyword = (value || '').trim()
   examOptionFilter.pageNum = 1
   if (examSelectSearchDebounce) window.clearTimeout(examSelectSearchDebounce)
@@ -418,32 +663,97 @@ function onExamSelectSearch(value: string) {
   }, 300)
 }
 
+function onExamFilterChange() {
+  if (!canSwitchExam.value) {
+    errorMessage.value = '当前扫描任务未结束，不能修改考试筛选条件'
+    return
+  }
+  loadExamOptions().catch(handleError)
+}
+
+function refreshExamOptionsByUser() {
+  if (!canSwitchExam.value) {
+    errorMessage.value = '当前扫描任务未结束，不能刷新考试列表'
+    return
+  }
+  loadExamOptions().catch(handleError)
+}
+
+async function refreshScannersByUser() {
+  if (!canSwitchScanner.value) {
+    errorMessage.value = '当前扫描任务未结束，不能刷新本地扫描仪'
+    return
+  }
+  await refreshScanners()
+}
+
 /**
  * 考试选择下拉受控值变化处理：清空时把 examId 设为空字符串以触发 watch 链路；
  * 选中具体考试时直接覆盖 examId.value。
  */
 function onExamSelectChange(value: unknown) {
+  if (currentJob.value && !jobIsTerminal.value) {
+    errorMessage.value = '当前扫描任务未结束，不能切换考试'
+    return
+  }
+  currentJob.value = null
+  activeBatchExternalNo.value = ''
   examId.value = typeof value === 'string' ? value : ''
 }
 
 async function submitScanJob() {
   if (!kioskContext.value || !canStartScan.value) return
+  if (currentJob.value && !jobIsTerminal.value) {
+    errorMessage.value = '当前扫描任务未结束，不能新建扫描'
+    return
+  }
   loading.value = true
   errorMessage.value = ''
   successMessage.value = ''
   resetBusyState()
   const isSupplement = scanMode.value === 'SUPPLEMENT'
+  const scannerDeviceId = getActiveScannerDeviceId()
   try {
-    currentJob.value = await startScanJob({
-      context: kioskContext.value,
-      localScannerId: selectedScannerId.value,
-      expectedPages: expectedPages.value,
+    if (!scannerDeviceId) {
+      throw new Error('考试扫描设备缺失，无法创建服务端批次锚点')
+    }
+    const batchLifecycle = await startScannerKioskBatch({
+      examId: examId.value,
+      scannerDeviceId,
+      scannerStationId: queryScannerStationId.value || kioskContext.value.device?.scannerStationId,
+      declaredClassIds: kioskContext.value.classIds,
       scanMode: scanMode.value,
       targetPageNo: isSupplement ? supplementTargetPageNo.value : undefined,
       supplementReason: isSupplement ? supplementReason.value.trim() || undefined : undefined,
+      replaceTargetPage: isSupplement ? supplementReplaceTargetPage.value : undefined,
+    })
+    if (!batchLifecycle.batchExternalNo) {
+      throw new Error('服务端未返回批次外部号，无法启动本地扫描')
+    }
+    activeBatchExternalNo.value = batchLifecycle.batchExternalNo
+    const lifecycleScanSource = resolveLifecycleScanSource(batchLifecycle, kioskContext.value)
+    currentJob.value = await startScanJob({
+      context: kioskContext.value,
+      localScannerId: selectedScannerId.value,
+      batchExternalNo: batchLifecycle.batchExternalNo,
+      expectedPages: expectedPages.value,
+      scanMode: lifecycleScanSource.scanMode,
+      targetPageNo: lifecycleScanSource.targetPageNo,
+      supplementReason: lifecycleScanSource.supplementReason,
+      replaceTargetPage: lifecycleScanSource.replaceTargetPage,
     })
     startJobPolling(currentJob.value.scanJobId)
   } catch (error) {
+    if (activeBatchExternalNo.value) {
+      try {
+        await closeActiveBatch(true)
+      } catch (closeError) {
+        const startMessage = error instanceof Error ? error.message : String(error)
+        const closeMessage = closeError instanceof Error ? closeError.message : String(closeError)
+        handleError(new Error(`${startMessage}；服务端批次关闭失败：${closeMessage}`))
+        return
+      }
+    }
     if (error instanceof ScannerBusyError) {
       enterBusyState(error.activeJobId)
       return
@@ -454,8 +764,83 @@ async function submitScanJob() {
   }
 }
 
+/**
+ * 以服务端 Redis 锚点回执作为 Agent 启动真源。start 接口可能命中既有锚点，
+ * 前端表单值不能覆盖 batchLifecycle 中的批次号、模式、补扫目标页和班级范围。
+ */
+function resolveLifecycleScanSource(
+  lifecycle: ExamScannerBatchLifecycleVO,
+  context: ExamScannerKioskContextVO,
+): {
+  scanMode: ScannerKioskScanMode
+  targetPageNo?: number
+  supplementReason?: string
+  replaceTargetPage?: boolean
+} {
+  if (!lifecycle.scanMode) {
+    throw new Error('服务端批次锚点缺少扫描模式，已阻断本地扫描启动')
+  }
+  if (lifecycle.declaredClassIds && !sameOrderedStringList(lifecycle.declaredClassIds, context.classIds)) {
+    throw new Error('服务端批次锚点班级范围与当前考试上下文不一致，请刷新后重新启动扫描')
+  }
+  if (lifecycle.scanMode !== 'SUPPLEMENT') {
+    return { scanMode: lifecycle.scanMode }
+  }
+  if (!lifecycle.targetPageNo || lifecycle.targetPageNo <= 0) {
+    throw new TypeError('服务端补扫锚点缺少目标页号，已阻断本地扫描启动')
+  }
+  const reason = lifecycle.supplementReason?.trim()
+  if (!reason) {
+    throw new Error('服务端补扫锚点缺少补扫原因，已阻断本地扫描启动')
+  }
+  if (typeof lifecycle.replaceTargetPage !== 'boolean') {
+    throw new TypeError('服务端补扫锚点缺少替换/追加模式，已阻断本地扫描启动')
+  }
+  return {
+    scanMode: lifecycle.scanMode,
+    targetPageNo: lifecycle.targetPageNo,
+    supplementReason: reason,
+    replaceTargetPage: lifecycle.replaceTargetPage,
+  }
+}
+
+/**
+ * 班级范围需要与后端锚点顺序完全一致；顺序变化会导致 Agent 上报声明范围与批次锚点错位。
+ */
+function sameOrderedStringList(left: string[], right: string[]) {
+  if (left.length !== right.length) return false
+  return left.every((value, index) => value === right[index])
+}
+
+/**
+ * 可恢复任务状态白名单：Reported / Cancelled 已进入终态收口，不在刷新后自动接管；
+ * Failed 保留在工作台，允许继续重试上传、重试 commit、删除或废弃。
+ */
+function isRecoverableLocalJob(job: ScanJobResponse) {
+  return [
+    'CREATED',
+    'SCANNING',
+    'PAUSED',
+    'READYTOUPLOAD',
+    'UPLOADING',
+    'RETRYING',
+    'FAILED',
+  ].includes(job.status)
+}
+
+/**
+ * 只有仍在采集或上传链路中的恢复任务需要自动轮询；Paused / Failed 由用户显式恢复或重试。
+ */
+function shouldPollRecoveredJob(job: ScanJobResponse) {
+  return ['CREATED', 'SCANNING', 'READYTOUPLOAD', 'UPLOADING', 'RETRYING'].includes(job.status)
+}
+
 async function changeScanMode(mode: ScannerKioskScanMode) {
   if (scanMode.value === mode) return
+  if (currentJob.value && !jobIsTerminal.value) {
+    errorMessage.value = '当前扫描任务未结束，不能切换扫描模式'
+    return
+  }
   scanMode.value = mode
   if (mode !== 'SUPPLEMENT') {
     supplementTargetPageNo.value = undefined
@@ -473,6 +858,10 @@ function scanModeText(mode: ScannerKioskScanMode, suffix: string) {
 }
 
 async function prepareSupplementScan(pageNo: number, action: '补扫' | '替换') {
+  if (currentJob.value && !jobIsTerminal.value) {
+    errorMessage.value = '当前扫描任务未结束，不能切换到补扫模式'
+    return
+  }
   scanMode.value = 'SUPPLEMENT'
   supplementTargetPageNo.value = pageNo
   supplementReason.value = `${action}第 ${pageNo} 页`
@@ -484,34 +873,56 @@ async function prepareSupplementScan(pageNo: number, action: '补扫' | '替换'
 }
 
 /**
- * 删除当前 Agent 本地扫描任务：根据是否上报后端选择 delete 或 discard 通道。
- * - 未上报（reported=false 且没有后端 ScanBatchId）：调用 deleteScanJob 仅清理本地。
- * - 已上报：调用 discardScanJob，由 Agent 联动后端废弃扫描批次。
+ * 删除当前 Agent 本地扫描任务：已上报任务先由前端用户态废弃后端批次，
+ * Agent 只清理本地任务；未上报任务删除本地数据并关闭服务端 Redis 锚点。
  */
 async function removeCurrentScanJob() {
   if (!currentJob.value) return
   const job = currentJob.value
+  if (currentJobAllPagesUploadedButUnconfirmed.value) {
+    errorMessage.value = '页面已上传完成但 commit 未确认，请先点击重试 commit'
+    return
+  }
+  if (!canRemoveCurrentJob.value) {
+    errorMessage.value = '当前任务已进入上传链路，请等待上报完成或失败后再处理'
+    return
+  }
   if (job.reported) {
-    const reason = window.prompt('请输入废弃原因（必填，1-255 字）：', '')
+    const reason = await promptModal({
+      title: '废弃扫描任务',
+      placeholder: '请输入废弃原因（必填，1-255 字）',
+      required: true,
+      okText: '下一步',
+      okType: 'danger',
+      emptyErrorMessage: '废弃原因不能为空',
+    })
     if (reason === null) return
-    const trimmed = reason.trim()
-    if (!trimmed) {
-      errorMessage.value = '废弃原因不能为空'
-      return
-    }
-    if (trimmed.length > 255) {
+    if (reason.length > 255) {
       errorMessage.value = '废弃原因长度不能超过 255'
       return
     }
-    if (!window.confirm(`确认废弃任务 ${job.scanJobId}？\n该操作将通知服务端把扫描批次置为 DISCARDED，且不可逆。`)) {
-      return
-    }
+    const confirmed = await confirmAsync({
+      title: '确认废弃',
+      content: `确认废弃任务 ${job.scanJobId}？该操作将通知服务端把扫描批次置为 DISCARDED，且不可逆。`,
+      type: 'error',
+      okText: '废弃',
+    })
+    if (!confirmed) return
     loading.value = true
     try {
-      await discardScanJob(job.scanJobId, trimmed)
-      successMessage.value = '已废弃扫描批次并清理本地任务'
+      if (!job.scanBatchId) {
+        throw new Error('已上报任务缺少服务端批次 ID，无法执行废弃')
+      }
+      await discardScannerKioskBatch({
+        scanBatchId: job.scanBatchId,
+        discardReason: reason,
+      })
+      await discardScanJob(job.scanJobId, reason)
+      activeBatchExternalNo.value = ''
+      successMessage.value = '已废弃服务端扫描批次并清理 Agent 本地任务'
       currentJob.value = null
       await refreshKioskContext()
+      await refreshPageLedger()
     } catch (error) {
       handleError(error)
     } finally {
@@ -519,15 +930,21 @@ async function removeCurrentScanJob() {
     }
     return
   }
-  if (!window.confirm(`确认删除尚未上报的扫描任务 ${job.scanJobId}？\n仅清理本地数据，不影响服务端。`)) {
-    return
-  }
+  const confirmed = await confirmAsync({
+    title: '确认删除未上报任务',
+    content: `确认删除尚未上报的扫描任务 ${job.scanJobId}？该操作会清理 Agent 本地任务，并关闭服务端工作台锚点、丢弃未提交中间页。`,
+    type: 'warning',
+    okText: '删除',
+  })
+  if (!confirmed) return
   loading.value = true
   try {
+    await closeActiveBatch(true)
     await deleteScanJob(job.scanJobId)
-    successMessage.value = '已删除本地扫描任务'
+    successMessage.value = '已删除本地扫描任务并关闭服务端工作台锚点'
     currentJob.value = null
     await refreshKioskContext()
+    await refreshPageLedger()
   } catch (error) {
     handleError(error)
   } finally {
@@ -536,12 +953,16 @@ async function removeCurrentScanJob() {
 }
 
 async function activateAgent() {
+  if (!canActivateAgent.value) {
+    errorMessage.value = '当前扫描任务未结束，不能重新激活一体机'
+    return
+  }
   loading.value = true
   errorMessage.value = ''
   successMessage.value = ''
   try {
     const payload = validateActivationForm()
-    activationResponse.value = await activateLocalAgent(payload)
+    await activateLocalAgent(payload)
     successMessage.value = '一体机已激活'
     await refreshAll()
     configOpen.value = false
@@ -553,6 +974,10 @@ async function activateAgent() {
 }
 
 async function unbindAgent() {
+  if (currentJob.value && !jobIsTerminal.value) {
+    errorMessage.value = '当前扫描任务未结束，不能解除绑定'
+    return
+  }
   loading.value = true
   errorMessage.value = ''
   successMessage.value = ''
@@ -570,10 +995,17 @@ async function unbindAgent() {
 
 async function cancelCurrentJob() {
   if (!currentJob.value) return
+  if (!canCancelJob.value) {
+    errorMessage.value = '当前任务已进入上传链路，不能取消'
+    return
+  }
   loading.value = true
   errorMessage.value = ''
   try {
     currentJob.value = await cancelScanJob(currentJob.value.scanJobId)
+    await closeActiveBatch(true)
+    await refreshKioskContext()
+    await refreshPageLedger()
   } catch (error) {
     handleError(error)
   } finally {
@@ -626,11 +1058,24 @@ async function resumeCurrentJob() {
 
 async function endCurrentBatch() {
   if (!currentJob.value) return
-  if (!window.confirm('确认结束本批次吗？已扫描页面会进入上传链路并 commit。')) return
+  if (!canEndBatch.value) {
+    errorMessage.value = '当前任务不在采集阶段，不能结束批次'
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '结束批次',
+    content: '确认结束本批次吗？已扫描页面会进入上传链路并 commit。',
+  })
+  if (!confirmed) return
   loading.value = true
   errorMessage.value = ''
   try {
     currentJob.value = await endBatch(currentJob.value.scanJobId)
+    if (isPollingTerminalJob(currentJob.value)) {
+      await handleTerminalBatchClosure(currentJob.value)
+      successMessage.value = '本批次已结束并完成服务端收口'
+      return
+    }
     startJobPolling(currentJob.value.scanJobId)
     successMessage.value = '本批次已结束，正在提交'
   } catch (error) {
@@ -662,13 +1107,20 @@ async function retryCurrentCommit() {
 async function sealLatestBatch() {
   const batch = kioskContext.value?.latestBatch
   const device = kioskContext.value?.device
+  const blockedReason = latestBatchSealBlockedReason.value
+  if (blockedReason) {
+    errorMessage.value = blockedReason
+    return
+  }
   if (!batch || !batch.scanBatchId || !device || !device.scannerDeviceId) {
     errorMessage.value = '当前考试尚无已落库扫描批次或设备信息缺失，无法封存'
     return
   }
-  if (!window.confirm(`确认封存批次 ${batch.batchNo || batch.batchExternalNo}？封存后无法再追加扫描。`)) {
-    return
-  }
+  const confirmed = await confirmAsync({
+    title: '封存批次',
+    content: `确认封存批次 ${batch.batchNo || batch.batchExternalNo}？封存后无法再追加扫描。`,
+  })
+  if (!confirmed) return
   loading.value = true
   errorMessage.value = ''
   try {
@@ -678,6 +1130,7 @@ async function sealLatestBatch() {
     })
     successMessage.value = '批次已封存'
     await refreshKioskContext()
+    await refreshPageLedger()
   } catch (error) {
     handleError(error)
   } finally {
@@ -687,26 +1140,121 @@ async function sealLatestBatch() {
 
 function startJobPolling(scanJobId: string) {
   if (jobTimer) window.clearInterval(jobTimer)
+  jobPollFailureCount = 0
   jobTimer = window.setInterval(async () => {
     try {
       const prevPageCount = currentJob.value?.pages.length ?? 0
       currentJob.value = await getScanJob(scanJobId)
+      jobPollFailureCount = 0
       if (currentJob.value.pages.length > prevPageCount) {
         const lastPage = visiblePages.value.at(-1)
         if (lastPage) previewPageNo.value = lastPage.pageNo
       }
-      if (jobIsTerminal.value) {
+      if (isPollingTerminalJob(currentJob.value)) {
         if (jobTimer) window.clearInterval(jobTimer)
         jobTimer = undefined
-        await refreshKioskContext()
+        await handleTerminalBatchClosure(currentJob.value)
       }
     } catch (error) {
+      jobPollFailureCount += 1
+      if (jobPollFailureCount >= 3) {
+        if (jobTimer) window.clearInterval(jobTimer)
+        jobTimer = undefined
+        errorMessage.value = '扫描任务轮询连续失败，请检查本地 Agent 连接后手动刷新'
+      }
       handleError(error)
     }
   }, 1500)
 }
 
+function getActiveBatchExternalNo() {
+  return activeBatchExternalNo.value
+    || currentJob.value?.batchExternalNo
+    || kioskContext.value?.latestBatch?.batchExternalNo
+    || ''
+}
+
+function getActiveScannerDeviceId() {
+  return queryScannerDeviceId.value || kioskContext.value?.device?.scannerDeviceId || ''
+}
+
+function isTerminalJob(job: ScanJobResponse) {
+  const status = job.status
+  return status === 'REPORTED' || status === 'CANCELLED'
+}
+
+/**
+ * FAILED 不是业务关闭态，仍需保留重试、删除或废弃入口；但轮询链路必须停止，
+ * 并进入人工处理提示，避免继续轮询同一个失败任务。
+ */
+function isPollingTerminalJob(job: ScanJobResponse) {
+  return isTerminalJob(job) || job.status === 'FAILED'
+}
+
+/**
+ * 关闭当前扫描锚点：成功上报保留 pending 诊断；取消、用户删除未上报任务、
+ * 本地启动失败时可显式丢弃中间页。失败终态不在这里自动丢弃，需保留给 retryUpload / retryCommit。
+ */
+async function closeActiveBatch(discardPendingPages: boolean) {
+  const batchExternalNo = getActiveBatchExternalNo()
+  if (!batchExternalNo) return
+  const scannerDeviceId = getActiveScannerDeviceId()
+  if (!examId.value) {
+    throw new Error('当前扫描锚点缺少考试 ID，无法关闭服务端批次')
+  }
+  if (!scannerDeviceId) {
+    throw new Error('当前扫描锚点缺少扫描设备，无法关闭服务端批次')
+  }
+  const lifecycle = await closeScannerKioskBatch({
+    examId: examId.value,
+    scannerDeviceId,
+    batchExternalNo,
+    discardPendingPages,
+  })
+  if (!discardPendingPages) {
+    if (typeof lifecycle.pendingPageCount !== 'number' || !Number.isFinite(lifecycle.pendingPageCount)) {
+      throw new TypeError('服务端批次关闭回执缺少 pending 页数')
+    }
+    if (lifecycle.pendingPageCount > 0) {
+      errorMessage.value = lifecycle.pendingPagesDiagnostic || '服务端批次仍存在未提交扫描页'
+    }
+  }
+  activeBatchExternalNo.value = ''
+}
+
+/**
+ * Agent 任务进入终态后的批次收口：REPORTED 关闭锚点保留诊断，FAILED 保留中间页供重试，
+ * CANCELLED 主动丢弃未提交中间页。
+ */
+async function handleTerminalBatchClosure(job: ScanJobResponse) {
+  activeBatchExternalNo.value = job.batchExternalNo || activeBatchExternalNo.value
+  if (job.status === 'REPORTED' && job.reported) {
+    await closeActiveBatch(false)
+    await refreshKioskContext()
+    await refreshPageLedger()
+    return
+  }
+  if (job.status === 'CANCELLED') {
+    await closeActiveBatch(true)
+    await refreshKioskContext()
+    await refreshPageLedger()
+    return
+  }
+  if (job.status === 'FAILED') {
+    const uploadablePages = job.pages.filter((page) => page.status !== 'DELETED')
+    const allPagesUploaded = uploadablePages.length > 0
+      && job.uploadedPages > 0
+      && uploadablePages.every((page) => page.status === 'UPLOADED')
+    errorMessage.value = allPagesUploaded
+      ? '服务端提交未完成，已保留中间页，请点击重试 commit'
+      : '扫描上传未完成，已保留中间页，请点击重试上传或删除任务'
+    await refreshKioskContext()
+    await refreshPageLedger()
+  }
+}
+
 function enterBusyState(activeJobId: string) {
+  busyPollFailureCount = 0
   busyState.value = { active: true, activeJobId, activeJob: null }
   pollActiveJob(activeJobId)
   if (busyPollTimer) window.clearInterval(busyPollTimer)
@@ -716,12 +1264,29 @@ function enterBusyState(activeJobId: string) {
 async function pollActiveJob(activeJobId: string) {
   try {
     const job = await getScanJob(activeJobId)
+    busyPollFailureCount = 0
     busyState.value.activeJob = job
-    if (['REPORTED', 'CANCELLED', 'FAILED'].includes(job.status.toUpperCase())) {
+    if (isPollingTerminalJob(job)) {
       resetBusyState()
-      successMessage.value = '上一扫描任务已结束'
+      if (job.status === 'FAILED') {
+        successMessage.value = ''
+        errorMessage.value = '上一扫描任务已失败，请先处理失败项'
+      } else {
+        errorMessage.value = ''
+        successMessage.value = '上一扫描任务已结束'
+      }
     }
-  } catch {}
+  } catch (error) {
+    busyPollFailureCount += 1
+    errorMessage.value = busyPollFailureCount >= 3
+      ? '无法确认上一扫描任务状态，请检查本地扫描 Agent 后重试'
+      : '本地扫描 Agent 状态查询失败，正在重试'
+    if (busyPollFailureCount >= 3 && busyPollTimer) {
+      window.clearInterval(busyPollTimer)
+      busyPollTimer = undefined
+      console.error('本地扫描 Agent 状态连续查询失败', error)
+    }
+  }
 }
 
 function resetBusyState() {
@@ -729,6 +1294,7 @@ function resetBusyState() {
     window.clearInterval(busyPollTimer)
     busyPollTimer = undefined
   }
+  busyPollFailureCount = 0
   busyState.value = { active: false, activeJobId: '', activeJob: null }
 }
 
@@ -755,12 +1321,18 @@ function queryValue(value: unknown) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-function pageStatusText(status: string) {
-  const value = status.toUpperCase()
-  if (value === 'UPLOADED') return '已上传'
-  if (value === 'SCANNED') return '已扫描'
-  if (value === 'FAILED' || value === 'UPLOAD_FAILED') return '失败'
-  return status || '处理中'
+function pageStatusText(status: LocalScanPageStatus) {
+  if (status === 'CAPTURED') return '已采集'
+  if (status === 'PREPROCESSED') return '已预处理'
+  if (status === 'UPLOADING') return '上传中'
+  if (status === 'UPLOADED') return '已上传'
+  if (status === 'FAILED') return '失败'
+  return '已删除'
+}
+
+function agentHealthStatusLabel(status?: AgentHealthStatus) {
+  if (!status) return '-'
+  return '运行中'
 }
 
 function formatTime(value?: string | null) {
@@ -780,36 +1352,82 @@ function onManualRefreshLedger() {
   refreshPageLedger().catch(handleError)
 }
 
-function ledgerSourceText(source: string) {
+function ledgerSourceText(source: ExamScannerLedgerDataSource) {
   if (source === 'DATABASE') return '已落库'
   if (source === 'REDIS_PENDING') return '等待 commit'
   if (source === 'NONE') return '空批次'
-  return source
 }
 
-function registrationStatusText(status: string) {
+function registrationStatusText(status: ExamScannerPageRegistrationStatus) {
   if (status === 'REGISTERED') return '已识别'
   if (status === 'PENDING') return '等待识别'
-  if (status === 'ABNORMAL') return '异常'
-  return status || '-'
+  if (status === 'DISCARDED') return '已废弃'
+  if (status === 'SUPERSEDED') return '已替换'
 }
 
-function attentionTypeText(type: string) {
+async function discardLedgerPage(item: { localPageId?: string, pageNo: number }) {
+  if (!Number.isFinite(item.pageNo)) {
+    throw new TypeError('页级账本缺少页号')
+  }
+  if (pageLedger.value?.dataSource !== 'DATABASE' || !item.localPageId) {
+    errorMessage.value = '仅已落库扫描页支持单页废弃'
+    return
+  }
+  const reason = await promptModal({
+    title: `废弃第 ${item.pageNo} 页`,
+    placeholder: '请输入单页废弃原因（必填，1-255 字）',
+    required: true,
+    okText: '下一步',
+    okType: 'danger',
+    emptyErrorMessage: '废弃原因不能为空',
+  })
+  if (reason === null) return
+  if (reason.length > 255) {
+    errorMessage.value = '废弃原因长度不能超过 255'
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '确认废弃本页',
+    content: `确认废弃第 ${item.pageNo} 页？该页将不再参与切片识别 / 归档。`,
+    type: 'error',
+    okText: '废弃本页',
+  })
+  if (!confirmed) return
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    await discardScannedPage({
+      scannedPageId: item.localPageId,
+      discardReason: reason,
+    })
+    successMessage.value = '已废弃单张扫描页'
+    await refreshKioskContext()
+    await refreshPageLedger()
+  } catch (error) {
+    handleError(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+function attentionTypeText(type: ScanAttentionTypeCode) {
   if (type === 'QUALITY_BLOCK') return '质量阻断'
   if (type === 'PROCESSING_BLOCK') return '处理阻断'
   if (type === 'DUPLICATE_PENDING') return '重复待裁决'
   if (type === 'RECOGNITION_REVIEW') return '识别复核'
-  return type
 }
 
 /**
  * 页级账本条目唯一键：按后端规范"batchExternalNo + pageNo + sha256"对账，避免基于数组下标
  * 的伪稳定 key（后端可能切换 DATABASE / REDIS_PENDING 分支时下标变化）。
  */
-function ledgerItemKey(item: { pageNo?: number; sha256?: string; localPageId?: string }) {
+function ledgerItemKey(item: { pageNo: number, sha256?: string, localPageId?: string }) {
   const batchNo = pageLedger.value?.batchExternalNo ?? ''
   const sha = item.sha256 ?? ''
-  const pageNo = item.pageNo ?? 0
+  const pageNo = item.pageNo
+  if (!Number.isFinite(pageNo)) {
+    throw new TypeError('页级账本缺少页号')
+  }
   const local = item.localPageId ?? ''
   return `${batchNo}#${pageNo}#${sha || local || 'nokey'}`
 }
@@ -870,23 +1488,29 @@ function ledgerErrorText(err: unknown) {
           placeholder="学年（如 2024-2025）"
           allow-clear
           style="width: 200px"
-          @change="loadExamOptions().catch(handleError)"
+          :disabled="!canSwitchExam"
+          :title="canSwitchExam ? undefined : '当前扫描任务未结束，不能修改考试筛选条件'"
+          @change="onExamFilterChange"
         />
         <a-select
           v-model:value="examOptionFilter.semester"
           placeholder="学期"
           allow-clear
           style="width: 140px"
+          :disabled="!canSwitchExam"
+          :title="canSwitchExam ? undefined : '当前扫描任务未结束，不能修改考试筛选条件'"
           :options="[
             { label: '秋季学期', value: '1' },
             { label: '春季学期', value: '2' },
           ]"
-          @change="loadExamOptions().catch(handleError)"
+          @change="onExamFilterChange"
         />
         <a-button
           type="primary"
           :loading="examOptionLoading"
-          @click="loadExamOptions().catch(handleError)"
+          :disabled="!canSwitchExam"
+          :title="canSwitchExam ? undefined : '当前扫描任务未结束，不能刷新考试列表'"
+          @click="refreshExamOptionsByUser"
         >
           刷新考试列表
         </a-button>
@@ -896,6 +1520,8 @@ function ledgerErrorText(err: unknown) {
         show-search
         allow-clear
         :loading="examOptionLoading"
+        :disabled="!canSwitchExam"
+        :title="canSwitchExam ? undefined : '当前扫描任务未结束，不能切换考试'"
         :filter-option="false"
         placeholder="搜索并选择考试（按考试名 / 编号模糊匹配）"
         style="width: 100%"
@@ -921,8 +1547,8 @@ function ledgerErrorText(err: unknown) {
               <span v-if="item.semester">
                 · {{ item.semester === '1' ? '秋季' : item.semester === '2' ? '春季' : item.semester }}
               </span>
-              <span>· 班级 {{ item.classIds?.length ?? 0 }}</span>
-              <span>· 已扫批次 {{ item.scanBatchCount ?? 0 }}</span>
+              <span>· 班级 {{ item.classIds.length }}</span>
+              <span>· 已扫批次 {{ item.scanBatchCount }}</span>
             </div>
           </div>
         </a-select-option>
@@ -933,21 +1559,21 @@ function ledgerErrorText(err: unknown) {
         <span class="selected-meta">
           {{ selectedExamOption.examNo }}
           <template v-if="selectedExamOption.courseName">· {{ selectedExamOption.courseName }}</template>
-          <template v-if="selectedExamOption.declaredClassNames?.length">
+          <template v-if="selectedExamOption.declaredClassNames.length">
             · 班级:
             <span
               v-for="(name, idx) in selectedExamOption.declaredClassNames"
-              :key="`${selectedExamOption.classIds?.[idx] ?? idx}`"
+              :key="`${selectedExamOption.classIds[idx] || idx}`"
               class="selected-class-tag"
             >
-              {{ name || `#${selectedExamOption.classIds?.[idx] ?? '-'}` }}
+              {{ name || `#${selectedExamOption.classIds[idx] || '-'}` }}
             </span>
           </template>
         </span>
       </div>
     </section>
 
-    <section v-if="errorMessage || successMessage || busyState.active" class="notice-stack">
+    <section v-if="errorMessage || successMessage || busyState.active || pendingUploadDiagnosticText" class="notice-stack">
       <div v-if="errorMessage" class="notice danger">
         <CloseCircleOutlined />
         <span>{{ errorMessage }}</span>
@@ -958,15 +1584,26 @@ function ledgerErrorText(err: unknown) {
       </div>
       <div v-if="busyState.active" class="notice warning">
         <PauseCircleOutlined />
-        <span>扫描仪正在执行任务 {{ busyState.activeJobId }}</span>
+        <span>{{ busyStateText }} {{ busyState.activeJobId }}</span>
         <button type="button" @click="resetBusyState">停止等待</button>
+      </div>
+      <div v-if="pendingUploadDiagnosticText" class="notice warning">
+        <ExclamationCircleOutlined />
+        <span>{{ pendingUploadDiagnosticText }}</span>
       </div>
     </section>
 
     <section class="hero-band">
       <div class="status-panel">
         <div class="state-line">
-          <span class="state-dot" :class="workState.tone" />
+          <span
+            class="state-dot"
+            :class="{
+              success: workState.tone === 'success',
+              running: workState.tone === 'running',
+              danger: workState.tone === 'danger',
+            }"
+          />
           <strong>{{ workState.text }}</strong>
         </div>
         <div class="progress-track">
@@ -974,12 +1611,14 @@ function ledgerErrorText(err: unknown) {
         </div>
         <div class="progress-meta">
           <span>{{ uploadStage }}</span>
-          <span>{{ currentJob?.uploadedPages || 0 }}/{{ currentJob?.scannedPages || 0 }} 页</span>
+          <span v-if="currentJob">{{ currentJob.uploadedPages }}/{{ currentJob.scannedPages }} 页</span>
+          <span v-else>暂无扫描任务</span>
         </div>
         <div class="mode-switch" role="group" aria-label="扫描模式">
           <button
             type="button"
             :class="{ active: scanMode === 'DIRECT' }"
+            :disabled="!canSwitchScanMode"
             @click="changeScanMode('DIRECT')"
           >
             首次扫描
@@ -987,6 +1626,7 @@ function ledgerErrorText(err: unknown) {
           <button
             type="button"
             :class="{ active: scanMode === 'SUPPLEMENT' }"
+            :disabled="!canSwitchScanMode"
             @click="changeScanMode('SUPPLEMENT')"
           >
             补扫
@@ -994,6 +1634,7 @@ function ledgerErrorText(err: unknown) {
           <button
             type="button"
             :class="{ active: scanMode === 'ARCHIVE' }"
+            :disabled="!canSwitchScanMode"
             @click="changeScanMode('ARCHIVE')"
           >
             历史存档
@@ -1002,11 +1643,32 @@ function ledgerErrorText(err: unknown) {
         <div v-if="scanMode === 'SUPPLEMENT'" class="supplement-form">
           <label>
             <span>目标页号</span>
-            <input v-model.number="supplementTargetPageNo" type="number" min="1" />
+            <input v-model.number="supplementTargetPageNo" type="number" min="1" :disabled="!canSwitchScanMode" />
+          </label>
+          <label class="supplement-mode-field">
+            <span>补扫方式</span>
+            <div class="supplement-mode-switch" role="group" aria-label="补扫方式">
+              <button
+                type="button"
+                :class="{ active: !supplementReplaceTargetPage }"
+                :disabled="!canSwitchScanMode"
+                @click="supplementReplaceTargetPage = false"
+              >
+                追加补扫
+              </button>
+              <button
+                type="button"
+                :class="{ active: supplementReplaceTargetPage }"
+                :disabled="!canSwitchScanMode"
+                @click="supplementReplaceTargetPage = true"
+              >
+                替换目标页
+              </button>
+            </div>
           </label>
           <label>
             <span>补扫原因</span>
-            <input v-model.trim="supplementReason" placeholder="漏扫、异常页或替换页" />
+            <input v-model.trim="supplementReason" placeholder="漏扫、异常页或替换页" :disabled="!canSwitchScanMode" />
           </label>
         </div>
         <div class="primary-actions">
@@ -1022,7 +1684,7 @@ function ledgerErrorText(err: unknown) {
           <button
             class="quiet-button"
             type="button"
-            :disabled="!currentJob || jobIsTerminal"
+            :disabled="!canCancelJob || loading"
             @click="cancelCurrentJob"
           >
             <StopOutlined />
@@ -1031,7 +1693,7 @@ function ledgerErrorText(err: unknown) {
           <button
             class="quiet-button"
             type="button"
-            :disabled="!currentJob"
+            :disabled="!canRetryUpload || loading"
             @click="retryCurrentUpload"
           >
             <CloudUploadOutlined />
@@ -1040,10 +1702,8 @@ function ledgerErrorText(err: unknown) {
           <button
             class="quiet-button danger-button"
             type="button"
-            :disabled="!currentJob || loading"
-            :title="currentJob?.reported
-              ? '调用后端废弃接口把扫描批次置为 DISCARDED，并清理 Agent 本地任务'
-              : '仅清理 Agent 本地的未上报扫描任务'"
+            :disabled="!canRemoveCurrentJob || loading"
+            :title="removeCurrentJobTitle"
             @click="removeCurrentScanJob"
           >
             <DeleteOutlined />
@@ -1074,7 +1734,7 @@ function ledgerErrorText(err: unknown) {
           <button
             class="quiet-button"
             type="button"
-            :disabled="!currentJob || jobIsTerminal || loading"
+            :disabled="!canEndBatch || loading"
             @click="endCurrentBatch"
           >
             <ControlOutlined />
@@ -1083,7 +1743,7 @@ function ledgerErrorText(err: unknown) {
           <button
             class="quiet-button"
             type="button"
-            :disabled="!currentJob || jobIsTerminal || loading"
+            :disabled="!canRetryCommit || loading"
             @click="retryCurrentCommit"
             title="commit 阶段失败时重新触发 commit；服务端使用 reportId / batchExternalNo 唯一约束保证幂等"
           >
@@ -1093,9 +1753,9 @@ function ledgerErrorText(err: unknown) {
           <button
             class="quiet-button danger-button"
             type="button"
-            :disabled="!kioskContext?.latestBatch?.scanBatchId || loading"
+            :disabled="!canSealLatestBatch"
             @click="sealLatestBatch"
-            title="将最近一个已落库扫描批次写入 sealed_at / sealed_by；封存后该批次禁止再写入"
+            :title="latestBatchSealBlockedReason || '将最近一个已落库扫描批次写入 sealed_at / sealed_by；封存后该批次禁止再写入'"
           >
             <StopOutlined />
             <span>封存批次</span>
@@ -1127,7 +1787,8 @@ function ledgerErrorText(err: unknown) {
           </div>
           <div>
             <dt>班级范围</dt>
-            <dd>{{ kioskContext?.classIds.length || 0 }} 个</dd>
+            <dd v-if="kioskContext">{{ kioskContext.classIds.length }} 个</dd>
+            <dd v-else>等待考试上下文</dd>
           </div>
           <div>
             <dt>班级名称</dt>
@@ -1156,16 +1817,16 @@ function ledgerErrorText(err: unknown) {
 
     <section class="metric-grid">
       <div class="metric">
-        <span>已扫页数</span><strong>{{ kioskContext?.scannedPages ?? 0 }}</strong>
+        <span>已扫页数</span><strong>{{ kioskMetrics.scannedPages }}</strong>
       </div>
       <div class="metric">
-        <span>试卷实例</span><strong>{{ kioskContext?.paperInstances ?? 0 }}</strong>
+        <span>试卷实例</span><strong>{{ kioskMetrics.paperInstances }}</strong>
       </div>
       <div class="metric">
-        <span>已绑定</span><strong>{{ kioskContext?.boundPaperInstances ?? 0 }}</strong>
+        <span>已绑定</span><strong>{{ kioskMetrics.boundPaperInstances }}</strong>
       </div>
       <div class="metric">
-        <span>异常队列</span><strong>{{ kioskContext?.attentionCount ?? 0 }}</strong>
+        <span>异常队列</span><strong>{{ kioskMetrics.attentionCount }}</strong>
       </div>
     </section>
 
@@ -1182,7 +1843,7 @@ function ledgerErrorText(err: unknown) {
         <dl class="compact-list">
           <div>
             <dt>Agent</dt>
-            <dd>{{ health?.status || '-' }} · {{ health?.agentVersion || '-' }}</dd>
+            <dd>{{ agentHealthStatusLabel(health?.status) }} · {{ health?.agentVersion || '-' }}</dd>
           </div>
           <div>
             <dt>本地扫描仪</dt>
@@ -1190,7 +1851,7 @@ function ledgerErrorText(err: unknown) {
           </div>
           <div>
             <dt>待处理</dt>
-            <dd>{{ health?.pendingUploadJobs ?? 0 }} 个任务</dd>
+            <dd>{{ pendingUploadJobsText }}</dd>
           </div>
           <div>
             <dt>设备业务键</dt>
@@ -1213,7 +1874,13 @@ function ledgerErrorText(err: unknown) {
         </div>
         <label class="expected-input">
           <span>预计页数</span>
-          <input v-model.number="expectedPages" type="number" min="1" placeholder="可选" />
+          <input
+            v-model.number="expectedPages"
+            type="number"
+            min="1"
+            placeholder="可选"
+            :disabled="!canEditScanSetup"
+          />
         </label>
         <div class="policy-note">
           <CheckCircleOutlined />
@@ -1229,40 +1896,56 @@ function ledgerErrorText(err: unknown) {
         <strong>{{ latestBatchText }}</strong>
         <dl class="compact-list">
           <div>
+            <dt>模式</dt>
+            <dd>{{ latestBatchModeText }}</dd>
+          </div>
+          <div>
             <dt>批次数</dt>
-            <dd>{{ kioskContext?.scanBatchCount ?? 0 }}</dd>
+            <dd>{{ kioskMetrics.scanBatchCount }}</dd>
           </div>
           <div>
             <dt>申报页数</dt>
-            <dd>{{ latestBatchPageStats?.declared ?? 0 }}</dd>
+            <dd>{{ latestBatchStatsText.declared }}</dd>
           </div>
           <div>
             <dt>已落库</dt>
-            <dd>{{ latestBatchPageStats?.received ?? 0 }}</dd>
+            <dd>{{ latestBatchStatsText.received }}</dd>
           </div>
           <div>
             <dt>待上传</dt>
             <dd
               :class="{
-                'value-warning': (latestBatchPageStats?.pending ?? 0) > 0,
+                'value-warning': Boolean(latestBatchPageStats && latestBatchPageStats.pending > 0),
               }"
             >
-              {{ latestBatchPageStats?.pending ?? 0 }}
+              {{ latestBatchStatsText.pending }}
             </dd>
           </div>
           <div>
             <dt>异常处置</dt>
             <dd
               :class="{
-                'value-danger': (latestBatchPageStats?.attention ?? 0) > 0,
+                'value-danger': Boolean(latestBatchPageStats && latestBatchPageStats.attention > 0),
               }"
             >
-              {{ latestBatchPageStats?.attention ?? 0 }}
+              {{ latestBatchStatsText.attention }}
             </dd>
           </div>
           <div>
             <dt>时段</dt>
             <dd>{{ latestBatchPeriodText }}</dd>
+          </div>
+        </dl>
+        <div v-if="kioskContext?.latestBatch?.supplementReason" class="batch-note">
+          {{ kioskContext.latestBatch.supplementReason }}
+        </div>
+        <dl v-if="latestBatchLifecycleItems.length" class="compact-list lifecycle-list">
+          <div
+            v-for="item in latestBatchLifecycleItems"
+            :key="`${item.label}-${item.value}`"
+          >
+            <dt>{{ item.label }}</dt>
+            <dd :class="{ 'value-danger': item.danger }">{{ item.value }}</dd>
           </div>
         </dl>
       </article>
@@ -1283,7 +1966,10 @@ function ledgerErrorText(err: unknown) {
           @click="previewPageNo = page.pageNo"
         >
           <span>第 {{ page.pageNo }} 页</span>
-          <strong>{{ pageStatusText(page.status) }}</strong>
+          <strong>
+            {{ pageStatusText(page.status) }}
+            <small v-if="page.diagnostic" class="page-diagnostic">{{ page.diagnostic }}</small>
+          </strong>
           <em>{{ Math.round(page.sizeBytes / 1024) }} KB</em>
         </button>
       </article>
@@ -1306,11 +1992,25 @@ function ledgerErrorText(err: unknown) {
         <div v-for="page in exceptionPages" :key="page.pageNo" class="exception-row">
           <strong>第 {{ page.pageNo }} 页</strong>
           <span>{{ page.diagnostic || pageStatusText(page.status) }}</span>
-          <button type="button" @click="prepareSupplementScan(page.pageNo, '补扫')">补扫</button>
-          <button type="button" @click="prepareSupplementScan(page.pageNo, '替换')">替换</button>
+          <button
+            type="button"
+            :disabled="!canSwitchScanMode || loading"
+            :title="canSwitchScanMode ? '切换到补扫模式' : '当前扫描任务未结束，不能切换到补扫模式'"
+            @click="prepareSupplementScan(page.pageNo, '补扫')"
+          >
+            补扫
+          </button>
+          <button
+            type="button"
+            :disabled="!canSwitchScanMode || loading"
+            :title="canSwitchScanMode ? '切换到补扫替换模式' : '当前扫描任务未结束，不能切换到补扫模式'"
+            @click="prepareSupplementScan(page.pageNo, '替换')"
+          >
+            替换
+          </button>
         </div>
         <div class="exception-actions">
-          <button type="button" :disabled="!currentJob" @click="retryCurrentUpload">
+          <button type="button" :disabled="!canRetryUpload || loading" @click="retryCurrentUpload">
             重试失败项
           </button>
         </div>
@@ -1354,18 +2054,31 @@ function ledgerErrorText(err: unknown) {
               :key="ledgerItemKey(item)"
               class="ledger-row"
               :class="{
-                'ledger-row--abnormal': item.registrationStatus === 'ABNORMAL' || item.attentionType,
+                'ledger-row--abnormal': Boolean(item.attentionType),
                 'ledger-row--pending': item.registrationStatus === 'PENDING',
+                'ledger-row--discarded': item.registrationStatus === 'DISCARDED',
+                'ledger-row--superseded': item.registrationStatus === 'SUPERSEDED',
               }"
             >
-              <strong>第 {{ item.pageNo ?? '-' }} 页</strong>
-              <span class="ledger-status">{{ registrationStatusText(item.registrationStatus) }}</span>
-              <span v-if="item.attentionType" class="ledger-attention">
-                {{ attentionTypeText(item.attentionType) }}
-              </span>
-              <span v-if="item.attentionMessage" class="ledger-diagnostic">
-                {{ item.attentionMessage }}
-              </span>
+              <div class="ledger-row-main">
+                <strong>第 {{ item.pageNo }} 页</strong>
+                <span class="ledger-status">{{ registrationStatusText(item.registrationStatus) }}</span>
+                <span v-if="item.attentionType" class="ledger-attention">
+                  {{ attentionTypeText(item.attentionType) }}
+                </span>
+                <span v-if="item.attentionMessage" class="ledger-diagnostic">
+                  {{ item.attentionMessage }}
+                </span>
+              </div>
+              <button
+                v-if="pageLedger.dataSource === 'DATABASE' && item.localPageId"
+                class="ledger-discard-button"
+                type="button"
+                :disabled="loading || item.registrationStatus === 'DISCARDED' || item.registrationStatus === 'SUPERSEDED'"
+                @click="discardLedgerPage(item)"
+              >
+                废弃本页
+              </button>
             </div>
           </div>
         </template>
@@ -1386,10 +2099,28 @@ function ledgerErrorText(err: unknown) {
             <LinkOutlined />
             <span>激活</span>
           </div>
-          <input v-model="activationForm.gatewayBaseUrl" placeholder="后端网关地址" />
-          <input v-model="activationForm.activationCode" placeholder="激活码" />
-          <input v-model="activationForm.endpointName" placeholder="端点名称" />
-          <button class="drawer-primary" type="button" :disabled="loading" @click="activateAgent">
+          <input
+            v-model="activationForm.gatewayBaseUrl"
+            placeholder="后端网关地址"
+            :disabled="!canActivateAgent || loading"
+          />
+          <input
+            v-model="activationForm.activationCode"
+            placeholder="激活码"
+            :disabled="!canActivateAgent || loading"
+          />
+          <input
+            v-model="activationForm.endpointName"
+            placeholder="端点名称"
+            :disabled="!canActivateAgent || loading"
+          />
+          <button
+            class="drawer-primary"
+            type="button"
+            :disabled="!canActivateAgent || loading"
+            :title="canActivateAgent ? '激活一体机' : '当前扫描任务未结束，不能重新激活一体机'"
+            @click="activateAgent"
+          >
             激活
           </button>
         </div>
@@ -1398,7 +2129,11 @@ function ledgerErrorText(err: unknown) {
             <ScanOutlined />
             <span>本地扫描仪</span>
           </div>
-          <select v-model="selectedScannerId">
+          <select
+            v-model="selectedScannerId"
+            :disabled="!canSwitchScanner || loading"
+            :title="canSwitchScanner ? undefined : '当前扫描任务未结束，不能切换本地扫描仪'"
+          >
             <option
               v-for="scanner in availableScanners"
               :key="scanner.localScannerId"
@@ -1407,13 +2142,21 @@ function ledgerErrorText(err: unknown) {
               {{ scanner.displayName }}
             </option>
           </select>
-          <button type="button" @click="refreshScanners">刷新扫描仪</button>
+          <button
+            type="button"
+            :disabled="!canSwitchScanner || loading"
+            :title="canSwitchScanner ? '刷新本地扫描仪' : '当前扫描任务未结束，不能刷新本地扫描仪'"
+            @click="refreshScannersByUser"
+          >
+            刷新扫描仪
+          </button>
         </div>
         <div class="config-section">
           <button
             class="danger-action"
             type="button"
-            :disabled="loading || !health?.bound"
+            :disabled="loading || !health?.bound || !canUnbindAgent"
+            :title="canUnbindAgent ? '解除当前一体机绑定' : '当前扫描任务未结束，不能解除绑定'"
             @click="unbindAgent"
           >
             解除绑定
@@ -1710,8 +2453,7 @@ button:disabled {
   background: #8a94a6;
 }
 
-.state-dot.success,
-.state-dot.ready {
+.state-dot.success {
   background: #237b4b;
 }
 
@@ -1774,7 +2516,7 @@ button:disabled {
 
 .supplement-form {
   display: grid;
-  grid-template-columns: 160px minmax(240px, 1fr);
+  grid-template-columns: 140px 220px minmax(240px, 1fr);
   gap: 12px;
   margin-top: 16px;
 }
@@ -1794,6 +2536,31 @@ button:disabled {
   border-radius: 8px;
   background: #fff;
   color: #1f2933;
+}
+
+.supplement-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  height: 38px;
+  padding: 3px;
+  border: 1px solid #d7dce3;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.supplement-mode-switch button {
+  min-width: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #314155;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.supplement-mode-switch button.active {
+  background: #1769aa;
+  color: #fff;
 }
 
 .start-button,
@@ -1986,6 +2753,21 @@ dd {
   text-align: right;
 }
 
+.batch-note {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #d7e2ee;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #314155;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.lifecycle-list {
+  margin-top: 8px;
+}
+
 .policy-row {
   display: grid;
   grid-template-columns: auto 1fr auto 1fr auto 1fr;
@@ -2110,12 +2892,22 @@ dd {
 .ledger-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding: 6px 8px;
   border-radius: 6px;
   background: #f8fafc;
   font-size: 13px;
   color: #1f2933;
+}
+
+.ledger-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
 }
 
 .ledger-row--abnormal {
@@ -2126,6 +2918,16 @@ dd {
 .ledger-row--pending {
   background: #fffbe6;
   color: #8a5200;
+}
+
+.ledger-row--discarded {
+  background: #f6f7f9;
+  color: #687385;
+}
+
+.ledger-row--superseded {
+  background: #eef4ff;
+  color: #31507a;
 }
 
 .ledger-status {
@@ -2143,6 +2945,22 @@ dd {
 .ledger-diagnostic {
   color: #6b7280;
   font-size: 12px;
+}
+
+.ledger-discard-button {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid #ffccc7;
+  border-radius: 6px;
+  background: #fff;
+  color: #a61d24;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ledger-discard-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .ledger-error {
@@ -2172,6 +2990,16 @@ dd {
 .page-row em {
   color: #687385;
   font-style: normal;
+}
+
+.page-diagnostic {
+  display: block;
+  max-width: 520px;
+  margin-top: 2px;
+  color: #a61d24;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .preview-panel img {

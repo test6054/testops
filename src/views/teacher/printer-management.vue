@@ -54,6 +54,22 @@
         compact
         @retry="loadDevices"
       />
+      <UiErrorRetryPanel
+        v-if="agentUnbindError"
+        :error="agentUnbindError"
+        title="扫描 Agent 解绑失败"
+        compact
+        :show-retry="false"
+        style="margin-bottom: 16px"
+      />
+      <UiErrorRetryPanel
+        v-if="deviceDeleteError"
+        :error="deviceDeleteError"
+        title="扫描设备删除失败"
+        compact
+        :show-retry="false"
+        style="margin-bottom: 16px"
+      />
 
       <!-- 设备表格 -->
       <UiDataTable
@@ -154,6 +170,14 @@
         :label-col="{ span: 7 }"
         :wrapper-col="{ span: 16 }"
       >
+        <UiErrorRetryPanel
+          v-if="formSubmitError"
+          :error="formSubmitError"
+          title="扫描设备保存失败"
+          compact
+          :show-retry="false"
+          style="margin-bottom: 16px"
+        />
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item name="scannerDeviceId" label="设备业务ID">
@@ -201,6 +225,17 @@
               <a-input
                 v-model:value="formData.scannerIp"
                 placeholder="可空，HTTP 推送时事件上报会刷新"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item name="kioskLockEnabled" label="Kiosk 防误触锁">
+              <a-switch
+                v-model:checked="formData.kioskLockEnabled"
+                checked-children="启用"
+                un-checked-children="关闭"
               />
             </a-form-item>
           </a-col>
@@ -345,7 +380,15 @@
         message="请妥善保管 push_token，关闭对话框后将仅展示掩码版本。"
         style="margin-bottom: 16px"
       />
-      <a-descriptions bordered :column="1" size="small">
+      <UiErrorRetryPanel
+        v-if="tokenActionError"
+        :error="tokenActionError"
+        title="HTTP 推送配置操作失败"
+        compact
+        :show-retry="false"
+        style="margin-bottom: 16px"
+      />
+      <a-descriptions v-if="tokenInfo" bordered :column="1" size="small">
         <a-descriptions-item label="设备主键ID">
           <span class="mono">{{ tokenInfo?.id }}</span>
         </a-descriptions-item>
@@ -385,6 +428,14 @@
       :footer="null"
       destroy-on-close
     >
+      <UiErrorRetryPanel
+        v-if="detailLoadError"
+        :error="detailLoadError"
+        title="扫描设备详情加载失败"
+        compact
+        :show-retry="false"
+        style="margin-bottom: 16px"
+      />
       <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
         <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
         <a-descriptions-item label="设备业务ID">
@@ -402,26 +453,31 @@
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="设备 IP">{{ detailInfo.scannerIp || '—' }}</a-descriptions-item>
+        <a-descriptions-item label="Kiosk 防误触锁">
+          <a-tag :color="detailInfo.kioskLockEnabled === false ? 'warning' : 'success'">
+            {{ detailInfo.kioskLockEnabled === false ? '已关闭' : '已启用' }}
+          </a-tag>
+        </a-descriptions-item>
         <a-descriptions-item label="Agent 在线状态">
           <a-tag :color="endpointOnlineStatusColorOf(detailInfo.endpointOnlineStatus)">
             {{ endpointOnlineStatusLabelOf(detailInfo.endpointOnlineStatus) }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="Agent 版本">{{
-          detailInfo.agentVersion || '未激活'
-        }}</a-descriptions-item>
-        <a-descriptions-item label="客户端版本">{{
-          detailInfo.clientVersion || '—'
-        }}</a-descriptions-item>
-        <a-descriptions-item label="端点名称">{{
-          detailInfo.endpointName || '—'
-        }}</a-descriptions-item>
+        <a-descriptions-item label="Agent 版本">
+          {{ detailInfo.agentVersion || '未激活' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="客户端版本">
+          {{ detailInfo.clientVersion || '—' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="端点名称">
+          {{ detailInfo.endpointName || '—' }}
+        </a-descriptions-item>
         <a-descriptions-item label="扫描仪连接">
           {{ detailInfo.scannerConnected === true ? '已连接' : '未连接或未上报' }}
         </a-descriptions-item>
         <a-descriptions-item label="本地队列">
-          任务 {{ detailInfo.pendingJobCount ?? 0 }} / 待上传页
-          {{ detailInfo.pendingUploadPageCount ?? 0 }}
+          任务 {{ detailInfo.pendingJobCount ?? '未上报' }} / 待上传页
+          {{ detailInfo.pendingUploadPageCount ?? '未上报' }}
         </a-descriptions-item>
         <a-descriptions-item label="最近心跳">
           {{ detailInfo.lastHeartbeatAt || '从未心跳' }}
@@ -460,7 +516,7 @@
         </template>
         <template v-if="detailInfo.interfaceMode === 'SANE_PULL'">
           <a-descriptions-item label="saned 主机">
-            {{ detailInfo.saneHost || '—' }}:{{ detailInfo.sanePort || 6566 }}
+            {{ formatSaneEndpoint(detailInfo) }}
           </a-descriptions-item>
           <a-descriptions-item label="SANE 设备名">
             {{ detailInfo.saneDeviceName || '—' }}
@@ -496,6 +552,14 @@
       :footer="null"
       destroy-on-close
     >
+      <UiErrorRetryPanel
+        v-if="activationCodeError"
+        :error="activationCodeError"
+        title="扫描 Agent 激活码生成失败"
+        compact
+        :show-retry="false"
+        style="margin-bottom: 16px"
+      />
       <div v-if="activationCodeInfo" class="activation-code-modal">
         <div class="activation-code-modal__device">
           {{ activationCodeDeviceName }}
@@ -537,6 +601,30 @@
         type="info"
         show-icon
         message="服务端会通过 SANE 协议连接设备并按期望页数采集，每页编为 PNG 上传 edu-storage 后入库。"
+        style="margin-bottom: 16px"
+      />
+      <UiErrorRetryPanel
+        v-if="saneSubmitError"
+        :error="saneSubmitError"
+        title="SANE 主动采集失败"
+        compact
+        :show-retry="false"
+        style="margin-bottom: 16px"
+      />
+      <UiErrorRetryPanel
+        v-if="classListLoadError"
+        :error="classListLoadError"
+        title="班级列表加载失败"
+        compact
+        @retry="loadClassList"
+        style="margin-bottom: 16px"
+      />
+      <UiErrorRetryPanel
+        v-if="examListLoadError"
+        :error="examListLoadError"
+        title="考试列表加载失败"
+        compact
+        @retry="loadExamList"
         style="margin-bottom: 16px"
       />
       <a-form
@@ -587,9 +675,9 @@
         <a-form-item label="临时分辨率覆盖（可选）">
           <a-input-number
             v-model:value="saneFormData.resolutionOverride"
-            :min="50"
+            :min="300"
             :max="1200"
-            placeholder="留空使用设备默认"
+            placeholder="留空使用设备默认；低于 300 DPI 会被阻断"
             style="width: 100%"
           />
         </a-form-item>
@@ -602,6 +690,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
+import { getAllClasses } from '@/apis/edu/class'
 import type {
   ExamScannerActivationCodeVO,
   ExamScannerDeviceCreatePayload,
@@ -617,11 +706,6 @@ import type {
   ScannerEndpointOnlineStatusCode,
   ScannerInterfaceModeCode,
 } from '@/apis/mark/exam-mark-scanner'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { getAllClasses } from '@/apis/edu/class'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -640,6 +724,10 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -654,6 +742,8 @@ const userStore = useUserStore()
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
 const devicesLoadError = ref<unknown>(null)
+const classListLoadError = ref<unknown>(null)
+const examListLoadError = ref<unknown>(null)
 const devices = ref<ExamScannerDeviceVO[]>([])
 const searchForm = ref<ExamScannerDeviceQueryPayload>({})
 const classListLoading = ref(false)
@@ -675,6 +765,7 @@ const examOptions = computed(() =>
 const showActivationCodeModal = ref(false)
 const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
 const activationCodeDeviceName = ref('')
+const activationCodeError = ref<unknown>(null)
 
 const interfaceModeOptions = [
   { value: 'HTTP_PUSH', label: SCANNER_INTERFACE_MODE_LABEL.HTTP_PUSH },
@@ -742,9 +833,14 @@ function endpointOnlineStatusColorOf(status?: ScannerEndpointOnlineStatusCode): 
 async function loadDevices(): Promise<void> {
   loading.value = true
   devicesLoadError.value = null
+  agentUnbindError.value = null
+  deviceDeleteError.value = null
   try {
     const result = await listScannerDevices(searchForm.value)
-    devices.value = Array.isArray(result) ? result : []
+    if (!Array.isArray(result)) {
+      throw new TypeError('扫描设备列表响应格式异常')
+    }
+    devices.value = result
   } catch (error) {
     devicesLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '设备列表加载失败'
@@ -767,6 +863,7 @@ function handleResetSearch(): void {
 const showFormModal = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
 const formSubmitting = ref(false)
+const formSubmitError = ref<unknown>(null)
 const formRef = ref<FormInstance | null>(null)
 
 interface FormState {
@@ -788,6 +885,7 @@ interface FormState {
   manufacturer?: string
   model?: string
   location?: string
+  kioskLockEnabled: boolean
   remark?: string
 }
 
@@ -804,6 +902,7 @@ function defaultFormState(): FormState {
     saneColorMode: 'COLOR',
     saneDuplexMode: 'SIMPLEX',
     defaultClassIds: [],
+    kioskLockEnabled: true,
   }
 }
 
@@ -823,37 +922,36 @@ function resetForm(): void {
 
 function handleCreate(): void {
   formMode.value = 'create'
+  formSubmitError.value = null
+  tokenInfo.value = null
   resetForm()
   showFormModal.value = true
 }
 
 function handleEdit(record: ExamScannerDeviceVO): void {
   formMode.value = 'edit'
+  formSubmitError.value = null
   resetForm()
-  // record.X 字段已是后端严格枚举类型（如 ScannerInterfaceModeCode），默认值为枚举成员，TS 能自动合并为枚举类型，无须 as。
-  const defaultInterfaceMode: ScannerInterfaceModeCode = 'HTTP_PUSH'
-  const defaultStatus: ScannerDeviceStatusCode = 'ACTIVE'
-  const defaultColorMode: ScannerColorModeCode = 'COLOR'
-  const defaultDuplexMode: ScannerDuplexModeCode = 'SIMPLEX'
   Object.assign(formData, {
     id: record.id,
-    scannerDeviceId: record.scannerDeviceId ?? '',
-    scannerStationId: record.scannerStationId ?? '',
-    deviceName: record.deviceName ?? '',
-    interfaceMode: record.interfaceMode ?? defaultInterfaceMode,
+    scannerDeviceId: record.scannerDeviceId,
+    scannerStationId: record.scannerStationId,
+    deviceName: record.deviceName,
+    interfaceMode: record.interfaceMode,
     scannerIp: record.scannerIp ?? '',
-    status: record.status ?? defaultStatus,
+    status: record.status,
     saneHost: record.saneHost ?? '',
-    sanePort: record.sanePort ?? 6566,
+    sanePort: record.sanePort,
     saneDeviceName: record.saneDeviceName ?? '',
-    saneResolution: record.saneResolution ?? 300,
-    saneColorMode: record.saneColorMode ?? defaultColorMode,
-    saneDuplexMode: record.saneDuplexMode ?? defaultDuplexMode,
+    saneResolution: record.saneResolution,
+    saneColorMode: record.saneColorMode,
+    saneDuplexMode: record.saneDuplexMode,
     defaultExamId: record.defaultExamId ?? '',
-    defaultClassIds: record.defaultClassIds ?? [],
+    defaultClassIds: record.defaultClassIds,
     manufacturer: record.manufacturer ?? '',
     model: record.model ?? '',
     location: record.location ?? '',
+    kioskLockEnabled: record.kioskLockEnabled,
     remark: record.remark ?? '',
   })
   showFormModal.value = true
@@ -861,6 +959,7 @@ function handleEdit(record: ExamScannerDeviceVO): void {
 
 async function handleFormSubmit(): Promise<void> {
   await formRef.value?.validate()
+  formSubmitError.value = null
   if (formData.interfaceMode === 'SANE_PULL') {
     if (!formData.saneHost || !formData.saneDeviceName) {
       message.error('SANE_PULL 模式下必须填写 saned 主机与 SANE 设备名')
@@ -888,6 +987,7 @@ async function handleFormSubmit(): Promise<void> {
         manufacturer: emptyToUndefined(formData.manufacturer),
         model: emptyToUndefined(formData.model),
         location: emptyToUndefined(formData.location),
+        kioskLockEnabled: formData.kioskLockEnabled,
         remark: emptyToUndefined(formData.remark),
       }
       const tokenInfo = await createScannerDevice(payload)
@@ -915,6 +1015,7 @@ async function handleFormSubmit(): Promise<void> {
         manufacturer: emptyToUndefined(formData.manufacturer),
         model: emptyToUndefined(formData.model),
         location: emptyToUndefined(formData.location),
+        kioskLockEnabled: formData.kioskLockEnabled,
         remark: emptyToUndefined(formData.remark),
       }
       await updateScannerDevice(payload)
@@ -922,6 +1023,10 @@ async function handleFormSubmit(): Promise<void> {
       showFormModal.value = false
       await loadDevices()
     }
+  } catch (error) {
+    formSubmitError.value = error
+    const errMsg = error instanceof Error ? error.message : '扫描设备保存失败'
+    message.error(errMsg)
   } finally {
     formSubmitting.value = false
   }
@@ -936,6 +1041,7 @@ function emptyToUndefined(value?: string): string | undefined {
 // ─── token 显示弹窗 ───────────────────────────────────
 const showTokenModal = ref(false)
 const tokenInfo = ref<ExamScannerDeviceTokenVO | null>(null)
+const tokenActionError = ref<unknown>(null)
 
 const absolutePushUrl = computed(() => buildAbsolutePushUrl(tokenInfo.value?.pushUrl))
 
@@ -947,6 +1053,7 @@ function buildAbsolutePushUrl(relativeUrl?: string): string {
 
 function openTokenModal(info: ExamScannerDeviceTokenVO): void {
   tokenInfo.value = info
+  tokenActionError.value = null
   showTokenModal.value = true
 }
 
@@ -956,18 +1063,44 @@ async function handleResetToken(record: ExamScannerDeviceVO): Promise<void> {
     content: `重置后旧 token 立即失效，扫描仪后台需要重新填入。是否继续？设备：${record.deviceName}`,
     type: 'warning',
     onOk: async () => {
-      const result = await resetScannerDevicePushToken(record.id)
-      message.success('push_token 已重置')
-      openTokenModal(result)
-      await loadDevices()
+      try {
+        tokenActionError.value = null
+        tokenInfo.value = null
+        showTokenModal.value = true
+        const result = await resetScannerDevicePushToken(record.id)
+        message.success('push_token 已重置')
+        openTokenModal(result)
+        await loadDevices()
+      } catch (error) {
+        tokenActionError.value = error
+        const errMsg = error instanceof Error ? error.message : 'push_token 重置失败'
+        message.error(errMsg)
+      }
     },
   })
 }
 
 async function handleCreateActivationCode(record: ExamScannerDeviceVO): Promise<void> {
-  activationCodeInfo.value = await createScannerActivationCode({ deviceId: record.id })
   activationCodeDeviceName.value = record.deviceName || record.scannerDeviceId || '扫描设备'
+  activationCodeInfo.value = null
   showActivationCodeModal.value = true
+  activationCodeError.value = null
+  try {
+    activationCodeInfo.value = await createScannerActivationCode({ deviceId: record.id })
+  } catch (error) {
+    activationCodeError.value = error
+    const errMsg = error instanceof Error ? error.message : '扫描 Agent 激活码生成失败'
+    message.error(errMsg)
+  }
+}
+
+const agentUnbindError = ref<unknown>(null)
+
+const deviceDeleteError = ref<unknown>(null)
+
+function showActionError(error: unknown, fallback: string): void {
+  const errMsg = error instanceof Error ? error.message : fallback
+  message.error(errMsg)
 }
 
 function handleUnbindAgent(record: ExamScannerDeviceVO): void {
@@ -976,9 +1109,15 @@ function handleUnbindAgent(record: ExamScannerDeviceVO): void {
     content: `确定解绑设备"${record.deviceName}"当前 Agent 吗？解绑后原一体机需要重新使用激活码绑定。`,
     type: 'warning',
     onOk: async () => {
-      await unbindScannerDeviceAgent(record.id)
-      message.success('扫描 Agent 已解绑')
-      await loadDevices()
+      try {
+        agentUnbindError.value = null
+        await unbindScannerDeviceAgent(record.id)
+        message.success('扫描 Agent 已解绑')
+        await loadDevices()
+      } catch (error) {
+        agentUnbindError.value = error
+        showActionError(error, '扫描 Agent 解绑失败')
+      }
     },
   })
 }
@@ -998,10 +1137,19 @@ function copyText(value?: string | null): void {
 // ─── 详情弹窗 ────────────────────────────────────────
 const showDetailModal = ref(false)
 const detailInfo = ref<ExamScannerDeviceDetailVO | null>(null)
+const detailLoadError = ref<unknown>(null)
 
 async function handleViewDetail(record: ExamScannerDeviceVO): Promise<void> {
-  detailInfo.value = await getScannerDeviceDetail(record.id)
+  detailInfo.value = null
   showDetailModal.value = true
+  detailLoadError.value = null
+  try {
+    detailInfo.value = await getScannerDeviceDetail(record.id)
+  } catch (error) {
+    detailLoadError.value = error
+    const errMsg = error instanceof Error ? error.message : '扫描设备详情加载失败'
+    message.error(errMsg)
+  }
 }
 
 // ─── 删除 ────────────────────────────────────────────
@@ -1011,9 +1159,15 @@ function handleDelete(record: ExamScannerDeviceVO): void {
     content: `确定删除设备"${record.deviceName}"吗？历史扫描事件保持引用，仅当前设备记录被逻辑删除。`,
     type: 'error',
     onOk: async () => {
-      await deleteScannerDevice(record.id)
-      message.success('扫描设备已删除')
-      await loadDevices()
+      try {
+        deviceDeleteError.value = null
+        await deleteScannerDevice(record.id)
+        message.success('扫描设备已删除')
+        await loadDevices()
+      } catch (error) {
+        deviceDeleteError.value = error
+        showActionError(error, '扫描设备删除失败')
+      }
     },
   })
 }
@@ -1021,6 +1175,7 @@ function handleDelete(record: ExamScannerDeviceVO): void {
 // ─── SANE 主动采集弹窗 ────────────────────────────────
 const showSaneModal = ref(false)
 const saneSubmitting = ref(false)
+const saneSubmitError = ref<unknown>(null)
 const saneFormRef = ref<FormInstance | null>(null)
 const saneTargetDevice = ref<ExamScannerDeviceVO | null>(null)
 
@@ -1045,10 +1200,27 @@ const saneFormRules: Record<string, Rule[]> = {
 }
 
 function handleOpenSaneTrigger(record: ExamScannerDeviceVO): void {
+  if (record.interfaceMode !== 'SANE_PULL') {
+    message.error('仅 SANE 主动采集设备支持此操作')
+    return
+  }
+  if (record.status !== 'ACTIVE') {
+    message.error('设备未启用，不能触发 SANE 主动采集')
+    return
+  }
+  if (!record.saneHost || !record.saneDeviceName) {
+    message.error('SANE 设备配置不完整，请先补齐 saned 主机与 SANE 设备名')
+    return
+  }
+  if (record.saneResolution !== undefined && record.saneResolution < 300) {
+    message.error('SANE 设备默认分辨率低于 300 DPI，请先修正设备配置')
+    return
+  }
   saneTargetDevice.value = record
+  saneSubmitError.value = null
   Object.assign(saneFormData, {
     examId: record.defaultExamId ?? '',
-    declaredClassIds: record.defaultClassIds ?? [],
+    declaredClassIds: record.defaultClassIds,
     expectedPages: 1,
     batchExternalNo: undefined,
     resolutionOverride: undefined,
@@ -1058,7 +1230,11 @@ function handleOpenSaneTrigger(record: ExamScannerDeviceVO): void {
 
 async function handleSaneSubmit(): Promise<void> {
   await saneFormRef.value?.validate()
-  if (!saneTargetDevice.value) return
+  saneSubmitError.value = null
+  if (!saneTargetDevice.value) {
+    message.error('未选择 SANE 扫描设备，请重新打开采集窗口')
+    return
+  }
   saneSubmitting.value = true
   try {
     const result = await triggerSaneScan({
@@ -1069,9 +1245,13 @@ async function handleSaneSubmit(): Promise<void> {
       batchExternalNo: saneFormData.batchExternalNo,
       resolutionOverride: saneFormData.resolutionOverride,
     })
-    message.success(`采集完成：批次 ${result.scanBatchId}，共 ${result.pageCount ?? 0} 页`, 4)
+    message.success(`采集完成：批次 ${result.scanBatchId}，共 ${result.pageCount} 页`, 4)
     showSaneModal.value = false
     await loadDevices()
+  } catch (error) {
+    saneSubmitError.value = error
+    const errMsg = error instanceof Error ? error.message : 'SANE 主动采集失败'
+    message.error(errMsg)
   } finally {
     saneSubmitting.value = false
   }
@@ -1080,7 +1260,12 @@ async function handleSaneSubmit(): Promise<void> {
 async function loadClassList(): Promise<void> {
   classListLoading.value = true
   try {
+    classListLoadError.value = null
     classList.value = await getAllClasses()
+  } catch (error) {
+    classListLoadError.value = error
+    const errMsg = error instanceof Error ? error.message : '班级列表加载失败'
+    message.error(errMsg)
   } finally {
     classListLoading.value = false
   }
@@ -1089,6 +1274,7 @@ async function loadClassList(): Promise<void> {
 async function loadExamList(): Promise<void> {
   examListLoading.value = true
   try {
+    examListLoadError.value = null
     const isAdminView = authStore.isAdmin || userStore.isTenantAdmin
     const result = await pageMarkExams({
       pageNum: 1,
@@ -1096,7 +1282,14 @@ async function loadExamList(): Promise<void> {
       status: 'ACTIVE',
       createUserId: isAdminView ? null : userStore.userInfo.userId || undefined,
     })
-    examList.value = result.list ?? []
+    if (!Array.isArray(result.list)) {
+      throw new TypeError('考试列表接口返回格式错误')
+    }
+    examList.value = result.list
+  } catch (error) {
+    examListLoadError.value = error
+    const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
+    message.error(errMsg)
   } finally {
     examListLoading.value = false
   }
@@ -1121,7 +1314,16 @@ function formatSemester(value?: string): string {
 }
 
 function formatAcademicTerm(exam: MarkExamSummaryVO): string {
-  return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
+  return [exam.academicYear, formatSemester(exam.semester) || exam.semester]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+function formatSaneEndpoint(device: ExamScannerDeviceDetailVO): string {
+  if (!device.saneHost && device.sanePort === undefined) return '—'
+  if (!device.saneHost) return `未返回主机:${device.sanePort}`
+  if (device.sanePort === undefined) return `${device.saneHost}:未返回端口`
+  return `${device.saneHost}:${device.sanePort}`
 }
 
 function formatExamOptionLabel(exam: MarkExamSummaryVO): string {

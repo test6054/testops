@@ -47,6 +47,15 @@
       />
     </div>
 
+    <UiErrorRetryPanel
+      v-if="error"
+      :error="error"
+      title="实时事件订阅失败"
+      helper="扫描事件流中断，请检查网关、登录状态或 SSE 连接。"
+      compact
+      @retry="handleRefresh"
+    />
+
     <section class="scan-live__filter">
       <header class="scan-live__panel-header">
         <h3 class="scan-live__panel-title">
@@ -125,12 +134,12 @@
               @click="openDetail(event)"
             >
               <div class="scan-live__event-main">
-                <UiTag :tone="event.status === 'BATCHED' ? 'green' : 'orange'" size="sm">
-                  {{ event.status === 'BATCHED' ? '已聚合' : '待聚合' }}
+                <UiTag :tone="scanEventStatusTone(event.status)" size="sm">
+                  {{ scanEventStatusLabel(event.status) }}
                 </UiTag>
                 <span class="scan-live__event-device">{{ event.scannerDeviceId || '-' }}</span>
                 <span class="scan-live__hint">·</span>
-                <span>{{ event.pageCount ?? 0 }} 页</span>
+                <span>{{ event.pageCount }} 页</span>
               </div>
               <div class="scan-live__event-meta">
                 <span class="scan-live__event-time">{{
@@ -164,10 +173,10 @@
         <a-descriptions-item label="设备IP">
           {{ currentEvent.scannerIp || '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="页数">{{ currentEvent.pageCount ?? 0 }}</a-descriptions-item>
+        <a-descriptions-item label="页数">{{ currentEvent.pageCount }}</a-descriptions-item>
         <a-descriptions-item label="状态">
-          <UiTag :tone="currentEvent.status === 'BATCHED' ? 'green' : 'orange'" size="sm">
-            {{ currentEvent.status || '-' }}
+          <UiTag :tone="scanEventStatusTone(currentEvent.status)" size="sm">
+            {{ scanEventStatusLabel(currentEvent.status) }}
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="扫描批次ID">
@@ -209,7 +218,7 @@
  * - useScanLiveStream：SSE 实时事件流，过滤条件 examId / scannerStationId / scannerDeviceId
  * - useMarkExamSelector：考试选择器（不同步 URL）
  */
-import type { ScanLiveEventVO } from '@/apis/mark/scan-live'
+import type { ScanEventStatusCode, ScanLiveEventVO } from '@/apis/mark/scan-live'
 import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
@@ -220,6 +229,7 @@ import {
   UiButton,
   UiDrawer,
   UiEmpty,
+  UiErrorRetryPanel,
   UiRingProgress,
   UiStatPanel,
   UiTag,
@@ -273,9 +283,9 @@ const connectionLabel = computed(() => {
 })
 
 const batchedCount = computed(() => events.value.filter((e) => e.status === 'BATCHED').length)
-const pendingCount = computed(() => events.value.filter((e) => e.status !== 'BATCHED').length)
+const pendingCount = computed(() => events.value.filter((e) => e.status === 'PENDING').length)
 
-const totalPageCount = computed(() => events.value.reduce((sum, e) => sum + (e.pageCount ?? 0), 0))
+const totalPageCount = computed(() => events.value.reduce((sum, e) => sum + e.pageCount, 0))
 
 const healthPercent = computed(() => {
   if (!ready.value && !isStreaming.value) return 0
@@ -293,6 +303,14 @@ const healthColor = computed(() => {
   if (healthPercent.value >= 30) return '#f59e0b'
   return '#dc2626'
 })
+
+function scanEventStatusLabel(status: ScanEventStatusCode): string {
+  return status === 'BATCHED' ? '已聚合' : '待聚合'
+}
+
+function scanEventStatusTone(status: ScanEventStatusCode): 'green' | 'orange' {
+  return status === 'BATCHED' ? 'green' : 'orange'
+}
 
 const statMetrics = computed(() => [
   {

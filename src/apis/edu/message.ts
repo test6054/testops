@@ -99,12 +99,6 @@ export interface InboxMessageListQuery extends QueryDto {
   keyword?: string
 }
 
-/** 站内信详情请求 - 已废弃，使用通用IdRequest */
-export interface InboxMessageDetailRequest {
-  /** 收件记录ID */
-  recipientMessageId: string
-}
-
 /** 站内信标记请求DTO - 对应后端InboxMessageMarkRequest */
 export interface InboxMessageMarkRequest {
   /** 站内信关联ID列表（t_inbox_message_recipient.id） */
@@ -525,4 +519,3 @@ export function markAllAnnouncementsAsRead(): Promise<void> {
 export function sendTeacherToStudentMessage(data: InboxMessageCreateRequest): Promise<void> {
   return http.post('/api/inbox/publish', data)
 }
-

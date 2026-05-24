@@ -18,17 +18,17 @@ export type ScanEventStatusCode = 'PENDING' | 'BATCHED'
 export interface ScanLiveEventVO {
   /** 扫描事件ID（用作 SSE 重连补差的 afterEventId 游标） */
   eventId: string
-  examId?: string
+  examId: string
   scannerDeviceId?: string
   scannerStationId?: string
   scannerIp?: string
-  pageCount?: number
+  pageCount: number
   sourceFileIds?: string[]
   reportId?: string
   batchExternalNo?: string
   scanStartTime?: string
   scanEndTime?: string
-  status?: ScanEventStatusCode
+  status: ScanEventStatusCode
   scanBatchId?: string
   /** 事件入库时间，前端展示主时间 */
   createTime?: string
@@ -62,6 +62,8 @@ export interface ScanLiveStreamHandler {
   onError?: (err: unknown) => void
   /** 连接关闭（手动 abort 或服务端关闭流） */
   onClose?: () => void
+  /** 重连前需要刷新鉴权 token 时调用 */
+  onAuthRefreshRequired?: () => Promise<void>
 }
 
 /**
@@ -71,7 +73,7 @@ export interface ScanLiveStreamHandler {
 export function listRecentScanEvents(
   payload: ScanLiveQueryPayload,
 ): Promise<ScanLiveEventVO[]> {
-  return http.post<ScanLiveEventVO[]>('/api/mark/scan-live/recent', payload)
+  return http.post<unknown>('/api/mark/scan-live/recent', payload).then(validateScanLiveEventList)
 }
 
 /**
@@ -102,17 +104,34 @@ export function subscribeScanLive(
   }
   const url = `/api/mark/sse/scan-live/subscribe${params.toString() ? `?${params.toString()}` : ''}`
 
+  let retryWithFreshToken = false
   void fetchEventSource(url, {
     method: 'GET',
     signal: controller.signal,
     // 关键：fetch-event-source 默认会在 visibility 变化时关闭流，这里关闭以保持长连接
     openWhenHidden: true,
     headers: buildAuthHeaders(),
+    fetch: async (input, init) => {
+      if (retryWithFreshToken) {
+        retryWithFreshToken = false
+        await handler.onAuthRefreshRequired?.()
+      }
+      return fetch(input, {
+        ...init,
+        headers: {
+          ...buildAuthHeaders(),
+          ...normalizedHeaders(init?.headers),
+        },
+      })
+    },
     async onopen(response) {
       if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
         return
       }
-      // 401/403/5xx：抛出后由 onerror 处理；同步抛出让库不再重连
+      if (response.status === 401 || response.status === 403) {
+        retryWithFreshToken = true
+      }
+      // 非 SSE 响应抛出后由 onerror 统一进入受控重连
       throw new Error(`SSE 订阅失败：HTTP ${response.status}`)
     },
     onmessage(message) {
@@ -125,7 +144,7 @@ export function subscribeScanLive(
       }
       if (message.event === 'scan') {
         try {
-          const parsed = JSON.parse(message.data) as ScanLiveEventVO
+          const parsed = validateScanLiveEvent(JSON.parse(message.data))
           handler.onEvent(parsed)
         }
         catch (err) {
@@ -148,7 +167,7 @@ export function subscribeScanLive(
 
 /**
  * 构造 SSE 请求的鉴权 header。
- * 单独抽出便于在每次 fetch-event-source 重连时重新读取最新 token。
+ * fetch-event-source 重连前会再次调用自定义 fetch，因此普通断线重连也能读取最新 token。
  */
 function buildAuthHeaders(): Record<string, string> {
   const token = getValidToken()
@@ -159,4 +178,92 @@ function buildAuthHeaders(): Record<string, string> {
     headers.Authorization = `Bearer ${token}`
   }
   return headers
+}
+
+function normalizedHeaders(headers: HeadersInit | undefined): Record<string, string> {
+  if (!headers) {
+    return {}
+  }
+  if (headers instanceof Headers) {
+    const result: Record<string, string> = {}
+    headers.forEach((value, key) => {
+      result[key] = value
+    })
+    return result
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers)
+  }
+  return headers
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`扫描实时事件缺少 ${fieldName}`)
+  }
+  return value
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`扫描实时事件 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function optionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  if (typeof value !== 'string') {
+    throw new TypeError(`扫描实时事件 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function optionalStringList(value: unknown, fieldName: string): string[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new TypeError(`扫描实时事件 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function requireScanEventStatus(value: unknown): ScanEventStatusCode {
+  if (value !== 'PENDING' && value !== 'BATCHED') {
+    throw new TypeError('扫描实时事件 status 格式错误')
+  }
+  return value
+}
+
+function validateScanLiveEvent(value: unknown): ScanLiveEventVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描实时事件返回格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    eventId: requireString(record.eventId, 'eventId'),
+    examId: requireString(record.examId, 'examId'),
+    scannerDeviceId: optionalString(record.scannerDeviceId, 'scannerDeviceId'),
+    scannerStationId: optionalString(record.scannerStationId, 'scannerStationId'),
+    scannerIp: optionalString(record.scannerIp, 'scannerIp'),
+    pageCount: requireFiniteNumber(record.pageCount, 'pageCount'),
+    sourceFileIds: optionalStringList(record.sourceFileIds, 'sourceFileIds'),
+    reportId: optionalString(record.reportId, 'reportId'),
+    batchExternalNo: optionalString(record.batchExternalNo, 'batchExternalNo'),
+    scanStartTime: optionalString(record.scanStartTime, 'scanStartTime'),
+    scanEndTime: optionalString(record.scanEndTime, 'scanEndTime'),
+    status: requireScanEventStatus(record.status),
+    scanBatchId: optionalString(record.scanBatchId, 'scanBatchId'),
+    createTime: optionalString(record.createTime, 'createTime'),
+  }
+}
+
+function validateScanLiveEventList(value: unknown): ScanLiveEventVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('扫描实时事件列表返回格式错误')
+  }
+  return value.map(validateScanLiveEvent)
 }

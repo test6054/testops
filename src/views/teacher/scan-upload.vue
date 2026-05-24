@@ -65,8 +65,8 @@
             />
             <div class="scan-batch-page__ring-meta">
               <div class="scan-batch-page__ring-formula">
-                <strong>{{ progress.gradablePaperCount ?? 0 }}</strong>
-                <span class="muted"> / {{ progress.paperCount ?? 0 }} 份卷面</span>
+                <strong>{{ progress.gradablePaperCount }}</strong>
+                <span class="muted"> / {{ progress.paperCount }} 份卷面</span>
               </div>
               <div class="scan-batch-page__ring-hint">
                 {{ paperBindingHint }}
@@ -75,6 +75,14 @@
           </div>
         </UiCard>
       </div>
+      <UiErrorRetryPanel
+        v-else-if="progressLoadError"
+        :error="progressLoadError"
+        title="扫描进度加载失败"
+        :helper="`考试 ID：${selectedExamId}`"
+        compact
+        @retry="loadProgress"
+      />
       <UiCard class="info-card">
         <template #title>
           <FileTextOutlined />
@@ -154,24 +162,39 @@
           dense
           class="scan-batch-page__alert"
         />
+        <UiAlertStrip
+          v-if="batchCreateError"
+          tone="error"
+          title="扫描批次创建失败"
+          :description="batchCreateError"
+          dense
+          class="scan-batch-page__alert"
+        />
 
         <!-- 预览结果 -->
         <a-divider class="divider" />
+        <UiErrorRetryPanel
+          v-if="previewLoadError"
+          :error="previewLoadError"
+          title="聚合预览查询失败"
+          compact
+          @retry="previewPendingEvents"
+        />
         <div v-if="previewLoaded" class="preview-section">
           <UiStatPanel :items="previewMetrics" :columns="4" variant="strip" compact />
           <UiDataTable
-            v-if="(previewData?.deviceBreakdown?.length ?? 0) > 0"
+            v-if="previewData && previewData.deviceBreakdown.length > 0"
             :columns="deviceBreakdownColumns"
-            :data-source="previewData!.deviceBreakdown"
+            :data-source="previewData.deviceBreakdown"
             :show-pagination="false"
             flat
-            :total="previewData!.deviceBreakdown.length"
+            :total="previewData.deviceBreakdown.length"
             row-key="scannerDeviceId"
             size="small"
             class="event-table"
           />
           <UiEmpty
-            v-else-if="(previewData?.eventCount ?? 0) === 0"
+            v-else-if="previewData && previewData.eventCount === 0"
             description="筛选条件下没有待聚合的扫描事件"
           />
         </div>
@@ -219,8 +242,8 @@
               <a-typography-text strong :content="batches[index].batchNo || '-'" />
               <div
                 v-if="
-                  batches[index].batchExternalNo
-                    && batches[index].batchExternalNo !== batches[index].batchNo
+                  batches[index].batchExternalNo &&
+                  batches[index].batchExternalNo !== batches[index].batchNo
                 "
                 class="muted"
               >
@@ -240,7 +263,10 @@
               {{ batches[index].eventCount ?? '-' }} 条
             </template>
             <template v-else-if="column.key === 'fileCount'">
-              {{ batches[index].sourceFileIds?.length ?? 0 }} 份
+              <template v-if="batches[index].sourceFileIds">
+                {{ batches[index].sourceFileIds.length }} 份
+              </template>
+              <template v-else>未返回文件明细</template>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
@@ -249,12 +275,15 @@
                 tone="danger"
                 :loading="batchDiscarding === batches[index].scanBatchId"
                 :disabled="
-                  batches[index].status === 'DISCARDED'
-                    || Boolean(batches[index].sealedAt)
+                  batches[index].status === 'DISCARDED' || Boolean(batches[index].sealedAt)
                 "
-                :title="batches[index].sealedAt
-                  ? '批次已封存，禁止废弃；请联系扫描终审角色'
-                  : (batches[index].status === 'DISCARDED' ? '批次已废弃' : '废弃整批')"
+                :title="
+                  batches[index].sealedAt
+                    ? '批次已封存，禁止废弃；请联系扫描终审角色'
+                    : batches[index].status === 'DISCARDED'
+                      ? '批次已废弃'
+                      : '废弃整批'
+                "
                 @click="onDiscardBatch(batches[index])"
               >
                 <template #icon>
@@ -300,6 +329,41 @@
         </a-space>
       </UiCard>
     </template>
+
+    <a-modal
+      v-model:open="batchDiscardModalOpen"
+      title="废弃扫描批次"
+      ok-text="废弃"
+      ok-type="danger"
+      cancel-text="取消"
+      :confirm-loading="Boolean(batchDiscarding)"
+      @ok="confirmDiscardBatch"
+      @cancel="closeBatchDiscardModal"
+    >
+      <a-form layout="vertical">
+        <a-form-item
+          label="废弃原因"
+          required
+          :validate-status="batchDiscardReasonError ? 'error' : undefined"
+          :help="batchDiscardReasonError"
+        >
+          <a-textarea
+            v-model:value="batchDiscardReason"
+            placeholder="请输入废弃原因（必填，1-255 字）"
+            :maxlength="255"
+            show-count
+            :rows="4"
+          />
+        </a-form-item>
+      </a-form>
+      <UiAlertStrip
+        v-if="batchDiscardError"
+        tone="error"
+        title="扫描批次废弃失败"
+        :description="batchDiscardError"
+        dense
+      />
+    </a-modal>
   </StageWorkbenchShell>
 </template>
 
@@ -314,7 +378,15 @@ import type {
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
+import {
+  createScanBatchByCondition,
+  discardScanBatch,
+  getMarkingProgress,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+} from '@/apis/mark/exam'
 import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
+import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -328,14 +400,6 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createScanBatchByCondition,
-  discardScanBatch,
-  getMarkingProgress,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
-import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import {
   UiAlertStrip,
   UiBadge,
@@ -396,7 +460,11 @@ const {
 // ─── 概览统计 ─────────────────────────────
 const progress = ref<MarkingProgressVO | null>(null)
 const progressLoading = ref(false)
-const hasOpenTasks = computed(() => (progress.value?.openProcessingTaskCount ?? 0) > 0)
+const progressLoadError = ref<unknown>(null)
+const hasOpenTasks = computed(() => {
+  const current = progress.value
+  return current ? current.openProcessingTaskCount > 0 : false
+})
 /** 全局加载状态：任一子加载中即视为正在加载 */
 const globalLoading = computed(
   () => progressLoading.value || devicesLoading.value || batchLoading.value || previewLoading.value,
@@ -405,9 +473,11 @@ const globalLoading = computed(
 async function loadProgress(): Promise<void> {
   if (!selectedExamId.value) return
   progressLoading.value = true
+  progressLoadError.value = null
   try {
     progress.value = await getMarkingProgress(selectedExamId.value)
   } catch (error) {
+    progressLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '阅卷进度加载失败'
     message.error(errMsg)
   } finally {
@@ -416,7 +486,8 @@ async function loadProgress(): Promise<void> {
 }
 
 const progressMetrics = computed(() => {
-  const scanAttention = progress.value?.scanAttentionCount ?? 0
+  const current = progress.value
+  const scanAttention = current ? current.scanAttentionCount : 0
   return [
     { label: '已创建批次', value: batchTotal.value, unit: '个', tone: 'blue' as const },
     {
@@ -427,7 +498,7 @@ const progressMetrics = computed(() => {
     },
     {
       label: '待处理任务',
-      value: progress.value?.openProcessingTaskCount ?? 0,
+      value: current ? current.openProcessingTaskCount : 0,
       unit: '条',
       tone: hasOpenTasks.value ? ('red' as const) : ('green' as const),
     },
@@ -444,10 +515,9 @@ const progressMetrics = computed(() => {
 // 绑定率 = gradablePaperCount（已绑定到学生的卷面）/ paperCount（扫描入库总卷面）
 // 仅当后端返回 paperCount > 0 时显示，避免空考试出现 0/0 误导。
 const paperBindingPercent = computed<number | null>(() => {
-  const total = progress.value?.paperCount ?? 0
-  const ok = progress.value?.gradablePaperCount ?? 0
-  if (total <= 0) return null
-  return Math.round((ok / total) * 100)
+  const current = progress.value
+  if (!current || current.paperCount <= 0) return null
+  return Math.round((current.gradablePaperCount / current.paperCount) * 100)
 })
 
 /** ≥95% 绿 / ≥80% 橙 / 其余红，提示教师哪些卷面尚未识别绑定 */
@@ -467,27 +537,31 @@ const paperBindingHint = computed<string>(() => {
   return '绑定率偏低，请优先处理扫描异常与冲突卷'
 })
 
-const previewMetrics = computed(() => [
-  {
-    label: '待聚合事件',
-    value: previewData.value?.eventCount ?? 0,
-    unit: '条',
-    tone: (previewData.value?.eventCount ?? 0) > 0 ? ('orange' as const) : ('gray' as const),
-  },
-  {
-    label: '覆盖文件数',
-    value: previewData.value?.fileCount ?? 0,
-    unit: '份',
-    tone: 'blue' as const,
-  },
-  {
-    label: '累计页数',
-    value: previewData.value?.pageCount ?? 0,
-    unit: '页',
-    tone: 'blue' as const,
-  },
-  { label: '时间跨度', value: previewTimeSpan.value, tone: 'gray' as const },
-])
+const previewMetrics = computed(() => {
+  const data = previewData.value
+  if (!data) return []
+  return [
+    {
+      label: '待聚合事件',
+      value: data.eventCount,
+      unit: '条',
+      tone: data.eventCount > 0 ? ('orange' as const) : ('gray' as const),
+    },
+    {
+      label: '覆盖文件数',
+      value: data.fileCount,
+      unit: '份',
+      tone: 'blue' as const,
+    },
+    {
+      label: '累计页数',
+      value: data.pageCount,
+      unit: '页',
+      tone: 'blue' as const,
+    },
+    { label: '时间跨度', value: previewTimeSpan.value, tone: 'gray' as const },
+  ]
+})
 
 // ─── 扫描设备列表 ─────────────────────────────
 const devices = ref<ExamScannerDeviceVO[]>([])
@@ -540,11 +614,11 @@ const batchFormRules: Record<string, Rule[]> = {
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value
-    && !devicesLoadError.value
-    && batchForm.scannerDeviceIds.length > 0
-    && !!batchForm.scanWindow
-    && batchForm.scanWindow.length === 2,
+    !!selectedExamId.value &&
+    !devicesLoadError.value &&
+    batchForm.scannerDeviceIds.length > 0 &&
+    !!batchForm.scanWindow &&
+    batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -554,7 +628,37 @@ const previewData = ref<ExamScannerBatchPreviewVO | null>(null)
 const pendingEventTotal = ref(0)
 const previewLoaded = ref(false)
 const previewLoading = ref(false)
+const previewLoadError = ref<unknown>(null)
 const previewTimeSpan = ref('-')
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function validateBatchPreview(result: ExamScannerBatchPreviewVO): ExamScannerBatchPreviewVO {
+  requireFiniteNumber(result.eventCount, '待聚合事件数')
+  requireFiniteNumber(result.fileCount, '覆盖文件数')
+  requireFiniteNumber(result.pageCount, '累计页数')
+  if (!Array.isArray(result.deviceBreakdown)) {
+    throw new TypeError('设备聚合明细接口返回格式错误')
+  }
+  return result
+}
+
+function validateBatchCreateResult(result: {
+  eventCount?: number
+  fileCount?: number
+  pageCount?: number
+}): { eventCount: number; fileCount: number; pageCount: number } {
+  return {
+    eventCount: requireFiniteNumber(result.eventCount, '批次聚合事件数'),
+    fileCount: requireFiniteNumber(result.fileCount, '批次聚合文件数'),
+    pageCount: requireFiniteNumber(result.pageCount, '批次聚合页数'),
+  }
+}
 
 const deviceBreakdownColumns: ColumnType[] = [
   {
@@ -578,6 +682,7 @@ async function previewPendingEvents(): Promise<void> {
   }
   previewLoading.value = true
   previewLoaded.value = false
+  previewLoadError.value = null
   try {
     const payload: ExamScannerBatchCreatePayload = {
       examId: selectedExamId.value,
@@ -585,9 +690,9 @@ async function previewPendingEvents(): Promise<void> {
       scanStartTime: batchForm.scanWindow[0],
       scanEndTime: batchForm.scanWindow[1],
     }
-    const result = await previewScanBatchAggregation(payload)
+    const result = validateBatchPreview(await previewScanBatchAggregation(payload))
     previewData.value = result
-    pendingEventTotal.value = result.eventCount ?? 0
+    pendingEventTotal.value = result.eventCount
     // 时间跨度
     if (result.scanStartTime && result.scanEndTime) {
       previewTimeSpan.value = `${dayjs(result.scanStartTime).format('YYYY-MM-DD HH:mm')} ~ ${dayjs(result.scanEndTime).format('YYYY-MM-DD HH:mm')}`
@@ -596,6 +701,7 @@ async function previewPendingEvents(): Promise<void> {
     }
     previewLoaded.value = true
   } catch (error) {
+    previewLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '聚合预览查询失败'
     message.error(errMsg)
   } finally {
@@ -605,6 +711,7 @@ async function previewPendingEvents(): Promise<void> {
 
 // ─── 创建批次 ─────────────────────────────
 const creating = ref(false)
+const batchCreateError = ref('')
 
 async function handleCreateBatch(): Promise<void> {
   if (!selectedExamId.value || !formRef.value) return
@@ -615,6 +722,7 @@ async function handleCreateBatch(): Promise<void> {
   }
   if (!batchForm.scanWindow) return
   creating.value = true
+  batchCreateError.value = ''
   try {
     const payload: ExamScannerBatchCreatePayload = {
       examId: selectedExamId.value,
@@ -624,8 +732,9 @@ async function handleCreateBatch(): Promise<void> {
       batchExternalNo: batchForm.batchExternalNo?.trim() || undefined,
     }
     const result = await createScanBatchByCondition(payload)
+    const createStats = validateBatchCreateResult(result)
     message.success(
-      `批次创建成功：聚合 ${result.eventCount ?? 0} 条事件 / ${result.fileCount ?? 0} 份文件 / ${result.pageCount ?? 0} 页`,
+      `批次创建成功：聚合 ${createStats.eventCount} 条事件 / ${createStats.fileCount} 份文件 / ${createStats.pageCount} 页`,
     )
     // 重置表单 + 重新加载批次
     previewLoaded.value = false
@@ -636,6 +745,7 @@ async function handleCreateBatch(): Promise<void> {
     await loadProgress()
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '扫描批次创建失败'
+    batchCreateError.value = errMsg
     message.error(errMsg)
   } finally {
     creating.value = false
@@ -647,7 +757,7 @@ const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
 const batchesLoadError = ref<unknown>(null)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -674,6 +784,11 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
  * 已 sealed/已 DISCARDED 的批次禁用入口；其余状态二次确认 + 必填理由后调用后端 discardScanBatch。
  */
 const batchDiscarding = ref<string | null>(null)
+const batchDiscardModalOpen = ref(false)
+const batchDiscardTarget = ref<ExamScannerBatchVO | null>(null)
+const batchDiscardReason = ref('')
+const batchDiscardReasonError = ref('')
+const batchDiscardError = ref('')
 async function onDiscardBatch(batch: ExamScannerBatchVO): Promise<void> {
   if (!batch.scanBatchId) return
   if (batch.status === 'DISCARDED') {
@@ -684,26 +799,51 @@ async function onDiscardBatch(batch: ExamScannerBatchVO): Promise<void> {
     message.warning('批次已封存，禁止废弃；请联系扫描终审角色解封后再处置')
     return
   }
-  // eslint-disable-next-line no-alert -- 教师场景的轻量二次确认；如后续接入项目级 confirm modal 再替换。
-  const reason = window.prompt(`确认废弃批次 ${batch.batchNo || batch.scanBatchId}？\n请输入废弃原因（必填，1-255 字）：`, '')
-  if (reason === null) return
-  const trimmed = reason.trim()
+  batchDiscardTarget.value = batch
+  batchDiscardReason.value = ''
+  batchDiscardReasonError.value = ''
+  batchDiscardError.value = ''
+  batchDiscardModalOpen.value = true
+}
+
+function closeBatchDiscardModal(): void {
+  if (batchDiscarding.value) return
+  batchDiscardModalOpen.value = false
+  batchDiscardTarget.value = null
+  batchDiscardReason.value = ''
+  batchDiscardReasonError.value = ''
+  batchDiscardError.value = ''
+}
+
+async function confirmDiscardBatch(): Promise<void> {
+  const batch = batchDiscardTarget.value
+  if (!batch?.scanBatchId) {
+    closeBatchDiscardModal()
+    return
+  }
+  const trimmed = batchDiscardReason.value.trim()
   if (!trimmed) {
-    message.error('废弃原因不能为空')
+    batchDiscardReasonError.value = '废弃原因不能为空'
     return
   }
   if (trimmed.length > 255) {
-    message.error('废弃原因长度不能超过 255 字')
+    batchDiscardReasonError.value = '废弃原因长度不能超过 255 字'
     return
   }
+  batchDiscardReasonError.value = ''
+  batchDiscardError.value = ''
   batchDiscarding.value = batch.scanBatchId
   try {
     await discardScanBatch({ scanBatchId: batch.scanBatchId, discardReason: trimmed })
     message.success(`批次 ${batch.batchNo || batch.scanBatchId} 已废弃`)
+    batchDiscardModalOpen.value = false
+    batchDiscardTarget.value = null
+    batchDiscardReason.value = ''
     await loadBatches()
     await loadProgress()
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '扫描批次废弃失败'
+    batchDiscardError.value = errMsg
     message.error(errMsg)
   } finally {
     batchDiscarding.value = null
@@ -722,16 +862,17 @@ async function loadBatches(pageNum?: number): Promise<void> {
       pageSize: batchQuery.pageSize,
     }
     const result = await pageScannerBatches(payload)
-    if (!Array.isArray(result.list)) {
-      const error = new TypeError('扫描批次列表接口返回格式错误')
-      batches.value = []
-      batchTotal.value = 0
-      batchesLoadError.value = error
-      message.error(error.message)
-      return
+    if (
+      !Array.isArray(result.list) ||
+      !Number.isFinite(result.total) ||
+      !Number.isFinite(result.pageNum) ||
+      !Number.isFinite(result.pageSize) ||
+      !Number.isFinite(result.pages)
+    ) {
+      throw new TypeError('扫描批次列表接口返回格式错误')
     }
     batches.value = result.list
-    batchTotal.value = result.total ?? 0
+    batchTotal.value = result.total
   } catch (error) {
     batchesLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '扫描批次列表加载失败'
@@ -741,7 +882,7 @@ async function loadBatches(pageNum?: number): Promise<void> {
   }
 }
 
-function onBatchPageChange(payload: { current: number, pageSize: number }): void {
+function onBatchPageChange(payload: { current: number; pageSize: number }): void {
   batchQuery.pageNum = payload.current
   batchQuery.pageSize = payload.pageSize
   void loadBatches()
@@ -786,6 +927,12 @@ watch(selectedExamId, (value) => {
     progress.value = null
     batches.value = []
     batchTotal.value = 0
+    progressLoadError.value = null
+    batchesLoadError.value = null
+    devicesLoadError.value = ''
+    previewLoadError.value = null
+    batchCreateError.value = ''
+    batchDiscardError.value = ''
   }
 })
 

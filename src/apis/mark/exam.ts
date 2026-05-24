@@ -6,9 +6,10 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
-import type {BadgeTone} from '@/components/ui-guide/ui/types'
-import type {PageResult, QueryDto} from '@/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+import type { ScannerKioskScanMode } from './scanner-kiosk'
 
 /** 考试状态编码 - 对应后端 ExamStatus 枚举（仅保留批改链有意义的状态） */
 export type ExamStatusCode = 'ACTIVE' | 'CLOSED'
@@ -229,12 +230,12 @@ export interface ExamTemplateVO {
  *   <li>AI_GRADE：客观题未配标准答案或显式选 AI 评分时由 AI 给出建议得分（NEED_REVIEW），教师审核确认后落地。</li>
  * </ul>
  */
-export type ObjectiveComparePolicyCode =
-  | 'EXACT_NORMALIZED'
-  | 'CHOICE_SET'
-  | 'REGEX'
-  | 'NUMERIC_TOLERANCE'
-  | 'AI_GRADE'
+export type ObjectiveComparePolicyCode
+  = | 'EXACT_NORMALIZED'
+    | 'CHOICE_SET'
+    | 'REGEX'
+    | 'NUMERIC_TOLERANCE'
+    | 'AI_GRADE'
 
 /** 客观题比较策略选项，供前端 a-select 渲染 */
 export const OBJECTIVE_COMPARE_POLICY_OPTIONS: Array<{
@@ -362,7 +363,8 @@ export function saveStandardAnswer(
  * POST /api/mark/exams/candidates
  */
 export function listExamCandidates(examId: string): Promise<ExamCandidateVO[]> {
-  return http.post<ExamCandidateVO[]>('/api/mark/exams/candidates', { examId })
+  return http.post<unknown>('/api/mark/exams/candidates', { examId })
+    .then(validateExamCandidateList)
 }
 
 // ─── 考试成绩汇总（成绩确认 / 成绩发布列表） ──────────────────────────
@@ -495,17 +497,25 @@ export interface ExamScanSourceImportVO {
 }
 
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
+export type ScanAttentionTypeCode
+  = | 'QUALITY_BLOCK'
+    | 'PROCESSING_BLOCK'
+    | 'DUPLICATE_PENDING'
+    | 'RECOGNITION_REVIEW'
+
+export type ScanAttentionStatusCode = 'BLOCKED' | 'FAILED' | 'PENDING' | 'NEED_REVIEW'
+
 export interface ScanAttentionQueryPayload {
   examId: string
   scanBatchId?: string
   paperInstanceId?: string
-  attentionType?: string
+  attentionType?: ScanAttentionTypeCode
 }
 
 /** 扫描异常待办项 - 对应 ScanAttentionItemResponse */
 export interface ScanAttentionItemVO {
   id: string
-  attentionType?: string
+  attentionType?: ScanAttentionTypeCode
   sourceType?: string
   sourceId?: string
   examId?: string
@@ -513,7 +523,7 @@ export interface ScanAttentionItemVO {
   paperInstanceId?: string
   pageId?: string
   questionTemplateId?: string
-  status?: string
+  status?: ScanAttentionStatusCode
   diagnostic?: string
   updateTime?: string
 }
@@ -538,12 +548,18 @@ export interface ExamScannerBatchVO {
   /** 扫描批次ID */
   scanBatchId: string
   examId: string
+  /** 扫描录入模式 */
+  scanMode?: ScannerKioskScanMode
   batchNo?: string
   batchExternalNo?: string
   scannerDeviceId?: string
   scannerStationId?: string
   /** 来源文件ID集合 */
   sourceFileIds?: string[]
+  /** 补扫目标页号 */
+  targetPageNo?: number
+  /** 补扫原因 */
+  supplementReason?: string
   pageCount?: number
   status?: ScanBatchStatusCode
   statusMessage?: string
@@ -633,7 +649,8 @@ export interface ExamScannedPageDiscardPayload {
 export function createScanBatchByCondition(
   payload: ExamScannerBatchCreatePayload,
 ): Promise<ExamScannerBatchCreateVO> {
-  return http.post<ExamScannerBatchCreateVO>('/api/mark/exams/scanner-batches/create', payload)
+  return http.post<unknown>('/api/mark/exams/scanner-batches/create', payload)
+    .then(validateScannerBatchCreate)
 }
 
 /** 按设备的事件分布片段 - 对应 ExamScannerBatchDeviceBreakdown */
@@ -661,7 +678,8 @@ export interface ExamScannerBatchPreviewVO {
 export function previewScanBatchAggregation(
   payload: ExamScannerBatchCreatePayload,
 ): Promise<ExamScannerBatchPreviewVO> {
-  return http.post<ExamScannerBatchPreviewVO>('/api/mark/exams/scanner-batches/preview', payload)
+  return http.post<unknown>('/api/mark/exams/scanner-batches/preview', payload)
+    .then(validateScannerBatchPreview)
 }
 
 /**
@@ -671,7 +689,8 @@ export function previewScanBatchAggregation(
 export function pageScannerBatches(
   payload: ExamScannerBatchQueryPayload,
 ): Promise<PageResult<ExamScannerBatchVO>> {
-  return http.post<PageResult<ExamScannerBatchVO>>('/api/mark/exams/scanner-batches/page', payload)
+  return http.post<unknown>('/api/mark/exams/scanner-batches/page', payload)
+    .then((value) => validatePageResult(value, validateScannerBatch, '扫描批次分页'))
 }
 
 /**
@@ -688,7 +707,8 @@ export function pageScannerBatches(
 export function discardScanBatch(
   payload: ExamScanBatchDiscardPayload,
 ): Promise<boolean> {
-  return http.post<boolean>('/api/mark/scanner/kiosk/batch/discard', payload)
+  return http.post<unknown>('/api/mark/scanner/kiosk/batch/discard', payload)
+    .then(validateBooleanResult)
 }
 
 /**
@@ -704,7 +724,8 @@ export function discardScanBatch(
 export function discardScannedPage(
   payload: ExamScannedPageDiscardPayload,
 ): Promise<boolean> {
-  return http.post<boolean>('/api/mark/scanner/kiosk/page/discard', payload)
+  return http.post<unknown>('/api/mark/scanner/kiosk/page/discard', payload)
+    .then(validateBooleanResult)
 }
 
 /**
@@ -714,7 +735,8 @@ export function discardScannedPage(
 export function registerScannedPage(
   payload: ExamScannedPageRegisterPayload,
 ): Promise<ExamScannedPageRegisterVO> {
-  return http.post<ExamScannedPageRegisterVO>('/api/mark/exams/scanned-pages/register', payload)
+  return http.post<unknown>('/api/mark/exams/scanned-pages/register', payload)
+    .then(validateScannedPageRegister)
 }
 
 /**
@@ -724,7 +746,8 @@ export function registerScannedPage(
 export function importScanSource(
   payload: ExamScanSourceImportPayload,
 ): Promise<ExamScanSourceImportVO> {
-  return http.post<ExamScanSourceImportVO>('/api/mark/exams/scan-sources/import', payload)
+  return http.post<unknown>('/api/mark/exams/scan-sources/import', payload)
+    .then(validateScanSourceImport)
 }
 
 /**
@@ -734,7 +757,8 @@ export function importScanSource(
 export function listScanAttentions(
   payload: ScanAttentionQueryPayload,
 ): Promise<ScanAttentionItemVO[]> {
-  return http.post<ScanAttentionItemVO[]>('/api/mark/exams/scan-attentions', payload)
+  return http.post<unknown>('/api/mark/exams/scan-attentions', payload)
+    .then(validateScanAttentionList)
 }
 
 // ─── 试卷身份绑定与解匿名 ────────────────────────────────────────
@@ -746,7 +770,7 @@ export interface ExamPaperBindPayload {
   paperInstanceId: string
   recognizedStudentNo?: string
   confirmedCandidateRosterId?: string
-  attemptStatus?: string
+  attemptStatus: 'NORMAL' | 'MAKEUP' | 'RETAKE'
   attemptNo?: string
 }
 
@@ -774,7 +798,8 @@ export interface DeanonymizeVO {
  * POST /api/mark/exams/papers/bind
  */
 export function bindPaper(payload: ExamPaperBindPayload): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/papers/bind', payload)
+  return http.post<unknown>('/api/mark/exams/papers/bind', payload)
+    .then(validateBooleanResult)
 }
 
 /**
@@ -782,7 +807,8 @@ export function bindPaper(payload: ExamPaperBindPayload): Promise<boolean> {
  * POST /api/mark/exams/papers/deanonymize
  */
 export function deanonymizePaper(payload: DeanonymizePayload): Promise<DeanonymizeVO> {
-  return http.post<DeanonymizeVO>('/api/mark/exams/papers/deanonymize', payload)
+  return http.post<unknown>('/api/mark/exams/papers/deanonymize', payload)
+    .then(validateDeanonymize)
 }
 
 // ─── 识别结果提交 ──────────────────────────────────────────────
@@ -980,10 +1006,10 @@ export function rescoreQuestionByAi(
 }
 
 /** AI 能力编码 - 17B 文档定义；首次整卷 AI / 教师异议单题 AI 复评 */
-export type AiAbilityCode =
-  | 'PAPER_GRADE_SUGGESTION'
-  | 'SUBJECTIVE_GRADE_SUGGESTION'
-  | string
+export type AiAbilityCode
+  = | 'PAPER_GRADE_SUGGESTION'
+    | 'SUBJECTIVE_GRADE_SUGGESTION'
+    | string
 
 /** AI 能力编码 -> 来源中文文案 */
 export const AI_ABILITY_LABEL: Record<string, string> = {
@@ -1119,15 +1145,15 @@ export interface ReviewTaskQueryPayload {
  * 复核任务类型编码 - 与后端 com.nybc.edu.common.enums.TaskType 一一对齐。
  * 仅复核任务相关 3 类（其它任务类型不会出现在复核任务列表中）。
  */
-export type ReviewTaskTypeCode =
-  | 'OBJECTIVE_AUTO_REVIEW'
-  | 'OBJECTIVE_AI_REVIEW'
-  | 'SUBJECTIVE_AI_REVIEW'
+export type ReviewTaskTypeCode
+  = | 'OBJECTIVE_AUTO_REVIEW'
+    | 'OBJECTIVE_AI_REVIEW'
+    | 'SUBJECTIVE_AI_REVIEW'
 
 /** 复核任务类型中文标签与颜色，便于前端 tag 渲染 */
 export const REVIEW_TASK_TYPE_META: Record<
   ReviewTaskTypeCode,
-  { label: string; color: 'blue' | 'green' | 'purple' }
+  { label: string, color: 'blue' | 'green' | 'purple' }
 > = {
   OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
   OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
@@ -1137,12 +1163,12 @@ export const REVIEW_TASK_TYPE_META: Record<
 /**
  * 批改来源编码 - 与后端 com.nybc.edu.common.enums.GradeSource 一一对齐。
  */
-export type GradeSourceCode =
-  | 'AUTO_OBJECTIVE'
-  | 'AUTO_OBJECTIVE_AI'
-  | 'LOCAL_SUBJECTIVE_AI'
-  | 'TEACHER'
-  | 'RECOGNITION_FAILURE'
+export type GradeSourceCode
+  = | 'AUTO_OBJECTIVE'
+    | 'AUTO_OBJECTIVE_AI'
+    | 'LOCAL_SUBJECTIVE_AI'
+    | 'TEACHER'
+    | 'RECOGNITION_FAILURE'
 
 /** 批改来源中文标签 */
 export const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
@@ -1255,19 +1281,19 @@ export interface MarkingProgressQueryPayload {
 
 /** 阅卷进度响应 - 对应 MarkingProgressResponse */
 export interface MarkingProgressVO {
-  examId?: string
+  examId: string
   /** 试卷数量（含未绑定 / 冲突 / 已绑定的全部扫描卷面） */
-  paperCount?: number
+  paperCount: number
   /** 可阅卷试卷数（bindingStatus = BOUND，完成率分母真源） */
-  gradablePaperCount?: number
-  questionCount?: number
+  gradablePaperCount: number
+  questionCount: number
   /** 应批阅题目总数 = gradablePaperCount × questionCount，已排除缺考 / 未绑定 / 冲突卷 */
-  totalQuestionGradeCount?: number
-  confirmedQuestionGradeCount?: number
-  pendingReviewTaskCount?: number
-  inProgressReviewTaskCount?: number
-  openProcessingTaskCount?: number
-  scanAttentionCount?: number
+  totalQuestionGradeCount: number
+  confirmedQuestionGradeCount: number
+  pendingReviewTaskCount: number
+  inProgressReviewTaskCount: number
+  openProcessingTaskCount: number
+  scanAttentionCount: number
 }
 
 /**
@@ -1283,5 +1309,332 @@ export function listAnnotations(payload: AnnotationQueryPayload): Promise<Annota
  * POST /api/mark/exams/marking-progress
  */
 export function getMarkingProgress(examId: string): Promise<MarkingProgressVO> {
-  return http.post<MarkingProgressVO>('/api/mark/exams/marking-progress', { examId })
+  return http.post<unknown>('/api/mark/exams/marking-progress', { examId })
+    .then(validateMarkingProgress)
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireBoolean(value: unknown, fieldName: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function validateBooleanResult(value: unknown): boolean {
+  return requireBoolean(value, '操作结果')
+}
+
+function optionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value !== 'string') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalFiniteNumber(value: unknown, fieldName: string): number | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalBoolean(value: unknown, fieldName: string): boolean | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalStringList(value: unknown, fieldName: string): string[] | undefined {
+  if (value === undefined || value === null) return undefined
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function validatePageResult<T>(
+  value: unknown,
+  itemValidator: (item: unknown) => T,
+  fieldName: string,
+): PageResult<T> {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  const result = value as Record<string, unknown>
+  if (!Array.isArray(result.list)) {
+    throw new TypeError(`${fieldName} 列表接口返回格式错误`)
+  }
+  return {
+    list: result.list.map(itemValidator),
+    total: requireFiniteNumber(result.total, `${fieldName} 总数`),
+    pageNum: requireFiniteNumber(result.pageNum, `${fieldName} 页码`),
+    pageSize: requireFiniteNumber(result.pageSize, `${fieldName} 每页数量`),
+    pages: requireFiniteNumber(result.pages, `${fieldName} 总页数`),
+  }
+}
+
+function optionalScanBatchStatus(
+  value: unknown,
+  fieldName: string,
+): ScanBatchStatusCode | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (
+    value !== 'RECEIVED'
+    && value !== 'BLOCKED'
+    && value !== 'BOUND'
+    && value !== 'COMPLETED'
+    && value !== 'DISCARDED'
+  ) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalScannerKioskScanMode(
+  value: unknown,
+  fieldName: string,
+): ScannerKioskScanMode | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (value !== 'DIRECT' && value !== 'SUPPLEMENT' && value !== 'ARCHIVE') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function validateExamCandidate(value: unknown): ExamCandidateVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('考生名册项接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    candidateRosterId: requireString(result.candidateRosterId, '考生名册 ID'),
+    classId: optionalString(result.classId, '班级 ID'),
+    studentUserId: requireString(result.studentUserId, '学生用户 ID'),
+    studentNo: requireString(result.studentNo, '学号'),
+    studentName: requireString(result.studentName, '学生姓名'),
+    status: optionalString(result.status, '考生状态'),
+  }
+}
+
+function validateExamCandidateList(value: unknown): ExamCandidateVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('考生名册列表接口返回格式错误')
+  }
+  return value.map(validateExamCandidate)
+}
+
+function validateScannerBatchDeviceBreakdown(value: unknown): ExamScannerBatchDeviceBreakdownVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描设备分布接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    scannerDeviceId: requireString(result.scannerDeviceId, '扫描设备业务 ID'),
+    scannerIp: requireString(result.scannerIp, '扫描设备 IP'),
+    eventCount: requireFiniteNumber(result.eventCount, '扫描事件数量'),
+    pageCount: requireFiniteNumber(result.pageCount, '扫描页数'),
+  }
+}
+
+function validateScannerBatchCreate(value: unknown): ExamScannerBatchCreateVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描批次创建接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    scanBatchId: requireString(result.scanBatchId, '扫描批次 ID'),
+    batchNo: optionalString(result.batchNo, '扫描批次号'),
+    eventCount: optionalFiniteNumber(result.eventCount, '扫描事件数量'),
+    fileCount: optionalFiniteNumber(result.fileCount, '扫描文件数量'),
+    pageCount: optionalFiniteNumber(result.pageCount, '扫描页数'),
+    scanStartTime: optionalString(result.scanStartTime, '扫描开始时间'),
+    scanEndTime: optionalString(result.scanEndTime, '扫描结束时间'),
+  }
+}
+
+function validateScannerBatchPreview(value: unknown): ExamScannerBatchPreviewVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描批次预览接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  if (!Array.isArray(result.deviceBreakdown)) {
+    throw new TypeError('扫描批次设备分布接口返回格式错误')
+  }
+  return {
+    eventCount: requireFiniteNumber(result.eventCount, '扫描事件数量'),
+    fileCount: requireFiniteNumber(result.fileCount, '扫描文件数量'),
+    pageCount: requireFiniteNumber(result.pageCount, '扫描页数'),
+    scanStartTime: optionalString(result.scanStartTime, '扫描开始时间'),
+    scanEndTime: optionalString(result.scanEndTime, '扫描结束时间'),
+    deviceBreakdown: result.deviceBreakdown.map(validateScannerBatchDeviceBreakdown),
+  }
+}
+
+function validateScannerBatch(value: unknown): ExamScannerBatchVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描批次接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    scanBatchId: requireString(result.scanBatchId, '扫描批次 ID'),
+    examId: requireString(result.examId, '考试 ID'),
+    scanMode: optionalScannerKioskScanMode(result.scanMode, '扫描录入模式'),
+    batchNo: optionalString(result.batchNo, '扫描批次号'),
+    batchExternalNo: optionalString(result.batchExternalNo, '扫描批次外部编号'),
+    scannerDeviceId: optionalString(result.scannerDeviceId, '扫描设备业务 ID'),
+    scannerStationId: optionalString(result.scannerStationId, '扫描站点 ID'),
+    sourceFileIds: optionalStringList(result.sourceFileIds, '扫描来源文件 ID 列表'),
+    targetPageNo: optionalFiniteNumber(result.targetPageNo, '补扫目标页号'),
+    supplementReason: optionalString(result.supplementReason, '补扫原因'),
+    pageCount: optionalFiniteNumber(result.pageCount, '扫描页数'),
+    status: optionalScanBatchStatus(result.status, '扫描批次状态'),
+    statusMessage: optionalString(result.statusMessage, '扫描批次状态文案'),
+    diagnostic: optionalString(result.diagnostic, '扫描批次诊断'),
+    scanStartTime: optionalString(result.scanStartTime, '扫描开始时间'),
+    scanEndTime: optionalString(result.scanEndTime, '扫描结束时间'),
+    createTime: optionalString(result.createTime, '创建时间'),
+    updateTime: optionalString(result.updateTime, '更新时间'),
+    eventCount: optionalFiniteNumber(result.eventCount, '扫描事件数量'),
+    replaceTargetPage: optionalBoolean(result.replaceTargetPage, '是否替换目标页'),
+    sealedAt: optionalString(result.sealedAt, '封存时间'),
+    sealedBy: optionalString(result.sealedBy, '封存执行人 ID'),
+    discardedAt: optionalString(result.discardedAt, '废弃时间'),
+    discardedBy: optionalString(result.discardedBy, '废弃执行人 ID'),
+    discardReason: optionalString(result.discardReason, '废弃原因'),
+  }
+}
+
+function validateScannedPageRegister(value: unknown): ExamScannedPageRegisterVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描页登记接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    pageId: optionalString(result.pageId, '扫描页 ID'),
+    paperInstanceId: optionalString(result.paperInstanceId, '试卷实例 ID'),
+  }
+}
+
+function validateScanSourceImport(value: unknown): ExamScanSourceImportVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描来源导入接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    paperInstanceId: optionalString(result.paperInstanceId, '试卷实例 ID'),
+    registeredPageCount: optionalFiniteNumber(result.registeredPageCount, '已登记页数'),
+    pageIds: optionalStringList(result.pageIds, '扫描页 ID 列表'),
+  }
+}
+
+function validateScanAttention(value: unknown): ScanAttentionItemVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描异常待办接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    id: requireString(result.id, '扫描异常 ID'),
+    attentionType: validateScanAttentionType(result.attentionType),
+    sourceType: optionalString(result.sourceType, '扫描异常来源类型'),
+    sourceId: optionalString(result.sourceId, '扫描异常来源 ID'),
+    examId: optionalString(result.examId, '考试 ID'),
+    scanBatchId: optionalString(result.scanBatchId, '扫描批次 ID'),
+    paperInstanceId: optionalString(result.paperInstanceId, '试卷实例 ID'),
+    pageId: optionalString(result.pageId, '扫描页 ID'),
+    questionTemplateId: optionalString(result.questionTemplateId, '题目模板 ID'),
+    status: validateScanAttentionStatus(result.status),
+    diagnostic: optionalString(result.diagnostic, '扫描异常诊断'),
+    updateTime: optionalString(result.updateTime, '更新时间'),
+  }
+}
+
+export function validateScanAttentionStatus(
+  value: unknown,
+  fieldName = '扫描异常状态',
+): ScanAttentionStatusCode | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  if (
+    value !== 'BLOCKED'
+    && value !== 'FAILED'
+    && value !== 'PENDING'
+    && value !== 'NEED_REVIEW'
+  ) {
+    throw new TypeError(`${fieldName}接口返回格式错误`)
+  }
+  return value
+}
+
+function validateScanAttentionType(value: unknown): ScanAttentionTypeCode | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  if (
+    value !== 'QUALITY_BLOCK'
+    && value !== 'PROCESSING_BLOCK'
+    && value !== 'DUPLICATE_PENDING'
+    && value !== 'RECOGNITION_REVIEW'
+  ) {
+    throw new TypeError('扫描异常类型接口返回格式错误')
+  }
+  return value
+}
+
+function validateScanAttentionList(value: unknown): ScanAttentionItemVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('扫描异常待办列表接口返回格式错误')
+  }
+  return value.map(validateScanAttention)
+}
+
+function validateDeanonymize(value: unknown): DeanonymizeVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('解匿名接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    paperInstanceId: optionalString(result.paperInstanceId, '试卷实例 ID'),
+    candidateRosterId: optionalString(result.candidateRosterId, '考生名册 ID'),
+    studentUserId: optionalString(result.studentUserId, '学生用户 ID'),
+    studentNo: optionalString(result.studentNo, '学号'),
+    studentName: optionalString(result.studentName, '学生姓名'),
+  }
+}
+
+function validateMarkingProgress(value: unknown): MarkingProgressVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('阅卷进度接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    examId: requireString(result.examId, '考试 ID'),
+    paperCount: requireFiniteNumber(result.paperCount, '试卷数量'),
+    gradablePaperCount: requireFiniteNumber(result.gradablePaperCount, '可阅卷试卷数'),
+    questionCount: requireFiniteNumber(result.questionCount, '题目数量'),
+    totalQuestionGradeCount: requireFiniteNumber(result.totalQuestionGradeCount, '题目批阅总数'),
+    confirmedQuestionGradeCount: requireFiniteNumber(result.confirmedQuestionGradeCount, '已确认题目批阅数'),
+    pendingReviewTaskCount: requireFiniteNumber(result.pendingReviewTaskCount, '待处理复核任务数'),
+    inProgressReviewTaskCount: requireFiniteNumber(result.inProgressReviewTaskCount, '处理中复核任务数'),
+    openProcessingTaskCount: requireFiniteNumber(result.openProcessingTaskCount, '开放处理任务数'),
+    scanAttentionCount: requireFiniteNumber(result.scanAttentionCount, '扫描异常数'),
+  }
 }

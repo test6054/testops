@@ -155,8 +155,12 @@
             </template>
             <template v-else-if="column.key === 'sourceInfo'">
               <div class="scan-attention__source-cell">
-                <span v-if="record.sourceType"><b>{{ record.sourceType }}</b></span>
-                <span v-if="record.sourceId" class="scan-attention__hint">#{{ record.sourceId }}</span>
+                <span v-if="record.sourceType"
+                  ><b>{{ record.sourceType }}</b></span
+                >
+                <span v-if="record.sourceId" class="scan-attention__hint"
+                  >#{{ record.sourceId }}</span
+                >
               </div>
             </template>
             <template v-else-if="column.key === 'paperInstanceId'">
@@ -168,8 +172,8 @@
               <span v-else class="scan-attention__hint">-</span>
             </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag :tone="statusTone(record.status)" size="sm">
-                {{ record.status || '-' }}
+              <UiTag :tone="scanAttentionStatusTone(record.status)" size="sm">
+                {{ scanAttentionStatusLabel(record.status) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'diagnostic'">
@@ -226,6 +230,22 @@
           dense
           class="scan-attention__bind-alert"
         />
+        <UiErrorRetryPanel
+          v-if="candidatesLoadError"
+          :error="candidatesLoadError"
+          title="考生名册加载失败"
+          compact
+          class="scan-attention__bind-alert"
+          @retry="retryLoadCandidates"
+        />
+        <UiAlertStrip
+          v-if="bindSubmitError"
+          tone="error"
+          title="试卷身份绑定失败"
+          :description="bindSubmitError"
+          dense
+          class="scan-attention__bind-alert"
+        />
         <a-form-item label="扫描批次ID">
           <a-input :value="bindForm.scanBatchId" disabled />
         </a-form-item>
@@ -252,11 +272,11 @@
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="答卷状态（可选）">
-              <a-input
+            <a-form-item label="答卷状态" name="attemptStatus">
+              <a-select
                 v-model:value="bindForm.attemptStatus"
-                placeholder="如 NORMAL / ABSENT"
-                :maxlength="32"
+                placeholder="选择答卷状态"
+                :options="batchAttemptStatusOptions"
               />
             </a-form-item>
           </a-col>
@@ -273,6 +293,100 @@
       </a-form>
     </UiDrawer>
 
+    <!-- 批量身份绑定抽屉 -->
+    <UiDrawer
+      :open="batchBindDrawerOpen"
+      title="批量试卷身份绑定"
+      :width="880"
+      :confirm-loading="batchBinding"
+      @update:open="(v: boolean) => (batchBindDrawerOpen = v)"
+      @close="closeBatchBindDrawer"
+      @confirm="submitBatchBind"
+    >
+      <UiAlertStrip
+        tone="warning"
+        title="逐卷确认"
+        description="批量绑定会直接写入试卷实例与考生名册关系，请逐张卷面选择正确考生后提交。"
+        dense
+        class="scan-attention__bind-alert"
+      />
+      <UiErrorRetryPanel
+        v-if="candidatesLoadError"
+        :error="candidatesLoadError"
+        title="考生名册加载失败"
+        compact
+        class="scan-attention__bind-alert"
+        @retry="retryLoadCandidates"
+      />
+      <UiAlertStrip
+        v-if="batchBindError"
+        tone="error"
+        title="批量身份绑定失败"
+        :description="batchBindError"
+        dense
+        class="scan-attention__bind-alert"
+      />
+      <div v-if="batchBindResult" class="scan-attention__batch-result">
+        <UiAlertStrip
+          :tone="batchBindResult.failureCount > 0 ? 'warning' : 'success'"
+          title="批量绑定结果"
+          :description="`成功 ${batchBindResult.successCount} 条，失败 ${batchBindResult.failureCount} 条`"
+          dense
+        />
+        <div v-if="batchBindFailedItems.length > 0" class="scan-attention__batch-failures">
+          <div
+            v-for="item in batchBindFailedItems"
+            :key="item.paperInstanceId"
+            class="scan-attention__batch-failure"
+          >
+            <a-typography-text strong :content="item.paperInstanceId" />
+            <span>{{ item.errorMessage || '后端未返回失败原因' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="scan-attention__batch-list">
+        <div v-for="row in batchBindRows" :key="row.attentionId" class="scan-attention__batch-row">
+          <div class="scan-attention__batch-main">
+            <a-typography-text strong :content="row.paperInstanceId" />
+            <span class="scan-attention__hint">批次 {{ row.scanBatchId }}</span>
+            <span v-if="row.diagnostic" class="scan-attention__batch-diagnostic">
+              {{ row.diagnostic }}
+            </span>
+          </div>
+          <div class="scan-attention__batch-form">
+            <a-input
+              v-model:value="row.recognizedStudentNo"
+              placeholder="识别学号"
+              :maxlength="64"
+              class="scan-attention__batch-input"
+            />
+            <a-select
+              v-model:value="row.confirmedCandidateRosterId"
+              placeholder="选择正确考生"
+              show-search
+              :options="candidateOptions"
+              :filter-option="filterCandidate"
+              :loading="candidatesLoading"
+              class="scan-attention__batch-candidate"
+              allow-clear
+            />
+            <a-select
+              v-model:value="row.attemptStatus"
+              placeholder="作答状态"
+              :options="batchAttemptStatusOptions"
+              class="scan-attention__batch-attempt-status"
+            />
+            <a-input
+              v-model:value="row.attemptNo"
+              placeholder="答卷编号（可选）"
+              :maxlength="32"
+              class="scan-attention__batch-attempt-no"
+            />
+          </div>
+        </div>
+      </div>
+    </UiDrawer>
+
     <!-- 详情抽屉 -->
     <UiDrawer
       :open="detailDrawerOpen"
@@ -286,7 +400,9 @@
         <a-descriptions-item label="异常类型">
           {{ detailRecord.attentionType || '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="状态">{{ detailRecord.status || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="状态">{{
+          scanAttentionStatusLabel(detailRecord.status)
+        }}</a-descriptions-item>
         <a-descriptions-item label="来源类型">
           {{ detailRecord.sourceType || '-' }}
         </a-descriptions-item>
@@ -310,6 +426,41 @@
         </a-descriptions-item>
       </a-descriptions>
     </UiDrawer>
+
+    <a-modal
+      v-model:open="pageDiscardModalOpen"
+      title="废弃扫描页"
+      ok-text="废弃"
+      ok-type="danger"
+      cancel-text="取消"
+      :confirm-loading="Boolean(pageDiscarding)"
+      @ok="confirmDiscardPage"
+      @cancel="closePageDiscardModal"
+    >
+      <a-form layout="vertical">
+        <a-form-item
+          label="废弃原因"
+          required
+          :validate-status="pageDiscardReasonError ? 'error' : undefined"
+          :help="pageDiscardReasonError"
+        >
+          <a-textarea
+            v-model:value="pageDiscardReason"
+            placeholder="请输入废弃原因（必填，1-255 字）"
+            :maxlength="255"
+            show-count
+            :rows="4"
+          />
+        </a-form-item>
+      </a-form>
+      <UiAlertStrip
+        v-if="pageDiscardError"
+        tone="error"
+        title="扫描页废弃失败"
+        :description="pageDiscardError"
+        dense
+      />
+    </a-modal>
   </StageWorkbenchShell>
 </template>
 
@@ -326,15 +477,25 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ExamCandidateVO, ScanAttentionItemVO } from '@/apis/mark/exam'
-import type { ExamPaperBatchBindItemPayload } from '@/apis/mark/exam-mark-scanner'
+import type {
+  ExamCandidateVO,
+  ScanAttentionItemVO,
+  ScanAttentionStatusCode,
+  ScanAttentionTypeCode,
+} from '@/apis/mark/exam'
+import {
+  bindPaper,
+  discardScannedPage,
+  listExamCandidates,
+  listScanAttentions,
+} from '@/apis/mark/exam'
+import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import type { UiChartSliceItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { bindPaper, discardScannedPage, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import {
   UiAlertStrip,
   UiButton,
@@ -363,7 +524,7 @@ const {
 
 // ─── 列表筛选 + 数据 ─────────────────────────────
 const filterForm = reactive<{
-  attentionType?: string
+  attentionType?: ScanAttentionTypeCode | ''
   scanBatchId?: string
   paperInstanceId?: string
 }>({
@@ -377,7 +538,7 @@ const loading = ref(false)
 // D-9 错误态：扫描异常列表加载失败时 UiErrorRetryPanel 重试 + 上报
 const attentionsLoadError = ref<unknown>(null)
 
-const attentionTypeOptions = [
+const attentionTypeOptions: { label: string; value: ScanAttentionTypeCode }[] = [
   { label: '质量阻断', value: 'QUALITY_BLOCK' },
   { label: '处理阻断', value: 'PROCESSING_BLOCK' },
   { label: '重复待处置', value: 'DUPLICATE_PENDING' },
@@ -405,12 +566,16 @@ async function loadAttentions(): Promise<void> {
   loading.value = true
   attentionsLoadError.value = null
   try {
-    attentions.value = await listScanAttentions({
+    const result = await listScanAttentions({
       examId: selectedExamId.value,
-      attentionType: filterForm.attentionType?.trim() || undefined,
+      attentionType: filterForm.attentionType || undefined,
       scanBatchId: filterForm.scanBatchId?.trim() || undefined,
       paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
     })
+    if (!Array.isArray(result)) {
+      throw new TypeError('扫描异常列表接口返回格式错误')
+    }
+    attentions.value = result
   } catch (error) {
     attentionsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '异常列表加载失败'
@@ -425,33 +590,52 @@ function onAttentionTypeChange(): void {
 }
 
 // ─── 类型色彩编码 ─────────────────────────────────
-const ATTENTION_TYPE_TONE: Record<string, 'red' | 'orange' | 'purple' | 'blue' | 'gray'> = {
+const ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, 'red' | 'orange' | 'purple' | 'blue'> = {
   QUALITY_BLOCK: 'red',
   PROCESSING_BLOCK: 'orange',
   DUPLICATE_PENDING: 'purple',
   RECOGNITION_REVIEW: 'blue',
 }
 
-const ATTENTION_TYPE_LABEL: Record<string, string> = {
+const ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
   QUALITY_BLOCK: '质量阻断',
   PROCESSING_BLOCK: '处理阻断',
   DUPLICATE_PENDING: '重复待处置',
   RECOGNITION_REVIEW: '识别复核',
 }
 
-function attentionTypeTone(type?: string): 'red' | 'orange' | 'purple' | 'blue' | 'gray' {
-  return ATTENTION_TYPE_TONE[type ?? ''] ?? 'gray'
+function attentionTypeTone(
+  type?: ScanAttentionTypeCode,
+): 'red' | 'orange' | 'purple' | 'blue' | 'gray' {
+  return type ? ATTENTION_TYPE_TONE[type] : 'gray'
 }
 
-function attentionTypeLabel(type?: string): string {
-  return ATTENTION_TYPE_LABEL[type ?? ''] ?? (type || '-')
+function attentionTypeLabel(type?: ScanAttentionTypeCode): string {
+  return type ? ATTENTION_TYPE_LABEL[type] : '-'
 }
 
-function statusTone(status?: string): 'red' | 'orange' | 'green' | 'gray' {
-  if (!status) return 'gray'
-  if (status === 'CLOSED' || status === 'RESOLVED') return 'green'
-  if (status === 'OPEN' || status === 'PENDING') return 'red'
-  return 'orange'
+const SCAN_ATTENTION_STATUS_LABEL: Record<ScanAttentionStatusCode, string> = {
+  BLOCKED: '已阻断',
+  FAILED: '处理失败',
+  PENDING: '待处置',
+  NEED_REVIEW: '待复核',
+}
+
+const SCAN_ATTENTION_STATUS_TONE: Record<ScanAttentionStatusCode, 'red' | 'orange' | 'blue'> = {
+  BLOCKED: 'red',
+  FAILED: 'red',
+  PENDING: 'orange',
+  NEED_REVIEW: 'blue',
+}
+
+function scanAttentionStatusLabel(status?: ScanAttentionStatusCode): string {
+  return status ? SCAN_ATTENTION_STATUS_LABEL[status] : '-'
+}
+
+function scanAttentionStatusTone(
+  status?: ScanAttentionStatusCode,
+): 'red' | 'orange' | 'blue' | 'gray' {
+  return status ? SCAN_ATTENTION_STATUS_TONE[status] : 'gray'
 }
 
 const typeCounts = computed(() => {
@@ -533,30 +717,60 @@ function resetFilter(): void {
  *   - 影响仅限当前扫描页 effective_status，不联动批次状态。</p>
  */
 const pageDiscarding = ref<string | null>(null)
+const pageDiscardModalOpen = ref(false)
+const pageDiscardTarget = ref<ScanAttentionItemVO | null>(null)
+const pageDiscardReason = ref('')
+const pageDiscardReasonError = ref('')
+const pageDiscardError = ref('')
 async function onDiscardPage(record: ScanAttentionItemVO): Promise<void> {
   if (record.sourceType !== 'SCANNED_PAGE' || !record.pageId) {
     message.warning('该异常不是扫描页来源，无法废弃')
     return
   }
-  // eslint-disable-next-line no-alert -- 教师场景的轻量二次确认；后续接入项目级 confirm modal 再替换。
-  const reason = window.prompt(`确认废弃扫描页 ${record.pageId}？\n请输入废弃原因（必填，1-255 字）：`, '')
-  if (reason === null) return
-  const trimmed = reason.trim()
+  pageDiscardTarget.value = record
+  pageDiscardReason.value = ''
+  pageDiscardReasonError.value = ''
+  pageDiscardError.value = ''
+  pageDiscardModalOpen.value = true
+}
+
+function closePageDiscardModal(): void {
+  if (pageDiscarding.value) return
+  pageDiscardModalOpen.value = false
+  pageDiscardTarget.value = null
+  pageDiscardReason.value = ''
+  pageDiscardReasonError.value = ''
+  pageDiscardError.value = ''
+}
+
+async function confirmDiscardPage(): Promise<void> {
+  const record = pageDiscardTarget.value
+  if (!record?.pageId) {
+    closePageDiscardModal()
+    return
+  }
+  const trimmed = pageDiscardReason.value.trim()
   if (!trimmed) {
-    message.error('废弃原因不能为空')
+    pageDiscardReasonError.value = '废弃原因不能为空'
     return
   }
   if (trimmed.length > 255) {
-    message.error('废弃原因长度不能超过 255 字')
+    pageDiscardReasonError.value = '废弃原因长度不能超过 255 字'
     return
   }
+  pageDiscardReasonError.value = ''
+  pageDiscardError.value = ''
   pageDiscarding.value = record.pageId
   try {
     await discardScannedPage({ scannedPageId: record.pageId, discardReason: trimmed })
     message.success(`扫描页 ${record.pageId} 已废弃`)
+    pageDiscardModalOpen.value = false
+    pageDiscardTarget.value = null
+    pageDiscardReason.value = ''
     await loadAttentions()
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '扫描页废弃失败'
+    pageDiscardError.value = errMsg
     message.error(errMsg)
   } finally {
     pageDiscarding.value = null
@@ -572,7 +786,7 @@ const bindForm = reactive<{
   paperInstanceId: string
   recognizedStudentNo?: string
   confirmedCandidateRosterId?: string
-  attemptStatus?: string
+  attemptStatus: string
   attemptNo?: string
 }>({
   scanBatchId: '',
@@ -587,12 +801,15 @@ const bindFormRules: Record<string, Rule[]> = {
   confirmedCandidateRosterId: [
     { required: true, message: '请从名册中选择正确考生', trigger: 'change' },
   ],
+  attemptStatus: [{ required: true, message: '请选择答卷状态', trigger: 'change' }],
   recognizedStudentNo: [{ max: 64, message: '学号最多 64 个字符', trigger: 'blur' }],
 }
 
 // 考生名册缓存
 const candidates = ref<ExamCandidateVO[]>([])
 const candidatesLoading = ref(false)
+const candidatesLoadError = ref<unknown>(null)
+const bindSubmitError = ref('')
 
 const candidateOptions = computed(() =>
   candidates.value.map((item) => ({
@@ -607,23 +824,38 @@ function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   if (!kw || !option) return true
   const raw = option.raw as ExamCandidateVO
   return (
-    (raw.studentName ?? '').toLowerCase().includes(kw)
-    || (raw.studentNo ?? '').toLowerCase().includes(kw)
+    (raw.studentName ?? '').toLowerCase().includes(kw) ||
+    (raw.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
-async function ensureCandidatesLoaded(): Promise<void> {
-  if (!selectedExamId.value) return
-  if (candidates.value.length > 0) return
+async function ensureCandidatesLoaded(): Promise<boolean> {
+  if (!selectedExamId.value) return false
+  if (candidates.value.length > 0) {
+    candidatesLoadError.value = null
+    return true
+  }
   candidatesLoading.value = true
+  candidatesLoadError.value = null
   try {
-    candidates.value = await listExamCandidates(selectedExamId.value)
+    const result = await listExamCandidates(selectedExamId.value)
+    if (!Array.isArray(result)) {
+      throw new TypeError('考生名册接口返回格式错误')
+    }
+    candidates.value = result
+    return true
   } catch (error) {
+    candidatesLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '考生名册加载失败'
     message.error(errMsg)
+    return false
   } finally {
     candidatesLoading.value = false
   }
+}
+
+async function retryLoadCandidates(): Promise<void> {
+  await ensureCandidatesLoaded()
 }
 
 function openBindDrawer(record: ScanAttentionItemVO): void {
@@ -635,8 +867,9 @@ function openBindDrawer(record: ScanAttentionItemVO): void {
   bindForm.paperInstanceId = record.paperInstanceId
   bindForm.recognizedStudentNo = ''
   bindForm.confirmedCandidateRosterId = undefined
-  bindForm.attemptStatus = ''
+  bindForm.attemptStatus = 'NORMAL'
   bindForm.attemptNo = ''
+  bindSubmitError.value = ''
   bindDrawerOpen.value = true
   void ensureCandidatesLoaded()
 }
@@ -665,7 +898,14 @@ async function handleBind(): Promise<void> {
   } catch {
     return
   }
+  const attemptStatus = bindForm.attemptStatus.trim()
+  const validAttemptStatus = parseBindAttemptStatus(attemptStatus)
+  if (!validAttemptStatus) {
+    message.error('答卷状态只能选择普通答卷、补考答卷或重考答卷')
+    return
+  }
   binding.value = true
+  bindSubmitError.value = ''
   try {
     await bindPaper({
       examId: selectedExamId.value,
@@ -673,7 +913,7 @@ async function handleBind(): Promise<void> {
       paperInstanceId: bindForm.paperInstanceId,
       recognizedStudentNo: bindForm.recognizedStudentNo?.trim() || undefined,
       confirmedCandidateRosterId: bindForm.confirmedCandidateRosterId,
-      attemptStatus: bindForm.attemptStatus?.trim() || undefined,
+      attemptStatus: validAttemptStatus,
       attemptNo: bindForm.attemptNo?.trim() || undefined,
     })
     message.success('试卷身份绑定成功')
@@ -681,6 +921,7 @@ async function handleBind(): Promise<void> {
     await loadAttentions()
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '试卷身份绑定失败'
+    bindSubmitError.value = errMsg
     message.error(errMsg)
   } finally {
     binding.value = false
@@ -699,6 +940,40 @@ function openDetail(record: ScanAttentionItemVO): void {
 // ─── 行选择与批量绑定 ─────────────────────────────
 const selectedRowKeys = ref<string[]>([])
 const batchBinding = ref(false)
+const batchBindDrawerOpen = ref(false)
+const batchBindError = ref('')
+const batchBindResult = ref<ExamPaperBatchBindResultVO | null>(null)
+type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
+
+const batchAttemptStatusOptions: Array<{ label: string; value: BatchBindAttemptStatus }> = [
+  { label: '普通答卷', value: 'NORMAL' },
+  { label: '补考答卷', value: 'MAKEUP' },
+  { label: '重考答卷', value: 'RETAKE' },
+]
+
+function parseBindAttemptStatus(value: string): BatchBindAttemptStatus | null {
+  if (value === 'NORMAL' || value === 'MAKEUP' || value === 'RETAKE') {
+    return value
+  }
+  return null
+}
+
+const batchBindRows = ref<
+  Array<{
+    attentionId: string
+    scanBatchId: string
+    paperInstanceId: string
+    recognizedStudentNo?: string
+    confirmedCandidateRosterId?: string
+    attemptStatus: BatchBindAttemptStatus | string
+    attemptNo?: string
+    diagnostic?: string
+  }>
+>([])
+
+const batchBindFailedItems = computed(() =>
+  batchBindResult.value ? batchBindResult.value.items.filter((item) => !item.success) : [],
+)
 
 const rowSelection = computed(() => ({
   selectedRowKeys: selectedRowKeys.value,
@@ -706,7 +981,10 @@ const rowSelection = computed(() => ({
     selectedRowKeys.value = keys.map(String)
   },
   getCheckboxProps: (record: ScanAttentionItemVO) => ({
-    disabled: !record.paperInstanceId || !record.scanBatchId,
+    disabled:
+      record.attentionType !== 'RECOGNITION_REVIEW' ||
+      !record.paperInstanceId ||
+      !record.scanBatchId,
   }),
 }))
 
@@ -716,10 +994,14 @@ async function handleBatchBind(): Promise<void> {
     return
   }
   const selected = attentions.value.filter(
-    (item) => selectedRowKeys.value.includes(item.id) && item.paperInstanceId && item.scanBatchId,
+    (item) =>
+      selectedRowKeys.value.includes(item.id) &&
+      item.attentionType === 'RECOGNITION_REVIEW' &&
+      item.paperInstanceId &&
+      item.scanBatchId,
   )
   if (selected.length === 0) {
-    message.error('请选择有试卷实例的异常项')
+    message.error('请选择可身份绑定的识别复核异常项')
     return
   }
   const scanBatchIds = new Set(selected.map((item) => item.scanBatchId))
@@ -727,32 +1009,89 @@ async function handleBatchBind(): Promise<void> {
     message.error('批量绑定必须选择同一扫描批次内的试卷')
     return
   }
-  await ensureCandidatesLoaded()
+  const candidatesReady = await ensureCandidatesLoaded()
+  if (!candidatesReady) {
+    return
+  }
   if (candidates.value.length === 0) {
     message.error('当前考试无考生名册，无法绑定')
     return
   }
-  const items: ExamPaperBatchBindItemPayload[] = selected.map((item) => ({
+  batchBindError.value = ''
+  batchBindResult.value = null
+  batchBindRows.value = selected.map((item) => ({
+    attentionId: item.id,
+    scanBatchId: item.scanBatchId!,
     paperInstanceId: item.paperInstanceId!,
-    confirmedCandidateRosterId: '',
+    recognizedStudentNo: '',
+    confirmedCandidateRosterId: undefined,
     attemptStatus: 'NORMAL',
+    attemptNo: '',
+    diagnostic: item.diagnostic,
   }))
-  // 简化流程：为每个试卷自动打开单条绑定弹窗；如需一次性批量，需要展开行表单
-  // 此处直接调用批量接口（已选项若缺少 confirmedCandidateRosterId 则后端会校验失败）
+  batchBindDrawerOpen.value = true
+}
+
+function closeBatchBindDrawer(): void {
+  if (batchBinding.value) return
+  batchBindDrawerOpen.value = false
+  batchBindRows.value = []
+  batchBindError.value = ''
+  batchBindResult.value = null
+}
+
+async function submitBatchBind(): Promise<void> {
+  if (!selectedExamId.value) {
+    message.error('请先选择考试')
+    return
+  }
+  if (batchBindRows.value.length === 0) {
+    message.error('没有可提交的批量绑定项')
+    return
+  }
+  const missing = batchBindRows.value.find((item) => !item.confirmedCandidateRosterId)
+  if (missing) {
+    message.error(`试卷 ${missing.paperInstanceId} 尚未选择考生`)
+    return
+  }
+  const invalidAttemptStatus = batchBindRows.value.find(
+    (item) => !parseBindAttemptStatus(item.attemptStatus.trim()),
+  )
+  if (invalidAttemptStatus) {
+    message.error(`试卷 ${invalidAttemptStatus.paperInstanceId} 的作答状态无效`)
+    return
+  }
+  const scanBatchIds = new Set(batchBindRows.value.map((item) => item.scanBatchId))
+  if (scanBatchIds.size !== 1) {
+    message.error('批量绑定必须选择同一扫描批次内的试卷')
+    return
+  }
   batchBinding.value = true
+  batchBindError.value = ''
+  batchBindResult.value = null
   try {
     const result = await batchBindPapers({
       examId: selectedExamId.value,
-      scanBatchId: selected[0].scanBatchId!,
-      items,
+      scanBatchId: batchBindRows.value[0].scanBatchId,
+      items: batchBindRows.value.map((item) => ({
+        paperInstanceId: item.paperInstanceId,
+        recognizedStudentNo: item.recognizedStudentNo?.trim() || undefined,
+        confirmedCandidateRosterId: item.confirmedCandidateRosterId!,
+        attemptStatus: parseBindAttemptStatus(item.attemptStatus.trim())!,
+        attemptNo: item.attemptNo?.trim() || undefined,
+      })),
     })
-    message.success(
-      `批量绑定：成功 ${result.successCount ?? 0} 条，失败 ${result.failureCount ?? 0} 条`,
-    )
-    selectedRowKeys.value = []
+    batchBindResult.value = result
+    message.success(`批量绑定：成功 ${result.successCount} 条，失败 ${result.failureCount} 条`)
     await loadAttentions()
+    if (result.failureCount === 0) {
+      selectedRowKeys.value = []
+      batchBindRows.value = []
+      batchBindDrawerOpen.value = false
+    }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '批量绑定失败'
+    batchBindError.value = errMsg
     message.error(errMsg)
   } finally {
     batchBinding.value = false
@@ -763,6 +1102,10 @@ async function handleBatchBind(): Promise<void> {
 watch(selectedExamId, (value) => {
   // 切换考试需要重置名册缓存
   candidates.value = []
+  candidatesLoadError.value = null
+  bindSubmitError.value = ''
+  batchBindError.value = ''
+  batchBindResult.value = null
   if (value) {
     void loadAttentions()
   } else {
@@ -901,6 +1244,57 @@ onMounted(async () => {
 
   &__bind-alert {
     margin-bottom: 16px;
+  }
+
+  &__batch-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__batch-row {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.4fr);
+    gap: 16px;
+    padding: 12px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface, #fff);
+  }
+
+  &__batch-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__batch-diagnostic {
+    color: var(--dp-text-secondary, #475569);
+    font-size: 12px;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  &__batch-form {
+    display: grid;
+    grid-template-columns: minmax(140px, 0.8fr) minmax(220px, 1.2fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  &__batch-input,
+  &__batch-candidate,
+  &__batch-attempt-status,
+  &__batch-attempt-no {
+    width: 100%;
+  }
+
+  @media (max-width: 900px) {
+    &__batch-row,
+    &__batch-form {
+      grid-template-columns: 1fr;
+    }
   }
 }
 </style>

@@ -121,10 +121,3 @@ export function handleConfirmCancel(): void {
     state.resolver = null
   }
 }
-
-/**
- * 兼容 hook 调用形式（与其他 use* composable 风格保持一致）。
- */
-export function useConfirmDialog(): { confirm: typeof confirmAsync } {
-  return { confirm: confirmAsync }
-}

@@ -6,7 +6,8 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type {ScanAttentionTypeCode} from './exam'
+import type {BadgeTone} from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 /** 接入模式编码 - 对应后端 ScannerInterfaceMode 枚举 */
@@ -72,21 +73,21 @@ export interface ExamScannerDeviceQueryPayload {
 /** 扫描设备视图 - 对应 ExamScannerDeviceResponse */
 export interface ExamScannerDeviceVO {
   id: string
-  scannerDeviceId?: string
-  scannerStationId?: string
+  scannerDeviceId: string
+  scannerStationId: string
   scannerIp?: string
-  deviceName?: string
-  status?: ScannerDeviceStatusCode
-  interfaceMode?: ScannerInterfaceModeCode
+  deviceName: string
+  status: ScannerDeviceStatusCode
+  interfaceMode: ScannerInterfaceModeCode
   pushTokenMasked?: string
   saneHost?: string
   sanePort?: number
   saneDeviceName?: string
   saneResolution?: number
-  saneColorMode?: string
-  saneDuplexMode?: string
+  saneColorMode?: ScannerColorModeCode
+  saneDuplexMode?: ScannerDuplexModeCode
   defaultExamId?: string
-  defaultClassIds?: string[]
+  defaultClassIds: string[]
   manufacturer?: string
   model?: string
   location?: string
@@ -102,6 +103,7 @@ export interface ExamScannerDeviceVO {
   diagnosticStatus?: string
   diagnosticMessage?: string
   lastHeartbeatAt?: string
+  kioskLockEnabled: boolean
   remark?: string
   createTime?: string
   updateTime?: string
@@ -116,11 +118,11 @@ export interface ExamScannerActivationCodeCreatePayload {
 /** 扫描 Agent 激活码响应 */
 export interface ExamScannerActivationCodeVO {
   id: string
-  scannerDeviceId?: string
-  scannerStationId?: string
-  activationCode?: string
-  status?: string
-  expireAt?: string
+  scannerDeviceId: string
+  scannerStationId: string
+  activationCode: string
+  status: string
+  expireAt: string
 }
 
 /** 扫描设备详情视图 - 对应 ExamScannerDeviceDetailResponse */
@@ -133,9 +135,9 @@ export interface ExamScannerDeviceDetailVO extends ExamScannerDeviceVO {
 /** 扫描设备 token 响应 - 对应 ExamScannerDeviceTokenResponse */
 export interface ExamScannerDeviceTokenVO {
   id: string
-  pushToken?: string
-  pushUrl?: string
-  authorizationHeader?: string
+  pushToken: string
+  pushUrl: string
+  authorizationHeader: string
 }
 
 /** 扫描设备创建请求 - 对应 ExamScannerDeviceCreateRequest */
@@ -204,18 +206,12 @@ export interface ExamScannerSaneTriggerVO {
   scanBatchId: string
   fileId?: string
   fileIds?: string[]
-  pageCount?: number
+  pageCount: number
   fileHash?: string
 }
 
-/** 扫描异常类型编码 */
-export type ScanAttentionTypeCode
-  = | 'QUALITY_BLOCK'
-    | 'PROCESSING_BLOCK'
-    | 'DUPLICATE_PENDING'
-    | 'RECOGNITION_REVIEW'
-
 // ScanAttentionQueryPayload / ScanAttentionItemVO 定义在 @/apis/mark/exam，避免重复
+export type { ScanAttentionTypeCode }
 
 // ExamCandidateVO 定义在 @/apis/mark/exam，避免重复
 
@@ -224,7 +220,7 @@ export interface ExamPaperBatchBindItemPayload {
   paperInstanceId: string
   recognizedStudentNo?: string
   confirmedCandidateRosterId: string
-  attemptStatus?: 'NORMAL' | 'MAKEUP' | 'RETAKE' | string
+  attemptStatus: 'NORMAL' | 'MAKEUP' | 'RETAKE'
   attemptNo?: string
 }
 
@@ -237,16 +233,16 @@ export interface ExamPaperBatchBindPayload {
 
 /** 试卷身份批量绑定单项结果 - 对应 ExamPaperBatchBindItemResponse */
 export interface ExamPaperBatchBindItemResultVO {
-  paperInstanceId?: string
-  success?: boolean
+  paperInstanceId: string
+  success: boolean
   errorMessage?: string
 }
 
 /** 试卷身份批量绑定结果 - 对应 ExamPaperBatchBindResponse */
 export interface ExamPaperBatchBindResultVO {
-  successCount?: number
-  failureCount?: number
-  items?: ExamPaperBatchBindItemResultVO[]
+  successCount: number
+  failureCount: number
+  items: ExamPaperBatchBindItemResultVO[]
 }
 
 /**
@@ -256,7 +252,8 @@ export interface ExamPaperBatchBindResultVO {
 export function listScannerDevices(
   payload?: ExamScannerDeviceQueryPayload,
 ): Promise<ExamScannerDeviceVO[]> {
-  return http.post<ExamScannerDeviceVO[]>('/api/mark/exams/scan-devices/list', payload ?? {})
+  return http.post<unknown>('/api/mark/exams/scan-devices/list', payload ?? {})
+    .then(validateScannerDeviceList)
 }
 
 /**
@@ -266,7 +263,8 @@ export function listScannerDevices(
 export function createScannerDevice(
   payload: ExamScannerDeviceCreatePayload,
 ): Promise<ExamScannerDeviceTokenVO> {
-  return http.post<ExamScannerDeviceTokenVO>('/api/mark/exams/scan-devices/create', payload)
+  return http.post<unknown>('/api/mark/exams/scan-devices/create', payload)
+    .then(validateScannerDeviceToken)
 }
 
 /**
@@ -274,7 +272,8 @@ export function createScannerDevice(
  * POST /api/mark/exams/scan-devices/update
  */
 export function updateScannerDevice(payload: ExamScannerDeviceUpdatePayload): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scan-devices/update', payload)
+  return http.post<unknown>('/api/mark/exams/scan-devices/update', payload)
+    .then(validateBooleanResult)
 }
 
 /**
@@ -282,7 +281,8 @@ export function updateScannerDevice(payload: ExamScannerDeviceUpdatePayload): Pr
  * POST /api/mark/exams/scan-devices/delete
  */
 export function deleteScannerDevice(id: string): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scan-devices/delete', { id })
+  return http.post<unknown>('/api/mark/exams/scan-devices/delete', { id })
+    .then(validateBooleanResult)
 }
 
 /**
@@ -290,7 +290,8 @@ export function deleteScannerDevice(id: string): Promise<boolean> {
  * POST /api/mark/exams/scan-devices/agent-unbind
  */
 export function unbindScannerDeviceAgent(id: string): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scan-devices/agent-unbind', { id })
+  return http.post<unknown>('/api/mark/exams/scan-devices/agent-unbind', { id })
+    .then(validateBooleanResult)
 }
 
 /**
@@ -298,7 +299,8 @@ export function unbindScannerDeviceAgent(id: string): Promise<boolean> {
  * POST /api/mark/exams/scan-devices/detail
  */
 export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDetailVO> {
-  return http.post<ExamScannerDeviceDetailVO>('/api/mark/exams/scan-devices/detail', { id })
+  return http.post<unknown>('/api/mark/exams/scan-devices/detail', { id })
+    .then(validateScannerDeviceDetail)
 }
 
 /**
@@ -306,7 +308,8 @@ export function getScannerDeviceDetail(id: string): Promise<ExamScannerDeviceDet
  * POST /api/mark/exams/scan-devices/reset-token
  */
 export function resetScannerDevicePushToken(id: string): Promise<ExamScannerDeviceTokenVO> {
-  return http.post<ExamScannerDeviceTokenVO>('/api/mark/exams/scan-devices/reset-token', { id })
+  return http.post<unknown>('/api/mark/exams/scan-devices/reset-token', { id })
+    .then(validateScannerDeviceToken)
 }
 
 /**
@@ -316,10 +319,10 @@ export function resetScannerDevicePushToken(id: string): Promise<ExamScannerDevi
 export function createScannerActivationCode(
   payload: ExamScannerActivationCodeCreatePayload,
 ): Promise<ExamScannerActivationCodeVO> {
-  return http.post<ExamScannerActivationCodeVO>(
+  return http.post<unknown>(
     '/api/mark/exams/scan-devices/activation-code/create',
     payload,
-  )
+  ).then(validateScannerActivationCode)
 }
 
 /**
@@ -329,7 +332,239 @@ export function createScannerActivationCode(
 export function triggerSaneScan(
   payload: ExamScannerSaneTriggerPayload,
 ): Promise<ExamScannerSaneTriggerVO> {
-  return http.post<ExamScannerSaneTriggerVO>('/api/mark/exams/scan-devices/sane-scan', payload)
+  return http.post<unknown>('/api/mark/exams/scan-devices/sane-scan', payload)
+    .then(validateSaneTriggerResult)
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireBoolean(value: unknown, fieldName: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function validateBooleanResult(value: unknown): boolean {
+  return requireBoolean(value, '操作结果')
+}
+
+function optionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value !== 'string') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalFiniteNumber(value: unknown, fieldName: string): number | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalSanePort(value: unknown, fieldName: string): number | undefined {
+  const port = optionalFiniteNumber(value, fieldName)
+  if (port !== undefined && (!Number.isInteger(port) || port < 1 || port > 65535)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return port
+}
+
+function optionalSaneResolution(value: unknown, fieldName: string): number | undefined {
+  const resolution = optionalFiniteNumber(value, fieldName)
+  if (resolution !== undefined && resolution < 300) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return resolution
+}
+
+function optionalBoolean(value: unknown, fieldName: string): boolean | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireStringList(value: unknown, fieldName: string): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalStringList(value: unknown, fieldName: string): string[] | undefined {
+  if (value === undefined || value === null) return undefined
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireInterfaceMode(value: unknown, fieldName: string): ScannerInterfaceModeCode {
+  if (value !== 'HTTP_PUSH' && value !== 'SANE_PULL') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireDeviceStatus(value: unknown, fieldName: string): ScannerDeviceStatusCode {
+  if (value !== 'ACTIVE' && value !== 'INACTIVE' && value !== 'DISABLED') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalEndpointOnlineStatus(
+  value: unknown,
+  fieldName: string,
+): ScannerEndpointOnlineStatusCode | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (value !== 'ONLINE' && value !== 'OFFLINE') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalScannerColorMode(
+  value: unknown,
+  fieldName: string,
+): ScannerColorModeCode | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (value !== 'COLOR' && value !== 'GRAY' && value !== 'LINEART') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalScannerDuplexMode(
+  value: unknown,
+  fieldName: string,
+): ScannerDuplexModeCode | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (value !== 'SIMPLEX' && value !== 'DUPLEX') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function validateScannerDevice(value: unknown): ExamScannerDeviceVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描设备接口返回格式错误')
+  }
+  const device = value as Record<string, unknown>
+  return {
+    id: requireString(device.id, '扫描设备 ID'),
+    scannerDeviceId: requireString(device.scannerDeviceId, '扫描设备业务 ID'),
+    scannerStationId: requireString(device.scannerStationId, '扫描站点 ID'),
+    scannerIp: optionalString(device.scannerIp, '扫描仪 IP'),
+    deviceName: requireString(device.deviceName, '扫描设备名称'),
+    status: requireDeviceStatus(device.status, '扫描设备状态'),
+    interfaceMode: requireInterfaceMode(device.interfaceMode, '扫描接入模式'),
+    pushTokenMasked: optionalString(device.pushTokenMasked, 'push_token 掩码'),
+    saneHost: optionalString(device.saneHost, 'SANE 主机'),
+    sanePort: optionalSanePort(device.sanePort, 'SANE 端口'),
+    saneDeviceName: optionalString(device.saneDeviceName, 'SANE 设备名'),
+    saneResolution: optionalSaneResolution(device.saneResolution, 'SANE 分辨率'),
+    saneColorMode: optionalScannerColorMode(device.saneColorMode, 'SANE 色彩模式'),
+    saneDuplexMode: optionalScannerDuplexMode(device.saneDuplexMode, 'SANE 双面模式'),
+    defaultExamId: optionalString(device.defaultExamId, '默认考试 ID'),
+    defaultClassIds: requireStringList(device.defaultClassIds, '默认归属班级 ID'),
+    manufacturer: optionalString(device.manufacturer, '设备厂商'),
+    model: optionalString(device.model, '设备型号'),
+    location: optionalString(device.location, '设备位置'),
+    lastSeenAt: optionalString(device.lastSeenAt, '最近通讯时间'),
+    endpointOnlineStatus: optionalEndpointOnlineStatus(device.endpointOnlineStatus, 'Agent 在线状态'),
+    endpointMachineCode: optionalString(device.endpointMachineCode, 'Agent 机器码'),
+    endpointName: optionalString(device.endpointName, 'Agent 端点名称'),
+    agentVersion: optionalString(device.agentVersion, 'Agent 版本'),
+    clientVersion: optionalString(device.clientVersion, 'WebView2 客户端版本'),
+    scannerConnected: optionalBoolean(device.scannerConnected, '本地扫描仪连接状态'),
+    pendingJobCount: optionalFiniteNumber(device.pendingJobCount, '本地待处理任务数'),
+    pendingUploadPageCount: optionalFiniteNumber(device.pendingUploadPageCount, '待上传页数'),
+    diagnosticStatus: optionalString(device.diagnosticStatus, 'Agent 诊断状态'),
+    diagnosticMessage: optionalString(device.diagnosticMessage, 'Agent 诊断信息'),
+    lastHeartbeatAt: optionalString(device.lastHeartbeatAt, '最近心跳时间'),
+    kioskLockEnabled: requireBoolean(device.kioskLockEnabled, 'Kiosk 防误触锁'),
+    remark: optionalString(device.remark, '设备维护备注'),
+    createTime: optionalString(device.createTime, '创建时间'),
+    updateTime: optionalString(device.updateTime, '更新时间'),
+  }
+}
+
+function validateScannerDeviceList(value: unknown): ExamScannerDeviceVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('扫描设备列表接口返回格式错误')
+  }
+  return value.map(validateScannerDevice)
+}
+
+function validateScannerDeviceToken(value: unknown): ExamScannerDeviceTokenVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描设备 token 接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    id: requireString(result.id, '扫描设备 ID'),
+    pushToken: requireString(result.pushToken, 'push_token'),
+    pushUrl: requireString(result.pushUrl, '推送 URL'),
+    authorizationHeader: requireString(result.authorizationHeader, 'Authorization 请求头'),
+  }
+}
+
+function validateScannerDeviceDetail(value: unknown): ExamScannerDeviceDetailVO {
+  const device = validateScannerDevice(value)
+  const detail = value as Record<string, unknown>
+  return {
+    ...device,
+    pushToken: optionalString(detail.pushToken, '明文 push_token'),
+    pushUrl: optionalString(detail.pushUrl, '推荐推送 URL'),
+    authorizationHeader: optionalString(detail.authorizationHeader, '推荐 Authorization 请求头'),
+  }
+}
+
+function validateScannerActivationCode(value: unknown): ExamScannerActivationCodeVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('扫描 Agent 激活码接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    id: requireString(result.id, '激活码 ID'),
+    scannerDeviceId: requireString(result.scannerDeviceId, '扫描设备业务 ID'),
+    scannerStationId: requireString(result.scannerStationId, '扫描站点 ID'),
+    activationCode: requireString(result.activationCode, '激活码'),
+    status: requireString(result.status, '激活码状态'),
+    expireAt: requireString(result.expireAt, '激活码过期时间'),
+  }
+}
+
+function validateSaneTriggerResult(value: unknown): ExamScannerSaneTriggerVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('SANE 采集结果接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    scanBatchId: requireString(result.scanBatchId, '扫描批次 ID'),
+    fileId: optionalString(result.fileId, '扫描文件 ID'),
+    fileIds: optionalStringList(result.fileIds, '扫描文件 ID 列表'),
+    pageCount: requireFiniteNumber(result.pageCount, '扫描页数'),
+    fileHash: optionalString(result.fileHash, '扫描文件哈希'),
+  }
 }
 
 // listScanAttentions 定义在 @/apis/mark/exam，避免重复
@@ -343,7 +578,8 @@ export function triggerSaneScan(
 export function batchBindPapers(
   payload: ExamPaperBatchBindPayload,
 ): Promise<ExamPaperBatchBindResultVO> {
-  return http.post<ExamPaperBatchBindResultVO>('/api/mark/exams/papers/batch-bind', payload)
+  return http.post<unknown>('/api/mark/exams/papers/batch-bind', payload)
+    .then(validateBatchBindResult)
 }
 
 // ─── 考试列表（供设备管理选择关联考试） ─────────────────────────────────
@@ -379,6 +615,9 @@ export interface MarkExamPageQueryPayload {
 export interface MarkExamPageResult {
   list: MarkExamSummaryVO[]
   total: number
+  pageNum: number
+  pageSize: number
+  pages: number
 }
 
 /**
@@ -388,5 +627,71 @@ export interface MarkExamPageResult {
 export function pageMarkExams(
   payload: MarkExamPageQueryPayload,
 ): Promise<MarkExamPageResult> {
-  return http.post<MarkExamPageResult>('/api/mark/exams/page', payload)
+  return http.post<unknown>('/api/mark/exams/page', payload)
+    .then(validateMarkExamPageResult)
+}
+
+function validateBatchBindItemResult(value: unknown): ExamPaperBatchBindItemResultVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('批量绑定单项结果接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    paperInstanceId: requireString(result.paperInstanceId, '试卷实例 ID'),
+    success: requireBoolean(result.success, '绑定结果'),
+    errorMessage: optionalString(result.errorMessage, '失败原因'),
+  }
+}
+
+function validateBatchBindResult(value: unknown): ExamPaperBatchBindResultVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('批量绑定结果接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  const items = result.items
+  if (!Array.isArray(items)) {
+    throw new TypeError('批量绑定明细接口返回格式错误')
+  }
+  return {
+    successCount: requireFiniteNumber(result.successCount, '批量绑定成功数'),
+    failureCount: requireFiniteNumber(result.failureCount, '批量绑定失败数'),
+    items: items.map(validateBatchBindItemResult),
+  }
+}
+
+function validateMarkExamSummary(value: unknown): MarkExamSummaryVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('考试列表项接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    examId: requireString(result.examId, '考试 ID'),
+    examName: requireString(result.examName, '考试名称'),
+    examNo: optionalString(result.examNo, '考试编号'),
+    academicYear: optionalString(result.academicYear, '学年'),
+    semester: optionalString(result.semester, '学期'),
+    status: requireString(result.status, '考试状态'),
+    statusMessage: optionalString(result.statusMessage, '考试状态文案'),
+    examStartTime: optionalString(result.examStartTime, '考试开始时间'),
+    examEndTime: optionalString(result.examEndTime, '考试结束时间'),
+    createTime: optionalString(result.createTime, '创建时间'),
+  }
+}
+
+function validateMarkExamPageResult(value: unknown): MarkExamPageResult {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('考试分页接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  const list = result.list
+  if (!Array.isArray(list)) {
+    throw new TypeError('考试分页列表接口返回格式错误')
+  }
+  return {
+    list: list.map(validateMarkExamSummary),
+    total: requireFiniteNumber(result.total, '考试分页总数'),
+    pageNum: requireFiniteNumber(result.pageNum, '考试分页页码'),
+    pageSize: requireFiniteNumber(result.pageSize, '考试分页每页数量'),
+    pages: requireFiniteNumber(result.pages, '考试分页总页数'),
+  }
 }

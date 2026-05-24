@@ -1,4 +1,8 @@
-import type { ExternalPullConfirmationStatus, ExternalPullTaskStatus, ExternalSourceType } from './types'
+import type {
+  ExternalPullConfirmationStatus,
+  ExternalPullTaskStatus,
+  ExternalSourceType,
+} from './types'
 /**
  * 外部数据源 / 拔取任务 / 拔取结果 / 拔取审计 API - 对接 edu-quality
  *
@@ -109,6 +113,7 @@ export interface ExternalPullTaskCreatePayload {
   businessId: string
   /** 仅允许 SELECT */
   sqlTemplate: string
+  /** SQL 参数 JSON 数组，按 ? 占位符顺序绑定 */
   sqlParameters?: string
   fieldWhitelist?: string
   maxRowCount?: number
@@ -138,12 +143,13 @@ export interface ExternalPullResultVO {
 
 export interface ExternalPullResultConfirmPayload {
   id: string
-  confirmRemark?: string
+  confirmedRows: number
+  notes?: string
 }
 
 export interface ExternalPullResultRejectPayload {
   id: string
-  rejectReason: string
+  notes: string
 }
 
 /* =====================================================================
@@ -170,14 +176,10 @@ export interface ExternalPullAuditVO {
 export const externalDataSourceApi = {
   page: (data: ExternalDataSourceQueryPayload) =>
     http.post<PageResult<ExternalDataSourceVO>>(`${SOURCE}/page`, data),
-  detail: (id: string) =>
-    http.post<ExternalDataSourceVO>(`${SOURCE}/detail`, { id }),
-  create: (data: ExternalDataSourceSavePayload) =>
-    http.post<string>(`${SOURCE}/create`, data),
-  update: (data: ExternalDataSourceSavePayload) =>
-    http.post<void>(`${SOURCE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${SOURCE}/delete`, { id }),
+  detail: (id: string) => http.post<ExternalDataSourceVO>(`${SOURCE}/detail`, { id }),
+  create: (data: ExternalDataSourceSavePayload) => http.post<string>(`${SOURCE}/create`, data),
+  update: (data: ExternalDataSourceSavePayload) => http.post<void>(`${SOURCE}/update`, data),
+  delete: (id: string) => http.post<void>(`${SOURCE}/delete`, { id }),
   toggleEnabled: (id: string, enabled: boolean) =>
     http.post<void>(`${SOURCE}/toggle-enabled`, { id, enabled }),
 }
@@ -185,26 +187,20 @@ export const externalDataSourceApi = {
 export const externalPullTaskApi = {
   page: (data: ExternalPullTaskQueryPayload) =>
     http.post<PageResult<ExternalPullTaskVO>>(`${TASK}/page`, data),
-  detail: (id: string) =>
-    http.post<ExternalPullTaskVO>(`${TASK}/detail`, { id }),
-  create: (data: ExternalPullTaskCreatePayload) =>
-    http.post<string>(`${TASK}/create`, data),
+  detail: (id: string) => http.post<ExternalPullTaskVO>(`${TASK}/detail`, { id }),
+  create: (data: ExternalPullTaskCreatePayload) => http.post<string>(`${TASK}/create`, data),
   /** 取消未启动 / 进行中的任务 */
-  cancel: (id: string, reason?: string) =>
-    http.post<void>(`${TASK}/cancel`, { id, reason }),
+  cancel: (id: string, reason?: string) => http.post<void>(`${TASK}/cancel`, { id, reason }),
 }
 
 export const externalPullResultApi = {
   listByTask: (pullTaskId: string) =>
     http.post<ExternalPullResultVO[]>(`${RESULT}/list-by-task`, { id: pullTaskId }),
-  detail: (id: string) =>
-    http.post<ExternalPullResultVO>(`${RESULT}/detail`, { id }),
+  detail: (id: string) => http.post<ExternalPullResultVO>(`${RESULT}/detail`, { id }),
   /** 确认结果批次：PREVIEW → CONFIRMED */
-  confirm: (data: ExternalPullResultConfirmPayload) =>
-    http.post<void>(`${RESULT}/confirm`, data),
+  confirm: (data: ExternalPullResultConfirmPayload) => http.post<void>(`${RESULT}/confirm`, data),
   /** 驳回结果批次：PREVIEW → REJECTED */
-  reject: (data: ExternalPullResultRejectPayload) =>
-    http.post<void>(`${RESULT}/reject`, data),
+  reject: (data: ExternalPullResultRejectPayload) => http.post<void>(`${RESULT}/reject`, data),
 }
 
 export const externalPullAuditApi = {

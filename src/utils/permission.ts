@@ -20,8 +20,6 @@ export const ROLE_NAMES: Record<RoleEnum, string> = {
 export const ADMIN_ROLES: readonly RoleEnum[] = [RoleEnum.SUPER_ADMIN]
 export const TEACHER_ROLES: readonly RoleEnum[] = [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
 export const STUDENT_ROLES: readonly RoleEnum[] = [RoleEnum.SCH_STU]
-export const CORP_ROLES: readonly RoleEnum[] = [RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER]
-export const SCHOOL_ROLES: readonly RoleEnum[] = [RoleEnum.SCH_TECH, RoleEnum.SCH_STU]
 
 // 所有教师类角色（包括超级管理员）
 export const ALL_TEACHER_ROLES: readonly RoleEnum[] = [...ADMIN_ROLES, ...TEACHER_ROLES]

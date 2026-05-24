@@ -387,6 +387,13 @@ import type {
   ExamPaperPageTemplateVO,
   ExamQuestionTemplatePayload,
   ExamQuestionTemplateVO,
+  ObjectiveComparePolicyCode,
+} from '@/apis/mark/exam'
+import {
+  getExamTemplate,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  saveExamTemplate,
+  saveStandardAnswer,
 } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -397,13 +404,6 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
-import {
-  getExamTemplate,
-  saveExamTemplate,
-  saveStandardAnswer,
-  OBJECTIVE_COMPARE_POLICY_OPTIONS,
-  type ObjectiveComparePolicyCode,
-} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -469,7 +469,7 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -561,8 +561,8 @@ async function loadTemplate(): Promise<void> {
   } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
-    const isNotConfigured
-      = errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
+    const isNotConfigured =
+      errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
     if (errMsg && !isNotConfigured) {
       // 真实加载失败：D-9 错误态 + 警告提示
       templateLoadError.value = error
@@ -804,10 +804,7 @@ const answerForm = reactive<{
  * 标答输入框的占位提示。客观题 AI_GRADE 策略下允许不填标答，由 AI 评分给出建议得分后老师审核。
  */
 const standardAnswerPlaceholder = computed(() => {
-  if (
-    answerContext.questionType === 'OBJECTIVE'
-    && answerForm.comparePolicy === 'AI_GRADE'
-  ) {
+  if (answerContext.questionType === 'OBJECTIVE' && answerForm.comparePolicy === 'AI_GRADE') {
     return '客观题 AI 评分策略下可不填标答；AI 会依据考试上下文给出建议得分，老师审核后生效'
   }
   return '客观题填写选项（如 A / AB / 1 / 0），主观题填写参考答案要点'
@@ -819,9 +816,9 @@ const answerFormRules: Record<string, Rule[]> = {
       validator: async (_rule: Rule, value: string) => {
         const trimmed = (value ?? '').trim()
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy !== 'AI_GRADE'
-          && !trimmed
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy !== 'AI_GRADE' &&
+          !trimmed
         ) {
           return Promise.reject(new Error('客观题需填写标准答案（选 AI 评分策略可留空）'))
         }

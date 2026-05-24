@@ -11,13 +11,13 @@ export interface LocalApiResult<T> {
 }
 
 export interface AgentHealthResponse {
-  status: string
+  status: AgentHealthStatus
   agentVersion: string
   machineCode: string
   bound: boolean
   scannerConnected: boolean
   pendingUploadJobs: number
-  diagnosticStatus: string
+  diagnosticStatus: AgentDiagnosticStatus
   diagnosticMessage: string
   /** 服务端要求 Agent / WebView2 客户端升级时为 true */
   upgradeRequired: boolean
@@ -36,6 +36,29 @@ export interface AgentHealthResponse {
   /** 最近一次成功心跳的本地时间（ISO 字符串） */
   lastHeartbeatAt: string | null
 }
+
+export type AgentHealthStatus = 'RUNNING'
+
+export type AgentDiagnosticStatus = 'OK' | 'WARNING'
+
+export type LocalScanJobStatus =
+  | 'CREATED'
+  | 'SCANNING'
+  | 'PAUSED'
+  | 'READYTOUPLOAD'
+  | 'UPLOADING'
+  | 'REPORTED'
+  | 'FAILED'
+  | 'RETRYING'
+  | 'CANCELLED'
+
+export type LocalScanPageStatus =
+  | 'CAPTURED'
+  | 'PREPROCESSED'
+  | 'UPLOADING'
+  | 'UPLOADED'
+  | 'FAILED'
+  | 'DELETED'
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -82,7 +105,7 @@ export interface ScannerAgentActivateResponse {
   defaultExamId?: string
   defaultClassIds: string[]
   /** 一体机 Kiosk 锁是否启用 */
-  kioskLockEnabled?: boolean
+  kioskLockEnabled: boolean
   activatedAt: string
   minimumAgentVersion: string
   latestAgentVersion: string
@@ -121,6 +144,8 @@ function tryParseBusyError(message: string): ScannerBusyError | null {
 export interface StartScanJobRequest {
   context: ExamScannerKioskContextVO
   localScannerId: string
+  /** 后端 /scanner/kiosk/batch/start 签发的批次外部号 */
+  batchExternalNo: string
   expectedPages?: number
   scanMode: ScannerKioskScanMode
   targetPageNo?: number
@@ -135,7 +160,7 @@ export interface StartScanJobRequest {
 
 export interface ScanPageInfo {
   pageNo: number
-  status: string
+  status: LocalScanPageStatus
   sizeBytes: number
   diagnostic?: string
   capturedAt: string
@@ -144,17 +169,35 @@ export interface ScanPageInfo {
 
 export interface ScanJobResponse {
   scanJobId: string
+  /** 当前扫描任务所属考试 ID，Agent 边界按字符串返回 */
+  examId: string
+  /** 当前扫描任务声明的班级范围，顺序必须与 Kiosk 上下文一致 */
+  declaredClassIds: string[]
+  scannerDeviceId: string
+  scannerStationId: string
+  batchExternalNo: string
+  scanBatchId?: string
   scanMode: ScannerKioskScanMode
   targetPageNo?: number
   supplementReason?: string
   /** 是否替换目标页（仅 SUPPLEMENT 模式生效） */
   replaceTargetPage?: boolean
-  status: string
+  status: LocalScanJobStatus
   scannedPages: number
   uploadedPages: number
   reported: boolean
   message: string
   pages: ScanPageInfo[]
+}
+
+export interface ScanJobListResponse {
+  jobs: ScanJobResponse[]
+}
+
+export interface ListScanJobsParams {
+  examId?: string
+  scannerDeviceId?: string
+  includeTerminal?: boolean
 }
 
 export function getLocalAgentBaseUrl() {
@@ -165,117 +208,147 @@ export function getLocalAgentBaseUrl() {
 }
 
 export async function getAgentHealth(): Promise<AgentHealthResponse> {
-  return await localAgentGet<AgentHealthResponse>('/api/agent/health')
+  return validateAgentHealthResponse(await localAgentGet('/api/agent/health'))
 }
 
 export async function listLocalScanners(): Promise<ScannerListResponse> {
-  return await localAgentGet<ScannerListResponse>('/api/scanners')
+  return validateScannerListResponse(await localAgentGet('/api/scanners'))
 }
 
 export async function activateLocalAgent(
   payload: ActivateLocalAgentRequest,
 ): Promise<ScannerAgentActivateResponse> {
-  return await localAgentPost<ScannerAgentActivateResponse, ActivateLocalAgentRequest>(
-    '/api/agent/activate',
-    payload,
+  return validateScannerAgentActivateResponse(
+    await localAgentPost<ActivateLocalAgentRequest>('/api/agent/activate', payload),
   )
 }
 
 export async function unbindLocalAgent(): Promise<{ success: boolean }> {
-  return await localAgentPost<{ success: boolean }, Record<string, never>>('/api/agent/unbind', {})
+  return validateSuccessObject(await localAgentPost<Record<string, never>>('/api/agent/unbind', {}))
 }
 
 export async function startScanJob(payload: StartScanJobRequest): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, StartScanJobRequest>('/api/scan-jobs/start', payload)
+  return validateScanJobResponse(
+    await localAgentPost<StartScanJobRequest>('/api/scan-jobs/start', payload),
+  )
 }
 
 export async function getScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentGet<ScanJobResponse>(`/api/scan-jobs/${encodeURIComponent(scanJobId)}`)
+  return validateScanJobResponse(
+    await localAgentGet(`/api/scan-jobs/${encodeURIComponent(scanJobId)}`),
+  )
+}
+
+export async function listScanJobs(params: ListScanJobsParams = {}): Promise<ScanJobListResponse> {
+  const query = new URLSearchParams()
+  if (params.examId) {
+    query.set('examId', params.examId)
+  }
+  if (params.scannerDeviceId) {
+    query.set('scannerDeviceId', params.scannerDeviceId)
+  }
+  if (typeof params.includeTerminal === 'boolean') {
+    query.set('includeTerminal', String(params.includeTerminal))
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : ''
+  return validateScanJobListResponse(await localAgentGet(`/api/scan-jobs${suffix}`))
 }
 
 export async function cancelScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, Record<string, never>>(
-    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`,
-    {},
+  return validateScanJobResponse(
+    await localAgentPost<Record<string, never>>(
+      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`,
+      {},
+    ),
   )
 }
 
 export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, Record<string, never>>(
-    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`,
-    {},
+  return validateScanJobResponse(
+    await localAgentPost<Record<string, never>>(
+      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`,
+      {},
+    ),
   )
 }
 
 /**
- * 暂停指定扫描任务（plan §3.3）。Agent 端将状态切换为 Paused，扫描循环停止追加页面，
+ * 暂停指定扫描任务。Agent 端将状态切换为 Paused，扫描循环停止追加页面，
  * UploadWorker 也跳过该任务，直到调用 resumeScanJob 恢复。
  */
 export async function pauseScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, Record<string, never>>(
-    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/pause`,
-    {},
+  return validateScanJobResponse(
+    await localAgentPost<Record<string, never>>(
+      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/pause`,
+      {},
+    ),
   )
 }
 
 /**
- * 恢复被暂停的扫描任务（plan §3.3）。仅 Paused 任务可被恢复；其它状态原样返回。
+ * 恢复被暂停的扫描任务。仅 Paused 任务可被恢复；其它状态原样返回。
  */
 export async function resumeScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, Record<string, never>>(
-    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`,
-    {},
+  return validateScanJobResponse(
+    await localAgentPost<Record<string, never>>(
+      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`,
+      {},
+    ),
   )
 }
 
 /**
- * 结束本批次（plan §3.3）。手工停止仍在扫描的任务并把已采集页面交给上传链路，
+ * 结束本批次。手工停止仍在扫描的任务并把已采集页面交给上传链路，
  * 不丢弃已扫页面（与 cancelScanJob 不同）。
  */
 export async function endBatch(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, Record<string, never>>(
-    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/end-batch`,
-    {},
+  return validateScanJobResponse(
+    await localAgentPost<Record<string, never>>(
+      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/end-batch`,
+      {},
+    ),
   )
 }
 
 /**
- * 重试 commit（plan §3.3）。把已 push 但 commit 未确认的任务重新放回 Retrying。
+ * 重试 commit。把已 push 但 commit 未确认的任务重新放回 Retrying。
  * 利用后端 reportId / batchExternalNo 唯一约束的幂等性。
  */
 export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
-  return await localAgentPost<ScanJobResponse, Record<string, never>>(
-    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-commit`,
-    {},
+  return validateScanJobResponse(
+    await localAgentPost<Record<string, never>>(
+      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-commit`,
+      {},
+    ),
   )
 }
 
 /**
- * 删除尚未上报后端的 Agent 本地扫描任务（plan §M3）。仅清理本地 metadata + 影像文件，
- * 不调用后端废弃接口。已 Reported 任务请改用 discardScanJob。
+ * 删除尚未上报后端的 Agent 本地扫描任务。仅清理本地 metadata + 影像文件，
+ * 不调用后端废弃接口；已上报任务必须先由前端废弃服务端批次，成功后再清理 Agent 本地任务。
  */
 export async function deleteScanJob(scanJobId: string): Promise<boolean> {
-  return await localAgentPost<boolean, Record<string, never>>(
-    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`,
-    {},
+  return validateBooleanResult(
+    await localAgentPost<Record<string, never>>(
+      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`,
+      {},
+    ),
   )
 }
 
 /**
- * 废弃已上报的扫描任务（plan §M3）：调用 Agent，
- * 由 Agent 联动后端 /scanner/kiosk/batch/discard 把扫描批次置为 DISCARDED，
- * 后端确认后清理 Agent 本地任务数据。
+ * 废弃已上报的扫描任务：后端批次已由前端用户态废弃成功后，
+ * Agent 仅清理本地任务数据。
  *
  * @param scanJobId Agent 本地扫描任务 ID
  * @param discardReason 废弃原因（必填，1-255 字）
  */
-export async function discardScanJob(
-  scanJobId: string,
-  discardReason: string,
-): Promise<boolean> {
-  return await localAgentPost<boolean, { scanJobId: string, discardReason: string }>(
-    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/discard`,
-    { scanJobId, discardReason },
+export async function discardScanJob(scanJobId: string, discardReason: string): Promise<boolean> {
+  return validateBooleanResult(
+    await localAgentPost<{ discardReason: string }>(
+      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/discard`,
+      { discardReason },
+    ),
   )
 }
 
@@ -287,14 +360,14 @@ export function openDiagnosticsExport() {
   window.open(`${getLocalAgentBaseUrl()}/api/diagnostics/export`, '_blank', 'noopener,noreferrer')
 }
 
-async function localAgentGet<T>(path: string): Promise<T> {
+async function localAgentGet(path: string): Promise<unknown> {
   const response = await fetch(`${getLocalAgentBaseUrl()}${path}`, {
     method: 'GET',
   })
-  return await parseLocalAgentResponse<T>(response)
+  return await parseLocalAgentResponse(response)
 }
 
-async function localAgentPost<T, TPayload>(path: string, payload: TPayload): Promise<T> {
+async function localAgentPost<TPayload>(path: string, payload: TPayload): Promise<unknown> {
   const response = await fetch(`${getLocalAgentBaseUrl()}${path}`, {
     method: 'POST',
     headers: {
@@ -302,25 +375,369 @@ async function localAgentPost<T, TPayload>(path: string, payload: TPayload): Pro
     },
     body: JSON.stringify(payload),
   })
-  return await parseLocalAgentResponse<T>(response)
+  return await parseLocalAgentResponse(response)
 }
 
-async function parseLocalAgentResponse<T>(response: Response): Promise<T> {
+async function parseLocalAgentResponse(response: Response): Promise<unknown> {
   const text = await response.text()
-  let result: LocalApiResult<T>
+  let result: unknown
   try {
-    result = JSON.parse(text) as LocalApiResult<T>
+    result = JSON.parse(text)
   } catch {
     throw new Error(text || `本地 Scanner Agent 响应格式错误：${response.status}`)
   }
-  if (!response.ok || !result.success || result.data === undefined) {
-    const message
-      = result.message || `本地 Scanner Agent 请求失败：${result.code || response.status}`
+  const envelope = validateLocalApiResult(result, response)
+  if (!response.ok || !envelope.success) {
+    const message =
+      envelope.message || `本地 Scanner Agent 请求失败：${envelope.code || response.status}`
     const busyError = tryParseBusyError(message)
     if (busyError) {
       throw busyError
     }
     throw new Error(message)
   }
-  return result.data
+  if (!Object.hasOwn(envelope, 'data')) {
+    throw new TypeError('本地 Scanner Agent 成功响应缺少 data 字段')
+  }
+  return envelope.data
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function requireRecord(value: unknown, field: string): Record<string, unknown> {
+  if (!isRecord(value)) {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是对象`)
+  }
+  return value
+}
+
+function requireString(value: Record<string, unknown>, field: string): string {
+  const fieldValue = value[field]
+  if (typeof fieldValue !== 'string') {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串`)
+  }
+  return fieldValue
+}
+
+function requireBoolean(value: Record<string, unknown>, field: string): boolean {
+  const fieldValue = value[field]
+  if (typeof fieldValue !== 'boolean') {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是布尔值`)
+  }
+  return fieldValue
+}
+
+function requireNumber(value: Record<string, unknown>, field: string): number {
+  const fieldValue = value[field]
+  if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue)) {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是有效数字`)
+  }
+  return fieldValue
+}
+
+function requireStringArray(value: Record<string, unknown>, field: string): string[] {
+  const fieldValue = value[field]
+  if (!Array.isArray(fieldValue) || fieldValue.some((item) => typeof item !== 'string')) {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串数组`)
+  }
+  return fieldValue
+}
+
+function requireOptionalString(value: Record<string, unknown>, field: string): string | undefined {
+  const fieldValue = value[field]
+  if (fieldValue === undefined) {
+    return undefined
+  }
+  if (typeof fieldValue !== 'string') {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串`)
+  }
+  return fieldValue
+}
+
+function requireOptionalNumber(value: Record<string, unknown>, field: string): number | undefined {
+  const fieldValue = value[field]
+  if (fieldValue === undefined) {
+    return undefined
+  }
+  if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue)) {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是有效数字`)
+  }
+  return fieldValue
+}
+
+function requireOptionalBoolean(
+  value: Record<string, unknown>,
+  field: string,
+): boolean | undefined {
+  const fieldValue = value[field]
+  if (fieldValue === undefined) {
+    return undefined
+  }
+  if (typeof fieldValue !== 'boolean') {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是布尔值`)
+  }
+  return fieldValue
+}
+
+function requireNullableString(value: Record<string, unknown>, field: string): string | null {
+  const fieldValue = value[field]
+  if (fieldValue === null) {
+    return null
+  }
+  if (typeof fieldValue !== 'string') {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串或 null`)
+  }
+  return fieldValue
+}
+
+function requireScanMode(value: Record<string, unknown>, field: string): ScannerKioskScanMode {
+  const fieldValue = value[field]
+  if (fieldValue !== 'DIRECT' && fieldValue !== 'SUPPLEMENT' && fieldValue !== 'ARCHIVE') {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是 DIRECT、SUPPLEMENT 或 ARCHIVE`)
+  }
+  return fieldValue
+}
+
+function requireAgentHealthStatus(
+  value: Record<string, unknown>,
+  field: string,
+): AgentHealthStatus {
+  const fieldValue = value[field]
+  if (fieldValue !== 'RUNNING') {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是 RUNNING`)
+  }
+  return fieldValue
+}
+
+function requireAgentDiagnosticStatus(
+  value: Record<string, unknown>,
+  field: string,
+): AgentDiagnosticStatus {
+  const fieldValue = value[field]
+  if (fieldValue !== 'OK' && fieldValue !== 'WARNING') {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是 OK 或 WARNING`)
+  }
+  return fieldValue
+}
+
+function requireScanJobStatus(value: Record<string, unknown>, field: string): LocalScanJobStatus {
+  const fieldValue = value[field]
+  if (
+    fieldValue !== 'CREATED' &&
+    fieldValue !== 'SCANNING' &&
+    fieldValue !== 'PAUSED' &&
+    fieldValue !== 'READYTOUPLOAD' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'REPORTED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'RETRYING' &&
+    fieldValue !== 'CANCELLED'
+  ) {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描任务状态`)
+  }
+  return fieldValue
+}
+
+function requireScanPageStatus(value: Record<string, unknown>, field: string): LocalScanPageStatus {
+  const fieldValue = value[field]
+  if (
+    fieldValue !== 'CAPTURED' &&
+    fieldValue !== 'PREPROCESSED' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'UPLOADED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'DELETED'
+  ) {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描页状态`)
+  }
+  return fieldValue
+}
+
+function validateLocalApiResult(value: unknown, response: Response): LocalApiResult<unknown> {
+  const result = requireRecord(value, 'response')
+  const envelope: LocalApiResult<unknown> = {
+    success: requireBoolean(result, 'success'),
+    code: requireString(result, 'code'),
+    message: requireString(result, 'message'),
+    traceId: requireString(result, 'traceId'),
+  }
+  if (Object.hasOwn(result, 'data')) {
+    envelope.data = result.data
+  }
+  if (response.ok && envelope.success && !Object.hasOwn(result, 'data')) {
+    throw new TypeError('本地 Scanner Agent 成功响应缺少 data 字段')
+  }
+  return envelope
+}
+
+function validateAgentHealthResponse(value: unknown): AgentHealthResponse {
+  const result = requireRecord(value, 'agentHealth')
+  return {
+    status: requireAgentHealthStatus(result, 'status'),
+    agentVersion: requireString(result, 'agentVersion'),
+    machineCode: requireString(result, 'machineCode'),
+    bound: requireBoolean(result, 'bound'),
+    scannerConnected: requireBoolean(result, 'scannerConnected'),
+    pendingUploadJobs: requireNumber(result, 'pendingUploadJobs'),
+    diagnosticStatus: requireAgentDiagnosticStatus(result, 'diagnosticStatus'),
+    diagnosticMessage: requireString(result, 'diagnosticMessage'),
+    upgradeRequired: requireBoolean(result, 'upgradeRequired'),
+    minimumAgentVersion: requireString(result, 'minimumAgentVersion'),
+    latestAgentVersion: requireString(result, 'latestAgentVersion'),
+    minimumClientVersion: requireString(result, 'minimumClientVersion'),
+    latestClientVersion: requireString(result, 'latestClientVersion'),
+    scanAllowed: requireBoolean(result, 'scanAllowed'),
+    tokenResetRequired: requireBoolean(result, 'tokenResetRequired'),
+    lastHeartbeatAt: requireNullableString(result, 'lastHeartbeatAt'),
+  }
+}
+
+function validateScannerListResponse(value: unknown): ScannerListResponse {
+  const result = requireRecord(value, 'scannerList')
+  const devices = result.devices
+  if (!Array.isArray(devices)) {
+    throw new TypeError('本地 Scanner Agent 响应字段 devices 必须是数组')
+  }
+  return {
+    devices: devices.map((item, index) => validateScannerDeviceInfo(item, `devices[${index}]`)),
+  }
+}
+
+function validateScannerDeviceInfo(value: unknown, field: string): ScannerDeviceInfo {
+  const result = requireRecord(value, field)
+  const scanner: ScannerDeviceInfo = {
+    localScannerId: requireString(result, 'localScannerId'),
+    displayName: requireString(result, 'displayName'),
+    driverType: requireString(result, 'driverType'),
+    supportsAdf: requireBoolean(result, 'supportsAdf'),
+    supportsDuplex: requireBoolean(result, 'supportsDuplex'),
+    available: requireBoolean(result, 'available'),
+  }
+  const diagnostic = requireOptionalString(result, 'diagnostic')
+  if (diagnostic !== undefined) {
+    scanner.diagnostic = diagnostic
+  }
+  return scanner
+}
+
+function validateScannerAgentActivateResponse(value: unknown): ScannerAgentActivateResponse {
+  const result = requireRecord(value, 'agentActivation')
+  const payload: ScannerAgentActivateResponse = {
+    scannerDeviceId: requireString(result, 'scannerDeviceId'),
+    scannerStationId: requireString(result, 'scannerStationId'),
+    deviceName: requireString(result, 'deviceName'),
+    gatewayBaseUrl: requireString(result, 'gatewayBaseUrl'),
+    pushUrl: requireString(result, 'pushUrl'),
+    pushPageUrl: requireString(result, 'pushPageUrl'),
+    pushCommitUrl: requireString(result, 'pushCommitUrl'),
+    pushToken: requireString(result, 'pushToken'),
+    pushAuthorizationHeader: requireString(result, 'pushAuthorizationHeader'),
+    storageUploadUrl: requireString(result, 'storageUploadUrl'),
+    storageUploadToken: requireString(result, 'storageUploadToken'),
+    storageUploadAuthorizationHeader: requireString(result, 'storageUploadAuthorizationHeader'),
+    defaultClassIds: requireStringArray(result, 'defaultClassIds'),
+    kioskLockEnabled: requireBoolean(result, 'kioskLockEnabled'),
+    activatedAt: requireString(result, 'activatedAt'),
+    minimumAgentVersion: requireString(result, 'minimumAgentVersion'),
+    latestAgentVersion: requireString(result, 'latestAgentVersion'),
+  }
+  const tenantId = requireOptionalString(result, 'tenantId')
+  if (tenantId !== undefined) {
+    payload.tenantId = tenantId
+  }
+  const defaultExamId = requireOptionalString(result, 'defaultExamId')
+  if (defaultExamId !== undefined) {
+    payload.defaultExamId = defaultExamId
+  }
+  return payload
+}
+
+function validateSuccessObject(value: unknown): { success: boolean } {
+  const result = requireRecord(value, 'successResult')
+  return {
+    success: requireBoolean(result, 'success'),
+  }
+}
+
+function validateScanJobResponse(value: unknown): ScanJobResponse {
+  return validateScanJobResponsePayload(value, 'scanJob')
+}
+
+function validateScanJobListResponse(value: unknown): ScanJobListResponse {
+  const result = requireRecord(value, 'scanJobList')
+  const jobs = result.jobs
+  if (!Array.isArray(jobs)) {
+    throw new TypeError('本地 Scanner Agent 响应字段 jobs 必须是数组')
+  }
+  return {
+    jobs: jobs.map((item, index) => validateScanJobResponsePayload(item, `jobs[${index}]`)),
+  }
+}
+
+function validateScanJobResponsePayload(value: unknown, field: string): ScanJobResponse {
+  const result = requireRecord(value, field)
+  const pages = result.pages
+  if (!Array.isArray(pages)) {
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field}.pages 必须是数组`)
+  }
+  const payload: ScanJobResponse = {
+    scanJobId: requireString(result, 'scanJobId'),
+    examId: requireString(result, 'examId'),
+    declaredClassIds: requireStringArray(result, 'declaredClassIds'),
+    scannerDeviceId: requireString(result, 'scannerDeviceId'),
+    scannerStationId: requireString(result, 'scannerStationId'),
+    batchExternalNo: requireString(result, 'batchExternalNo'),
+    scanMode: requireScanMode(result, 'scanMode'),
+    status: requireScanJobStatus(result, 'status'),
+    scannedPages: requireNumber(result, 'scannedPages'),
+    uploadedPages: requireNumber(result, 'uploadedPages'),
+    reported: requireBoolean(result, 'reported'),
+    message: requireString(result, 'message'),
+    pages: pages.map((item, index) => validateScanPageInfo(item, `${field}.pages[${index}]`)),
+  }
+  const scanBatchId = requireOptionalString(result, 'scanBatchId')
+  if (scanBatchId !== undefined) {
+    payload.scanBatchId = scanBatchId
+  }
+  const targetPageNo = requireOptionalNumber(result, 'targetPageNo')
+  if (targetPageNo !== undefined) {
+    payload.targetPageNo = targetPageNo
+  }
+  const supplementReason = requireOptionalString(result, 'supplementReason')
+  if (supplementReason !== undefined) {
+    payload.supplementReason = supplementReason
+  }
+  const replaceTargetPage = requireOptionalBoolean(result, 'replaceTargetPage')
+  if (replaceTargetPage !== undefined) {
+    payload.replaceTargetPage = replaceTargetPage
+  }
+  return payload
+}
+
+function validateScanPageInfo(value: unknown, field: string): ScanPageInfo {
+  const result = requireRecord(value, field)
+  const page: ScanPageInfo = {
+    pageNo: requireNumber(result, 'pageNo'),
+    status: requireScanPageStatus(result, 'status'),
+    sizeBytes: requireNumber(result, 'sizeBytes'),
+    capturedAt: requireString(result, 'capturedAt'),
+  }
+  const diagnostic = requireOptionalString(result, 'diagnostic')
+  if (diagnostic !== undefined) {
+    page.diagnostic = diagnostic
+  }
+  const uploadedAt = requireOptionalString(result, 'uploadedAt')
+  if (uploadedAt !== undefined) {
+    page.uploadedAt = uploadedAt
+  }
+  return page
+}
+
+function validateBooleanResult(value: unknown): boolean {
+  if (typeof value !== 'boolean') {
+    throw new TypeError('本地 Scanner Agent 响应 data 必须是布尔值')
+  }
+  return value
 }

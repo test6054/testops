@@ -20,7 +20,6 @@
       @retry="reload"
     />
     <UiDataTable
-      v-else
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -116,7 +115,6 @@ async function reload(): Promise<void> {
   try {
     rows.value = await listPendingDuplicates({ examId: props.examId })
   } catch (e) {
-    rows.value = []
     loadError.value = e
     message.error(e instanceof Error ? e.message : '重复列表加载失败')
   } finally {

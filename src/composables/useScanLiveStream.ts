@@ -19,20 +19,21 @@
  * - 启动时先 listRecentScanEvents 拉历史，再 subscribeScanLive；ready 之后用最大 eventId 做断线补差；
  * - 内部维护 eventId Set 去重，避免历史回填和 SSE 推送重叠时双倍展示；
  * - 缓冲区上限 maxEvents（默认 200），按 createTime + eventId 倒序保留最新 N 条；
- * - Plan §4.3 页级账本补差：当 options.ledgerFilter 返回非空时，start / onReady / onError(重连成功后)
+ * - 页级账本补差：当 options.ledgerFilter 返回非空时，start / onReady / onError(重连成功后)
  *   / refresh / refreshLedger 都会调用 fetchScannerPageLedger 拉当前批次页级状态快照，承担断线 / 切换批次
  *   时的"补差刷新"角色；ledger 与 events 是两个互补视图，前端按 batchExternalNo + pageNo + sha256
  *   对账，不通过数组下标猜测。
  */
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { ScanLiveEventVO, ScanLiveSubscribeFilter } from '@/apis/mark/scan-live'
+import { listRecentScanEvents, subscribeScanLive } from '@/apis/mark/scan-live'
 import type {
   ExamScannerPageLedgerRequest,
   ExamScannerPageLedgerVO,
 } from '@/apis/mark/scanner-kiosk'
-import { computed, ref } from 'vue'
-import { listRecentScanEvents, subscribeScanLive } from '@/apis/mark/scan-live'
 import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
+import { useAuthStore } from '@/stores/modules/auth'
 import mittBus from '@/utils/mitt'
 
 export interface UseScanLiveStreamOptions {
@@ -43,7 +44,7 @@ export interface UseScanLiveStreamOptions {
   /** 滚动缓冲区上限，默认 200 */
   maxEvents?: number
   /**
-   * Plan §4.3 页级账本补差 getter；返回 null 时不拉账本（如当前还未选择批次）。
+   * 页级账本补差 getter；返回 null 时不拉账本（如当前还未选择批次）。
    * 当返回非空时，start / onReady / refresh / refreshLedger 都会触发 fetchScannerPageLedger。
    */
   ledgerFilter?: () => ExamScannerPageLedgerRequest | null
@@ -81,6 +82,7 @@ export interface UseScanLiveStreamReturn {
 export function useScanLiveStream(
   options: UseScanLiveStreamOptions,
 ): UseScanLiveStreamReturn {
+  const authStore = useAuthStore()
   const initialLimit = options.initialLimit ?? 50
   const maxEvents = options.maxEvents ?? 200
 
@@ -90,7 +92,7 @@ export function useScanLiveStream(
   const error = ref<unknown>(null)
   const lastEventId = ref<string | undefined>(undefined)
 
-  /** Plan §4.3 页级账本：当前批次的逐页状态快照 */
+  /** 页级账本：当前批次的逐页状态快照 */
   const ledger = ref<ExamScannerPageLedgerVO | null>(null) as Ref<ExamScannerPageLedgerVO | null>
   const ledgerError = ref<unknown>(null)
   const ledgerLoading = ref(false)
@@ -131,7 +133,7 @@ export function useScanLiveStream(
     const merged: ScanLiveEventVO[] = [...events.value]
     for (const event of incoming) {
       if (!event.eventId) {
-        continue
+        throw new TypeError('扫描实时事件缺少 eventId')
       }
       if (knownEventIds.has(event.eventId)) {
         continue
@@ -174,7 +176,7 @@ export function useScanLiveStream(
   }
 
   /**
-   * Plan §4.3：拉取当前批次页级账本。
+   * 拉取当前批次页级账本。
    *
    * <p>触发时机：start 初进、onReady 重连后、外部 refresh、外部手动调用 refreshLedger。
    * 仅当 options.ledgerFilter 返回非空时执行；ledger filter 未配置或返回 null 时把 ledger 置 null
@@ -271,6 +273,12 @@ export function useScanLiveStream(
       },
       onClose: () => {
         ready.value = false
+      },
+      onAuthRefreshRequired: async () => {
+        const refreshed = await authStore.refreshTokenAutomatically()
+        if (!refreshed) {
+          throw new Error('SSE 鉴权已过期，自动续期失败')
+        }
       },
     })
   }

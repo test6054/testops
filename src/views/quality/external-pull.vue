@@ -20,9 +20,6 @@ import type {
   ExternalPullTaskVO,
   ExternalSourceType,
 } from '@/apis/quality'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   EXTERNAL_PULL_TASK_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_LABEL,
@@ -34,6 +31,9 @@ import {
   isExternalPullTaskStatus,
   isExternalSourceType,
 } from '@/apis/quality'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -227,7 +227,7 @@ function canCancelTask(status: unknown): boolean {
   return status === 'PENDING' || status === 'RUNNING'
 }
 
-function handleTaskPageChange(payload: { current: number, pageSize: number }) {
+function handleTaskPageChange(payload: { current: number; pageSize: number }) {
   taskQuery.pageNum = payload.current
   taskQuery.pageSize = payload.pageSize
   loadTasks()
@@ -321,9 +321,9 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 
 async function submitSource() {
   if (
-    !sourceForm.sourceCode.trim()
-    || !sourceForm.sourceName.trim()
-    || !sourceForm.jdbcUrl.trim()
+    !sourceForm.sourceCode.trim() ||
+    !sourceForm.sourceName.trim() ||
+    !sourceForm.jdbcUrl.trim()
   ) {
     message.error('请填写编码 / 名称 / JDBC URL')
     return
@@ -421,12 +421,12 @@ function openTaskCreate() {
 
 async function submitTask() {
   if (
-    !taskForm.taskName.trim()
-    || !taskForm.taskCode.trim()
-    || !taskForm.sourceId
-    || !taskForm.businessAnchor.trim()
-    || !taskForm.businessId
-    || !taskForm.sqlTemplate.trim()
+    !taskForm.taskName.trim() ||
+    !taskForm.taskCode.trim() ||
+    !taskForm.sourceId ||
+    !taskForm.businessAnchor.trim() ||
+    !taskForm.businessId ||
+    !taskForm.sqlTemplate.trim()
   ) {
     message.error('请填写任务编码 / 名称 / 数据源 / 业务错点 / SQL')
     return
@@ -437,9 +437,13 @@ async function submitTask() {
   }
   if (taskForm.sqlParameters && taskForm.sqlParameters.trim()) {
     try {
-      JSON.parse(taskForm.sqlParameters)
+      const sqlParameters = JSON.parse(taskForm.sqlParameters)
+      if (!Array.isArray(sqlParameters)) {
+        message.error('SQL 参数必须是 JSON 数组，按 ? 占位符顺序填写')
+        return
+      }
     } catch {
-      message.error('SQL 参数必须是合法 JSON')
+      message.error('SQL 参数必须是合法 JSON 数组')
       return
     }
   }
@@ -467,7 +471,7 @@ async function submitTask() {
 
 /**
  * 确认 / 驳回是对 **拔取结果批次** 操作而不是任务本身。
- * 任务成功后会生成一个 PREVIEW_READY 状态的结果批次，在详情抽屉中对该批次 confirm / reject。
+ * 任务成功后会生成一个 PREVIEW 状态的结果批次，在详情抽屉中对该批次 confirm / reject。
  */
 async function confirmResult(result: ExternalPullResultVO) {
   void confirmAsync({
@@ -475,7 +479,10 @@ async function confirmResult(result: ExternalPullResultVO) {
     content: '确认后进入达成度计算可用来源',
     type: 'info',
     onOk: async () => {
-      await externalPullResultApi.confirm({ id: result.id })
+      await externalPullResultApi.confirm({
+        id: result.id,
+        confirmedRows: result.previewRows ?? 0,
+      })
       message.success('已确认')
       if (detailRecord.value) await reloadDetail(detailRecord.value.id)
     },
@@ -491,7 +498,7 @@ async function rejectResult(result: ExternalPullResultVO) {
     emptyErrorMessage: '请填写驳回原因',
   })
   if (!reason) return
-  await externalPullResultApi.reject({ id: result.id, rejectReason: reason })
+  await externalPullResultApi.reject({ id: result.id, notes: reason })
   message.success('已驳回')
   if (detailRecord.value) await reloadDetail(detailRecord.value.id)
 }
@@ -520,8 +527,8 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
   return tasks.value
     .filter(
       (t) =>
-        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED')
-        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
+        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED') ||
+        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
     )
     .slice(0, 5)
     .map((t) => ({
@@ -529,17 +536,17 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
       title: `${t.taskCode} - ${t.taskName}`,
       statusLabel: taskStatusLabel(t.status),
       statusTone: (isExternalPullTaskStatus(t.status) && t.status === 'FAILED' ? 'red' : 'blue') as
-      | 'red'
-      | 'blue',
+        | 'red'
+        | 'blue',
       description:
-        t.failureReason
-        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中…' : undefined),
+        t.failureReason ||
+        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中…' : undefined),
       time: t.startedAt || undefined,
       actions: [{ key: 'detail', label: '详情' }],
     }))
 })
 
-function handlePullResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
+function handlePullResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
   const record = tasks.value.find((t) => t.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -806,7 +813,7 @@ onMounted(async () => {
           <a-textarea
             v-model:value="sourceForm.fieldWhitelist"
             :rows="3"
-            placeholder="如 {&quot;t_score&quot;:[&quot;id&quot;,&quot;score&quot;]}"
+            placeholder='如 {"t_score":["id","score"]}'
             class="external-pull__mono"
           />
         </a-form-item>
@@ -875,11 +882,11 @@ onMounted(async () => {
             class="external-pull__mono"
           />
         </a-form-item>
-        <a-form-item label="SQL 参数 JSON（可选）">
+        <a-form-item label="SQL 参数 JSON 数组（可选）">
           <a-textarea
             v-model:value="taskForm.sqlParameters"
             :rows="2"
-            placeholder="如 {&quot;startDate&quot;:&quot;2025-01-01&quot;}"
+            placeholder='如 ["2025-01-01", "2025-12-31"]'
             class="external-pull__mono"
           />
         </a-form-item>
