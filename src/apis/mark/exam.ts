@@ -1,3 +1,4 @@
+import type { ScannerKioskScanMode } from './scanner-kiosk'
 /**
  * 阅卷考试主链 API - 对接 edu-mark 模块 ExamMarkController
  *
@@ -9,7 +10,6 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
-import type { ScannerKioskScanMode } from './scanner-kiosk'
 
 /** 考试状态编码 - 对应后端 ExamStatus 枚举（仅保留批改链有意义的状态） */
 export type ExamStatusCode = 'ACTIVE' | 'CLOSED'

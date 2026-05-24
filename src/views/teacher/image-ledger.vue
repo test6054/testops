@@ -41,7 +41,7 @@
         <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
         <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
         <span v-if="attentionContext.scanBatchId"
-          >扫描批次：{{ attentionContext.scanBatchId }}</span
+        >扫描批次：{{ attentionContext.scanBatchId }}</span
         >
         <span v-if="attentionContext.paperInstanceId"
           >试卷实例：{{ attentionContext.paperInstanceId }}</span

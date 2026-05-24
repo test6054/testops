@@ -20,6 +20,9 @@ import type {
   ExternalPullTaskVO,
   ExternalSourceType,
 } from '@/apis/quality'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   EXTERNAL_PULL_TASK_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_LABEL,
@@ -31,9 +34,6 @@ import {
   isExternalPullTaskStatus,
   isExternalSourceType,
 } from '@/apis/quality'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'

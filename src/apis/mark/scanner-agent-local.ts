@@ -41,24 +41,24 @@ export type AgentHealthStatus = 'RUNNING'
 
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
 
-export type LocalScanJobStatus =
-  | 'CREATED'
-  | 'SCANNING'
-  | 'PAUSED'
-  | 'READYTOUPLOAD'
-  | 'UPLOADING'
-  | 'REPORTED'
-  | 'FAILED'
-  | 'RETRYING'
-  | 'CANCELLED'
+export type LocalScanJobStatus
+  = | 'CREATED'
+    | 'SCANNING'
+    | 'PAUSED'
+    | 'READYTOUPLOAD'
+    | 'UPLOADING'
+    | 'REPORTED'
+    | 'FAILED'
+    | 'RETRYING'
+    | 'CANCELLED'
 
-export type LocalScanPageStatus =
-  | 'CAPTURED'
-  | 'PREPROCESSED'
-  | 'UPLOADING'
-  | 'UPLOADED'
-  | 'FAILED'
-  | 'DELETED'
+export type LocalScanPageStatus
+  = | 'CAPTURED'
+    | 'PREPROCESSED'
+    | 'UPLOADING'
+    | 'UPLOADED'
+    | 'FAILED'
+    | 'DELETED'
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -197,6 +197,7 @@ export interface ScanJobListResponse {
 export interface ListScanJobsParams {
   examId?: string
   scannerDeviceId?: string
+  scannerStationId?: string
   includeTerminal?: boolean
 }
 
@@ -246,6 +247,9 @@ export async function listScanJobs(params: ListScanJobsParams = {}): Promise<Sca
   }
   if (params.scannerDeviceId) {
     query.set('scannerDeviceId', params.scannerDeviceId)
+  }
+  if (params.scannerStationId) {
+    query.set('scannerStationId', params.scannerStationId)
   }
   if (typeof params.includeTerminal === 'boolean') {
     query.set('includeTerminal', String(params.includeTerminal))
@@ -388,8 +392,8 @@ async function parseLocalAgentResponse(response: Response): Promise<unknown> {
   }
   const envelope = validateLocalApiResult(result, response)
   if (!response.ok || !envelope.success) {
-    const message =
-      envelope.message || `本地 Scanner Agent 请求失败：${envelope.code || response.status}`
+    const message
+      = envelope.message || `本地 Scanner Agent 请求失败：${envelope.code || response.status}`
     const busyError = tryParseBusyError(message)
     if (busyError) {
       throw busyError
@@ -525,15 +529,15 @@ function requireAgentDiagnosticStatus(
 function requireScanJobStatus(value: Record<string, unknown>, field: string): LocalScanJobStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CREATED' &&
-    fieldValue !== 'SCANNING' &&
-    fieldValue !== 'PAUSED' &&
-    fieldValue !== 'READYTOUPLOAD' &&
-    fieldValue !== 'UPLOADING' &&
-    fieldValue !== 'REPORTED' &&
-    fieldValue !== 'FAILED' &&
-    fieldValue !== 'RETRYING' &&
-    fieldValue !== 'CANCELLED'
+    fieldValue !== 'CREATED'
+    && fieldValue !== 'SCANNING'
+    && fieldValue !== 'PAUSED'
+    && fieldValue !== 'READYTOUPLOAD'
+    && fieldValue !== 'UPLOADING'
+    && fieldValue !== 'REPORTED'
+    && fieldValue !== 'FAILED'
+    && fieldValue !== 'RETRYING'
+    && fieldValue !== 'CANCELLED'
   ) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描任务状态`)
   }
@@ -543,12 +547,12 @@ function requireScanJobStatus(value: Record<string, unknown>, field: string): Lo
 function requireScanPageStatus(value: Record<string, unknown>, field: string): LocalScanPageStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CAPTURED' &&
-    fieldValue !== 'PREPROCESSED' &&
-    fieldValue !== 'UPLOADING' &&
-    fieldValue !== 'UPLOADED' &&
-    fieldValue !== 'FAILED' &&
-    fieldValue !== 'DELETED'
+    fieldValue !== 'CAPTURED'
+    && fieldValue !== 'PREPROCESSED'
+    && fieldValue !== 'UPLOADING'
+    && fieldValue !== 'UPLOADED'
+    && fieldValue !== 'FAILED'
+    && fieldValue !== 'DELETED'
   ) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描页状态`)
   }

@@ -25,13 +25,13 @@
  *   对账，不通过数组下标猜测。
  */
 import type { Ref } from 'vue'
-import { computed, ref } from 'vue'
 import type { ScanLiveEventVO, ScanLiveSubscribeFilter } from '@/apis/mark/scan-live'
-import { listRecentScanEvents, subscribeScanLive } from '@/apis/mark/scan-live'
 import type {
   ExamScannerPageLedgerRequest,
   ExamScannerPageLedgerVO,
 } from '@/apis/mark/scanner-kiosk'
+import { computed, ref } from 'vue'
+import { listRecentScanEvents, subscribeScanLive } from '@/apis/mark/scan-live'
 import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
 import mittBus from '@/utils/mitt'

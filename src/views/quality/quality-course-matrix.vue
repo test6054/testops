@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
-import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
@@ -46,6 +45,11 @@ import type {
   RubricItemVO,
   SupportLevel,
 } from '@/apis/quality'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AGGREGATION_FUNCTION_LABEL,
   ASSESSMENT_ITEM_TYPE_LABEL,
@@ -64,11 +68,6 @@ import {
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
 } from '@/apis/quality'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
@@ -76,6 +75,7 @@ import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 

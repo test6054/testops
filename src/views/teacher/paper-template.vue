@@ -389,12 +389,6 @@ import type {
   ExamQuestionTemplateVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
-import {
-  getExamTemplate,
-  OBJECTIVE_COMPARE_POLICY_OPTIONS,
-  saveExamTemplate,
-  saveStandardAnswer,
-} from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -404,6 +398,12 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
+import {
+  getExamTemplate,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  saveExamTemplate,
+  saveStandardAnswer,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,

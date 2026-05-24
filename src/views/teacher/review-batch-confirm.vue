@@ -139,16 +139,16 @@ import type {
   ReviewTaskItemVO,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam'
+import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   batchConfirmQuestionGrades,
   listReviewTasks,
   pageExams,
   REVIEW_TASK_TYPE_META,
 } from '@/apis/mark/exam'
-import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import StageWorkbenchShell from '@/components/layout/StageWorkbenchShell.vue'
 import UiAlertStrip from '@/components/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui/UiButton.vue'
@@ -158,7 +158,7 @@ import UiTag from '@/components/ui/UiTag.vue'
 
 const router = useRouter()
 const examLoading = ref(false)
-const examOptions = ref<{ label: string; value: string }[]>([])
+const examOptions = ref<{ label: string, value: string }[]>([])
 const selectedExamId = ref<string | undefined>(undefined)
 const loading = ref(false)
 const submitting = ref(false)

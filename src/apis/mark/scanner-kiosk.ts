@@ -1,6 +1,6 @@
 import type { ScanAttentionStatusCode, ScanAttentionTypeCode } from '@/apis/mark/exam'
-import { validateScanAttentionStatus } from '@/apis/mark/exam'
 import type { PageResult, QueryDto } from '@/types'
+import { validateScanAttentionStatus } from '@/apis/mark/exam'
 import http from '@/config/axios'
 
 export type { ScanAttentionStatusCode, ScanAttentionTypeCode }
@@ -10,11 +10,11 @@ export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
 export type ExamScannerPageServerReceiveStatus = 'RECEIVED'
-export type ExamScannerPageRegistrationStatus =
-  | 'REGISTERED'
-  | 'PENDING'
-  | 'DISCARDED'
-  | 'SUPERSEDED'
+export type ExamScannerPageRegistrationStatus
+  = | 'REGISTERED'
+    | 'PENDING'
+    | 'DISCARDED'
+    | 'SUPERSEDED'
 
 export interface ExamScannerKioskContextRequest {
   examId: string
@@ -187,7 +187,7 @@ export interface ExamScannerBatchStartRequest {
   examId: string
   scannerDeviceId: string
   /** 扫描站点 ID（绑定 station 时使用） */
-  scannerStationId?: string
+  scannerStationId: string
   declaredClassIds: string[]
   scanMode: ScannerKioskScanMode
   /** 仅 SUPPLEMENT 模式必填：补扫的目标页码（>=1） */
@@ -207,6 +207,8 @@ export interface ExamScannerBatchStartRequest {
 export interface ExamScannerBatchCloseRequest {
   examId: string
   scannerDeviceId: string
+  /** 扫描站点 ID，和 scannerDeviceId 共同定位唯一工作台锚点 */
+  scannerStationId: string
   /** 当前 Agent 任务对应的批次外部号，后端用它防止误关已切换的新锚点 */
   batchExternalNo: string
   /** true 时主动清空 pending pages，否则保留并通过 pendingPages 诊断回执提示 */
@@ -222,6 +224,8 @@ export interface ExamScannerBatchCloseRequest {
 export interface ExamScannerBatchSealRequest {
   scanBatchId: string
   scannerDeviceId: string
+  /** 扫描站点 ID，用于校验封存请求与批次所属工位一致 */
+  scannerStationId: string
 }
 
 /**
@@ -253,6 +257,7 @@ export interface ExamScannerBatchLifecycleVO {
   batchExternalNo?: string
   examId?: string
   scannerDeviceId?: string
+  scannerStationId?: string
   scanMode?: ScannerKioskScanMode
   /** 补扫目标页号；仅 SUPPLEMENT 模式有值 */
   targetPageNo?: number
@@ -317,12 +322,13 @@ export function discardScannedPage(payload: ExamScannedPageDiscardRequest) {
 }
 
 /**
- * 扫描工作台页级账本查询请求。后端按 (tenantId, examId, scannerDeviceId, batchExternalNo) 拼装
+ * 扫描工作台页级账本查询请求。后端按 (tenantId, examId, scannerDeviceId, scannerStationId, batchExternalNo) 拼装
  * 某批次的逐页状态视图：已 commit 走 t_exam_scanned_page，未 commit 走 Redis pending。
  */
 export interface ExamScannerPageLedgerRequest {
   examId: string
   scannerDeviceId: string
+  scannerStationId: string
   batchExternalNo: string
 }
 
@@ -374,6 +380,7 @@ export interface ExamScannerPageLedgerVO {
   batchExternalNo: string
   scanBatchId?: string
   scannerDeviceId: string
+  scannerStationId: string
   scanMode?: ScannerKioskScanMode
   /** 数据来源：DATABASE 已 commit / REDIS_PENDING 未 commit / NONE 空批次 */
   dataSource: ExamScannerLedgerDataSource
@@ -437,8 +444,8 @@ function optionalBoolean(value: unknown, fieldName: string): boolean | undefined
 
 function requireStringList(value: unknown, fieldName: string): string[] {
   if (
-    !Array.isArray(value) ||
-    value.some((item) => typeof item !== 'string' || item.length === 0)
+    !Array.isArray(value)
+    || value.some((item) => typeof item !== 'string' || item.length === 0)
   ) {
     throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
   }
@@ -454,8 +461,8 @@ function optionalStringList(value: unknown, fieldName: string): string[] | undef
 
 function requireNullableStringList(value: unknown, fieldName: string): (string | null)[] {
   if (
-    !Array.isArray(value) ||
-    value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
+    !Array.isArray(value)
+    || value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
   ) {
     throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
   }
@@ -513,10 +520,10 @@ function requireLedgerServerReceiveStatus(value: unknown): ExamScannerPageServer
 
 function requireLedgerRegistrationStatus(value: unknown): ExamScannerPageRegistrationStatus {
   if (
-    value !== 'REGISTERED' &&
-    value !== 'PENDING' &&
-    value !== 'DISCARDED' &&
-    value !== 'SUPERSEDED'
+    value !== 'REGISTERED'
+    && value !== 'PENDING'
+    && value !== 'DISCARDED'
+    && value !== 'SUPERSEDED'
   ) {
     throw new TypeError('扫描工作台接口 items.registrationStatus 格式错误')
   }
@@ -717,6 +724,7 @@ function validateScannerBatchLifecycle(value: unknown): ExamScannerBatchLifecycl
     batchExternalNo: optionalString(record.batchExternalNo, 'batchExternalNo'),
     examId: optionalString(record.examId, 'examId'),
     scannerDeviceId: optionalString(record.scannerDeviceId, 'scannerDeviceId'),
+    scannerStationId: optionalString(record.scannerStationId, 'scannerStationId'),
     scanMode: optionalScanMode(record.scanMode, 'scanMode'),
     targetPageNo: optionalFiniteNumber(record.targetPageNo, 'targetPageNo'),
     supplementReason: optionalString(record.supplementReason, 'supplementReason'),
@@ -786,10 +794,10 @@ function optionalScanAttentionType(
 
 function requireScanAttentionType(value: unknown, fieldName: string): ScanAttentionTypeCode {
   if (
-    value !== 'QUALITY_BLOCK' &&
-    value !== 'PROCESSING_BLOCK' &&
-    value !== 'DUPLICATE_PENDING' &&
-    value !== 'RECOGNITION_REVIEW'
+    value !== 'QUALITY_BLOCK'
+    && value !== 'PROCESSING_BLOCK'
+    && value !== 'DUPLICATE_PENDING'
+    && value !== 'RECOGNITION_REVIEW'
   ) {
     throw new TypeError(`${fieldName} 格式错误`)
   }
@@ -812,6 +820,7 @@ function validateScannerPageLedger(value: unknown): ExamScannerPageLedgerVO {
     batchExternalNo: requireString(record.batchExternalNo, 'batchExternalNo'),
     scanBatchId: optionalString(record.scanBatchId, 'scanBatchId'),
     scannerDeviceId: requireString(record.scannerDeviceId, 'scannerDeviceId'),
+    scannerStationId: requireString(record.scannerStationId, 'scannerStationId'),
     scanMode: optionalScanMode(record.scanMode, 'scanMode'),
     dataSource: requireLedgerDataSource(record.dataSource),
     items: record.items.map(validateScannerPageLedgerItem),

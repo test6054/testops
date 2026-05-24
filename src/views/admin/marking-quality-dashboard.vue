@@ -371,18 +371,6 @@ import type {
   ReviewerMetricStatusCode,
   ReviewerQualityMetricVO,
 } from '@/apis/mark/marking-quality'
-import {
-  createSpotCheckTasks,
-  getLatestProgress,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_COLOR,
-  PROGRESS_RISK_LEVEL_LABEL,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_COLOR,
-  REVIEWER_METRIC_STATUS_LABEL,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
@@ -395,6 +383,18 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  createSpotCheckTasks,
+  getLatestProgress,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_LABEL,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_LABEL,
+  takeProgressSnapshot,
+} from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,
@@ -626,8 +626,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate =
-    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate
+    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0

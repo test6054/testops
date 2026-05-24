@@ -45,8 +45,8 @@ import {
   getAgentHealth,
   getPageImageUrl,
   getScanJob,
-  listScanJobs,
   listLocalScanners,
+  listScanJobs,
   openDiagnosticsExport,
   pauseScanJob,
   resumeScanJob,
@@ -135,13 +135,15 @@ const {
   // 在 start / onReady / refresh 时间点自动触发；批次切换由下方 watch 显式 refreshPageLedger。
   ledgerFilter: () => {
     const device = getActiveScannerDeviceId()
+    const station = getActiveScannerStationId()
     const batchExternalNo = getActiveBatchExternalNo()
-    if (!examId.value || !device || !batchExternalNo) {
+    if (!examId.value || !device || !station || !batchExternalNo) {
       return null
     }
     return {
       examId: examId.value,
       scannerDeviceId: device,
+      scannerStationId: station,
       batchExternalNo,
     }
   },
@@ -201,7 +203,7 @@ const scanProgress = computed(() => {
 })
 const jobIsTerminal = computed(() => {
   const status = currentJob.value?.status
-  return status === 'REPORTED' || status === 'CANCELLED'
+  return status === 'REPORTED'
 })
 const canCancelJob = computed(() => {
   const status = currentJob.value?.status
@@ -261,7 +263,7 @@ const scanBlockedReason = computed(() => {
   if (health.value?.tokenResetRequired) return '服务端已重置设备 token'
   if (health.value?.upgradeRequired) return '本地 Agent 或 WebView2 客户端需要升级'
   if (!health.value?.scannerConnected) return '本地扫描仪未连接'
-  if (!health.value?.scanAllowed) return '服务端心跳未允许扫描'
+  if (health.value.lastHeartbeatAt && !health.value.scanAllowed) return '服务端心跳未允许扫描'
   if (!selectedScannerId.value) return '未检测到可用本地扫描仪'
   if (!kioskContext.value) return '考试扫描上下文未加载'
   if (currentJob.value && !jobIsTerminal.value) return '当前扫描任务未结束'
@@ -290,7 +292,7 @@ const workState = computed(() => {
   const status = job?.status
   if (status === 'REPORTED') return { text: '已自动上传并提交批次', tone: 'success' }
   if (status === 'FAILED') return { text: '存在失败项', tone: 'danger' }
-  if (status === 'CANCELLED') return { text: '已取消', tone: 'muted' }
+  if (status === 'CANCELLED') return { text: '已取消，待删除清理', tone: 'muted' }
   if (job && status === 'PAUSED') return { text: scanModeText(job.scanMode, '已暂停'), tone: 'running' }
   if (job) return { text: scanModeText(job.scanMode, '上传中'), tone: 'running' }
   if (scanBlockedReason.value) return { text: '入口阻断', tone: 'danger' }
@@ -573,21 +575,29 @@ async function refreshKioskContext() {
 async function recoverLocalScanJob() {
   const ctx = kioskContext.value
   const deviceId = getActiveScannerDeviceId()
-  if (!examId.value || !ctx || !deviceId) {
+  const stationId = getActiveScannerStationId()
+  if (!examId.value || !ctx || !deviceId || !stationId) {
     localJobRecoveryMessage.value = ''
     return
   }
   const response = await listScanJobs({
     examId: examId.value,
     scannerDeviceId: deviceId,
-    includeTerminal: false,
+    scannerStationId: stationId,
+    includeTerminal: true,
   })
   const currentJobId = currentJob.value?.scanJobId || ''
   const hasActiveCurrentJob = Boolean(currentJob.value && !isTerminalJob(currentJob.value))
-  const recoverableJob = response.jobs.find((job) => job.scanJobId === currentJobId) || (!hasActiveCurrentJob
+  const currentPersistedJob = currentJobId
+    ? response.jobs.find((job) => job.scanJobId === currentJobId)
+    : undefined
+  const recoverableJob = (currentPersistedJob && (hasActiveCurrentJob || isRecoverableLocalJob(currentPersistedJob))
+    ? currentPersistedJob
+    : undefined) || (!hasActiveCurrentJob
     ? response.jobs.find((job) => {
       return job.examId === examId.value
         && job.scannerDeviceId === deviceId
+        && job.scannerStationId === stationId
         && sameOrderedStringList(job.declaredClassIds, ctx.classIds)
         && isRecoverableLocalJob(job)
     })
@@ -713,14 +723,18 @@ async function submitScanJob() {
   resetBusyState()
   const isSupplement = scanMode.value === 'SUPPLEMENT'
   const scannerDeviceId = getActiveScannerDeviceId()
+  const scannerStationId = getActiveScannerStationId()
   try {
     if (!scannerDeviceId) {
       throw new Error('考试扫描设备缺失，无法创建服务端批次锚点')
     }
+    if (!scannerStationId) {
+      throw new Error('考试扫描站点缺失，无法创建服务端批次锚点')
+    }
     const batchLifecycle = await startScannerKioskBatch({
       examId: examId.value,
       scannerDeviceId,
-      scannerStationId: queryScannerStationId.value || kioskContext.value.device?.scannerStationId,
+      scannerStationId,
       declaredClassIds: kioskContext.value.classIds,
       scanMode: scanMode.value,
       targetPageNo: isSupplement ? supplementTargetPageNo.value : undefined,
@@ -813,8 +827,8 @@ function sameOrderedStringList(left: string[], right: string[]) {
 }
 
 /**
- * 可恢复任务状态白名单：Reported / Cancelled 已进入终态收口，不在刷新后自动接管；
- * Failed 保留在工作台，允许继续重试上传、重试 commit、删除或废弃。
+ * 可恢复任务状态白名单：Cancelled 是待删除清理态，刷新后必须接管并阻断切换 / 解绑；
+ * Failed 保留在工作台，允许继续重试上传、重试 commit、删除或废弃，Reported 不再接管。
  */
 function isRecoverableLocalJob(job: ScanJobResponse) {
   return [
@@ -825,6 +839,7 @@ function isRecoverableLocalJob(job: ScanJobResponse) {
     'UPLOADING',
     'RETRYING',
     'FAILED',
+    'CANCELLED',
   ].includes(job.status)
 }
 
@@ -1116,6 +1131,10 @@ async function sealLatestBatch() {
     errorMessage.value = '当前考试尚无已落库扫描批次或设备信息缺失，无法封存'
     return
   }
+  if (!device.scannerStationId) {
+    errorMessage.value = '当前考试扫描站点缺失，无法封存批次'
+    return
+  }
   const confirmed = await confirmAsync({
     title: '封存批次',
     content: `确认封存批次 ${batch.batchNo || batch.batchExternalNo}？封存后无法再追加扫描。`,
@@ -1127,6 +1146,7 @@ async function sealLatestBatch() {
     await sealScannerKioskBatch({
       scanBatchId: batch.scanBatchId,
       scannerDeviceId: device.scannerDeviceId,
+      scannerStationId: device.scannerStationId,
     })
     successMessage.value = '批次已封存'
     await refreshKioskContext()
@@ -1178,9 +1198,13 @@ function getActiveScannerDeviceId() {
   return queryScannerDeviceId.value || kioskContext.value?.device?.scannerDeviceId || ''
 }
 
+function getActiveScannerStationId() {
+  return queryScannerStationId.value || kioskContext.value?.device?.scannerStationId || ''
+}
+
 function isTerminalJob(job: ScanJobResponse) {
   const status = job.status
-  return status === 'REPORTED' || status === 'CANCELLED'
+  return status === 'REPORTED'
 }
 
 /**
@@ -1188,7 +1212,7 @@ function isTerminalJob(job: ScanJobResponse) {
  * 并进入人工处理提示，避免继续轮询同一个失败任务。
  */
 function isPollingTerminalJob(job: ScanJobResponse) {
-  return isTerminalJob(job) || job.status === 'FAILED'
+  return isTerminalJob(job) || job.status === 'CANCELLED' || job.status === 'FAILED'
 }
 
 /**
@@ -1199,15 +1223,20 @@ async function closeActiveBatch(discardPendingPages: boolean) {
   const batchExternalNo = getActiveBatchExternalNo()
   if (!batchExternalNo) return
   const scannerDeviceId = getActiveScannerDeviceId()
+  const scannerStationId = getActiveScannerStationId()
   if (!examId.value) {
     throw new Error('当前扫描锚点缺少考试 ID，无法关闭服务端批次')
   }
   if (!scannerDeviceId) {
     throw new Error('当前扫描锚点缺少扫描设备，无法关闭服务端批次')
   }
+  if (!scannerStationId) {
+    throw new Error('当前扫描锚点缺少扫描站点，无法关闭服务端批次')
+  }
   const lifecycle = await closeScannerKioskBatch({
     examId: examId.value,
     scannerDeviceId,
+    scannerStationId,
     batchExternalNo,
     discardPendingPages,
   })

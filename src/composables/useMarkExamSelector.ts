@@ -11,10 +11,10 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
  *   onMounted(init)
  */
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { pageExams } from '@/apis/mark/exam'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useUserStore } from '@/stores/modules/user'
@@ -45,8 +45,8 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const loading = ref(false)
 
   // 应用优先级：URL > 全局 Store > 空
-  const initialId =
-    (route.query.examId ? String(route.query.examId) : '') || examContext.currentExamId || ''
+  const initialId
+    = (route.query.examId ? String(route.query.examId) : '') || examContext.currentExamId || ''
   const selectedExamId = ref<string | undefined>(initialId || undefined)
 
   // 页面本地选择变化 → 同步到全局 Store，使跨页面访问保持一致

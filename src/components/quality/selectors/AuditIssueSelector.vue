@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditIssueStatus, AuditIssueVO } from '@/apis/quality'
-import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL, auditIssueApi } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
+import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL, auditIssueApi } from '@/apis/quality'
 
 interface Props {
   value?: string | null
@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: AuditIssueVO]
+  "change": [value: string | null, option?: AuditIssueVO]
 }>()
 
 const options = ref<AuditIssueVO[]>([])
