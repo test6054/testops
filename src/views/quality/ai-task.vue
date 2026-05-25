@@ -20,6 +20,17 @@ import type {
   AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   AI_OUTPUT_VALIDATION_COLOR,
   AI_OUTPUT_VALIDATION_LABEL,
@@ -35,17 +46,6 @@ import {
   isAiTaskStatus,
   isAiTaskType,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   CourseSelector,
   ProgramSelector,

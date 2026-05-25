@@ -1302,15 +1302,6 @@ function optionalFiniteNumber(value: unknown, fieldName: string): number | undef
   }
   return value
 }
-
-function optionalBoolean(value: unknown, fieldName: string): boolean | undefined {
-  if (value === undefined || value === null) return undefined
-  if (typeof value !== 'boolean') {
-    throw new TypeError(`${fieldName} 接口返回格式错误`)
-  }
-  return value
-}
-
 function optionalStringList(value: unknown, fieldName: string): string[] | undefined {
   if (value === undefined || value === null) return undefined
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {

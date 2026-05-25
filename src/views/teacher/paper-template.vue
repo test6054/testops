@@ -389,12 +389,6 @@ import type {
   ExamQuestionTemplateVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
-import {
-  getExamTemplate,
-  OBJECTIVE_COMPARE_POLICY_OPTIONS,
-  saveExamTemplate,
-  saveStandardAnswer,
-} from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -404,6 +398,12 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
+import {
+  getExamTemplate,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  saveExamTemplate,
+  saveStandardAnswer,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -469,7 +469,7 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string; totalPages?: number }>({
+const form = reactive<{ templateName: string, totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -561,8 +561,8 @@ async function loadTemplate(): Promise<void> {
   } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
-    const isNotConfigured =
-      errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
+    const isNotConfigured
+      = errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
     if (errMsg && !isNotConfigured) {
       // 真实加载失败：D-9 错误态 + 警告提示
       templateLoadError.value = error
@@ -816,9 +816,9 @@ const answerFormRules: Record<string, Rule[]> = {
       validator: async (_rule: Rule, value: string) => {
         const trimmed = (value ?? '').trim()
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy !== 'AI_GRADE' &&
-          !trimmed
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy !== 'AI_GRADE'
+          && !trimmed
         ) {
           return Promise.reject(new Error('客观题需填写标准答案（选 AI 评分策略可留空）'))
         }

@@ -92,6 +92,9 @@
 
 <script setup lang="ts">
 import type { AiTaskStatus } from '@/apis/quality'
+import { InboxOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
@@ -99,9 +102,6 @@ import {
   indirectResponseApi,
   isAiTaskStatus,
 } from '@/apis/quality'
-import { InboxOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { UiButton } from '@/components/ui-guide/ui'
 
 /**

@@ -15,17 +15,17 @@ import type {
   ArchiveVO,
   ExpertPackageExportPayload,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   ARCHIVE_BUSINESS_TYPE_LABEL,
   archiveApi,
   EXPERT_PACKAGE_TYPE_LABEL,
   isArchiveBusinessType,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiSearchForm } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -147,7 +147,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -156,8 +156,8 @@ function handlePageChange(payload: { current: number; pageSize: number }) {
 function syncFilterToQuery() {
   const businessTypeRaw = filterModel.value.businessType
   query.businessType = isArchiveBusinessType(businessTypeRaw) ? businessTypeRaw : undefined
-  query.archiveCategory =
-    typeof filterModel.value.archiveCategory === 'string' ? filterModel.value.archiveCategory : ''
+  query.archiveCategory
+    = typeof filterModel.value.archiveCategory === 'string' ? filterModel.value.archiveCategory : ''
   query.keyword = typeof filterModel.value.keyword === 'string' ? filterModel.value.keyword : ''
 }
 

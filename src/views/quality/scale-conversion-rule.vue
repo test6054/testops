@@ -13,11 +13,11 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
-import { isScaleType, SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { isScaleType, SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -32,7 +32,7 @@ const query = reactive<ScaleConversionRuleQueryPayload>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType; label: string }[] = [
+const scaleTypeOptions: { value: ScaleType, label: string }[] = [
   { value: 'FIVE_LEVEL', label: SCALE_TYPE_LABEL.FIVE_LEVEL },
   { value: 'FOUR_LEVEL', label: SCALE_TYPE_LABEL.FOUR_LEVEL },
   { value: 'TEN_POINT', label: SCALE_TYPE_LABEL.TEN_POINT },
@@ -111,7 +111,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()

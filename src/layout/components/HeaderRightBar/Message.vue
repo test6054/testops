@@ -55,17 +55,17 @@
 
 <script lang="ts" setup>
 import type { InboxMessageListItemDTO, SystemAnnouncementResponse } from '@/apis/edu/message'
+import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getInboxMessages,
   getPublishedAnnouncementList,
   markAllAnnouncementsAsRead,
   markAllAsRead,
 } from '@/apis/edu/message'
-import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
 import router from '@/router'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { isErrorHandled } from '@/utils/error-handler'
@@ -159,8 +159,8 @@ const getMessageData = async () => {
       return
     }
 
-    const inboxMessages: UnifiedMessageItem[] =
-      inboxResult.status === 'fulfilled'
+    const inboxMessages: UnifiedMessageItem[]
+      = inboxResult.status === 'fulfilled'
         ? inboxResult.value.list.map((item: InboxMessageListItemDTO) => ({
             id: item.id,
             subject: item.subject,
@@ -171,8 +171,8 @@ const getMessageData = async () => {
           }))
         : []
 
-    const announcementMessages: UnifiedMessageItem[] =
-      announcementResult.status === 'fulfilled'
+    const announcementMessages: UnifiedMessageItem[]
+      = announcementResult.status === 'fulfilled'
         ? announcementResult.value.list.map((item: SystemAnnouncementResponse) => ({
             id: item.id,
             subject: `【公告】${item.title}`,

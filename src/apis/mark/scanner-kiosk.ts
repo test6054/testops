@@ -1,6 +1,6 @@
 import type { ScanAttentionStatusCode, ScanAttentionTypeCode } from '@/apis/mark/exam'
-import { validateScanAttentionStatus } from '@/apis/mark/exam'
 import type { PageResult, QueryDto } from '@/types'
+import { validateScanAttentionStatus } from '@/apis/mark/exam'
 import http from '@/config/axios'
 
 export type { ScanAttentionStatusCode, ScanAttentionTypeCode }
@@ -10,11 +10,11 @@ export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
 export type ExamScannerPageServerReceiveStatus = 'RECEIVED'
-export type ExamScannerPageRegistrationStatus =
-  | 'REGISTERED'
-  | 'PENDING'
-  | 'DISCARDED'
-  | 'SUPERSEDED'
+export type ExamScannerPageRegistrationStatus
+  = | 'REGISTERED'
+    | 'PENDING'
+    | 'DISCARDED'
+    | 'SUPERSEDED'
 
 export interface ExamScannerKioskContextRequest {
   examId: string
@@ -116,10 +116,9 @@ export interface ExamScannerKioskContextVO {
   supplementBlockReason?: string
 }
 
-export function getScannerKioskContext(payload: ExamScannerKioskContextRequest) {
-  return http
-    .post<unknown>('/api/mark/scanner/kiosk/context', payload)
-    .then(validateScannerKioskContext)
+export async function getScannerKioskContext(payload: ExamScannerKioskContextRequest) {
+  const data = await http.post<unknown>('/api/mark/scanner/kiosk/context', payload)
+  return validateScannerKioskContext(data)
 }
 
 // ============================================================================
@@ -167,10 +166,9 @@ export interface ExamScannerKioskExamOptionVO {
   scanBatchCount: number
 }
 
-export function pageScannerKioskExamOptions(payload: ExamScannerKioskExamOptionRequest) {
-  return http
-    .post<unknown>('/api/mark/scanner/kiosk/exam-options', payload)
-    .then(validateScannerKioskExamOptionPage)
+export async function pageScannerKioskExamOptions(payload: ExamScannerKioskExamOptionRequest) {
+  const data = await http.post<unknown>('/api/mark/scanner/kiosk/exam-options', payload)
+  return validateScannerKioskExamOptionPage(data)
 }
 
 // ============================================================================
@@ -281,28 +279,24 @@ export interface ExamScannerBatchLifecycleVO {
   sealedBy?: string
 }
 
-export function startScannerKioskBatch(payload: ExamScannerBatchStartRequest) {
-  return http
-    .post<unknown>('/api/mark/scanner/kiosk/batch/start', payload)
-    .then(validateScannerBatchLifecycle)
+export async function startScannerKioskBatch(payload: ExamScannerBatchStartRequest) {
+  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/start', payload)
+  return validateScannerBatchLifecycle(data)
 }
 
-export function closeScannerKioskBatch(payload: ExamScannerBatchCloseRequest) {
-  return http
-    .post<unknown>('/api/mark/scanner/kiosk/batch/close', payload)
-    .then(validateScannerBatchLifecycle)
+export async function closeScannerKioskBatch(payload: ExamScannerBatchCloseRequest) {
+  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/close', payload)
+  return validateScannerBatchLifecycle(data)
 }
 
-export function sealScannerKioskBatch(payload: ExamScannerBatchSealRequest) {
-  return http
-    .post<unknown>('/api/mark/scanner/kiosk/batch/seal', payload)
-    .then(validateScannerBatchLifecycle)
+export async function sealScannerKioskBatch(payload: ExamScannerBatchSealRequest) {
+  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/seal', payload)
+  return validateScannerBatchLifecycle(data)
 }
 
-export function discardScannerKioskBatch(payload: ExamScanBatchDiscardRequest) {
-  return http
-    .post<unknown>('/api/mark/scanner/kiosk/batch/discard', payload)
-    .then(validateBooleanResult)
+export async function discardScannerKioskBatch(payload: ExamScanBatchDiscardRequest) {
+  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/discard', payload)
+  return validateBooleanResult(data)
 }
 
 /**
@@ -315,10 +309,9 @@ export interface ExamScannedPageDiscardRequest {
   discardReason: string
 }
 
-export function discardScannedPage(payload: ExamScannedPageDiscardRequest) {
-  return http
-    .post<unknown>('/api/mark/scanner/kiosk/page/discard', payload)
-    .then(validateBooleanResult)
+export async function discardScannedPage(payload: ExamScannedPageDiscardRequest) {
+  const data = await http.post<unknown>('/api/mark/scanner/kiosk/page/discard', payload)
+  return validateBooleanResult(data)
 }
 
 /**
@@ -391,10 +384,9 @@ export interface ExamScannerPageLedgerVO {
   attentionCount: number
 }
 
-export function fetchScannerPageLedger(payload: ExamScannerPageLedgerRequest) {
-  return http
-    .post<unknown>('/api/mark/scanner/kiosk/page-ledger', payload)
-    .then(validateScannerPageLedger)
+export async function fetchScannerPageLedger(payload: ExamScannerPageLedgerRequest) {
+  const data = await http.post<unknown>('/api/mark/scanner/kiosk/page-ledger', payload)
+  return validateScannerPageLedger(data)
 }
 
 function requireString(value: unknown, fieldName: string): string {
@@ -435,17 +427,10 @@ function requireBoolean(value: unknown, fieldName: string): boolean {
   return value
 }
 
-function optionalBoolean(value: unknown, fieldName: string): boolean | undefined {
-  if (value === undefined || value === null) {
-    return undefined
-  }
-  return requireBoolean(value, fieldName)
-}
-
 function requireStringList(value: unknown, fieldName: string): string[] {
   if (
-    !Array.isArray(value) ||
-    value.some((item) => typeof item !== 'string' || item.length === 0)
+    !Array.isArray(value)
+    || value.some((item) => typeof item !== 'string' || item.length === 0)
   ) {
     throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
   }
@@ -461,8 +446,8 @@ function optionalStringList(value: unknown, fieldName: string): string[] | undef
 
 function requireNullableStringList(value: unknown, fieldName: string): (string | null)[] {
   if (
-    !Array.isArray(value) ||
-    value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
+    !Array.isArray(value)
+    || value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
   ) {
     throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
   }
@@ -520,10 +505,10 @@ function requireLedgerServerReceiveStatus(value: unknown): ExamScannerPageServer
 
 function requireLedgerRegistrationStatus(value: unknown): ExamScannerPageRegistrationStatus {
   if (
-    value !== 'REGISTERED' &&
-    value !== 'PENDING' &&
-    value !== 'DISCARDED' &&
-    value !== 'SUPERSEDED'
+    value !== 'REGISTERED'
+    && value !== 'PENDING'
+    && value !== 'DISCARDED'
+    && value !== 'SUPERSEDED'
   ) {
     throw new TypeError('扫描工作台接口 items.registrationStatus 格式错误')
   }
@@ -794,10 +779,10 @@ function optionalScanAttentionType(
 
 function requireScanAttentionType(value: unknown, fieldName: string): ScanAttentionTypeCode {
   if (
-    value !== 'QUALITY_BLOCK' &&
-    value !== 'PROCESSING_BLOCK' &&
-    value !== 'DUPLICATE_PENDING' &&
-    value !== 'RECOGNITION_REVIEW'
+    value !== 'QUALITY_BLOCK'
+    && value !== 'PROCESSING_BLOCK'
+    && value !== 'DUPLICATE_PENDING'
+    && value !== 'RECOGNITION_REVIEW'
   ) {
     throw new TypeError(`${fieldName} 格式错误`)
   }

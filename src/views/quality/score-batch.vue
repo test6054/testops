@@ -22,16 +22,6 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
-import {
-  assessmentItemApi,
-  DATA_SOURCE_MODE_LABEL,
-  isDataSourceMode,
-  isScoreBatchStatus,
-  qualityCourseApi,
-  SCORE_BATCH_STATUS_COLOR,
-  SCORE_BATCH_STATUS_LABEL,
-  scoreBatchApi,
-} from '@/apis/quality'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -42,6 +32,16 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import {
+  assessmentItemApi,
+  DATA_SOURCE_MODE_LABEL,
+  isDataSourceMode,
+  isScoreBatchStatus,
+  qualityCourseApi,
+  SCORE_BATCH_STATUS_COLOR,
+  SCORE_BATCH_STATUS_LABEL,
+  scoreBatchApi,
+} from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -149,7 +149,7 @@ function sourceModeLabel(value: unknown): string {
   throw new Error(`数据接入模式不在后端枚举内：${String(value)}`)
 }
 
-type GeneratedRowStatistics = {
+interface GeneratedRowStatistics {
   totalRows: number
   successRows: number
   errorRows: number
@@ -159,9 +159,9 @@ function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
 ): record is GeneratedRowStatistics {
   return (
-    record.totalRows !== undefined &&
-    record.successRows !== undefined &&
-    record.errorRows !== undefined
+    record.totalRows !== undefined
+    && record.successRows !== undefined
+    && record.errorRows !== undefined
   )
 }
 
@@ -206,7 +206,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatus; title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatus, title: string }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PARSING', title: '解析中' },
     { key: 'PREVIEW_READY', title: '预览就绪' },
@@ -318,7 +318,7 @@ async function loadBatches() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadBatches()
@@ -379,7 +379,9 @@ async function handleUpload(options: UploadRequestOption) {
   try {
     const { file } = options
     if (!(file instanceof File)) {
-      throw new TypeError('无效的成绩批次上传文件')
+      message.error('无效的成绩批次上传文件')
+      options.onError?.(new TypeError('无效的成绩批次上传文件'))
+      return
     }
     // 步骤 1：上传 Excel 到 edu-storage 拿 sourceFileId
     const uploaded = await uploadFile(file, { businessType: 'QUALITY_SCORE_IMPORT' })
@@ -606,7 +608,7 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+function handleBatchResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
   const record = batches.value.find((b) => b.id === payload.item.id)
   if (record && payload.action.key === 'preview') openPreview(record)
 }
@@ -863,9 +865,9 @@ onMounted(async () => {
           </template>
           <template
             v-else-if="
-              column.key === 'schoolYear' ||
-              column.key === 'semester' ||
-              column.key === 'createTime'
+              column.key === 'schoolYear'
+                || column.key === 'semester'
+                || column.key === 'createTime'
             "
           >
             {{ text || '-' }}

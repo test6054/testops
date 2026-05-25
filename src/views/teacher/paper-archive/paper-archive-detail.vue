@@ -40,9 +40,7 @@
         <a-descriptions-item label="考期">{{ set.examRound || '-' }}</a-descriptions-item>
         <a-descriptions-item label="保管期限">
           <span v-if="set.permanentRetention">永久保管</span>
-          <span v-else
-            >{{ set.retentionYears ?? '-' }} 年（至 {{ set.retentionUntil || '-' }}）</span
-          >
+          <span v-else>{{ set.retentionYears ?? '-' }} 年（至 {{ set.retentionUntil || '-' }}）</span>
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">
           {{ formatTime(set.createTime) }}
@@ -338,13 +336,29 @@
 
 <script setup lang="ts">
 import type { UploadFile } from 'ant-design-vue'
-import { message } from 'ant-design-vue'
 import type {
   PaperArchiveItemVO,
   PaperArchiveOcrStatusCode,
   PaperArchiveSetStatusCode,
   PaperArchiveSetVO,
 } from '@/apis/mark/paper-archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import {
+  ArrowLeftOutlined,
+  DownloadOutlined,
+  FileSearchOutlined,
+  ProfileOutlined,
+  ReloadOutlined,
+  UploadOutlined,
+} from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  downloadFile as downloadStorageFile,
+  uploadFile as uploadStorageFile,
+} from '@/apis/edu/file-management'
 import {
   getPaperArchiveSetDetail,
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
@@ -357,22 +371,6 @@ import {
   updatePaperArchiveItemTags,
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import {
-  ArrowLeftOutlined,
-  DownloadOutlined,
-  FileSearchOutlined,
-  ProfileOutlined,
-  ReloadOutlined,
-  UploadOutlined,
-} from '@ant-design/icons-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  downloadFile as downloadStorageFile,
-  uploadFile as uploadStorageFile,
-} from '@/apis/edu/file-management'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'

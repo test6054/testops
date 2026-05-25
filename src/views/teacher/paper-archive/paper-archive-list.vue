@@ -242,6 +242,12 @@
 
 <script setup lang="ts">
 import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/paper-archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   activatePaperArchiveSet,
   createPaperArchiveSet,
@@ -249,12 +255,6 @@ import {
   PAPER_ARCHIVE_SET_STATUS_LABEL,
   PAPER_ARCHIVE_SET_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'

@@ -40,6 +40,9 @@ import type {
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -58,9 +61,6 @@ import {
   isAuditSupervisionType,
   isImprovementTaskStatus,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,

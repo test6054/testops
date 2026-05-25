@@ -11,11 +11,11 @@
  * - 持久化只保存少量"用户选择"字段，目录缓存只放内存。
  */
 import type { GraduationRequirementVO, QualityCourseVO, TrainingPlanVO } from '@/apis/quality'
-import { graduationRequirementApi, qualityCourseApi, trainingPlanApi } from '@/apis/quality'
 import type { MajorCategoryVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { graduationRequirementApi, qualityCourseApi, trainingPlanApi } from '@/apis/quality'
+import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 
 export const useQualityStore = defineStore(
   'quality',
@@ -104,7 +104,7 @@ export const useQualityStore = defineStore(
       }
     }
 
-    async function loadTrainingPlanOptions(opts?: { programId?: string; keyword?: string }) {
+    async function loadTrainingPlanOptions(opts?: { programId?: string, keyword?: string }) {
       trainingPlanLoading.value = true
       try {
         const page = await trainingPlanApi.page({

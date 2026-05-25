@@ -13,6 +13,9 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   isScoreBatchStatus,
@@ -21,9 +24,6 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   CourseSelector,
   StudentSelector,
@@ -70,7 +70,7 @@ function batchStatusColor(value: unknown): string {
 function requireFiniteScore(value: unknown, fieldName: string): number {
   const score = Number(value)
   if (!Number.isFinite(score)) {
-    throw new Error(`成绩明细${fieldName}字段异常：${String(value)}`)
+    throw new TypeError(`成绩明细${fieldName}字段异常：${String(value)}`)
   }
   return score
 }
@@ -554,7 +554,7 @@ function handleCourseChange(courseId: string | null) {
           <a-textarea
             v-model:value="editor.rubricBreakdown"
             :rows="3"
-            placeholder='{"rubricItemId": score, ...}'
+            placeholder="{&quot;rubricItemId&quot;: score, ...}"
             class="score-record__mono"
           />
         </a-form-item>

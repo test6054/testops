@@ -21,6 +21,9 @@ import type {
   ProcessEvaluationRecordSavePayload,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
@@ -32,9 +35,6 @@ import {
   processNodeApi,
   processRecordApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import {
   AssessmentItemSelector,
@@ -110,7 +110,7 @@ function dataSourceModeContractError(
 function requireFiniteNumber(value: unknown, fieldName: string): number {
   const numberValue = Number(value)
   if (!Number.isFinite(numberValue)) {
-    throw new Error(`${fieldName}字段异常：${String(value)}`)
+    throw new TypeError(`${fieldName}字段异常：${String(value)}`)
   }
   return numberValue
 }

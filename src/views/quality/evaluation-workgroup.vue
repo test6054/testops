@@ -12,13 +12,13 @@ import type {
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
 } from '@/apis/quality'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
 import type { MajorCategoryVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
+import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
@@ -67,10 +67,10 @@ function workgroupLevelLabel(value: unknown): string {
     return ''
   }
   if (
-    value === 'UNIVERSITY' ||
-    value === 'COLLEGE' ||
-    value === 'PROGRAM' ||
-    value === 'INDUSTRY'
+    value === 'UNIVERSITY'
+    || value === 'COLLEGE'
+    || value === 'PROGRAM'
+    || value === 'INDUSTRY'
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
@@ -137,7 +137,7 @@ async function loadDicts() {
   programs.value = await majorCategoryCatalogApi.listAll()
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -200,10 +200,10 @@ function handleEditorConvenerChange(value: string | null) {
 
 async function submitEditor() {
   if (
-    !editor.programId ||
-    !editor.workgroupCode.trim() ||
-    !editor.workgroupName.trim() ||
-    !editor.convenerUserId
+    !editor.programId
+    || !editor.workgroupCode.trim()
+    || !editor.workgroupName.trim()
+    || !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return

@@ -45,6 +45,10 @@ import type {
   TrainingPlanSavePayload,
   TrainingPlanVO,
 } from '@/apis/quality'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   accreditationStandardApi,
   AGGREGATION_FUNCTION_LABEL,
@@ -58,15 +62,11 @@ import {
   trainingObjectiveRequirementApi,
   trainingPlanApi,
 } from '@/apis/quality'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatOptionalNumber, formatRequiredNumber } from './_helpers'
@@ -439,10 +439,10 @@ function openPlanEdit() {
 
 async function submitPlan() {
   if (
-    !planEditor.programId.trim() ||
-    !planEditor.planCode.trim() ||
-    !planEditor.planName.trim() ||
-    !planEditor.schoolYear.trim()
+    !planEditor.programId.trim()
+    || !planEditor.planCode.trim()
+    || !planEditor.planName.trim()
+    || !planEditor.schoolYear.trim()
   ) {
     message.error('请填写专业 ID、方案编码、方案名称、入学学年')
     return
@@ -631,8 +631,8 @@ function handleObjectiveRequirementCellClick(payload: {
   if (payload.cell) {
     const mapping = objectiveRequirementMappings.value.find(
       (item) =>
-        item.trainingObjectiveId === payload.row.key &&
-        item.graduationRequirementId === payload.col.key,
+        item.trainingObjectiveId === payload.row.key
+        && item.graduationRequirementId === payload.col.key,
     )
     if (mapping) openObjMappingEdit(mapping)
     return
@@ -657,9 +657,9 @@ async function submitObjMapping() {
     return
   }
   if (
-    objMappingEditor.weight == null ||
-    objMappingEditor.weight < 0 ||
-    objMappingEditor.weight > 1
+    objMappingEditor.weight == null
+    || objMappingEditor.weight < 0
+    || objMappingEditor.weight > 1
   ) {
     message.error('权重必须在 0~1 之间')
     return
@@ -836,9 +836,9 @@ async function submitIndicator() {
     return
   }
   if (
-    indicatorEditor.requirementWeight == null ||
-    indicatorEditor.requirementWeight <= 0 ||
-    indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null
+    || indicatorEditor.requirementWeight <= 0
+    || indicatorEditor.requirementWeight > 1
   ) {
     message.error('观测点权重必须在 (0, 1] 之间')
     return
@@ -979,7 +979,7 @@ const aggregationOptions = [
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
 ]
 
-const civicDimensionOptions: Array<{ value: CivicDimension; label: string }> = [
+const civicDimensionOptions: Array<{ value: CivicDimension, label: string }> = [
   { value: 'MORAL', label: CIVIC_DIMENSION_LABEL.MORAL },
   { value: 'INTELLECTUAL', label: CIVIC_DIMENSION_LABEL.INTELLECTUAL },
   { value: 'PHYSICAL', label: CIVIC_DIMENSION_LABEL.PHYSICAL },
@@ -1343,8 +1343,8 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                   <a-space>
                     <a-tag
                       :color="
-                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1) <
-                        WEIGHT_EPSILON
+                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1)
+                          < WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "

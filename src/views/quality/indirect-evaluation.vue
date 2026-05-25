@@ -23,6 +23,9 @@ import type {
   RespondentType,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   indirectFormApi,
@@ -33,9 +36,6 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   CourseGoalSelector,
   GraduationRequirementSelector,
@@ -47,9 +47,9 @@ import {
 import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { formatOptionalNumber, formatRequiredNumber } from './_helpers'
 import ImportResponseDocumentModal from './components/ImportResponseDocumentModal.vue'
 import ImportResponseExcelModal from './components/ImportResponseExcelModal.vue'
-import { formatOptionalNumber, formatRequiredNumber } from './_helpers'
 
 const formColumns: ColumnsType = [
   { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120 },
@@ -97,7 +97,7 @@ const formTypeOptions = [
   { value: 'INTERNSHIP_SUPERVISOR', label: '实习导师' },
 ]
 
-const targetTypeOptions: { value: AchievementTargetType; label: string }[] = [
+const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
   { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
   { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
   { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
@@ -109,7 +109,7 @@ const targetTypeOptions: { value: AchievementTargetType; label: string }[] = [
     label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
   },
 ]
-const respondentTypeOptions: { value: RespondentType; label: string }[] = [
+const respondentTypeOptions: { value: RespondentType, label: string }[] = [
   { value: 'STUDENT', label: RESPONDENT_TYPE_LABEL.STUDENT },
   { value: 'GRADUATE', label: RESPONDENT_TYPE_LABEL.GRADUATE },
   { value: 'EMPLOYER', label: RESPONDENT_TYPE_LABEL.EMPLOYER },
@@ -117,7 +117,7 @@ const respondentTypeOptions: { value: RespondentType; label: string }[] = [
   { value: 'EXPERT', label: RESPONDENT_TYPE_LABEL.EXPERT },
   { value: 'SUPERVISOR', label: RESPONDENT_TYPE_LABEL.SUPERVISOR },
 ]
-const itemTypeOptions: { value: IndirectEvaluationItemType; label: string }[] = [
+const itemTypeOptions: { value: IndirectEvaluationItemType, label: string }[] = [
   { value: 'SCALE', label: '量表题' },
   { value: 'SINGLE_CHOICE', label: '单选题' },
   { value: 'MULTI_CHOICE', label: '多选题' },
@@ -241,7 +241,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(payload: { current: number; pageSize: number }) {
+function handleFormPageChange(payload: { current: number, pageSize: number }) {
   formQuery.pageNum = payload.current
   formQuery.pageSize = payload.pageSize
   loadForms()
@@ -430,8 +430,8 @@ async function submitItem() {
   } else if (v.itemType === 'SINGLE_CHOICE' || v.itemType === 'MULTI_CHOICE') {
     const options = v.choiceOptions ?? []
     if (
-      options.length < 2 ||
-      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+      options.length < 2
+      || options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
     ) {
       message.error('选择题至少配置 2 个完整选项')
       return
@@ -609,8 +609,8 @@ const signals = computed<SignalMetric[]>(() => {
   const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample ?? 0), 0)
   const validResponses = responses.value.filter((r) => r.validFlag).length
   const invalidResponses = responses.value.filter((r) => !r.validFlag).length
-  const sampleRatio =
-    expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+  const sampleRatio
+    = expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
 
   return [
     { key: 'forms-total', label: '问卷总数', value: forms.value.length, tone: 'blue' },
