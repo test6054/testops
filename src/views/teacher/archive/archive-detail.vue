@@ -6,7 +6,7 @@
           <span class="archive-detail-page__title">{{
             archive.archiveTitle || archive.archiveNo
           }}</span>
-          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus] || 'gray'" size="sm">
+          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus]" size="sm">
             {{ archive.archiveStatusMessage || ARCHIVE_STATUS_LABEL[archive.archiveStatus] }}
           </UiTag>
           <UiTag v-if="archive.permanentRetention" tone="purple" size="sm">永久保管</UiTag>
@@ -54,7 +54,7 @@
       </template>
       <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" size="small" bordered>
         <a-descriptions-item label="状态">
-          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus] || 'gray'" size="sm">
+          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus]" size="sm">
             {{ archive.archiveStatusMessage || ARCHIVE_STATUS_LABEL[archive.archiveStatus] }}
           </UiTag>
         </a-descriptions-item>
@@ -312,15 +312,6 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
-import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
-import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   appraiseArchive,
   approveDestruction,
@@ -335,6 +326,15 @@ import {
   requestAppraisal,
   requestDestruction,
 } from '@/apis/mark/archive'
+import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -400,8 +400,8 @@ const itemColumns = [
 const showProgressCard = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'PACKAGING'
-    || archive.value.archiveStatus === 'PACKAGING_FAILED'
+    archive.value.archiveStatus === 'PACKAGING' ||
+    archive.value.archiveStatus === 'PACKAGING_FAILED'
   )
 })
 
@@ -423,20 +423,20 @@ const canPackage = computed(() => {
 const canRequestDestruction = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'APPRAISAL_DECIDED'
-    && archive.value.appraisalDecision === 'DESTROY'
+    archive.value.archiveStatus === 'APPRAISAL_DECIDED' &&
+    archive.value.appraisalDecision === 'DESTROY'
   )
 })
 
 const hasAnyAction = computed(() => {
   if (!archive.value) return false
   return (
-    canPackage.value
-    || archive.value.archiveStatus === 'ACTIVE'
-    || archive.value.archiveStatus === 'APPRAISAL_PENDING'
-    || canRequestDestruction.value
-    || archive.value.archiveStatus === 'DESTRUCTION_PENDING'
-    || archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
+    canPackage.value ||
+    archive.value.archiveStatus === 'ACTIVE' ||
+    archive.value.archiveStatus === 'APPRAISAL_PENDING' ||
+    canRequestDestruction.value ||
+    archive.value.archiveStatus === 'DESTRUCTION_PENDING' ||
+    archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
   )
 })
 
@@ -457,8 +457,12 @@ function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
       hint = '草稿待打包'
       break
     case 'PACKAGING_FAILED':
+    case 'DESTRUCTION_FAILED':
       status = 'blocked'
-      hint = `打包失败${pkg.packagingDiagnostic ? ` · ${pkg.packagingDiagnostic}` : ''}`
+      hint =
+        pkg.archiveStatus === 'PACKAGING_FAILED'
+          ? `打包失败${pkg.packagingDiagnostic ? ` · ${pkg.packagingDiagnostic}` : ''}`
+          : pkg.archiveStatusMessage || '销毁执行失败，需人工介入'
       break
     case 'PACKAGING':
       status = 'active'
@@ -475,12 +479,21 @@ function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
       hint = '鉴定待办'
       break
     case 'APPRAISAL_DECIDED':
-    case 'DESTRUCTION_PENDING':
-    case 'DESTRUCTION_APPROVED':
-    case 'DESTRUCTION_REJECTED':
     case 'DESTROYED':
       status = 'completed'
       hint = pkg.archiveStatusMessage || '归档生命周期完整'
+      break
+    case 'DESTRUCTION_PENDING':
+      status = 'active'
+      hint = pkg.archiveStatusMessage || '销毁待审批'
+      break
+    case 'DESTRUCTION_APPROVED':
+      status = 'active'
+      hint = pkg.archiveStatusMessage || '销毁审批通过，可执行物理销毁'
+      break
+    case 'DESTRUCTION_EXECUTING':
+      status = 'active'
+      hint = pkg.archiveStatusMessage || '销毁执行中'
       break
   }
   markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
@@ -508,7 +521,9 @@ async function loadDetail(): Promise<void> {
 }
 
 function syncPolling(): void {
-  const shouldPoll = archive.value?.archiveStatus === 'PACKAGING'
+  const shouldPoll =
+    archive.value?.archiveStatus === 'PACKAGING' ||
+    archive.value?.archiveStatus === 'DESTRUCTION_EXECUTING'
   if (shouldPoll && !pollTimer) {
     pollTimer = setInterval(() => {
       void loadDetail()

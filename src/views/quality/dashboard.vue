@@ -6,10 +6,6 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 阶段：专业配置 -> 培养方案 -> 数据接入 -> 计算 -> 审核 -> 改进 -> 归档
  */
 import type { AchievementResultVO, AiTaskVO, ImprovementTaskVO } from '@/apis/quality'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -34,10 +30,15 @@ import {
   isConfirmationStatus,
   isImprovementTaskStatus,
 } from '@/apis/quality'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
+import { formatOptionalNumber } from './_helpers'
 
 const recentAchievementColumns: ColumnsType = [
   { title: '目标类型', dataIndex: 'targetType', key: 'targetType' },
@@ -108,7 +109,9 @@ const trainingPlanLabel = computed(() => qualityStore.currentPlan?.planName || '
 
 const planConfirmationStatus = computed(() => {
   const raw = qualityStore.currentPlan?.confirmationStatus
-  return isConfirmationStatus(raw) ? raw : undefined
+  if (!qualityStore.currentPlan) return undefined
+  if (isConfirmationStatus(raw)) return raw
+  throw new Error('培养方案确认状态不符合前后端契约')
 })
 
 const planConfirmationLabel = computed(() => {
@@ -125,11 +128,11 @@ const planConfirmationColor = computed(() => {
 const stages = computed<WorkbenchStage[]>(() => {
   const planSelected = !!trainingPlanId.value
   const planConfirmed = planConfirmationStatus.value === 'CONFIRMED'
-  const dataReached
-    = achievementCounts.calculated > 0
-      || achievementCounts.submitted > 0
-      || achievementCounts.confirmed > 0
-      || achievementCounts.archived > 0
+  const dataReached =
+    achievementCounts.calculated > 0 ||
+    achievementCounts.submitted > 0 ||
+    achievementCounts.confirmed > 0 ||
+    achievementCounts.archived > 0
   const calcDone = dataReached
   const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
   const improvementActive = improvementCounts.total > 0
@@ -208,55 +211,54 @@ const signals = computed<SignalMetric[]>(() => [
   { key: 'ai-fail', label: 'AI 失败', value: aiCounts.failed, tone: 'red' },
 ])
 
-// 枚举取值 helper：严格守卫，避免 as 类型断言
 function targetTypeLabel(value: unknown): string {
   if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('达成度目标类型不符合前后端契约')
 }
 
 function achievementStatusLabel(value: unknown): string {
   if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('达成度结论不符合前后端契约')
 }
 
-function achievementStatusColor(value: unknown): string | undefined {
+function achievementStatusColor(value: unknown): string {
   if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
-  return undefined
+  throw new Error('达成度结论不符合前后端契约')
 }
 
 function auditStatusLabel(value: unknown): string {
   if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('达成度审核状态不符合前后端契约')
 }
 
-function auditStatusColor(value: unknown): string | undefined {
+function auditStatusColor(value: unknown): string {
   if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
-  return undefined
+  throw new Error('达成度审核状态不符合前后端契约')
 }
 
 function improvementStatusLabelOf(value: unknown): string {
   if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('改进任务状态不符合前后端契约')
 }
 
-function improvementStatusColorOf(value: unknown): string | undefined {
+function improvementStatusColorOf(value: unknown): string {
   if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_COLOR[value]
-  return undefined
+  throw new Error('改进任务状态不符合前后端契约')
 }
 
 function aiStatusLabel(value: unknown): string {
   if (isAiTaskStatus(value)) return AI_TASK_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('AI 任务状态不符合前后端契约')
 }
 
-function aiStatusColor(value: unknown): string | undefined {
+function aiStatusColor(value: unknown): string {
   if (isAiTaskStatus(value)) return AI_TASK_STATUS_COLOR[value]
-  return undefined
+  throw new Error('AI 任务状态不符合前后端契约')
 }
 
 function aiTypeLabel(value: unknown): string {
   if (isAiTaskType(value)) return AI_TASK_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('AI 任务类型不符合前后端契约')
 }
 
 async function loadTrainingPlan() {
@@ -264,7 +266,7 @@ async function loadTrainingPlan() {
   try {
     const list = await qualityStore.loadTrainingPlanOptions()
     if (!qualityStore.currentTrainingPlanId && list.length) {
-      qualityStore.setCurrent({ trainingPlanId: list[0].id })
+      qualityStore.setTrainingPlan(list[0].id)
     }
   } finally {
     loading.plan = false
@@ -415,7 +417,7 @@ async function reload() {
 
 function handlePlanChange(value: unknown) {
   const id = typeof value === 'string' ? value : ''
-  qualityStore.setCurrent({ trainingPlanId: id })
+  qualityStore.setTrainingPlan(id)
   reload()
 }
 
@@ -520,23 +522,23 @@ function goScoreBatch() {
               </template>
               <template v-else-if="column.key === 'finalValue'">
                 <span
-                  class="quality-dashboard__value" :class="[
-                    record.finalValue !== null
-                      && record.thresholdValue !== null
-                      && record.finalValue >= record.thresholdValue
+                  class="quality-dashboard__value"
+                  :class="[
+                    record.finalValue !== null &&
+                    record.thresholdValue !== null &&
+                    record.finalValue >= record.thresholdValue
                       ? 'quality-dashboard__value--ok'
                       : 'quality-dashboard__value--bad',
                   ]"
                 >
-                  {{ text ?? '-' }}
-                  / {{ record.thresholdValue ?? '-' }}
+                  {{ formatOptionalNumber(text, '达成值', 3) }}
+                  / {{ formatOptionalNumber(record.thresholdValue, '达成阈值', 3) }}
                 </span>
               </template>
               <template v-else-if="column.key === 'achievementStatus'">
-                <a-tag v-if="achievementStatusColor(text)" :color="achievementStatusColor(text)">
+                <a-tag :color="achievementStatusColor(text)">
                   {{ achievementStatusLabel(text) }}
                 </a-tag>
-                <span v-else>-</span>
               </template>
               <template v-else-if="column.key === 'auditStatus'">
                 <a-tag :color="auditStatusColor(text)">
@@ -599,9 +601,9 @@ function goScoreBatch() {
               </template>
               <template
                 v-else-if="
-                  column.key === 'modelName'
-                    || column.key === 'startedAt'
-                    || column.key === 'finishedAt'
+                  column.key === 'modelName' ||
+                  column.key === 'startedAt' ||
+                  column.key === 'finishedAt'
                 "
               >
                 {{ text || '-' }}

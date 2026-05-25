@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
@@ -45,11 +46,6 @@ import type {
   RubricItemVO,
   SupportLevel,
 } from '@/apis/quality'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AGGREGATION_FUNCTION_LABEL,
   ASSESSMENT_ITEM_TYPE_LABEL,
@@ -68,6 +64,11 @@ import {
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
 } from '@/apis/quality'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
@@ -75,9 +76,9 @@ import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { formatOptionalNumber, formatRequiredNumber } from './_helpers'
 
 const itemColumns: ColumnsType = [
   { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 100 },
@@ -155,8 +156,7 @@ async function loadCourseGoals() {
   }
   courseGoalsLoading.value = true
   try {
-    courseGoals.value =
-      (await courseGoalApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+    courseGoals.value = await courseGoalApi.listByCourse(qualityStore.currentQualityCourseId)
   } finally {
     courseGoalsLoading.value = false
   }
@@ -172,7 +172,7 @@ async function loadAllSupports() {
   try {
     const map = new Map<string, CourseGoalRequirementVO[]>()
     for (const goal of courseGoals.value) {
-      const list = (await courseGoalRequirementApi.listByCourseGoal(goal.id)) || []
+      const list = await courseGoalRequirementApi.listByCourseGoal(goal.id)
       map.set(goal.id, list)
     }
     courseGoalSupports.value = map
@@ -207,8 +207,9 @@ async function loadAssessmentItems() {
   }
   assessmentItemsLoading.value = true
   try {
-    assessmentItems.value =
-      (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+    assessmentItems.value = await assessmentItemApi.listByCourse(
+      qualityStore.currentQualityCourseId,
+    )
   } finally {
     assessmentItemsLoading.value = false
   }
@@ -230,8 +231,8 @@ async function loadAllItemMeta() {
         assessmentGoalWeightApi.listByItem(item.id),
         rubricItemApi.listByItem(item.id),
       ])
-      wMap.set(item.id, weights || [])
-      rMap.set(item.id, rubrics || [])
+      wMap.set(item.id, weights)
+      rMap.set(item.id, rubrics)
     }
     assessmentGoalWeights.value = wMap
     rubricsByItem.value = rMap
@@ -267,11 +268,11 @@ async function loadReferenceData() {
   }
   referenceLoading.value = true
   try {
-    const reqList = (await graduationRequirementApi.listByPlan(planId)) || []
+    const reqList = await graduationRequirementApi.listByPlan(planId)
     requirements.value = reqList
     const indicatorAcc: RequirementIndicatorVO[] = []
     for (const req of reqList) {
-      const list = (await requirementIndicatorApi.listByRequirement(req.id)) || []
+      const list = await requirementIndicatorApi.listByRequirement(req.id)
       indicatorAcc.push(...list)
     }
     indicators.value = indicatorAcc
@@ -444,7 +445,7 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
       rowKey: support.courseGoalId,
       colKey,
       primary: support.supportLevel.charAt(0),
-      secondary: `w=${Number(support.supportWeight).toFixed(2)}`,
+      secondary: `w=${formatRequiredNumber(support.supportWeight, '课程目标支撑权重', 2)}`,
       tone,
     })
   }
@@ -488,8 +489,8 @@ const assessMatrixCells = computed<MatrixCell[]>(() => {
       cells.push({
         rowKey: item.id,
         colKey: w.courseGoalId,
-        primary: `w=${Number(w.weight).toFixed(2)}`,
-        secondary: `满分 ${Number(w.fullScore).toFixed(0)}`,
+        primary: `w=${formatRequiredNumber(w.weight, '考核目标权重', 2)}`,
+        secondary: `满分 ${formatRequiredNumber(w.fullScore, '考核目标满分', 0)}`,
         tone: 'green',
       })
     }
@@ -923,21 +924,13 @@ async function deleteItem(record: AssessmentItemVO) {
 }
 
 async function validateItemWeights(item: AssessmentItemVO) {
-  try {
-    await assessmentGoalWeightApi.validateWeights(item.id)
-    message.success(`考核 ${item.itemCode} 的课程目标权重和校验通过`)
-  } catch {
-    /* BizException 由 axios 拦截器提示 */
-  }
+  await assessmentGoalWeightApi.validateWeights(item.id)
+  message.success(`考核 ${item.itemCode} 的课程目标权重和校验通过`)
 }
 
 async function validateRubricFullScore(item: AssessmentItemVO) {
-  try {
-    await rubricItemApi.validateFullScore(item.id)
-    message.success(`考核 ${item.itemCode} 的 Rubric 满分加总校验通过`)
-  } catch {
-    /* BizException 由 axios 拦截器提示 */
-  }
+  await rubricItemApi.validateFullScore(item.id)
+  message.success(`考核 ${item.itemCode} 的 Rubric 满分加总校验通过`)
 }
 
 /* ========== 编辑器：考核 → 目标 权重 ========== */
@@ -1368,7 +1361,7 @@ const itemTypeOptions: { value: AssessmentItemType; label: string }[] = [
                 {{ assessmentItemTypeLabel(record.itemType) }}
               </template>
               <template v-else-if="column.key === 'fullScore'">
-                {{ Number(text).toFixed(0) }}
+                {{ formatRequiredNumber(text, '考核环节满分', 0) }}
               </template>
               <template v-else-if="column.key === 'isProcessOriented'">
                 <a-tag v-if="text" color="purple"> 过程 </a-tag>
@@ -1427,7 +1420,7 @@ const itemTypeOptions: { value: AssessmentItemType; label: string }[] = [
           >
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.key === 'thresholdValue'">
-                {{ text == null ? '-' : Number(text).toFixed(2) }}
+                {{ formatOptionalNumber(text, '课程目标达成阈值', 2) }}
               </template>
               <template v-else-if="column.key === 'aggregation'">
                 {{ aggregationFunctionLabel(text) }}
@@ -1916,7 +1909,7 @@ const itemTypeOptions: { value: AssessmentItemType; label: string }[] = [
             {{ courseGoals.find((g) => g.id === record.courseGoalId)?.goalCode || '-' }}
           </template>
           <template v-else-if="column.key === 'fullScore'">
-            {{ Number(text).toFixed(0) }}
+            {{ formatRequiredNumber(text, 'Rubric 满分', 0) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>

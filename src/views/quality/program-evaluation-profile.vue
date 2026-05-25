@@ -15,10 +15,6 @@ import type {
   ProgramEvaluationProfileSavePayload,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
-import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -27,7 +23,11 @@ import {
   isEvaluationMethod,
   programEvaluationProfileApi,
 } from '@/apis/quality'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -148,8 +148,8 @@ const disabledCount = computed(() => list.value.filter((item) => !item.enabled).
 const signals = computed<SignalMetric[]>(() => {
   const engineering = list.value.filter(
     (item) =>
-      isAccreditationType(item.accreditationType)
-      && item.accreditationType === 'ENGINEERING_ACCREDITATION',
+      isAccreditationType(item.accreditationType) &&
+      item.accreditationType === 'ENGINEERING_ACCREDITATION',
   ).length
   return [
     { key: 'overall', label: '总口径', value: total.value, tone: 'gray' },
@@ -180,11 +180,11 @@ async function loadDicts() {
     accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
     majorCategoryCatalogApi.listAll(),
   ])
-  standards.value = std.list || []
-  programs.value = majors || []
+  standards.value = std.list
+  programs.value = majors
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()

@@ -5,8 +5,8 @@
  * 用 vue h() 构造 Modal.confirm 的 content VNode。
  */
 import type { VNode } from 'vue'
-import { message, Modal, Textarea } from 'ant-design-vue'
 import { h, ref } from 'vue'
+import { message, Modal, Textarea } from 'ant-design-vue'
 
 export interface PromptModalOptions {
   title: string
@@ -52,4 +52,23 @@ export function promptModal(options: PromptModalOptions): Promise<string | null>
       onCancel: () => resolve(null),
     })
   })
+}
+
+/**
+ * 校验后端必填数值契约并格式化展示。
+ */
+export function formatRequiredNumber(value: unknown, fieldName: string, digits = 3): string {
+  const numericValue = Number(value)
+  if (value === null || value === undefined || value === '' || !Number.isFinite(numericValue)) {
+    throw new Error(`${fieldName}不符合前后端数值契约`)
+  }
+  return numericValue.toFixed(digits)
+}
+
+/**
+ * 允许真实空业务值展示为空态，非空时必须是有效数值。
+ */
+export function formatOptionalNumber(value: unknown, fieldName: string, digits = 3): string {
+  if (value === null || value === undefined || value === '') return '-'
+  return formatRequiredNumber(value, fieldName, digits)
 }

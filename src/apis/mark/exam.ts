@@ -571,7 +571,7 @@ export interface ExamScannerBatchVO {
   /** 批次内事件数量 */
   eventCount?: number
   /** 是否替换目标页（仅 SUPPLEMENT 模式有意义） */
-  replaceTargetPage?: boolean
+  replaceTargetPage: boolean
   /** 批次封存时间（与 discardedAt 互斥） */
   sealedAt?: string
   /** 批次封存执行人 ID */
@@ -626,22 +626,6 @@ export interface ExamScannerBatchQueryPayload extends QueryDto {
   includeDiscarded?: boolean
 }
 
-/** 扫描批次废弃请求 - 对应 ExamScanBatchDiscardRequest */
-export interface ExamScanBatchDiscardPayload {
-  /** 扫描批次 ID */
-  scanBatchId: string
-  /** 废弃原因（必填，1-255 字） */
-  discardReason: string
-}
-
-/** 扫描页废弃请求 - 对应 ExamScannedPageDiscardRequest */
-export interface ExamScannedPageDiscardPayload {
-  /** 扫描页 ID */
-  scannedPageId: string
-  /** 废弃原因（必填，1-255 字） */
-  discardReason: string
-}
-
 /**
  * 教师按扫描仪集合 + 时间区间聚合扫描事件成批次
  * POST /api/mark/exams/scanner-batches/create
@@ -691,41 +675,6 @@ export function pageScannerBatches(
 ): Promise<PageResult<ExamScannerBatchVO>> {
   return http.post<unknown>('/api/mark/exams/scanner-batches/page', payload)
     .then((value) => validatePageResult(value, validateScannerBatch, '扫描批次分页'))
-}
-
-/**
- * 教师在扫描审阅 / 扫描异常处置场景显式废弃整个扫描批次。
- *
- * <p>规则与后端 {@code ExamScannerKioskController#discardScanBatch} 一致：
- *   - 已 sealed（封存）的批次拒绝废弃；
- *   - 已 DISCARDED 的批次返回成功（幂等）；
- *   - 联动把批次内全部扫描页 effective_status 置 DISCARDED；
- *   - 联动把批次内 PENDING/PROCESSING 处理任务置 BLOCKED。</p>
- *
- * POST /api/mark/scanner/kiosk/batch/discard
- */
-export function discardScanBatch(
-  payload: ExamScanBatchDiscardPayload,
-): Promise<boolean> {
-  return http.post<unknown>('/api/mark/scanner/kiosk/batch/discard', payload)
-    .then(validateBooleanResult)
-}
-
-/**
- * 教师对单张扫描页显式废弃（如 QUALITY_BLOCK 异常页确认作废）。
- *
- * <p>规则：
- *   - 仅 ACTIVE 页可废弃；SUPERSEDED 视为已失效不再允许再次废弃；
- *   - DISCARDED 页幂等返回；
- *   - 不影响所属批次状态。</p>
- *
- * POST /api/mark/scanner/kiosk/page/discard
- */
-export function discardScannedPage(
-  payload: ExamScannedPageDiscardPayload,
-): Promise<boolean> {
-  return http.post<unknown>('/api/mark/scanner/kiosk/page/discard', payload)
-    .then(validateBooleanResult)
 }
 
 /**
@@ -1513,7 +1462,7 @@ function validateScannerBatch(value: unknown): ExamScannerBatchVO {
     createTime: optionalString(result.createTime, '创建时间'),
     updateTime: optionalString(result.updateTime, '更新时间'),
     eventCount: optionalFiniteNumber(result.eventCount, '扫描事件数量'),
-    replaceTargetPage: optionalBoolean(result.replaceTargetPage, '是否替换目标页'),
+    replaceTargetPage: requireBoolean(result.replaceTargetPage, '是否替换目标页'),
     sealedAt: optionalString(result.sealedAt, '封存时间'),
     sealedBy: optionalString(result.sealedBy, '封存执行人 ID'),
     discardedAt: optionalString(result.discardedAt, '废弃时间'),

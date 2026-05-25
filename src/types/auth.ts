@@ -34,12 +34,6 @@ export interface RegisterRequest {
     companyId?: string
     /** 邀请码(必填) */
     inviteCode: string
-    /** 租户ID(已废弃，通过邀请码自动获取) */
-    tenantId?: string
-    /** 验证码(已废弃) */
-    captcha?: string
-    /** 验证码ID(已废弃) */
-    captchaId?: string
 }
 /**
  * 重置密码请求 - 与后端保持一致

@@ -14,15 +14,15 @@ import type {
   ProfessionAlgorithmTemplateSavePayload,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   isAccreditationType,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -173,7 +173,7 @@ function assignEditor(
 
 async function loadStandards() {
   const page = await accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true })
-  standards.value = page.list || []
+  standards.value = page.list
 }
 
 async function loadList() {
@@ -190,7 +190,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -423,7 +423,13 @@ onMounted(async () => {
               <a-tooltip v-if="isSharedTemplate(record)" title="平台共享模板不能在租户侧删除">
                 <UiButton variant="ghost" status="danger" size="sm" disabled> 删除 </UiButton>
               </a-tooltip>
-              <UiButton v-else variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
+              <UiButton
+                v-else
+                variant="ghost"
+                status="danger"
+                size="sm"
+                @click="handleDelete(record)"
+              >
                 删除
               </UiButton>
             </a-space>

@@ -23,7 +23,8 @@ export type ArchivePackageStatusCode
     | 'APPRAISAL_DECIDED'
     | 'DESTRUCTION_PENDING'
     | 'DESTRUCTION_APPROVED'
-    | 'DESTRUCTION_REJECTED'
+    | 'DESTRUCTION_EXECUTING'
+    | 'DESTRUCTION_FAILED'
     | 'DESTROYED'
 
 export const ARCHIVE_STATUS_LABEL: Record<ArchivePackageStatusCode, string> = {
@@ -36,7 +37,8 @@ export const ARCHIVE_STATUS_LABEL: Record<ArchivePackageStatusCode, string> = {
   APPRAISAL_DECIDED: '鉴定完成',
   DESTRUCTION_PENDING: '销毁待审',
   DESTRUCTION_APPROVED: '销毁通过',
-  DESTRUCTION_REJECTED: '销毁驳回',
+  DESTRUCTION_EXECUTING: '销毁执行中',
+  DESTRUCTION_FAILED: '销毁执行失败',
   DESTROYED: '已销毁',
 }
 
@@ -53,7 +55,8 @@ export const ARCHIVE_STATUS_TONE: Record<
   APPRAISAL_DECIDED: 'purple',
   DESTRUCTION_PENDING: 'orange',
   DESTRUCTION_APPROVED: 'purple',
-  DESTRUCTION_REJECTED: 'gray',
+  DESTRUCTION_EXECUTING: 'orange',
+  DESTRUCTION_FAILED: 'red',
   DESTROYED: 'red',
 }
 

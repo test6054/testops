@@ -100,7 +100,7 @@ export const processNodeApi = {
     http.post<void>(`${NODE}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${NODE}/delete`, { id }),
-  /** 更新节点确认状态 DRAFT/SUBMITTED/CONFIRMED/REVOKED */
+  /** 更新节点确认状态 DRAFT/SUBMITTED/CONFIRMED/RETURNED */
   updateConfirmationStatus: (id: string, confirmationStatus: ConfirmationStatus) =>
     http.post<void>(`${NODE}/update-confirmation-status`, { id, confirmationStatus }),
 }
@@ -117,13 +117,6 @@ export const processRecordApi = {
     http.post<ProcessEvaluationRecordVO>(`${RECORD}/detail`, { id }),
   create: (data: ProcessEvaluationRecordSavePayload) =>
     http.post<string>(`${RECORD}/create`, data),
-  /**
-   * @deprecated 前端不再调用本端点。批量录入请走「Excel 导入」流程：
-   * 调用 `processRecordApi.importExcel(nodeId, file)` 上传 Excel；后端解析 + 行级校验 + DRAFT 入库。
-   * 后端端点保留供 service 内部链路（如 ProcessEvaluationRecordExcelImportService）使用。
-   */
-  batchCreate: (nodeId: string, records: ProcessEvaluationRecordSavePayload[]) =>
-    http.post<void>(`${RECORD}/batch-create`, { nodeId, records }),
   update: (data: ProcessEvaluationRecordSavePayload) =>
     http.post<void>(`${RECORD}/update`, data),
   delete: (id: string) =>

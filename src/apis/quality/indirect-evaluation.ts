@@ -23,6 +23,8 @@ const FORM = '/api/quality/indirect-forms'
 const ITEM = '/api/quality/indirect-items'
 const RESPONSE = '/api/quality/indirect-responses'
 
+export type IndirectEvaluationItemType = 'SCALE' | 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'OPEN_TEXT'
+
 export interface IndirectEvaluationFormVO {
   id: string
   formCode: string
@@ -79,7 +81,7 @@ export interface IndirectEvaluationItemVO {
   scaleRuleId?: string
   weight?: number
   sortOrder?: number
-  itemType?: string
+  itemType: IndirectEvaluationItemType
   scaleMin?: number
   scaleMax?: number
   scaleLabels?: SurveyScaleLabelVO[]
@@ -99,7 +101,7 @@ export interface IndirectEvaluationItemSavePayload {
   scaleRuleId?: string
   weight?: number
   sortOrder?: number
-  itemType?: string
+  itemType: IndirectEvaluationItemType
   scaleMin?: number
   scaleMax?: number
   scaleLabels?: SurveyScaleLabelVO[]
@@ -238,9 +240,6 @@ export const indirectResponseApi = {
   detail: (id: string) => http.post<IndirectEvaluationResponseVO>(`${RESPONSE}/detail`, { id }),
   create: (data: IndirectEvaluationResponseSavePayload) =>
     http.post<string>(`${RESPONSE}/create`, data),
-  /** 按问卷批量录入答卷 */
-  batchCreate: (formId: string, responses: IndirectEvaluationResponseSavePayload[]) =>
-    http.post<void>(`${RESPONSE}/batch-create`, { formId, responses }),
   update: (data: IndirectEvaluationResponseSavePayload) =>
     http.post<void>(`${RESPONSE}/update`, data),
   delete: (id: string) => http.post<void>(`${RESPONSE}/delete`, { id }),

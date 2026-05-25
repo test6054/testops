@@ -9,13 +9,10 @@
  * - POST /api/inbox/update-status         — 标记已读 / 未读 / 归档 / 删除
  * - POST /api/inbox/mark-all-as-read      — 全部标记已读
  *
- * 与 useUnreadCount composable 的关系：
- * - composable 是早期实现，提供 globalUnreadCount 单例 + 5 分钟缓存 + token 校验
- * - 本 Store 在此基础上扩展为：
- *   1. 接管未读数轮询（可启停）
- *   2. 缓存最近消息列表（用于头部下拉预览）
- *   3. 提供单条 / 批量 / 全部已读操作
- * - 业务页面优先使用本 Store；composable 保留为兼容与读取时的轻量入口
+ * 职责：
+ * 1. 接管未读数轮询（可启停）
+ * 2. 缓存最近消息列表（用于头部下拉预览）
+ * 3. 提供单条 / 批量 / 全部已读操作
  *
  * 不持久化：未读数与列表对实时性敏感，每次启动重新拉取。
  */
@@ -25,8 +22,6 @@ import type {
   InboxMessageMarkRequest,
   InboxUnreadCountResponse,
 } from '@/apis/edu/message'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 import {
   getInboxMessages,
   getUnreadCount,
@@ -35,6 +30,8 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import { getValidToken } from '@/utils/auth'
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000

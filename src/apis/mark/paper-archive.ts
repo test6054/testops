@@ -26,7 +26,6 @@ export type PaperArchiveSetStatusCode
     | 'APPRAISAL_DECIDED'
     | 'DESTRUCTION_PENDING'
     | 'DESTRUCTION_APPROVED'
-    | 'DESTRUCTION_REJECTED'
     | 'DESTROYED'
 
 export const PAPER_ARCHIVE_SET_STATUS_LABEL: Record<PaperArchiveSetStatusCode, string> = {
@@ -36,7 +35,6 @@ export const PAPER_ARCHIVE_SET_STATUS_LABEL: Record<PaperArchiveSetStatusCode, s
   APPRAISAL_DECIDED: '鉴定完成',
   DESTRUCTION_PENDING: '销毁待审',
   DESTRUCTION_APPROVED: '销毁通过',
-  DESTRUCTION_REJECTED: '销毁驳回',
   DESTROYED: '已销毁',
 }
 
@@ -50,7 +48,6 @@ export const PAPER_ARCHIVE_SET_STATUS_TONE: Record<
   APPRAISAL_DECIDED: 'purple',
   DESTRUCTION_PENDING: 'orange',
   DESTRUCTION_APPROVED: 'purple',
-  DESTRUCTION_REJECTED: 'gray',
   DESTROYED: 'red',
 }
 

@@ -19,10 +19,6 @@ import type {
   AchievementResultVO,
   ManualReviewDecision,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -37,9 +33,13 @@ import {
   isAchievementStatus,
   isAchievementTargetType,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import { promptModal } from './_helpers'
+import { formatOptionalNumber, promptModal } from './_helpers'
 
 const detailColumns: ColumnsType = [
   { title: '明细类型', dataIndex: 'detailType', key: 'detailType', width: 140 },
@@ -61,7 +61,7 @@ const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
 const loading = ref(false)
-const reviewForm = reactive<{ decision: ManualReviewDecision, reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecision; reviewRemark: string }>({
   decision: 'CONFIRMED',
   reviewRemark: '',
 })
@@ -80,7 +80,8 @@ function achievementStatusLabel(value: unknown): string {
 
 function achievementStatusColor(value: unknown): string {
   if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '') return 'default'
+  if (value === null || value === undefined || value === '')
+    return ACHIEVEMENT_STATUS_COLOR.INSUFFICIENT_EVIDENCE
   throw new Error('达成度结论不符合前后端契约')
 }
 
@@ -92,16 +93,15 @@ function auditStatusLabel(value: unknown): string {
 
 function auditStatusColor(value: unknown): string {
   if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '') return 'default'
   throw new Error('达成度审核状态不符合前后端契约')
 }
 
 const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
-  DRAFT: ['SUBMITTED'],
-  CALCULATED: ['SUBMITTED'],
+  DRAFT: ['CALCULATED'],
+  CALCULATED: ['DRAFT', 'SUBMITTED'],
   SUBMITTED: ['CONFIRMED', 'RETURNED'],
-  CONFIRMED: ['ARCHIVED'],
-  RETURNED: ['SUBMITTED'],
+  CONFIRMED: ['ARCHIVED', 'RETURNED'],
+  RETURNED: ['CALCULATED'],
   ARCHIVED: [],
 }
 
@@ -185,13 +185,13 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'final',
       label: '达成值',
-      value: finalValue == null ? '-' : Number(finalValue).toFixed(3),
+      value: formatOptionalNumber(finalValue, '达成值'),
       tone: isBelow ? 'red' : finalValue == null ? 'gray' : 'green',
     },
     {
       key: 'threshold',
       label: '阈值',
-      value: threshold == null ? '-' : Number(threshold).toFixed(3),
+      value: formatOptionalNumber(threshold, '阈值'),
       tone: 'blue',
     },
     {
@@ -354,10 +354,10 @@ onMounted(loadAll)
               </template>
               <template
                 v-else-if="
-                  column.key === 'weight'
-                    || column.key === 'fullScore'
-                    || column.key === 'averageScore'
-                    || column.key === 'achievementValue'
+                  column.key === 'weight' ||
+                  column.key === 'fullScore' ||
+                  column.key === 'averageScore' ||
+                  column.key === 'achievementValue'
                 "
               >
                 {{ text ?? '-' }}

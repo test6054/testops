@@ -13,7 +13,7 @@ import type {
  * - /api/quality/external-pull-audits     create / detail / list-by-task
  *
  * 关键：「确认 / 驳回」流程是对 **拔取结果批次** 操作，不是对任务操作。
- * 连接串 / 账号 / 密码均以 **密文 cipher** 传输；后端 AES-256 存储，前端负责加密。
+ * 连接串 / 账号 / 密码按后端明文请求字段提交，由服务端加密落库。
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
@@ -33,9 +33,9 @@ export interface ExternalDataSourceVO {
   sourceCode: string
   sourceName: string
   sourceType: ExternalSourceType
-  jdbcUrlCipher?: string
-  usernameCipher?: string
-  passwordCipher?: string
+  jdbcUrlConfigured?: boolean
+  usernameConfigured?: boolean
+  passwordConfigured?: boolean
   driverClass: string
   fieldWhitelist: string
   maxRowCount: number
@@ -50,12 +50,12 @@ export interface ExternalDataSourceSavePayload {
   sourceCode: string
   sourceName: string
   sourceType: ExternalSourceType
-  /** JDBC URL 密文（前端 AES-256 加密后上传） */
-  jdbcUrlCipher: string
-  /** 用户名密文 */
-  usernameCipher: string
-  /** 密码密文 */
-  passwordCipher: string
+  /** JDBC 连接串明文 */
+  jdbcUrl: string
+  /** 用户名明文 */
+  username: string
+  /** 密码明文 */
+  password: string
   driverClass: string
   /** 字段白名单 JSON（table -> [columns]） */
   fieldWhitelist: string

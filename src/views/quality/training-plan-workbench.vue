@@ -45,10 +45,6 @@ import type {
   TrainingPlanSavePayload,
   TrainingPlanVO,
 } from '@/apis/quality'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   accreditationStandardApi,
   AGGREGATION_FUNCTION_LABEL,
@@ -62,13 +58,18 @@ import {
   trainingObjectiveRequirementApi,
   trainingPlanApi,
 } from '@/apis/quality'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { formatOptionalNumber, formatRequiredNumber } from './_helpers'
 
 const objectiveColumns: ColumnsType = [
   { title: '编码', dataIndex: 'objectiveCode', key: 'objectiveCode', width: 80 },
@@ -139,8 +140,7 @@ async function loadObjectives() {
   }
   objectivesLoading.value = true
   try {
-    objectives.value
-      = (await trainingObjectiveApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
+    objectives.value = await trainingObjectiveApi.listByPlan(qualityStore.currentTrainingPlanId)
     if (selectedObjective.value) {
       const matched = objectives.value.find((o) => o.id === selectedObjective.value!.id)
       selectedObjective.value = matched || objectives.value[0] || null
@@ -163,8 +163,9 @@ async function loadRequirements() {
   }
   requirementsLoading.value = true
   try {
-    requirements.value
-      = (await graduationRequirementApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
+    requirements.value = await graduationRequirementApi.listByPlan(
+      qualityStore.currentTrainingPlanId,
+    )
     if (selectedRequirement.value) {
       const matched = requirements.value.find((r) => r.id === selectedRequirement.value!.id)
       selectedRequirement.value = matched || requirements.value[0] || null
@@ -184,7 +185,7 @@ async function loadAllIndicators() {
   try {
     const map = new Map<string, RequirementIndicatorVO[]>()
     for (const req of requirements.value) {
-      const list = (await requirementIndicatorApi.listByRequirement(req.id)) || []
+      const list = await requirementIndicatorApi.listByRequirement(req.id)
       map.set(req.id, list)
     }
     indicatorsByReq.value = map
@@ -192,7 +193,6 @@ async function loadAllIndicators() {
     indicatorsLoading.value = false
   }
 }
-
 
 const indicatorsOfSelected = computed<RequirementIndicatorVO[]>(() => {
   if (!selectedRequirement.value) return []
@@ -209,8 +209,9 @@ async function loadObjectiveRequirementMappings() {
   }
   mappingLoading.value = true
   try {
-    objectiveRequirementMappings.value
-      = (await trainingObjectiveRequirementApi.listByPlan(qualityStore.currentTrainingPlanId)) || []
+    objectiveRequirementMappings.value = await trainingObjectiveRequirementApi.listByPlan(
+      qualityStore.currentTrainingPlanId,
+    )
   } finally {
     mappingLoading.value = false
   }
@@ -247,7 +248,7 @@ async function loadStandardOptions() {
     pageSize: 200,
     enabled: true,
   })
-  standardOptions.value = res.list || []
+  standardOptions.value = res.list
 }
 
 async function loadStandardMappings() {
@@ -257,8 +258,9 @@ async function loadStandardMappings() {
   }
   standardMappingsLoading.value = true
   try {
-    standardMappings.value
-      = (await requirementStandardMappingApi.listByRequirement(selectedRequirement.value.id)) || []
+    standardMappings.value = await requirementStandardMappingApi.listByRequirement(
+      selectedRequirement.value.id,
+    )
   } finally {
     standardMappingsLoading.value = false
   }
@@ -437,10 +439,10 @@ function openPlanEdit() {
 
 async function submitPlan() {
   if (
-    !planEditor.programId.trim()
-    || !planEditor.planCode.trim()
-    || !planEditor.planName.trim()
-    || !planEditor.schoolYear.trim()
+    !planEditor.programId.trim() ||
+    !planEditor.planCode.trim() ||
+    !planEditor.planName.trim() ||
+    !planEditor.schoolYear.trim()
   ) {
     message.error('请填写专业 ID、方案编码、方案名称、入学学年')
     return
@@ -629,8 +631,8 @@ function handleObjectiveRequirementCellClick(payload: {
   if (payload.cell) {
     const mapping = objectiveRequirementMappings.value.find(
       (item) =>
-        item.trainingObjectiveId === payload.row.key
-        && item.graduationRequirementId === payload.col.key,
+        item.trainingObjectiveId === payload.row.key &&
+        item.graduationRequirementId === payload.col.key,
     )
     if (mapping) openObjMappingEdit(mapping)
     return
@@ -655,9 +657,9 @@ async function submitObjMapping() {
     return
   }
   if (
-    objMappingEditor.weight == null
-    || objMappingEditor.weight < 0
-    || objMappingEditor.weight > 1
+    objMappingEditor.weight == null ||
+    objMappingEditor.weight < 0 ||
+    objMappingEditor.weight > 1
   ) {
     message.error('权重必须在 0~1 之间')
     return
@@ -834,9 +836,9 @@ async function submitIndicator() {
     return
   }
   if (
-    indicatorEditor.requirementWeight == null
-    || indicatorEditor.requirementWeight <= 0
-    || indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null ||
+    indicatorEditor.requirementWeight <= 0 ||
+    indicatorEditor.requirementWeight > 1
   ) {
     message.error('观测点权重必须在 (0, 1] 之间')
     return
@@ -867,12 +869,8 @@ async function deleteIndicator(record: RequirementIndicatorVO) {
 }
 
 async function validateIndicatorWeights(req: GraduationRequirementVO) {
-  try {
-    await requirementIndicatorApi.validateWeights(req.id)
-    message.success(`毕业要求 ${req.requirementCode} 的观测点权重和校验通过`)
-  } catch {
-    /* BizException 由 axios 拦截器提示 */
-  }
+  await requirementIndicatorApi.validateWeights(req.id)
+  message.success(`毕业要求 ${req.requirementCode} 的观测点权重和校验通过`)
 }
 
 /* ========== 编辑器：标准条款映射 ========== */
@@ -981,7 +979,7 @@ const aggregationOptions = [
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
 ]
 
-const civicDimensionOptions: Array<{ value: CivicDimension, label: string }> = [
+const civicDimensionOptions: Array<{ value: CivicDimension; label: string }> = [
   { value: 'MORAL', label: CIVIC_DIMENSION_LABEL.MORAL },
   { value: 'INTELLECTUAL', label: CIVIC_DIMENSION_LABEL.INTELLECTUAL },
   { value: 'PHYSICAL', label: CIVIC_DIMENSION_LABEL.PHYSICAL },
@@ -1068,7 +1066,13 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
           >
             提交确认
           </UiButton>
-          <UiButton variant="ghost" status="danger" size="sm" :disabled="!currentPlan" @click="deletePlan">
+          <UiButton
+            variant="ghost"
+            status="danger"
+            size="sm"
+            :disabled="!currentPlan"
+            @click="deletePlan"
+          >
             删除方案
           </UiButton>
         </div>
@@ -1213,7 +1217,7 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                     }}
                   </template>
                   <template v-else-if="column.key === 'weight'">
-                    {{ Number(text).toFixed(3) }}
+                    {{ formatRequiredNumber(text, '培养目标支撑毕业要求权重', 3) }}
                   </template>
                   <template v-else-if="column.key === 'notes'">
                     {{ text || '-' }}
@@ -1339,8 +1343,8 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                   <a-space>
                     <a-tag
                       :color="
-                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1)
-                          < WEIGHT_EPSILON
+                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1) <
+                        WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "
@@ -1364,10 +1368,10 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                 >
                   <template #bodyCell="{ column, record, text }">
                     <template v-if="column.key === 'requirementWeight'">
-                      {{ Number(text).toFixed(3) }}
+                      {{ formatRequiredNumber(text, '毕业要求观测点权重', 3) }}
                     </template>
                     <template v-else-if="column.key === 'thresholdValue'">
-                      {{ text == null ? '-' : Number(text).toFixed(2) }}
+                      {{ formatOptionalNumber(text, '毕业要求观测点达成阈值', 2) }}
                     </template>
                     <template v-else-if="column.key === 'civicDimensions'">
                       <a-space size="small" wrap>

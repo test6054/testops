@@ -2,7 +2,7 @@
  * 教学质量评价 API 共享类型 - 对应 edu-quality 模块
  *
  * 后端约束：
- * - Controller 全部 POST，body 传参；GET / DELETE 禁用
+ * - 业务写操作与复杂查询使用 POST + DTO；模板下载、公开问卷读取等只读资源可使用 GET；禁止 PUT / DELETE / PATCH
  * - 租户与操作人由 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 全部以 string 表达到前端，避免 JS Number 精度丢失
  */

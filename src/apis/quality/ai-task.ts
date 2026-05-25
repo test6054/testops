@@ -1,4 +1,4 @@
-import type { AiOutputValidation, AiTaskStatus, AiTaskType } from './types'
+import type { AiHealthStatus, AiOutputValidation, AiTaskStatus, AiTaskType } from './types'
 /**
  * AI 异步任务 / 结果 / 模型配置 API
  *
@@ -90,7 +90,7 @@ export interface AiResultVO {
  * AI 模型配置 VO - 对齐后端 AiModelProfileVO。
  *
  * 业务规则：同一租户全局只能有一条 enabled=true 记录。
- * abilityCode / defaultProfile 字段已废弃，不再从后端下行。
+ * abilityCode / defaultProfile 不属于当前后端下行契约。
  */
 export interface AiModelProfileVO {
   id: string
@@ -105,7 +105,7 @@ export interface AiModelProfileVO {
   connectTimeoutSecs?: number
   readTimeoutSecs?: number
   enabled?: boolean
-  healthStatus?: string
+  healthStatus?: AiHealthStatus
   lastHealthCheckAt?: string
   lastHealthMessage?: string
 }
@@ -216,7 +216,7 @@ export interface AiModelProfileHealthCheckPayload {
 export interface AiModelProfileHealthCheckVO {
   profileId: string
   /** UNKNOWN / HEALTHY / FAILED */
-  healthStatus: string
+  healthStatus: AiHealthStatus
   /** 健康检查诊断消息 */
   healthMessage?: string
   /** 模型原始返回摘要（截断后） */

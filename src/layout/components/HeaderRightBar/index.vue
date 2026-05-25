@@ -89,13 +89,14 @@ import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import DownOutlined from '@ant-design/icons-vue/DownOutlined'
 import LogoutOutlined from '@ant-design/icons-vue/LogoutOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import ExportTaskCenter from '@/components/export/ExportTaskCenter.vue'
 import GiCellAvatar from '@/components/GiCell/GiCellAvatar.vue'
 import { UiConfirmModal } from '@/components/ui-guide/ui'
-import { globalUnreadCount } from '@/composables/useUnreadCount'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useExportTaskStore } from '@/stores/exportTask'
+import { useNotificationStore } from '@/stores/modules/notification'
 import mittBus from '@/utils/mitt'
 import Message from './Message.vue'
 
@@ -105,11 +106,12 @@ defineOptions({ name: 'HeaderRight' })
 const messagePopoverVisible = ref(false)
 
 // 使用统一的未读计数管理
-const { totalUnreadCount, refreshUnreadCount } = globalUnreadCount
+const notificationStore = useNotificationStore()
+const { totalUnreadCount } = storeToRefs(notificationStore)
 
 // 查询未读消息数量（初始化时使用缓存，"全部已读"后强制刷新）
 const getMessageCount = async () => {
-  await refreshUnreadCount()
+  await notificationStore.loadUnreadCount()
 }
 
 const router = useRouter()

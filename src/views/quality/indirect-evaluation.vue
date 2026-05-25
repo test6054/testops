@@ -16,15 +16,13 @@ import type {
   IndirectEvaluationFormSavePayload,
   IndirectEvaluationFormVO,
   IndirectEvaluationItemSavePayload,
+  IndirectEvaluationItemType,
   IndirectEvaluationItemVO,
   IndirectEvaluationResponseSavePayload,
   IndirectEvaluationResponseVO,
   RespondentType,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   indirectFormApi,
@@ -35,6 +33,9 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   CourseGoalSelector,
   GraduationRequirementSelector,
@@ -48,6 +49,7 @@ import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import ImportResponseDocumentModal from './components/ImportResponseDocumentModal.vue'
 import ImportResponseExcelModal from './components/ImportResponseExcelModal.vue'
+import { formatOptionalNumber, formatRequiredNumber } from './_helpers'
 
 const formColumns: ColumnsType = [
   { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120 },
@@ -77,13 +79,11 @@ const responseColumns: ColumnsType = [
 
 function targetTypeLabel(value: unknown): string {
   if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
   throw new Error('达成度目标类型不符合前后端契约')
 }
 
 function respondentTypeLabel(value: unknown): string {
   if (isRespondentType(value)) return RESPONDENT_TYPE_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
   throw new Error('应答人类型不符合前后端契约')
 }
 
@@ -97,7 +97,7 @@ const formTypeOptions = [
   { value: 'INTERNSHIP_SUPERVISOR', label: '实习导师' },
 ]
 
-const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
+const targetTypeOptions: { value: AchievementTargetType; label: string }[] = [
   { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
   { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
   { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
@@ -109,7 +109,7 @@ const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
     label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
   },
 ]
-const respondentTypeOptions: { value: RespondentType, label: string }[] = [
+const respondentTypeOptions: { value: RespondentType; label: string }[] = [
   { value: 'STUDENT', label: RESPONDENT_TYPE_LABEL.STUDENT },
   { value: 'GRADUATE', label: RESPONDENT_TYPE_LABEL.GRADUATE },
   { value: 'EMPLOYER', label: RESPONDENT_TYPE_LABEL.EMPLOYER },
@@ -117,12 +117,22 @@ const respondentTypeOptions: { value: RespondentType, label: string }[] = [
   { value: 'EXPERT', label: RESPONDENT_TYPE_LABEL.EXPERT },
   { value: 'SUPERVISOR', label: RESPONDENT_TYPE_LABEL.SUPERVISOR },
 ]
-const itemTypeOptions = [
+const itemTypeOptions: { value: IndirectEvaluationItemType; label: string }[] = [
   { value: 'SCALE', label: '量表题' },
   { value: 'SINGLE_CHOICE', label: '单选题' },
   { value: 'MULTI_CHOICE', label: '多选题' },
   { value: 'OPEN_TEXT', label: '开放文本' },
 ]
+
+function formTypeLabel(value: unknown): string {
+  const option = formTypeOptions.find((item) => item.value === value)
+  if (!option) throw new Error('问卷类型不符合前后端契约')
+  return option.label
+}
+
+function isIndirectEvaluationItemType(value: unknown): value is IndirectEvaluationItemType {
+  return itemTypeOptions.some((item) => item.value === value)
+}
 
 /* ========== 问卷分页 ========== */
 
@@ -162,7 +172,7 @@ async function loadForms() {
   formsLoading.value = true
   try {
     const page = await indirectFormApi.page({ ...formQuery })
-    forms.value = page.list || []
+    forms.value = page.list
     formsTotal.value = page.total
   } finally {
     formsLoading.value = false
@@ -231,7 +241,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(payload: { current: number, pageSize: number }) {
+function handleFormPageChange(payload: { current: number; pageSize: number }) {
   formQuery.pageNum = payload.current
   formQuery.pageSize = payload.pageSize
   loadForms()
@@ -251,7 +261,7 @@ async function loadItems() {
   }
   itemsLoading.value = true
   try {
-    items.value = (await indirectItemApi.listByForm(selectedForm.value.id)) || []
+    items.value = await indirectItemApi.listByForm(selectedForm.value.id)
   } finally {
     itemsLoading.value = false
   }
@@ -259,7 +269,7 @@ async function loadItems() {
 
 async function loadScaleRules() {
   const page = await scaleConversionRuleApi.page({ pageNum: 1, pageSize: 200, enabled: true })
-  scaleRules.value = page.list || []
+  scaleRules.value = page.list
 }
 
 const itemEditorVisible = ref(false)
@@ -295,6 +305,51 @@ function defaultScaleLabels(min: number, max: number) {
   return labels
 }
 
+function assertScaleLabelsComplete(record: IndirectEvaluationItemVO) {
+  if (record.scaleMin == null || record.scaleMax == null || record.scaleMin >= record.scaleMax) {
+    throw new Error(`量表题 ${record.itemCode} 缺少有效的量表范围`)
+  }
+  const labels = record.scaleLabels
+  if (!labels?.length) throw new Error(`量表题 ${record.itemCode} 缺少档位标签`)
+  const values = new Set(labels.map((label) => label.scaleValue))
+  for (let value = record.scaleMin; value <= record.scaleMax; value++) {
+    if (!values.has(value)) throw new Error(`量表题 ${record.itemCode} 的档位标签不完整`)
+  }
+}
+
+function assertChoiceOptionsComplete(record: IndirectEvaluationItemVO) {
+  const options = record.choiceOptions
+  if (!options || options.length < 2) {
+    throw new Error(`选择题 ${record.itemCode} 至少需要 2 个选项`)
+  }
+  const values = new Set<string>()
+  for (const option of options) {
+    if (!option.optionValue.trim() || !option.optionLabel.trim()) {
+      throw new Error(`选择题 ${record.itemCode} 存在不完整选项`)
+    }
+    if (values.has(option.optionValue.trim())) {
+      throw new Error(`选择题 ${record.itemCode} 存在重复选项值`)
+    }
+    values.add(option.optionValue.trim())
+  }
+}
+
+function assertEditableItemContract(record: IndirectEvaluationItemVO) {
+  if (!isIndirectEvaluationItemType(record.itemType)) {
+    throw new Error(`题项 ${record.itemCode} 的题型不符合前后端契约`)
+  }
+  if (record.required == null) {
+    throw new Error(`题项 ${record.itemCode} 缺少是否必填标记`)
+  }
+  if (record.itemType === 'SCALE') {
+    assertScaleLabelsComplete(record)
+    return
+  }
+  if (record.itemType === 'SINGLE_CHOICE' || record.itemType === 'MULTI_CHOICE') {
+    assertChoiceOptionsComplete(record)
+  }
+}
+
 function openItemCreate() {
   if (!selectedForm.value) return
   itemEditorMode.value = 'create'
@@ -318,33 +373,34 @@ function openItemCreate() {
 }
 
 function openItemEdit(record: IndirectEvaluationItemVO) {
+  assertEditableItemContract(record)
   itemEditorMode.value = 'edit'
   itemEditor.value = {
     ...record,
-    itemType: record.itemType || 'SCALE',
-    scaleMin: record.scaleMin ?? 1,
-    scaleMax: record.scaleMax ?? 5,
-    scaleLabels: record.scaleLabels?.length
-      ? record.scaleLabels.map((label) => ({ ...label }))
-      : defaultScaleLabels(record.scaleMin ?? 1, record.scaleMax ?? 5),
-    choiceOptions: record.choiceOptions?.map((option) => ({ ...option })) || [],
-    required: record.required ?? true,
+    itemType: record.itemType,
+    scaleLabels: record.scaleLabels?.map((label) => ({ ...label })),
+    choiceOptions: record.choiceOptions?.map((option) => ({ ...option })),
+    required: record.required,
   }
   itemEditorVisible.value = true
 }
 
 function syncScaleLabels() {
   const v = itemEditor.value
-  const min = v.scaleMin ?? 1
-  const max = v.scaleMax ?? 5
+  if (v.scaleMin == null || v.scaleMax == null || v.scaleMin >= v.scaleMax) {
+    v.scaleLabels = []
+    return
+  }
+  const min = v.scaleMin
+  const max = v.scaleMax
   v.scaleLabels = defaultScaleLabels(min, max).map((label) => {
     const existing = v.scaleLabels?.find((item) => item.scaleValue === label.scaleValue)
-    return { scaleValue: label.scaleValue, label: existing?.label || label.label }
+    return { scaleValue: label.scaleValue, label: existing?.label ?? label.label }
   })
 }
 
 function addChoiceOption() {
-  const options = itemEditor.value.choiceOptions || []
+  const options = itemEditor.value.choiceOptions ?? []
   const index = options.length + 1
   itemEditor.value.choiceOptions = [
     ...options,
@@ -353,7 +409,7 @@ function addChoiceOption() {
 }
 
 function removeChoiceOption(index: number) {
-  itemEditor.value.choiceOptions = (itemEditor.value.choiceOptions || []).filter(
+  itemEditor.value.choiceOptions = (itemEditor.value.choiceOptions ?? []).filter(
     (_, i) => i !== index,
   )
 }
@@ -365,17 +421,17 @@ async function submitItem() {
     return
   }
   if (v.itemType === 'SCALE') {
-    if ((v.scaleMin ?? 0) >= (v.scaleMax ?? 0)) {
+    if (v.scaleMin == null || v.scaleMax == null || v.scaleMin >= v.scaleMax) {
       message.error('量表最大值必须大于最小值')
       return
     }
     syncScaleLabels()
     v.choiceOptions = []
   } else if (v.itemType === 'SINGLE_CHOICE' || v.itemType === 'MULTI_CHOICE') {
-    const options = v.choiceOptions || []
+    const options = v.choiceOptions ?? []
     if (
-      options.length < 2
-      || options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+      options.length < 2 ||
+      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
     ) {
       message.error('选择题至少配置 2 个完整选项')
       return
@@ -426,7 +482,7 @@ async function loadResponses() {
   }
   responsesLoading.value = true
   try {
-    responses.value = (await indirectResponseApi.listByItem(selectedItem.value.id)) || []
+    responses.value = await indirectResponseApi.listByItem(selectedItem.value.id)
   } finally {
     responsesLoading.value = false
   }
@@ -535,8 +591,7 @@ async function refreshValidCounts() {
       items.value.map((item) =>
         indirectResponseApi
           .countValidByItem(item.id)
-          .then((count): [string, number] => [item.id, count])
-          .catch((): [string, number] => [item.id, 0]),
+          .then((count): [string, number] => [item.id, count]),
       ),
     )
     validCountMap.value = new Map(results)
@@ -551,11 +606,11 @@ const signals = computed<SignalMetric[]>(() => {
   const enabledForms = forms.value.filter((f) => f.enabled).length
   const totalItems = items.value.length
   const totalValid = Array.from(validCountMap.value.values()).reduce((sum, n) => sum + n, 0)
-  const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample || 0), 0)
+  const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample ?? 0), 0)
   const validResponses = responses.value.filter((r) => r.validFlag).length
   const invalidResponses = responses.value.filter((r) => !r.validFlag).length
-  const sampleRatio
-    = expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+  const sampleRatio =
+    expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
 
   return [
     { key: 'forms-total', label: '问卷总数', value: forms.value.length, tone: 'blue' },
@@ -668,7 +723,7 @@ onMounted(async () => {
       >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'formType'">
-            {{ formTypeOptions.find((o) => o.value === text)?.label || text }}
+            {{ formTypeLabel(text) }}
           </template>
           <template v-else-if="column.key === 'targetType'">
             {{ targetTypeLabel(record.targetType) }}
@@ -722,7 +777,7 @@ onMounted(async () => {
           >
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.key === 'weight'">
-                {{ text == null ? '-' : Number(text).toFixed(2) }}
+                {{ formatRequiredNumber(text, '间接评价题项权重', 2) }}
               </template>
               <template v-else-if="column.key === 'validCount'">
                 <span
@@ -785,10 +840,10 @@ onMounted(async () => {
                 {{ respondentTypeLabel(text) }}
               </template>
               <template v-else-if="column.key === 'convertedScore'">
-                {{ text == null ? '-' : Number(text).toFixed(2) }}
+                {{ formatOptionalNumber(text, '间接评价换算分', 2) }}
               </template>
               <template v-else-if="column.key === 'openText'">
-                <span class="ie__sub-desc">{{ text || '-' }}</span>
+                <span class="ie__sub-desc">{{ text ?? '-' }}</span>
               </template>
               <template v-else-if="column.key === 'validFlag'">
                 <a-tag :color="text ? 'green' : 'red'">{{ text ? '有效' : '无效' }}</a-tag>

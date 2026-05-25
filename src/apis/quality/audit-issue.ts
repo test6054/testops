@@ -1,8 +1,4 @@
-import type {
-  AuditIssueStatus,
-  AuditRectificationStatus,
-  AuditSupervisionType,
-} from './types'
+import type { AuditIssueStatus, AuditRectificationStatus, AuditSupervisionType } from './types'
 /**
  * 审核评估问题 + 整改任务 + 督导复查 API
  *
@@ -83,14 +79,10 @@ export interface AuditIssueQueryPayload extends QueryDto {
 export const auditIssueApi = {
   page: (data: AuditIssueQueryPayload) =>
     http.post<PageResult<AuditIssueVO>>(`${ISSUE}/page`, data),
-  detail: (id: string) =>
-    http.post<AuditIssueVO>(`${ISSUE}/detail`, { id }),
-  create: (data: AuditIssueSavePayload) =>
-    http.post<string>(`${ISSUE}/create`, data),
-  update: (data: AuditIssueSavePayload) =>
-    http.post<void>(`${ISSUE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${ISSUE}/delete`, { id }),
+  detail: (id: string) => http.post<AuditIssueVO>(`${ISSUE}/detail`, { id }),
+  create: (data: AuditIssueSavePayload) => http.post<string>(`${ISSUE}/create`, data),
+  update: (data: AuditIssueSavePayload) => http.post<void>(`${ISSUE}/update`, data),
+  delete: (id: string) => http.post<void>(`${ISSUE}/delete`, { id }),
   transitStatus: (id: string, targetStatus: AuditIssueStatus) =>
     http.post<void>(`${ISSUE}/transit-status`, { id, targetStatus }),
 }
@@ -141,36 +133,33 @@ export interface AuditRectificationQueryPayload extends QueryDto {
   keyword?: string
 }
 
+export interface AuditRectificationProgressPayload {
+  id: string
+  targetStatus: 'IN_PROGRESS' | 'SUBMITTED'
+  progressRemark?: string
+  evidenceAnchors?: string
+}
+
+export interface AuditRectificationVerifyPayload {
+  id: string
+  decision: 'APPROVED' | 'REJECTED'
+  remark?: string
+}
+
 export const auditRectificationApi = {
   page: (data: AuditRectificationQueryPayload) =>
     http.post<PageResult<AuditRectificationVO>>(`${RECT}/page`, data),
-  detail: (id: string) =>
-    http.post<AuditRectificationVO>(`${RECT}/detail`, { id }),
-  create: (data: AuditRectificationSavePayload) =>
-    http.post<string>(`${RECT}/create`, data),
-  update: (data: AuditRectificationSavePayload) =>
-    http.post<void>(`${RECT}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${RECT}/delete`, { id }),
+  detail: (id: string) => http.post<AuditRectificationVO>(`${RECT}/detail`, { id }),
+  create: (data: AuditRectificationSavePayload) => http.post<string>(`${RECT}/create`, data),
+  update: (data: AuditRectificationSavePayload) => http.post<void>(`${RECT}/update`, data),
+  delete: (id: string) => http.post<void>(`${RECT}/delete`, { id }),
   /** PLANNED→IN_PROGRESS / IN_PROGRESS→SUBMITTED / RETURNED→IN_PROGRESS */
-  updateProgress: (
-    id: string,
-    targetStatus: 'IN_PROGRESS' | 'SUBMITTED',
-    progressRemark?: string,
-    evidenceAnchors?: string,
-  ) =>
-    http.post<void>(`${RECT}/update-progress`, {
-      id,
-      targetStatus,
-      progressRemark,
-      evidenceAnchors,
-    }),
+  updateProgress: (data: AuditRectificationProgressPayload) =>
+    http.post<void>(`${RECT}/update-progress`, data),
   /** 复核：APPROVED → VERIFIED / REJECTED → RETURNED */
-  verify: (id: string, decision: 'APPROVED' | 'REJECTED', remark?: string) =>
-    http.post<void>(`${RECT}/verify`, { id, decision, remark }),
+  verify: (data: AuditRectificationVerifyPayload) => http.post<void>(`${RECT}/verify`, data),
   /** 闭环：VERIFIED → CLOSED */
-  close: (id: string) =>
-    http.post<void>(`${RECT}/close`, { id }),
+  close: (id: string) => http.post<void>(`${RECT}/close`, { id }),
 }
 
 /* ========== 督导复查 / 现场检查记录 ========== */
@@ -235,12 +224,8 @@ export interface AuditSupervisionQueryPayload extends QueryDto {
 export const auditSupervisionApi = {
   page: (data: AuditSupervisionQueryPayload) =>
     http.post<PageResult<AuditSupervisionVO>>(`${SUPER}/page`, data),
-  detail: (id: string) =>
-    http.post<AuditSupervisionVO>(`${SUPER}/detail`, { id }),
-  create: (data: AuditSupervisionSavePayload) =>
-    http.post<string>(`${SUPER}/create`, data),
-  update: (data: AuditSupervisionSavePayload) =>
-    http.post<void>(`${SUPER}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${SUPER}/delete`, { id }),
+  detail: (id: string) => http.post<AuditSupervisionVO>(`${SUPER}/detail`, { id }),
+  create: (data: AuditSupervisionSavePayload) => http.post<string>(`${SUPER}/create`, data),
+  update: (data: AuditSupervisionSavePayload) => http.post<void>(`${SUPER}/update`, data),
+  delete: (id: string) => http.post<void>(`${SUPER}/delete`, { id }),
 }

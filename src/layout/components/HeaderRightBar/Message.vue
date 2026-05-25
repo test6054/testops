@@ -55,18 +55,19 @@
 
 <script lang="ts" setup>
 import type { InboxMessageListItemDTO, SystemAnnouncementResponse } from '@/apis/edu/message'
-import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getInboxMessages,
   getPublishedAnnouncementList,
   markAllAnnouncementsAsRead,
   markAllAsRead,
 } from '@/apis/edu/message'
-import { globalUnreadCount } from '@/composables/useUnreadCount'
+import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
 import router from '@/router'
+import { useNotificationStore } from '@/stores/modules/notification'
 import { isErrorHandled } from '@/utils/error-handler'
 
 const emit = defineEmits<{
@@ -101,8 +102,9 @@ const inboxQueryParam = reactive({
   pageSize: MESSAGE_LIST_PAGE_SIZE,
 })
 
-// 使用全局未读计数（后端已合并站内信 + 系统公告）
-const { totalUnreadCount } = globalUnreadCount
+// 使用通知 Store 的统一未读计数（后端已合并站内信 + 系统公告）
+const notificationStore = useNotificationStore()
+const { totalUnreadCount } = storeToRefs(notificationStore)
 
 // 是否有未读消息（用于控制「全部已读」按钮状态）
 const hasUnreadMessages = computed(() => messageList.value.length > 0 || totalUnreadCount.value > 0)
@@ -157,8 +159,8 @@ const getMessageData = async () => {
       return
     }
 
-    const inboxMessages: UnifiedMessageItem[]
-      = inboxResult.status === 'fulfilled'
+    const inboxMessages: UnifiedMessageItem[] =
+      inboxResult.status === 'fulfilled'
         ? inboxResult.value.list.map((item: InboxMessageListItemDTO) => ({
             id: item.id,
             subject: item.subject,
@@ -169,8 +171,8 @@ const getMessageData = async () => {
           }))
         : []
 
-    const announcementMessages: UnifiedMessageItem[]
-      = announcementResult.status === 'fulfilled'
+    const announcementMessages: UnifiedMessageItem[] =
+      announcementResult.status === 'fulfilled'
         ? announcementResult.value.list.map((item: SystemAnnouncementResponse) => ({
             id: item.id,
             subject: `【公告】${item.title}`,

@@ -203,7 +203,6 @@
 
 <script lang="ts" setup>
 import type {
-  DashboardExamMetricsVO,
   DashboardGradingMetricsVO,
   DashboardIncidentMetricsVO,
   DashboardRecentExamItemVO,
@@ -211,7 +210,13 @@ import type {
   IncidentRecordVO,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
+import {
+  INCIDENT_LEVEL_LABEL,
+  INCIDENT_LEVEL_TONE,
+  loadDashboardOverview,
+} from '@/apis/mark/admin-dashboard'
 import type { ExamStatusCode } from '@/apis/mark/exam'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
@@ -223,12 +228,6 @@ import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  INCIDENT_LEVEL_LABEL,
-  INCIDENT_LEVEL_TONE,
-  loadDashboardOverview,
-} from '@/apis/mark/admin-dashboard'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -247,17 +246,6 @@ const loading = ref(false)
 const overviewLoadError = ref<unknown>(null)
 const recentLimit = ref(5)
 const overview = ref<MarkDashboardOverviewVO | null>(null)
-
-const examMetrics = computed<DashboardExamMetricsVO>(
-  () =>
-    overview.value?.examMetrics ?? {
-      totalExamCount: 0,
-      activeExamCount: 0,
-      closedExamCount: 0,
-      recentExamCount: 0,
-      totalCandidateCount: 0,
-    },
-)
 
 const gradingMetrics = computed<DashboardGradingMetricsVO>(
   () =>

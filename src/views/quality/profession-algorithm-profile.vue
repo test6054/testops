@@ -5,7 +5,8 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 专业算法实例
  *
  * 后端：/api/quality/profession-algorithm-profiles
- * 状态流转：DRAFT → CONFIRMED ⇄ REVOKED；只有 CONFIRMED + enabled 的实例进入达成度计算。
+ * 状态流转：DRAFT → SUBMITTED → CONFIRMED；CONFIRMED 可退回为 RETURNED。
+ * 只有 CONFIRMED + enabled 的实例进入达成度计算。
  */
 import type {
   AccreditationStandardVO,
@@ -16,10 +17,6 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -30,12 +27,15 @@ import {
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
+import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ProgramSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { promptModal } from './_helpers'
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'profileCode', key: 'profileCode', width: 140 },
@@ -58,12 +58,12 @@ function accreditationTypeLabel(value: unknown): string {
 
 function confirmationStatusLabel(value: unknown): string {
   if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error(`专业算法实例确认状态不符合前后端契约：${String(value)}`)
 }
 
 function confirmationStatusColor(value: unknown): string {
   if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_COLOR[value]
-  return 'default'
+  throw new Error(`专业算法实例确认状态不符合前后端契约：${String(value)}`)
 }
 
 const list = ref<ProfessionAlgorithmProfileVO[]>([])
@@ -163,9 +163,9 @@ async function loadDicts() {
     accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
     majorCategoryCatalogApi.listAll(),
   ])
-  templates.value = tpl.list || []
-  standards.value = std.list || []
-  programs.value = majors || []
+  templates.value = tpl.list
+  standards.value = std.list
+  programs.value = majors
 }
 
 // a-select v-model:value 是 SelectValue（string|number|undefined|array），
@@ -231,10 +231,10 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim()
-    || !editor.profileName.trim()
-    || !editor.templateId
-    || !editor.programId
+    !editor.profileCode.trim() ||
+    !editor.profileName.trim() ||
+    !editor.templateId ||
+    !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
     return
@@ -265,17 +265,16 @@ async function handleConfirm(record: ProfessionAlgorithmProfileVO) {
 }
 
 async function handleRevoke(record: ProfessionAlgorithmProfileVO) {
-  const reason = await promptModal({
-    title: `撤销实例 ${record.profileCode}`,
-    placeholder: '请填写撤销原因（必填）',
-    required: true,
-    okType: 'danger',
-    emptyErrorMessage: '撤销原因不能为空',
+  void confirmAsync({
+    title: `退回实例 ${record.profileCode}？`,
+    content: '退回后实例不再参与达成度计算，可重新编辑后再次确认。',
+    type: 'warning',
+    onOk: async () => {
+      await professionAlgorithmProfileApi.revoke(record.id)
+      message.success('已退回')
+      await loadList()
+    },
   })
-  if (!reason) return
-  await professionAlgorithmProfileApi.revoke(record.id, reason)
-  message.success('已撤销')
-  await loadList()
 }
 
 async function handleDelete(record: ProfessionAlgorithmProfileVO) {
@@ -290,7 +289,7 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -459,7 +458,7 @@ onMounted(async () => {
                 size="sm"
                 @click="handleRevoke(record)"
               >
-                撤销
+                退回
               </UiButton>
               <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
                 删除

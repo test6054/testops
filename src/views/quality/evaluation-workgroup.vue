@@ -12,13 +12,13 @@ import type {
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
 } from '@/apis/quality'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
 import type { MajorCategoryVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
-import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
@@ -67,10 +67,10 @@ function workgroupLevelLabel(value: unknown): string {
     return ''
   }
   if (
-    value === 'UNIVERSITY'
-    || value === 'COLLEGE'
-    || value === 'PROGRAM'
-    || value === 'INDUSTRY'
+    value === 'UNIVERSITY' ||
+    value === 'COLLEGE' ||
+    value === 'PROGRAM' ||
+    value === 'INDUSTRY'
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
@@ -120,17 +120,13 @@ async function loadList() {
     const ids = Array.from(new Set(list.value.map((w) => w.convenerUserId).filter(Boolean)))
     for (const uid of ids) {
       if (teacherCache.value.has(uid)) continue
-      try {
-        const res = await teacherCatalogApi.userList({
-          pageNum: 1,
-          pageSize: 1,
-          searchText: uid,
-        })
-        const t = res.list?.find((x) => String(x.id) === uid)
-        if (t) teacherCache.value.set(uid, t)
-      } catch {
-        /* ignore */
-      }
+      const res = await teacherCatalogApi.userList({
+        pageNum: 1,
+        pageSize: 1,
+        searchText: uid,
+      })
+      const t = res.list?.find((x) => String(x.id) === uid)
+      if (t) teacherCache.value.set(uid, t)
     }
   } finally {
     loading.value = false
@@ -138,10 +134,10 @@ async function loadList() {
 }
 
 async function loadDicts() {
-  programs.value = (await majorCategoryCatalogApi.listAll()) || []
+  programs.value = await majorCategoryCatalogApi.listAll()
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -204,10 +200,10 @@ function handleEditorConvenerChange(value: string | null) {
 
 async function submitEditor() {
   if (
-    !editor.programId
-    || !editor.workgroupCode.trim()
-    || !editor.workgroupName.trim()
-    || !editor.convenerUserId
+    !editor.programId ||
+    !editor.workgroupCode.trim() ||
+    !editor.workgroupName.trim() ||
+    !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -247,6 +243,7 @@ const importVisible = ref(false)
 const importTargetWorkgroup = ref<EvaluationWorkgroupVO | null>(null)
 const membersDrawerVisible = ref(false)
 const membersDrawerTarget = ref<EvaluationWorkgroupVO | null>(null)
+const membersDrawerRows = computed(() => membersDrawerTarget.value?.parsedMembers ?? [])
 
 const memberColumns: ColumnsType = [
   { title: '工号/编号', dataIndex: 'userCode', key: 'userCode', width: 140 },
@@ -450,10 +447,7 @@ onMounted(async () => {
           <a-input v-model:value="editor.workgroupName" />
         </a-form-item>
         <a-form-item label="专业大类" required>
-          <ProgramSelector
-            :value="editor.programId || null"
-            @change="handleEditorProgramChange"
-          />
+          <ProgramSelector :value="editor.programId || null" @change="handleEditorProgramChange" />
         </a-form-item>
         <a-form-item label="召集人" required>
           <TeacherSelector
@@ -505,10 +499,10 @@ onMounted(async () => {
       <UiDataTable
         v-else
         :columns="memberColumns"
-        :data-source="membersDrawerTarget?.parsedMembers || []"
+        :data-source="membersDrawerRows"
         row-key="userCode"
         size="middle"
-        :total="(membersDrawerTarget?.parsedMembers || []).length"
+        :total="membersDrawerRows.length"
         :page-size="20"
         flat
       >

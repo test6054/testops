@@ -111,8 +111,8 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
               {{
-                archives[index].archiveStatusMessage
-                  || archiveStatusLabel(archives[index].archiveStatus)
+                archives[index].archiveStatusMessage ||
+                archiveStatusLabel(archives[index].archiveStatus)
               }}
             </UiTag>
             <div
@@ -152,8 +152,8 @@
               </UiButton>
               <UiButton
                 v-if="
-                  archives[index].archiveStatus === 'DRAFT'
-                    || archives[index].archiveStatus === 'PACKAGING_FAILED'
+                  archives[index].archiveStatus === 'DRAFT' ||
+                  archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
                 size="sm"
                 @click="confirmPackage(archives[index])"
@@ -229,6 +229,14 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
+import {
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  createArchive,
+  listArchives,
+  packageArchive,
+} from '@/apis/mark/archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -238,14 +246,6 @@ import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
-  ARCHIVE_STATUS_TONE,
-  createArchive,
-  listArchives,
-  packageArchive,
-} from '@/apis/mark/archive'
 import {
   UiAlertStrip,
   UiBadge,
@@ -301,7 +301,8 @@ const archivePackageStatuses: ArchivePackageStatusCode[] = [
   'APPRAISAL_DECIDED',
   'DESTRUCTION_PENDING',
   'DESTRUCTION_APPROVED',
-  'DESTRUCTION_REJECTED',
+  'DESTRUCTION_EXECUTING',
+  'DESTRUCTION_FAILED',
   'DESTROYED',
 ]
 
@@ -330,7 +331,7 @@ interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
   description: string
-  action: { label: string, handler: () => void }
+  action: { label: string; handler: () => void }
 }
 
 const archiveAlert = computed<ArchiveAlert | null>(() => {
@@ -371,11 +372,10 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
  * 归档阶段状态映射：将归档包状态转换为 ARCHIVE 阶段状态。
  *
  * 设计原则：归档阶段是阅卷主链的末端，存在即推进，状态仅表达当前推进中/阅迫度。
- * - 创建后未打包 (DRAFT) 或打包失败 (PACKAGING_FAILED)  → blocked（需人工推进）
- * - 打包中 (PACKAGING)                                          → active（在进行）
- * - 保管中 (ACTIVE) / 鉴定待办 (APPRAISAL_PENDING)             → active（入库但未鉴定）
- * - 鉴定完成 (APPRAISAL_DECIDED) 及之后状态                  → completed（生命周期完整）
- * - 列表为空且有 examId                                       → blocked（尚未创建归档）
+ * - DRAFT / PACKAGING_FAILED / DESTRUCTION_FAILED → blocked（需人工推进）
+ * - PACKAGING / ACTIVE / APPRAISAL_PENDING / DESTRUCTION_* 进行态 → active
+ * - APPRAISAL_DECIDED / DESTROYED → completed（鉴定留存或销毁完成）
+ * - 列表为空且有 examId → blocked（尚未创建归档）
  */
 function syncArchiveStageToStore(): void {
   const examId = filterForm.examId
@@ -386,40 +386,49 @@ function syncArchiveStageToStore(): void {
     return
   }
   const statuses = archives.value.map((a) => a.archiveStatus)
-  const hasCompleted = statuses.some(
-    (s) =>
-      s === 'APPRAISAL_DECIDED'
-      || s === 'DESTRUCTION_PENDING'
-      || s === 'DESTRUCTION_APPROVED'
-      || s === 'DESTRUCTION_REJECTED'
-      || s === 'DESTROYED',
+  const hasBlocked = statuses.some(
+    (s) => s === 'DRAFT' || s === 'PACKAGING_FAILED' || s === 'DESTRUCTION_FAILED',
   )
   const hasActive = statuses.some(
-    (s) => s === 'PACKAGING' || s === 'ACTIVE' || s === 'APPRAISAL_PENDING',
+    (s) =>
+      s === 'PACKAGING' ||
+      s === 'ACTIVE' ||
+      s === 'APPRAISAL_PENDING' ||
+      s === 'DESTRUCTION_PENDING' ||
+      s === 'DESTRUCTION_APPROVED' ||
+      s === 'DESTRUCTION_EXECUTING',
   )
-  const hasBlocked = statuses.some((s) => s === 'DRAFT' || s === 'PACKAGING_FAILED')
+  const hasCompleted = statuses.some((s) => s === 'APPRAISAL_DECIDED' || s === 'DESTROYED')
   let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
   let hint = ''
-  if (hasCompleted) {
-    status = 'completed'
-    hint = `已鉴定存档 ${
-      statuses.filter(
-        (s) =>
-          s === 'APPRAISAL_DECIDED'
-          || s === 'DESTRUCTION_PENDING'
-          || s === 'DESTRUCTION_APPROVED'
-          || s === 'DESTRUCTION_REJECTED'
-          || s === 'DESTROYED',
-      ).length
-    } / ${archives.value.length}`
+  if (hasBlocked) {
+    status = 'blocked'
+    const draftOrFailed = statuses.filter((s) => s === 'DRAFT' || s === 'PACKAGING_FAILED').length
+    const destructionFailed = statuses.filter((s) => s === 'DESTRUCTION_FAILED').length
+    hint =
+      destructionFailed > 0
+        ? `${destructionFailed} 个销毁失败需人工处理`
+        : `${draftOrFailed} 个草稿 / 打包失败待人工处理`
   } else if (hasActive) {
     status = 'active'
     const packaging = statuses.filter((s) => s === 'PACKAGING').length
-    const archived = statuses.filter((s) => s === 'ACTIVE' || s === 'APPRAISAL_PENDING').length
-    hint = packaging > 0 ? `${packaging} 个打包中 / ${archived} 个保管中` : `${archived} 个保管中`
-  } else if (hasBlocked) {
-    status = 'blocked'
-    hint = `${statuses.filter((s) => s === 'DRAFT' || s === 'PACKAGING_FAILED').length} 个草稿 / 打包失败待人工处理`
+    const archived = statuses.filter(
+      (s) =>
+        s === 'ACTIVE' ||
+        s === 'APPRAISAL_PENDING' ||
+        s === 'DESTRUCTION_PENDING' ||
+        s === 'DESTRUCTION_APPROVED' ||
+        s === 'DESTRUCTION_EXECUTING',
+    ).length
+    hint =
+      packaging > 0
+        ? `${packaging} 个打包中 / ${archived} 个归档处理中`
+        : `${archived} 个归档处理中`
+  } else if (hasCompleted) {
+    status = 'completed'
+    hint = `已完成 ${
+      statuses.filter((s) => s === 'APPRAISAL_DECIDED' || s === 'DESTROYED').length
+    } / ${archives.value.length}`
   }
   markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
   markStageStore.observeExam(examId)
@@ -481,9 +490,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans
-    && !createForm.includeMarkedSlices
-    && !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans &&
+    !createForm.includeMarkedSlices &&
+    !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return
@@ -540,29 +549,30 @@ function formatTime(value?: string): string {
 // 严格 typed helper：模板侧的 archives[index] 字段都是后端 VO 字面联合，避免 slot record:any。
 function isArchivePackageStatusCode(value: unknown): value is ArchivePackageStatusCode {
   return (
-    value === 'DRAFT'
-    || value === 'PACKAGING'
-    || value === 'PACKAGING_FAILED'
-    || value === 'STORED'
-    || value === 'ACTIVE'
-    || value === 'APPRAISAL_PENDING'
-    || value === 'APPRAISAL_DECIDED'
-    || value === 'DESTRUCTION_PENDING'
-    || value === 'DESTRUCTION_APPROVED'
-    || value === 'DESTRUCTION_REJECTED'
-    || value === 'DESTROYED'
+    value === 'DRAFT' ||
+    value === 'PACKAGING' ||
+    value === 'PACKAGING_FAILED' ||
+    value === 'STORED' ||
+    value === 'ACTIVE' ||
+    value === 'APPRAISAL_PENDING' ||
+    value === 'APPRAISAL_DECIDED' ||
+    value === 'DESTRUCTION_PENDING' ||
+    value === 'DESTRUCTION_APPROVED' ||
+    value === 'DESTRUCTION_EXECUTING' ||
+    value === 'DESTRUCTION_FAILED' ||
+    value === 'DESTROYED'
   )
 }
 
 function isArchivePackagingPhase(value: unknown): value is ArchivePackagingPhase {
   return (
-    value === 'QUEUED'
-    || value === 'AGGREGATING'
-    || value === 'WRITING_ZIP'
-    || value === 'UPLOADING_PARTS'
-    || value === 'FINALIZING'
-    || value === 'COMPLETED'
-    || value === 'FAILED'
+    value === 'QUEUED' ||
+    value === 'AGGREGATING' ||
+    value === 'WRITING_ZIP' ||
+    value === 'UPLOADING_PARTS' ||
+    value === 'FINALIZING' ||
+    value === 'COMPLETED' ||
+    value === 'FAILED'
   )
 }
 

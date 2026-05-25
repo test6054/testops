@@ -13,10 +13,15 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   语义存在，不参与模型选择。
  */
 import type { AiModelProfileSavePayload, AiModelProfileVO } from '@/apis/quality'
+import {
+  AI_HEALTH_STATUS_COLOR,
+  AI_HEALTH_STATUS_LABEL,
+  aiModelProfileApi,
+  isAiHealthStatus,
+} from '@/apis/quality'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { aiModelProfileApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -32,26 +37,14 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 360, fixed: 'right' },
 ]
 
-/* ========== 健康状态守卫 helper：禁用 as 类型断言 ========== */
-
-type HealthStatus = 'HEALTHY' | 'FAILED' | 'PENDING'
-
-function isHealthStatus(value: unknown): value is HealthStatus {
-  return value === 'HEALTHY' || value === 'FAILED' || value === 'PENDING'
-}
-
 function healthLabel(value: unknown): string {
-  if (!isHealthStatus(value)) return '未检测'
-  if (value === 'HEALTHY') return '健康'
-  if (value === 'FAILED') return '异常'
-  return '待检测'
+  if (isAiHealthStatus(value)) return AI_HEALTH_STATUS_LABEL[value]
+  throw new Error('AI 模型健康状态不符合前后端契约')
 }
 
 function healthColor(value: unknown): string {
-  if (!isHealthStatus(value)) return 'default'
-  if (value === 'HEALTHY') return 'green'
-  if (value === 'FAILED') return 'red'
-  return 'orange'
+  if (isAiHealthStatus(value)) return AI_HEALTH_STATUS_COLOR[value]
+  throw new Error('AI 模型健康状态不符合前后端契约')
 }
 
 const list = ref<AiModelProfileVO[]>([])

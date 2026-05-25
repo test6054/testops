@@ -4,10 +4,10 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 质量评价 - 材料归档与专家包导出台
  *
  * 后端契约（ArchiveController）：
- * - GET /quality/archive/page  分页查询
- * - GET /quality/archive/{id}  详情
- * - POST /quality/archive/create / update / delete  手工台帐补登
- * - POST /quality/archive/expert-package/export  专家材料包异步导出，返回 archiveId
+ * - POST /quality/archives/page 分页查询
+ * - POST /quality/archives/detail 详情
+ * - POST /quality/archives/create / update / delete 手工台帐补登
+ * - POST /quality/archives/export-expert-package 专家材料包异步导出，返回 archiveId
  */
 import type {
   ArchiveQueryPayload,
@@ -15,17 +15,17 @@ import type {
   ArchiveVO,
   ExpertPackageExportPayload,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   ARCHIVE_BUSINESS_TYPE_LABEL,
   archiveApi,
   EXPERT_PACKAGE_TYPE_LABEL,
   isArchiveBusinessType,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiSearchForm } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -35,15 +35,15 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 
-/* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
-
 function archiveBusinessTypeLabel(value: unknown): string {
   if (isArchiveBusinessType(value)) return ARCHIVE_BUSINESS_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error('归档业务类型不符合前后端契约')
 }
 
 function archiveBusinessTypeColor(value: unknown): string {
-  if (!isArchiveBusinessType(value)) return 'default'
+  if (!isArchiveBusinessType(value)) {
+    throw new Error('归档业务类型不符合前后端契约')
+  }
   if (value === 'EXPERT_PACKAGE') return 'gold'
   if (value === 'REPORT') return 'cyan'
   if (value === 'GRADUATION_REQUIREMENT') return 'purple'
@@ -147,7 +147,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -156,8 +156,8 @@ function handlePageChange(payload: { current: number, pageSize: number }) {
 function syncFilterToQuery() {
   const businessTypeRaw = filterModel.value.businessType
   query.businessType = isArchiveBusinessType(businessTypeRaw) ? businessTypeRaw : undefined
-  query.archiveCategory
-    = typeof filterModel.value.archiveCategory === 'string' ? filterModel.value.archiveCategory : ''
+  query.archiveCategory =
+    typeof filterModel.value.archiveCategory === 'string' ? filterModel.value.archiveCategory : ''
   query.keyword = typeof filterModel.value.keyword === 'string' ? filterModel.value.keyword : ''
 }
 
@@ -383,8 +383,6 @@ async function openAuditDrawer(record: ArchiveVO) {
       beforeValue: log.changeDetails ? JSON.parse(log.changeDetails)?.before : undefined,
       afterValue: log.changeDetails ? JSON.parse(log.changeDetails)?.after : undefined,
     }))
-  } catch {
-    auditEvents.value = []
   } finally {
     auditLoading.value = false
   }

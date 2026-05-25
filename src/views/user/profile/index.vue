@@ -65,7 +65,9 @@
             </div>
             <div v-if="userInfo.studentDetails" class="info-grid__row">
               <span class="info-grid__label">学号</span>
-              <span class="info-grid__value">{{ userInfo.studentDetails.studentNumber || '-' }}</span>
+              <span class="info-grid__value">{{
+                userInfo.studentDetails.studentNumber || '-'
+              }}</span>
             </div>
             <div v-if="userInfo.studentDetails" class="info-grid__row">
               <span class="info-grid__label">班级</span>
@@ -77,7 +79,9 @@
             </div>
             <div v-if="userInfo.teacherDetails" class="info-grid__row">
               <span class="info-grid__label">工号</span>
-              <span class="info-grid__value">{{ userInfo.teacherDetails.teacherNumber || '-' }}</span>
+              <span class="info-grid__value">{{
+                userInfo.teacherDetails.teacherNumber || '-'
+              }}</span>
             </div>
             <div class="info-grid__row">
               <span class="info-grid__label">账户状态</span>
@@ -115,9 +119,7 @@
                   上次修改：{{ formatTime(userInfo.passwordLastChangedTime) }}
                 </p>
               </div>
-              <UiButton size="sm" variant="outline" @click="goChangePassword">
-                修改密码
-              </UiButton>
+              <UiButton size="sm" variant="outline" @click="goChangePassword"> 修改密码 </UiButton>
             </article>
 
             <article class="security-item">
@@ -173,19 +175,22 @@ import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { UiBadge, UiButton, UiCard, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { globalUnreadCount } from '@/composables/useUnreadCount'
 import { useAuthStore, useUserStore } from '@/stores'
+import { useNotificationStore } from '@/stores/modules/notification'
 
 defineOptions({ name: 'UserProfile' })
 
 const router = useRouter()
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const notificationStore = useNotificationStore()
+const { totalUnreadCount } = storeToRefs(notificationStore)
 
 const refreshing = ref(false)
 
@@ -198,8 +203,7 @@ const roleLabel = computed(() => userInfo.value.roleDisplayName || userInfo.valu
 const isStudent = computed(() => userInfo.value.roleKey === 'SCH_STU')
 const isTenantAdmin = computed(() => userInfo.value.isTenantAdmin === true)
 
-
-const unreadTotal = computed(() => globalUnreadCount.totalUnreadCount.value)
+const unreadTotal = computed(() => totalUnreadCount.value)
 
 function formatTime(value?: string): string {
   if (!value) return '-'
@@ -210,7 +214,7 @@ async function refresh() {
   refreshing.value = true
   try {
     await userStore.getInfo(true)
-    await globalUnreadCount.refreshUnreadCount()
+    await notificationStore.loadUnreadCount()
     message.success('已刷新最新信息')
   } catch (error) {
     const msg = error instanceof Error ? error.message : '刷新失败'
@@ -247,7 +251,7 @@ function handleLogout() {
 }
 
 onMounted(() => {
-  globalUnreadCount.fetchUnreadCount().catch(() => {})
+  notificationStore.loadUnreadCount().catch(() => {})
 })
 </script>
 

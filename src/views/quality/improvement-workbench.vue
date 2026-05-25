@@ -40,9 +40,6 @@ import type {
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -61,6 +58,9 @@ import {
   isAuditSupervisionType,
   isImprovementTaskStatus,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,
@@ -128,37 +128,31 @@ const activeTab = ref<'improvement' | 'issue' | 'rectification' | 'supervision'>
 
 function improvementStatusLabel(value: unknown): string {
   if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
   throw new Error('改进任务状态不符合前后端契约')
 }
 
 function improvementStatusColor(value: unknown): string {
   if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '') return 'default'
   throw new Error('改进任务状态不符合前后端契约')
 }
 
 function issueStatusLabel(value: unknown): string {
   if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
   throw new Error('审核评估问题状态不符合前后端契约')
 }
 
 function issueStatusColor(value: unknown): string {
   if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '') return 'default'
   throw new Error('审核评估问题状态不符合前后端契约')
 }
 
 function rectificationStatusLabel(value: unknown): string {
   if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
   throw new Error('审核整改状态不符合前后端契约')
 }
 
 function rectificationStatusColor(value: unknown): string {
   if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '') return 'default'
   throw new Error('审核整改状态不符合前后端契约')
 }
 
@@ -166,6 +160,86 @@ function supervisionTypeLabel(value: unknown): string {
   if (isAuditSupervisionType(value)) return AUDIT_SUPERVISION_TYPE_LABEL[value]
   if (value === null || value === undefined || value === '') return '-'
   throw new Error('督导类型不符合前后端契约')
+}
+
+type AuditSupervisionScope = 'COURSE' | 'PROGRAM' | 'TRAINING_PLAN' | 'COMPREHENSIVE'
+type AuditSupervisionConclusion = 'PASS' | 'NEEDS_IMPROVEMENT' | 'FAIL'
+type AuditIssueSource =
+  | 'SELF_AUDIT'
+  | 'EXPERT_AUDIT'
+  | 'ACCREDITATION_AUDIT'
+  | 'EXTERNAL_INSPECTION'
+type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
+
+function requiredContractText(value: unknown, message: string): string {
+  if (typeof value === 'string' && value.trim()) return value
+  if (typeof value === 'number') return String(value)
+  throw new Error(message)
+}
+
+function isAuditIssueSource(value: unknown): value is AuditIssueSource {
+  return (
+    value === 'SELF_AUDIT' ||
+    value === 'EXPERT_AUDIT' ||
+    value === 'ACCREDITATION_AUDIT' ||
+    value === 'EXTERNAL_INSPECTION'
+  )
+}
+
+function isAuditIssueSeverity(value: unknown): value is AuditIssueSeverity {
+  return value === 'MINOR' || value === 'MAJOR' || value === 'CRITICAL'
+}
+
+function issueSourceLabel(value: unknown): string {
+  if (isAuditIssueSource(value)) return issueSourceLabelMap[value]
+  throw new Error('审核评估问题来源不符合前后端契约')
+}
+
+function severityLabel(value: unknown): string {
+  if (isAuditIssueSeverity(value)) return severityLabelMap[value]
+  throw new Error('审核评估问题严重度不符合前后端契约')
+}
+
+function severityColor(value: unknown): string {
+  if (isAuditIssueSeverity(value)) return severityColorMap[value]
+  throw new Error('审核评估问题严重度不符合前后端契约')
+}
+
+function isAuditSupervisionScope(value: unknown): value is AuditSupervisionScope {
+  return (
+    value === 'COURSE' ||
+    value === 'PROGRAM' ||
+    value === 'TRAINING_PLAN' ||
+    value === 'COMPREHENSIVE'
+  )
+}
+
+function isAuditSupervisionConclusion(value: unknown): value is AuditSupervisionConclusion {
+  return value === 'PASS' || value === 'NEEDS_IMPROVEMENT' || value === 'FAIL'
+}
+
+function supervisionScopeLabel(value: unknown): string {
+  if (isAuditSupervisionScope(value)) {
+    return supScopeLabelMap[value]
+  }
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('督导范围不符合前后端契约')
+}
+
+function supervisionConclusionLabel(value: unknown): string {
+  if (isAuditSupervisionConclusion(value)) {
+    return supConclusionLabelMap[value]
+  }
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('督导结论不符合前后端契约')
+}
+
+function supervisionConclusionColor(value: unknown): string {
+  if (isAuditSupervisionConclusion(value)) {
+    return supConclusionColorMap[value]
+  }
+  if (value === null || value === undefined || value === '') return 'default'
+  throw new Error('督导结论不符合前后端契约')
 }
 
 function selectedId(value: string | null | undefined): string {
@@ -277,11 +351,10 @@ const improvementQuery = reactive<ImprovementTaskQueryPayload>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatus; label: string }> = [
   { value: 'OPEN', label: IMPROVEMENT_TASK_STATUS_LABEL.OPEN },
   { value: 'IN_PROGRESS', label: IMPROVEMENT_TASK_STATUS_LABEL.IN_PROGRESS },
   { value: 'SUBMITTED', label: IMPROVEMENT_TASK_STATUS_LABEL.SUBMITTED },
-  { value: 'REVIEWED', label: IMPROVEMENT_TASK_STATUS_LABEL.REVIEWED },
   { value: 'CLOSED', label: IMPROVEMENT_TASK_STATUS_LABEL.CLOSED },
   { value: 'RETURNED', label: IMPROVEMENT_TASK_STATUS_LABEL.RETURNED },
 ]
@@ -339,7 +412,7 @@ async function loadImprovementList() {
   }
 }
 
-function handleImprovementPageChange(payload: { current: number, pageSize: number }) {
+function handleImprovementPageChange(payload: { current: number; pageSize: number }) {
   improvementQuery.pageNum = payload.current
   improvementQuery.pageSize = payload.pageSize
   loadImprovementList()
@@ -379,40 +452,50 @@ function openImprovementEdit(record: ImprovementTaskVO) {
   Object.assign(improvementEditor, {
     id: record.id,
     taskCode: record.taskCode,
-    taskTitle: record.taskTitle,
-    problemSummary: record.problemSummary || '',
-    proposedAction: record.proposedAction || '',
-    programId: record.programId || '',
+    taskTitle: requiredContractText(record.taskTitle, '改进任务标题不符合前后端契约'),
+    problemSummary: requiredContractText(record.problemSummary, '改进任务问题概述不符合前后端契约'),
+    proposedAction: requiredContractText(record.proposedAction, '改进任务改进措施不符合前后端契约'),
+    programId: requiredContractText(record.programId, '改进任务专业不符合前后端契约'),
     trainingPlanId: record.trainingPlanId || '',
     qualityCourseId: record.qualityCourseId || '',
     achievementResultId: record.achievementResultId || '',
     reportId: record.reportId || '',
-    ownerUserId: record.ownerUserId || '',
+    ownerUserId: requiredContractText(record.ownerUserId, '改进任务负责人不符合前后端契约'),
     ownerRole: record.ownerRole || '',
-    dueDate: record.dueDate || '',
+    dueDate: requiredContractText(record.dueDate, '改进任务截止日期不符合前后端契约'),
   })
   improvementEditorVisible.value = true
 }
 
 async function submitImprovementEditor() {
-  if (!improvementEditor.taskCode.trim() || !improvementEditor.taskTitle.trim()) {
-    message.error('请填写任务编码与标题')
+  if (
+    !improvementEditor.taskTitle.trim() ||
+    !improvementEditor.problemSummary.trim() ||
+    !improvementEditor.proposedAction.trim() ||
+    !improvementEditor.programId ||
+    !improvementEditor.ownerUserId ||
+    !improvementEditor.dueDate
+  ) {
+    message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
     return
   }
   improvementEditorSubmitting.value = true
   try {
     const payload: ImprovementTaskSavePayload = {
-      ...improvementEditor,
+      id: improvementEditor.id,
+      programId: improvementEditor.programId,
       trainingPlanId:
         improvementEditor.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
-      taskCode: improvementEditor.taskCode.trim(),
+      taskCode: improvementEditor.taskCode?.trim() || undefined,
       taskTitle: improvementEditor.taskTitle.trim(),
+      problemSummary: improvementEditor.problemSummary.trim(),
+      proposedAction: improvementEditor.proposedAction.trim(),
       qualityCourseId: improvementEditor.qualityCourseId || undefined,
       achievementResultId: improvementEditor.achievementResultId || undefined,
       reportId: improvementEditor.reportId || undefined,
-      ownerUserId: improvementEditor.ownerUserId || undefined,
+      ownerUserId: improvementEditor.ownerUserId,
       ownerRole: improvementEditor.ownerRole || undefined,
-      dueDate: improvementEditor.dueDate || undefined,
+      dueDate: improvementEditor.dueDate,
     }
     if (improvementEditorMode.value === 'create') {
       await improvementTaskApi.create(payload)
@@ -429,7 +512,14 @@ async function submitImprovementEditor() {
 }
 
 function nextImprovementStatuses(status: ImprovementTaskStatus) {
-  return improvementTransitMap[status] || []
+  if (!isImprovementTaskStatus(status)) {
+    throw new Error('改进任务状态不符合前后端契约')
+  }
+  return improvementTransitMap[status]
+}
+
+function canEditImprovementTask(status: ImprovementTaskStatus): boolean {
+  return status === 'OPEN' || status === 'RETURNED'
 }
 
 async function handleImprovementTransit(record: ImprovementTaskVO, to: ImprovementTaskStatus) {
@@ -462,13 +552,15 @@ async function handleImprovementTransit(record: ImprovementTaskVO, to: Improveme
   let rectificationEvidence: string | undefined
   if (to === 'SUBMITTED') {
     const evidenceText = await promptModal({
-      title: '填写整改证据（JSON，可选）',
+      title: '填写整改证据（JSON）',
       placeholder: '例如：{"docs":["file_id_1"], "actions":["调整考核权重"]}',
-      required: false,
+      required: true,
+      emptyErrorMessage: '提交复评必须填写整改证据',
       okType: 'primary',
     })
     if (evidenceText === null) return
-    rectificationEvidence = evidenceText || undefined
+    if (!evidenceText) return
+    rectificationEvidence = evidenceText
   }
   await improvementTaskApi.transitStatus({
     id: record.id,
@@ -481,6 +573,10 @@ async function handleImprovementTransit(record: ImprovementTaskVO, to: Improveme
 }
 
 async function handleImprovementAiSuggestion(record: ImprovementTaskVO) {
+  if (!record.achievementResultId) {
+    message.error('生成 AI 改进建议需要先关联达成度计算结果')
+    return
+  }
   void confirmAsync({
     title: '为该改进任务生成 AI 建议草稿？',
     content: '将提交 IMPROVEMENT_SUGGESTION_GENERATE AI 任务，完成后可在 AI 任务中心查看结果',
@@ -488,8 +584,8 @@ async function handleImprovementAiSuggestion(record: ImprovementTaskVO) {
     onOk: async () => {
       const res = await aiTaskApi.submit({
         taskType: 'IMPROVEMENT_SUGGESTION_GENERATE',
-        businessType: 'improvement-task',
-        businessId: record.id,
+        businessType: 'ACHIEVEMENT_RESULT',
+        businessId: record.achievementResultId,
         trainingPlanId: record.trainingPlanId,
         programId: record.programId,
         qualityCourseId: record.qualityCourseId,
@@ -549,11 +645,27 @@ const issueSourceOptions = [
   { value: 'ACCREDITATION_AUDIT', label: '认证审核' },
   { value: 'EXTERNAL_INSPECTION', label: '外部检查' },
 ]
+const issueSourceLabelMap: Record<AuditIssueSource, string> = {
+  SELF_AUDIT: '自评自查',
+  EXPERT_AUDIT: '专家审核',
+  ACCREDITATION_AUDIT: '认证审核',
+  EXTERNAL_INSPECTION: '外部检查',
+}
 const severityOptions = [
   { value: 'MINOR', label: '轻微' },
   { value: 'MAJOR', label: '严重' },
   { value: 'CRITICAL', label: '重大' },
 ]
+const severityLabelMap: Record<AuditIssueSeverity, string> = {
+  MINOR: '轻微',
+  MAJOR: '严重',
+  CRITICAL: '重大',
+}
+const severityColorMap: Record<AuditIssueSeverity, string> = {
+  MINOR: 'default',
+  MAJOR: 'orange',
+  CRITICAL: 'red',
+}
 const issueStatusOptions: AuditIssueStatus[] = [
   'OPEN',
   'IN_RECTIFICATION',
@@ -561,6 +673,14 @@ const issueStatusOptions: AuditIssueStatus[] = [
   'VERIFIED',
   'CLOSED',
 ]
+
+const issueTransitMap: Record<AuditIssueStatus, AuditIssueStatus[]> = {
+  OPEN: ['IN_RECTIFICATION'],
+  IN_RECTIFICATION: ['RECTIFIED'],
+  RECTIFIED: ['VERIFIED'],
+  VERIFIED: ['CLOSED'],
+  CLOSED: [],
+}
 
 const issueEditorVisible = ref(false)
 const issueEditorMode = ref<'create' | 'edit'>('create')
@@ -599,7 +719,7 @@ async function loadIssueList() {
   }
 }
 
-function handleIssuePageChange(payload: { current: number, pageSize: number }) {
+function handleIssuePageChange(payload: { current: number; pageSize: number }) {
   issueQuery.pageNum = payload.current
   issueQuery.pageSize = payload.pageSize
   loadIssueList()
@@ -666,10 +786,10 @@ function openIssueEdit(record: AuditIssueVO) {
 
 async function submitIssueEditor() {
   if (
-    !issueEditor.issueCode.trim()
-    || !issueEditor.issueTitle.trim()
-    || !issueEditor.issueSource
-    || !issueEditor.severity
+    !issueEditor.issueCode.trim() ||
+    !issueEditor.issueTitle.trim() ||
+    !issueEditor.issueSource ||
+    !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -716,6 +836,17 @@ async function handleIssueDelete(record: AuditIssueVO) {
       await loadIssueList()
     },
   })
+}
+
+function canEditAuditIssue(status: AuditIssueStatus): boolean {
+  return status === 'OPEN' || status === 'IN_RECTIFICATION'
+}
+
+function nextAuditIssueStatuses(status: AuditIssueStatus): AuditIssueStatus[] {
+  if (!isAuditIssueStatus(status)) {
+    throw new Error('审核评估问题状态不符合前后端契约')
+  }
+  return issueTransitMap[status]
 }
 
 async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatus) {
@@ -774,24 +905,20 @@ async function loadRectList() {
       ...rectQuery,
       keyword: rectQuery.keyword?.trim() || undefined,
     })
-    rectList.value = page.list || []
+    rectList.value = page.list
     rectTotal.value = page.total
     const issueIds = Array.from(new Set(rectList.value.map((r) => r.auditIssueId).filter(Boolean)))
     for (const id of issueIds) {
       if (rectIssuesCache.value.has(id)) continue
-      try {
-        const issue = await auditIssueApi.detail(id)
-        rectIssuesCache.value.set(id, issue)
-      } catch {
-        // 单条问题获取失败不影响列表展示
-      }
+      const issue = await auditIssueApi.detail(id)
+      rectIssuesCache.value.set(id, issue)
     }
   } finally {
     rectLoading.value = false
   }
 }
 
-function handleRectPageChange(payload: { current: number, pageSize: number }) {
+function handleRectPageChange(payload: { current: number; pageSize: number }) {
   rectQuery.pageNum = payload.current
   rectQuery.pageSize = payload.pageSize
   loadRectList()
@@ -838,11 +965,11 @@ function openRectEdit(record: AuditRectificationVO) {
 
 async function submitRectEditor() {
   if (
-    !rectEditor.auditIssueId
-    || !rectEditor.rectificationCode.trim()
-    || !rectEditor.rectificationTitle.trim()
-    || !rectEditor.ownerUserId
-    || !rectEditor.dueDate
+    !rectEditor.auditIssueId ||
+    !rectEditor.rectificationCode.trim() ||
+    !rectEditor.rectificationTitle.trim() ||
+    !rectEditor.ownerUserId ||
+    !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -881,6 +1008,10 @@ async function handleRectDelete(record: AuditRectificationVO) {
   })
 }
 
+function canEditAuditRectification(status: AuditRectificationStatus): boolean {
+  return status === 'PLANNED' || status === 'IN_PROGRESS' || status === 'RETURNED'
+}
+
 async function advanceRectProgress(
   record: AuditRectificationVO,
   target: 'IN_PROGRESS' | 'SUBMITTED',
@@ -892,7 +1023,23 @@ async function advanceRectProgress(
     emptyErrorMessage: '请填写提交说明',
   })
   if (target === 'SUBMITTED' && !remark) return
-  await auditRectificationApi.updateProgress(record.id, target, remark ?? undefined)
+  let evidenceAnchors: string | undefined
+  if (target === 'SUBMITTED') {
+    const evidenceText = await promptModal({
+      title: '填写整改证据锚点',
+      placeholder: 'JSON 数组或对象，引用整改证据文件 / 业务对象',
+      required: true,
+      emptyErrorMessage: '提交复核必须填写整改证据锚点',
+    })
+    if (evidenceText === null || !evidenceText) return
+    evidenceAnchors = evidenceText
+  }
+  await auditRectificationApi.updateProgress({
+    id: record.id,
+    targetStatus: target,
+    progressRemark: remark ?? undefined,
+    evidenceAnchors,
+  })
   message.success('已更新')
   await loadRectList()
 }
@@ -906,7 +1053,11 @@ async function verifyRect(record: AuditRectificationVO, decision: 'APPROVED' | '
     okType: decision === 'REJECTED' ? 'danger' : 'primary',
   })
   if (decision === 'REJECTED' && !remark) return
-  await auditRectificationApi.verify(record.id, decision, remark ?? undefined)
+  await auditRectificationApi.verify({
+    id: record.id,
+    decision,
+    remark: remark ?? undefined,
+  })
   message.success('已复核')
   await loadRectList()
 }
@@ -938,7 +1089,7 @@ const supQuery = reactive<AuditSupervisionQueryPayload>({
   keyword: '',
 })
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionType; label: string }> = [
   { value: 'DAILY', label: AUDIT_SUPERVISION_TYPE_LABEL.DAILY },
   { value: 'SPECIAL', label: AUDIT_SUPERVISION_TYPE_LABEL.SPECIAL },
   { value: 'PRE_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.PRE_AUDIT },
@@ -950,11 +1101,31 @@ const supScopeOptions = [
   { value: 'TRAINING_PLAN', label: '培养方案' },
   { value: 'COMPREHENSIVE', label: '综合' },
 ]
-const supConclusionOptions = [
+const supScopeLabelMap: Record<AuditSupervisionScope, string> = {
+  COURSE: '课程',
+  PROGRAM: '专业',
+  TRAINING_PLAN: '培养方案',
+  COMPREHENSIVE: '综合',
+}
+const supConclusionOptions: Array<{
+  value: AuditSupervisionConclusion
+  label: string
+  color: string
+}> = [
   { value: 'PASS', label: '通过', color: 'green' },
   { value: 'NEEDS_IMPROVEMENT', label: '需改进', color: 'orange' },
   { value: 'FAIL', label: '不通过', color: 'red' },
 ]
+const supConclusionLabelMap: Record<AuditSupervisionConclusion, string> = {
+  PASS: '通过',
+  NEEDS_IMPROVEMENT: '需改进',
+  FAIL: '不通过',
+}
+const supConclusionColorMap: Record<AuditSupervisionConclusion, string> = {
+  PASS: 'green',
+  NEEDS_IMPROVEMENT: 'orange',
+  FAIL: 'red',
+}
 
 const supEditorVisible = ref(false)
 const supEditorMode = ref<'create' | 'edit'>('create')
@@ -986,14 +1157,14 @@ async function loadSupList() {
       programId: supQuery.programId || qualityStore.currentProgramId || undefined,
       keyword: supQuery.keyword?.trim() || undefined,
     })
-    supList.value = page.list || []
+    supList.value = page.list
     supTotal.value = page.total
   } finally {
     supLoading.value = false
   }
 }
 
-function handleSupPageChange(payload: { current: number, pageSize: number }) {
+function handleSupPageChange(payload: { current: number; pageSize: number }) {
   supQuery.pageNum = payload.current
   supQuery.pageSize = payload.pageSize
   loadSupList()
@@ -1044,7 +1215,7 @@ function openSupEdit(record: AuditSupervisionVO) {
     supervisionCode: record.supervisionCode,
     supervisionTitle: record.supervisionTitle,
     supervisionType: record.supervisionType,
-    supervisionScope: record.supervisionScope || 'COURSE',
+    supervisionScope: record.supervisionScope || '',
     supervisorUserId: record.supervisorUserId || '',
     supervisedAt: record.supervisedAt || '',
     summary: record.summary || '',
@@ -1058,9 +1229,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim()
-    || !supEditor.supervisionTitle.trim()
-    || !supEditor.supervisionType
+    !supEditor.supervisionCode.trim() ||
+    !supEditor.supervisionTitle.trim() ||
+    !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return
@@ -1222,7 +1393,7 @@ onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
     await qualityStore.loadTrainingPlanOptions()
     if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setCurrent({ trainingPlanId: qualityStore.trainingPlanOptions[0].id })
+      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
     }
   }
   await Promise.all([loadImprovementList(), loadIssueList(), loadRectList(), loadSupList()])
@@ -1318,15 +1489,14 @@ onMounted(async () => {
             @page-change="handleImprovementPageChange"
           >
             <template #bodyCell="{ column, record, text }">
-              <template
-                v-if="
-                  column.key === 'qualityCourseId'
-                    || column.key === 'ownerUserId'
-                    || column.key === 'ownerRole'
-                    || column.key === 'dueDate'
-                "
-              >
+              <template v-if="column.key === 'qualityCourseId' || column.key === 'ownerRole'">
                 {{ text || '-' }}
+              </template>
+              <template v-else-if="column.key === 'ownerUserId'">
+                {{ requiredContractText(text, '改进任务负责人不符合前后端契约') }}
+              </template>
+              <template v-else-if="column.key === 'dueDate'">
+                {{ requiredContractText(text, '改进任务截止日期不符合前后端契约') }}
               </template>
               <template v-else-if="column.key === 'status'">
                 <a-tag :color="improvementStatusColor(text)">
@@ -1341,7 +1511,7 @@ onMounted(async () => {
                   <UiButton
                     variant="ghost"
                     size="sm"
-                    :disabled="record.status === 'CLOSED'"
+                    :disabled="!canEditImprovementTask(record.status)"
                     @click="openImprovementEdit(record)"
                   >
                     编辑
@@ -1359,11 +1529,13 @@ onMounted(async () => {
                   <UiButton
                     variant="ghost"
                     size="sm"
+                    :disabled="!record.achievementResultId"
                     @click="handleImprovementAiSuggestion(record)"
                   >
                     AI 建议
                   </UiButton>
                   <UiButton
+                    v-if="record.status === 'OPEN'"
                     variant="ghost"
                     status="danger"
                     size="sm"
@@ -1447,13 +1619,11 @@ onMounted(async () => {
                 </div>
               </template>
               <template v-else-if="column.key === 'issueSource'">
-                {{ issueSourceOptions.find((o) => o.value === text)?.label || text }}
+                {{ issueSourceLabel(text) }}
               </template>
               <template v-else-if="column.key === 'severity'">
-                <a-tag
-                  :color="text === 'CRITICAL' ? 'red' : text === 'MAJOR' ? 'orange' : 'default'"
-                >
-                  {{ severityOptions.find((o) => o.value === text)?.label || text }}
+                <a-tag :color="severityColor(text)">
+                  {{ severityLabel(text) }}
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'status'">
@@ -1463,20 +1633,26 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <a-space wrap>
-                  <UiButton variant="ghost" size="sm" @click="openIssueEdit(record)">
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    :disabled="!canEditAuditIssue(record.status)"
+                    @click="openIssueEdit(record)"
+                  >
                     编辑
                   </UiButton>
-                  <a-dropdown>
+                  <a-dropdown v-if="nextAuditIssueStatuses(record.status).length">
                     <UiButton variant="outline" size="sm"> 状态 </UiButton>
                     <template #overlay>
                       <a-menu @click="handleIssueStatusMenuClick(record, $event)">
-                        <a-menu-item v-for="s in issueStatusOptions" :key="s">
+                        <a-menu-item v-for="s in nextAuditIssueStatuses(record.status)" :key="s">
                           {{ issueStatusLabel(s) }}
                         </a-menu-item>
                       </a-menu>
                     </template>
                   </a-dropdown>
                   <UiButton
+                    v-if="record.status === 'OPEN'"
                     variant="ghost"
                     status="danger"
                     size="sm"
@@ -1556,7 +1732,12 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <a-space wrap>
-                  <UiButton variant="ghost" size="sm" @click="openRectEdit(record)">
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    :disabled="!canEditAuditRectification(record.status)"
+                    @click="openRectEdit(record)"
+                  >
                     编辑
                   </UiButton>
                   <UiButton
@@ -1609,6 +1790,7 @@ onMounted(async () => {
                     闭环
                   </UiButton>
                   <UiButton
+                    v-if="record.status === 'PLANNED'"
                     variant="ghost"
                     status="danger"
                     size="sm"
@@ -1682,14 +1864,11 @@ onMounted(async () => {
                 <a-tag>{{ supervisionTypeLabel(text) }}</a-tag>
               </template>
               <template v-else-if="column.key === 'supervisionScope'">
-                {{ supScopeOptions.find((o) => o.value === text)?.label || text || '-' }}
+                {{ supervisionScopeLabel(text) }}
               </template>
               <template v-else-if="column.key === 'conclusion'">
-                <a-tag
-                  v-if="text"
-                  :color="supConclusionOptions.find((o) => o.value === text)?.color || 'default'"
-                >
-                  {{ supConclusionOptions.find((o) => o.value === text)?.label || text }}
+                <a-tag v-if="text" :color="supervisionConclusionColor(text)">
+                  {{ supervisionConclusionLabel(text) }}
                 </a-tag>
                 <span v-else class="iwb__muted">-</span>
               </template>
@@ -1843,19 +2022,39 @@ onMounted(async () => {
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="负责人">
-          {{ improvementDetailRecord.ownerUserId || '-' }}
+          {{
+            requiredContractText(
+              improvementDetailRecord.ownerUserId,
+              '改进任务负责人不符合前后端契约',
+            )
+          }}
         </a-descriptions-item>
         <a-descriptions-item label="角色">
           {{ improvementDetailRecord.ownerRole || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="截止">
-          {{ improvementDetailRecord.dueDate || '-' }}
+          {{
+            requiredContractText(
+              improvementDetailRecord.dueDate,
+              '改进任务截止日期不符合前后端契约',
+            )
+          }}
         </a-descriptions-item>
         <a-descriptions-item label="问题概述">
-          {{ improvementDetailRecord.problemSummary || '-' }}
+          {{
+            requiredContractText(
+              improvementDetailRecord.problemSummary,
+              '改进任务问题概述不符合前后端契约',
+            )
+          }}
         </a-descriptions-item>
         <a-descriptions-item label="改进措施">
-          {{ improvementDetailRecord.proposedAction || '-' }}
+          {{
+            requiredContractText(
+              improvementDetailRecord.proposedAction,
+              '改进任务改进措施不符合前后端契约',
+            )
+          }}
         </a-descriptions-item>
         <a-descriptions-item label="进度备注">
           {{ improvementDetailRecord.progressRemark || '-' }}

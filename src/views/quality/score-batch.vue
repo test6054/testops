@@ -10,7 +10,7 @@ import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
  * 2. POST /enqueue-parse 触发异步解析，状态机：PENDING -> PARSING -> PREVIEW_READY / FAILED
  * 3. PREVIEW_READY 后 POST /preview 拿到 ScoreImportPreviewVO（含 diagnostics），人工核对
  * 4. POST /validate 进入 VALIDATED，POST /confirm 进入 CONFIRMED，进入达成度计算可用来源
- * 5. 任意阶段可 POST /update-status?status=CANCELLED 取消
+ * 5. PENDING / FAILED 可 POST /update-status body { id, status: 'CANCELLED' } 取消
  */
 import type {
   AssessmentItemVO,
@@ -22,16 +22,6 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   assessmentItemApi,
   DATA_SOURCE_MODE_LABEL,
@@ -42,6 +32,16 @@ import {
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -65,16 +65,16 @@ const previewLoading = ref(false)
 const diagnostics = ref<ScoreImportRowDiagnostic[]>([])
 const previewBatch = ref<ScoreBatchVO | null>(null)
 interface ScoreImportPreviewSummary {
-  totalRows: number
-  successRows: number
-  errorRows: number
+  totalRows?: number
+  successRows?: number
+  errorRows?: number
   errorSummary?: string
 }
 
 const previewSummary = reactive<ScoreImportPreviewSummary>({
-  totalRows: 0,
-  successRows: 0,
-  errorRows: 0,
+  totalRows: undefined,
+  successRows: undefined,
+  errorRows: undefined,
   errorSummary: undefined,
 })
 
@@ -114,8 +114,8 @@ const uploadForm = reactive<ScoreBatchSavePayload & { fileName?: string }>({
   batchCode: '',
   batchName: '',
   sourceMode: 'EXCEL_IMPORT',
-  schoolYear: qualityStore.currentSchoolYear || '2024-2025',
-  semester: qualityStore.currentSemester || '1',
+  schoolYear: qualityStore.currentSchoolYear,
+  semester: qualityStore.currentSemester,
   fileName: '',
 })
 
@@ -136,20 +136,55 @@ const statusOptions = SCORE_BATCH_STATUSES.map((value) => ({
 
 function statusLabel(value: unknown): string {
   if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_LABEL[value]
-  if (value === undefined || value === null || value === '') return '-'
   throw new Error(`成绩批次状态不在后端枚举内：${String(value)}`)
 }
 
 function statusColor(value: unknown): string {
   if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_COLOR[value]
-  if (value === undefined || value === null || value === '') return 'default'
   throw new Error(`成绩批次状态不在后端枚举内：${String(value)}`)
 }
 
 function sourceModeLabel(value: unknown): string {
-  if (value === undefined || value === null || value === '') return '-'
   if (isDataSourceMode(value)) return DATA_SOURCE_MODE_LABEL[value]
   throw new Error(`数据接入模式不在后端枚举内：${String(value)}`)
+}
+
+type GeneratedRowStatistics = {
+  totalRows: number
+  successRows: number
+  errorRows: number
+}
+
+function hasGeneratedRowStatistics(
+  record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
+): record is GeneratedRowStatistics {
+  return (
+    record.totalRows !== undefined &&
+    record.successRows !== undefined &&
+    record.errorRows !== undefined
+  )
+}
+
+function requireGeneratedRowStatistics(record: ScoreBatchVO): GeneratedRowStatistics {
+  if (!hasGeneratedRowStatistics(record)) {
+    throw new Error(`成绩批次 ${record.id} 已进入 ${record.status}，但后端未返回行统计`)
+  }
+  return {
+    totalRows: record.totalRows,
+    successRows: record.successRows,
+    errorRows: record.errorRows,
+  }
+}
+
+function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
+  if (record.status === 'PENDING' || record.status === 'PARSING' || record.status === 'CANCELLED') {
+    return '未生成'
+  }
+  if (record.status === 'FAILED' && !hasGeneratedRowStatistics(record)) {
+    return '解析失败，未生成行统计'
+  }
+  const statistics = requireGeneratedRowStatistics(record)
+  return `${statistics.successRows} / ${statistics.errorRows} / ${statistics.totalRows}`
 }
 
 // ─── 阶段状态分布（用于 StageRail） ─────────────────────────────
@@ -171,7 +206,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatus, title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatus; title: string }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PARSING', title: '解析中' },
     { key: 'PREVIEW_READY', title: '预览就绪' },
@@ -247,10 +282,6 @@ async function loadUploadAssessmentItems(qualityCourseId: string | undefined) {
   uploadAssessmentLoading.value = true
   try {
     uploadAssessmentItems.value = await assessmentItemApi.listByCourse(qualityCourseId)
-  } catch (e) {
-    console.error('[score-batch] 加载上传表单考核环节列表失败', e)
-    uploadAssessmentItems.value = []
-    message.error('加载考核环节列表失败')
   } finally {
     uploadAssessmentLoading.value = false
   }
@@ -264,9 +295,6 @@ async function loadQueryAssessmentItems(qualityCourseId: string | undefined) {
   queryAssessmentLoading.value = true
   try {
     queryAssessmentItems.value = await assessmentItemApi.listByCourse(qualityCourseId)
-  } catch (e) {
-    console.error('[score-batch] 加载查询表单考核环节列表失败', e)
-    queryAssessmentItems.value = []
   } finally {
     queryAssessmentLoading.value = false
   }
@@ -290,7 +318,7 @@ async function loadBatches() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadBatches()
@@ -381,15 +409,22 @@ async function handleUpload(options: UploadRequestOption) {
 }
 
 async function openPreview(record: ScoreBatchVO) {
+  if (!canPreview(record.status)) {
+    message.warning('当前批次尚未生成可预览结果')
+    return
+  }
   previewBatch.value = record
   previewVisible.value = true
   previewLoading.value = true
   try {
     const preview = await scoreBatchApi.preview(record.id)
-    diagnostics.value = preview.diagnostics || []
-    previewSummary.totalRows = preview.totalRows ?? 0
-    previewSummary.successRows = preview.successRows ?? 0
-    previewSummary.errorRows = preview.errorRows ?? 0
+    diagnostics.value = preview.diagnostics
+    if (preview.status !== 'FAILED' && !hasGeneratedRowStatistics(preview)) {
+      throw new Error(`成绩批次 ${preview.batchId} 预览结果缺少行统计`)
+    }
+    previewSummary.totalRows = preview.totalRows
+    previewSummary.successRows = preview.successRows
+    previewSummary.errorRows = preview.errorRows
     previewSummary.errorSummary = preview.errorSummary
   } finally {
     previewLoading.value = false
@@ -487,11 +522,7 @@ async function openEdit(record: ScoreBatchVO) {
   editor.externalPullTaskId = record.externalPullTaskId
   editor.schoolYear = record.schoolYear || ''
   editor.semester = record.semester || ''
-  try {
-    editorAssessmentItems.value = await assessmentItemApi.listByCourse(record.qualityCourseId)
-  } catch {
-    editorAssessmentItems.value = []
-  }
+  editorAssessmentItems.value = await assessmentItemApi.listByCourse(record.qualityCourseId)
   editorVisible.value = true
 }
 
@@ -522,8 +553,7 @@ async function submitEditor() {
 }
 
 function canEdit(status: ScoreBatchStatus) {
-  // CONFIRMED 被后端锁住，其余状态允许修改元数据
-  return status !== 'CONFIRMED'
+  return status === 'PENDING' || status === 'FAILED' || status === 'CANCELLED'
 }
 
 const auditDrawerOpen = ref(false)
@@ -542,19 +572,20 @@ async function openAuditDrawer(record: ScoreBatchVO) {
       category: 'QUALITY',
       description: record.id,
     })
-    auditEvents.value = page.list.map((log) => ({
-      id: log.id,
-      operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
-      operationType: log.type,
-      operationLabel: log.detail || log.type,
-      time: log.createTime,
-      targetType: log.module,
-      targetId: log.bizId || undefined,
-      beforeValue: log.changeDetails ? JSON.parse(log.changeDetails)?.before : undefined,
-      afterValue: log.changeDetails ? JSON.parse(log.changeDetails)?.after : undefined,
-    }))
-  } catch {
-    auditEvents.value = []
+    auditEvents.value = page.list.map((log) => {
+      const changeDetails = log.changeDetails ? JSON.parse(log.changeDetails) : undefined
+      return {
+        id: log.id,
+        operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
+        operationType: log.type,
+        operationLabel: log.detail || log.type,
+        time: log.createTime,
+        targetType: log.module,
+        targetId: log.bizId || undefined,
+        beforeValue: changeDetails?.before,
+        afterValue: changeDetails?.after,
+      }
+    })
   } finally {
     auditLoading.value = false
   }
@@ -569,22 +600,18 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
       title: `${b.batchCode} - ${b.batchName}`,
       statusLabel: statusLabel(b.status),
       statusTone: b.status === 'FAILED' ? 'red' : 'blue',
-      description:
-        b.status === 'FAILED'
-          ? `错误 ${b.errorRows ?? 0} 行 / 总 ${b.totalRows ?? 0} 行`
-          : `解析中…`,
+      description: b.status === 'FAILED' ? scoreBatchRowStatisticsText(b) : `解析中…`,
       time: b.createTime || undefined,
-      actions: [{ key: 'preview', label: '预览' }],
+      actions: canPreview(b.status) ? [{ key: 'preview', label: '预览' }] : [],
     }))
 })
 
-function handleBatchResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
+function handleBatchResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
   const record = batches.value.find((b) => b.id === payload.item.id)
   if (record && payload.action.key === 'preview') openPreview(record)
 }
 
 function canDelete(status: ScoreBatchStatus) {
-  // 仅安全状态允许物理删除；已 CONFIRMED 禁止删除以保护达成度计算血缘
   return status === 'PENDING' || status === 'FAILED' || status === 'CANCELLED'
 }
 
@@ -607,13 +634,11 @@ function canValidate(status: ScoreBatchStatus) {
 function canConfirm(status: ScoreBatchStatus) {
   return status === 'VALIDATED'
 }
-/**
- * 后端 ScoreBatchServiceImpl.updateStatus 状态机：
- * - 仅检查：当前状态 != CONFIRMED（CONFIRMED 状态上锁）且 target != CONFIRMED（CONFIRMED 走 /confirm）
- * - 未限制源状态，因此 PENDING / PARSING / PREVIEW_READY / VALIDATED / FAILED 均可 → CANCELLED
- */
+function canPreview(status: ScoreBatchStatus) {
+  return status === 'PREVIEW_READY' || status === 'VALIDATED' || status === 'FAILED'
+}
 function canCancel(status: ScoreBatchStatus) {
-  return status !== 'CONFIRMED' && status !== 'CANCELLED'
+  return status === 'PENDING' || status === 'FAILED'
 }
 function canReParse(status: ScoreBatchStatus) {
   return status === 'PENDING' || status === 'FAILED'
@@ -653,7 +678,7 @@ onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
     await qualityStore.loadTrainingPlanOptions()
     if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setCurrent({ trainingPlanId: qualityStore.trainingPlanOptions[0].id })
+      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
     }
   }
   await loadCourses()
@@ -838,9 +863,9 @@ onMounted(async () => {
           </template>
           <template
             v-else-if="
-              column.key === 'schoolYear'
-                || column.key === 'semester'
-                || column.key === 'createTime'
+              column.key === 'schoolYear' ||
+              column.key === 'semester' ||
+              column.key === 'createTime'
             "
           >
             {{ text || '-' }}
@@ -849,11 +874,16 @@ onMounted(async () => {
             {{ sourceModeLabel(text) }}
           </template>
           <template v-else-if="column.key === 'rowsBreakdown'">
-            <span class="score-batch__num-success">{{ record.successRows ?? 0 }}</span>
-            /
-            <span class="score-batch__num-error">{{ record.errorRows ?? 0 }}</span>
-            /
-            <span>{{ record.totalRows ?? 0 }}</span>
+            <template v-if="hasGeneratedRowStatistics(record)">
+              <span class="score-batch__num-success">{{ record.successRows }}</span>
+              /
+              <span class="score-batch__num-error">{{ record.errorRows }}</span>
+              /
+              <span>{{ record.totalRows }}</span>
+            </template>
+            <span v-else class="score-batch__sub-text">
+              {{ scoreBatchRowStatisticsText(record) }}
+            </span>
           </template>
           <template v-else-if="column.key === 'status'">
             <a-tag :color="statusColor(text)">
@@ -862,7 +892,14 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openPreview(record)"> 预览 </UiButton>
+              <UiButton
+                v-if="canPreview(record.status)"
+                variant="ghost"
+                size="sm"
+                @click="openPreview(record)"
+              >
+                预览
+              </UiButton>
               <UiButton
                 v-if="canValidate(record.status)"
                 variant="ghost"
@@ -937,13 +974,16 @@ onMounted(async () => {
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="行数（成功/错误/总）">
-          <span class="score-batch__num-success">{{ previewSummary.successRows }}</span>
-          /
-          <span :class="previewSummary.errorRows ? 'score-batch__num-error' : ''">
-            {{ previewSummary.errorRows }}
-          </span>
-          /
-          <span>{{ previewSummary.totalRows }}</span>
+          <template v-if="hasGeneratedRowStatistics(previewSummary)">
+            <span class="score-batch__num-success">{{ previewSummary.successRows }}</span>
+            /
+            <span :class="previewSummary.errorRows ? 'score-batch__num-error' : ''">
+              {{ previewSummary.errorRows }}
+            </span>
+            /
+            <span>{{ previewSummary.totalRows }}</span>
+          </template>
+          <span v-else class="score-batch__sub-text">解析失败，未生成行统计</span>
         </a-descriptions-item>
       </a-descriptions>
       <a-alert
@@ -975,20 +1015,20 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'errorInfo'">
             <a-space direction="vertical" size="small" style="width: 100%">
-              <a-space v-if="record.errorCodes?.length" wrap size="small">
+              <a-space v-if="record.errorCodes.length" wrap size="small">
                 <a-tag v-for="code in record.errorCodes" :key="code" color="orange">
                   {{ code }}
                 </a-tag>
               </a-space>
               <div
-                v-for="(msg, idx) in record.errorMessages || []"
+                v-for="(msg, idx) in record.errorMessages"
                 :key="`${record.rowIndex}-${idx}`"
                 class="score-batch__error-msg"
               >
                 {{ msg }}
               </div>
               <span
-                v-if="!record.errorCodes?.length && !record.errorMessages?.length"
+                v-if="!record.errorCodes.length && !record.errorMessages.length"
                 class="score-batch__sub-text"
               >
                 -
@@ -1012,7 +1052,7 @@ onMounted(async () => {
         type="info"
         show-icon
         message="批次元数据编辑"
-        description="可修改批次名称 / 编码 / 考核环节 / 学年学期；课程一经建立不建议变更。若批次已 CONFIRMED，请先取消后再编辑。"
+        description="仅 PENDING / FAILED / CANCELLED 状态可修改批次编码、名称、课程、考核环节、学年学期与接入来源；进入解析、预览、校验或确认后禁止编辑。"
         class="score-batch__editor-alert"
       />
       <a-form layout="vertical" :model="editor">

@@ -1,8 +1,8 @@
 import type { UserDetailedInfoVO } from '@/apis/auth'
+import { getUserDetailedInfo } from '@/apis/auth'
 import type { UserLoginResponseDto } from '@/types/auth'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
-import { getUserDetailedInfo } from '@/apis/auth'
 import { checkTenantAdminPermission } from '@/apis/edu/tenant-admin'
 import { RoleEnum } from '@/types/enums'
 import { useAuthStore } from './auth'
@@ -168,10 +168,10 @@ export const useUserStore = defineStore(
       }
       // 如果已经有用户信息且token有效，且不是强制刷新，直接返回
       if (
-        !forceRefresh
-        && userInfo.userId
-        && authStore.token
-        && !authStore.isTokenExpiredCheck(authStore.token)
+        !forceRefresh &&
+        userInfo.userId &&
+        authStore.token &&
+        !authStore.isTokenExpiredCheck(authStore.token)
       ) {
         return Promise.resolve()
       }
@@ -266,17 +266,6 @@ export const useUserStore = defineStore(
       getInfo,
       fetchTenantAdminPermission,
       refreshSecurityState,
-
-      // 兼容旧API (Proxy to AuthStore) - 已迁移完毕，删除兼容层
-      // token: computed(() => useAuthStore().token),
-      // role: computed(() => useAuthStore().role),
-      // permissions: computed(() => useAuthStore().permissions),
-
-      // accountLogin: (req: any) => useAuthStore().accountLogin(req),
-      // phoneLogin: (req: any) => useAuthStore().phoneLogin(req),
-      // studentNoLogin: (req: any) => useAuthStore().studentNoLogin(req),
-      // socialLogin: (source: string, req: any) => useAuthStore().socialLogin(source, req),
-      // logout: () => useAuthStore().logout(),
     }
   },
   {

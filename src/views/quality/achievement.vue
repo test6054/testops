@@ -20,17 +20,6 @@ import type {
   AchievementStatus,
   AchievementTargetType,
 } from '@/apis/quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -43,6 +32,17 @@ import {
   isAchievementStatus,
   isAchievementTargetType,
 } from '@/apis/quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { CourseSelector, ProgramSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
@@ -53,7 +53,7 @@ import {
   TaskResultPanel,
 } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
-import { promptModal } from './_helpers'
+import { formatOptionalNumber, promptModal } from './_helpers'
 
 function targetTypeLabel(value: unknown): string {
   if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
@@ -69,7 +69,6 @@ function auditStatusLabel(value: unknown): string {
 
 function auditStatusColor(value: unknown): string {
   if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '') return 'default'
   throw new Error('达成度审核状态不符合前后端契约')
 }
 
@@ -81,7 +80,8 @@ function achievementStatusLabel(value: unknown): string {
 
 function achievementStatusColor(value: unknown): string {
   if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '') return 'default'
+  if (value === null || value === undefined || value === '')
+    return ACHIEVEMENT_STATUS_COLOR.INSUFFICIENT_EVIDENCE
   throw new Error('达成度结论不符合前后端契约')
 }
 
@@ -122,7 +122,7 @@ function handleProgramChange(value: string | null) {
   triggerForm.programId = value ?? ''
 }
 
-const targetTypeOptions: Array<{ value: AchievementTargetType, label: string }> = [
+const targetTypeOptions: Array<{ value: AchievementTargetType; label: string }> = [
   { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
   { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
   { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
@@ -134,7 +134,7 @@ const targetTypeOptions: Array<{ value: AchievementTargetType, label: string }> 
     label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
   },
 ]
-const auditStatusOptions: Array<{ value: AchievementAuditStatus, label: string }> = [
+const auditStatusOptions: Array<{ value: AchievementAuditStatus; label: string }> = [
   { value: 'DRAFT', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.DRAFT },
   { value: 'CALCULATED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.CALCULATED },
   { value: 'SUBMITTED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.SUBMITTED },
@@ -142,7 +142,7 @@ const auditStatusOptions: Array<{ value: AchievementAuditStatus, label: string }
   { value: 'RETURNED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.RETURNED },
   { value: 'ARCHIVED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.ARCHIVED },
 ]
-const achievementStatusOptions: Array<{ value: AchievementStatus, label: string }> = [
+const achievementStatusOptions: Array<{ value: AchievementStatus; label: string }> = [
   { value: 'ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.ACHIEVED },
   { value: 'PARTIALLY_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.PARTIALLY_ACHIEVED },
   { value: 'NOT_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.NOT_ACHIEVED },
@@ -176,7 +176,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -217,7 +217,7 @@ function resetQuery() {
  *  - compute-civic-goal-aggregate     课程思政独立汇总
  *  - compute-complex-engineering-aggregate  复杂工程问题专项
  */
-const triggerButtons: Array<{ key: string, label: string, handler: () => Promise<unknown> }> = [
+const triggerButtons: Array<{ key: string; label: string; handler: () => Promise<unknown> }> = [
   {
     key: 'COURSE_GOAL',
     label: '课程目标',
@@ -334,8 +334,8 @@ async function handleTrigger(key: string, handler: () => Promise<unknown>) {
   } catch (err) {
     // 计算被用户取消（如未填 courseGoalId）静默忽略
     if (
-      err instanceof Error
-      && (err.message === 'cancelled' || err.message === 'missing courseGoalId')
+      err instanceof Error &&
+      (err.message === 'cancelled' || err.message === 'missing courseGoalId')
     ) {
       return
     }
@@ -346,11 +346,11 @@ async function handleTrigger(key: string, handler: () => Promise<unknown>) {
 }
 
 const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
-  DRAFT: ['SUBMITTED'],
-  CALCULATED: ['SUBMITTED'],
+  DRAFT: ['CALCULATED'],
+  CALCULATED: ['DRAFT', 'SUBMITTED'],
   SUBMITTED: ['CONFIRMED', 'RETURNED'],
-  CONFIRMED: ['ARCHIVED'],
-  RETURNED: ['SUBMITTED'],
+  CONFIRMED: ['ARCHIVED', 'RETURNED'],
+  RETURNED: ['CALCULATED'],
   ARCHIVED: [],
 }
 
@@ -399,7 +399,7 @@ const auditBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = auditBuckets.value
-  const order: Array<{ key: AchievementAuditStatus, title: string }> = [
+  const order: Array<{ key: AchievementAuditStatus; title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'CALCULATED', title: '已计算' },
     { key: 'SUBMITTED', title: '已提交' },
@@ -464,7 +464,7 @@ function openTriggerDrawer() {
 }
 
 function formatValue(value?: number) {
-  return value == null ? '-' : value.toFixed(3)
+  return formatOptionalNumber(value, '达成度数值')
 }
 
 function goDetail(record: AchievementResultVO) {
@@ -494,8 +494,6 @@ async function openAuditDrawer(record: AchievementResultVO) {
       targetType: '达成度结果',
       targetId: a.achievementResultId,
     }))
-  } catch {
-    auditEvents.value = []
   } finally {
     auditLoading.value = false
   }
@@ -506,8 +504,8 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
   return list.value
     .filter(
       (r) =>
-        r.auditStatus === 'RETURNED'
-        || (isAchievementStatus(r.achievementStatus) && r.achievementStatus === 'NOT_ACHIEVED'),
+        r.auditStatus === 'RETURNED' ||
+        (isAchievementStatus(r.achievementStatus) && r.achievementStatus === 'NOT_ACHIEVED'),
     )
     .slice(0, 5)
     .map((r) => ({
@@ -518,12 +516,12 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
       description:
         r.auditStatus === 'RETURNED'
           ? `审核驳回，需修正后重新提交`
-          : `达成值 ${r.finalValue?.toFixed(3) ?? '-'} < 阈值 ${r.thresholdValue?.toFixed(3) ?? '-'}`,
+          : `达成值 ${formatOptionalNumber(r.finalValue, '达成值')} < 阈值 ${formatOptionalNumber(r.thresholdValue, '阈值')}`,
       actions: [{ key: 'detail', label: '查看详情' }],
     }))
 })
 
-function handleResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
+function handleResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((r) => r.id === payload.item.id)
   if (record && payload.action.key === 'detail') goDetail(record)
 }
@@ -542,7 +540,7 @@ onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
     await qualityStore.loadTrainingPlanOptions()
     if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setCurrent({ trainingPlanId: qualityStore.trainingPlanOptions[0].id })
+      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
     }
   }
   triggerForm.trainingPlanId = qualityStore.currentTrainingPlanId
@@ -663,9 +661,9 @@ onMounted(async () => {
             </template>
             <template
               v-else-if="
-                column.key === 'targetId'
-                  || column.key === 'qualityCourseId'
-                  || column.key === 'classId'
+                column.key === 'targetId' ||
+                column.key === 'qualityCourseId' ||
+                column.key === 'classId'
               "
             >
               {{ text || '-' }}
@@ -675,16 +673,19 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'achievementValue'">
               <span
-                class="achievement__value" :class="[
-                  record.finalValue !== null
-                    && record.thresholdValue !== null
-                    && record.finalValue >= record.thresholdValue
+                class="achievement__value"
+                :class="[
+                  record.finalValue !== null &&
+                  record.thresholdValue !== null &&
+                  record.finalValue >= record.thresholdValue
                     ? 'achievement__value--ok'
                     : 'achievement__value--bad',
                 ]"
-              >{{ formatValue(record.finalValue) }}</span>
+                >{{ formatValue(record.finalValue) }}</span
+              >
               <span class="achievement__threshold">
-                / {{ formatValue(record.thresholdValue) }}</span>
+                / {{ formatValue(record.thresholdValue) }}</span
+              >
             </template>
             <template v-else-if="column.key === 'sample'">
               {{ record.sampleValid ?? '-' }} / {{ record.sampleTotal ?? '-' }}

@@ -21,9 +21,6 @@ import type {
   ProcessEvaluationRecordSavePayload,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
@@ -35,6 +32,9 @@ import {
   processNodeApi,
   processRecordApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import {
   AssessmentItemSelector,
@@ -81,17 +81,17 @@ const qualityStore = useQualityStore()
 
 function confirmationStatusLabel(value: unknown): string {
   if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error(`过程性评价确认状态不符合前后端契约：${String(value)}`)
 }
 
 function confirmationStatusColor(value: unknown): string {
   if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_COLOR[value]
-  return 'default'
+  throw new Error(`过程性评价确认状态不符合前后端契约：${String(value)}`)
 }
 
 function processNodeTypeLabel(value: unknown): string {
   if (isProcessNodeType(value)) return PROCESS_NODE_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error(`过程性评价节点类型不符合前后端契约：${String(value)}`)
 }
 
 function dataSourceModeLabel(record: ProcessEvaluationRecordVO): string {
@@ -101,8 +101,27 @@ function dataSourceModeLabel(record: ProcessEvaluationRecordVO): string {
   return dataSourceModeContractError(value)
 }
 
-function dataSourceModeContractError(value: Exclude<ProcessEvaluationRecordVO['sourceMode'], DataSourceMode | undefined>): string {
+function dataSourceModeContractError(
+  value: Exclude<ProcessEvaluationRecordVO['sourceMode'], DataSourceMode | undefined>,
+): string {
   throw new Error(`过程性评价记录数据来源类型异常：${String(value)}`)
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) {
+    throw new Error(`${fieldName}字段异常：${String(value)}`)
+  }
+  return numberValue
+}
+
+function formatRequiredNumber(value: unknown, fieldName: string, digits: number): string {
+  return requireFiniteNumber(value, fieldName).toFixed(digits)
+}
+
+function formatOptionalNumber(value: unknown, fieldName: string, digits: number): string {
+  if (value == null || value === '') return '-'
+  return requireFiniteNumber(value, fieldName).toFixed(digits)
 }
 
 /* ========== 节点列表 ========== */
@@ -123,7 +142,7 @@ async function loadNodes() {
   }
   nodesLoading.value = true
   try {
-    nodes.value = (await processNodeApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+    nodes.value = await processNodeApi.listByCourse(qualityStore.currentQualityCourseId)
   } finally {
     nodesLoading.value = false
   }
@@ -230,8 +249,10 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    records.value
-      = (await processRecordApi.listByNode(selectedNode.value.id, recordStatusFilter.value)) || []
+    records.value = await processRecordApi.listByNode(
+      selectedNode.value.id,
+      recordStatusFilter.value,
+    )
   } finally {
     recordsLoading.value = false
   }
@@ -374,11 +395,10 @@ async function queryConfirmedByGoal() {
   }
   confirmedByGoalLoading.value = true
   try {
-    confirmedByGoalRecords.value
-      = (await processRecordApi.listConfirmedByCourseGoal(
-        qualityStore.currentQualityCourseId,
-        confirmedByGoalId.value,
-      )) || []
+    confirmedByGoalRecords.value = await processRecordApi.listConfirmedByCourseGoal(
+      qualityStore.currentQualityCourseId,
+      confirmedByGoalId.value,
+    )
   } finally {
     confirmedByGoalLoading.value = false
   }
@@ -400,9 +420,9 @@ const signals = computed<SignalMetric[]>(() => {
   let coverageSum = 0
   let coverageCount = 0
   for (const n of nodes.value) {
-    if (n.weight != null) weightSum += Number(n.weight)
+    if (n.weight != null) weightSum += requireFiniteNumber(n.weight, '过程性评价节点权重')
     if (n.coverageRequired != null) {
-      coverageSum += Number(n.coverageRequired)
+      coverageSum += requireFiniteNumber(n.coverageRequired, '过程性评价节点覆盖率要求')
       coverageCount += 1
     }
   }
@@ -482,7 +502,7 @@ onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
     await qualityStore.loadTrainingPlanOptions()
     if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setCurrent({ trainingPlanId: qualityStore.trainingPlanOptions[0].id })
+      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
     }
   }
   if (qualityStore.currentQualityCourseId) {
@@ -491,11 +511,11 @@ onMounted(async () => {
 })
 
 function handlePlanChange(planId: string | null) {
-  qualityStore.setCurrent({ trainingPlanId: planId || '', qualityCourseId: '' })
+  qualityStore.setTrainingPlan(planId || '')
 }
 
 function handleCourseChange(courseId: string | null) {
-  qualityStore.setCurrent({ qualityCourseId: courseId || '' })
+  qualityStore.setQualityCourse(courseId || '')
 }
 </script>
 
@@ -572,7 +592,7 @@ function handleCourseChange(courseId: string | null) {
                 </div>
               </template>
               <template v-else-if="column.key === 'weight'">
-                {{ text == null ? '-' : Number(text).toFixed(2) }}
+                {{ formatOptionalNumber(text, '过程性评价节点权重', 2) }}
               </template>
               <template v-else-if="column.key === 'confirmationStatus'">
                 <a-tag :color="confirmationStatusColor(text)">
@@ -603,7 +623,10 @@ function handleCourseChange(courseId: string | null) {
                         >
                           确认
                         </a-menu-item>
-                        <a-menu-item key="RETURNED" @click.stop="changeNodeStatus(record, 'RETURNED')">
+                        <a-menu-item
+                          key="RETURNED"
+                          @click.stop="changeNodeStatus(record, 'RETURNED')"
+                        >
                           退回
                         </a-menu-item>
                       </a-menu>
@@ -684,10 +707,10 @@ function handleCourseChange(courseId: string | null) {
           >
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.key === 'rawScore'">
-                {{ Number(text).toFixed(2) }}
+                {{ formatRequiredNumber(text, '过程性评价记录原始分', 2) }}
               </template>
               <template v-else-if="column.key === 'convertedScore'">
-                {{ text == null ? '-' : Number(text).toFixed(2) }}
+                {{ formatOptionalNumber(text, '过程性评价记录换算分', 2) }}
               </template>
               <template v-else-if="column.key === 'sourceMode'">
                 {{ dataSourceModeLabel(record) }}
@@ -944,9 +967,9 @@ function handleCourseChange(courseId: string | null) {
       >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'scores'">
-            {{ Number(record.rawScore).toFixed(1) }}
+            {{ formatRequiredNumber(record.rawScore, '过程性评价记录原始分', 1) }}
             <span v-if="record.convertedScore != null" class="pe__sub-desc">
-              / {{ Number(record.convertedScore).toFixed(2) }}
+              / {{ formatOptionalNumber(record.convertedScore, '过程性评价记录换算分', 2) }}
             </span>
           </template>
           <template v-else-if="column.key === 'evidenceFileId'">

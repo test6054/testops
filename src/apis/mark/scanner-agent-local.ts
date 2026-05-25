@@ -41,24 +41,24 @@ export type AgentHealthStatus = 'RUNNING'
 
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
 
-export type LocalScanJobStatus
-  = | 'CREATED'
-    | 'SCANNING'
-    | 'PAUSED'
-    | 'READYTOUPLOAD'
-    | 'UPLOADING'
-    | 'REPORTED'
-    | 'FAILED'
-    | 'RETRYING'
-    | 'CANCELLED'
+export type LocalScanJobStatus =
+  | 'CREATED'
+  | 'SCANNING'
+  | 'PAUSED'
+  | 'READYTOUPLOAD'
+  | 'UPLOADING'
+  | 'REPORTED'
+  | 'FAILED'
+  | 'RETRYING'
+  | 'CANCELLED'
 
-export type LocalScanPageStatus
-  = | 'CAPTURED'
-    | 'PREPROCESSED'
-    | 'UPLOADING'
-    | 'UPLOADED'
-    | 'FAILED'
-    | 'DELETED'
+export type LocalScanPageStatus =
+  | 'CAPTURED'
+  | 'PREPROCESSED'
+  | 'UPLOADING'
+  | 'UPLOADED'
+  | 'FAILED'
+  | 'DELETED'
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -155,7 +155,7 @@ export interface StartScanJobRequest {
    * true 表示后端会把同一 (paperInstance, templatePageNo) 上的旧扫描页置为 SUPERSEDED，
    * false 表示纯追加补扫（保留旧页）。
    */
-  replaceTargetPage?: boolean
+  replaceTargetPage: boolean
 }
 
 export interface ScanPageInfo {
@@ -165,6 +165,7 @@ export interface ScanPageInfo {
   diagnostic?: string
   capturedAt: string
   uploadedAt?: string
+  uploadedFileId?: string
 }
 
 export interface ScanJobResponse {
@@ -181,7 +182,7 @@ export interface ScanJobResponse {
   targetPageNo?: number
   supplementReason?: string
   /** 是否替换目标页（仅 SUPPLEMENT 模式生效） */
-  replaceTargetPage?: boolean
+  replaceTargetPage: boolean
   status: LocalScanJobStatus
   scannedPages: number
   uploadedPages: number
@@ -392,8 +393,8 @@ async function parseLocalAgentResponse(response: Response): Promise<unknown> {
   }
   const envelope = validateLocalApiResult(result, response)
   if (!response.ok || !envelope.success) {
-    const message
-      = envelope.message || `本地 Scanner Agent 请求失败：${envelope.code || response.status}`
+    const message =
+      envelope.message || `本地 Scanner Agent 请求失败：${envelope.code || response.status}`
     const busyError = tryParseBusyError(message)
     if (busyError) {
       throw busyError
@@ -471,23 +472,9 @@ function requireOptionalNumber(value: Record<string, unknown>, field: string): n
   return fieldValue
 }
 
-function requireOptionalBoolean(
-  value: Record<string, unknown>,
-  field: string,
-): boolean | undefined {
-  const fieldValue = value[field]
-  if (fieldValue === undefined) {
-    return undefined
-  }
-  if (typeof fieldValue !== 'boolean') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是布尔值`)
-  }
-  return fieldValue
-}
-
 function requireNullableString(value: Record<string, unknown>, field: string): string | null {
   const fieldValue = value[field]
-  if (fieldValue === null) {
+  if (fieldValue === undefined || fieldValue === null) {
     return null
   }
   if (typeof fieldValue !== 'string') {
@@ -529,15 +516,15 @@ function requireAgentDiagnosticStatus(
 function requireScanJobStatus(value: Record<string, unknown>, field: string): LocalScanJobStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CREATED'
-    && fieldValue !== 'SCANNING'
-    && fieldValue !== 'PAUSED'
-    && fieldValue !== 'READYTOUPLOAD'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'REPORTED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'RETRYING'
-    && fieldValue !== 'CANCELLED'
+    fieldValue !== 'CREATED' &&
+    fieldValue !== 'SCANNING' &&
+    fieldValue !== 'PAUSED' &&
+    fieldValue !== 'READYTOUPLOAD' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'REPORTED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'RETRYING' &&
+    fieldValue !== 'CANCELLED'
   ) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描任务状态`)
   }
@@ -547,12 +534,12 @@ function requireScanJobStatus(value: Record<string, unknown>, field: string): Lo
 function requireScanPageStatus(value: Record<string, unknown>, field: string): LocalScanPageStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CAPTURED'
-    && fieldValue !== 'PREPROCESSED'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'UPLOADED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'DELETED'
+    fieldValue !== 'CAPTURED' &&
+    fieldValue !== 'PREPROCESSED' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'UPLOADED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'DELETED'
   ) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描页状态`)
   }
@@ -698,6 +685,7 @@ function validateScanJobResponsePayload(value: unknown, field: string): ScanJobR
     scannedPages: requireNumber(result, 'scannedPages'),
     uploadedPages: requireNumber(result, 'uploadedPages'),
     reported: requireBoolean(result, 'reported'),
+    replaceTargetPage: requireBoolean(result, 'replaceTargetPage'),
     message: requireString(result, 'message'),
     pages: pages.map((item, index) => validateScanPageInfo(item, `${field}.pages[${index}]`)),
   }
@@ -712,10 +700,6 @@ function validateScanJobResponsePayload(value: unknown, field: string): ScanJobR
   const supplementReason = requireOptionalString(result, 'supplementReason')
   if (supplementReason !== undefined) {
     payload.supplementReason = supplementReason
-  }
-  const replaceTargetPage = requireOptionalBoolean(result, 'replaceTargetPage')
-  if (replaceTargetPage !== undefined) {
-    payload.replaceTargetPage = replaceTargetPage
   }
   return payload
 }
@@ -735,6 +719,10 @@ function validateScanPageInfo(value: unknown, field: string): ScanPageInfo {
   const uploadedAt = requireOptionalString(result, 'uploadedAt')
   if (uploadedAt !== undefined) {
     page.uploadedAt = uploadedAt
+  }
+  const uploadedFileId = requireOptionalString(result, 'uploadedFileId')
+  if (uploadedFileId !== undefined) {
+    page.uploadedFileId = uploadedFileId
   }
   return page
 }

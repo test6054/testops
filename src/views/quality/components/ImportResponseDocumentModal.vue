@@ -92,9 +92,6 @@
 
 <script setup lang="ts">
 import type { AiTaskStatus } from '@/apis/quality'
-import { InboxOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
@@ -102,6 +99,9 @@ import {
   indirectResponseApi,
   isAiTaskStatus,
 } from '@/apis/quality'
+import { InboxOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { UiButton } from '@/components/ui-guide/ui'
 
 /**
@@ -123,6 +123,7 @@ const emit = defineEmits<{
 const ACCEPT = '.pdf,.docx,.txt,.jpg,.jpeg,.png,.webp,.bmp,.tiff'
 const POLL_INTERVAL_MS = 3000
 const MAX_POLL_COUNT = 120
+const MAX_POLL_FAILURE_COUNT = 3
 
 type Phase = 'upload' | 'processing' | 'succeeded' | 'failed'
 
@@ -138,6 +139,7 @@ const currentTaskId = ref<string | null>(null)
 const currentTaskStatus = ref<AiTaskStatus>('PENDING')
 const failureReason = ref<string | null>(null)
 const pollCount = ref(0)
+const pollFailureCount = ref(0)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const isPolling = computed(() => phase.value === 'processing')
@@ -179,10 +181,9 @@ async function handleSubmitAiParse() {
     currentTaskStatus.value = 'PENDING'
     phase.value = 'processing'
     pollCount.value = 0
+    pollFailureCount.value = 0
     message.info('AI 解析任务已提交，正在后台处理…')
     startPolling()
-  } catch {
-    message.error('提交 AI 解析任务失败，请重试')
   } finally {
     uploading.value = false
   }
@@ -213,6 +214,7 @@ async function pollTaskStatus() {
 
   try {
     const task = await aiTaskApi.detail(currentTaskId.value)
+    pollFailureCount.value = 0
     if (isAiTaskStatus(task.status)) {
       currentTaskStatus.value = task.status
     }
@@ -231,7 +233,12 @@ async function pollTaskStatus() {
       phase.value = 'failed'
     }
   } catch {
-    // 网络异常不立即终止，继续轮询
+    pollFailureCount.value++
+    if (pollFailureCount.value >= MAX_POLL_FAILURE_COUNT) {
+      stopPolling()
+      failureReason.value = '连续查询 AI 任务状态失败，请稍后在 AI 任务列表查看处理结果。'
+      phase.value = 'failed'
+    }
   }
 }
 
@@ -243,6 +250,7 @@ function resetState() {
   currentTaskStatus.value = 'PENDING'
   failureReason.value = null
   pollCount.value = 0
+  pollFailureCount.value = 0
 }
 
 function resetToUpload() {

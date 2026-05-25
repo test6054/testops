@@ -1,6 +1,6 @@
 import type { ScanAttentionStatusCode, ScanAttentionTypeCode } from '@/apis/mark/exam'
-import type { PageResult, QueryDto } from '@/types'
 import { validateScanAttentionStatus } from '@/apis/mark/exam'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 export type { ScanAttentionStatusCode, ScanAttentionTypeCode }
@@ -10,11 +10,11 @@ export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
 export type ExamScannerPageServerReceiveStatus = 'RECEIVED'
-export type ExamScannerPageRegistrationStatus
-  = | 'REGISTERED'
-    | 'PENDING'
-    | 'DISCARDED'
-    | 'SUPERSEDED'
+export type ExamScannerPageRegistrationStatus =
+  | 'REGISTERED'
+  | 'PENDING'
+  | 'DISCARDED'
+  | 'SUPERSEDED'
 
 export interface ExamScannerKioskContextRequest {
   examId: string
@@ -70,7 +70,7 @@ export interface ExamScannerKioskBatchVO {
   targetPageNo?: number
   supplementReason?: string
   /** 仅 SUPPLEMENT 模式有效：true=替换目标页，false=追加补扫 */
-  replaceTargetPage?: boolean
+  replaceTargetPage: boolean
   /** 批次封存时间 */
   sealedAt?: string
   /** 批次封存执行人 ID */
@@ -195,7 +195,7 @@ export interface ExamScannerBatchStartRequest {
   /** 仅 SUPPLEMENT 模式必填：补扫原因说明 */
   supplementReason?: string
   /** 仅 SUPPLEMENT 模式有效：true=替换目标页，false=追加补扫 */
-  replaceTargetPage?: boolean
+  replaceTargetPage: boolean
 }
 
 /**
@@ -263,8 +263,8 @@ export interface ExamScannerBatchLifecycleVO {
   targetPageNo?: number
   /** 补扫原因；仅 SUPPLEMENT 模式有值 */
   supplementReason?: string
-  /** 是否替换目标页；仅 SUPPLEMENT 模式有意义 */
-  replaceTargetPage?: boolean
+  /** 是否替换目标页；仅 SUPPLEMENT 模式有意义，非补扫固定为 false */
+  replaceTargetPage: boolean
   /** 工作台锚点对应的申报班级 ID（后端 List<Long> 经字符串序列化后到达前端） */
   declaredClassIds?: string[]
   /** 工作台锚点创建时间（ISO 字符串） */
@@ -444,8 +444,8 @@ function optionalBoolean(value: unknown, fieldName: string): boolean | undefined
 
 function requireStringList(value: unknown, fieldName: string): string[] {
   if (
-    !Array.isArray(value)
-    || value.some((item) => typeof item !== 'string' || item.length === 0)
+    !Array.isArray(value) ||
+    value.some((item) => typeof item !== 'string' || item.length === 0)
   ) {
     throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
   }
@@ -461,8 +461,8 @@ function optionalStringList(value: unknown, fieldName: string): string[] | undef
 
 function requireNullableStringList(value: unknown, fieldName: string): (string | null)[] {
   if (
-    !Array.isArray(value)
-    || value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
+    !Array.isArray(value) ||
+    value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
   ) {
     throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
   }
@@ -520,10 +520,10 @@ function requireLedgerServerReceiveStatus(value: unknown): ExamScannerPageServer
 
 function requireLedgerRegistrationStatus(value: unknown): ExamScannerPageRegistrationStatus {
   if (
-    value !== 'REGISTERED'
-    && value !== 'PENDING'
-    && value !== 'DISCARDED'
-    && value !== 'SUPERSEDED'
+    value !== 'REGISTERED' &&
+    value !== 'PENDING' &&
+    value !== 'DISCARDED' &&
+    value !== 'SUPERSEDED'
   ) {
     throw new TypeError('扫描工作台接口 items.registrationStatus 格式错误')
   }
@@ -610,7 +610,7 @@ function validateScannerKioskBatch(value: unknown): ExamScannerKioskBatchVO {
     scanMode: requireScanMode(record.scanMode, 'latestBatch.scanMode'),
     targetPageNo: optionalFiniteNumber(record.targetPageNo, 'latestBatch.targetPageNo'),
     supplementReason: optionalString(record.supplementReason, 'latestBatch.supplementReason'),
-    replaceTargetPage: optionalBoolean(record.replaceTargetPage, 'latestBatch.replaceTargetPage'),
+    replaceTargetPage: requireBoolean(record.replaceTargetPage, 'latestBatch.replaceTargetPage'),
     sealedAt: optionalString(record.sealedAt, 'latestBatch.sealedAt'),
     sealedBy: optionalString(record.sealedBy, 'latestBatch.sealedBy'),
     discardedAt: optionalString(record.discardedAt, 'latestBatch.discardedAt'),
@@ -728,7 +728,7 @@ function validateScannerBatchLifecycle(value: unknown): ExamScannerBatchLifecycl
     scanMode: optionalScanMode(record.scanMode, 'scanMode'),
     targetPageNo: optionalFiniteNumber(record.targetPageNo, 'targetPageNo'),
     supplementReason: optionalString(record.supplementReason, 'supplementReason'),
-    replaceTargetPage: optionalBoolean(record.replaceTargetPage, 'replaceTargetPage'),
+    replaceTargetPage: requireBoolean(record.replaceTargetPage, 'replaceTargetPage'),
     declaredClassIds: optionalStringList(record.declaredClassIds, 'declaredClassIds'),
     startedAt: optionalString(record.startedAt, 'startedAt'),
     startedBy: optionalString(record.startedBy, 'startedBy'),
@@ -794,10 +794,10 @@ function optionalScanAttentionType(
 
 function requireScanAttentionType(value: unknown, fieldName: string): ScanAttentionTypeCode {
   if (
-    value !== 'QUALITY_BLOCK'
-    && value !== 'PROCESSING_BLOCK'
-    && value !== 'DUPLICATE_PENDING'
-    && value !== 'RECOGNITION_REVIEW'
+    value !== 'QUALITY_BLOCK' &&
+    value !== 'PROCESSING_BLOCK' &&
+    value !== 'DUPLICATE_PENDING' &&
+    value !== 'RECOGNITION_REVIEW'
   ) {
     throw new TypeError(`${fieldName} 格式错误`)
   }

@@ -7,7 +7,8 @@ import type { ImprovementTaskStatus } from './types'
  *   ImprovementTaskQueryRequest / ImprovementTaskStatusUpdateRequest /
  *   ImprovementTaskCloseRequest。
  *
- * 注意：AI 改进建议生成走 /api/quality/ai-task/submit，business_type=improvement-task。
+ * 注意：AI 改进建议生成走 /api/quality/ai-task/submit，businessType=ACHIEVEMENT_RESULT，
+ * achievementResultId 为任务锚点。
  * 本文件不再封装 trigger-ai-suggestion，由前端在 AI 任务中心或本页直接提交。
  */
 import type { PageResult, QueryDto } from '@/types'
@@ -19,19 +20,19 @@ const BASE = '/api/quality/improvement-tasks'
 export interface ImprovementTaskVO {
   id: string
   tenantId?: string
-  programId?: string
+  programId: string
   trainingPlanId?: string
   qualityCourseId?: string
   achievementResultId?: string
   reportId?: string
   taskCode: string
   taskTitle: string
-  problemSummary?: string
-  proposedAction?: string
-  ownerUserId?: string
+  problemSummary: string
+  proposedAction: string
+  ownerUserId: string
   ownerRole?: string
   /** yyyy-MM-dd */
-  dueDate?: string
+  dueDate: string
   status: ImprovementTaskStatus
   progressRemark?: string
   /** 整改证据 JSON 字符串（前端按需 JSON.parse） */
@@ -59,19 +60,19 @@ export interface ImprovementTaskQueryPayload extends QueryDto {
 /** 保存请求 - 严格对齐后端 ImprovementTaskSaveRequest */
 export interface ImprovementTaskSavePayload {
   id?: string
-  programId?: string
+  programId: string
   trainingPlanId?: string
   qualityCourseId?: string
   achievementResultId?: string
   reportId?: string
-  taskCode: string
+  taskCode?: string
   taskTitle: string
-  problemSummary?: string
-  proposedAction?: string
-  ownerUserId?: string
+  problemSummary: string
+  proposedAction: string
+  ownerUserId: string
   ownerRole?: string
   /** yyyy-MM-dd */
-  dueDate?: string
+  dueDate: string
 }
 
 /** 状态流转 - 严格对齐后端 ImprovementTaskStatusUpdateRequest */
@@ -93,18 +94,13 @@ export interface ImprovementTaskClosePayload {
 export const improvementTaskApi = {
   page: (data: ImprovementTaskQueryPayload) =>
     http.post<PageResult<ImprovementTaskVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<ImprovementTaskVO>(`${BASE}/detail`, { id }),
-  create: (data: ImprovementTaskSavePayload) =>
-    http.post<string>(`${BASE}/create`, data),
-  update: (data: ImprovementTaskSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
-  /** 状态流转：OPEN -> IN_PROGRESS -> SUBMITTED -> REVIEWED -> CLOSED；REVIEWED 不通过会回到 RETURNED */
+  detail: (id: string) => http.post<ImprovementTaskVO>(`${BASE}/detail`, { id }),
+  create: (data: ImprovementTaskSavePayload) => http.post<string>(`${BASE}/create`, data),
+  update: (data: ImprovementTaskSavePayload) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
+  /** 状态流转：OPEN -> IN_PROGRESS -> SUBMITTED；RETURNED -> IN_PROGRESS */
   transitStatus: (data: ImprovementTaskStatusUpdatePayload) =>
     http.post<void>(`${BASE}/transit-status`, data),
-  /** SUBMITTED → REVIEWED / RETURNED 由 close 接口处理（包含复评结论） */
-  close: (data: ImprovementTaskClosePayload) =>
-    http.post<void>(`${BASE}/close`, data),
+  /** SUBMITTED → CLOSED / RETURNED 由 close 接口处理（包含复评结论） */
+  close: (data: ImprovementTaskClosePayload) => http.post<void>(`${BASE}/close`, data),
 }

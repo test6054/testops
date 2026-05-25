@@ -97,11 +97,7 @@
               <a-list-item class="msg-item" :class="{ 'msg-item--unread': !item.isRead }">
                 <a-list-item-meta>
                   <template #title>
-                    <button
-                      type="button"
-                      class="msg-item__title"
-                      @click="openMessageDetail(item)"
-                    >
+                    <button type="button" class="msg-item__title" @click="openMessageDetail(item)">
                       <span v-if="!item.isRead" class="dot dot--unread" />
                       {{ item.subject || '无主题' }}
                     </button>
@@ -109,11 +105,11 @@
                   <template #description>
                     <div class="msg-item__meta">
                       <UiTag tone="blue" size="sm">
-                        {{
-                          formatMessageType(item.messageType)
-                        }}
+                        {{ formatMessageType(item.messageType) }}
                       </UiTag>
-                      <span>发自 {{ item.senderInfo?.nickName || item.senderUserId || '系统' }}</span>
+                      <span
+                        >发自 {{ item.senderInfo?.nickName || item.senderUserId || '系统' }}</span
+                      >
                       <span>{{ formatTime(item.sendTime) }}</span>
                     </div>
                   </template>
@@ -249,8 +245,10 @@
       <div v-if="messageDetail" class="msg-detail">
         <div class="msg-detail__meta">
           <UiTag tone="blue" size="sm">{{ formatMessageType(messageDetail.messageType) }}</UiTag>
-          <span>发自
-            {{ messageDetail.senderInfo?.nickName || messageDetail.senderUserId || '系统' }}</span>
+          <span
+            >发自
+            {{ messageDetail.senderInfo?.nickName || messageDetail.senderUserId || '系统' }}</span
+          >
           <span>{{ formatTime(messageDetail.sendTime) }}</span>
         </div>
         <a-divider />
@@ -307,12 +305,6 @@ import type {
   InboxMessageListItemDTO,
   SystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import BellOutlined from '@ant-design/icons-vue/BellOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -325,9 +317,16 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import BellOutlined from '@ant-design/icons-vue/BellOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
-import { globalUnreadCount } from '@/composables/useUnreadCount'
+import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
 
 defineOptions({ name: 'UserMessage' })
@@ -335,11 +334,12 @@ defineOptions({ name: 'UserMessage' })
 type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
 
 // ─── 顶部聚合 ──────────────────────────────────
-const unreadInboxCount = computed(() => globalUnreadCount.unreadCount.value)
-const unreadAnnouncementCount = computed(
-  () => globalUnreadCount.unreadSystemNotificationCount.value,
-)
-const unreadTotal = computed(() => globalUnreadCount.totalUnreadCount.value)
+const notificationStore = useNotificationStore()
+const {
+  unreadCount: unreadInboxCount,
+  unreadSystemCount: unreadAnnouncementCount,
+  totalUnreadCount: unreadTotal,
+} = storeToRefs(notificationStore)
 
 const lastRefreshAt = ref<Date | null>(null)
 
@@ -348,7 +348,7 @@ const activeTab = ref<'inbox' | 'announcement'>('inbox')
 // ─── 站内信 ──────────────────────────────────
 const messages = ref<InboxMessageListItemDTO[]>([])
 const loadingMessages = ref(false)
-const inboxFilter = reactive<{ keyword?: string, isRead?: string }>({})
+const inboxFilter = reactive<{ keyword?: string; isRead?: string }>({})
 const messagePageState = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const messagePagination = computed(() => ({
   current: messagePageState.pageNum,
@@ -472,7 +472,7 @@ async function markMessageReadInternal(ids: string[]) {
       recipientMessageIds: ids,
       operationType: MessageOperationTypeEnum.MARK_READ,
     })
-    await globalUnreadCount.refreshUnreadCount()
+    await notificationStore.loadUnreadCount()
   } catch (error) {
     const msg = error instanceof Error ? error.message : '标记已读失败'
     message.error(msg)
@@ -491,7 +491,7 @@ async function markAllInbox() {
   try {
     await markAllAsRead()
     message.success('已将所有站内信标记为已读')
-    await globalUnreadCount.refreshUnreadCount()
+    await notificationStore.loadUnreadCount()
     await loadMessages()
   } catch (error) {
     const msg = error instanceof Error ? error.message : '操作失败'
@@ -532,7 +532,7 @@ async function confirmAnnouncementRead(item: SystemAnnouncementResponse) {
     const found = announcements.value.find((a) => a.id === item.id)
     if (found) found.isRead = true
     message.success('已确认阅读')
-    await globalUnreadCount.refreshUnreadCount()
+    await notificationStore.loadUnreadCount()
   } catch (error) {
     const msg = error instanceof Error ? error.message : '确认阅读失败'
     message.error(msg)
@@ -547,7 +547,7 @@ async function markAllAnnouncements() {
   try {
     await markAllAnnouncementsAsRead()
     message.success('已将所有公告标记为已读')
-    await globalUnreadCount.refreshUnreadCount()
+    await notificationStore.loadUnreadCount()
     await loadAnnouncements()
   } catch (error) {
     const msg = error instanceof Error ? error.message : '操作失败'
@@ -569,7 +569,7 @@ async function markAllReadAcrossTabs() {
       await markAllAnnouncementsAsRead()
     }
     message.success('已将所有未读消息和公告标记为已读')
-    await globalUnreadCount.refreshUnreadCount()
+    await notificationStore.loadUnreadCount()
     await Promise.all([loadMessages(), loadAnnouncements()])
   } catch (error) {
     const msg = error instanceof Error ? error.message : '操作失败'
@@ -630,13 +630,13 @@ async function reloadAll() {
   await Promise.all([
     loadMessages(messagePageState.pageNum),
     loadAnnouncements(announcementPageState.pageNum),
-    globalUnreadCount.refreshUnreadCount(),
+    notificationStore.loadUnreadCount(),
   ])
 }
 
 onMounted(async () => {
   lastRefreshAt.value = new Date()
-  await Promise.all([loadMessages(1), loadAnnouncements(1), globalUnreadCount.fetchUnreadCount()])
+  await Promise.all([loadMessages(1), loadAnnouncements(1), notificationStore.loadUnreadCount()])
 })
 </script>
 

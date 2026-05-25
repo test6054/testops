@@ -11,11 +11,11 @@
  * - 持久化只保存少量"用户选择"字段，目录缓存只放内存。
  */
 import type { GraduationRequirementVO, QualityCourseVO, TrainingPlanVO } from '@/apis/quality'
+import { graduationRequirementApi, qualityCourseApi, trainingPlanApi } from '@/apis/quality'
 import type { MajorCategoryVO, TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
+import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { graduationRequirementApi, qualityCourseApi, trainingPlanApi } from '@/apis/quality'
-import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
 
 export const useQualityStore = defineStore(
   'quality',
@@ -104,7 +104,7 @@ export const useQualityStore = defineStore(
       }
     }
 
-    async function loadTrainingPlanOptions(opts?: { programId?: string, keyword?: string }) {
+    async function loadTrainingPlanOptions(opts?: { programId?: string; keyword?: string }) {
       trainingPlanLoading.value = true
       try {
         const page = await trainingPlanApi.page({
@@ -201,25 +201,6 @@ export const useQualityStore = defineStore(
       currentQualityCourseId.value = qualityCourseId
     }
 
-    /** 兼容旧调用：批量设置（不会主动清缓存） */
-    function setCurrent(options: {
-      programId?: string
-      accreditationProfileId?: string
-      trainingPlanId?: string
-      schoolYear?: string
-      semester?: string
-      qualityCourseId?: string
-    }) {
-      if (options.programId !== undefined) currentProgramId.value = options.programId
-      if (options.accreditationProfileId !== undefined)
-        currentAccreditationProfileId.value = options.accreditationProfileId
-      if (options.trainingPlanId !== undefined) currentTrainingPlanId.value = options.trainingPlanId
-      if (options.schoolYear !== undefined) currentSchoolYear.value = options.schoolYear
-      if (options.semester !== undefined) currentSemester.value = options.semester
-      if (options.qualityCourseId !== undefined)
-        currentQualityCourseId.value = options.qualityCourseId
-    }
-
     function reset() {
       currentProgramId.value = ''
       currentAccreditationProfileId.value = ''
@@ -275,7 +256,6 @@ export const useQualityStore = defineStore(
       setTrainingPlan,
       setSchoolPeriod,
       setQualityCourse,
-      setCurrent,
       reset,
     }
   },

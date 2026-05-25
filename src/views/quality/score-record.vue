@@ -13,9 +13,6 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   isScoreBatchStatus,
@@ -24,6 +21,9 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   CourseSelector,
   StudentSelector,
@@ -59,12 +59,24 @@ const validByItemColumns: ColumnsType = [
 /* ========== 状态守卫 helper：禁止 as 类型断言 ========== */
 function batchStatusLabel(value: unknown): string {
   if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error(`成绩批次状态不符合前后端契约：${String(value)}`)
 }
 
 function batchStatusColor(value: unknown): string {
   if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_COLOR[value]
-  return 'default'
+  throw new Error(`成绩批次状态不符合前后端契约：${String(value)}`)
+}
+
+function requireFiniteScore(value: unknown, fieldName: string): number {
+  const score = Number(value)
+  if (!Number.isFinite(score)) {
+    throw new Error(`成绩明细${fieldName}字段异常：${String(value)}`)
+  }
+  return score
+}
+
+function formatScore(value: unknown, fieldName: string, digits: number): string {
+  return requireFiniteScore(value, fieldName).toFixed(digits)
 }
 
 const qualityStore = useQualityStore()
@@ -91,7 +103,7 @@ async function loadBatches() {
       pageSize: 100,
       qualityCourseId: qualityStore.currentQualityCourseId,
     })
-    batches.value = page.list || []
+    batches.value = page.list
   } finally {
     batchesLoading.value = false
   }
@@ -126,7 +138,7 @@ async function loadRecords() {
   }
   recordsLoading.value = true
   try {
-    records.value = (await scoreRecordApi.listByBatch(selectedBatch.value.id)) || []
+    records.value = await scoreRecordApi.listByBatch(selectedBatch.value.id)
   } finally {
     recordsLoading.value = false
   }
@@ -137,7 +149,7 @@ async function loadAssessmentItems() {
     assessmentItems.value = []
     return
   }
-  assessmentItems.value = (await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)) || []
+  assessmentItems.value = await assessmentItemApi.listByCourse(qualityStore.currentQualityCourseId)
 }
 
 /* ========== 信号指标带（SignalBand） ========== */
@@ -147,8 +159,8 @@ const signals = computed<SignalMetric[]>(() => {
   const valid = list.filter((r) => r.validFlag).length
   const invalid = list.length - valid
   const errored = list.filter((r) => r.errorCodes && r.errorCodes.length > 0).length
-  const totalScore = list.reduce((sum, r) => sum + Number(r.rawScore || 0), 0)
-  const totalFull = list.reduce((sum, r) => sum + Number(r.fullScore || 0), 0)
+  const totalScore = list.reduce((sum, r) => sum + requireFiniteScore(r.rawScore, '原始分'), 0)
+  const totalFull = list.reduce((sum, r) => sum + requireFiniteScore(r.fullScore, '满分'), 0)
   const ratio = totalFull > 0 ? Math.round((totalScore / totalFull) * 100) : 0
   return [
     { key: 'total', label: '当前明细', value: list.length, tone: 'blue' },
@@ -264,11 +276,10 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value
-      = (await scoreRecordApi.listValidByItem(
-        validByItemId.value,
-        qualityStore.currentQualityCourseId,
-      )) || []
+    validByItemRecords.value = await scoreRecordApi.listValidByItem(
+      validByItemId.value,
+      qualityStore.currentQualityCourseId,
+    )
   } finally {
     validByItemLoading.value = false
   }
@@ -301,7 +312,7 @@ onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
     await qualityStore.loadTrainingPlanOptions()
     if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setCurrent({ trainingPlanId: qualityStore.trainingPlanOptions[0].id })
+      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
     }
   }
   if (qualityStore.currentQualityCourseId) {
@@ -310,11 +321,11 @@ onMounted(async () => {
 })
 
 function handlePlanChange(planId: string | null) {
-  qualityStore.setCurrent({ trainingPlanId: planId || '', qualityCourseId: '' })
+  qualityStore.setTrainingPlan(planId || '')
 }
 
 function handleCourseChange(courseId: string | null) {
-  qualityStore.setCurrent({ qualityCourseId: courseId || '' })
+  qualityStore.setQualityCourse(courseId || '')
 }
 </script>
 
@@ -450,8 +461,8 @@ function handleCourseChange(courseId: string | null) {
                   {{ assessmentItemMap.get(text)?.itemName || text }}
                 </template>
                 <template v-else-if="column.key === 'score'">
-                  {{ Number(record.rawScore).toFixed(1) }} /
-                  {{ Number(record.fullScore).toFixed(0) }}
+                  {{ formatScore(record.rawScore, '原始分', 1) }} /
+                  {{ formatScore(record.fullScore, '满分', 0) }}
                 </template>
                 <template v-else-if="column.key === 'recordStatus'">
                   <a-space size="small">
@@ -543,7 +554,7 @@ function handleCourseChange(courseId: string | null) {
           <a-textarea
             v-model:value="editor.rubricBreakdown"
             :rows="3"
-            placeholder="{&quot;rubricItemId&quot;: score, ...}"
+            placeholder='{"rubricItemId": score, ...}'
             class="score-record__mono"
           />
         </a-form-item>
@@ -611,7 +622,8 @@ function handleCourseChange(courseId: string | null) {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'score'">
-            {{ Number(record.rawScore).toFixed(1) }} / {{ Number(record.fullScore).toFixed(0) }}
+            {{ formatScore(record.rawScore, '原始分', 1) }} /
+            {{ formatScore(record.fullScore, '满分', 0) }}
           </template>
         </template>
       </UiDataTable>

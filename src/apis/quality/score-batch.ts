@@ -8,7 +8,7 @@ import type { DataSourceMode, ScoreBatchStatus } from './types'
  *
  * 主链：先 edu-storage 上传 Excel 得到 sourceFileId → 注册批次 (/create) →
  *        触发解析 (/enqueue-parse) → 状态 PARSING → PREVIEW_READY →
- *        校验 (/validate) → 确认 (/confirm) → 归档 / 驳回 (/update-status)
+ *        校验 (/validate) → 确认 (/confirm)；PENDING / FAILED 可取消 (/update-status)
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
@@ -94,7 +94,7 @@ export interface ScoreBatchSavePayload {
   semester?: string
 }
 
-/** 状态流转请求 - 严格对齐 ScoreBatchStatusUpdateRequest */
+/** 取消请求 - 前端仅用于 PENDING / FAILED → CANCELLED */
 export interface ScoreBatchStatusUpdatePayload {
   id: string
   status: ScoreBatchStatus
@@ -105,31 +105,22 @@ export interface ScoreBatchStatusUpdatePayload {
 }
 
 export const scoreBatchApi = {
-  page: (data: ScoreBatchQueryPayload) =>
-    http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
-  preview: (id: string) =>
-    http.post<ScoreImportPreviewVO>(`${BASE}/preview`, { id }),
+  page: (data: ScoreBatchQueryPayload) => http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data),
+  detail: (id: string) => http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
+  preview: (id: string) => http.post<ScoreImportPreviewVO>(`${BASE}/preview`, { id }),
   /**
    * 注册成绩批次。前端流程：先调 edu-storage 上传 Excel 得到 sourceFileId，再调本接口注册。
    */
-  create: (data: ScoreBatchSavePayload) =>
-    http.post<string>(`${BASE}/create`, data),
-  update: (data: ScoreBatchSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
+  create: (data: ScoreBatchSavePayload) => http.post<string>(`${BASE}/create`, data),
+  update: (data: ScoreBatchSavePayload) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   /** 触发解析（PENDING / FAILED 状态可用） */
-  enqueueParse: (id: string) =>
-    http.post<void>(`${BASE}/enqueue-parse`, { id }),
+  enqueueParse: (id: string) => http.post<void>(`${BASE}/enqueue-parse`, { id }),
   /** 校验：PREVIEW_READY → VALIDATED */
-  validate: (id: string) =>
-    http.post<void>(`${BASE}/validate`, { id }),
+  validate: (id: string) => http.post<void>(`${BASE}/validate`, { id }),
   /** 确认：VALIDATED → CONFIRMED */
-  confirm: (id: string) =>
-    http.post<void>(`${BASE}/confirm`, { id }),
-  /** 状态流转（驳回 / 归档等） */
+  confirm: (id: string) => http.post<void>(`${BASE}/confirm`, { id }),
+  /** 取消批次：PENDING / FAILED → CANCELLED */
   updateStatus: (data: ScoreBatchStatusUpdatePayload) =>
     http.post<void>(`${BASE}/update-status`, data),
 }

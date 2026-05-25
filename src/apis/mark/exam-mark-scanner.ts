@@ -6,8 +6,8 @@
  * - 租户与操作人从 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 统一用 string 表达到前端（保持与其他模块一致）
  */
-import type {ScanAttentionTypeCode} from './exam'
-import type {BadgeTone} from '@/components/ui-guide/ui/types'
+import type { ExamStatusCode, ScanAttentionTypeCode } from './exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 /** 接入模式编码 - 对应后端 ScannerInterfaceMode 枚举 */
@@ -162,8 +162,8 @@ export interface ExamScannerDeviceCreatePayload {
   model?: string
   location?: string
   remark?: string
-  /** 一体机 Kiosk 锁是否启用，不传时服务端按启用处理 */
-  kioskLockEnabled?: boolean
+  /** 一体机 Kiosk 锁是否启用 */
+  kioskLockEnabled: boolean
 }
 
 /** 扫描设备更新请求 - 对应 ExamScannerDeviceUpdateRequest */
@@ -186,7 +186,7 @@ export interface ExamScannerDeviceUpdatePayload {
   location?: string
   remark?: string
   /** 一体机 Kiosk 锁是否启用 */
-  kioskLockEnabled?: boolean
+  kioskLockEnabled: boolean
 }
 
 /** SANE 主动采集触发请求 - 对应 ExamScannerSaneTriggerRequest */
@@ -430,6 +430,13 @@ function requireDeviceStatus(value: unknown, fieldName: string): ScannerDeviceSt
   return value
 }
 
+function requireExamStatus(value: unknown, fieldName: string): ExamStatusCode {
+  if (value !== 'ACTIVE' && value !== 'CLOSED') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
 function optionalEndpointOnlineStatus(
   value: unknown,
   fieldName: string,
@@ -591,7 +598,7 @@ export interface MarkExamSummaryVO {
   examNo?: string
   academicYear?: string
   semester?: string
-  status: string
+  status: ExamStatusCode
   statusMessage?: string
   examStartTime?: string
   examEndTime?: string
@@ -604,7 +611,7 @@ export interface MarkExamPageQueryPayload {
   pageSize: number
   /** 课程ID（可选筛选） */
   courseId?: string
-  status?: string
+  status?: ExamStatusCode
   academicYear?: string
   semester?: string
   createUserId?: string | null
@@ -670,7 +677,7 @@ function validateMarkExamSummary(value: unknown): MarkExamSummaryVO {
     examNo: optionalString(result.examNo, '考试编号'),
     academicYear: optionalString(result.academicYear, '学年'),
     semester: optionalString(result.semester, '学期'),
-    status: requireString(result.status, '考试状态'),
+    status: requireExamStatus(result.status, '考试状态'),
     statusMessage: optionalString(result.statusMessage, '考试状态文案'),
     examStartTime: optionalString(result.examStartTime, '考试开始时间'),
     examEndTime: optionalString(result.examEndTime, '考试结束时间'),

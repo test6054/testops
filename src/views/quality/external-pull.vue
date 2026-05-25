@@ -4,7 +4,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 质量评价 - 外部数据拔取中心
  *
  * 后端契约（ExternalPullTaskController + ExternalDataSourceController + ExternalPullResultController + ExternalPullAuditController）：
- * 1. 维护只读数据源：jdbcUrl / username / password 仅以 cipher 密文传输，后端 AES-256-GCM 保存。
+ * 1. 维护只读数据源：jdbcUrl / username / password 以明文请求字段提交，后端 AES-256-GCM 加密保存，VO 只返回配置状态。
  * 2. 创建拔取任务：仅允许 SELECT 语句，受 SqlGuard 与 fieldWhitelist 拦截。
  * 3. 调度器执行：状态机 PENDING -> RUNNING -> SUCCEEDED / FAILED / CANCELLED。
  * 4. 结果批次 confirmationStatus PREVIEW -> CONFIRMED / REJECTED（人工确认或驳回）。
@@ -20,9 +20,6 @@ import type {
   ExternalPullTaskVO,
   ExternalSourceType,
 } from '@/apis/quality'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   EXTERNAL_PULL_TASK_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_LABEL,
@@ -34,6 +31,9 @@ import {
   isExternalPullTaskStatus,
   isExternalSourceType,
 } from '@/apis/quality'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -74,31 +74,32 @@ const detailResultColumns: ColumnsType = [
 
 function taskStatusLabel(value: unknown): string {
   if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error(`外部拔取任务状态不在后端枚举内：${String(value)}`)
 }
 
 function taskStatusColor(value: unknown): string {
   if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_COLOR[value]
-  return 'default'
+  throw new Error(`外部拔取任务状态不在后端枚举内：${String(value)}`)
 }
 
 function sourceTypeLabel(value: unknown): string {
   if (isExternalSourceType(value)) return EXTERNAL_SOURCE_TYPE_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+  throw new Error(`外部数据源类型不在后端枚举内：${String(value)}`)
 }
 
 function confirmationStatusColor(value: unknown): string {
   if (value === 'CONFIRMED') return 'green'
   if (value === 'REJECTED') return 'red'
   if (value === 'PREVIEW') return 'orange'
-  return 'default'
+  throw new Error(`结果批次确认状态不在后端枚举内：${String(value)}`)
 }
 
 function auditTone(status: unknown): string {
   if (status === 'PASSED') return 'green'
   if (status === 'REJECTED') return 'red'
   if (status === 'WARNING') return 'orange'
-  return 'gray'
+  if (status === null || status === undefined || status === '') return 'gray'
+  throw new Error(`外部拔取审计状态不在后端枚举内：${String(status)}`)
 }
 
 const sources = ref<ExternalDataSourceVO[]>([])
@@ -118,9 +119,7 @@ const taskQuery = reactive<ExternalPullTaskQueryPayload>({
 })
 
 /**
- * 临时表单状态：包含明文输入。提交前才以 AES-256 封装为 *Cipher 字段。
- * 本项目运行在企业内网，传输面上还是 HTTPS；后端负责同一账号体系的密钥解密。
- * 详细密钥交接及加密实现需与 edu-quality 后端安全小组联调，本页面这里仅作为 UI 占位。
+ * 临时表单状态：包含明文输入。提交时直接按后端契约发送，服务端负责加密落库。
  */
 const sourceEditorVisible = ref(false)
 const sourceEditing = ref(false)
@@ -214,8 +213,10 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 function sourceName(sourceId: string | undefined): string {
-  if (!sourceId) return '-'
-  return sources.value.find((s) => s.id === sourceId)?.sourceName || sourceId
+  if (!sourceId) throw new Error('外部拔取任务缺少数据源 ID')
+  const source = sources.value.find((s) => s.id === sourceId)
+  if (!source) throw new Error(`外部拔取任务引用的数据源不存在：${sourceId}`)
+  return source.sourceName
 }
 
 const enabledSourceOptions = computed(() =>
@@ -223,7 +224,9 @@ const enabledSourceOptions = computed(() =>
 )
 
 function canCancelTask(status: unknown): boolean {
-  if (!isExternalPullTaskStatus(status)) return false
+  if (!isExternalPullTaskStatus(status)) {
+    throw new Error(`外部拔取任务状态不在后端枚举内：${String(status)}`)
+  }
   return status === 'PENDING' || status === 'RUNNING'
 }
 
@@ -283,21 +286,6 @@ function openSourceCreate() {
   sourceEditorVisible.value = true
 }
 
-/**
- * 前端负责将 jdbcUrl / username / password 明文加密为 *Cipher 字段后提交。
- * 加密实现由运行环境提供的同一密钥加密器负责（企业内罗萰 KMS / 密管系统）。
- * 这里后端必须能用同一账号体系的私钥反向解密；本项目默认 AES-256-GCM。
- */
-function toCipher(plain: string): string {
-  // 占位实现：仅 base64。生产环境必须接入真实加密。
-  if (!plain) return ''
-  try {
-    return globalThis.btoa(decodeURIComponent(encodeURIComponent(plain)))
-  } catch {
-    return plain
-  }
-}
-
 async function openSourceEdit(record: ExternalDataSourceVO) {
   sourceEditorMode.value = 'edit'
   sourceEditingId.value = record.id
@@ -350,9 +338,9 @@ async function submitSource() {
       sourceCode: sourceForm.sourceCode.trim(),
       sourceName: sourceForm.sourceName.trim(),
       sourceType: sourceForm.sourceType,
-      jdbcUrlCipher: toCipher(sourceForm.jdbcUrl.trim()),
-      usernameCipher: toCipher(sourceForm.username.trim()),
-      passwordCipher: toCipher(sourceForm.password),
+      jdbcUrl: sourceForm.jdbcUrl.trim(),
+      username: sourceForm.username.trim(),
+      password: sourceForm.password,
       driverClass: sourceForm.driverClass.trim(),
       fieldWhitelist: whitelist,
       maxRowCount: sourceForm.maxRowCount,
@@ -394,10 +382,12 @@ async function deleteSource(record: ExternalDataSourceVO) {
 async function cancelTask(record: ExternalPullTaskVO) {
   const reason = await promptModal({
     title: `取消拔取任务 ${record.taskCode}`,
-    placeholder: '可选：填写取消原因',
-    required: false,
+    placeholder: '请填写取消原因',
+    required: true,
     okType: 'danger',
+    emptyErrorMessage: '请填写取消原因',
   })
+  if (!reason) return
   await externalPullTaskApi.cancel(record.id, reason || undefined)
   message.success('已取消')
   await loadTasks()
@@ -428,7 +418,7 @@ async function submitTask() {
     !taskForm.businessId ||
     !taskForm.sqlTemplate.trim()
   ) {
-    message.error('请填写任务编码 / 名称 / 数据源 / 业务错点 / SQL')
+    message.error('请填写任务编码 / 名称 / 数据源 / 业务锚点 / SQL')
     return
   }
   if (!/^\s*select\s/i.test(taskForm.sqlTemplate)) {
@@ -474,6 +464,10 @@ async function submitTask() {
  * 任务成功后会生成一个 PREVIEW 状态的结果批次，在详情抽屉中对该批次 confirm / reject。
  */
 async function confirmResult(result: ExternalPullResultVO) {
+  const confirmedRows = result.previewRows
+  if (confirmedRows === null || confirmedRows === undefined) {
+    throw new Error(`结果批次 #${result.id} 缺少预览行数，不能确认`)
+  }
   void confirmAsync({
     title: `确认拔取结果批次 #${result.id}？`,
     content: '确认后进入达成度计算可用来源',
@@ -481,7 +475,7 @@ async function confirmResult(result: ExternalPullResultVO) {
     onOk: async () => {
       await externalPullResultApi.confirm({
         id: result.id,
-        confirmedRows: result.previewRows ?? 0,
+        confirmedRows,
       })
       message.success('已确认')
       if (detailRecord.value) await reloadDetail(detailRecord.value.id)

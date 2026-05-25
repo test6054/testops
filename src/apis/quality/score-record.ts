@@ -59,13 +59,6 @@ export const scoreRecordApi = {
     http.post<ScoreRecordVO>(`${BASE}/detail`, { id }),
   create: (data: ScoreRecordSavePayload) =>
     http.post<string>(`${BASE}/create`, data),
-  /**
-   * @deprecated 前端不再调用本端点。批量录入请走「成绩 Excel 导入」批次链路：
-   * `/quality/score-batch` 页面 → 模板下载 → Excel 上传 → 异步解析 → 预览 → 校验 → 确认。
-   * 后端端点保留供内部 service 在批次状态流转期间使用。
-   */
-  batchCreate: (batchId: string, records: ScoreRecordSavePayload[]) =>
-    http.post<void>(`${BASE}/batch-create`, { batchId, records }),
   update: (data: ScoreRecordSavePayload) =>
     http.post<void>(`${BASE}/update`, data),
   delete: (id: string) =>

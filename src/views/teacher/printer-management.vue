@@ -690,6 +690,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
+import { getAllClasses } from '@/apis/edu/class'
 import type {
   ExamScannerActivationCodeVO,
   ExamScannerDeviceCreatePayload,
@@ -705,11 +706,6 @@ import type {
   ScannerEndpointOnlineStatusCode,
   ScannerInterfaceModeCode,
 } from '@/apis/mark/exam-mark-scanner'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { getAllClasses } from '@/apis/edu/class'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -728,6 +724,10 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -838,7 +838,9 @@ async function loadDevices(): Promise<void> {
   try {
     const result = await listScannerDevices(searchForm.value)
     if (!Array.isArray(result)) {
-      throw new TypeError('扫描设备列表响应格式异常')
+      devicesLoadError.value = new TypeError('扫描设备列表响应格式异常')
+      message.error('扫描设备列表响应格式异常')
+      return
     }
     devices.value = result
   } catch (error) {
@@ -1283,7 +1285,9 @@ async function loadExamList(): Promise<void> {
       createUserId: isAdminView ? null : userStore.userInfo.userId || undefined,
     })
     if (!Array.isArray(result.list)) {
-      throw new TypeError('考试列表接口返回格式错误')
+      examListLoadError.value = new TypeError('考试列表接口返回格式错误')
+      message.error('考试列表接口返回格式错误')
+      return
     }
     examList.value = result.list
   } catch (error) {
