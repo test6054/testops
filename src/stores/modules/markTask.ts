@@ -68,7 +68,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     tasksLoading.value = true
     try {
       const result = await listMarkingTasks(payload)
-      tasks.value = result ?? []
+      tasks.value = result
       tasksLoadedExamId.value = payload.examId
       return tasks.value
     } finally {
@@ -78,10 +78,10 @@ export const useMarkTaskStore = defineStore('markTask', () => {
 
   async function claimTasks(payload: MarkingTaskClaimPayload): Promise<MarkingTaskVO[]> {
     const claimed = await claimMarkingTasks(payload)
-    if (claimed && claimed.length > 0) {
+    if (claimed.length > 0) {
       tasks.value = [...claimed, ...tasks.value]
     }
-    return claimed ?? []
+    return claimed
   }
 
   async function loadClaimContext(
@@ -107,7 +107,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     reviewTasksLoading.value = true
     try {
       const result = await listReviewTasks(payload)
-      reviewTasks.value = result ?? []
+      reviewTasks.value = result
       reviewLoadedExamId.value = payload.examId
       return reviewTasks.value
     } finally {

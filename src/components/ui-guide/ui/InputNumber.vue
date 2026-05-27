@@ -26,8 +26,8 @@
       v-bind="$attrs"
       @update:value="handleUpdateValue"
       @change="handleChange"
-      @blur="(event: any) => emit('blur', event)"
-      @focus="(event: any) => emit('focus', event)"
+      @blur="(event: FocusEvent) => emit('blur', event)"
+      @focus="(event: FocusEvent) => emit('focus', event)"
     />
   </div>
 </template>

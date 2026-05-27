@@ -77,6 +77,7 @@ export * from './role-enum'
 
 // 学期枚举
 export {
+  formatSemester,
   getSemesterDescription,
   isValidSemesterCode,
   SemesterCode,

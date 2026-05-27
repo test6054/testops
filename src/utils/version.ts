@@ -88,7 +88,7 @@ export function printVersionInfo(): void {
 
   /* eslint-disable no-console */
   console.log(
-    '%c📦 Edu Practice Web - 版本信息',
+    '%c阅卷中心 · 版本信息',
     styles.title,
   )
 
@@ -147,7 +147,7 @@ export function printVersionInfo(): void {
     ;(window as Window & { __APP_VERSION__?: VersionInfo, __printVersion__?: () => void }).__APP_VERSION__ = info
     ;(window as Window & { __APP_VERSION__?: VersionInfo, __printVersion__?: () => void }).__printVersion__ = printVersionInfo
     console.log(
-      '%c💡 输入 %c__printVersion__()%c 可随时重新查看版本信息',
+      '%c提示：%c__printVersion__()%c 可随时重新查看版本信息',
       `color: ${textTertiaryColor}; font-size: 11px;`,
       `color: ${primaryColor}; font-size: 11px; font-weight: bold;`,
       `color: ${textTertiaryColor}; font-size: 11px;`,

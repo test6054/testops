@@ -21,11 +21,11 @@ export const TENANT_STATUS_CONFIG: Record<TenantStatusEnum, { label: string, col
 }
 
 /** 获取租户状态标签 */
-export function getTenantStatusLabel(status: TenantStatusEnum | string): string {
-  return TENANT_STATUS_CONFIG[status as TenantStatusEnum]?.label || status
+export function getTenantStatusLabel(status: TenantStatusEnum): string {
+  return TENANT_STATUS_CONFIG[status].label
 }
 
 /** 获取租户状态颜色 */
-export function getTenantStatusColor(status: TenantStatusEnum | string): string {
-  return TENANT_STATUS_CONFIG[status as TenantStatusEnum]?.color ?? 'var(--ant-color-text-tertiary)'
+export function getTenantStatusColor(status: TenantStatusEnum): string {
+  return TENANT_STATUS_CONFIG[status].color
 }

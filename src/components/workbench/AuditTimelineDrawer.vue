@@ -20,13 +20,11 @@
         <div class="audit-timeline__dot" />
         <div class="audit-timeline__content">
           <div class="audit-timeline__header">
-            <span class="audit-timeline__operation">{{
-              event.operationLabel || event.operationType
-            }}</span>
+            <span class="audit-timeline__operation">{{ event.operationLabel }}</span>
             <span v-if="event.time" class="audit-timeline__time">{{ event.time }}</span>
           </div>
-          <div v-if="event.operatorName || event.operatorRole" class="audit-timeline__operator">
-            <span v-if="event.operatorName">{{ event.operatorName }}</span>
+          <div v-if="event.operatorName" class="audit-timeline__operator">
+            <span>{{ event.operatorName }}</span>
             <span v-if="event.operatorRole" class="audit-timeline__role">{{
               event.operatorRole
             }}</span>

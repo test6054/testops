@@ -82,13 +82,13 @@
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'anonymousNo'">
-              <a-typography-text strong :content="tasks[index].anonymousNo || '-'" />
+              <a-typography-text strong :content="tasks[index].anonymousNo" />
             </template>
             <template v-else-if="column.key === 'questionNo'">
-              <UiTag tone="blue" size="sm">{{ tasks[index].questionNo || '-' }}</UiTag>
+              <UiTag tone="blue" size="sm">{{ tasks[index].questionNo }}</UiTag>
             </template>
             <template v-else-if="column.key === 'fullScore'">
-              {{ tasks[index].fullScore ?? '-' }}
+              {{ tasks[index].fullScore }}
             </template>
             <template v-else-if="column.key === 'suggestedScore'">
               <template v-if="tasks[index].suggestedScore != null">
@@ -116,7 +116,7 @@
               <span v-else class="muted">未指派</span>
             </template>
             <template v-else-if="column.key === 'updateTime'">
-              {{ formatTime(tasks[index].updateTime) }}
+              {{ formatDateTime(tasks[index].updateTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
@@ -141,7 +141,6 @@ import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOu
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -159,6 +158,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherReviewArbitration' })
 
@@ -173,7 +173,13 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
-const currentUserId = computed(() => userStore.userInfo.userId || '')
+const currentUserId = computed(() => {
+  const { userId } = userStore.userInfo
+  if (!userId) {
+    throw new Error('当前用户缺少 userId，无法计算仲裁任务指派状态')
+  }
+  return userId
+})
 
 const markTaskStore = useMarkTaskStore()
 const { reviewTasks: tasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
@@ -193,9 +199,7 @@ const columns: ColumnType<ReviewTaskItemVO>[] = [
 /** 仲裁概览 KPI（待仲裁总数 / 涉及题目数 / 指派给我 / 未指派） */
 const kpiItems = computed(() => {
   const total = tasks.value.length
-  const distinctQuestions = new Set(
-    tasks.value.map((t) => t.questionNo || t.questionTemplateId).filter(Boolean),
-  ).size
+  const distinctQuestions = new Set(tasks.value.map((t) => t.questionTemplateId)).size
   const assignedToMe = currentUserId.value
     ? tasks.value.filter((t) => t.assignedTeacherUserId === currentUserId.value).length
     : 0
@@ -236,16 +240,12 @@ const kpiItems = computed(() => {
   ]
 })
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 /** 建议分占满分百分比（保留 0 位整数）。当满分不存在或为 0 时返回 null。 */
 function getSuggestedRatio(record: ReviewTaskItemVO): number | null {
   const full = record.fullScore
   const sug = record.suggestedScore
-  if (full == null || sug == null || full <= 0) return null
+  if (sug == null || full <= 0) return null
   return Math.round((sug / full) * 100)
 }
 

@@ -112,8 +112,10 @@ export const DEFENSE_TASK_STATUS_COLOR: Record<DefenseTaskStatus, string> = {
 }
 
 export function getDefenseTaskStatusColor(status?: DefenseTaskStatus | string): string {
-  if (!status) return 'gray'
-  return DEFENSE_TASK_STATUS_COLOR[status as DefenseTaskStatus] || 'gray'
+  if (!status || !(status in DEFENSE_TASK_STATUS_COLOR)) {
+    throw new Error('答辩任务状态不符合前后端契约')
+  }
+  return DEFENSE_TASK_STATUS_COLOR[status as DefenseTaskStatus]
 }
 
 
@@ -162,21 +164,30 @@ export enum AnswerStatus {
  * 获取会话状态文本
  */
 export function getSessionStatusText(status?: DefenseSessionStatus): string {
-  return status ? DEFENSE_SESSION_STATUS_CONFIG[status]?.text || '未知' : '未知'
+  if (!status || !(status in DEFENSE_SESSION_STATUS_CONFIG)) {
+    throw new Error('答辩会话状态不符合前后端契约')
+  }
+  return DEFENSE_SESSION_STATUS_CONFIG[status].text
 }
 
 /**
  * 获取会话状态颜色
  */
 export function getSessionStatusColor(status?: DefenseSessionStatus): string {
-  return status ? DEFENSE_SESSION_STATUS_CONFIG[status]?.color || 'gray' : 'gray'
+  if (!status || !(status in DEFENSE_SESSION_STATUS_CONFIG)) {
+    throw new Error('答辩会话状态不符合前后端契约')
+  }
+  return DEFENSE_SESSION_STATUS_CONFIG[status].color
 }
 
 /**
  * 获取会话状态描述
  */
 export function getSessionStatusDescription(status?: DefenseSessionStatus): string {
-  return status ? DEFENSE_SESSION_STATUS_CONFIG[status]?.description || '未知状态' : '未知状态'
+  if (!status || !(status in DEFENSE_SESSION_STATUS_CONFIG)) {
+    throw new Error('答辩会话状态不符合前后端契约')
+  }
+  return DEFENSE_SESSION_STATUS_CONFIG[status].description
 }
 
 /**
@@ -187,7 +198,7 @@ export function getQuestionTypeText(type: DefenseQuestionType): string {
     OPEN_ENDED: '问答题',
     MULTIPLE_CHOICE: '选择题'
   }
-  return textMap[type] || '未知'
+  return textMap[type]
 }
 
 /**
@@ -198,7 +209,7 @@ export function getQuestionTypeColor(type: DefenseQuestionType): string {
     MULTIPLE_CHOICE: 'blue',
     OPEN_ENDED: 'purple'
   }
-  return colorMap[type] || 'gray'
+  return colorMap[type]
 }
 
 /**
@@ -210,7 +221,7 @@ export function getDifficultyText(difficulty: DefenseDifficulty): string {
     MEDIUM: '中等',
     HARD: '困难'
   }
-  return textMap[difficulty] || '未知'
+  return textMap[difficulty]
 }
 
 /**
@@ -222,7 +233,7 @@ export function getDifficultyColor(difficulty: DefenseDifficulty): string {
     MEDIUM: 'orange',
     HARD: 'red'
   }
-  return colorMap[difficulty] || 'gray'
+  return colorMap[difficulty]
 }
 
 /**
@@ -236,7 +247,7 @@ export function getDefenseResultText(result: DefenseResult): string {
     EXPIRED: '过期未参加',
     RESUBMITTED: '有新提交，可重新答辩'
   }
-  return textMap[result] || '未知'
+  return textMap[result]
 }
 
 /**
@@ -250,7 +261,7 @@ export function getDefenseResultColor(result: DefenseResult): string {
     EXPIRED: 'gray',
     RESUBMITTED: 'blue'
   }
-  return colorMap[result] || 'gray'
+  return colorMap[result]
 }
 
 /**

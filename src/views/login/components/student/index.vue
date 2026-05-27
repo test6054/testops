@@ -70,6 +70,7 @@ import AjCaptcha from '@/components/AjCaptcha/index.vue'
 import SchoolAutocomplete from '@/components/SchoolAutocomplete.vue'
 import { UiButton, UiFormField, UiInput, UiPasswordInput } from '@/components/ui-guide/ui'
 import { resetAuthState } from '@/config/axios/auth-state'
+import { STORAGE_LAST_STUDENT_SCHOOL } from '@/constants/storage-keys'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
 import { ErrorType, standardizeError } from '@/utils/error-handler'
@@ -262,7 +263,7 @@ const doLogin = async () => {
 
     // 缓存学校名称（登录成功后）
     if (schoolName) {
-      localStorage.setItem('LAST_STUDENT_SCHOOL', schoolName)
+      localStorage.setItem(STORAGE_LAST_STUDENT_SCHOOL, schoolName)
     }
 
     const finalPath = getSafeRedirect(redirect as string, dashboardPath)
@@ -293,7 +294,7 @@ onMounted(() => {
   fetchCaptchaConfig()
 
   // 从缓存恢复上次选择的学校
-  const lastSchool = localStorage.getItem('LAST_STUDENT_SCHOOL')
+  const lastSchool = localStorage.getItem(STORAGE_LAST_STUDENT_SCHOOL)
   if (lastSchool && !props.subdomainMode) {
     form.schoolName = lastSchool
   }

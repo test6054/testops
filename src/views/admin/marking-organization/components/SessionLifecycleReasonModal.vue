@@ -65,7 +65,7 @@ const modalTitle = computed(() => {
     case 'pauseFormal': return '暂停正评会话'
     case 'closeFormal': return '关闭归档正评会话'
     case 'closeTrial': return '关闭试评会话'
-    default: return '会话操作'
+    default: throw new Error('不支持的会话生命周期动作')
   }
 })
 
@@ -78,7 +78,7 @@ const modalAlert = computed(() => {
     case 'closeTrial':
       return '关闭试评会话为终态操作，关闭后该试评不可再修改，请谨慎执行。'
     default:
-      return ''
+      throw new Error('不支持的会话生命周期动作')
   }
 })
 
@@ -87,7 +87,6 @@ function handleOpenChange(value: boolean): void {
 }
 
 async function confirm(): Promise<void> {
-  if (!props.action || !props.sessionId) return
   const trimmed = reason.value.trim()
   if (!trimmed) {
     message.warning('请填写操作原因')
@@ -95,15 +94,21 @@ async function confirm(): Promise<void> {
   }
   submitting.value = true
   try {
-    if (props.action === 'pauseFormal') {
-      await pauseFormalSession({ sessionId: props.sessionId, reason: trimmed })
-      message.success('正评会话已暂停')
-    } else if (props.action === 'closeFormal') {
-      await closeFormalSession({ sessionId: props.sessionId, reason: trimmed })
-      message.success('正评会话已关闭归档')
-    } else {
-      await closeTrialSession({ sessionId: props.sessionId, reason: trimmed })
-      message.success('试评会话已关闭')
+    switch (props.action) {
+      case 'pauseFormal':
+        await pauseFormalSession({ sessionId: props.sessionId, reason: trimmed })
+        message.success('正评会话已暂停')
+        break
+      case 'closeFormal':
+        await closeFormalSession({ sessionId: props.sessionId, reason: trimmed })
+        message.success('正评会话已关闭归档')
+        break
+      case 'closeTrial':
+        await closeTrialSession({ sessionId: props.sessionId, reason: trimmed })
+        message.success('试评会话已关闭')
+        break
+      default:
+        throw new Error('不支持的会话生命周期动作')
     }
     emit('success')
     emit('update:open', false)

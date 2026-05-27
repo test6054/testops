@@ -8,7 +8,13 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditIssueStatus, AuditIssueVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
-import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL, auditIssueApi } from '@/apis/quality'
+import {
+  AUDIT_ISSUE_STATUS_COLOR,
+  AUDIT_ISSUE_STATUS_LABEL,
+  auditIssueApi,
+  isAuditIssueStatus,
+} from '@/apis/quality'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -69,13 +75,23 @@ async function loadOptions() {
       status: props.status,
       auditYear: props.auditYear || undefined,
     })
-    options.value = res.list || []
+    options.value = requirePageList(res, '审核评估问题')
   } catch (e) {
     console.error('[AuditIssueSelector] 加载审核问题列表失败', e)
     message.error('加载审核问题列表失败')
   } finally {
     loading.value = false
   }
+}
+
+function auditIssueStatusLabel(value: unknown): string {
+  if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_LABEL[value]
+  throw new Error(`审核评估问题状态不符合前后端契约：${String(value)}`)
+}
+
+function auditIssueStatusColor(value: unknown): string {
+  if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_COLOR[value]
+  throw new Error(`审核评估问题状态不符合前后端契约：${String(value)}`)
 }
 
 function handleChange(val: SelectValue) {
@@ -113,8 +129,8 @@ defineExpose({ reload: loadOptions })
     >
       <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.issueCode }}</span>
       {{ opt.issueTitle }}
-      <a-tag :color="AUDIT_ISSUE_STATUS_COLOR[opt.status]" class="ml-1">
-        {{ AUDIT_ISSUE_STATUS_LABEL[opt.status] || opt.status }}
+      <a-tag :color="auditIssueStatusColor(opt.status)" class="ml-1">
+        {{ auditIssueStatusLabel(opt.status) }}
       </a-tag>
     </a-select-option>
   </a-select>

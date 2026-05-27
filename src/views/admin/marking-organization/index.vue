@@ -18,11 +18,11 @@
         </div>
         <div class="org-index__context-actions">
           <UiTag
-            v-if="organization?.organizationStatus"
-            :tone="STATUS_TONE[organization.organizationStatus]"
+            v-if="organization"
+            :tone="strictEnumTone(STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
             size="sm"
           >
-            {{ STATUS_LABEL[organization.organizationStatus] }}
+            {{ strictEnumLabel(STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
           </UiTag>
           <UiButton
             variant="outline"
@@ -97,16 +97,15 @@
         >
           <a-descriptions-item label="组长用户 ID">
             <a-typography-text copyable>
-              {{ organization.leaderUserId || '-' }}
+              {{ organization.leaderUserId }}
             </a-typography-text>
           </a-descriptions-item>
           <a-descriptions-item label="组织状态">
             <UiTag
-              v-if="organization.organizationStatus"
-              :tone="STATUS_TONE[organization.organizationStatus]"
+              :tone="strictEnumTone(STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
               size="sm"
             >
-              {{ STATUS_LABEL[organization.organizationStatus] }}
+              {{ strictEnumLabel(STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
             </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="匿名阅卷">
@@ -115,13 +114,13 @@
             </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="题组数量">
-            {{ organization.groups?.length ?? 0 }} 组
+            {{ organization.groups.length }} 组
           </a-descriptions-item>
           <a-descriptions-item label="创建时间">
-            {{ formatTime(organization.createTime) }}
+            {{ formatDateTime(organization.createTime) }}
           </a-descriptions-item>
           <a-descriptions-item label="更新时间">
-            {{ formatTime(organization.updateTime) }}
+            {{ formatDateTime(organization.updateTime) }}
           </a-descriptions-item>
           <a-descriptions-item label="备注" :span="3">
             <span v-if="organization.remark">
@@ -266,7 +265,6 @@ import type { SignalMetric } from '@/types/workbench'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
@@ -288,6 +286,8 @@ import {
 } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 
@@ -338,7 +338,7 @@ async function loadOrganization(): Promise<void> {
 const signalMetrics = computed<SignalMetric[]>(() => {
   const org = organization.value
   if (!org) return []
-  const groupCount = org.groups?.length ?? 0
+  const groupCount = org.groups.length
   return [
     { key: 'groups', label: '题组数', value: groupCount, tone: groupCount > 0 ? 'blue' : 'orange' },
     {
@@ -350,8 +350,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     {
       key: 'status',
       label: '组织状态',
-      value: org.organizationStatus ? STATUS_LABEL[org.organizationStatus] : '-',
-      tone: org.organizationStatus ? STATUS_TONE[org.organizationStatus] : 'gray',
+      value: strictEnumLabel(STATUS_LABEL, org.organizationStatus, '阅卷组织状态'),
+      tone: strictEnumTone(STATUS_TONE, org.organizationStatus, '阅卷组织状态'),
     },
   ]
 })
@@ -363,8 +363,8 @@ const teacherOptions = computed(() =>
   teacherList.value.map((item) => ({
     value: item.id,
     label: item.identifierNumber
-      ? `${item.nickName || item.userName} (${item.identifierNumber})`
-      : item.nickName || item.userName,
+      ? `${item.nickName} (${item.identifierNumber})`
+      : item.nickName,
   })),
 )
 
@@ -376,7 +376,7 @@ async function loadTeachers(): Promise<void> {
       pageSize: 200,
       roleKey: 'SCH_TECH',
     })
-    teacherList.value = result.list ?? []
+    teacherList.value = result.list
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '教师列表加载失败'
     message.error(errMsg)
@@ -536,10 +536,6 @@ function goSessions(): void {
   })
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 watch(selectedExamId, () => {
   void loadOrganization()

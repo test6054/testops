@@ -5,10 +5,10 @@
         <div class="score-detail__context-left">
           <UiTag
             v-if="detail?.finalScoreStatus"
-            :tone="FINAL_SCORE_STATUS_TONE[detail.finalScoreStatus]"
+            :tone="finalScoreStatusTone(detail)"
             size="sm"
           >
-            {{ FINAL_SCORE_STATUS_LABEL[detail.finalScoreStatus] }}
+            {{ finalScoreStatusLabel(detail) }}
           </UiTag>
           <UiTag v-else tone="gray" size="sm">未生成</UiTag>
           <UiTag v-if="detail?.reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm">
@@ -16,11 +16,11 @@
           </UiTag>
           <UiTag v-if="detail" tone="blue" size="sm">
             {{
-              detail.finalScoreStatus === 'PUBLISHED' && detail.totalScore != null
-                ? detail.totalScore.toFixed(2)
+              detail.finalScoreStatus === 'PUBLISHED'
+                ? formatPublishedTotalScore(detail)
                 : '--'
             }}
-            / {{ detail.fullScore != null ? detail.fullScore.toFixed(2) : '--' }}
+            / {{ detail.finalScoreStatus === 'PUBLISHED' ? formatPublishedFullScore(detail) : '--' }}
           </UiTag>
         </div>
         <div class="score-detail__context-right">
@@ -67,7 +67,7 @@
         <template #title>
           <BarChartOutlined />
           <span>题目得分明细</span>
-          <UiBadge tone="blue">{{ detail.questions?.length ?? 0 }} 道题</UiBadge>
+          <UiBadge tone="blue">{{ detail.questions.length }} 道题</UiBadge>
           <UiBadge v-if="clusterLabelOptions.length > 0" tone="orange">
             错题聚类 {{ clusterLabelOptions.length }} 项
           </UiBadge>
@@ -90,7 +90,7 @@
         </template>
 
         <UiEmpty
-          v-if="!detail.questions || detail.questions.length === 0"
+          v-if="detail.questions.length === 0"
           description="暂无题目得分明细"
         />
         <UiEmpty
@@ -111,72 +111,58 @@
             <template v-if="column.key === 'questionNo'">
               <div class="question-no-cell">
                 <UiTag tone="blue" size="sm">
-                  {{ asQuestionScore(record).questionNo || '-' }}
+                  {{ toQuestionScore(record).questionNo }}
                 </UiTag>
                 <UiTag
-                  v-if="asQuestionScore(record).mistakeClusterLabel"
+                  v-if="toQuestionScore(record).mistakeClusterLabel"
                   tone="orange"
                   size="sm"
                   class="question-no-cell__cluster"
-                  @click.stop="setClusterFilter(asQuestionScore(record).mistakeClusterLabel)"
+                  @click.stop="setClusterFilter(toQuestionScore(record).mistakeClusterLabel)"
                 >
-                  {{ asQuestionScore(record).mistakeClusterLabel }}
+                  {{ toQuestionScore(record).mistakeClusterLabel }}
                 </UiTag>
               </div>
             </template>
             <template v-else-if="column.key === 'questionType'">
-              <span>{{ asQuestionScore(record).questionType || '-' }}</span>
+              <span>{{ toQuestionScore(record).questionType }}</span>
             </template>
             <template v-else-if="column.key === 'fullScore'">
               <span class="score-cell">
-                {{ asQuestionScore(record).fullScore?.toFixed(2) ?? '-' }}
+                {{ toQuestionScore(record).fullScore.toFixed(2) }}
               </span>
             </template>
             <template v-else-if="column.key === 'finalScore'">
               <span
-                v-if="asQuestionScore(record).finalScore != null"
+                v-if="toQuestionScore(record).finalScore != null"
                 class="score-cell score-cell--strong"
-                :class="getScoreToneClass(asQuestionScore(record))"
+                :class="getScoreToneClass(toQuestionScore(record))"
               >
-                {{ (asQuestionScore(record).finalScore ?? 0).toFixed(2) }}
+                {{ formatQuestionFinalScore(toQuestionScore(record)) }}
               </span>
               <span v-else class="score-detail__hint">-</span>
             </template>
             <template v-else-if="column.key === 'objectiveResult'">
               <UiTag
-                v-if="asQuestionScore(record).objectiveResult === 'CORRECT'"
-                tone="green"
+                v-if="toQuestionScore(record).objectiveResult"
+                :tone="objectiveResultTone(toQuestionScore(record))"
                 size="sm"
               >
-                正确
-              </UiTag>
-              <UiTag
-                v-else-if="asQuestionScore(record).objectiveResult === 'WRONG'"
-                tone="red"
-                size="sm"
-              >
-                错误
-              </UiTag>
-              <UiTag
-                v-else-if="asQuestionScore(record).objectiveResult === 'PARTIAL'"
-                tone="orange"
-                size="sm"
-              >
-                部分正确
+                {{ objectiveResultLabel(toQuestionScore(record)) }}
               </UiTag>
               <span v-else class="score-detail__hint">-</span>
             </template>
             <template v-else-if="column.key === 'gradeStatus'">
-              <UiTag :tone="getGradeStatusTone(asQuestionScore(record).gradeStatus)" size="sm">
-                {{ formatGradeStatus(asQuestionScore(record).gradeStatus) }}
+              <UiTag :tone="getGradeStatusTone(toQuestionScore(record).gradeStatus)" size="sm">
+                {{ formatGradeStatus(toQuestionScore(record).gradeStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
-                v-if="canApplyReviewOnQuestion(asQuestionScore(record))"
+                v-if="canApplyReviewOnQuestion(toQuestionScore(record))"
                 size="sm"
                 variant="ghost"
-                @click="goAppealForQuestion(asQuestionScore(record))"
+                @click="goAppealForQuestion(toQuestionScore(record))"
               >
                 对此题申请复核
               </UiButton>
@@ -185,12 +171,12 @@
           </template>
           <template #expandedRowRender="{ record }">
             <div
-              v-if="asQuestionScore(record).improvementSuggestion"
+              v-if="toQuestionScore(record).improvementSuggestion"
               class="question-ai-tip"
             >
               <UiTag tone="purple" size="sm">AI 学习建议</UiTag>
               <p class="question-ai-tip__text">
-                {{ asQuestionScore(record).improvementSuggestion }}
+                {{ toQuestionScore(record).improvementSuggestion }}
               </p>
             </div>
             <UiEmpty v-else description="本题暂无 AI 学习建议" />
@@ -204,9 +190,9 @@
           <span>AI 学习报告</span>
           <UiBadge
             v-if="learningReport?.profileStatus"
-            :tone="AI_ANALYSIS_STATUS_COLOR[learningReport.profileStatus]"
+            :tone="aiAnalysisStatusTone(learningReport.profileStatus)"
           >
-            {{ AI_ANALYSIS_STATUS_LABEL[learningReport.profileStatus] }}
+            {{ aiAnalysisStatusLabel(learningReport.profileStatus) }}
           </UiBadge>
         </template>
         <template #extra>
@@ -235,7 +221,7 @@
             v-else-if="learningReport && !learningReport.available"
             tone="info"
             title="暂无可展示的 AI 学习内容"
-            :description="learningReport.profileMessage || learningReport.clusterMessage || '教师生成后，此处会显示结构化学习建议。'"
+            :description="unavailableLearningReportMessage(learningReport)"
             dense
           />
           <div v-else-if="learningReport" class="profile-block">
@@ -267,8 +253,8 @@
                         <UiTag :tone="masteryTone(item.masteryLevel)" size="sm">
                           {{ masteryLabel(item.masteryLevel) }}
                         </UiTag>
-                        <span v-if="item.questionType" class="diagnosis-type">{{ item.questionType }}</span>
-                        <span v-if="item.scoreRate" class="diagnosis-rate">
+                        <span class="diagnosis-type">{{ item.questionType }}</span>
+                        <span class="diagnosis-rate">
                           得分率 {{ formatRate(item.scoreRate) }}
                         </span>
                       </div>
@@ -309,20 +295,17 @@
                   <a-list-item>
                     <div class="diagnosis-item">
                       <div class="diagnosis-header">
-                        <UiTag tone="orange" size="sm">{{ item.affectedCount ?? 0 }} 人次</UiTag>
-                        <span v-if="item.causeName" class="diagnosis-type">{{ item.causeName }}</span>
-                        <span v-if="item.questionType" class="diagnosis-rate">{{ item.questionType }}</span>
+                        <UiTag tone="orange" size="sm">{{ item.affectedCount }} 人次</UiTag>
+                        <span class="diagnosis-type">{{ item.causeName }}</span>
+                        <span class="diagnosis-rate">{{ item.questionType }}</span>
                       </div>
-                      <div v-if="item.causeDescription" class="diagnosis-text">
+                      <div class="diagnosis-text">
                         <strong>错因说明：</strong>{{ item.causeDescription }}
                       </div>
-                      <div v-if="item.suggestion" class="diagnosis-text">
+                      <div class="diagnosis-text">
                         <strong>订正建议：</strong>{{ item.suggestion }}
                       </div>
-                      <div
-                        v-if="item.typicalExamples && item.typicalExamples.length"
-                        class="diagnosis-text"
-                      >
+                      <div v-if="item.typicalExamples.length" class="diagnosis-text">
                         <strong>典型表现：</strong>{{ item.typicalExamples.join('；') }}
                       </div>
                     </div>
@@ -341,9 +324,10 @@
 import type {
   StudentAiDiagnosisItemVO,
   StudentAiErrorClusterVO,
-  StudentQuestionScoreVO,
-  StudentScoreDetailVO,
+  StudentAiLearningReportVO,
+  StudentQuestionScoreVO, StudentScoreDetailVO
 } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
@@ -351,15 +335,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  getMyAiLearningReport,
-  getMyScoreDetail,
-} from '@/apis/mark/student-exam'
+import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL, canSubmitReview, FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE, getMyAiLearningReport, getMyScoreDetail, GRADE_STATUS_LABEL, GRADE_STATUS_TONE, MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE, OBJECTIVE_RESULT_LABEL, OBJECTIVE_RESULT_TONE } from '@/apis/mark/student-exam'
 import {
   UiAlertStrip,
   UiBadge,
@@ -370,10 +346,9 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentScoreDetail' })
-
-type GradeStatusTone = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
 
 const route = useRoute()
 const router = useRouter()
@@ -413,7 +388,7 @@ const filteredQuestions = computed<StudentQuestionScoreVO[]>(() => {
  * Ant Design Vue 的 bodyCell 插槽 record 类型在源码中被推断为宽类型，
  * 这里加一个在 callsite 的窄化 helper，避免在每个使用点写 as 断言。
  */
-function asQuestionScore(record: unknown): StudentQuestionScoreVO {
+function toQuestionScore(record: unknown): StudentQuestionScoreVO {
   return record as StudentQuestionScoreVO
 }
 
@@ -462,21 +437,21 @@ const questionColumns = computed(() => {
   return cols
 })
 
-const correctCount = computed(() => (detail.value?.questions ?? []).filter(isFullMark).length)
+const correctCount = computed(() => detailQuestions.value.filter(isFullMark).length)
 const partialCount = computed(
   () =>
-    (detail.value?.questions ?? []).filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q)).length,
+    detailQuestions.value.filter((q) => isPartial(q) && !isFullMark(q) && !isZero(q)).length,
 )
-const zeroCount = computed(() => (detail.value?.questions ?? []).filter(isZero).length)
+const zeroCount = computed(() => detailQuestions.value.filter(isZero).length)
 
 function isFullMark(q: StudentQuestionScoreVO) {
-  return q.finalScore != null && q.fullScore != null && q.finalScore >= q.fullScore
+  return q.finalScore != null && q.finalScore >= q.fullScore
 }
 function isZero(q: StudentQuestionScoreVO) {
   return q.finalScore != null && q.finalScore <= 0
 }
 function isPartial(q: StudentQuestionScoreVO) {
-  return q.finalScore != null && q.fullScore != null
+  return q.finalScore != null
 }
 
 function getScoreToneClass(record: StudentQuestionScoreVO): string {
@@ -485,38 +460,69 @@ function getScoreToneClass(record: StudentQuestionScoreVO): string {
   return 'score-cell--partial'
 }
 
-function formatGradeStatus(status?: string): string {
-  switch (status) {
-    case 'CONFIRMED':
-      return '已确认'
-    case 'PENDING':
-      return '待批改'
-    case 'AI_GRADED':
-      return 'AI 批改'
-    case 'REVIEW_PENDING':
-      return '待复核'
-    case 'CORRECTED':
-      return '已更正'
-    default:
-      return status || '-'
-  }
+function finalScoreStatusTone(item: StudentScoreDetailVO): BadgeTone {
+  return strictEnumTone(FINAL_SCORE_STATUS_TONE, item.finalScoreStatus, '最终成绩状态')
 }
 
-function getGradeStatusTone(status?: string): GradeStatusTone {
-  switch (status) {
-    case 'CONFIRMED':
-      return 'green'
-    case 'CORRECTED':
-      return 'purple'
-    case 'AI_GRADED':
-      return 'blue'
-    case 'PENDING':
-      return 'gray'
-    case 'REVIEW_PENDING':
-      return 'orange'
-    default:
-      return 'gray'
+function finalScoreStatusLabel(item: StudentScoreDetailVO): string {
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, item.finalScoreStatus, '最终成绩状态')
+}
+
+function formatGradeStatus(status: StudentQuestionScoreVO['gradeStatus']): string {
+  return strictEnumLabel(GRADE_STATUS_LABEL, status, '题目批改状态')
+}
+
+function getGradeStatusTone(status: StudentQuestionScoreVO['gradeStatus']): BadgeTone {
+  return strictEnumTone(GRADE_STATUS_TONE, status, '题目批改状态')
+}
+
+function formatQuestionFinalScore(question: StudentQuestionScoreVO): string {
+  if (question.finalScore == null) {
+    throw new Error(`题目得分明细缺少最终得分：questionTemplateId=${question.questionTemplateId}`)
   }
+  return question.finalScore.toFixed(2)
+}
+
+function objectiveResultLabel(question: StudentQuestionScoreVO): string {
+  if (!question.objectiveResult) {
+    throw new Error(`题目得分明细缺少客观判定：questionTemplateId=${question.questionTemplateId}`)
+  }
+  return strictEnumLabel(OBJECTIVE_RESULT_LABEL, question.objectiveResult, '客观判定')
+}
+
+function objectiveResultTone(question: StudentQuestionScoreVO): BadgeTone {
+  if (!question.objectiveResult) {
+    throw new Error(`题目得分明细缺少客观判定：questionTemplateId=${question.questionTemplateId}`)
+  }
+  return strictEnumTone(OBJECTIVE_RESULT_TONE, question.objectiveResult, '客观判定')
+}
+
+function aiAnalysisStatusLabel(status: NonNullable<Awaited<ReturnType<typeof getMyAiLearningReport>>['profileStatus']>): string {
+  return strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, status, 'AI 学习报告状态')
+}
+
+function aiAnalysisStatusTone(status: NonNullable<Awaited<ReturnType<typeof getMyAiLearningReport>>['profileStatus']>): BadgeTone {
+  return strictEnumTone(AI_ANALYSIS_STATUS_COLOR, status, 'AI 学习报告状态')
+}
+
+function formatPublishedTotalScore(item: StudentScoreDetailVO): string {
+  if (item.finalScoreStatus !== 'PUBLISHED') {
+    throw new Error(`未发布成绩不能读取总分：examId=${item.examId}`)
+  }
+  if (item.totalScore == null) {
+    throw new Error(`已发布成绩缺少总分：examId=${item.examId}`)
+  }
+  return item.totalScore.toFixed(2)
+}
+
+function formatPublishedFullScore(item: StudentScoreDetailVO): string {
+  if (item.finalScoreStatus !== 'PUBLISHED') {
+    throw new Error(`未发布成绩不能读取满分：examId=${item.examId}`)
+  }
+  if (item.fullScore == null) {
+    throw new Error(`已发布成绩缺少满分：examId=${item.examId}`)
+  }
+  return item.fullScore.toFixed(2)
 }
 
 async function loadDetail() {
@@ -544,7 +550,9 @@ function goAppeal(id: string) {
 
 function canApplyReviewOnQuestion(q: StudentQuestionScoreVO): boolean {
   if (!detail.value || !canSubmitReview(detail.value)) return false
-  if (q.finalScore == null || q.fullScore == null) return false
+  if (q.finalScore == null) {
+    throw new Error(`已发布题目缺少最终得分：questionTemplateId=${q.questionTemplateId}`)
+  }
   return q.finalScore < q.fullScore
 }
 
@@ -592,42 +600,22 @@ async function loadLearningReport(): Promise<void> {
   }
 }
 
-function formatRate(rate?: string): string {
-  return rate || '-'
+function unavailableLearningReportMessage(report: StudentAiLearningReportVO): string {
+  if (report.profileMessage) return report.profileMessage
+  if (report.clusterMessage) return report.clusterMessage
+  throw new Error(`AI 学习报告不可用但缺少提示信息：examId=${report.examId}`)
 }
 
-function masteryLabel(level?: string): string {
-  switch (level) {
-    case 'EXCELLENT':
-      return '优秀'
-    case 'GOOD':
-      return '良好'
-    case 'MEDIUM':
-      return '中等'
-    case 'WEAK':
-      return '薄弱'
-    case 'CRITICAL':
-      return '危急'
-    default:
-      return level ?? '-'
-  }
+function formatRate(rate: string): string {
+  return rate
 }
 
-function masteryTone(level?: string): 'gray' | 'blue' | 'green' | 'orange' | 'red' {
-  switch (level) {
-    case 'EXCELLENT':
-      return 'green'
-    case 'GOOD':
-      return 'blue'
-    case 'MEDIUM':
-      return 'blue'
-    case 'WEAK':
-      return 'orange'
-    case 'CRITICAL':
-      return 'red'
-    default:
-      return 'gray'
-  }
+function masteryLabel(level: StudentAiDiagnosisItemVO['masteryLevel']): string {
+  return strictEnumLabel(MASTERY_LEVEL_LABEL, level, '知识掌握等级')
+}
+
+function masteryTone(level: StudentAiDiagnosisItemVO['masteryLevel']): BadgeTone {
+  return strictEnumTone(MASTERY_LEVEL_TONE, level, '知识掌握等级')
 }
 
 watch(examId, () => loadDetail())

@@ -16,11 +16,13 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  AI_TASK_BUSINESS_TYPE_LABEL,
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
   aiMaskMappingApi,
   aiTaskApi,
+  isAiTaskBusinessType,
   isAiTaskStatus,
   isAiTaskType,
 } from '@/apis/quality'
@@ -41,6 +43,12 @@ function aiTaskStatusLabel(value: unknown): string {
 function aiTaskStatusColor(value: unknown): string {
   if (isAiTaskStatus(value)) return AI_TASK_STATUS_COLOR[value]
   throw new Error('AI 任务状态不符合前后端契约')
+}
+
+function aiTaskBusinessTypeLabel(value: unknown): string {
+  if (isAiTaskBusinessType(value)) return AI_TASK_BUSINESS_TYPE_LABEL[value]
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('AI 任务业务类型不符合前后端契约')
 }
 
 const route = useRoute()
@@ -174,11 +182,12 @@ onMounted(() => {
             {{ aiTaskStatusLabel(taskVO.status) }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="操作人 ID">
-          {{ taskVO.operatorUserId || '-' }}
+        <a-descriptions-item label="操作人">
+          {{ taskVO.operatorUserId ? '已记录操作人' : '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="业务类型 / ID">
-          {{ taskVO.businessType || '-' }} / {{ taskVO.businessId || '-' }}
+        <a-descriptions-item label="业务类型">
+          {{ aiTaskBusinessTypeLabel(taskVO.businessType) }}
+          <span v-if="taskVO.businessId"> / 已关联业务对象</span>
         </a-descriptions-item>
         <a-descriptions-item label="脱敏映射 ID">
           {{ taskVO.maskMappingId || '-' }}
@@ -216,8 +225,9 @@ onMounted(() => {
         <a-descriptions-item label="AI 任务 ID">
           {{ mappingVO.aiTaskId }}
         </a-descriptions-item>
-        <a-descriptions-item label="业务类型 / ID">
-          {{ mappingVO.businessType }} / {{ mappingVO.businessId }}
+        <a-descriptions-item label="业务类型">
+          {{ aiTaskBusinessTypeLabel(mappingVO.businessType) }}
+          <span v-if="mappingVO.businessId"> / 已关联业务对象</span>
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">
           {{ mappingVO.createTime || '-' }}
@@ -248,8 +258,9 @@ onMounted(() => {
         <a-descriptions-item label="AI 任务 ID">
           {{ revealVO.aiTaskId }}
         </a-descriptions-item>
-        <a-descriptions-item label="业务类型 / ID">
-          {{ revealVO.businessType }} / {{ revealVO.businessId }}
+        <a-descriptions-item label="业务类型">
+          {{ aiTaskBusinessTypeLabel(revealVO.businessType) }}
+          <span v-if="revealVO.businessId"> / 已关联业务对象</span>
         </a-descriptions-item>
       </a-descriptions>
 

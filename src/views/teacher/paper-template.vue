@@ -299,7 +299,7 @@
         <a-input :value="answerContext.questionNo" disabled />
       </a-form-item>
       <a-form-item label="题型">
-        <a-input :value="QUESTION_TYPE_LABEL[answerContext.questionType] || ''" disabled />
+        <a-input :value="answerContextQuestionTypeLabel" disabled />
       </a-form-item>
       <a-form-item label="标准答案" name="standardAnswer">
         <a-textarea
@@ -389,6 +389,7 @@ import type {
   ExamQuestionTemplateVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
+import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -404,6 +405,7 @@ import {
   saveExamTemplate,
   saveStandardAnswer,
 } from '@/apis/mark/exam'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   UiBadge,
   UiButton,
@@ -415,6 +417,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperTemplate' })
 
@@ -441,7 +444,7 @@ interface QuestionRow {
   rowKey: string
   questionTemplateId?: string
   questionNo: string
-  questionType: 'OBJECTIVE' | 'SUBJECTIVE'
+  questionType: QuestionTypeCode
   fullScore?: number
   pageNo?: number
   x?: number
@@ -453,15 +456,17 @@ interface QuestionRow {
   questionStem?: string
 }
 
-const QUESTION_TYPE_LABEL: Record<string, string> = {
-  OBJECTIVE: '客观题',
-  SUBJECTIVE: '主观题',
-}
-
 const questionTypeOptions = [
   { label: '客观题', value: 'OBJECTIVE' as const },
   { label: '主观题', value: 'SUBJECTIVE' as const },
 ]
+
+function requireQuestionType(value: string): QuestionTypeCode {
+  if (value !== 'OBJECTIVE' && value !== 'SUBJECTIVE') {
+    throw new Error(`题型存在未定义枚举值：${value}`)
+  }
+  return value
+}
 
 let rowSeq = 0
 function nextRowKey(prefix: string): string {
@@ -538,7 +543,7 @@ function applyTemplate(
       rowKey: nextRowKey('q'),
       questionTemplateId: q.questionTemplateId,
       questionNo: q.questionNo,
-      questionType: (q.questionType as 'OBJECTIVE' | 'SUBJECTIVE') ?? 'OBJECTIVE',
+      questionType: requireQuestionType(q.questionType),
       fullScore: typeof q.fullScore === 'number' ? q.fullScore : Number(q.fullScore),
       pageNo: q.pageNo,
       x: q.x,
@@ -557,7 +562,7 @@ async function loadTemplate(): Promise<void> {
   templateLoadError.value = null
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
-    applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages ?? [], tpl.questions ?? [])
+    applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
   } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''
@@ -773,7 +778,7 @@ async function handleSave(): Promise<void> {
 interface AnswerContext {
   questionTemplateId?: string
   questionNo: string
-  questionType: 'OBJECTIVE' | 'SUBJECTIVE' | ''
+  questionType: QuestionTypeCode | ''
 }
 
 const answerModalOpen = ref(false)
@@ -783,6 +788,10 @@ const answerContext = reactive<AnswerContext>({
   questionTemplateId: undefined,
   questionNo: '',
   questionType: '',
+})
+const answerContextQuestionTypeLabel = computed(() => {
+  if (!answerContext.questionType) return ''
+  return strictEnumLabel(QUESTION_TYPE_LABEL, answerContext.questionType, '题型')
 })
 const answerForm = reactive<{
   standardAnswer: string

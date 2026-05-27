@@ -111,8 +111,8 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
               {{
-                archives[index].archiveStatusMessage ||
-                archiveStatusLabel(archives[index].archiveStatus)
+                archives[index].archiveStatusMessage
+                  || archiveStatusLabel(archives[index].archiveStatus)
               }}
             </UiTag>
             <div
@@ -143,7 +143,7 @@
             <span v-else class="muted">-</span>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatTime(archives[index].createTime) }}
+            {{ formatDateTime(archives[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
@@ -152,8 +152,8 @@
               </UiButton>
               <UiButton
                 v-if="
-                  archives[index].archiveStatus === 'DRAFT' ||
-                  archives[index].archiveStatus === 'PACKAGING_FAILED'
+                  archives[index].archiveStatus === 'DRAFT'
+                    || archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
                 size="sm"
                 @click="confirmPackage(archives[index])"
@@ -229,6 +229,14 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_PHASE_LABEL,
   ARCHIVE_STATUS_LABEL,
@@ -237,15 +245,6 @@ import {
   listArchives,
   packageArchive,
 } from '@/apis/mark/archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -260,6 +259,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherArchiveList' })
 
@@ -331,7 +331,7 @@ interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
   description: string
-  action: { label: string; handler: () => void }
+  action: { label: string, handler: () => void }
 }
 
 const archiveAlert = computed<ArchiveAlert | null>(() => {
@@ -391,12 +391,12 @@ function syncArchiveStageToStore(): void {
   )
   const hasActive = statuses.some(
     (s) =>
-      s === 'PACKAGING' ||
-      s === 'ACTIVE' ||
-      s === 'APPRAISAL_PENDING' ||
-      s === 'DESTRUCTION_PENDING' ||
-      s === 'DESTRUCTION_APPROVED' ||
-      s === 'DESTRUCTION_EXECUTING',
+      s === 'PACKAGING'
+      || s === 'ACTIVE'
+      || s === 'APPRAISAL_PENDING'
+      || s === 'DESTRUCTION_PENDING'
+      || s === 'DESTRUCTION_APPROVED'
+      || s === 'DESTRUCTION_EXECUTING',
   )
   const hasCompleted = statuses.some((s) => s === 'APPRAISAL_DECIDED' || s === 'DESTROYED')
   let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
@@ -405,8 +405,8 @@ function syncArchiveStageToStore(): void {
     status = 'blocked'
     const draftOrFailed = statuses.filter((s) => s === 'DRAFT' || s === 'PACKAGING_FAILED').length
     const destructionFailed = statuses.filter((s) => s === 'DESTRUCTION_FAILED').length
-    hint =
-      destructionFailed > 0
+    hint
+      = destructionFailed > 0
         ? `${destructionFailed} 个销毁失败需人工处理`
         : `${draftOrFailed} 个草稿 / 打包失败待人工处理`
   } else if (hasActive) {
@@ -414,14 +414,14 @@ function syncArchiveStageToStore(): void {
     const packaging = statuses.filter((s) => s === 'PACKAGING').length
     const archived = statuses.filter(
       (s) =>
-        s === 'ACTIVE' ||
-        s === 'APPRAISAL_PENDING' ||
-        s === 'DESTRUCTION_PENDING' ||
-        s === 'DESTRUCTION_APPROVED' ||
-        s === 'DESTRUCTION_EXECUTING',
+        s === 'ACTIVE'
+        || s === 'APPRAISAL_PENDING'
+        || s === 'DESTRUCTION_PENDING'
+        || s === 'DESTRUCTION_APPROVED'
+        || s === 'DESTRUCTION_EXECUTING',
     ).length
-    hint =
-      packaging > 0
+    hint
+      = packaging > 0
         ? `${packaging} 个打包中 / ${archived} 个归档处理中`
         : `${archived} 个归档处理中`
   } else if (hasCompleted) {
@@ -490,9 +490,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans &&
-    !createForm.includeMarkedSlices &&
-    !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans
+    && !createForm.includeMarkedSlices
+    && !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return
@@ -541,38 +541,34 @@ function goDetail(archiveId: string): void {
   void router.push({ name: 'TeacherArchiveDetail', params: { archiveId } })
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 // 严格 typed helper：模板侧的 archives[index] 字段都是后端 VO 字面联合，避免 slot record:any。
 function isArchivePackageStatusCode(value: unknown): value is ArchivePackageStatusCode {
   return (
-    value === 'DRAFT' ||
-    value === 'PACKAGING' ||
-    value === 'PACKAGING_FAILED' ||
-    value === 'STORED' ||
-    value === 'ACTIVE' ||
-    value === 'APPRAISAL_PENDING' ||
-    value === 'APPRAISAL_DECIDED' ||
-    value === 'DESTRUCTION_PENDING' ||
-    value === 'DESTRUCTION_APPROVED' ||
-    value === 'DESTRUCTION_EXECUTING' ||
-    value === 'DESTRUCTION_FAILED' ||
-    value === 'DESTROYED'
+    value === 'DRAFT'
+    || value === 'PACKAGING'
+    || value === 'PACKAGING_FAILED'
+    || value === 'STORED'
+    || value === 'ACTIVE'
+    || value === 'APPRAISAL_PENDING'
+    || value === 'APPRAISAL_DECIDED'
+    || value === 'DESTRUCTION_PENDING'
+    || value === 'DESTRUCTION_APPROVED'
+    || value === 'DESTRUCTION_EXECUTING'
+    || value === 'DESTRUCTION_FAILED'
+    || value === 'DESTROYED'
   )
 }
 
 function isArchivePackagingPhase(value: unknown): value is ArchivePackagingPhase {
   return (
-    value === 'QUEUED' ||
-    value === 'AGGREGATING' ||
-    value === 'WRITING_ZIP' ||
-    value === 'UPLOADING_PARTS' ||
-    value === 'FINALIZING' ||
-    value === 'COMPLETED' ||
-    value === 'FAILED'
+    value === 'QUEUED'
+    || value === 'AGGREGATING'
+    || value === 'WRITING_ZIP'
+    || value === 'UPLOADING_PARTS'
+    || value === 'FINALIZING'
+    || value === 'COMPLETED'
+    || value === 'FAILED'
   )
 }
 

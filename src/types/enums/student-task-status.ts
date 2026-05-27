@@ -77,16 +77,17 @@ export const STUDENT_TASK_STATUS_TONE_MAP: Record<StudentTaskStatusEnum, Student
  * @returns 状态配置对象
  */
 export function getTaskStatusConfig(status: string): TaskStatusItem {
-  return STUDENT_TASK_STATUS_CONFIG[status as StudentTaskStatusEnum] || {
-    code: status,
-    description: '未知状态',
-    color: 'var(--ant-color-text-tertiary)',
-    icon: 'icon-question-circle',
+  if (!(status in STUDENT_TASK_STATUS_CONFIG)) {
+    throw new Error('学生任务状态不符合前后端契约')
   }
+  return STUDENT_TASK_STATUS_CONFIG[status as StudentTaskStatusEnum]
 }
 
 export function getTaskStatusTone(status: string): StudentTaskStatusTone {
-  return STUDENT_TASK_STATUS_TONE_MAP[status as StudentTaskStatusEnum] || 'gray'
+  if (!(status in STUDENT_TASK_STATUS_TONE_MAP)) {
+    throw new Error('学生任务状态不符合前后端契约')
+  }
+  return STUDENT_TASK_STATUS_TONE_MAP[status as StudentTaskStatusEnum]
 }
 
 export function isInProgress(status: StudentTaskStatusEnum): boolean {

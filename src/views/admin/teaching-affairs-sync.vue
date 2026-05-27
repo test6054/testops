@@ -92,33 +92,25 @@
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'externalSystemType'">
-              {{
-                syncTasks[index].externalSystemType
-                  ? EXTERNAL_SYSTEM_TYPE_LABEL[syncTasks[index].externalSystemType!]
-                  : '-'
-              }}
+              {{ externalSystemTypeLabel(syncTasks[index].externalSystemType) }}
             </template>
             <template v-else-if="column.key === 'syncType'">
-              {{ syncTasks[index].syncType ? SYNC_TYPE_LABEL[syncTasks[index].syncType!] : '-' }}
+              {{ syncTypeLabel(syncTasks[index].syncType) }}
             </template>
             <template v-else-if="column.key === 'taskStatus'">
               <UiTag :tone="syncStatusTone(syncTasks[index].taskStatus)" size="sm">
-                {{
-                  syncTasks[index].taskStatus
-                    ? SYNC_TASK_STATUS_LABEL[syncTasks[index].taskStatus!]
-                    : '-'
-                }}
+                {{ syncTaskStatusLabel(syncTasks[index].taskStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'retry'">
-              {{ syncTasks[index].retryCount ?? 0 }} / {{ syncTasks[index].maxRetryCount ?? '-' }}
+              {{ syncTasks[index].retryCount }} / {{ syncTasks[index].maxRetryCount }}
             </template>
             <template v-else-if="column.key === 'lastError'">
               <a-tooltip
                 v-if="syncTasks[index].lastErrorMessage"
                 :title="syncTasks[index].lastErrorMessage"
               >
-                <span class="error-text">{{ syncTasks[index].lastErrorCode ?? 'ERROR' }}</span>
+                <span class="error-text">{{ requireLastErrorCode(syncTasks[index].lastErrorCode) }}</span>
               </a-tooltip>
               <span v-else class="hint-text">-</span>
             </template>
@@ -225,7 +217,7 @@
               <UiTag :tone="passbackStatusTone(passbackRecords[index].passbackStatus)" size="sm">
                 {{
                   passbackRecords[index].passbackStatus
-                    ? PASSBACK_STATUS_LABEL[passbackRecords[index].passbackStatus!]
+                    ? passbackStatusLabel(passbackRecords[index].passbackStatus!)
                     : '-'
                 }}
               </UiTag>
@@ -236,7 +228,7 @@
                 :tone="reconcileStatusTone(passbackRecords[index].reconcileStatus)"
                 size="sm"
               >
-                {{ RECONCILE_STATUS_LABEL[passbackRecords[index].reconcileStatus!] }}
+                {{ reconcileStatusLabel(passbackRecords[index].reconcileStatus!) }}
               </UiTag>
               <span v-else class="hint-text">-</span>
             </template>
@@ -365,22 +357,18 @@
       <a-descriptions-item label="任务ID">{{ detailTask.id }}</a-descriptions-item>
       <a-descriptions-item label="考试ID">{{ detailTask.examId }}</a-descriptions-item>
       <a-descriptions-item label="外部系统">
-        {{
-          detailTask.externalSystemType
-            ? EXTERNAL_SYSTEM_TYPE_LABEL[detailTask.externalSystemType]
-            : '-'
-        }}
+        {{ externalSystemTypeLabel(detailTask.externalSystemType) }}
       </a-descriptions-item>
       <a-descriptions-item label="同步类型">
-        {{ detailTask.syncType ? SYNC_TYPE_LABEL[detailTask.syncType] : '-' }}
+        {{ syncTypeLabel(detailTask.syncType) }}
       </a-descriptions-item>
       <a-descriptions-item label="状态">
         <UiTag :tone="syncStatusTone(detailTask.taskStatus)" size="sm">
-          {{ detailTask.taskStatus ? SYNC_TASK_STATUS_LABEL[detailTask.taskStatus] : '-' }}
+          {{ syncTaskStatusLabel(detailTask.taskStatus) }}
         </UiTag>
       </a-descriptions-item>
       <a-descriptions-item label="重试">
-        {{ detailTask.retryCount ?? 0 }} / {{ detailTask.maxRetryCount ?? '-' }}
+        {{ detailTask.retryCount }} / {{ detailTask.maxRetryCount }}
       </a-descriptions-item>
       <a-descriptions-item label="外部课程ID">
         {{ detailTask.externalCourseId ?? '-' }}
@@ -395,7 +383,7 @@
         {{ detailTask.lastSyncTime ?? '-' }}
       </a-descriptions-item>
       <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-        <span class="error-text">[{{ detailTask.lastErrorCode ?? 'ERROR' }}] {{ detailTask.lastErrorMessage }}</span>
+        <span class="error-text">[{{ requireLastErrorCode(detailTask.lastErrorCode) }}] {{ detailTask.lastErrorMessage }}</span>
       </a-descriptions-item>
       <a-descriptions-item label="操作" :span="1">
         <a-space>
@@ -464,6 +452,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminTeachingAffairsSync' })
 
@@ -524,6 +513,13 @@ function canRetry(status?: SyncTaskStatusCode): boolean {
 
 function canCancel(status?: SyncTaskStatusCode): boolean {
   return status === 'PENDING' || status === 'SYNCING'
+}
+
+function requireLastErrorCode(code?: string): string {
+  if (!code) {
+    throw new Error('教务同步错误编码不符合前后端契约')
+  }
+  return code
 }
 
 async function withTaskAction(
@@ -720,19 +716,38 @@ async function loadPassbackRecords(): Promise<void> {
 
 // ─── 共用 ─────────────────────────────────
 
-function syncStatusTone(status?: SyncTaskStatusCode): BadgeTone {
-  if (!status) return 'gray'
-  return SYNC_TASK_STATUS_COLOR[status]
+function externalSystemTypeLabel(code: ExternalSystemTypeCode): string {
+  return strictEnumLabel(EXTERNAL_SYSTEM_TYPE_LABEL, code, '外部系统类型')
+}
+
+function syncTypeLabel(code: TeachingAffairsSyncTypeCode): string {
+  return strictEnumLabel(SYNC_TYPE_LABEL, code, '同步类型')
+}
+
+function syncTaskStatusLabel(status: SyncTaskStatusCode): string {
+  return strictEnumLabel(SYNC_TASK_STATUS_LABEL, status, '同步任务状态')
+}
+
+function syncStatusTone(status: SyncTaskStatusCode): BadgeTone {
+  return strictEnumTone(SYNC_TASK_STATUS_COLOR, status, '同步任务状态')
+}
+
+function passbackStatusLabel(status: PassbackStatusCode): string {
+  return strictEnumLabel(PASSBACK_STATUS_LABEL, status, '回写状态')
 }
 
 function passbackStatusTone(status?: PassbackStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return PASSBACK_STATUS_COLOR[status]
+  return strictEnumTone(PASSBACK_STATUS_COLOR, status, '回写状态')
+}
+
+function reconcileStatusLabel(status: ReconcileStatusCode): string {
+  return strictEnumLabel(RECONCILE_STATUS_LABEL, status, '对账状态')
 }
 
 function reconcileStatusTone(status?: ReconcileStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return RECONCILE_STATUS_COLOR[status]
+  return strictEnumTone(RECONCILE_STATUS_COLOR, status, '对账状态')
 }
 
 function ellipsis(text: string | undefined, len = 40): string {

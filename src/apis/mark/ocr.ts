@@ -33,8 +33,8 @@ export interface MarkOcrConfigVO {
   id?: string
   providerType?: MarkOcrProviderTypeCode
   providerName?: string
-  enabled?: boolean
-  healthStatus?: MarkOcrHealthStatusCode
+  enabled: boolean
+  healthStatus: MarkOcrHealthStatusCode
   lastHealthCheckAt?: string
   lastHealthMessage?: string
 }
@@ -45,9 +45,9 @@ export interface MarkOcrConfigSavePayload {
 }
 
 export interface MarkOcrConfigHealthCheckVO {
-  providerType?: MarkOcrProviderTypeCode
-  healthStatus?: MarkOcrHealthStatusCode
-  healthMessage?: string
+  providerType: MarkOcrProviderTypeCode
+  healthStatus: MarkOcrHealthStatusCode
+  healthMessage: string
 }
 
 export interface MarkOcrRecognizePayload {
@@ -59,10 +59,10 @@ export interface MarkOcrRecognizePayload {
 }
 
 export interface MarkOcrRecognizeVO {
-  providerType?: MarkOcrProviderTypeCode
-  recognizedText?: string
-  engineTraceId?: string
-  diagnostic?: string
+  providerType: MarkOcrProviderTypeCode
+  recognizedText: string
+  engineTraceId: string
+  diagnostic: string
 }
 
 /**
@@ -74,18 +74,20 @@ export interface MarkOcrRecognizeVO {
  */
 export interface PaddleOcrInstanceVO {
   id: string
-  instanceName?: string
-  serviceUrl?: string
-  deviceType?: string
-  healthStatus?: MarkOcrHealthStatusCode
+  instanceName: string
+  serviceUrl: string
+  deviceType: string
+  healthStatus: MarkOcrHealthStatusCode
   lastHealthCheckAt?: string
   lastHealthMessage?: string
-  consecutiveFailures?: number
-  localAutoDeploy?: boolean
+  consecutiveFailures: number
+  localAutoDeploy: boolean
 }
 
 export function getCurrentMarkOcrConfig(): Promise<MarkOcrConfigVO> {
-  return http.get<MarkOcrConfigVO>('/api/mark/ocr/config/current')
+  return http
+    .get<unknown>('/api/mark/ocr/config/current')
+    .then(validateMarkOcrConfig)
 }
 
 export function saveMarkOcrConfig(payload: MarkOcrConfigSavePayload): Promise<string> {
@@ -93,11 +95,15 @@ export function saveMarkOcrConfig(payload: MarkOcrConfigSavePayload): Promise<st
 }
 
 export function checkMarkOcrHealth(): Promise<MarkOcrConfigHealthCheckVO> {
-  return http.post<MarkOcrConfigHealthCheckVO>('/api/mark/ocr/config/health-check')
+  return http
+    .post<unknown>('/api/mark/ocr/config/health-check')
+    .then(validateMarkOcrHealthCheck)
 }
 
 export function recognizeMarkOcr(payload: MarkOcrRecognizePayload): Promise<MarkOcrRecognizeVO> {
-  return http.post<MarkOcrRecognizeVO>('/api/mark/ocr/recognize', payload)
+  return http
+    .post<unknown>('/api/mark/ocr/recognize', payload)
+    .then(validateMarkOcrRecognize)
 }
 
 /**
@@ -110,5 +116,133 @@ export function recognizeMarkOcr(payload: MarkOcrRecognizePayload): Promise<Mark
  * GET /api/mark/ocr/paddle/instance/list
  */
 export function listPaddleOcrInstances(): Promise<PaddleOcrInstanceVO[]> {
-  return http.get<PaddleOcrInstanceVO[]>('/api/mark/ocr/paddle/instance/list')
+  return http
+    .get<unknown>('/api/mark/ocr/paddle/instance/list')
+    .then(validatePaddleOcrInstanceList)
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`OCR 接口缺少 ${fieldName}`)
+  }
+  return value
+}
+
+function requireText(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string') {
+    throw new TypeError(`OCR 接口缺少 ${fieldName}`)
+  }
+  return value
+}
+
+function requireBoolean(value: unknown, fieldName: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`OCR 接口缺少 ${fieldName}`)
+  }
+  return value
+}
+
+function requireNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`OCR 接口缺少 ${fieldName}`)
+  }
+  return value
+}
+
+function optionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'string') {
+    throw new TypeError(`OCR 接口 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function requireProviderType(value: unknown): MarkOcrProviderTypeCode {
+  if (value !== 'TENCENT' && value !== 'BAIDU' && value !== 'PADDLE') {
+    throw new TypeError('OCR 接口 providerType 格式错误')
+  }
+  return value
+}
+
+function requireHealthStatus(value: unknown): MarkOcrHealthStatusCode {
+  if (value !== 'UNKNOWN' && value !== 'HEALTHY' && value !== 'FAILED') {
+    throw new TypeError('OCR 接口 healthStatus 格式错误')
+  }
+  return value
+}
+
+function validateMarkOcrConfig(value: unknown): MarkOcrConfigVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('OCR 配置响应格式错误')
+  }
+  const record = value as Record<string, unknown>
+  const id = optionalString(record.id, 'id')
+  const providerType = record.providerType === undefined || record.providerType === null
+    ? undefined
+    : requireProviderType(record.providerType)
+  const providerName = optionalString(record.providerName, 'providerName')
+  const enabled = requireBoolean(record.enabled, 'enabled')
+  if (id && (!providerType || !providerName)) {
+    throw new TypeError('OCR 配置响应缺少已保存渠道信息')
+  }
+  if (enabled && !providerType) {
+    throw new TypeError('OCR 配置响应缺少已启用渠道类型')
+  }
+  return {
+    id,
+    providerType,
+    providerName,
+    enabled,
+    healthStatus: requireHealthStatus(record.healthStatus),
+    lastHealthCheckAt: optionalString(record.lastHealthCheckAt, 'lastHealthCheckAt'),
+    lastHealthMessage: optionalString(record.lastHealthMessage, 'lastHealthMessage'),
+  }
+}
+
+function validateMarkOcrHealthCheck(value: unknown): MarkOcrConfigHealthCheckVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('OCR 健康检查响应格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    providerType: requireProviderType(record.providerType),
+    healthStatus: requireHealthStatus(record.healthStatus),
+    healthMessage: requireString(record.healthMessage, 'healthMessage'),
+  }
+}
+
+function validateMarkOcrRecognize(value: unknown): MarkOcrRecognizeVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('OCR 识别响应格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    providerType: requireProviderType(record.providerType),
+    recognizedText: requireText(record.recognizedText, 'recognizedText'),
+    engineTraceId: requireString(record.engineTraceId, 'engineTraceId'),
+    diagnostic: requireString(record.diagnostic, 'diagnostic'),
+  }
+}
+
+function validatePaddleOcrInstanceList(value: unknown): PaddleOcrInstanceVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('PaddleOCR 实例列表响应格式错误')
+  }
+  return value.map((item) => {
+    if (!item || typeof item !== 'object') {
+      throw new TypeError('PaddleOCR 实例响应格式错误')
+    }
+    const record = item as Record<string, unknown>
+    return {
+      id: requireString(record.id, 'id'),
+      instanceName: requireString(record.instanceName, 'instanceName'),
+      serviceUrl: requireString(record.serviceUrl, 'serviceUrl'),
+      deviceType: requireString(record.deviceType, 'deviceType'),
+      healthStatus: requireHealthStatus(record.healthStatus),
+      lastHealthCheckAt: optionalString(record.lastHealthCheckAt, 'lastHealthCheckAt'),
+      lastHealthMessage: optionalString(record.lastHealthMessage, 'lastHealthMessage'),
+      consecutiveFailures: requireNumber(record.consecutiveFailures, 'consecutiveFailures'),
+      localAutoDeploy: requireBoolean(record.localAutoDeploy, 'localAutoDeploy'),
+    }
+  })
 }

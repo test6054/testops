@@ -292,7 +292,7 @@ async function loadTemplate(): Promise<void> {
   templateLoadError.value = null
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
-    applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages ?? [], tpl.questions ?? [])
+    applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
   } catch (error) {
     clearTemplate()
     const errMsg = error instanceof Error ? error.message : ''

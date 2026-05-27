@@ -68,7 +68,7 @@ const accreditationOptions = ACCREDITATION_TYPES.map((value) => ({
   label: ACCREDITATION_TYPE_LABEL[value],
 }))
 
-const columns: ColumnsType = [
+const columns: ColumnsType<AccreditationStandardVO> = [
   { title: '编码', dataIndex: 'standardCode', key: 'standardCode', width: 140 },
   { title: '名称', dataIndex: 'standardName', key: 'standardName' },
   { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 180 },
@@ -116,7 +116,13 @@ const filterModel = ref<Record<string, unknown>>({
   keyword: '',
 })
 
-function accreditationTypeLabel(value: AccreditationType): string {
+/**
+ * 在 a-table bodyCell 中按枚举守卫转文案，避免后端返回前端未覆盖枚举时 label 为 undefined 直接显示空白。
+ */
+function accreditationTypeLabel(value: unknown): string {
+  if (!isAccreditationType(value)) {
+    return typeof value === 'string' && value ? `未识别认证类型：${value}` : '-'
+  }
   return ACCREDITATION_TYPE_LABEL[value]
 }
 
@@ -215,8 +221,10 @@ async function handleDelete(record: AccreditationStandardVO) {
   })
 }
 
-/* ========== 信号指标：认证标准库健康度 ========== */
-
+/* ========== 信号指标：认证标准库健康度 ==========
+ * 说明：启用 / 停用 / 试点 / 覆盖类型 均以当前分页可见记录为口径，避免与「认证标准总数」的全局口径混淆；
+ * 如今后需要全局口径，应由后端提供专门的聚合接口。
+ */
 const signals = computed<SignalMetric[]>(() => {
   const enabled = list.value.filter((s) => s.enabled).length
   const disabled = list.value.filter((s) => !s.enabled).length
@@ -225,10 +233,10 @@ const signals = computed<SignalMetric[]>(() => {
   return [
     { key: 'total', label: '当前页记录', value: list.value.length, tone: 'blue' },
     { key: 'all-total', label: '认证标准总数', value: total.value, tone: 'blue' },
-    { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
-    { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
-    { key: 'pilot', label: '仅试点', value: pilot, tone: pilot > 0 ? 'orange' : 'gray' },
-    { key: 'types', label: '覆盖认证类型', value: types, tone: 'blue' },
+    { key: 'enabled', label: '当页启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
+    { key: 'disabled', label: '当页停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
+    { key: 'pilot', label: '当页仅试点', value: pilot, tone: pilot > 0 ? 'orange' : 'gray' },
+    { key: 'types', label: '当页覆盖认证类型', value: types, tone: 'blue' },
   ]
 })
 

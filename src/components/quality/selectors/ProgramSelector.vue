@@ -9,6 +9,7 @@ import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -45,7 +46,7 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    options.value = (await majorCategoryCatalogApi.listAll()) || []
+    options.value = requireArrayResult(await majorCategoryCatalogApi.listAll(), '专业大类')
   } catch (e) {
     console.error('[ProgramSelector] 加载专业大类列表失败', e)
     message.error('加载专业大类列表失败')

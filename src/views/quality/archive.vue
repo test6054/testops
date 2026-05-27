@@ -34,6 +34,7 @@ import {
   StageWorkbenchShell,
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { strictAuditChangeDetails } from '@/utils/strict-enum'
 
 function archiveBusinessTypeLabel(value: unknown): string {
   if (isArchiveBusinessType(value)) return ARCHIVE_BUSINESS_TYPE_LABEL[value]
@@ -372,17 +373,20 @@ async function openAuditDrawer(record: ArchiveVO) {
       category: 'QUALITY',
       description: record.id,
     })
-    auditEvents.value = page.list.map((log) => ({
-      id: log.id,
-      operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
-      operationType: log.type,
-      operationLabel: log.detail || log.type,
-      time: log.createTime,
-      targetType: log.module,
-      targetId: log.bizId || undefined,
-      beforeValue: log.changeDetails ? JSON.parse(log.changeDetails)?.before : undefined,
-      afterValue: log.changeDetails ? JSON.parse(log.changeDetails)?.after : undefined,
-    }))
+    auditEvents.value = page.list.map((log) => {
+      const changeDetails = strictAuditChangeDetails(log.changeDetails, '材料归档审计变更详情')
+      return {
+        id: log.id,
+        operatorName: log.userDto.nickName,
+        operationType: log.type,
+        operationLabel: log.detail,
+        time: log.createTime,
+        targetType: log.module,
+        targetId: log.bizId || undefined,
+        beforeValue: changeDetails.beforeValue,
+        afterValue: changeDetails.afterValue,
+      }
+    })
   } finally {
     auditLoading.value = false
   }

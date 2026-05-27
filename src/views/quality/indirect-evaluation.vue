@@ -580,8 +580,25 @@ function openImportDocument() {
 
 /* ========== 题项有效样本统计 ========== */
 
-const validCountMap = ref<Map<string, number>>(new Map())
+const validCountMap = ref<Map<string, string>>(new Map())
 const validCountLoading = ref(false)
+
+function countTextToNumber(value: string): number {
+  const count = Number(value)
+  if (!Number.isFinite(count)) {
+    throw new TypeError('题项有效样本数不符合前后端契约')
+  }
+  return count
+}
+
+function validCountText(itemId: string): string {
+  const count = validCountMap.value.get(itemId)
+  if (count === undefined) {
+    if (validCountLoading.value) return '加载中'
+    throw new Error('题项有效样本数缺失')
+  }
+  return count
+}
 
 async function refreshValidCounts() {
   if (!items.value.length) return
@@ -591,7 +608,7 @@ async function refreshValidCounts() {
       items.value.map((item) =>
         indirectResponseApi
           .countValidByItem(item.id)
-          .then((count): [string, number] => [item.id, count]),
+          .then((count): [string, string] => [item.id, count]),
       ),
     )
     validCountMap.value = new Map(results)
@@ -605,7 +622,10 @@ async function refreshValidCounts() {
 const signals = computed<SignalMetric[]>(() => {
   const enabledForms = forms.value.filter((f) => f.enabled).length
   const totalItems = items.value.length
-  const totalValid = Array.from(validCountMap.value.values()).reduce((sum, n) => sum + n, 0)
+  const totalValid = Array.from(validCountMap.value.values()).reduce(
+    (sum, n) => sum + countTextToNumber(n),
+    0,
+  )
   const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample ?? 0), 0)
   const validResponses = responses.value.filter((r) => r.validFlag).length
   const invalidResponses = responses.value.filter((r) => !r.validFlag).length
@@ -781,9 +801,13 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'validCount'">
                 <span
-                  :class="validCountMap.get(record.id) ? 'ie__count-strong' : 'ie__count-muted'"
+                  :class="
+                    countTextToNumber(validCountText(record.id)) > 0
+                      ? 'ie__count-strong'
+                      : 'ie__count-muted'
+                  "
                 >
-                  {{ validCountMap.get(record.id) ?? 0 }}
+                  {{ validCountText(record.id) }}
                 </span>
               </template>
               <template v-else-if="column.key === 'actions'">

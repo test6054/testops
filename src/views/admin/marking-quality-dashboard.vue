@@ -61,8 +61,8 @@
           <UiCard class="info-card">
             <template #title>
               <span>进度快照</span>
-              <UiBadge v-if="progress" :tone="riskTone(progress.riskLevel ?? 'NORMAL')">
-                {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel ?? 'NORMAL'] }}
+              <UiBadge v-if="progress" :tone="riskTone(progress.riskLevel)">
+                {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel] }}
               </UiBadge>
             </template>
             <template #extra>
@@ -116,36 +116,36 @@
             />
             <a-descriptions v-else :column="3" bordered size="small">
               <a-descriptions-item label="总任务数">
-                <b>{{ progress.totalTasks ?? 0 }}</b>
+                <b>{{ progress.totalTasks }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="已分配">
-                {{ progress.allocatedTasks ?? 0 }}
+                {{ progress.allocatedTasks }}
               </a-descriptions-item>
               <a-descriptions-item label="进行中">
-                {{ progress.inProgressTasks ?? 0 }}
+                {{ progress.inProgressTasks }}
               </a-descriptions-item>
               <a-descriptions-item label="已提交">
-                {{ progress.submittedTasks ?? 0 }}
+                {{ progress.submittedTasks }}
               </a-descriptions-item>
               <a-descriptions-item label="已定稿">
-                <b class="quality-dashboard__num-success">{{ progress.finalizedTasks ?? 0 }}</b>
+                <b class="quality-dashboard__num-success">{{ progress.finalizedTasks }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="已回收">
-                <b class="quality-dashboard__num-warning">{{ progress.recycledTasks ?? 0 }}</b>
+                <b class="quality-dashboard__num-warning">{{ progress.recycledTasks }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="完成率">
-                {{ progress.completionRate?.toFixed?.(2) ?? '-' }}%
+                {{ progress.completionRate.toFixed(2) }}%
               </a-descriptions-item>
               <a-descriptions-item label="预估剩余">
                 {{ progress.estimatedRemainingMinutes ?? '-' }} 分钟
               </a-descriptions-item>
               <a-descriptions-item label="风险等级">
-                <UiTag :tone="riskTone(progress.riskLevel ?? 'NORMAL')" size="sm">
-                  {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel ?? 'NORMAL'] }}
+                <UiTag :tone="riskTone(progress.riskLevel)" size="sm">
+                  {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel] }}
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="快照时间" :span="2">
-                {{ progress.snapshotTime ?? '-' }}
+                {{ progress.snapshotTime }}
               </a-descriptions-item>
               <a-descriptions-item v-if="progress.riskDetail" label="风险详情" :span="3">
                 <pre class="quality-dashboard__json-pre">{{ progress.riskDetail }}</pre>
@@ -260,7 +260,7 @@
             <UiAlertStrip
               tone="info"
               title="抽检规则"
-              description="按 (阅卷组织 + 题组 + 抽检比例) 创建任务。可选指定教师；不指定则全组抽检。后端将随机抽样并生成 PENDING 抽检记录，由组长在「抽检处理」入口处理结论。"
+              description="按阅卷组织、题组和抽检比例创建任务。可选指定教师；不指定则全组抽检。后端将随机抽样并生成待处理抽检记录，由组长在「抽检处理」入口处理结论。"
               dense
               class="quality-dashboard__alert"
             />
@@ -315,7 +315,7 @@
             <UiAlertStrip
               tone="warning"
               title="重处理影响范围"
-              description="ALL：清空批次内所有页的识别 / 评分结果，重新走识别流；FAILED_ONLY：仅重做识别失败页。重处理过程中阅卷工作不可用。请确认与教师协调时间窗口后再触发。"
+              description="全部重处理会清空批次内所有页的识别和评分结果并重新走识别流；仅失败页重处理只重做识别失败页。重处理过程中阅卷工作不可用。请确认与教师协调时间窗口后再触发。"
               dense
               class="quality-dashboard__alert"
             />
@@ -407,6 +407,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
 
@@ -603,18 +604,16 @@ async function handleReprocess(): Promise<void> {
 }
 
 // ─── 共用工具 ─────────────────────────────
-function metricStatusTone(status?: ReviewerMetricStatusCode): BadgeTone {
-  if (!status) return 'blue'
-  return REVIEWER_METRIC_STATUS_COLOR[status] ?? 'blue'
+function metricStatusTone(status: ReviewerMetricStatusCode): BadgeTone {
+  return strictEnumTone(REVIEWER_METRIC_STATUS_COLOR, status, '阅卷员指标状态')
 }
 
-function metricStatusLabel(status?: ReviewerMetricStatusCode): string {
-  if (!status) return '-'
-  return REVIEWER_METRIC_STATUS_LABEL[status] ?? status
+function metricStatusLabel(status: ReviewerMetricStatusCode): string {
+  return strictEnumLabel(REVIEWER_METRIC_STATUS_LABEL, status, '阅卷员指标状态')
 }
 
 function riskTone(level: ProgressRiskLevelCode): BadgeTone {
-  return PROGRESS_RISK_LEVEL_COLOR[level] ?? 'blue'
+  return strictEnumTone(PROGRESS_RISK_LEVEL_COLOR, level, '进度风险等级')
 }
 
 /* ========== 信号指标：阅卷质量全局风险面板 ========== */

@@ -107,7 +107,7 @@
                 </span>
               </template>
               <template v-else-if="column.key === 'createTime'">
-                {{ formatTime(operationLogs[index].createTime) }}
+                {{ formatDateTimeWithSeconds(operationLogs[index].createTime) }}
               </template>
               <template v-else-if="column.key === 'beforeAfter'">
                 <a-typography-paragraph
@@ -181,10 +181,10 @@
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'createTime'">
-                {{ formatTime(incidents[index].createTime) }}
+                {{ formatDateTimeWithSeconds(incidents[index].createTime) }}
               </template>
               <template v-else-if="column.key === 'resolvedTime'">
-                {{ formatTime(incidents[index].resolvedTime) }}
+                {{ formatDateTimeWithSeconds(incidents[index].resolvedTime) }}
               </template>
               <template v-else-if="column.key === 'detail'">
                 <a-typography-paragraph
@@ -214,11 +214,14 @@
         <a-tab-pane key="diagnostic-samples" tab="诊断样本">
           <div class="filter-bar">
             <a-space wrap>
-              <a-input
+              <a-select
                 v-model:value="sampleFilter.sampleType"
-                placeholder="样本类型编码"
+                placeholder="样本类型"
                 allow-clear
                 class="audit-trail__filter-input"
+                :options="diagnosticSampleTypeOptions"
+                option-filter-prop="label"
+                show-search
               />
               <UiButton size="sm" :loading="sampleLoading" @click="loadDiagnosticSamples">
                 查询
@@ -254,15 +257,11 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'sampleType'">
                 <UiTag tone="purple" size="sm">
-                  {{
-                    DIAGNOSTIC_SAMPLE_TYPE_LABEL[record.sampleType || '']
-                      || record.sampleType
-                      || '-'
-                  }}
+                  {{ strictEnumLabel(DIAGNOSTIC_SAMPLE_TYPE_LABEL, record.sampleType, '诊断样本类型') }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'createTime'">
-                {{ formatTime(record.createTime) }}
+                {{ formatDateTimeWithSeconds(record.createTime) }}
               </template>
               <template v-else-if="column.key === 'snapshotPayload'">
                 <a-typography-paragraph
@@ -301,7 +300,7 @@
     >
       <a-form layout="vertical">
         <a-form-item label="事件摘要">
-          <span>{{ resolvingIncident?.summary || '-' }}</span>
+          <span>{{ resolvingIncident?.summary }}</span>
         </a-form-item>
         <a-form-item label="处置说明" required>
           <a-textarea
@@ -318,13 +317,12 @@
 </template>
 
 <script lang="ts" setup>
-import type { DiagnosticSampleVO, OperationLogVO } from '@/apis/mark/admin-audit'
+import type { AuditTargetTypeCode, DiagnosticSampleTypeCode, DiagnosticSampleVO, OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
 import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
@@ -347,6 +345,8 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { formatDateTimeWithSeconds } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminAuditTrail' })
 
@@ -364,9 +364,12 @@ const activeTab = ref<'logs' | 'incidents' | 'diagnostic-samples'>('logs')
 const logLoading = ref(false)
 const logsLoadError = ref<unknown>(null)
 const operationLogs = ref<OperationLogVO[]>([])
-const logFilter = reactive<{ operationType?: string }>({})
-const operationTypeOptions = computed(() =>
-  Object.entries(OPERATION_TYPE_LABEL).map(([value, label]) => ({ value, label })),
+const logFilter = reactive<{ operationType?: OperationTypeCode }>({})
+const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(() =>
+  Object.entries(OPERATION_TYPE_LABEL).map(([value, label]) => ({
+    value: value as OperationTypeCode,
+    label,
+  })),
 )
 const logColumns = [
   { title: '操作类型', key: 'operationType', dataIndex: 'operationType', width: 160 },
@@ -470,7 +473,13 @@ async function submitResolve() {
 const sampleLoading = ref(false)
 const samplesLoadError = ref<unknown>(null)
 const diagnosticSamples = ref<DiagnosticSampleVO[]>([])
-const sampleFilter = reactive<{ sampleType?: string }>({})
+const sampleFilter = reactive<{ sampleType?: DiagnosticSampleTypeCode }>({})
+const diagnosticSampleTypeOptions = computed<Array<{ value: DiagnosticSampleTypeCode, label: string }>>(() =>
+  Object.entries(DIAGNOSTIC_SAMPLE_TYPE_LABEL).map(([value, label]) => ({
+    value: value as DiagnosticSampleTypeCode,
+    label,
+  })),
+)
 const sampleColumns = [
   { title: '样本类型', key: 'sampleType', dataIndex: 'sampleType', width: 160 },
   { title: '来源类型', key: 'sourceType', dataIndex: 'sourceType', width: 140 },
@@ -488,7 +497,7 @@ async function loadDiagnosticSamples() {
   try {
     diagnosticSamples.value = await listDiagnosticSamples({
       examId: selectedExamId.value,
-      sampleType: sampleFilter.sampleType?.trim() || undefined,
+      sampleType: sampleFilter.sampleType,
     })
   } catch (error) {
     samplesLoadError.value = error
@@ -529,31 +538,24 @@ function onExamChange(value: unknown, option: unknown) {
   }
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
-}
 
 // 严格 typed helper：模板侧用 operationLogs[index] / incidents[index] 取后端 VO，
 // helper 把 OperationTypeCode/IncidentLevelCode 映射成 a-table 单元格需要的字符串/BadgeTone。
-function operationTypeText(code?: string): string {
-  if (!code) return '-'
-  return OPERATION_TYPE_LABEL[code] ?? code
+function operationTypeText(code?: OperationTypeCode): string {
+  return strictEnumLabel(OPERATION_TYPE_LABEL, code, '审计操作类型')
 }
 
-function targetTypeText(code?: string): string {
-  if (!code) return '-'
-  return AUDIT_TARGET_TYPE_LABEL[code] ?? code
+function targetTypeText(code?: AuditTargetTypeCode): string {
+  return strictEnumLabel(AUDIT_TARGET_TYPE_LABEL, code, '审计目标类型')
 }
 
 function incidentLevelTone(level?: IncidentLevelCode): BadgeTone {
   if (!level) return 'gray'
-  return INCIDENT_LEVEL_TONE[level] ?? 'gray'
+  return strictEnumTone(INCIDENT_LEVEL_TONE, level, '重大事件级别')
 }
 
 function incidentLevelLabel(level?: IncidentLevelCode): string {
-  if (!level) return '-'
-  return INCIDENT_LEVEL_LABEL[level] ?? level
+  return strictEnumLabel(INCIDENT_LEVEL_LABEL, level, '重大事件级别')
 }
 
 function formatBeforeAfter(record: OperationLogVO): string {

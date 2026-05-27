@@ -69,17 +69,16 @@
             <template #title>
               <a-typography-text copyable>会话 #{{ (item as TrialSessionVO).id }}</a-typography-text>
               <UiTag
-                v-if="(item as TrialSessionVO).sessionStatus"
-                :tone="TRIAL_STATUS_TONE[(item as TrialSessionVO).sessionStatus!]"
+                :tone="TRIAL_STATUS_TONE[(item as TrialSessionVO).sessionStatus]"
                 size="sm"
                 class="status-tag"
               >
-                {{ TRIAL_STATUS_LABEL[(item as TrialSessionVO).sessionStatus!] }}
+                {{ TRIAL_STATUS_LABEL[(item as TrialSessionVO).sessionStatus] }}
               </UiTag>
             </template>
             <template #description>
               <span>
-                题组 #{{ (item as TrialSessionVO).groupId }} · {{ formatTime((item as TrialSessionVO).createTime) }}
+                题组 #{{ (item as TrialSessionVO).groupId }} · {{ formatDateTime((item as TrialSessionVO).createTime) }}
                 <template v-if="(item as TrialSessionVO).closeReason">
                   · 关闭原因：{{ (item as TrialSessionVO).closeReason }}
                 </template>
@@ -131,7 +130,6 @@ import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   calibrateTrialSession,
@@ -141,6 +139,7 @@ import {
   TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
 
 interface GroupOption {
   value: string
@@ -173,7 +172,7 @@ const deletingId = ref<string | null>(null)
 const trialSessionOptions = computed(() =>
   props.sessions.map(item => ({
     value: item.id,
-    label: `会话 #${item.id}（题组 #${item.groupId}）${item.sessionStatus ? ' · ' + TRIAL_STATUS_LABEL[item.sessionStatus] : ''}`,
+    label: `会话 #${item.id}（题组 #${item.groupId}） · ${TRIAL_STATUS_LABEL[item.sessionStatus]}`,
   })),
 )
 
@@ -186,20 +185,16 @@ watch(
   },
 )
 
-function canCloseTrial(status?: TrialSessionStatusCode): boolean {
+function canCloseTrial(status: TrialSessionStatusCode): boolean {
   return status === 'TRIAL_ASSIGNED'
     || status === 'TRIAL_SUBMITTED'
     || status === 'CALIBRATED'
 }
 
-function canDeleteTrial(status?: TrialSessionStatusCode): boolean {
+function canDeleteTrial(status: TrialSessionStatusCode): boolean {
   return status === 'TRIAL_CREATED'
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 async function submitCreate(): Promise<void> {
   if (!props.organizationId || !trialGroupId.value) return

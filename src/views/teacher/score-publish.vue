@@ -122,7 +122,7 @@
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'studentName'">
-              <a-typography-text strong :content="candidates[index].studentName || '-'" />
+              <a-typography-text strong :content="candidates[index].studentName" />
             </template>
             <template v-else-if="column.key === 'finalScore'">
               <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
@@ -136,7 +136,7 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'confirmedTime'">
-              {{ formatTime(candidates[index].confirmedTime) }}
+              {{ formatDateTime(candidates[index].confirmedTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
@@ -195,10 +195,10 @@
         <div v-else>
           <a-descriptions :column="2" size="small" bordered class="score-publish__detail-summary">
             <a-descriptions-item label="考生">
-              {{ detailCandidate?.studentName || '-' }}（{{ detailCandidate?.studentNo || '-' }}）
+              {{ detailCandidate?.studentName }}（{{ detailCandidate?.studentNo }}）
             </a-descriptions-item>
             <a-descriptions-item label="班级">
-              {{ detailCandidate?.studentClassName || '-' }}
+              {{ detailCandidate?.studentClassName }}
             </a-descriptions-item>
             <a-descriptions-item label="试卷实例">
               <a-typography-text :content="paperScore.paperInstanceId" copyable />
@@ -227,7 +227,7 @@
           >
             <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'questionNo'">
-                <UiTag tone="blue" size="sm">{{ paperQuestions[index].questionNo || '-' }}</UiTag>
+                <UiTag tone="blue" size="sm">{{ paperQuestions[index].questionNo }}</UiTag>
               </template>
               <template v-else-if="column.key === 'finalScore'">
                 <a-typography-text v-if="paperQuestions[index].finalScore != null" strong>
@@ -261,7 +261,7 @@
         />
         <a-form-item label="考生">
           <a-input
-            :value="`${withdrawCandidate?.studentName || ''}（${withdrawCandidate?.studentNo || ''}）`"
+            :value="withdrawCandidate ? `${withdrawCandidate.studentName}（${withdrawCandidate.studentNo}）` : ''"
             disabled
           />
         </a-form-item>
@@ -317,8 +317,8 @@
           <a-list-item>
             <a-list-item-meta>
               <template #title>
-                {{ item.studentName || '-' }}
-                <span class="score-publish__hint">（{{ item.studentNo || '-' }}）</span>
+                {{ item.studentName }}
+                <span class="score-publish__hint">（{{ item.studentNo }}）</span>
               </template>
               <template #description>
                 <span>当前 {{ finalScoreStatusLabel(item.finalScoreStatus) }}</span>
@@ -354,12 +354,12 @@ import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   deanonymizePaper,
   FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
   getPaperScore,
   pageExamScoreSummary,
   publishFinalScore,
@@ -380,52 +380,17 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScorePublish' })
 
-type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
-
-const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, ToneCode> = {
-  PENDING: 'gray',
-  CALCULATED: 'blue',
-  CONFIRMED: 'blue',
-  CORRECTED: 'orange',
-  PUBLISHED: 'green',
-  WITHDRAWN: 'red',
+function finalScoreStatusTone(value: FinalScoreStatusCode) {
+  return strictEnumTone(FINAL_SCORE_STATUS_TONE, value, '最终成绩状态')
 }
 
-/**
- * 后端 ExamPaperScoreVO.finalScoreStatus 是宽类型 string，需狭化为 FinalScoreStatusCode 才能查 LABEL/TONE。
- * 通过字面值 === 比较让 TS 自动缩窄类型，全程零 as 断言。
- */
-function finalScoreStatusTone(value: unknown): ToneCode {
-  if (typeof value !== 'string') return 'gray'
-  if (
-    value === 'PENDING'
-    || value === 'CALCULATED'
-    || value === 'CONFIRMED'
-    || value === 'CORRECTED'
-    || value === 'PUBLISHED'
-    || value === 'WITHDRAWN'
-  ) {
-    return FINAL_SCORE_STATUS_TONE[value]
-  }
-  return 'gray'
-}
-
-function finalScoreStatusLabel(value: unknown): string {
-  if (typeof value !== 'string') return '未生成'
-  if (
-    value === 'PENDING'
-    || value === 'CALCULATED'
-    || value === 'CONFIRMED'
-    || value === 'CORRECTED'
-    || value === 'PUBLISHED'
-    || value === 'WITHDRAWN'
-  ) {
-    return FINAL_SCORE_STATUS_LABEL[value]
-  }
-  return '未生成'
+function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, value, '最终成绩状态')
 }
 
 // 从后端枚举 LABEL 对象直接派生 select options。
@@ -472,10 +437,6 @@ const columns: ColumnType<ExamScoreSummaryItemVO>[] = [
   { title: '操作', key: 'actions', width: 320, fixed: 'right' },
 ]
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
@@ -490,8 +451,11 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
-    candidates.value = result.list || []
-    pagination.total = result.total ?? 0
+    if (!Array.isArray(result.list)) {
+      throw new TypeError('成绩发布候选列表响应缺少 list 数组')
+    }
+    candidates.value = result.list
+    pagination.total = result.total
   } catch (error) {
     candidatesLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '成绩汇总加载失败'
@@ -656,7 +620,7 @@ const statMetrics = computed(() => {
   }
   for (const c of candidates.value) {
     const s = c.finalScoreStatus
-    if (s && s in buckets) buckets[s] += 1
+    buckets[s] += 1
   }
   syncPublishStageToStore(buckets)
   const total = pagination.total ?? 0
@@ -773,7 +737,7 @@ async function handleDeanonymize(record: ExamScoreSummaryItemVO): Promise<void> 
       revealScenario: 'SCORE_PUBLISH_REVIEW',
       reason: '成绩发布列表查看考生身份',
     })
-    message.success(`解匿名成功：${result.studentName || ''}（${result.studentNo || ''}）`)
+    message.success(`解匿名成功：${result.studentName}（${result.studentNo}）`)
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '解匿名失败'
     message.error(errMsg)

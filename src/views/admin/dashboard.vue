@@ -5,7 +5,11 @@
       <div class="admin-dashboard__context">
         <div class="admin-dashboard__context-left">
           <UiTag tone="blue" size="sm">租户聚合视图</UiTag>
-          <UiTag v-if="incidentMetrics.unresolvedIncidentCount > 0" tone="red" size="sm">
+          <UiTag
+            v-if="incidentMetrics && incidentMetrics.unresolvedIncidentCount > 0"
+            tone="red"
+            size="sm"
+          >
             待处理事件 {{ incidentMetrics.unresolvedIncidentCount }}
           </UiTag>
         </div>
@@ -38,7 +42,7 @@
     />
 
     <!-- 批改进度 + 异常告警 -->
-    <a-row v-if="!overviewLoadError" :gutter="16">
+    <a-row v-if="gradingMetrics && incidentMetrics && !overviewLoadError" :gutter="16">
       <a-col :xs="24" :lg="14">
         <UiCard class="metric-card">
           <template #title>
@@ -111,7 +115,7 @@
     </a-row>
 
     <!-- 最近考试 + 最近事件 -->
-    <a-row v-if="!overviewLoadError" :gutter="16">
+    <a-row v-if="overview && !overviewLoadError" :gutter="16" class="admin-dashboard__recent-row">
       <a-col :xs="24" :lg="14">
         <UiCard class="recent-exams-card">
           <template #title>
@@ -128,16 +132,16 @@
           <div v-else class="recent-exam-list">
             <article v-for="exam in recentExams" :key="exam.examId" class="recent-exam-item">
               <div class="recent-exam-item__title-row">
-                <h3 class="recent-exam-item__title">{{ exam.examName || '未命名考试' }}</h3>
+                <h3 class="recent-exam-item__title">{{ exam.examName }}</h3>
                 <UiTag v-if="exam.status" :tone="examStatusTone(exam.status)" size="sm">
                   {{ examStatusLabel(exam.status) }}
                 </UiTag>
               </div>
               <div class="recent-exam-item__meta">
-                <span class="meta-item">编号：{{ exam.examNo || '-' }}</span>
+                <span class="meta-item">编号：{{ exam.examNo }}</span>
                 <span class="meta-item">
                   <CalendarOutlined />
-                  {{ formatTime(exam.createTime) }}
+                  {{ formatDateTime(exam.createTime) }}
                 </span>
               </div>
               <div class="recent-exam-item__metrics">
@@ -186,11 +190,11 @@
                 {{ incidentLevelLabel(incident.incidentLevel) }}
               </UiTag>
               <div class="incident-item__main">
-                <h4 class="incident-item__title">{{ incident.summary || '未提供摘要' }}</h4>
+                <h4 class="incident-item__title">{{ incident.summary }}</h4>
                 <div class="incident-item__meta">
-                  <span>{{ incident.incidentType || '-' }}</span>
+                  <span>{{ incidentTypeLabel(incident.incidentType) }}</span>
                   <span>考试 #{{ incident.examId }}</span>
-                  <span>{{ formatTime(incident.createTime) }}</span>
+                  <span>{{ formatDateTime(incident.createTime) }}</span>
                 </div>
               </div>
             </article>
@@ -208,6 +212,7 @@ import type {
   DashboardRecentExamItemVO,
   IncidentLevelCode,
   IncidentRecordVO,
+  IncidentTypeCode,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
 import type { ExamStatusCode } from '@/apis/mark/exam'
@@ -219,12 +224,12 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   INCIDENT_LEVEL_LABEL,
   INCIDENT_LEVEL_TONE,
+  INCIDENT_TYPE_LABEL,
   loadDashboardOverview,
 } from '@/apis/mark/admin-dashboard'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
@@ -237,6 +242,8 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminDashboard' })
 
@@ -247,56 +254,47 @@ const overviewLoadError = ref<unknown>(null)
 const recentLimit = ref(5)
 const overview = ref<MarkDashboardOverviewVO | null>(null)
 
-const gradingMetrics = computed<DashboardGradingMetricsVO>(
-  () =>
-    overview.value?.gradingMetrics ?? {
-      publishedScoreCount: 0,
-      pendingScoreCount: 0,
-      confirmedScoreCount: 0,
-      withdrawnScoreCount: 0,
-      confirmedQuestionResultCount: 0,
-      openReviewTaskCount: 0,
-      openProcessingTaskCount: 0,
-    },
+/**
+ * 概览字段访问：
+ *
+ * 字段完整性由 API 层 validateDashboardOverview 在 loadOverview 内强校验，
+ * 缺失会直接抛 TypeError 并落到 overviewLoadError；
+ * 模板已通过 `v-if="overview && !overviewLoadError"` 守护渲染，因此 computed
+ * 只在 overview 为空时返回 null（未加载态），不再承担"验证响应完整性"职责。
+ *
+ * Vue 文档明确要求 computed 是纯函数，禁止抛错。
+ */
+const gradingMetrics = computed<DashboardGradingMetricsVO | null>(
+  () => overview.value?.gradingMetrics ?? null,
+)
+const incidentMetrics = computed<DashboardIncidentMetricsVO | null>(
+  () => overview.value?.incidentMetrics ?? null,
+)
+const recentExams = computed<DashboardRecentExamItemVO[]>(
+  () => overview.value?.recentExams ?? [],
+)
+const recentIncidents = computed<IncidentRecordVO[]>(
+  () => overview.value?.recentIncidents ?? [],
 )
 
-const incidentMetrics = computed<DashboardIncidentMetricsVO>(
-  () =>
-    overview.value?.incidentMetrics ?? {
-      unresolvedIncidentCount: 0,
-      pendingDuplicateCount: 0,
-    },
-)
-
-const recentExams = computed<DashboardRecentExamItemVO[]>(() => overview.value?.recentExams ?? [])
-const recentIncidents = computed<IncidentRecordVO[]>(() => overview.value?.recentIncidents ?? [])
-
-function isExamStatusCode(value: unknown): value is ExamStatusCode {
-  return value === 'ACTIVE' || value === 'CLOSED'
+function examStatusTone(status: ExamStatusCode): BadgeTone {
+  return strictEnumTone(EXAM_STATUS_TONE, status, '考试状态')
 }
 
-function examStatusTone(value: unknown): BadgeTone {
-  if (isExamStatusCode(value)) return EXAM_STATUS_TONE[value]
-  return 'gray'
+function examStatusLabel(status: ExamStatusCode): string {
+  return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
 }
 
-function examStatusLabel(value: unknown): string {
-  if (isExamStatusCode(value)) return EXAM_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+function incidentLevelTone(level: IncidentLevelCode): BadgeTone {
+  return strictEnumTone(INCIDENT_LEVEL_TONE, level, '事件级别')
 }
 
-function isIncidentLevelCode(value: unknown): value is IncidentLevelCode {
-  return value === 'BLOCKING' || value === 'CRITICAL' || value === 'WARNING' || value === 'INFO'
+function incidentLevelLabel(level: IncidentLevelCode): string {
+  return strictEnumLabel(INCIDENT_LEVEL_LABEL, level, '事件级别')
 }
 
-function incidentLevelTone(value: unknown): BadgeTone {
-  if (isIncidentLevelCode(value)) return INCIDENT_LEVEL_TONE[value]
-  return 'gray'
-}
-
-function incidentLevelLabel(value: unknown): string {
-  if (isIncidentLevelCode(value)) return INCIDENT_LEVEL_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
+function incidentTypeLabel(type: IncidentTypeCode): string {
+  return strictEnumLabel(INCIDENT_TYPE_LABEL, type, '事件类型')
 }
 
 async function loadOverview() {
@@ -313,10 +311,6 @@ async function loadOverview() {
   }
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 function goAuditTrail() {
   router.push({ name: 'AdminAuditTrail' })
@@ -390,20 +384,21 @@ onMounted(loadOverview)
     color: var(--ant-color-text);
     font-variant-numeric: tabular-nums;
 
+    /* 数字大字状态色：使用深色版 dp-*-700 而非高饱和原色，多卡同屏不刺眼 */
     &.success {
-      color: var(--ant-color-success);
+      color: var(--dp-green-700, #15803d);
     }
 
     &.warning {
-      color: var(--ant-color-warning);
+      color: var(--dp-orange-700, #c2410c);
     }
 
     &.info {
-      color: var(--ant-color-primary);
+      color: var(--dp-blue-700, #1d4ed8);
     }
 
     &.danger {
-      color: var(--ant-color-error);
+      color: var(--dp-red-700, #b91c1c);
     }
   }
 }
@@ -476,12 +471,13 @@ onMounted(loadOverview)
     font-weight: 700;
     color: var(--ant-color-text);
 
+    /* exam 子卡片同步使用深色版 */
     &.success {
-      color: var(--ant-color-success);
+      color: var(--dp-green-700, #15803d);
     }
 
     &.warning {
-      color: var(--ant-color-warning);
+      color: var(--dp-orange-700, #c2410c);
     }
   }
 }

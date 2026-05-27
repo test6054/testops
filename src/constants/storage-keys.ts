@@ -30,6 +30,12 @@ export const STORAGE_TENANT_ID = 'tenantId'
 /** 租户信息（遗留 key，清除认证时需移除） */
 export const STORAGE_TENANT = 'tenant'
 
+/** 学生登录页缓存的上次学校名（仅 UX 便利项，不属于认证） */
+export const STORAGE_LAST_STUDENT_SCHOOL = 'LAST_STUDENT_SCHOOL'
+
+/** 设备唯一标识（雪花ID），用于风控审计与登录设备指纹 */
+export const STORAGE_DEVICE_ID = 'deviceId'
+
 
 /**
  * 认证相关的所有 key 列表

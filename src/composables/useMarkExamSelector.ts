@@ -18,6 +18,7 @@ import { pageExams } from '@/apis/mark/exam'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useUserStore } from '@/stores/modules/user'
+import { formatSemester } from '@/types/enums/semester-enum'
 
 export interface MarkExamSelectorOptions {
   /** 是否在切换时自动回写 URL query，默认 true */
@@ -129,12 +130,6 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     if (syncUrl) {
       writeExamIdToUrl(examId)
     }
-  }
-
-  function formatSemester(value?: string): string {
-    if (value === '1') return '秋季学期'
-    if (value === '2') return '春季学期'
-    return value ?? ''
   }
 
   function formatAcademicTerm(exam: ExamSummaryVO): string {

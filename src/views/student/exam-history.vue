@@ -75,7 +75,7 @@
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'examName'">
             <button type="button" class="link-cell" @click="goDetail(filteredExams[index].examId)">
-              {{ filteredExams[index].examName || '未命名考试' }}
+              {{ filteredExams[index].examName }}
             </button>
             <div v-if="filteredExams[index].examNo" class="link-cell__sub">
               编号：{{ filteredExams[index].examNo }}
@@ -83,13 +83,11 @@
           </template>
           <template v-else-if="column.key === 'finalScoreStatus'">
             <UiTag
-              v-if="filteredExams[index].finalScoreStatus"
               :tone="finalScoreStatusTone(filteredExams[index].finalScoreStatus)"
               size="sm"
             >
               {{ finalScoreStatusLabel(filteredExams[index].finalScoreStatus) }}
             </UiTag>
-            <UiTag v-else tone="gray" size="sm">未生成</UiTag>
           </template>
           <template v-else-if="column.key === 'finalScore'">
             <span
@@ -99,15 +97,15 @@
               "
               class="score-cell"
             >
-              {{ (filteredExams[index].finalScore ?? 0).toFixed(2) }}
+              {{ filteredExams[index].finalScore.toFixed(2) }}
             </span>
             <span v-else class="muted">--</span>
           </template>
           <template v-else-if="column.key === 'examStartTime'">
-            {{ formatTime(filteredExams[index].examStartTime) }}
+            {{ formatDateTime(filteredExams[index].examStartTime) }}
           </template>
           <template v-else-if="column.key === 'publishedTime'">
-            {{ formatTime(filteredExams[index].publishedTime) }}
+            {{ formatDateTime(filteredExams[index].publishedTime) }}
           </template>
           <template v-else-if="column.key === 'reviewWindowStatus'">
             <UiTag
@@ -159,7 +157,6 @@ import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -178,6 +175,8 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentExamHistory' })
 
@@ -221,8 +220,8 @@ const filteredExams = computed<StudentExamItemVO[]>(() => {
     }
     if (keyword.value.trim()) {
       const kw = keyword.value.trim().toLowerCase()
-      const name = (item.examName || '').toLowerCase()
-      const no = (item.examNo || '').toLowerCase()
+      const name = item.examName.toLowerCase()
+      const no = item.examNo.toLowerCase()
       if (!name.includes(kw) && !no.includes(kw)) {
         return false
       }
@@ -249,20 +248,13 @@ async function loadExams() {
   }
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
+
+function finalScoreStatusTone(status: FinalScoreStatusCode): BadgeTone {
+  return strictEnumTone(FINAL_SCORE_STATUS_TONE, status, '最终成绩状态')
 }
 
-// 严格 typed helper：filteredExams[index].finalScoreStatus 是 FinalScoreStatusCode | undefined。
-function finalScoreStatusTone(status?: FinalScoreStatusCode): BadgeTone {
-  if (!status) return 'gray'
-  return FINAL_SCORE_STATUS_TONE[status] ?? 'gray'
-}
-
-function finalScoreStatusLabel(status?: FinalScoreStatusCode): string {
-  if (!status) return '未生成'
-  return FINAL_SCORE_STATUS_LABEL[status] ?? status
+function finalScoreStatusLabel(status: FinalScoreStatusCode): string {
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
 }
 
 function goDetail(examId: string) {

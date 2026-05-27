@@ -40,10 +40,10 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'effectiveTime'">
-          {{ fmt(rows[index].effectiveTime) }}
+          {{ formatDateTime(rows[index].effectiveTime) }}
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{ fmt(rows[index].createTime) }}
+          {{ formatDateTime(rows[index].createTime) }}
         </template>
       </template>
     </UiDataTable>
@@ -107,13 +107,11 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamGradeCorrectionRecordVO,
-  GradeCorrectionStatusCode,
   GradeCorrectionTypeCode,
 } from '@/apis/mark/grade-review'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { reactive, ref, watch } from 'vue'
 import {
   createCorrection,
@@ -123,6 +121,8 @@ import {
   listCorrections,
 } from '@/apis/mark/grade-review'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CorrectionsCard' })
 
@@ -231,23 +231,17 @@ async function submit(): Promise<void> {
 
 function correctionTypeLabel(row: ExamGradeCorrectionRecordVO): string {
   const code: GradeCorrectionTypeCode | undefined = row.correctionType
-  return code ? (GRADE_CORRECTION_TYPE_LABEL[code] ?? code) : '-'
+  return strictEnumLabel(GRADE_CORRECTION_TYPE_LABEL, code, '成绩更正类型')
 }
 
 function correctionStatusLabel(row: ExamGradeCorrectionRecordVO): string {
-  const code: GradeCorrectionStatusCode = row.correctionStatus || 'PENDING'
-  return GRADE_CORRECTION_STATUS_LABEL[code] ?? code
+  return strictEnumLabel(GRADE_CORRECTION_STATUS_LABEL, row.correctionStatus, '成绩更正状态')
 }
 
 function correctionStatusColor(row: ExamGradeCorrectionRecordVO): string {
-  const code: GradeCorrectionStatusCode = row.correctionStatus || 'PENDING'
-  return GRADE_CORRECTION_STATUS_COLOR[code] ?? 'default'
+  return strictEnumTone(GRADE_CORRECTION_STATUS_COLOR, row.correctionStatus, '成绩更正状态')
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 watch(
   () => [props.examId, props.reloadToken],

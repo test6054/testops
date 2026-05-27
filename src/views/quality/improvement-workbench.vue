@@ -164,11 +164,11 @@ function supervisionTypeLabel(value: unknown): string {
 
 type AuditSupervisionScope = 'COURSE' | 'PROGRAM' | 'TRAINING_PLAN' | 'COMPREHENSIVE'
 type AuditSupervisionConclusion = 'PASS' | 'NEEDS_IMPROVEMENT' | 'FAIL'
-type AuditIssueSource =
-  | 'SELF_AUDIT'
-  | 'EXPERT_AUDIT'
-  | 'ACCREDITATION_AUDIT'
-  | 'EXTERNAL_INSPECTION'
+type AuditIssueSource
+  = | 'SELF_AUDIT'
+    | 'EXPERT_AUDIT'
+    | 'ACCREDITATION_AUDIT'
+    | 'EXTERNAL_INSPECTION'
 type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
 
 function requiredContractText(value: unknown, message: string): string {
@@ -179,10 +179,10 @@ function requiredContractText(value: unknown, message: string): string {
 
 function isAuditIssueSource(value: unknown): value is AuditIssueSource {
   return (
-    value === 'SELF_AUDIT' ||
-    value === 'EXPERT_AUDIT' ||
-    value === 'ACCREDITATION_AUDIT' ||
-    value === 'EXTERNAL_INSPECTION'
+    value === 'SELF_AUDIT'
+    || value === 'EXPERT_AUDIT'
+    || value === 'ACCREDITATION_AUDIT'
+    || value === 'EXTERNAL_INSPECTION'
   )
 }
 
@@ -207,10 +207,10 @@ function severityColor(value: unknown): string {
 
 function isAuditSupervisionScope(value: unknown): value is AuditSupervisionScope {
   return (
-    value === 'COURSE' ||
-    value === 'PROGRAM' ||
-    value === 'TRAINING_PLAN' ||
-    value === 'COMPREHENSIVE'
+    value === 'COURSE'
+    || value === 'PROGRAM'
+    || value === 'TRAINING_PLAN'
+    || value === 'COMPREHENSIVE'
   )
 }
 
@@ -351,7 +351,7 @@ const improvementQuery = reactive<ImprovementTaskQueryPayload>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatus; label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: string }> = [
   { value: 'OPEN', label: IMPROVEMENT_TASK_STATUS_LABEL.OPEN },
   { value: 'IN_PROGRESS', label: IMPROVEMENT_TASK_STATUS_LABEL.IN_PROGRESS },
   { value: 'SUBMITTED', label: IMPROVEMENT_TASK_STATUS_LABEL.SUBMITTED },
@@ -412,7 +412,7 @@ async function loadImprovementList() {
   }
 }
 
-function handleImprovementPageChange(payload: { current: number; pageSize: number }) {
+function handleImprovementPageChange(payload: { current: number, pageSize: number }) {
   improvementQuery.pageNum = payload.current
   improvementQuery.pageSize = payload.pageSize
   loadImprovementList()
@@ -469,12 +469,12 @@ function openImprovementEdit(record: ImprovementTaskVO) {
 
 async function submitImprovementEditor() {
   if (
-    !improvementEditor.taskTitle.trim() ||
-    !improvementEditor.problemSummary.trim() ||
-    !improvementEditor.proposedAction.trim() ||
-    !improvementEditor.programId ||
-    !improvementEditor.ownerUserId ||
-    !improvementEditor.dueDate
+    !improvementEditor.taskTitle.trim()
+    || !improvementEditor.problemSummary.trim()
+    || !improvementEditor.proposedAction.trim()
+    || !improvementEditor.programId
+    || !improvementEditor.ownerUserId
+    || !improvementEditor.dueDate
   ) {
     message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
     return
@@ -543,7 +543,7 @@ async function handleImprovementTransit(record: ImprovementTaskVO, to: Improveme
     return
   }
   const remark = await promptModal({
-    title: `${IMPROVEMENT_TASK_STATUS_LABEL[record.status]} → ${IMPROVEMENT_TASK_STATUS_LABEL[to]}`,
+    title: `${improvementStatusLabel(record.status)} → ${improvementStatusLabel(to)}`,
     placeholder: to === 'SUBMITTED' ? '整改进度说明（建议必填）' : '进度备注（可选）',
     required: false,
     okType: 'primary',
@@ -719,7 +719,7 @@ async function loadIssueList() {
   }
 }
 
-function handleIssuePageChange(payload: { current: number; pageSize: number }) {
+function handleIssuePageChange(payload: { current: number, pageSize: number }) {
   issueQuery.pageNum = payload.current
   issueQuery.pageSize = payload.pageSize
   loadIssueList()
@@ -786,10 +786,10 @@ function openIssueEdit(record: AuditIssueVO) {
 
 async function submitIssueEditor() {
   if (
-    !issueEditor.issueCode.trim() ||
-    !issueEditor.issueTitle.trim() ||
-    !issueEditor.issueSource ||
-    !issueEditor.severity
+    !issueEditor.issueCode.trim()
+    || !issueEditor.issueTitle.trim()
+    || !issueEditor.issueSource
+    || !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -918,7 +918,15 @@ async function loadRectList() {
   }
 }
 
-function handleRectPageChange(payload: { current: number; pageSize: number }) {
+function rectIssueCode(value: unknown): string {
+  if (value == null || value === '') return '-'
+  if (typeof value !== 'string') {
+    throw new TypeError(`整改任务关联问题 ID 不符合前后端契约：${String(value)}`)
+  }
+  return rectIssuesCache.value.get(value)?.issueCode ?? '未匹配审核问题'
+}
+
+function handleRectPageChange(payload: { current: number, pageSize: number }) {
   rectQuery.pageNum = payload.current
   rectQuery.pageSize = payload.pageSize
   loadRectList()
@@ -965,11 +973,11 @@ function openRectEdit(record: AuditRectificationVO) {
 
 async function submitRectEditor() {
   if (
-    !rectEditor.auditIssueId ||
-    !rectEditor.rectificationCode.trim() ||
-    !rectEditor.rectificationTitle.trim() ||
-    !rectEditor.ownerUserId ||
-    !rectEditor.dueDate
+    !rectEditor.auditIssueId
+    || !rectEditor.rectificationCode.trim()
+    || !rectEditor.rectificationTitle.trim()
+    || !rectEditor.ownerUserId
+    || !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -1089,7 +1097,7 @@ const supQuery = reactive<AuditSupervisionQueryPayload>({
   keyword: '',
 })
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionType; label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string }> = [
   { value: 'DAILY', label: AUDIT_SUPERVISION_TYPE_LABEL.DAILY },
   { value: 'SPECIAL', label: AUDIT_SUPERVISION_TYPE_LABEL.SPECIAL },
   { value: 'PRE_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.PRE_AUDIT },
@@ -1164,7 +1172,7 @@ async function loadSupList() {
   }
 }
 
-function handleSupPageChange(payload: { current: number; pageSize: number }) {
+function handleSupPageChange(payload: { current: number, pageSize: number }) {
   supQuery.pageNum = payload.current
   supQuery.pageSize = payload.pageSize
   loadSupList()
@@ -1229,9 +1237,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim() ||
-    !supEditor.supervisionTitle.trim() ||
-    !supEditor.supervisionType
+    !supEditor.supervisionCode.trim()
+    || !supEditor.supervisionTitle.trim()
+    || !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return
@@ -1720,9 +1728,7 @@ onMounted(async () => {
               <template v-if="column.key === 'rectTitle'">
                 <div>{{ record.rectificationTitle }}</div>
                 <div v-if="record.auditIssueId" class="iwb__sub-desc">
-                  关联问题：{{
-                    rectIssuesCache.get(record.auditIssueId)?.issueCode || record.auditIssueId
-                  }}
+                  关联问题：{{ rectIssueCode(record.auditIssueId) }}
                 </div>
               </template>
               <template v-else-if="column.key === 'status'">

@@ -80,7 +80,7 @@
       <a-result
         status="error"
         title="AI 文档解析失败"
-        :sub-title="failureReason || '请重试或联系管理员。'"
+        :sub-title="failureReason"
       />
       <div class="ird__action-row">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 重新上传 </UiButton>
@@ -146,11 +146,13 @@ const isPolling = computed(() => phase.value === 'processing')
 
 const statusLabel = computed(() => {
   const s = currentTaskStatus.value
-  return isAiTaskStatus(s) ? AI_TASK_STATUS_LABEL[s] : s
+  if (isAiTaskStatus(s)) return AI_TASK_STATUS_LABEL[s]
+  throw new Error(`AI 任务状态存在未定义枚举值：${s}`)
 })
 const statusColor = computed(() => {
   const s = currentTaskStatus.value
-  return isAiTaskStatus(s) ? AI_TASK_STATUS_COLOR[s] : 'default'
+  if (isAiTaskStatus(s)) return AI_TASK_STATUS_COLOR[s]
+  throw new Error(`AI 任务状态存在未定义枚举值：${s}`)
 })
 
 watch(
@@ -215,9 +217,7 @@ async function pollTaskStatus() {
   try {
     const task = await aiTaskApi.detail(currentTaskId.value)
     pollFailureCount.value = 0
-    if (isAiTaskStatus(task.status)) {
-      currentTaskStatus.value = task.status
-    }
+    currentTaskStatus.value = task.status
 
     if (task.status === 'SUCCEEDED') {
       stopPolling()
@@ -225,7 +225,7 @@ async function pollTaskStatus() {
       message.success('AI 文档解析完成，答卷草稿已写入')
     } else if (task.status === 'FAILED') {
       stopPolling()
-      failureReason.value = task.failureReason || '未知错误，请联系管理员。'
+      failureReason.value = task.failureReason!
       phase.value = 'failed'
     } else if (task.status === 'CANCELLED') {
       stopPolling()

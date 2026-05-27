@@ -47,7 +47,7 @@
       class="progress-page__empty"
     />
 
-    <template v-else>
+    <template v-else-if="progress">
       <a-row :gutter="16" class="overview-row">
         <a-col :xs="24" :md="8">
           <UiCard class="overview-card">
@@ -66,22 +66,20 @@
                 <div>
                   <span class="meta-label">已确认 / 应批阅：</span>
                   <a-typography-text strong>
-                    {{ progress?.confirmedQuestionGradeCount ?? 0 }} /
-                    {{ progress?.totalQuestionGradeCount ?? 0 }}
+                    {{ loadedProgress.confirmedQuestionGradeCount }} /
+                    {{ loadedProgress.totalQuestionGradeCount }}
                   </a-typography-text>
                 </div>
                 <div>
-                  <span class="meta-label">题目模板：</span>{{ progress?.questionCount ?? 0 }} 道
+                  <span class="meta-label">题目模板：</span>{{ loadedProgress.questionCount }} 道
                 </div>
                 <div>
-                  <span class="meta-label">已扫描试卷：</span>{{ progress?.paperCount ?? 0 }} 份
+                  <span class="meta-label">已扫描试卷：</span>{{ loadedProgress.paperCount }} 份
                 </div>
                 <div>
                   <span class="meta-label">可阅卷试卷：</span>
                   <a-typography-text strong>
-                    {{
-                      progress?.gradablePaperCount ?? 0
-                    }}
+                    {{ loadedProgress.gradablePaperCount }}
                   </a-typography-text>
                   <span class="meta-hint">（已绑定身份，完成率分母真源）</span>
                 </div>
@@ -115,20 +113,20 @@
               <a-col :xs="12" :md="8">
                 <a-statistic
                   title="扫描异常待办"
-                  :value="progress?.scanAttentionCount ?? 0"
+                  :value="loadedProgress.scanAttentionCount"
                   suffix="条"
                   :value-style="{
-                    color: (progress?.scanAttentionCount ?? 0) > 0 ? '#dc2626' : undefined,
+                    color: loadedProgress.scanAttentionCount > 0 ? '#dc2626' : undefined,
                   }"
                 />
               </a-col>
               <a-col :xs="12" :md="8">
                 <a-statistic
                   title="处理中未闭合任务"
-                  :value="progress?.openProcessingTaskCount ?? 0"
+                  :value="loadedProgress.openProcessingTaskCount"
                   suffix="项"
                   :value-style="{
-                    color: (progress?.openProcessingTaskCount ?? 0) > 0 ? '#ea580c' : undefined,
+                    color: loadedProgress.openProcessingTaskCount > 0 ? '#ea580c' : undefined,
                   }"
                 />
               </a-col>
@@ -160,7 +158,7 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'questionNo'">
-              <UiTag tone="blue" size="sm">{{ record.questionNo || '-' }}</UiTag>
+              <UiTag tone="blue" size="sm">{{ record.questionNo }}</UiTag>
             </template>
             <template v-else-if="column.key === 'progress'">
               <a-progress
@@ -197,19 +195,27 @@
         </UiDataTable>
       </UiCard>
     </template>
+    <a-spin v-else :spinning="loading" tip="正在加载复核进度...">
+      <UiEmpty description="正在加载复核进度" class="progress-page__empty" />
+    </a-spin>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { MarkingProgressVO, ReviewTaskItemVO } from '@/apis/mark/exam'
+import type { MarkingProgressVO, ReviewTaskItemVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
-import { getMarkingProgress, listReviewTasks } from '@/apis/mark/exam'
+import {
+  getMarkingProgress,
+  listReviewTasks,
+  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -223,23 +229,6 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 
 defineOptions({ name: 'TeacherReviewProgress' })
-
-type ReviewTaskStatusCode = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED'
-type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
-
-const STATUS_LABEL: Record<ReviewTaskStatusCode, string> = {
-  PENDING: '待领取',
-  IN_PROGRESS: '复核中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-}
-
-const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
-  PENDING: 'orange',
-  IN_PROGRESS: 'blue',
-  APPROVED: 'green',
-  REJECTED: 'red',
-}
 
 const {
   examOptions,
@@ -258,6 +247,13 @@ const loading = ref(false)
 // D-9 错误态：复核进度加载失败时 UiErrorRetryPanel 重试 + 上报
 const progressLoadError = ref<unknown>(null)
 
+const loadedProgress = computed(() => {
+  if (!progress.value) {
+    throw new Error('复核进度尚未加载')
+  }
+  return progress.value
+})
+
 /** 题目维度聚合行 */
 interface QuestionRow {
   questionTemplateId: string
@@ -270,8 +266,9 @@ interface QuestionRow {
 }
 
 const confirmedPercent = computed(() => {
-  const total = progress.value?.totalQuestionGradeCount ?? 0
-  const confirmed = progress.value?.confirmedQuestionGradeCount ?? 0
+  if (!progress.value) return 0
+  const total = progress.value.totalQuestionGradeCount
+  const confirmed = progress.value.confirmedQuestionGradeCount
   if (total <= 0) return 0
   return Math.min(100, Math.round((confirmed * 100) / total))
 })
@@ -286,16 +283,7 @@ const statusBreakdown = computed(() => {
     REJECTED: 0,
   }
   tasks.value.forEach((task) => {
-    // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄，零 as。
-    const status = task.status
-    if (
-      status === 'PENDING'
-      || status === 'IN_PROGRESS'
-      || status === 'APPROVED'
-      || status === 'REJECTED'
-    ) {
-      counter[status]++
-    }
+    counter[task.status]++
   })
   // 显式列出全部枚举值，避免 Object.keys + as 推断。
   const codes: ReviewTaskStatusCode[] = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED']
@@ -310,11 +298,11 @@ const statusBreakdown = computed(() => {
 const questionRows = computed<QuestionRow[]>(() => {
   const map = new Map<string, QuestionRow>()
   tasks.value.forEach((task) => {
-    const id = task.questionTemplateId || '__unknown__'
+    const id = task.questionTemplateId
     if (!map.has(id)) {
       map.set(id, {
         questionTemplateId: id,
-        questionNo: task.questionNo || '-',
+        questionNo: task.questionNo,
         total: 0,
         pending: 0,
         inProgress: 0,

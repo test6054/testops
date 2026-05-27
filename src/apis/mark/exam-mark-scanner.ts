@@ -232,11 +232,17 @@ export interface ExamPaperBatchBindPayload {
 }
 
 /** 试卷身份批量绑定单项结果 - 对应 ExamPaperBatchBindItemResponse */
-export interface ExamPaperBatchBindItemResultVO {
+export type ExamPaperBatchBindItemResultVO
+  = | {
+    paperInstanceId: string
+    success: true
+    errorMessage?: undefined
+  }
+  | {
   paperInstanceId: string
-  success: boolean
-  errorMessage?: string
-}
+    success: false
+    errorMessage: string
+  }
 
 /** 试卷身份批量绑定结果 - 对应 ExamPaperBatchBindResponse */
 export interface ExamPaperBatchBindResultVO {
@@ -250,9 +256,9 @@ export interface ExamPaperBatchBindResultVO {
  * POST /api/mark/exams/scan-devices/list
  */
 export function listScannerDevices(
-  payload?: ExamScannerDeviceQueryPayload,
+  payload: ExamScannerDeviceQueryPayload,
 ): Promise<ExamScannerDeviceVO[]> {
-  return http.post<unknown>('/api/mark/exams/scan-devices/list', payload ?? {})
+  return http.post<unknown>('/api/mark/exams/scan-devices/list', payload)
     .then(validateScannerDeviceList)
 }
 
@@ -599,7 +605,7 @@ export interface MarkExamSummaryVO {
   academicYear?: string
   semester?: string
   status: ExamStatusCode
-  statusMessage?: string
+  statusMessage: string
   examStartTime?: string
   examEndTime?: string
   createTime?: string
@@ -643,10 +649,18 @@ function validateBatchBindItemResult(value: unknown): ExamPaperBatchBindItemResu
     throw new TypeError('批量绑定单项结果接口返回格式错误')
   }
   const result = value as Record<string, unknown>
+  const success = requireBoolean(result.success, '绑定结果')
+  const paperInstanceId = requireString(result.paperInstanceId, '试卷实例 ID')
+  if (!success) {
+    return {
+      paperInstanceId,
+      success,
+      errorMessage: requireString(result.errorMessage, '失败原因'),
+    }
+  }
   return {
-    paperInstanceId: requireString(result.paperInstanceId, '试卷实例 ID'),
-    success: requireBoolean(result.success, '绑定结果'),
-    errorMessage: optionalString(result.errorMessage, '失败原因'),
+    paperInstanceId,
+    success,
   }
 }
 
@@ -678,7 +692,7 @@ function validateMarkExamSummary(value: unknown): MarkExamSummaryVO {
     academicYear: optionalString(result.academicYear, '学年'),
     semester: optionalString(result.semester, '学期'),
     status: requireExamStatus(result.status, '考试状态'),
-    statusMessage: optionalString(result.statusMessage, '考试状态文案'),
+    statusMessage: requireString(result.statusMessage, '考试状态文案'),
     examStartTime: optionalString(result.examStartTime, '考试开始时间'),
     examEndTime: optionalString(result.examEndTime, '考试结束时间'),
     createTime: optionalString(result.createTime, '创建时间'),

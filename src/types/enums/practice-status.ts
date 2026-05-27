@@ -51,6 +51,6 @@ export const PRACTICE_STATUS_CONFIG: Record<PracticeStatusEnum, PracticeStatusIt
 }
 
 /** 获取实训状态标签 */
-export function getPracticeStatusLabel(status: PracticeStatusEnum | string): string {
-  return PRACTICE_STATUS_CONFIG[status as PracticeStatusEnum]?.description || status
+export function getPracticeStatusLabel(status: PracticeStatusEnum): string {
+  return PRACTICE_STATUS_CONFIG[status].description
 }

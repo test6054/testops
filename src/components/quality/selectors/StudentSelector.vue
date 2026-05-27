@@ -9,6 +9,7 @@ import type { UserDto } from '@/types/api-types.d'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { getStudentsByClass } from '@/apis/edu/class'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -71,13 +72,17 @@ async function loadOptions(keyword?: string) {
       keyword: keyword ?? searchText.value ?? undefined,
       classId: props.classId,
     })
-    options.value = res.list ?? []
+    options.value = requirePageList(res, '学生')
   } catch (e) {
     console.error('[StudentSelector] 加载学生列表失败', e)
     message.error('加载学生列表失败')
   } finally {
     loading.value = false
   }
+}
+
+function studentDisplayName(opt: UserDto): string {
+  return opt.nickName
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -119,9 +124,9 @@ defineExpose({ reload: loadOptions })
       v-for="opt in options"
       :key="opt.id"
       :value="String(opt.id)"
-      :label="opt.nickName || opt.userName"
+      :label="studentDisplayName(opt)"
     >
-      {{ opt.nickName || opt.userName }}
+      {{ studentDisplayName(opt) }}
       <span v-if="opt.studentNumber" class="text-gray-400 ml-1 font-mono text-xs">({{ opt.studentNumber }})</span>
     </a-select-option>
   </a-select>

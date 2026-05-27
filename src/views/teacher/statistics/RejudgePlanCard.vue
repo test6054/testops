@@ -45,13 +45,13 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'approvedTime'">
-          {{ fmt(rows[index].approvedTime) }}
+          {{ formatDateTime(rows[index].approvedTime) }}
         </template>
         <template v-else-if="column.key === 'executedTime'">
-          {{ fmt(rows[index].executedTime) }}
+          {{ formatDateTime(rows[index].executedTime) }}
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{ fmt(rows[index].createTime) }}
+          {{ formatDateTime(rows[index].createTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-space>
@@ -79,20 +79,15 @@
             >
               驳回
             </a-button>
-            <a-popconfirm
-              title="确认执行重判？执行后会重算受影响题目成绩与考试统计。"
+            <a-button
+              type="link"
+              size="small"
               :disabled="rows[index].planStatus !== 'APPROVED'"
-              @confirm="handleExecute(rows[index].id)"
+              :loading="operatingId === rows[index].id && operatingAction === 'execute'"
+              @click="openExecuteModal(rows[index].id)"
             >
-              <a-button
-                type="link"
-                size="small"
-                :disabled="rows[index].planStatus !== 'APPROVED'"
-                :loading="operatingId === rows[index].id && operatingAction === 'execute'"
-              >
-                执行
-              </a-button>
-            </a-popconfirm>
+              执行
+            </a-button>
           </a-space>
         </template>
       </template>
@@ -113,6 +108,28 @@
         placeholder="请输入驳回原因"
       />
     </a-modal>
+    <a-modal
+      v-model:open="executeModalOpen"
+      title="执行重判计划"
+      ok-text="确认执行"
+      cancel-text="取消"
+      :confirm-loading="operatingAction === 'execute'"
+      @ok="handleExecute"
+    >
+      <a-alert
+        type="warning"
+        show-icon
+        message="执行后会重算受影响题目的成绩与考试统计，此操作不可撤销。"
+        style="margin-bottom: 12px"
+      />
+      <a-textarea
+        v-model:value="executeReason"
+        :maxlength="500"
+        :rows="4"
+        show-count
+        placeholder="请输入执行原因（不少于 5 字，将写入重判计划审计记录）"
+      />
+    </a-modal>
   </a-card>
 </template>
 
@@ -126,7 +143,6 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { ref, watch } from 'vue'
 import {
   approveRejudgePlan,
@@ -137,6 +153,8 @@ import {
   REJUDGE_TRIGGER_TYPE_LABEL,
 } from '@/apis/mark/question-analysis'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'RejudgePlanCard' })
 
@@ -152,6 +170,10 @@ const operatingAction = ref<'approve' | 'reject' | 'execute' | ''>('')
 const rejectModalOpen = ref(false)
 const rejectPlanId = ref<string>('')
 const rejectReason = ref('')
+// 执行重判弹窗状态：executeReason 作为重判审计上下文必须由人工输入，不允许前端硬编码
+const executeModalOpen = ref(false)
+const executePlanId = ref<string>('')
+const executeReason = ref('')
 
 // 从后端枚举 LABEL 对象直接派生 select options。
 const statusOptions = Object.entries(REJUDGE_PLAN_STATUS_LABEL).map(([value, label]) => ({
@@ -238,38 +260,48 @@ async function handleReject(): Promise<void> {
   }
 }
 
-async function handleExecute(planId: string): Promise<void> {
+function openExecuteModal(planId: string): void {
+  executePlanId.value = planId
+  executeReason.value = ''
+  executeModalOpen.value = true
+}
+
+async function handleExecute(): Promise<void> {
+  const reason = executeReason.value.trim()
+  if (reason.length < 5) {
+    message.warning('请输入不少于 5 字的执行原因')
+    return
+  }
+  const planId = executePlanId.value
+  if (!planId) return
   operatingId.value = planId
   operatingAction.value = 'execute'
   try {
-    await executeRejudgePlan({ planId, executeReason: '阅卷中心执行标准答案重判计划' })
+    await executeRejudgePlan({ planId, executeReason: reason })
     message.success('重判执行完成')
+    executeModalOpen.value = false
     await reload()
   } catch (e) {
     message.error(e instanceof Error ? e.message : '执行失败')
   } finally {
     operatingId.value = ''
     operatingAction.value = ''
+    executePlanId.value = ''
   }
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 // 严格 typed helper：rows[index] 是 ExamRejudgePlanVO，model 映射需以合法 union 类型索引。
 function triggerTypeLabel(code?: RejudgeTriggerTypeCode): string {
-  if (!code) return '-'
-  return REJUDGE_TRIGGER_TYPE_LABEL[code] ?? code
+  return strictEnumLabel(REJUDGE_TRIGGER_TYPE_LABEL, code, '重判触发类型')
 }
 
 function planStatusColor(code?: RejudgePlanStatusCode): BadgeTone {
-  return REJUDGE_PLAN_STATUS_COLOR[code ?? 'DRAFT']
+  return strictEnumTone(REJUDGE_PLAN_STATUS_COLOR, code, '重判计划状态')
 }
 
 function planStatusLabel(code?: RejudgePlanStatusCode): string {
-  return REJUDGE_PLAN_STATUS_LABEL[code ?? 'DRAFT']
+  return strictEnumLabel(REJUDGE_PLAN_STATUS_LABEL, code, '重判计划状态')
 }
 
 watch(

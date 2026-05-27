@@ -219,15 +219,7 @@ service.interceptors.response.use(
 
     // 处理304 Not Modified状态码
     if (response.status === 304) {
-      return {
-        ...response,
-        data: {
-          success: true,
-          code: config.successCode,
-          msg: '请求成功',
-          data: response.data || null
-        } as ResultInfo
-      }
+      return Promise.reject(new Error('后端返回 304，不符合 ResultInfo 响应合同'))
     }
 
     // 如果是blob响应（文件下载），直接返回，不进行JSON解析
@@ -237,30 +229,14 @@ service.interceptors.response.use(
 
     // 处理空响应体的情况（如logout返回204或200但无内容）
     if (!response.data || (response.data as unknown) === '' || typeof response.data !== 'object') {
-      return {
-        ...response,
-        data: {
-          success: true,
-          code: config.successCode,
-          msg: '操作成功',
-          data: null
-        } as ResultInfo
-      }
+      return Promise.reject(new Error('后端响应体缺失，不符合 ResultInfo 响应合同'))
     }
 
     // 特殊处理：退出登录接口 (logout)
     const isLogoutRequest = response.config?.url?.includes('/logout')
     if (isLogoutRequest && response.status === 200) {
       if (!response.data.code || response.data.code !== config.successCode) {
-        return {
-          ...response,
-          data: {
-            success: true,
-            code: config.successCode,
-            msg: '退出成功',
-            data: null
-          } as ResultInfo
-        }
+        return Promise.reject(new Error('退出登录接口响应码不符合 ResultInfo 成功合同'))
       }
     }
 

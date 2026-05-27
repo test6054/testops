@@ -12,7 +12,9 @@ import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
   auditRectificationApi,
+  isAuditRectificationStatus,
 } from '@/apis/quality'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -63,13 +65,23 @@ async function loadOptions() {
       ownerUserId: props.ownerUserId || undefined,
       status: props.status,
     })
-    options.value = res.list || []
+    options.value = requirePageList(res, '审核评估整改任务')
   } catch (e) {
     console.error('[AuditRectificationSelector] 加载整改任务列表失败', e)
     message.error('加载整改任务列表失败')
   } finally {
     loading.value = false
   }
+}
+
+function auditRectificationStatusLabel(value: unknown): string {
+  if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_LABEL[value]
+  throw new Error(`审核评估整改任务状态不符合前后端契约：${String(value)}`)
+}
+
+function auditRectificationStatusColor(value: unknown): string {
+  if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_COLOR[value]
+  throw new Error(`审核评估整改任务状态不符合前后端契约：${String(value)}`)
 }
 
 function handleChange(val: SelectValue) {
@@ -107,8 +119,8 @@ defineExpose({ reload: loadOptions })
     >
       <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.rectificationCode }}</span>
       {{ opt.rectificationTitle }}
-      <a-tag :color="AUDIT_RECTIFICATION_STATUS_COLOR[opt.status]" class="ml-1">
-        {{ AUDIT_RECTIFICATION_STATUS_LABEL[opt.status] || opt.status }}
+      <a-tag :color="auditRectificationStatusColor(opt.status)" class="ml-1">
+        {{ auditRectificationStatusLabel(opt.status) }}
       </a-tag>
     </a-select-option>
   </a-select>

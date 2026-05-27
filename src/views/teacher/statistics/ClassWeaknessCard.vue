@@ -2,19 +2,25 @@
   <a-card title="AI 班级薄弱题型分析" :bordered="false" size="small">
     <template #extra>
       <a-space>
-        <a-input
-          v-model:value="classIdInput"
-          placeholder="请输入班级ID"
-          style="width: 180px"
+        <a-select
+          v-model:value="selectedClassId"
+          placeholder="选择班级"
+          style="width: 240px"
+          show-search
+          option-filter-prop="label"
           allow-clear
+          :options="props.classOptions"
+          :loading="props.rosterLoading"
+          :disabled="!props.examId"
+          :not-found-content="props.rosterLoading ? '加载中…' : '该考试未关联班级'"
         />
-        <a-button :loading="loading" :disabled="!classIdInput" @click="reload">
+        <a-button :loading="loading" :disabled="!selectedClassId" @click="reload">
           <template #icon><ReloadOutlined /></template>查看最新
         </a-button>
         <a-button
           type="primary"
           :loading="generating"
-          :disabled="!classIdInput"
+          :disabled="!selectedClassId"
           @click="handleGenerate"
         >
           重新生成
@@ -36,12 +42,12 @@
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
+            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+              {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="班级ID">{{ record.scopeId ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{ fmt(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">{{ formatDateTime(record.createTime) }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="2">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -87,21 +93,30 @@
 
 <script lang="ts" setup>
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import {
-  AI_ANALYSIS_STATUS_COLOR,
-  AI_ANALYSIS_STATUS_LABEL,
+  aiAnalysisStatusColor,
+  aiAnalysisStatusLabel,
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictJsonArray } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ClassWeaknessCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{
+  examId: string
+  reloadToken: number
+  /** 考试关联班级选项，由父级 useMarkExamRoster 从考生名册派生 */
+  classOptions: MarkClassOption[]
+  /** 考生名册加载状态，控制下拉框的 loading 提示 */
+  rosterLoading: boolean
+}>()
 
 /**
  * B-12 联动：本卡每次成功查询/生成后，把当前 classId 上抛给父级 statistics.vue，
@@ -114,21 +129,16 @@ const loading = ref(false)
 // D-9 错误态：AI 班级薄弱题型加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<unknown>(null)
 const generating = ref(false)
-const classIdInput = ref('')
+// 选中的班级 ID（来自下拉选择器，避免教师手输）
+const selectedClassId = ref<string | undefined>(undefined)
 const hasQueried = ref(false)
 
 const parsedItems = computed(() => {
-  if (!record.value?.improvementItems) return []
-  try {
-    const parsed = JSON.parse(record.value.improvementItems)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return strictJsonArray(record.value?.improvementItems, 'AI 班级薄弱题型条目')
 })
 
 async function reload(): Promise<void> {
-  const classId = classIdInput.value.trim()
+  const classId = selectedClassId.value
   if (!props.examId || !classId) return
   hasQueried.value = true
   loadError.value = null
@@ -147,9 +157,9 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  const classId = classIdInput.value.trim()
+  const classId = selectedClassId.value
   if (!classId) {
-    message.warning('请输入班级ID')
+    message.warning('请先选择班级')
     return
   }
   hasQueried.value = true
@@ -165,10 +175,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 function formatItem(item: unknown): string {
   if (typeof item === 'string') return item
@@ -181,6 +187,19 @@ watch(
     // 切换考试或外部刷新时清空当前结果，等待用户重新指定班级
     hasQueried.value = false
     record.value = null
+    selectedClassId.value = undefined
+  },
+)
+
+watch(
+  () => props.classOptions,
+  (next) => {
+    // 考试名册变化后，如果当前选中的班级不再在范围内，需重置选择以保证业务一致性
+    if (selectedClassId.value && !next.some((opt) => opt.value === selectedClassId.value)) {
+      selectedClassId.value = undefined
+      hasQueried.value = false
+      record.value = null
+    }
   },
 )
 </script>

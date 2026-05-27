@@ -10,10 +10,12 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - 结果 updateValidation 可调 PASSED / WARN / REJECTED
  */
 import type {
+  AiManualHandlingStatus,
   AiOutputValidation,
   AiPromptSnapshotVO,
   AiResultVO,
   AiTaskBusinessType,
+  AiTaskManualHandlePayload,
   AiTaskQueryPayload,
   AiTaskStatus,
   AiTaskSubmitPayload,
@@ -32,6 +34,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
+  AI_MANUAL_HANDLING_STATUS_LABEL,
   AI_OUTPUT_VALIDATION_COLOR,
   AI_OUTPUT_VALIDATION_LABEL,
   AI_TASK_BUSINESS_TYPE_LABEL,
@@ -41,6 +44,7 @@ import {
   aiPromptSnapshotApi,
   aiResultApi,
   aiTaskApi,
+  isAiManualHandlingStatus,
   isAiOutputValidation,
   isAiTaskBusinessType,
   isAiTaskStatus,
@@ -63,6 +67,7 @@ import {
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
+import { strictAuditChangeDetails } from '@/utils/strict-enum'
 
 const aiTaskStore = useAiTaskStore()
 
@@ -97,6 +102,12 @@ function validationColor(value: unknown): string {
   if (isAiOutputValidation(value)) return AI_OUTPUT_VALIDATION_COLOR[value]
   if (value === null || value === undefined || value === '') return 'default'
   throw new Error('AI 输出校验状态不符合前后端契约')
+}
+
+function manualHandlingStatusLabel(value: unknown): string {
+  if (isAiManualHandlingStatus(value)) return AI_MANUAL_HANDLING_STATUS_LABEL[value]
+  if (value === null || value === undefined || value === '') return '-'
+  throw new Error('AI 人工处置状态不符合前后端契约')
 }
 
 const qualityStore = useQualityStore()
@@ -142,12 +153,19 @@ const detailRecord = ref<AiTaskVO | null>(null)
 const detailResult = ref<AiResultVO | null>(null)
 const promptSnapshot = ref<AiPromptSnapshotVO | null>(null)
 const validationUpdating = ref(false)
+const manualHandleVisible = ref(false)
+const manualHandleSubmitting = ref(false)
+const manualHandleForm = reactive<AiTaskManualHandlePayload>({
+  id: '',
+  manualHandlingStatus: 'PENDING',
+  manualHandlingRemark: '',
+})
 
 const auditDrawerOpen = ref(false)
 const auditEvents = ref<AuditTimelineEvent[]>([])
 const auditLoading = ref(false)
 
-const taskTypeOptions: Array<{ value: AiTaskType; label: string }> = [
+const taskTypeOptions: Array<{ value: AiTaskType, label: string }> = [
   { value: 'SYLLABUS_PARSE', label: AI_TASK_TYPE_LABEL.SYLLABUS_PARSE },
   { value: 'TRAINING_PLAN_PARSE', label: AI_TASK_TYPE_LABEL.TRAINING_PLAN_PARSE },
   { value: 'ACHIEVEMENT_DIAGNOSIS', label: AI_TASK_TYPE_LABEL.ACHIEVEMENT_DIAGNOSIS },
@@ -163,24 +181,31 @@ const taskTypeOptions: Array<{ value: AiTaskType; label: string }> = [
     label: AI_TASK_TYPE_LABEL.INDIRECT_RESPONSE_DOC_PARSE,
   },
 ]
-const statusOptions: Array<{ value: AiTaskStatus; label: string }> = [
+const statusOptions: Array<{ value: AiTaskStatus, label: string }> = [
   { value: 'PENDING', label: AI_TASK_STATUS_LABEL.PENDING },
   { value: 'PROCESSING', label: AI_TASK_STATUS_LABEL.PROCESSING },
   { value: 'SUCCEEDED', label: AI_TASK_STATUS_LABEL.SUCCEEDED },
   { value: 'FAILED', label: AI_TASK_STATUS_LABEL.FAILED },
   { value: 'CANCELLED', label: AI_TASK_STATUS_LABEL.CANCELLED },
 ]
-const businessTypeOptions: { value: AiTaskBusinessType; label: string }[] = [
+const businessTypeOptions: { value: AiTaskBusinessType, label: string }[] = [
   { value: 'ACHIEVEMENT_RESULT', label: AI_TASK_BUSINESS_TYPE_LABEL.ACHIEVEMENT_RESULT },
   { value: 'QUALITY_COURSE', label: AI_TASK_BUSINESS_TYPE_LABEL.QUALITY_COURSE },
   { value: 'TRAINING_PLAN', label: AI_TASK_BUSINESS_TYPE_LABEL.TRAINING_PLAN },
   { value: 'REPORT', label: AI_TASK_BUSINESS_TYPE_LABEL.REPORT },
   { value: 'INDIRECT_FORM', label: AI_TASK_BUSINESS_TYPE_LABEL.INDIRECT_FORM },
 ]
-const validationOptions: { value: AiOutputValidation; label: string; color: string }[] = [
+const validationOptions: { value: AiOutputValidation, label: string, color: string }[] = [
   { value: 'PASSED', label: '通过（接受）', color: 'green' },
   { value: 'WARN', label: '警告（需人工审核）', color: 'orange' },
   { value: 'REJECTED', label: '退回（拒绝）', color: 'red' },
+]
+const manualHandlingOptions: { value: AiManualHandlingStatus, label: string }[] = [
+  { value: 'NONE', label: AI_MANUAL_HANDLING_STATUS_LABEL.NONE },
+  { value: 'PENDING', label: AI_MANUAL_HANDLING_STATUS_LABEL.PENDING },
+  { value: 'IN_PROGRESS', label: AI_MANUAL_HANDLING_STATUS_LABEL.IN_PROGRESS },
+  { value: 'RESOLVED', label: AI_MANUAL_HANDLING_STATUS_LABEL.RESOLVED },
+  { value: 'IGNORED', label: AI_MANUAL_HANDLING_STATUS_LABEL.IGNORED },
 ]
 
 const submitDisabled = computed(() => !submitForm.taskType)
@@ -209,7 +234,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -311,7 +336,7 @@ async function submitTask() {
 async function runNow(record: AiTaskVO) {
   void confirmAsync({
     title: `立即同步执行任务 ${record.id}？`,
-    content: '仅 PENDING 状态可立即执行，常用于演示 / 运维场景。',
+    content: '仅待处理状态可立即执行，常用于演示 / 运维场景。',
     type: 'info',
     onOk: async () => {
       await aiTaskApi.runNow(record.id)
@@ -326,7 +351,7 @@ async function runNow(record: AiTaskVO) {
 async function cancelTask(record: AiTaskVO) {
   void confirmAsync({
     title: `取消任务 ${record.id}？`,
-    content: '只有 PENDING / PROCESSING 状态可取消，已成功或已失败的任务不可取消。',
+    content: '只有待处理或处理中状态可取消，已成功或已失败的任务不可取消。',
     type: 'warning',
     onOk: async () => {
       await aiTaskStore.cancelTask(record.id)
@@ -334,6 +359,38 @@ async function cancelTask(record: AiTaskVO) {
       await loadList()
     },
   })
+}
+
+function openManualHandle(record: AiTaskVO) {
+  if (!isAiManualHandlingStatus(record.manualHandlingStatus)) {
+    throw new Error('AI 人工处置状态不符合前后端契约')
+  }
+  Object.assign(manualHandleForm, {
+    id: record.id,
+    manualHandlingStatus: record.manualHandlingStatus,
+    manualHandlingRemark: record.manualHandlingRemark || '',
+  })
+  manualHandleVisible.value = true
+}
+
+async function submitManualHandle() {
+  if (!manualHandleForm.id) return
+  manualHandleSubmitting.value = true
+  try {
+    await aiTaskApi.manualHandle({
+      id: manualHandleForm.id,
+      manualHandlingStatus: manualHandleForm.manualHandlingStatus,
+      manualHandlingRemark: manualHandleForm.manualHandlingRemark?.trim() || undefined,
+    })
+    message.success('人工处置状态已更新')
+    manualHandleVisible.value = false
+    await loadList()
+    if (detailRecord.value?.id === manualHandleForm.id) {
+      detailRecord.value = await aiTaskApi.detail(manualHandleForm.id)
+    }
+  } finally {
+    manualHandleSubmitting.value = false
+  }
 }
 
 async function openDetail(record: AiTaskVO) {
@@ -383,10 +440,10 @@ watch(
     if (cached.id !== detailRecord.value.id) return
     // 仅在状态变化时赋值，避免不必要的引用改变
     if (
-      cached.status !== detailRecord.value.status ||
-      cached.failurePhase !== detailRecord.value.failurePhase ||
-      cached.failureReason !== detailRecord.value.failureReason ||
-      cached.finishedAt !== detailRecord.value.finishedAt
+      cached.status !== detailRecord.value.status
+      || cached.failurePhase !== detailRecord.value.failurePhase
+      || cached.failureReason !== detailRecord.value.failureReason
+      || cached.finishedAt !== detailRecord.value.finishedAt
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -441,17 +498,20 @@ async function openAuditDrawer(record: AiTaskVO) {
       category: 'QUALITY',
       description: record.id,
     })
-    auditEvents.value = page.list.map((log) => ({
-      id: log.id,
-      operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
-      operationType: log.type,
-      operationLabel: log.detail || log.type,
-      time: log.createTime,
-      targetType: log.module,
-      targetId: log.bizId || undefined,
-      beforeValue: log.changeDetails ? JSON.parse(log.changeDetails)?.before : undefined,
-      afterValue: log.changeDetails ? JSON.parse(log.changeDetails)?.after : undefined,
-    }))
+    auditEvents.value = page.list.map((log) => {
+      const changeDetails = strictAuditChangeDetails(log.changeDetails, 'AI 任务审计变更详情')
+      return {
+        id: log.id,
+        operatorName: log.userDto.nickName,
+        operationType: log.type,
+        operationLabel: log.detail,
+        time: log.createTime,
+        targetType: log.module,
+        targetId: log.bizId || undefined,
+        beforeValue: changeDetails.beforeValue,
+        afterValue: changeDetails.afterValue,
+      }
+    })
   } finally {
     auditLoading.value = false
   }
@@ -463,7 +523,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     .slice(0, 5)
     .map((t) => ({
       id: t.id,
-      title: `${aiTaskTypeLabel(t.taskType)} #${t.id}`,
+      title: `${aiTaskTypeLabel(t.taskType)} · ${aiTaskStatusLabel(t.status)}`,
       statusLabel: aiTaskStatusLabel(t.status),
       statusTone: t.status === 'FAILED' ? 'red' : 'blue',
       description: t.failurePhase ? `失败阶段: ${t.failurePhase}` : undefined,
@@ -475,7 +535,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleTaskResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+function handleTaskResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
   const record = list.value.find((t) => t.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -498,7 +558,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatus; title: string; completed?: boolean }> = [
+  const order: Array<{ key: AiTaskStatus, title: string, completed?: boolean }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PROCESSING', title: '运行中' },
     { key: 'SUCCEEDED', title: '成功', completed: true },
@@ -624,7 +684,7 @@ onMounted(async () => {
             v-model:value="query.trainingPlanId"
             :placeholder="
               qualityStore.currentTrainingPlanId
-                ? `培养方案 #${qualityStore.currentTrainingPlanId}`
+                ? '当前培养方案'
                 : '培养方案 ID'
             "
             class="ai-task__filter ai-task__filter--md"
@@ -677,12 +737,10 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'businessAnchor'">
             <a-space direction="vertical" size="small">
-              <a-tag v-if="record.qualityCourseId"> 课程 #{{ record.qualityCourseId }} </a-tag>
-              <a-tag v-if="record.achievementResultId">
-                达成度 #{{ record.achievementResultId }}
-              </a-tag>
-              <a-tag v-if="record.reportId"> 报告 #{{ record.reportId }} </a-tag>
-              <a-tag v-if="record.trainingPlanId"> 培养方案 #{{ record.trainingPlanId }} </a-tag>
+              <a-tag v-if="record.qualityCourseId">已关联课程</a-tag>
+              <a-tag v-if="record.achievementResultId">已关联达成度结果</a-tag>
+              <a-tag v-if="record.reportId">已关联合规报告</a-tag>
+              <a-tag v-if="record.trainingPlanId">已关联培养方案</a-tag>
             </a-space>
           </template>
           <template v-else-if="column.key === 'failurePhase'">
@@ -711,6 +769,9 @@ onMounted(async () => {
                 @click="cancelTask(record)"
               >
                 取消
+              </UiButton>
+              <UiButton variant="outline" size="sm" @click="openManualHandle(record)">
+                人工处置
               </UiButton>
               <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
             </a-space>
@@ -799,6 +860,36 @@ onMounted(async () => {
       </a-form>
     </UiDrawer>
 
+    <UiDrawer
+      v-model:open="manualHandleVisible"
+      title="人工处置"
+      :width="480"
+      :confirm-loading="manualHandleSubmitting"
+      :hide-footer="false"
+      ok-text="保存"
+      @ok="submitManualHandle"
+    >
+      <a-form layout="vertical" :model="manualHandleForm">
+        <a-form-item label="任务 ID">
+          <a-input :value="manualHandleForm.id" disabled />
+        </a-form-item>
+        <a-form-item label="处置状态" required>
+          <a-select
+            v-model:value="manualHandleForm.manualHandlingStatus"
+            :options="manualHandlingOptions"
+          />
+        </a-form-item>
+        <a-form-item label="处置备注">
+          <a-textarea
+            v-model:value="manualHandleForm.manualHandlingRemark"
+            :rows="4"
+            :maxlength="500"
+            show-count
+          />
+        </a-form-item>
+      </a-form>
+    </UiDrawer>
+
     <UiDrawer v-model:open="detailVisible" title="AI 任务详情" :width="840" :hide-footer="true">
       <UiEmpty v-if="!detailRecord && !detailLoading" description="详情数据未加载" size="sm" />
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
@@ -813,26 +904,26 @@ onMounted(async () => {
             {{ aiTaskStatusLabel(detailRecord.status) }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="操作人 ID">
-          {{ detailRecord.operatorUserId || '-' }}
+        <a-descriptions-item label="操作人">
+          {{ detailRecord.operatorUserId ? '已记录操作人' : '-' }}
         </a-descriptions-item>
-        <a-descriptions-item label="业务类型 / ID">
-          {{ aiTaskBusinessTypeLabel(detailRecord.businessType) }} /
-          {{ detailRecord.businessId || '-' }}
+        <a-descriptions-item label="业务类型">
+          {{ aiTaskBusinessTypeLabel(detailRecord.businessType) }}
+          <span v-if="detailRecord.businessId"> / 已关联业务对象</span>
         </a-descriptions-item>
         <a-descriptions-item label="业务锚点">
           <a-space wrap>
-            <a-tag v-if="detailRecord.programId"> 专业 #{{ detailRecord.programId }} </a-tag>
+            <a-tag v-if="detailRecord.programId">已关联专业</a-tag>
             <a-tag v-if="detailRecord.trainingPlanId">
-              培养方案 #{{ detailRecord.trainingPlanId }}
+              已关联培养方案
             </a-tag>
             <a-tag v-if="detailRecord.qualityCourseId">
-              课程 #{{ detailRecord.qualityCourseId }}
+              已关联课程
             </a-tag>
             <a-tag v-if="detailRecord.achievementResultId">
-              达成度 #{{ detailRecord.achievementResultId }}
+              已关联达成度结果
             </a-tag>
-            <a-tag v-if="detailRecord.reportId"> 报告 #{{ detailRecord.reportId }} </a-tag>
+            <a-tag v-if="detailRecord.reportId">已关联合规报告</a-tag>
           </a-space>
         </a-descriptions-item>
         <a-descriptions-item label="开始 / 结束">
@@ -851,7 +942,7 @@ onMounted(async () => {
           <span v-else>-</span>
         </a-descriptions-item>
         <a-descriptions-item label="运维干预状态 / 备注">
-          {{ detailRecord.manualHandlingStatus || '-' }} /
+          {{ manualHandlingStatusLabel(detailRecord.manualHandlingStatus) }} /
           {{ detailRecord.manualHandlingRemark || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="提示词快照 ID">

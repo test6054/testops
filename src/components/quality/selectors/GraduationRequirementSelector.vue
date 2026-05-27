@@ -9,6 +9,7 @@ import type { GraduationRequirementVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { graduationRequirementApi } from '@/apis/quality'
+import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -68,7 +69,10 @@ async function loadOptions() {
   }
   loading.value = true
   try {
-    options.value = (await graduationRequirementApi.listByPlan(props.trainingPlanId)) || []
+    options.value = requireArrayResult(
+      await graduationRequirementApi.listByPlan(props.trainingPlanId),
+      '毕业要求',
+    )
   } catch (e) {
     console.error('[GraduationRequirementSelector] 加载毕业要求列表失败', e)
     message.error('加载毕业要求列表失败')

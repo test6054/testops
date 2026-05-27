@@ -55,7 +55,7 @@ const { isMobile } = useDevice()
   background: var(--ant-color-bg-container);
   border-bottom: 1px solid var(--ant-color-border-secondary);
 
-  // 🚀 移动端适配
+  // 移动端适配
   @media (max-width: 768px) {
     padding: 0 12px;
     height: 48px;

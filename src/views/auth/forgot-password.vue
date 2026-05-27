@@ -3,7 +3,23 @@
     <template #brand-content>
       <div class="forgot-brand-steps">
         <div v-for="(step, idx) in stepLabels" :key="idx" class="brand-step" :class="{ 'brand-step--active': currentStep === idx, 'brand-step--done': currentStep > idx }">
-          <span class="brand-step__num">{{ currentStep > idx ? '✓' : idx + 1 }}</span>
+          <span class="brand-step__num">
+            <svg
+              v-if="currentStep > idx"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              width="14"
+              height="14"
+              aria-hidden="true"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <template v-else>{{ idx + 1 }}</template>
+          </span>
           <span class="brand-step__label">{{ step }}</span>
         </div>
       </div>
@@ -17,7 +33,23 @@
     <!-- 步骤指示器（右侧面板内紧凑版） -->
     <div class="step-indicators">
       <div v-for="(step, idx) in stepLabels" :key="idx" class="step-dot" :class="{ 'step-dot--active': currentStep === idx, 'step-dot--done': currentStep > idx }">
-        <span class="step-dot__num">{{ currentStep > idx ? '✓' : idx + 1 }}</span>
+        <span class="step-dot__num">
+          <svg
+            v-if="currentStep > idx"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            width="13"
+            height="13"
+            aria-hidden="true"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <template v-else>{{ idx + 1 }}</template>
+        </span>
         <span class="step-dot__label">{{ step }}</span>
       </div>
     </div>

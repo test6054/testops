@@ -96,12 +96,11 @@ const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
 
 // helper 严格 typed 接收后端 API 对象 ExamPaperDuplicateResolutionVO。
 function duplicateStatusColor(row: ExamPaperDuplicateResolutionVO): string {
-  return row.resolutionStatus ? DUPLICATE_RESOLUTION_STATUS_COLOR[row.resolutionStatus] : 'default'
+  return DUPLICATE_RESOLUTION_STATUS_COLOR[row.resolutionStatus]
 }
 
 function duplicateStatusLabel(row: ExamPaperDuplicateResolutionVO): string {
-  if (row.resolutionStatus) return DUPLICATE_RESOLUTION_STATUS_LABEL[row.resolutionStatus]
-  return '-'
+  return DUPLICATE_RESOLUTION_STATUS_LABEL[row.resolutionStatus]
 }
 
 const pendingCount = computed(

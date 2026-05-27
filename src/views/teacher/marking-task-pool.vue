@@ -179,13 +179,13 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'reviewRound'">
-              <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound || 1 }} 轮</UiTag>
+              <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound }} 轮</UiTag>
             </template>
             <template v-else-if="column.key === 'allocatedAt'">
-              {{ formatTime(tasks[index].allocatedAt) }}
+              {{ formatDateTime(tasks[index].allocatedAt) }}
             </template>
             <template v-else-if="column.key === 'submittedAt'">
-              {{ formatTime(tasks[index].submittedAt) }}
+              {{ formatDateTime(tasks[index].submittedAt) }}
             </template>
             <template v-else-if="column.key === 'score'">
               <span v-if="tasks[index].score !== undefined && tasks[index].score !== null">{{
@@ -195,7 +195,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
-                v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus ?? '')"
+                v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus)"
                 size="sm"
                 @click="goDetail(tasks[index])"
               >
@@ -219,13 +219,13 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -246,6 +246,8 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingTaskPool' })
 
@@ -260,7 +262,13 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
-const currentUserId = computed(() => userStore.userInfo.userId || '')
+const currentUserId = computed(() => {
+  const userId = userStore.userInfo.userId
+  if (!userId) {
+    throw new Error('当前登录用户缺少 userId')
+  }
+  return userId
+})
 
 const markTaskStore = useMarkTaskStore()
 const { tasks, tasksLoading: loading, claimContextLoading } = storeToRefs(markTaskStore)
@@ -310,7 +318,7 @@ async function loadTasks(): Promise<void> {
   try {
     const payload: MarkingTaskQueryPayload = {
       examId: selectedExamId.value,
-      reviewerUserId: currentUserId.value || undefined,
+      reviewerUserId: currentUserId.value,
       groupId: filterForm.groupId?.trim() || undefined,
       sessionId: filterForm.sessionId?.trim() || undefined,
       taskStatus: filterForm.taskStatus,
@@ -346,7 +354,7 @@ const claimContext = computed<TeacherClaimContextVO | null>(() =>
 const claimGroupOptions = computed(() =>
   (claimContext.value?.groups ?? []).map((g) => ({
     value: g.groupId,
-    label: g.groupName ? `${g.groupName} (#${g.groupId})` : `题组 #${g.groupId}`,
+    label: `${g.groupName} (#${g.groupId})`,
   })),
 )
 
@@ -355,7 +363,7 @@ const claimSessionOptions = computed(() => {
   const matched = claimContext.value?.groups.find((g) => g.groupId === claimForm.groupId)
   return (matched?.activeSessions ?? []).map((s) => ({
     value: s.id,
-    label: `会话 #${s.id}${s.startTime ? ` · 启动于 ${formatTime(s.startTime)}` : ''}`,
+    label: `会话 #${s.id}${s.startTime ? ` · 启动于 ${formatDateTime(s.startTime)}` : ''}`,
   }))
 })
 
@@ -410,47 +418,19 @@ function goDetail(task: MarkingTaskVO): void {
   })
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
+
+/**
+ * 把 record.taskStatus 渲染成中文标签，未知枚举直接暴露契约错误。
+ */
+function taskStatusLabel(value: MarkingTaskStatusCode): string {
+  return strictEnumLabel(STATUS_LABEL, value, '阅卷任务状态')
 }
 
 /**
- * 把 record.taskStatus（slot 中类型被擦除为 unknown）渲染成中文标签。
- * - 严格对齐后端 MarkingTaskStatus enum：ALLOCATED / IN_PROGRESS / SUBMITTED / FINALIZED / RECYCLED
- * - 通过字面值比较让 TS 自动缩窄类型，避免使用 as 断言
+ * 把 record.taskStatus 渲染成 UiTag 色调，未知枚举直接暴露契约错误。
  */
-function taskStatusLabel(value: unknown): string {
-  if (typeof value !== 'string') return '-'
-  if (
-    value === 'ALLOCATED'
-    || value === 'IN_PROGRESS'
-    || value === 'SUBMITTED'
-    || value === 'FINALIZED'
-    || value === 'RECYCLED'
-  ) {
-    return STATUS_LABEL[value]
-  }
-  return value || '-'
-}
-
-/**
- * 把 record.taskStatus 渲染成 UiTag 色调。
- * - 字面值比较 + 类型缩窄，零 as 断言
- * - 非枚举值或非字符串统一回退到 gray
- */
-function taskStatusTone(value: unknown): 'gray' | 'blue' | 'orange' | 'green' | 'red' {
-  if (typeof value !== 'string') return 'gray'
-  if (
-    value === 'ALLOCATED'
-    || value === 'IN_PROGRESS'
-    || value === 'SUBMITTED'
-    || value === 'FINALIZED'
-    || value === 'RECYCLED'
-  ) {
-    return STATUS_TONE[value]
-  }
-  return 'gray'
+function taskStatusTone(value: MarkingTaskStatusCode): BadgeTone {
+  return strictEnumTone(STATUS_TONE, value, '阅卷任务状态')
 }
 
 watch(selectedExamId, () => {

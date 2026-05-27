@@ -92,8 +92,8 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
         aiTaskApi.page({ pageNum: 1, pageSize: topN, status: 'PROCESSING' }),
       ])
       aiTasksInFlight.value = [
-        ...(processingPage.list ?? []),
-        ...(pendingPage.list ?? []),
+        ...processingPage.list,
+        ...pendingPage.list,
       ]
       return aiTasksInFlight.value
     }
@@ -117,7 +117,7 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
         trainingPlanId: scope.trainingPlanId,
         qualityCourseId: scope.qualityCourseId,
       })
-      const list = result.list ?? []
+      const list = result.list
       reportExportsInFlight.value = list.filter(
         (r) => r.exportStatus === 'PENDING' || r.exportStatus === 'PROCESSING' || r.exportStatus === 'FAILED',
       )
@@ -142,7 +142,7 @@ export const useQualityTaskStore = defineStore('qualityTask', () => {
         trainingPlanId: scope.trainingPlanId,
         qualityCourseId: scope.qualityCourseId,
       })
-      const list = result.list ?? []
+      const list = result.list
       improvementTasksOpen.value = list.filter((t) => t.status !== 'CLOSED')
       return improvementTasksOpen.value
     }

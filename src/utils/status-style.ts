@@ -57,9 +57,15 @@ export const PRACTICE_STATUS_VARIANT_MAP: Record<PracticeStatusEnum, StatusVaria
 }
 
 export function mapPracticeStatusToVariant(status?: string | null): StatusVariant {
-  if (!status) return 'neutral'
+  if (!status) {
+    throw new Error('实践状态不符合前后端契约')
+  }
   const upper = status.toUpperCase() as PracticeStatusEnum
-  return PRACTICE_STATUS_VARIANT_MAP[upper] || 'neutral'
+  const variant = PRACTICE_STATUS_VARIANT_MAP[upper]
+  if (!variant) {
+    throw new Error(`实践状态不符合前后端契约：${status}`)
+  }
+  return variant
 }
 
 export const STUDENT_STATUS_VARIANT_MAP: Record<StudentTaskStatusEnum, StatusVariant> = {
@@ -72,7 +78,9 @@ export const STUDENT_STATUS_VARIANT_MAP: Record<StudentTaskStatusEnum, StatusVar
 }
 
 export function mapStudentStatusToVariant(status?: string | null): StatusVariant {
-  if (!status) return 'neutral'
+  if (!status) {
+    throw new Error('学生任务状态不符合前后端契约')
+  }
 
   // 先检查前端自定义状态（GradingCenterTab使用的状态）
   const customStatusMap: Record<string, StatusVariant> = {
@@ -88,7 +96,11 @@ export function mapStudentStatusToVariant(status?: string | null): StatusVariant
 
   // 再检查后端枚举状态
   const upper = status.toUpperCase() as StudentTaskStatusEnum
-  return STUDENT_STATUS_VARIANT_MAP[upper] || 'neutral'
+  const variant = STUDENT_STATUS_VARIANT_MAP[upper]
+  if (!variant) {
+    throw new Error(`学生任务状态不符合前后端契约：${status}`)
+  }
+  return variant
 }
 
 export const TEACHER_REVIEW_STATUS_VARIANT_MAP: Record<TeacherReviewStatusEnum, StatusVariant> = {
@@ -99,7 +111,13 @@ export const TEACHER_REVIEW_STATUS_VARIANT_MAP: Record<TeacherReviewStatusEnum, 
 }
 
 export function mapTeacherReviewStatusToVariant(status?: string | null): StatusVariant {
-  if (!status) return 'neutral'
+  if (!status) {
+    throw new Error('教师评阅状态不符合前后端契约')
+  }
   const upper = status.toUpperCase() as TeacherReviewStatusEnum
-  return TEACHER_REVIEW_STATUS_VARIANT_MAP[upper] || 'neutral'
+  const variant = TEACHER_REVIEW_STATUS_VARIANT_MAP[upper]
+  if (!variant) {
+    throw new Error(`教师评阅状态不符合前后端契约：${status}`)
+  }
+  return variant
 }

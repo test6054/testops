@@ -137,7 +137,10 @@ function tryParseBusyError(message: string): ScannerBusyError | null {
     return null
   }
   const match = message.match(/[（(]([^（）()]+)[）)]/)
-  const activeJobId = match ? match[1].trim() : '未知'
+  if (!match || !match[1].trim()) {
+    return null
+  }
+  const activeJobId = match[1].trim()
   return new ScannerBusyError(message, activeJobId)
 }
 
@@ -389,12 +392,12 @@ async function parseLocalAgentResponse(response: Response): Promise<unknown> {
   try {
     result = JSON.parse(text)
   } catch {
-    throw new Error(text || `本地 Scanner Agent 响应格式错误：${response.status}`)
+    throw new Error(text || '本地 Scanner Agent 响应格式错误')
   }
   const envelope = validateLocalApiResult(result, response)
   if (!response.ok || !envelope.success) {
     const message
-      = envelope.message || `本地 Scanner Agent 请求失败：${envelope.code || response.status}`
+      = envelope.message || '本地 Scanner Agent 请求失败'
     const busyError = tryParseBusyError(message)
     if (busyError) {
       throw busyError
@@ -486,7 +489,7 @@ function requireNullableString(value: Record<string, unknown>, field: string): s
 function requireScanMode(value: Record<string, unknown>, field: string): ScannerKioskScanMode {
   const fieldValue = value[field]
   if (fieldValue !== 'DIRECT' && fieldValue !== 'SUPPLEMENT' && fieldValue !== 'ARCHIVE') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是 DIRECT、SUPPLEMENT 或 ARCHIVE`)
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 扫描模式不合法`)
   }
   return fieldValue
 }
@@ -497,7 +500,7 @@ function requireAgentHealthStatus(
 ): AgentHealthStatus {
   const fieldValue = value[field]
   if (fieldValue !== 'RUNNING') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是 RUNNING`)
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 运行状态不合法`)
   }
   return fieldValue
 }
@@ -508,7 +511,7 @@ function requireAgentDiagnosticStatus(
 ): AgentDiagnosticStatus {
   const fieldValue = value[field]
   if (fieldValue !== 'OK' && fieldValue !== 'WARNING') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是 OK 或 WARNING`)
+    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 诊断状态不合法`)
   }
   return fieldValue
 }

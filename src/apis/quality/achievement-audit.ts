@@ -1,4 +1,4 @@
-import type { ManualReviewDecision } from './types'
+import type { AchievementAuditStatus, ManualReviewDecision } from './types'
 /**
  * 达成度审核责任链 + 人工复核 API
  *
@@ -17,11 +17,11 @@ export interface AchievementAuditVO {
   id: string
   achievementResultId: string
   auditorUserId: string
+  auditorNickName: string
   auditorRole?: string
-  /** SUBMIT / APPROVE / RETURN / CONFIRM / ARCHIVE */
-  auditEvent: string
-  auditStatusFrom?: string
-  auditStatusTo?: string
+  auditEvent: AchievementAuditStatus
+  auditStatusFrom: AchievementAuditStatus
+  auditStatusTo: AchievementAuditStatus
   auditOpinion?: string
   returnReason?: string
   evidenceAnchors?: string
@@ -33,9 +33,9 @@ export interface AchievementAuditVO {
 export interface AchievementAuditCreatePayload {
   achievementResultId: string
   auditorRole?: string
-  auditEvent: string
-  auditStatusFrom?: string
-  auditStatusTo?: string
+  auditEvent: AchievementAuditStatus
+  auditStatusFrom: AchievementAuditStatus
+  auditStatusTo: AchievementAuditStatus
   auditOpinion?: string
   returnReason?: string
   evidenceAnchors?: string
@@ -45,8 +45,8 @@ export interface AchievementManualReviewVO {
   id: string
   achievementResultId: string
   reviewerUserId: string
+  reviewerNickName: string
   reviewerRole?: string
-  /** ManualReviewDecisionEnum */
   decision: ManualReviewDecision
   reviewRemark?: string
   reviewedAt: string

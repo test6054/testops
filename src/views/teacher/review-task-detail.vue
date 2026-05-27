@@ -3,12 +3,12 @@
     <template #context>
       <div class="task-detail-page__context">
         <div class="task-detail-page__context-left">
-          <UiTag v-if="detail?.status" :tone="reviewStatusTone(detail.status)" size="sm">
+          <UiTag v-if="detail" :tone="reviewStatusTone(detail.status)" size="sm">
             {{ reviewStatusLabel(detail.status) }}
           </UiTag>
-          <UiTag v-if="detail?.anonymousNo" tone="gray" size="sm">{{ detail.anonymousNo }}</UiTag>
-          <UiTag v-if="detail?.questionNo" tone="blue" size="sm">
-            题{{ detail.questionNo }} · 满分{{ detail.fullScore ?? '-' }}
+          <UiTag v-if="detail" tone="gray" size="sm">{{ detail.anonymousNo }}</UiTag>
+          <UiTag v-if="detail" tone="blue" size="sm">
+            题{{ detail.questionNo }} · 满分{{ detail.fullScore }}
           </UiTag>
         </div>
         <div class="task-detail-page__context-right">
@@ -54,13 +54,13 @@
         </template>
         <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" :label-style="labelStyle" size="small">
           <a-descriptions-item label="题目模板ID">
-            {{ detail.questionTemplateId || '-' }}
+            {{ detail.questionTemplateId }}
           </a-descriptions-item>
           <a-descriptions-item label="试卷实例ID">
-            {{ detail.paperInstanceId || '-' }}
+            {{ detail.paperInstanceId }}
           </a-descriptions-item>
           <a-descriptions-item label="批改结果ID">
-            {{ detail.gradeResultId || '-' }}
+            {{ detail.gradeResultId }}
           </a-descriptions-item>
           <a-descriptions-item label="评语" :span="3">
             <a-typography-text v-if="detail.commentText" :content="detail.commentText" />
@@ -129,7 +129,7 @@
                     <template #description>
                       <div class="annotation-meta">
                         <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
-                        <span class="muted">{{ formatTime(item.createTime) }}</span>
+                        <span class="muted">{{ formatDateTime(item.createTime) }}</span>
                       </div>
                     </template>
                   </a-list-item-meta>
@@ -145,7 +145,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { AnnotationVO, ReviewTaskDetailVO } from '@/apis/mark/exam'
+import type { AnnotationVO, ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -154,11 +155,15 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { getReviewTaskDetail, listAnnotations } from '@/apis/mark/exam'
+import {
+  getReviewTaskDetail,
+  listAnnotations,
+  REVIEW_TASK_STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -168,54 +173,16 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherReviewTaskDetail' })
 
-type ReviewTaskStatusCode = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED'
-type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
-
-const STATUS_LABEL: Record<ReviewTaskStatusCode, string> = {
-  PENDING: '待复核',
-  IN_PROGRESS: '复核中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
+function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
+  return REVIEW_TASK_STATUS_TONE[value]
 }
 
-const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
-  PENDING: 'orange',
-  IN_PROGRESS: 'blue',
-  APPROVED: 'green',
-  REJECTED: 'red',
-}
-
-/**
- * 后端 ReviewTaskDetailResponse.status 是 String（宽类型），前端需在此狭化为 ReviewTaskStatusCode 才能查 LABEL/TONE。
- * 通过字面值 === 比较让 TS 自动缩窄类型，全程零 as 断言。
- */
-function reviewStatusTone(value: unknown): ToneCode {
-  if (typeof value !== 'string') return 'gray'
-  if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
-  ) {
-    return STATUS_TONE[value]
-  }
-  return 'gray'
-}
-
-function reviewStatusLabel(value: unknown): string {
-  if (typeof value !== 'string') return ''
-  if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
-  ) {
-    return STATUS_LABEL[value]
-  }
-  return value
+function reviewStatusLabel(value: ReviewTaskStatusCode): string {
+  return REVIEW_TASK_STATUS_LABEL[value]
 }
 
 const route = useRoute()
@@ -302,10 +269,6 @@ async function loadTask(): Promise<void> {
   }
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 function goWorkspace(): void {
   if (!hasParams.value) return

@@ -79,6 +79,20 @@ function formatScore(value: unknown, fieldName: string, digits: number): string 
   return requireFiniteScore(value, fieldName).toFixed(digits)
 }
 
+function assessmentItemCode(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new TypeError(`成绩明细考核环节 ID 不符合前后端契约：${String(value)}`)
+  }
+  return assessmentItemMap.value.get(value)?.itemCode ?? '-'
+}
+
+function assessmentItemName(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new TypeError(`成绩明细考核环节 ID 不符合前后端契约：${String(value)}`)
+  }
+  return assessmentItemMap.value.get(value)?.itemName ?? '未匹配考核环节'
+}
+
 const qualityStore = useQualityStore()
 
 /* ========== 成绩批次选择 ========== */
@@ -456,9 +470,9 @@ function handleCourseChange(courseId: string | null) {
                 </template>
                 <template v-else-if="column.key === 'assessmentItemId'">
                   <span class="score-record__item-code">
-                    {{ assessmentItemMap.get(text)?.itemCode || '-' }}
+                    {{ assessmentItemCode(text) }}
                   </span>
-                  {{ assessmentItemMap.get(text)?.itemName || text }}
+                  {{ assessmentItemName(text) }}
                 </template>
                 <template v-else-if="column.key === 'score'">
                   {{ formatScore(record.rawScore, '原始分', 1) }} /

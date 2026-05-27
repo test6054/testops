@@ -27,6 +27,7 @@ import {
 } from '@/apis/mark/ocr'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherOcrSettings' })
 
@@ -76,11 +77,18 @@ const debugRules: Record<string, Rule[]> = {
 }
 
 const healthStatus = computed<MarkOcrHealthStatusCode>(
-  () => currentConfig.value?.healthStatus || 'UNKNOWN',
+  () => {
+    if (!currentConfig.value?.healthStatus) {
+      throw new Error('OCR 配置响应缺少健康状态')
+    }
+    return currentConfig.value.healthStatus
+  },
 )
-const healthColor = computed(() => MARK_OCR_HEALTH_STATUS_COLOR[healthStatus.value] || 'default')
+const healthColor = computed(() =>
+  strictEnumTone(MARK_OCR_HEALTH_STATUS_COLOR, healthStatus.value, 'OCR 健康状态'),
+)
 const healthLabel = computed(
-  () => MARK_OCR_HEALTH_STATUS_LABEL[healthStatus.value] || healthStatus.value,
+  () => strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, healthStatus.value, 'OCR 健康状态'),
 )
 const currentProviderLabel = computed(() => providerLabel(currentConfig.value?.providerType))
 const providerIntro = computed(() => MARK_OCR_PROVIDER_DESCRIPTION[configForm.value.providerType])
@@ -90,14 +98,21 @@ const canRecognize = computed(() =>
 )
 
 function providerLabel(providerType?: MarkOcrProviderTypeCode): string {
-  return providerType ? MARK_OCR_PROVIDER_LABEL[providerType] : '未配置'
+  if (!providerType) return '未配置'
+  return strictEnumLabel(MARK_OCR_PROVIDER_LABEL, providerType, 'OCR 渠道')
 }
 
 function applyConfig(config: MarkOcrConfigVO): void {
+  if (config.id && !config.providerType) {
+    throw new Error('OCR 配置响应缺少已保存渠道类型')
+  }
+  if (config.enabled && !config.providerType) {
+    throw new Error('OCR 配置响应缺少已启用渠道类型')
+  }
   currentConfig.value = config
   configForm.value = {
-    providerType: config.providerType || 'PADDLE',
-    enabled: Boolean(config.enabled),
+    providerType: config.providerType ?? 'PADDLE',
+    enabled: config.enabled,
   }
 }
 
@@ -133,7 +148,7 @@ async function handleHealthCheck(): Promise<void> {
   try {
     const result = await checkMarkOcrHealth()
     message[result.healthStatus === 'HEALTHY' ? 'success' : 'warning'](
-      result.healthMessage || '健康检查已完成',
+      result.healthMessage,
     )
     await loadConfig()
   } finally {
@@ -195,11 +210,11 @@ watch(
 )
 
 function paddleInstanceHealthTone(status?: MarkOcrHealthStatusCode) {
-  return MARK_OCR_HEALTH_STATUS_COLOR[status ?? 'UNKNOWN']
+  return strictEnumTone(MARK_OCR_HEALTH_STATUS_COLOR, status, 'PaddleOCR 实例健康状态')
 }
 
 function paddleInstanceHealthLabel(status?: MarkOcrHealthStatusCode): string {
-  return MARK_OCR_HEALTH_STATUS_LABEL[status ?? 'UNKNOWN']
+  return strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, status, 'PaddleOCR 实例健康状态')
 }
 
 onMounted(loadConfig)
@@ -339,19 +354,19 @@ onMounted(loadConfig)
           <a-list-item>
             <a-list-item-meta>
               <template #title>
-                <span class="paddle-instance__name">{{ item.instanceName || `instance-${item.id}` }}</span>
+                <span class="paddle-instance__name">{{ item.instanceName }}</span>
                 <UiTag :tone="paddleInstanceHealthTone(item.healthStatus)" size="sm">
                   {{ paddleInstanceHealthLabel(item.healthStatus) }}
                 </UiTag>
                 <UiTag v-if="item.localAutoDeploy" tone="blue" size="sm">本地自动部署</UiTag>
-                <UiTag v-if="item.deviceType" tone="gray" size="sm">{{ item.deviceType }}</UiTag>
+                <UiTag tone="gray" size="sm">{{ item.deviceType }}</UiTag>
               </template>
               <template #description>
                 <div class="paddle-instance__meta">
-                  <span class="paddle-instance__url">{{ item.serviceUrl || '-' }}</span>
+                  <span class="paddle-instance__url">{{ item.serviceUrl }}</span>
                   <span class="paddle-instance__sep">·</span>
                   <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
-                  <template v-if="(item.consecutiveFailures ?? 0) > 0">
+                  <template v-if="item.consecutiveFailures > 0">
                     <span class="paddle-instance__sep">·</span>
                     <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
                   </template>
@@ -428,15 +443,15 @@ onMounted(loadConfig)
             {{ providerLabel(recognizeResult.providerType) }}
           </a-descriptions-item>
           <a-descriptions-item label="追踪ID">
-            {{ recognizeResult.engineTraceId || '-' }}
+            {{ recognizeResult.engineTraceId }}
           </a-descriptions-item>
           <a-descriptions-item label="诊断信息">
-            {{ recognizeResult.diagnostic || '-' }}
+            {{ recognizeResult.diagnostic }}
           </a-descriptions-item>
         </a-descriptions>
         <div class="result-text-block">
           <div class="result-text-label">识别文本</div>
-          <pre class="result-text-pre">{{ recognizeResult.recognizedText || '（空）' }}</pre>
+          <pre class="result-text-pre">{{ recognizeResult.recognizedText }}</pre>
         </div>
       </template>
       <UiEmpty v-else-if="!recognizing" description="暂无识别结果" />

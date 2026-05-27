@@ -70,20 +70,20 @@ export const USER_STATUS_TONE_MAP: Record<UserStatusEnum, UserStatusBadgeTone> =
 /**
  * 获取用户状态标签
  */
-export function getUserStatusLabel(status: UserStatusEnum | string): string {
-  return USER_STATUS_CONFIG[status as UserStatusEnum]?.label || status
+export function getUserStatusLabel(status: UserStatusEnum): string {
+  return USER_STATUS_CONFIG[status].label
 }
 
 /**
  * 获取用户状态颜色
  */
-export function getUserStatusColor(status: UserStatusEnum | string): string {
-  return USER_STATUS_CONFIG[status as UserStatusEnum]?.color || 'var(--ant-color-text-tertiary)'
+export function getUserStatusColor(status: UserStatusEnum): string {
+  return USER_STATUS_CONFIG[status].color
 }
 
 /**
  * 获取状态对应的 Badge tone（遵循 /style-guide 状态色板）
  */
-export function getUserStatusTone(status: UserStatusEnum | string): UserStatusBadgeTone {
-  return USER_STATUS_TONE_MAP[status as UserStatusEnum] || 'gray'
+export function getUserStatusTone(status: UserStatusEnum): UserStatusBadgeTone {
+  return USER_STATUS_TONE_MAP[status]
 }

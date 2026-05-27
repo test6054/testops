@@ -52,6 +52,7 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { strictAuditChangeDetails } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
 
@@ -392,7 +393,7 @@ async function handleUpload(options: UploadRequestOption) {
       assessmentItemId: uploadForm.assessmentItemId,
       batchCode: uploadForm.batchCode.trim(),
       batchName: uploadForm.batchName.trim(),
-      sourceMode: uploadForm.sourceMode || 'EXCEL_IMPORT',
+      sourceMode: uploadForm.sourceMode,
       sourceFileId,
       schoolYear: uploadForm.schoolYear || undefined,
       semester: uploadForm.semester || undefined,
@@ -478,7 +479,7 @@ async function handleCancel(record: ScoreBatchVO) {
 async function handleReParse(record: ScoreBatchVO) {
   void confirmAsync({
     title: '重新解析该批次？',
-    content: `仅 PENDING / FAILED 状态可触发；当前状态：${SCORE_BATCH_STATUS_LABEL[record.status]}`,
+    content: `仅待解析 / 解析失败状态可触发；当前状态：${statusLabel(record.status)}`,
     type: 'warning',
     onOk: async () => {
       await scoreBatchApi.enqueueParse(record.id)
@@ -575,17 +576,17 @@ async function openAuditDrawer(record: ScoreBatchVO) {
       description: record.id,
     })
     auditEvents.value = page.list.map((log) => {
-      const changeDetails = log.changeDetails ? JSON.parse(log.changeDetails) : undefined
+      const changeDetails = strictAuditChangeDetails(log.changeDetails, '成绩批次审计变更详情')
       return {
         id: log.id,
-        operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
+        operatorName: log.userDto.nickName,
         operationType: log.type,
-        operationLabel: log.detail || log.type,
+        operationLabel: log.detail,
         time: log.createTime,
         targetType: log.module,
         targetId: log.bizId || undefined,
-        beforeValue: changeDetails?.before,
-        afterValue: changeDetails?.after,
+        beforeValue: changeDetails.beforeValue,
+        afterValue: changeDetails.afterValue,
       }
     })
   } finally {
@@ -1054,7 +1055,7 @@ onMounted(async () => {
         type="info"
         show-icon
         message="批次元数据编辑"
-        description="仅 PENDING / FAILED / CANCELLED 状态可修改批次编码、名称、课程、考核环节、学年学期与接入来源；进入解析、预览、校验或确认后禁止编辑。"
+        description="仅待处理、失败或已取消状态可修改批次编码、名称、课程、考核环节、学年学期与接入来源；进入解析、预览、校验或确认后禁止编辑。"
         class="score-batch__editor-alert"
       />
       <a-form layout="vertical" :model="editor">

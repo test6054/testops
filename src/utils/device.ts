@@ -8,14 +8,15 @@
  * - 清除浏览器数据后会生成新的设备ID
  */
 
-/** localStorage 中设备ID的存储键 */
-const DEVICE_ID_KEY = 'deviceId'
+import { STORAGE_DEVICE_ID } from '@/constants/storage-keys'
 
 /** 客户端类型标识 */
 export const CLIENT_TYPE = 'WEB'
 
 /**
  * 生成雪花ID（与后端 IdService 结构一致）
+ * 注：worker / datacenter 是设备指纹派生量，与设备 ID 同源、生命周期一致，
+ * 不外提到全局 storage-keys，避免污染主键命名空间。
  */
 const WORKER_ID_KEY = 'deviceWorkerId'
 const DATACENTER_ID_KEY = 'deviceDatacenterId'
@@ -95,11 +96,11 @@ function generateSnowflakeId(): string {
  * @returns 设备唯一标识（雪花ID）
  */
 export function getDeviceId(): string {
-  let deviceId = localStorage.getItem(DEVICE_ID_KEY)
+  let deviceId = localStorage.getItem(STORAGE_DEVICE_ID)
 
   if (!deviceId) {
     deviceId = generateSnowflakeId()
-    localStorage.setItem(DEVICE_ID_KEY, deviceId)
+    localStorage.setItem(STORAGE_DEVICE_ID, deviceId)
   }
 
   return deviceId
@@ -113,7 +114,7 @@ export function getDeviceId(): string {
  */
 export function regenerateDeviceId(): string {
   const newDeviceId = generateSnowflakeId()
-  localStorage.setItem(DEVICE_ID_KEY, newDeviceId)
+  localStorage.setItem(STORAGE_DEVICE_ID, newDeviceId)
   return newDeviceId
 }
 

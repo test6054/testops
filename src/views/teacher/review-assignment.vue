@@ -105,13 +105,13 @@
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'anonymousNo'">
-              <a-typography-text strong :content="tasks[index].anonymousNo || '-'" />
+              <a-typography-text strong :content="tasks[index].anonymousNo" />
             </template>
             <template v-else-if="column.key === 'questionNo'">
-              <UiTag tone="blue" size="sm">{{ tasks[index].questionNo || '-' }}</UiTag>
+              <UiTag tone="blue" size="sm">{{ tasks[index].questionNo }}</UiTag>
             </template>
             <template v-else-if="column.key === 'fullScore'">
-              {{ tasks[index].fullScore ?? '-' }}
+              {{ tasks[index].fullScore }}
             </template>
             <template v-else-if="column.key === 'suggestedScore'">
               <span
@@ -140,7 +140,7 @@
               <span v-else class="muted">未指派</span>
             </template>
             <template v-else-if="column.key === 'updateTime'">
-              {{ formatTime(tasks[index].updateTime) }}
+              {{ formatDateTime(tasks[index].updateTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
@@ -180,16 +180,19 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { ReviewTaskItemVO } from '@/apis/mark/exam'
+import type { ReviewTaskItemVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -203,26 +206,9 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherReviewAssignment' })
-
-/** ReviewTaskStatus 与后端 ReviewTaskStatus 枚举对齐 */
-type ReviewTaskStatusCode = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED'
-type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
-
-const STATUS_LABEL: Record<ReviewTaskStatusCode, string> = {
-  PENDING: '待复核',
-  IN_PROGRESS: '复核中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-}
-
-const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
-  PENDING: 'orange',
-  IN_PROGRESS: 'blue',
-  APPROVED: 'green',
-  REJECTED: 'red',
-}
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -235,7 +221,13 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
-const currentUserId = computed(() => userStore.userInfo.userId || '')
+const currentUserId = computed(() => {
+  const userId = userStore.userInfo.userId
+  if (!userId) {
+    throw new Error('当前用户缺少 userId，无法领取复核任务')
+  }
+  return userId
+})
 
 // ─── 列表筛选 + 数据 ─────────────────────────────
 const filterForm = reactive<{
@@ -249,34 +241,12 @@ const filterForm = reactive<{
 // 从后端枚举 LABEL 对象直接派生 select options。
 const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))
 
-/**
- * 后端 ReviewTaskItemVO.status 是宽类型 string，前端需狭化为 ReviewTaskStatusCode 才能查 LABEL/TONE。
- * 通过字面值 === 比较让 TS 自动缩窄类型，全程零 as 断言。
- */
-function reviewStatusTone(value: unknown): ToneCode {
-  if (typeof value !== 'string') return 'gray'
-  if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
-  ) {
-    return STATUS_TONE[value]
-  }
-  return 'gray'
+function reviewStatusTone(value: ReviewTaskStatusCode) {
+  return STATUS_TONE[value]
 }
 
-function reviewStatusLabel(value: unknown): string {
-  if (typeof value !== 'string') return '-'
-  if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
-  ) {
-    return STATUS_LABEL[value]
-  }
-  return value
+function reviewStatusLabel(value: ReviewTaskStatusCode): string {
+  return STATUS_LABEL[value]
 }
 
 const markTaskStore = useMarkTaskStore()
@@ -291,16 +261,7 @@ computed(() => {
     REJECTED: 0,
   }
   tasks.value.forEach((task) => {
-    // 后端 ReviewTaskItemVO.status 是宽类型 string，用字面值 === 比较让 TS 自动缩窄。
-    const status = task.status
-    if (
-      status === 'PENDING'
-      || status === 'IN_PROGRESS'
-      || status === 'APPROVED'
-      || status === 'REJECTED'
-    ) {
-      counter[status]++
-    }
+    counter[task.status]++
   })
   const codes: ReviewTaskStatusCode[] = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED']
   return codes.map((code) => ({
@@ -320,10 +281,6 @@ const columns: ColumnType<ReviewTaskItemVO>[] = [
   { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return

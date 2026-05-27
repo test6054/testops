@@ -87,7 +87,7 @@ const getRouteKey = (route: RouteLocationNormalized) => {
     box-sizing: border-box;
   }
 
-  // 🚀 移动端适配
+  // 移动端适配
   @media (max-width: 768px) {
     padding: 12px;
 

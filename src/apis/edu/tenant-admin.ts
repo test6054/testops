@@ -119,7 +119,7 @@ export interface TenantAdminDashboardStats {
   /** 在线用户数 */
   onlineUsers: number
 
-  // 🚀 新增：后端计算好的百分比字段和配额相关字段
+  // 后端计算好的百分比字段和配额相关字段
   /** 最大用户数 */
   maxUsers?: number
   /** 最大存储空间（MB） */

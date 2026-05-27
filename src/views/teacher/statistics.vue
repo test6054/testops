@@ -59,6 +59,8 @@
         <ClassWeaknessCard
           :exam-id="selectedExamId"
           :reload-token="weaknessToken"
+          :class-options="classOptions"
+          :roster-loading="rosterLoading"
           @class-change="handleClassChange"
         />
         <ErrorCauseClusterCard :exam-id="selectedExamId" :reload-token="errorCauseToken" />
@@ -66,6 +68,8 @@
           :exam-id="selectedExamId"
           :reload-token="profileToken"
           :class-id-hint="activeClassId"
+          :student-options="studentOptions"
+          :roster-loading="rosterLoading"
           @student-change="handleStudentChange"
         />
       </div>
@@ -78,6 +82,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
 import { UiAlertStrip, UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
 import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
@@ -95,6 +100,15 @@ const {
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
+
+// B-12 联动：考试切换后统一加载考生名册，派生班级 / 学生选项交给子卡片，避免教师手输 ID
+const {
+  classOptions,
+  studentOptions,
+  loading: rosterLoading,
+  load: loadRoster,
+  reset: resetRoster,
+} = useMarkExamRoster()
 
 const qaToken = ref(0)
 const rejudgeToken = ref(0)
@@ -145,12 +159,20 @@ function reloadRejudge(): void {
 watch(selectedExamId, (v) => {
   // 切换考试时清空联动上下文，避免跨考试串号
   clearLinkage()
-  if (v) reloadAll()
+  if (v) {
+    void loadRoster(v)
+    reloadAll()
+  } else {
+    resetRoster()
+  }
 })
 
 onMounted(async () => {
   await initExamSelector()
-  if (selectedExamId.value) reloadAll()
+  if (selectedExamId.value) {
+    void loadRoster(selectedExamId.value)
+    reloadAll()
+  }
 })
 </script>
 

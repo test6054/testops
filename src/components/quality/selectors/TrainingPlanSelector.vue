@@ -9,6 +9,7 @@ import type { TrainingPlanVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
 import { trainingPlanApi } from '@/apis/quality'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -65,7 +66,7 @@ async function loadOptions() {
       enabled: props.onlyEnabled ? true : undefined,
       confirmationStatus: props.onlyConfirmed ? 'CONFIRMED' : undefined,
     })
-    options.value = res.list || []
+    options.value = requirePageList(res, '培养方案')
   } catch (e) {
     console.error('[TrainingPlanSelector] 加载培养方案列表失败', e)
     message.error('加载培养方案列表失败')

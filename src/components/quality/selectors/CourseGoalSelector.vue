@@ -9,6 +9,7 @@ import type { CourseGoalVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { courseGoalApi } from '@/apis/quality'
+import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -65,7 +66,10 @@ async function loadOptions() {
   if (!props.qualityCourseId) return
   loading.value = true
   try {
-    options.value = (await courseGoalApi.listByCourse(props.qualityCourseId)) || []
+    options.value = requireArrayResult(
+      await courseGoalApi.listByCourse(props.qualityCourseId),
+      '课程目标',
+    )
   } catch (e) {
     console.error('[CourseGoalSelector] 加载课程目标列表失败', e)
     message.error('加载课程目标列表失败')

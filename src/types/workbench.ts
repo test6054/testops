@@ -98,7 +98,7 @@ export interface AuditTimelineEvent {
   /** 操作类型编码（对应后端 OperationType） */
   operationType?: string
   /** 操作类型显示文案 */
-  operationLabel?: string
+  operationLabel: string
   /** 目标类型（对应后端 AuditTargetType） */
   targetType?: string
   /** 目标ID */

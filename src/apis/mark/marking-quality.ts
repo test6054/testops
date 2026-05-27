@@ -57,6 +57,25 @@ export const SPOT_CHECK_CONCLUSION_LABEL: Record<SpotCheckConclusionCode, string
   ABNORMAL: '判分异常',
 }
 
+/** 抽检任务状态 - 与后端 SpotCheckStatus enum 对齐 */
+export type SpotCheckStatusCode = 'PENDING' | 'IN_PROGRESS' | 'PASSED' | 'ABNORMAL' | 'HANDLED'
+
+export const SPOT_CHECK_STATUS_LABEL: Record<SpotCheckStatusCode, string> = {
+  PENDING: '待抽检',
+  IN_PROGRESS: '抽检中',
+  PASSED: '通过',
+  ABNORMAL: '异常',
+  HANDLED: '已处理',
+}
+
+export const SPOT_CHECK_STATUS_TONE: Record<SpotCheckStatusCode, BadgeTone> = {
+  PENDING: 'orange',
+  IN_PROGRESS: 'blue',
+  PASSED: 'green',
+  ABNORMAL: 'red',
+  HANDLED: 'purple',
+}
+
 /** 异常批次重处理范围 */
 export type BatchReprocessScopeCode = 'ALL' | 'FAILED_ONLY'
 
@@ -118,16 +137,16 @@ export interface ReviewerQualityMetricVO {
   organizationId?: string
   groupId?: string
   reviewerUserId: string
-  totalTasks?: number
-  submittedTasks?: number
+  totalTasks: number
+  submittedTasks: number
   avgScore?: number
   scoreStddev?: number
-  consistencyRate?: number
+  consistencyRate: number
   avgTimeSeconds?: number
-  returnCount?: number
-  scoreBias?: number
-  metricStatus?: ReviewerMetricStatusCode
-  snapshotTime?: string
+  returnCount: number
+  scoreBias: number
+  metricStatus: ReviewerMetricStatusCode
+  snapshotTime: string
 }
 
 /** 进度监控记录 VO - 对应 ExamProgressMonitorRecord */
@@ -137,17 +156,17 @@ export interface ProgressMonitorRecordVO {
   examId: string
   organizationId?: string
   groupId?: string
-  totalTasks?: number
-  allocatedTasks?: number
-  inProgressTasks?: number
-  submittedTasks?: number
-  finalizedTasks?: number
-  recycledTasks?: number
-  completionRate?: number
+  totalTasks: number
+  allocatedTasks: number
+  inProgressTasks: number
+  submittedTasks: number
+  finalizedTasks: number
+  recycledTasks: number
+  completionRate: number
   estimatedRemainingMinutes?: number
-  riskLevel?: ProgressRiskLevelCode
-  riskDetail?: string
-  snapshotTime?: string
+  riskLevel: ProgressRiskLevelCode
+  riskDetail: string
+  snapshotTime: string
 }
 
 // ─── API ─────────────────────────────────
@@ -159,7 +178,8 @@ export interface ProgressMonitorRecordVO {
 export function listReviewerMetrics(
   payload: ReviewerQualityQueryPayload,
 ): Promise<ReviewerQualityMetricVO[]> {
-  return http.post<ReviewerQualityMetricVO[]>('/api/mark/quality/reviewer/list', payload)
+  return http.post<unknown>('/api/mark/quality/reviewer/list', payload)
+    .then(validateReviewerQualityMetricList)
 }
 
 /**
@@ -177,7 +197,8 @@ export function refreshReviewerMetrics(payload: ProgressSnapshotPayload): Promis
 export function getLatestProgress(
   payload: ProgressSnapshotPayload,
 ): Promise<ProgressMonitorRecordVO | null> {
-  return http.post<ProgressMonitorRecordVO | null>('/api/mark/quality/progress/latest', payload)
+  return http.post<unknown>('/api/mark/quality/progress/latest', payload)
+    .then(validateNullableProgressMonitorRecord)
 }
 
 /**
@@ -187,7 +208,8 @@ export function getLatestProgress(
 export function takeProgressSnapshot(
   payload: ProgressSnapshotPayload,
 ): Promise<ProgressMonitorRecordVO> {
-  return http.post<ProgressMonitorRecordVO>('/api/mark/quality/progress/snapshot', payload)
+  return http.post<unknown>('/api/mark/quality/progress/snapshot', payload)
+    .then(validateProgressMonitorRecord)
 }
 
 /**
@@ -218,7 +240,7 @@ export function reprocessBatch(payload: BatchReprocessPayload): Promise<boolean>
 // ─── B-9 当前教师待处理抽检 ─────────────────────────────────
 
 /** 抽检状态（仅 PENDING / IN_PROGRESS 会出现在「我的待处理」列表中） */
-export type MyPendingSpotCheckStatusCode = 'PENDING' | 'IN_PROGRESS'
+export type MyPendingSpotCheckStatusCode = Extract<SpotCheckStatusCode, 'PENDING' | 'IN_PROGRESS'>
 
 /** 待处理抽检列表查询请求 - 对应 MyPendingSpotCheckQueryRequest */
 export interface MyPendingSpotCheckQueryPayload {
@@ -231,17 +253,17 @@ export interface MyPendingSpotCheckItemVO {
   /** 抽检记录ID（提交结论时作为 spotCheckId 使用） */
   id: string
   examId: string
-  organizationId?: string
-  groupId?: string
-  markingTaskId?: string
-  questionTemplateId?: string
-  paperInstanceId?: string
-  reviewerUserId?: string
+  organizationId: string
+  groupId: string
+  markingTaskId: string
+  questionTemplateId: string
+  paperInstanceId: string
+  reviewerUserId: string
   /** 教师原始给分 */
-  originalScore?: number
-  spotCheckStatus?: MyPendingSpotCheckStatusCode
+  originalScore: number
+  spotCheckStatus: MyPendingSpotCheckStatusCode
   /** 抽检创建时间，用于展示「分派多久前」 */
-  createTime?: string
+  createTime: string
 }
 
 /**
@@ -252,5 +274,157 @@ export interface MyPendingSpotCheckItemVO {
 export function listMyPendingSpotChecks(
   payload: MyPendingSpotCheckQueryPayload = {},
 ): Promise<MyPendingSpotCheckItemVO[]> {
-  return http.post<MyPendingSpotCheckItemVO[]>('/api/mark/quality/spotcheck/my-pending', payload)
+  return http.post<unknown>('/api/mark/quality/spotcheck/my-pending', payload)
+    .then(validateMyPendingSpotCheckList)
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new TypeError(`阅卷质量接口缺少 ${fieldName}`)
+  }
+  return value
+}
+
+function optionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  if (typeof value !== 'string') {
+    throw new TypeError(`阅卷质量接口 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`阅卷质量接口 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function optionalFiniteNumber(value: unknown, fieldName: string): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+  return requireFiniteNumber(value, fieldName)
+}
+
+function requireReviewerMetricStatus(value: unknown): ReviewerMetricStatusCode {
+  if (value !== 'NORMAL' && value !== 'WARNING' && value !== 'SUSPENDED') {
+    throw new TypeError('阅卷质量接口 metricStatus 格式错误')
+  }
+  return value
+}
+
+function requireProgressRiskLevel(value: unknown): ProgressRiskLevelCode {
+  if (
+    value !== 'NORMAL'
+    && value !== 'LOW_RISK'
+    && value !== 'MEDIUM_RISK'
+    && value !== 'HIGH_RISK'
+  ) {
+    throw new TypeError('阅卷质量接口 riskLevel 格式错误')
+  }
+  return value
+}
+
+function requireMyPendingSpotCheckStatus(value: unknown): MyPendingSpotCheckStatusCode {
+  if (value !== 'PENDING' && value !== 'IN_PROGRESS') {
+    throw new TypeError('当前教师待处理抽检接口 spotCheckStatus 格式错误')
+  }
+  return value
+}
+
+function validateReviewerQualityMetric(value: unknown): ReviewerQualityMetricVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('阅卷教师质量指标接口返回格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    id: optionalString(record.id, 'id'),
+    tenantId: optionalString(record.tenantId, 'tenantId'),
+    examId: requireString(record.examId, 'examId'),
+    organizationId: optionalString(record.organizationId, 'organizationId'),
+    groupId: optionalString(record.groupId, 'groupId'),
+    reviewerUserId: requireString(record.reviewerUserId, 'reviewerUserId'),
+    totalTasks: requireFiniteNumber(record.totalTasks, 'totalTasks'),
+    submittedTasks: requireFiniteNumber(record.submittedTasks, 'submittedTasks'),
+    avgScore: optionalFiniteNumber(record.avgScore, 'avgScore'),
+    scoreStddev: optionalFiniteNumber(record.scoreStddev, 'scoreStddev'),
+    consistencyRate: requireFiniteNumber(record.consistencyRate, 'consistencyRate'),
+    avgTimeSeconds: optionalFiniteNumber(record.avgTimeSeconds, 'avgTimeSeconds'),
+    returnCount: requireFiniteNumber(record.returnCount, 'returnCount'),
+    scoreBias: requireFiniteNumber(record.scoreBias, 'scoreBias'),
+    metricStatus: requireReviewerMetricStatus(record.metricStatus),
+    snapshotTime: requireString(record.snapshotTime, 'snapshotTime'),
+  }
+}
+
+function validateReviewerQualityMetricList(value: unknown): ReviewerQualityMetricVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('阅卷教师质量指标列表接口返回格式错误')
+  }
+  return value.map(validateReviewerQualityMetric)
+}
+
+function validateProgressMonitorRecord(value: unknown): ProgressMonitorRecordVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('阅卷进度快照接口返回格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    id: optionalString(record.id, 'id'),
+    tenantId: optionalString(record.tenantId, 'tenantId'),
+    examId: requireString(record.examId, 'examId'),
+    organizationId: optionalString(record.organizationId, 'organizationId'),
+    groupId: optionalString(record.groupId, 'groupId'),
+    totalTasks: requireFiniteNumber(record.totalTasks, 'totalTasks'),
+    allocatedTasks: requireFiniteNumber(record.allocatedTasks, 'allocatedTasks'),
+    inProgressTasks: requireFiniteNumber(record.inProgressTasks, 'inProgressTasks'),
+    submittedTasks: requireFiniteNumber(record.submittedTasks, 'submittedTasks'),
+    finalizedTasks: requireFiniteNumber(record.finalizedTasks, 'finalizedTasks'),
+    recycledTasks: requireFiniteNumber(record.recycledTasks, 'recycledTasks'),
+    completionRate: requireFiniteNumber(record.completionRate, 'completionRate'),
+    estimatedRemainingMinutes: optionalFiniteNumber(
+      record.estimatedRemainingMinutes,
+      'estimatedRemainingMinutes',
+    ),
+    riskLevel: requireProgressRiskLevel(record.riskLevel),
+    riskDetail: requireString(record.riskDetail, 'riskDetail'),
+    snapshotTime: requireString(record.snapshotTime, 'snapshotTime'),
+  }
+}
+
+function validateNullableProgressMonitorRecord(value: unknown): ProgressMonitorRecordVO | null {
+  if (value === null) {
+    return null
+  }
+  return validateProgressMonitorRecord(value)
+}
+
+function validateMyPendingSpotCheckItem(value: unknown): MyPendingSpotCheckItemVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('当前教师待处理抽检列表项接口返回格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    id: requireString(record.id, 'id'),
+    examId: requireString(record.examId, 'examId'),
+    organizationId: requireString(record.organizationId, 'organizationId'),
+    groupId: requireString(record.groupId, 'groupId'),
+    markingTaskId: requireString(record.markingTaskId, 'markingTaskId'),
+    questionTemplateId: requireString(record.questionTemplateId, 'questionTemplateId'),
+    paperInstanceId: requireString(record.paperInstanceId, 'paperInstanceId'),
+    reviewerUserId: requireString(record.reviewerUserId, 'reviewerUserId'),
+    originalScore: requireFiniteNumber(record.originalScore, 'originalScore'),
+    spotCheckStatus: requireMyPendingSpotCheckStatus(record.spotCheckStatus),
+    createTime: requireString(record.createTime, 'createTime'),
+  }
+}
+
+function validateMyPendingSpotCheckList(value: unknown): MyPendingSpotCheckItemVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('当前教师待处理抽检列表接口返回格式错误')
+  }
+  return value.map(validateMyPendingSpotCheckItem)
 }

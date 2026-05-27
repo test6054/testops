@@ -23,5 +23,10 @@ export const ApplyScopeLabel: Record<string, string> = {
  * 根据code获取标签
  */
 export function getApplyScopeLabel(code?: string): string {
-  return code ? (ApplyScopeLabel[code] || code) : ''
+  if (!code) return ''
+  const label = ApplyScopeLabel[code]
+  if (!label) {
+    throw new Error(`适用范围存在未定义枚举值：${code}`)
+  }
+  return label
 }

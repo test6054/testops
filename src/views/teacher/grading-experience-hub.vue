@@ -198,9 +198,9 @@
             <span>答案聚类</span>
             <UiBadge
               v-if="latestCluster"
-              :tone="aiStatusTone(latestCluster.analysisStatus ?? 'PENDING')"
+              :tone="aiStatusTone(latestCluster.analysisStatus)"
             >
-              {{ aiStatusLabel(latestCluster.analysisStatus ?? 'PENDING') }}
+              {{ aiStatusLabel(latestCluster.analysisStatus) }}
             </UiBadge>
           </template>
           <template #extra>
@@ -251,8 +251,8 @@
                 <b>{{ latestCluster.groupCount ?? 0 }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="分析状态">
-                <UiTag :tone="aiStatusTone(latestCluster.analysisStatus ?? 'PENDING')" size="sm">
-                  {{ aiStatusLabel(latestCluster.analysisStatus ?? 'PENDING') }}
+                <UiTag :tone="aiStatusTone(latestCluster.analysisStatus)" size="sm">
+                  {{ aiStatusLabel(latestCluster.analysisStatus) }}
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="耗时">
@@ -294,7 +294,7 @@
               <UiTag tone="blue" size="sm">
                 {{ questionTypeLabel(item.questionType) }}
               </UiTag>
-              <UiTag tone="gray" size="sm">题号 {{ item.questionNo ?? '-' }}</UiTag>
+              <UiTag tone="gray" size="sm">题号 {{ item.questionNo }}</UiTag>
             </a-space>
             <p class="similar-digest">{{ item.questionDigest ?? '（无摘要）' }}</p>
           </a-list-item>
@@ -397,6 +397,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
 
@@ -592,29 +593,24 @@ async function handleGenerateCluster(): Promise<void> {
 // ─── 共用 ─────────────────────────────────
 
 // helper 严格只接受后端枚举类型，返回与 UiTag tone 一致的 BadgeTone，零 as 断言。
-function aiStatusTone(status?: AiAnalysisStatusCode): BadgeTone {
-  if (!status) return 'gray'
-  return AI_ANALYSIS_STATUS_COLOR[status] ?? 'gray'
+function aiStatusTone(status: AiAnalysisStatusCode): BadgeTone {
+  return strictEnumTone(AI_ANALYSIS_STATUS_COLOR, status, 'AI 分析状态')
 }
 
-function caseStatusTone(status?: ExperienceCaseStatusCode): BadgeTone {
-  if (!status) return 'gray'
-  return EXPERIENCE_CASE_STATUS_COLOR[status] ?? 'gray'
+function caseStatusTone(status: ExperienceCaseStatusCode): BadgeTone {
+  return strictEnumTone(EXPERIENCE_CASE_STATUS_COLOR, status, '经验案例状态')
 }
 
-function aiStatusLabel(status?: AiAnalysisStatusCode): string {
-  if (!status) return '-'
-  return AI_ANALYSIS_STATUS_LABEL[status] ?? status
+function aiStatusLabel(status: AiAnalysisStatusCode): string {
+  return strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, status, 'AI 分析状态')
 }
 
-function caseStatusLabel(status?: ExperienceCaseStatusCode): string {
-  if (!status) return '-'
-  return EXPERIENCE_CASE_STATUS_LABEL[status] ?? status
+function caseStatusLabel(status: ExperienceCaseStatusCode): string {
+  return strictEnumLabel(EXPERIENCE_CASE_STATUS_LABEL, status, '经验案例状态')
 }
 
 function questionTypeLabel(value?: QuestionTypeCode): string {
-  if (!value) return '-'
-  return QUESTION_TYPE_LABEL[value] ?? value
+  return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题型')
 }
 
 function ellipsis(text: string | undefined, len = 60): string {

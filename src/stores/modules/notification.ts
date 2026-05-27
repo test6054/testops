@@ -104,7 +104,7 @@ export const useNotificationStore = defineStore('notification', () => {
         folder: query.folder ?? MessageFolderEnum.INBOX,
         messageType: query.messageType,
       })
-      recentMessages.value = result.list ?? []
+      recentMessages.value = result.list
       return recentMessages.value
     }
     finally {

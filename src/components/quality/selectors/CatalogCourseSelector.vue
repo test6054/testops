@@ -10,6 +10,7 @@ import type { CourseListVO } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
 import { courseCatalogApi } from '@/apis/quality/user-catalog'
+import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -53,7 +54,10 @@ async function loadOptions() {
   loading.value = true
   try {
     options.value
-      = (await courseCatalogApi.authorizedByMajorCategory(props.majorCategoryId || undefined)) || []
+      = requireArrayResult(
+        await courseCatalogApi.authorizedByMajorCategory(props.majorCategoryId || undefined),
+        '目录课程',
+      )
   } catch (e) {
     console.error('[CatalogCourseSelector] 加载课程目录失败', e)
     message.error('加载课程目录失败')

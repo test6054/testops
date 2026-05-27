@@ -1,4 +1,5 @@
 import type {ExportJobQueryRequest, ExportJobStatusVO} from '@/apis/edu/export'
+import message from 'ant-design-vue/es/message'
 import {defineStore} from 'pinia'
 import {computed, ref, watch} from 'vue'
 import {deleteExportJob, queryExportJobs} from '@/apis/edu/export'
@@ -40,12 +41,15 @@ export const useExportTaskStore = defineStore('export-task', () => {
   function startPolling() {
     if (pollingTimer) return // 已在轮询中
     pollingTimer = setInterval(async () => {
-      // 静默刷新，不显示loading
+      // 轮询刷新不显示 loading，但失败必须暴露，避免任务状态停滞后继续误导用户。
       try {
         const result = await queryExportJobs(lastFetchParams.value)
         tasks.value = result.list
         pagination.value = {total: result.total, pages: result.pages}
-      } catch {
+      } catch (error) {
+        stopPolling()
+        message.error('导出任务刷新失败')
+        throw error
       }
     }, POLLING_INTERVAL)
   }
@@ -90,7 +94,7 @@ export const useExportTaskStore = defineStore('export-task', () => {
   function updateFilter(params: Partial<ExportJobQueryRequest>) {
     lastFetchParams.value = {
       ...lastFetchParams.value,
-      ...Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== null)),
+      ...params,
     }
   }
 

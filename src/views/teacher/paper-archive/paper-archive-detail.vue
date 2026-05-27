@@ -7,7 +7,7 @@
             set?.archiveTitle ?? '档案集详情'
           }}</span>
           <UiTag v-if="set?.archiveStatus" :tone="setStatusTone(set.archiveStatus)" size="sm">
-            {{ set.archiveStatusMessage || setStatusLabel(set.archiveStatus) }}
+            {{ set.archiveStatusMessage }}
           </UiTag>
           <UiTag tone="blue" size="sm">{{ set?.paperCount ?? 0 }} 份试卷</UiTag>
         </div>
@@ -43,7 +43,7 @@
           <span v-else>{{ set.retentionYears ?? '-' }} 年（至 {{ set.retentionUntil || '-' }}）</span>
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">
-          {{ formatTime(set.createTime) }}
+          {{ formatDateTime(set.createTime) }}
         </a-descriptions-item>
         <a-descriptions-item label="档案 tag" :span="3">
           <UiTag v-for="tag in set.tags ?? []" :key="tag" tone="purple" size="sm" class="tag-chip">
@@ -173,7 +173,7 @@
             <span v-if="!items[index].tags?.length" class="muted">-</span>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatTime(items[index].createTime) }}
+            {{ formatDateTime(items[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
@@ -352,7 +352,6 @@ import {
   UploadOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -363,7 +362,6 @@ import {
   getPaperArchiveSetDetail,
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
   PAPER_ARCHIVE_OCR_STATUS_TONE,
-  PAPER_ARCHIVE_SET_STATUS_LABEL,
   PAPER_ARCHIVE_SET_STATUS_TONE,
   registerPaperArchiveItem,
   searchPaperArchiveItems,
@@ -376,6 +374,8 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperArchiveDetail' })
 
@@ -521,7 +521,7 @@ function syncArchiveSetStageToStore(set: PaperArchiveSetVO): void {
     case 'DESTRUCTION_APPROVED':
     case 'DESTROYED':
       status = 'completed'
-      hint = set.archiveStatusMessage || '档案集生命周期完整'
+      hint = set.archiveStatusMessage
       break
   }
   if (hint) {
@@ -553,8 +553,8 @@ async function loadItems(): Promise<void> {
       ocrStatus: searchForm.ocrStatus,
       tagAny: searchForm.tagAny && searchForm.tagAny.length > 0 ? searchForm.tagAny : undefined,
     })
-    items.value = result.list ?? []
-    pagination.total = Number(result.total ?? 0)
+    items.value = result.list
+    pagination.total = Number(result.total)
   } catch (error) {
     message.error(error instanceof Error ? error.message : '档案项加载失败')
   } finally {
@@ -745,29 +745,19 @@ function goBack(): void {
   void router.push({ name: 'TeacherPaperArchiveList' })
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 function setStatusTone(status?: PaperArchiveSetStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return PAPER_ARCHIVE_SET_STATUS_TONE[status] ?? 'gray'
-}
-
-function setStatusLabel(status?: PaperArchiveSetStatusCode): string {
-  if (!status) return '-'
-  return PAPER_ARCHIVE_SET_STATUS_LABEL[status] ?? status
+  return strictEnumTone(PAPER_ARCHIVE_SET_STATUS_TONE, status, '试卷档案集状态')
 }
 
 function ocrStatusTone(status?: PaperArchiveOcrStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return PAPER_ARCHIVE_OCR_STATUS_TONE[status] ?? 'gray'
+  return strictEnumTone(PAPER_ARCHIVE_OCR_STATUS_TONE, status, '试卷档案 OCR 状态')
 }
 
 function ocrStatusLabel(status?: PaperArchiveOcrStatusCode): string {
-  if (!status) return '-'
-  return PAPER_ARCHIVE_OCR_STATUS_LABEL[status] ?? status
+  return strictEnumLabel(PAPER_ARCHIVE_OCR_STATUS_LABEL, status, '试卷档案 OCR 状态')
 }
 
 function truncate(value: string | undefined, max: number): string {

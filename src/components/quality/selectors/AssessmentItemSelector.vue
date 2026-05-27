@@ -9,6 +9,7 @@ import type { AssessmentItemVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { assessmentItemApi } from '@/apis/quality'
+import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -72,7 +73,10 @@ async function loadOptions() {
   if (!props.qualityCourseId) return
   loading.value = true
   try {
-    options.value = (await assessmentItemApi.listByCourse(props.qualityCourseId)) || []
+    options.value = requireArrayResult(
+      await assessmentItemApi.listByCourse(props.qualityCourseId),
+      '考核环节',
+    )
   } catch (e) {
     console.error('[AssessmentItemSelector] 加载考核环节列表失败', e)
     message.error('加载考核环节列表失败')

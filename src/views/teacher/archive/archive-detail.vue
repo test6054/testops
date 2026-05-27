@@ -3,11 +3,9 @@
     <template #context>
       <div class="archive-detail-page__context">
         <div class="archive-detail-page__context-left">
-          <span class="archive-detail-page__title">{{
-            archive.archiveTitle || archive.archiveNo
-          }}</span>
+          <span class="archive-detail-page__title">{{ archive.archiveTitle }}</span>
           <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus]" size="sm">
-            {{ archive.archiveStatusMessage || ARCHIVE_STATUS_LABEL[archive.archiveStatus] }}
+            {{ archive.archiveStatusMessage }}
           </UiTag>
           <UiTag v-if="archive.permanentRetention" tone="purple" size="sm">永久保管</UiTag>
           <UiTag v-else-if="archive.retentionYears" tone="gray" size="sm">
@@ -32,7 +30,7 @@
         <ClockCircleOutlined />
         <span>异步打包进度</span>
         <UiBadge tone="blue">
-          {{ ARCHIVE_PHASE_LABEL[archive.packagingPhase as ArchivePackagingPhase] || '运行中' }}
+          {{ archivePhaseLabel(archive.packagingPhase) }}
         </UiBadge>
       </template>
       <a-progress :percent="archive.packagingProgressPercent ?? 0" :status="progressStatus" />
@@ -55,7 +53,7 @@
       <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" size="small" bordered>
         <a-descriptions-item label="状态">
           <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus]" size="sm">
-            {{ archive.archiveStatusMessage || ARCHIVE_STATUS_LABEL[archive.archiveStatus] }}
+            {{ archive.archiveStatusMessage }}
           </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="所属考试"> 考试 #{{ archive.examId }} </a-descriptions-item>
@@ -88,13 +86,13 @@
           <span v-else class="muted">-</span>
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">
-          {{ formatTime(archive.createTime) }}
+          {{ formatDateTimeWithSeconds(archive.createTime) }}
         </a-descriptions-item>
         <a-descriptions-item label="打包开始">
-          {{ formatTime(archive.packagingStartedTime) }}
+          {{ formatDateTimeWithSeconds(archive.packagingStartedTime) }}
         </a-descriptions-item>
         <a-descriptions-item label="打包完成">
-          {{ formatTime(archive.packagingCompletedTime) }}
+          {{ formatDateTimeWithSeconds(archive.packagingCompletedTime) }}
         </a-descriptions-item>
       </a-descriptions>
     </UiCard>
@@ -197,7 +195,7 @@
             >
               <div class="event-line">
                 <strong>{{ event.eventTypeMessage || event.eventType }}</strong>
-                <span class="muted">· {{ formatTime(event.eventTime) }}</span>
+                <span class="muted">· {{ formatDateTimeWithSeconds(event.eventTime) }}</span>
               </div>
               <div v-if="event.reason" class="event-reason">{{ event.reason }}</div>
               <div v-if="event.payload" class="event-payload">
@@ -318,7 +316,6 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -327,7 +324,6 @@ import {
   ARCHIVE_APPRAISAL_LABEL,
   ARCHIVE_DESTRUCTION_LABEL,
   ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
   ARCHIVE_STATUS_TONE,
   executeDestruction,
   getArchiveDetail,
@@ -340,6 +336,8 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { formatDateTimeWithSeconds } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveDetail' })
 
@@ -348,6 +346,11 @@ const examContextStore = useMarkExamContextStore()
 
 const route = useRoute()
 const router = useRouter()
+
+function archivePhaseLabel(phase?: ArchivePackagingPhase): string {
+  if (!phase) return '未运行'
+  return strictEnumLabel(ARCHIVE_PHASE_LABEL, phase, '归档打包阶段')
+}
 const archiveId = String(route.params.archiveId ?? '')
 
 const archive = ref<ArchivePackageVO | null>(null)
@@ -462,7 +465,7 @@ function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
       hint
         = pkg.archiveStatus === 'PACKAGING_FAILED'
           ? `打包失败${pkg.packagingDiagnostic ? ` · ${pkg.packagingDiagnostic}` : ''}`
-          : pkg.archiveStatusMessage || '销毁执行失败，需人工介入'
+          : pkg.archiveStatusMessage
       break
     case 'PACKAGING':
       status = 'active'
@@ -481,19 +484,19 @@ function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
     case 'APPRAISAL_DECIDED':
     case 'DESTROYED':
       status = 'completed'
-      hint = pkg.archiveStatusMessage || '归档生命周期完整'
+      hint = pkg.archiveStatusMessage
       break
     case 'DESTRUCTION_PENDING':
       status = 'active'
-      hint = pkg.archiveStatusMessage || '销毁待审批'
+      hint = pkg.archiveStatusMessage
       break
     case 'DESTRUCTION_APPROVED':
       status = 'active'
-      hint = pkg.archiveStatusMessage || '销毁审批通过，可执行物理销毁'
+      hint = pkg.archiveStatusMessage
       break
     case 'DESTRUCTION_EXECUTING':
       status = 'active'
-      hint = pkg.archiveStatusMessage || '销毁执行中'
+      hint = pkg.archiveStatusMessage
       break
   }
   markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
@@ -509,8 +512,8 @@ async function loadDetail(): Promise<void> {
   try {
     const detail = await getArchiveDetail(archiveId)
     archive.value = detail.archive
-    items.value = detail.items ?? []
-    events.value = detail.events ?? []
+    items.value = detail.items
+    events.value = detail.events
     syncArchiveDetailStageToStore(detail.archive)
     syncPolling()
   } catch (error) {
@@ -678,10 +681,6 @@ function goBack(): void {
   void router.push({ name: 'TeacherArchiveList' })
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
-}
 
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '-'

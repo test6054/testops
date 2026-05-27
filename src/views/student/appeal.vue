@@ -61,20 +61,18 @@
           </div>
           <div class="exam-pick-item__main">
             <div class="exam-pick-item__title-row">
-              <h3 class="exam-pick-item__title">{{ exam.examName || '未命名考试' }}</h3>
+              <h3 class="exam-pick-item__title">{{ exam.examName }}</h3>
               <UiTag tone="green" size="sm">已发布</UiTag>
               <UiTag tone="orange" size="sm">复核进行中</UiTag>
             </div>
             <div class="exam-pick-item__meta">
-              <span class="meta-item">编号：{{ exam.examNo || '-' }}</span>
+              <span class="meta-item">编号：{{ exam.examNo }}</span>
               <span class="meta-item">
-                本次得分：<strong class="score-text">{{
-                  exam.finalScore?.toFixed(2) ?? '-'
-                }}</strong>
+                本次得分：<strong class="score-text">{{ formatPublishedScore(exam) }}</strong>
               </span>
               <span class="meta-item">
                 <ClockCircleOutlined />
-                截止 {{ formatTime(exam.reviewWindowCloseTime) }}
+                截止 {{ formatDateTime(exam.reviewWindowCloseTime) }}
               </span>
             </div>
           </div>
@@ -146,10 +144,10 @@
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'examName'">
             <div class="exam-cell">
-              <strong class="exam-cell__title">{{
-                filteredRequests[index].examName || '未命名考试'
-              }}</strong>
-              <span v-if="filteredRequests[index].examNo" class="exam-cell__sub">编号：{{ filteredRequests[index].examNo }}</span>
+              <strong class="exam-cell__title">
+                {{ filteredRequests[index].examName }}
+              </strong>
+              <span class="exam-cell__sub">编号：{{ filteredRequests[index].examNo }}</span>
             </div>
           </template>
           <template v-else-if="column.key === 'reasonType'">
@@ -159,24 +157,19 @@
           </template>
           <template v-else-if="column.key === 'requestReason'">
             <a-tooltip :title="filteredRequests[index].requestReason">
-              <div class="reason-cell">{{ filteredRequests[index].requestReason || '-' }}</div>
+              <div class="reason-cell">{{ filteredRequests[index].requestReason }}</div>
             </a-tooltip>
           </template>
           <template v-else-if="column.key === 'requestStatus'">
-            <UiTag
-              v-if="filteredRequests[index].requestStatus"
-              :tone="requestStatusTone(filteredRequests[index].requestStatus)"
-              size="sm"
-            >
+            <UiTag :tone="requestStatusTone(filteredRequests[index].requestStatus)" size="sm">
               {{ requestStatusLabel(filteredRequests[index].requestStatus) }}
             </UiTag>
-            <span v-else class="muted">-</span>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatTime(filteredRequests[index].createTime) }}
+            {{ formatDateTime(filteredRequests[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'reviewTime'">
-            {{ formatTime(filteredRequests[index].reviewTime) }}
+            {{ formatDateTime(filteredRequests[index].reviewTime) }}
           </template>
           <template v-else-if="column.key === 'reviewNote'">
             <a-tooltip :title="filteredRequests[index].reviewNote">
@@ -199,11 +192,11 @@
     >
       <a-form :model="form" layout="vertical">
         <a-form-item label="考试">
-          <div class="modal-exam-info">
-            <strong>{{ selectedAppealableExam?.examName || '-' }}</strong>
+          <div v-if="selectedAppealableExam" class="modal-exam-info">
+            <strong>{{ selectedAppealableExam.examName }}</strong>
             <UiTag tone="green" size="sm">已发布</UiTag>
             <span class="modal-exam-info__score">
-              本次得分 <strong>{{ selectedAppealableExam?.finalScore?.toFixed(2) ?? '-' }}</strong>
+              本次得分 <strong>{{ formatPublishedScore(selectedAppealableExam) }}</strong>
             </span>
           </div>
         </a-form-item>
@@ -253,7 +246,6 @@ import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -273,6 +265,8 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentAppeal' })
 
@@ -321,7 +315,7 @@ const appealableExams = computed<StudentExamItemVO[]>(() => exams.value.filter(c
 const examFilterOptions = computed(() =>
   exams.value.map((e) => ({
     value: e.examId,
-    label: e.examNo ? `${e.examName ?? '未命名考试'} (${e.examNo})` : (e.examName ?? '未命名考试'),
+    label: `${e.examName} (${e.examNo})`,
   })),
 )
 
@@ -400,26 +394,34 @@ async function reloadAll() {
   await loadRequests()
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
+
+function formatPublishedScore(exam: StudentExamItemVO): string {
+  if (exam.finalScoreStatus !== 'PUBLISHED') {
+    throw new Error(`不可复核考试不是已发布状态：examId=${exam.examId}`)
+  }
+  if (exam.finalScore == null) {
+    throw new Error(`已发布成绩缺少最终分数：examId=${exam.examId}`)
+  }
+  return exam.finalScore.toFixed(2)
 }
 
-// 严格 typed helper：filteredRequests[index].requestStatus 是 GradeReviewRequestStatusCode | undefined。
-function requestStatusTone(status?: GradeReviewRequestStatusCode): BadgeTone {
-  if (!status) return 'gray'
-  return REVIEW_REQUEST_STATUS_TONE[status] ?? 'gray'
+function requestStatusTone(status: GradeReviewRequestStatusCode): BadgeTone {
+  return strictEnumTone(REVIEW_REQUEST_STATUS_TONE, status, '复核申请状态')
 }
 
-function requestStatusLabel(status?: GradeReviewRequestStatusCode): string {
-  if (!status) return '-'
-  return REVIEW_REQUEST_STATUS_LABEL[status] ?? status
+function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
+  return strictEnumLabel(REVIEW_REQUEST_STATUS_LABEL, status, '复核申请状态')
 }
 
 function formatReasonType(value?: string): string {
-  if (!value) return '-'
+  if (!value) {
+    throw new Error('复核原因类型不能为空')
+  }
   const found = reasonTypeOptions.find((o) => o.value === value)
-  return found?.label ?? value
+  if (!found) {
+    throw new Error(`复核原因类型存在未定义枚举值：${value}`)
+  }
+  return found.label
 }
 
 function openSubmitModal() {
@@ -442,16 +444,13 @@ async function submit() {
   }
   submitting.value = true
   try {
-    const questionIdsArray = form.questionIds
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
+    const questionIdsArray = parseQuestionIds(form.questionIds)
     await submitReviewRequest({
       examId: selectedAppealableExam.value.examId,
       paperInstanceId: selectedAppealableExam.value.paperInstanceId,
       requestReason: form.requestReason.trim(),
       reasonType: form.reasonType,
-      questionIds: questionIdsArray.length > 0 ? JSON.stringify(questionIdsArray) : undefined,
+      questionIds: questionIdsArray,
     })
     message.success('复核申请已提交')
     submitModalOpen.value = false
@@ -469,6 +468,19 @@ async function submit() {
   } finally {
     submitting.value = false
   }
+}
+
+function parseQuestionIds(value: string): string[] {
+  const text = value.trim()
+  if (!text) {
+    return []
+  }
+  const tokens = text.split(',').map((item) => item.trim())
+  const invalidToken = tokens.find((item) => !/^[1-9]\d*$/.test(item))
+  if (invalidToken) {
+    throw new Error(`申请题目ID必须为正整数：${invalidToken}`)
+  }
+  return tokens
 }
 
 watch(

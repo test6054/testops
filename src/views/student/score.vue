@@ -42,36 +42,38 @@
         <div class="latest-grid__score">
           <p class="score-label">本次得分</p>
           <p class="score-value">
-            <strong>{{ latestPublished.finalScore?.toFixed(2) ?? '-' }}</strong>
+            <strong>{{ formatPublishedScore(latestPublished) }}</strong>
           </p>
           <p class="score-helper">满分明细请进入详情页</p>
         </div>
         <div class="latest-grid__info">
           <div class="info-row">
             <span class="info-label">考试名称</span>
-            <span class="info-value">{{ latestPublished.examName || '-' }}</span>
+            <span class="info-value">{{ latestPublished.examName }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">考试编号</span>
-            <span class="info-value">{{ latestPublished.examNo || '-' }}</span>
+            <span class="info-value">{{ latestPublished.examNo }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">开始时间</span>
-            <span class="info-value">{{ formatTime(latestPublished.examStartTime) }}</span>
+            <span class="info-value">{{ formatDateTime(latestPublished.examStartTime) }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">发布时间</span>
-            <span class="info-value">{{ formatTime(latestPublished.publishedTime) }}</span>
+            <span class="info-value">{{ requirePublishedTime(latestPublished) }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">复核窗口</span>
             <span class="info-value">
               <template v-if="latestPublished.reviewWindowStatus === 'ACTIVE'">
-                {{ formatTime(latestPublished.reviewWindowOpenTime) }}
+                {{ formatDateTime(latestPublished.reviewWindowOpenTime) }}
                 <span class="student-score__hint"> 至 </span>
-                {{ formatTime(latestPublished.reviewWindowCloseTime) }}
+                {{ formatDateTime(latestPublished.reviewWindowCloseTime) }}
               </template>
-              <span v-else class="student-score__hint">未开放</span>
+              <UiTag v-else :tone="reviewWindowStatusTone(latestPublished)" size="sm">
+                {{ reviewWindowStatusLabel(latestPublished) }}
+              </UiTag>
             </span>
           </div>
         </div>
@@ -117,15 +119,10 @@
           >
             <div class="exam-card__header">
               <div class="exam-card__title-row">
-                <h3 class="exam-card__title">{{ item.examName || '未命名考试' }}</h3>
-                <UiTag
-                  v-if="item.finalScoreStatus"
-                  :tone="finalScoreStatusTone(item)"
-                  size="sm"
-                >
+                <h3 class="exam-card__title">{{ item.examName }}</h3>
+                <UiTag :tone="finalScoreStatusTone(item)" size="sm">
                   {{ finalScoreStatusLabel(item) }}
                 </UiTag>
-                <UiTag v-else tone="gray" size="sm">未生成</UiTag>
                 <UiTag v-if="item.reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm">
                   复核中
                 </UiTag>
@@ -133,9 +130,9 @@
               <div class="exam-card__meta">
                 <span class="meta-item">
                   <CalendarOutlined />
-                  {{ formatTime(item.examStartTime) }}
+                  {{ formatDateTime(item.examStartTime) }}
                 </span>
-                <span class="meta-item">编号：{{ item.examNo || '-' }}</span>
+                <span class="meta-item">编号：{{ item.examNo }}</span>
               </div>
             </div>
 
@@ -146,34 +143,33 @@
                   class="score-item__value"
                   :class="{ 'is-empty': item.finalScoreStatus !== 'PUBLISHED' }"
                 >
-                  <template v-if="item.finalScoreStatus === 'PUBLISHED' && item.finalScore != null">
-                    {{ item.finalScore.toFixed(2) }}
+                  <template v-if="item.finalScoreStatus === 'PUBLISHED'">
+                    {{ formatPublishedScore(item) }}
                   </template>
                   <template v-else>--</template>
                 </p>
               </div>
               <div class="score-item">
                 <p class="score-item__label">考试编号</p>
-                <p class="score-item__value" :class="{ 'is-empty': !item.examNo }">
-                  {{ item.examNo || '--' }}
+                <p class="score-item__value">
+                  {{ item.examNo }}
                 </p>
               </div>
               <div class="score-item">
                 <p class="score-item__label">发布时间</p>
-                <p class="score-item__value">{{ formatTime(item.publishedTime) }}</p>
+                <p class="score-item__value">
+                  <template v-if="item.finalScoreStatus === 'PUBLISHED'">
+                    {{ requirePublishedTime(item) }}
+                  </template>
+                  <template v-else>--</template>
+                </p>
               </div>
               <div class="score-item">
                 <p class="score-item__label">复核窗口</p>
                 <p class="score-item__value">
-                  <template v-if="item.reviewWindowStatus === 'ACTIVE'">
-                    <UiTag tone="orange" size="sm">开放中</UiTag>
-                  </template>
-                  <template v-else-if="item.reviewWindowStatus === 'CLOSED'">
-                    <UiTag tone="gray" size="sm">已关闭</UiTag>
-                  </template>
-                  <template v-else>
-                    <span class="student-score__hint">未开放</span>
-                  </template>
+                  <UiTag :tone="reviewWindowStatusTone(item)" size="sm">
+                    {{ reviewWindowStatusLabel(item) }}
+                  </UiTag>
                 </p>
               </div>
             </div>
@@ -218,7 +214,6 @@ import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -226,6 +221,8 @@ import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
   listMyExams,
+  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
 import {
   UiBadge,
@@ -237,6 +234,8 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentScore' })
 
@@ -247,13 +246,19 @@ const examsLoadError = ref<unknown>(null)
 const exams = ref<StudentExamItemVO[]>([])
 
 function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
-  if (!item.finalScoreStatus) return 'gray'
-  return FINAL_SCORE_STATUS_TONE[item.finalScoreStatus]
+  return strictEnumTone(FINAL_SCORE_STATUS_TONE, item.finalScoreStatus, '最终成绩状态')
 }
 
 function finalScoreStatusLabel(item: StudentExamItemVO): string {
-  if (!item.finalScoreStatus) return ''
-  return FINAL_SCORE_STATUS_LABEL[item.finalScoreStatus]
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, item.finalScoreStatus, '最终成绩状态')
+}
+
+function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
+  return strictEnumTone(STUDENT_REVIEW_WINDOW_STATUS_TONE, item.reviewWindowStatus, '复核窗口状态')
+}
+
+function reviewWindowStatusLabel(item: StudentExamItemVO): string {
+  return strictEnumLabel(STUDENT_REVIEW_WINDOW_STATUS_LABEL, item.reviewWindowStatus, '复核窗口状态')
 }
 
 const latestPublished = computed<StudentExamItemVO | null>(() => {
@@ -268,11 +273,11 @@ const publishedCount = computed(
 /** 按发布时间倒序的已发布考试 */
 const publishedExamsSorted = computed<StudentExamItemVO[]>(() => {
   return exams.value
-    .filter((e) => e.finalScoreStatus === 'PUBLISHED' && e.finalScore != null)
+    .filter((e) => e.finalScoreStatus === 'PUBLISHED')
     .slice()
     .sort((a, b) => {
-      const ta = a.publishedTime ? new Date(a.publishedTime).getTime() : 0
-      const tb = b.publishedTime ? new Date(b.publishedTime).getTime() : 0
+      const ta = requirePublishedTimestamp(a)
+      const tb = requirePublishedTimestamp(b)
       return tb - ta
     })
 })
@@ -294,9 +299,8 @@ const unpublishedCount = computed<number>(() => {
 const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
-  const latest = list[0].finalScore
-  const previous = list[1].finalScore
-  if (latest == null || previous == null) return null
+  const latest = requirePublishedScore(list[0])
+  const previous = requirePublishedScore(list[1])
   return { diff: latest - previous, latest, previous }
 })
 
@@ -346,7 +350,7 @@ const insightItems = computed(() => {
     items.push({
       key: 'trend',
       label: '首次发布',
-      value: publishedExamsSorted.value[0].finalScore?.toFixed(2) ?? '-',
+      value: formatPublishedScore(publishedExamsSorted.value[0]),
       unit: '分',
       helper: '后续考试发布后此处会显示趋势对比',
       tone: 'blue',
@@ -402,9 +406,33 @@ async function loadExams() {
   }
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
+
+function requirePublishedScore(item: StudentExamItemVO): number {
+  if (item.finalScoreStatus !== 'PUBLISHED') {
+    throw new Error(`未发布成绩不能读取最终分数：examId=${item.examId}`)
+  }
+  if (item.finalScore == null) {
+    throw new Error(`已发布成绩缺少最终分数：examId=${item.examId}`)
+  }
+  return item.finalScore
+}
+
+function formatPublishedScore(item: StudentExamItemVO): string {
+  return requirePublishedScore(item).toFixed(2)
+}
+
+function requirePublishedTime(item: StudentExamItemVO): string {
+  return formatDateTime(requirePublishedTimestamp(item))
+}
+
+function requirePublishedTimestamp(item: StudentExamItemVO): number {
+  if (item.finalScoreStatus !== 'PUBLISHED') {
+    throw new Error(`未发布成绩不能读取发布时间：examId=${item.examId}`)
+  }
+  if (!item.publishedTime) {
+    throw new Error(`已发布成绩缺少发布时间：examId=${item.examId}`)
+  }
+  return new Date(item.publishedTime).getTime()
 }
 
 function goDetail(examId: string) {
@@ -479,8 +507,9 @@ onMounted(loadExams)
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background: linear-gradient(135deg, rgba(82, 196, 26, 0.08) 0%, rgba(82, 196, 26, 0.02) 100%);
-    border: 1px solid rgba(82, 196, 26, 0.18);
+    /* 与全站其他卡片视觉对齐：用纯色浅绿底 + 1px 边框，去除 135deg 渐变 */
+    background: var(--dp-green-50, #f0fdf4);
+    border: 1px solid var(--dp-green-200, #bbf7d0);
     border-radius: var(--dp-radius-md, 6px);
 
     .score-label {

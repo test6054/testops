@@ -66,19 +66,18 @@
             <template #title>
               <a-typography-text copyable>会话 #{{ (item as FormalSessionVO).id }}</a-typography-text>
               <UiTag
-                v-if="(item as FormalSessionVO).sessionStatus"
-                :tone="FORMAL_STATUS_TONE[(item as FormalSessionVO).sessionStatus!]"
+                :tone="FORMAL_STATUS_TONE[(item as FormalSessionVO).sessionStatus]"
                 size="sm"
                 class="status-tag"
               >
-                {{ FORMAL_STATUS_LABEL[(item as FormalSessionVO).sessionStatus!] }}
+                {{ FORMAL_STATUS_LABEL[(item as FormalSessionVO).sessionStatus] }}
               </UiTag>
             </template>
             <template #description>
               <span>
-                题组 #{{ (item as FormalSessionVO).groupId }} · 创建于 {{ formatTime((item as FormalSessionVO).createTime) }}
-                <template v-if="(item as FormalSessionVO).startTime">· 开始 {{ formatTime((item as FormalSessionVO).startTime) }}</template>
-                <template v-if="(item as FormalSessionVO).endTime">· 结束 {{ formatTime((item as FormalSessionVO).endTime) }}</template>
+                题组 #{{ (item as FormalSessionVO).groupId }} · 创建于 {{ formatDateTime((item as FormalSessionVO).createTime) }}
+                <template v-if="(item as FormalSessionVO).startTime">· 开始 {{ formatDateTime((item as FormalSessionVO).startTime) }}</template>
+                <template v-if="(item as FormalSessionVO).endTime">· 结束 {{ formatDateTime((item as FormalSessionVO).endTime) }}</template>
                 <template v-if="(item as FormalSessionVO).pauseReason">
                   · 暂停原因：{{ (item as FormalSessionVO).pauseReason }}
                 </template>
@@ -151,7 +150,6 @@ import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import {
   completeFormalSession,
@@ -163,6 +161,7 @@ import {
   startFormalSession,
 } from '@/apis/mark/marking-organization'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
 
 interface GroupOption {
   value: string
@@ -194,7 +193,7 @@ const deletingId = ref<string | null>(null)
 const formalSessionOptions = computed(() =>
   props.sessions.map(item => ({
     value: item.id,
-    label: `会话 #${item.id}（题组 #${item.groupId}）${item.sessionStatus ? ' · ' + FORMAL_STATUS_LABEL[item.sessionStatus] : ''}`,
+    label: `会话 #${item.id}（题组 #${item.groupId}） · ${FORMAL_STATUS_LABEL[item.sessionStatus]}`,
   })),
 )
 
@@ -207,28 +206,24 @@ watch(
   },
 )
 
-function canPause(status?: FormalSessionStatusCode): boolean {
+function canPause(status: FormalSessionStatusCode): boolean {
   return status === 'SESSION_ACTIVE'
 }
 
-function canResume(status?: FormalSessionStatusCode): boolean {
+function canResume(status: FormalSessionStatusCode): boolean {
   return status === 'SESSION_PAUSED'
 }
 
-function canClose(status?: FormalSessionStatusCode): boolean {
+function canClose(status: FormalSessionStatusCode): boolean {
   return status === 'SESSION_ACTIVE'
     || status === 'SESSION_PAUSED'
     || status === 'SESSION_COMPLETED'
 }
 
-function canDelete(status?: FormalSessionStatusCode): boolean {
+function canDelete(status: FormalSessionStatusCode): boolean {
   return status === 'SESSION_CREATED'
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 async function submitCreate(): Promise<void> {
   if (!props.organizationId || !formalGroupId.value) return

@@ -16,21 +16,21 @@ export interface ExamQuestionAnalysisRecordVO {
   id: string
   tenantId?: string
   examId: string
-  questionTemplateId?: string
-  totalCount?: number
-  correctCount?: number
-  wrongCount?: number
-  needReviewCount?: number
+  questionTemplateId: string
+  totalCount: number
+  correctCount: number
+  wrongCount: number
+  needReviewCount: number
   avgScore?: number
   maxScore?: number
   minScore?: number
   scoreStddev?: number
   difficultyIndex?: number
   discriminationIndex?: number
-  fullScore?: number
-  zeroScoreCount?: number
-  fullScoreCount?: number
-  snapshotTime?: string
+  fullScore: number
+  zeroScoreCount: number
+  fullScoreCount: number
+  snapshotTime: string
   createTime?: string
   updateTime?: string
 }
@@ -47,7 +47,8 @@ export function generateQuestionAnalysis(params: {
     examId: params.examId,
     questionTemplateId: params.questionTemplateId,
   }).toString()
-  return http.post<ExamQuestionAnalysisRecordVO>(`/api/exam/question-analysis/generate?${search}`)
+  return http.post<unknown>(`/api/exam/question-analysis/generate?${search}`)
+    .then(validateQuestionAnalysisRecord)
 }
 
 /**
@@ -57,9 +58,9 @@ export function generateQuestionAnalysis(params: {
 export function generateAllQuestionAnalysis(
   examId: string,
 ): Promise<ExamQuestionAnalysisRecordVO[]> {
-  return http.post<ExamQuestionAnalysisRecordVO[]>(
+  return http.post<unknown>(
     `/api/exam/question-analysis/generate-all?examId=${encodeURIComponent(examId)}`,
-  )
+  ).then(validateQuestionAnalysisRecordList)
 }
 
 /**
@@ -70,7 +71,8 @@ export function listQuestionAnalysis(params: {
   examId: string
   questionTemplateId?: string
 }): Promise<ExamQuestionAnalysisRecordVO[]> {
-  return http.get<ExamQuestionAnalysisRecordVO[]>('/api/exam/question-analysis/list', { params })
+  return http.get<unknown>('/api/exam/question-analysis/list', { params })
+    .then(validateQuestionAnalysisRecordList)
 }
 
 // ─── 学生错题本 ─────────────────────────────────
@@ -237,7 +239,7 @@ export interface ExamRejudgePlanVO {
   examId: string
   triggerType?: RejudgeTriggerTypeCode
   triggerSourceId?: string
-  affectedQuestionIds?: string
+  affectedQuestionIds?: string[]
   affectedStudentCount?: number
   planStatus?: RejudgePlanStatusCode
   beforeAfterDiff?: string
@@ -287,4 +289,71 @@ export function approveRejudgePlan(payload: RejudgePlanDecisionPayload): Promise
  */
 export function executeRejudgePlan(payload: RejudgePlanExecutePayload): Promise<void> {
   return http.post<void>('/api/exam/question-analysis/rejudge-plan/execute', payload)
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new TypeError(`题目质量分析接口缺少 ${fieldName}`)
+  }
+  return value
+}
+
+function optionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined
+  }
+  if (typeof value !== 'string') {
+    throw new TypeError(`题目质量分析接口 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`题目质量分析接口 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
+function optionalFiniteNumber(value: unknown, fieldName: string): number | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+  return requireFiniteNumber(value, fieldName)
+}
+
+function validateQuestionAnalysisRecord(value: unknown): ExamQuestionAnalysisRecordVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('题目质量分析接口返回格式错误')
+  }
+  const record = value as Record<string, unknown>
+  return {
+    id: requireString(record.id, 'id'),
+    tenantId: optionalString(record.tenantId, 'tenantId'),
+    examId: requireString(record.examId, 'examId'),
+    questionTemplateId: requireString(record.questionTemplateId, 'questionTemplateId'),
+    totalCount: requireFiniteNumber(record.totalCount, 'totalCount'),
+    correctCount: requireFiniteNumber(record.correctCount, 'correctCount'),
+    wrongCount: requireFiniteNumber(record.wrongCount, 'wrongCount'),
+    needReviewCount: requireFiniteNumber(record.needReviewCount, 'needReviewCount'),
+    avgScore: optionalFiniteNumber(record.avgScore, 'avgScore'),
+    maxScore: optionalFiniteNumber(record.maxScore, 'maxScore'),
+    minScore: optionalFiniteNumber(record.minScore, 'minScore'),
+    scoreStddev: optionalFiniteNumber(record.scoreStddev, 'scoreStddev'),
+    difficultyIndex: optionalFiniteNumber(record.difficultyIndex, 'difficultyIndex'),
+    discriminationIndex: optionalFiniteNumber(record.discriminationIndex, 'discriminationIndex'),
+    fullScore: requireFiniteNumber(record.fullScore, 'fullScore'),
+    zeroScoreCount: requireFiniteNumber(record.zeroScoreCount, 'zeroScoreCount'),
+    fullScoreCount: requireFiniteNumber(record.fullScoreCount, 'fullScoreCount'),
+    snapshotTime: requireString(record.snapshotTime, 'snapshotTime'),
+    createTime: optionalString(record.createTime, 'createTime'),
+    updateTime: optionalString(record.updateTime, 'updateTime'),
+  }
+}
+
+function validateQuestionAnalysisRecordList(value: unknown): ExamQuestionAnalysisRecordVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('题目质量分析列表接口返回格式错误')
+  }
+  return value.map(validateQuestionAnalysisRecord)
 }

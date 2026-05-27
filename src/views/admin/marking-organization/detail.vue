@@ -5,14 +5,14 @@
         <div class="org-detail__context-info">
           <h2 class="org-detail__title">阅卷交付 - 阅卷组织详情</h2>
           <UiTag
-            v-if="organization?.organizationStatus"
-            :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
+            v-if="organization"
+            :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
             size="sm"
           >
-            {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
+            {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
           </UiTag>
           <UiTag v-if="organization" tone="blue" size="sm">
-            题组 {{ organization.groups?.length ?? 0 }}
+            题组 {{ organization.groups.length }}
           </UiTag>
           <UiTag v-if="organization?.anonymousMode" tone="green" size="sm"> 匿名阅卷 </UiTag>
         </div>
@@ -71,15 +71,14 @@
                 <a-typography-text copyable>{{ organization.examId }}</a-typography-text>
               </a-descriptions-item>
               <a-descriptions-item label="组长用户ID">
-                {{ organization.leaderUserId || '-' }}
+                {{ organization.leaderUserId }}
               </a-descriptions-item>
               <a-descriptions-item label="组织状态">
                 <UiTag
-                  v-if="organization.organizationStatus"
-                  :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
+                  :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
                   size="sm"
                 >
-                  {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
+                  {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="匿名阅卷">
@@ -88,7 +87,7 @@
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="题组数量">
-                {{ organization.groups?.length ?? 0 }} 组
+                {{ organization.groups.length }} 组
               </a-descriptions-item>
               <a-descriptions-item label="备注" :span="3">
                 {{ organization.remark || '-' }}
@@ -118,17 +117,17 @@
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'groupName'">
                   <a-typography-text strong>
-                    {{ record.groupName || '-' }}
+                    {{ record.groupName }}
                   </a-typography-text>
                 </template>
                 <template v-else-if="column.key === 'questionTemplateIds'">
                   <UiTag tone="blue" size="sm">
-                    {{ record.questionTemplateIds?.length ?? 0 }} 题
+                    {{ record.questionTemplateIds.length }} 题
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'reviewerUserIds'">
                   <UiTag tone="purple" size="sm">
-                    {{ record.reviewerUserIds?.length ?? 0 }} 人
+                    {{ record.reviewerUserIds.length }} 人
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'groupStatus'">
@@ -137,7 +136,7 @@
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'createTime'">
-                  {{ formatTime(record.createTime) }}
+                  {{ formatDateTime(record.createTime) }}
                 </template>
                 <template v-else-if="column.key === 'action'">
                   <a-space size="small">
@@ -298,11 +297,10 @@
             <a-form layout="vertical" class="status-form">
               <a-form-item label="当前状态">
                 <UiTag
-                  v-if="organization.organizationStatus"
-                  :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
+                  :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
                   size="md"
                 >
-                  {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
+                  {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
                 </UiTag>
               </a-form-item>
               <a-form-item label="目标状态" required>
@@ -425,7 +423,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   AllocationPolicySavePayload,
   AnonymousTokenPolicyCode,
@@ -439,6 +436,15 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySavePayload,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
+import { getExamTemplate } from '@/apis/mark/exam'
 import {
   ANONYMOUS_TOKEN_POLICY_LABEL,
   closeQuestionGroup,
@@ -457,15 +463,6 @@ import {
   updateOrganization,
   updateOrganizationStatus,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getExamTemplate } from '@/apis/mark/exam'
 import {
   UiButton,
   UiDataTable,
@@ -475,6 +472,8 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
@@ -552,8 +551,8 @@ const teacherOptions = computed(() =>
   teacherList.value.map((item) => ({
     value: item.id,
     label: item.identifierNumber
-      ? `${item.nickName || item.userName} (${item.identifierNumber})`
-      : item.nickName || item.userName,
+      ? `${item.nickName} (${item.identifierNumber})`
+      : item.nickName,
   })),
 )
 
@@ -562,7 +561,7 @@ async function loadTeachers(): Promise<void> {
   teacherLoading.value = true
   try {
     const result = await adminGetUserPage({ pageNum: 1, pageSize: 200, roleKey: 'SCH_TECH' })
-    teacherList.value = result.list ?? []
+    teacherList.value = result.list
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '教师列表加载失败'
     message.error(errMsg)
@@ -651,10 +650,10 @@ function openGroupModal(): void {
 
 function openGroupEdit(record: QuestionMarkingGroupVO): void {
   groupForm.groupId = record.id
-  groupForm.groupName = record.groupName || ''
+  groupForm.groupName = record.groupName
   groupForm.leaderUserId = record.leaderUserId
-  groupForm.questionTemplateIds = [...(record.questionTemplateIds ?? [])]
-  groupForm.reviewerUserIds = [...(record.reviewerUserIds ?? [])]
+  groupForm.questionTemplateIds = [...record.questionTemplateIds]
+  groupForm.reviewerUserIds = [...record.reviewerUserIds]
   groupModalOpen.value = true
   void loadTeachers()
   void loadQuestionTemplates()
@@ -807,7 +806,7 @@ const policyForm = reactive<PolicyForm>({
 })
 
 const groupSelectOptions = computed(() => [
-  ...groups.value.map((g) => ({ value: g.id, label: g.groupName || `题组 #${g.id}` })),
+  ...groups.value.map((g) => ({ value: g.id, label: g.groupName })),
 ])
 
 // 从后端枚举 LABEL 对象直接派生 select options。
@@ -920,20 +919,14 @@ function goSessions(): void {
   })
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
+
+// 严格 typed helper：题组 groupStatus 是后端合同必返枚举。
+function groupStatusTone(status: QuestionMarkingGroupStatusCode): BadgeTone {
+  return strictEnumTone(QUESTION_GROUP_STATUS_TONE, status, '题组状态')
 }
 
-// 严格 typed helper：题组 groupStatus 是 QuestionMarkingGroupStatusCode | undefined。
-function groupStatusTone(status?: QuestionMarkingGroupStatusCode): BadgeTone {
-  if (!status) return 'gray'
-  return QUESTION_GROUP_STATUS_TONE[status] ?? 'gray'
-}
-
-function groupStatusLabel(status?: QuestionMarkingGroupStatusCode): string {
-  if (!status) return '-'
-  return QUESTION_GROUP_STATUS_LABEL[status] ?? status
+function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
+  return strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, status, '题组状态')
 }
 
 onMounted(loadOrganization)

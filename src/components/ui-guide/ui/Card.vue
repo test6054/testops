@@ -39,7 +39,12 @@ const props = withDefaults(
   defineProps<{
     /** 卡片标题（也可使用 #title 插槽） */
     title?: string
-    /** 是否显示 hover 效果 */
+    /**
+     * 是否显示 hover 效果
+     *
+     * 默认 false：阅卷端绝大多数卡片是展示性、非交互的，给非交互元素加 hover 反馈违反
+     * Nielsen Heuristic 4（Affordance）。需要交互反馈的卡片显式传 `:hoverable="true"`。
+     */
     hoverable?: boolean
     /** 是否显示边框 */
     bordered?: boolean
@@ -50,7 +55,7 @@ const props = withDefaults(
   }>(),
   {
     title: '',
-    hoverable: true,
+    hoverable: false,
     bordered: false,
     showHeader: true,
     compact: false,

@@ -128,7 +128,7 @@
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'studentName'">
-              <a-typography-text strong :content="candidates[index].studentName || '-'" />
+              <a-typography-text strong :content="candidates[index].studentName" />
             </template>
             <template v-else-if="column.key === 'finalScore'">
               <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
@@ -158,7 +158,7 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'confirmedTime'">
-              {{ formatTime(candidates[index].confirmedTime) }}
+              {{ formatDateTime(candidates[index].confirmedTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
@@ -214,10 +214,10 @@
         <div v-else>
           <a-descriptions :column="2" size="small" bordered class="score-finalize__detail-summary">
             <a-descriptions-item label="考生">
-              {{ detailCandidate?.studentName || '-' }}（{{ detailCandidate?.studentNo || '-' }}）
+              {{ detailCandidate?.studentName }}（{{ detailCandidate?.studentNo }}）
             </a-descriptions-item>
             <a-descriptions-item label="班级">
-              {{ detailCandidate?.studentClassName || '-' }}
+              {{ detailCandidate?.studentClassName }}
             </a-descriptions-item>
             <a-descriptions-item label="试卷实例">
               <a-typography-text :content="paperScore.paperInstanceId" copyable />
@@ -246,7 +246,7 @@
           >
             <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'questionNo'">
-                <UiTag tone="blue" size="sm">{{ paperQuestions[index].questionNo || '-' }}</UiTag>
+                <UiTag tone="blue" size="sm">{{ paperQuestions[index].questionNo }}</UiTag>
               </template>
               <template v-else-if="column.key === 'finalScore'">
                 <a-typography-text v-if="paperQuestions[index].finalScore != null" strong>
@@ -341,7 +341,7 @@
         />
         <a-form-item label="考生">
           <a-input
-            :value="`${confirmCandidate?.studentName || ''}（${confirmCandidate?.studentNo || ''}）`"
+            :value="confirmCandidate ? `${confirmCandidate.studentName}（${confirmCandidate.studentNo}）` : ''"
             disabled
           />
         </a-form-item>
@@ -377,7 +377,7 @@
         />
         <a-form-item label="考生">
           <a-input
-            :value="`${withdrawCandidate?.studentName || ''}（${withdrawCandidate?.studentNo || ''}）`"
+            :value="withdrawCandidate ? `${withdrawCandidate.studentName}（${withdrawCandidate.studentNo}）` : ''"
             disabled
           />
         </a-form-item>
@@ -453,6 +453,7 @@ import {
   confirmFinalScore,
   deanonymizePaper,
   FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
   getPaperScore,
   pageExams,
   pageExamScoreSummary,
@@ -476,52 +477,17 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScoreFinalize' })
 
-type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
-
-const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, ToneCode> = {
-  PENDING: 'gray',
-  CALCULATED: 'blue',
-  CONFIRMED: 'blue',
-  CORRECTED: 'orange',
-  PUBLISHED: 'green',
-  WITHDRAWN: 'red',
+function finalScoreStatusTone(value: FinalScoreStatusCode) {
+  return strictEnumTone(FINAL_SCORE_STATUS_TONE, value, '最终成绩状态')
 }
 
-/**
- * 后端 ExamScoreSummary/PaperScore VO 中 finalScoreStatus 是宽类型字符串，需在此狭化为 FinalScoreStatusCode 才能查 LABEL/TONE。
- * 通过字面值 === 比较让 TS 自动缩窄类型，全程零 as 断言。
- */
-function finalScoreStatusTone(value: unknown): ToneCode {
-  if (typeof value !== 'string') return 'gray'
-  if (
-    value === 'PENDING'
-    || value === 'CALCULATED'
-    || value === 'CONFIRMED'
-    || value === 'CORRECTED'
-    || value === 'PUBLISHED'
-    || value === 'WITHDRAWN'
-  ) {
-    return FINAL_SCORE_STATUS_TONE[value]
-  }
-  return 'gray'
-}
-
-function finalScoreStatusLabel(value: unknown): string {
-  if (typeof value !== 'string') return '未生成'
-  if (
-    value === 'PENDING'
-    || value === 'CALCULATED'
-    || value === 'CONFIRMED'
-    || value === 'CORRECTED'
-    || value === 'PUBLISHED'
-    || value === 'WITHDRAWN'
-  ) {
-    return FINAL_SCORE_STATUS_LABEL[value]
-  }
-  return '未生成'
+function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, value, '最终成绩状态')
 }
 
 // 直接从后端真实枚举 LABEL 对象派生 select options，零 as 断言。
@@ -567,10 +533,6 @@ const columns: ColumnType<ExamScoreSummaryItemVO>[] = [
   { title: '操作', key: 'actions', width: 320, fixed: 'right' },
 ]
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
@@ -584,8 +546,11 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
-    candidates.value = result.list || []
-    pagination.total = result.total ?? 0
+    if (!Array.isArray(result.list)) {
+      throw new TypeError('成绩确认候选列表响应缺少 list 数组')
+    }
+    candidates.value = result.list
+    pagination.total = result.total
   } catch (error) {
     candidatesLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '成绩汇总加载失败'
@@ -617,8 +582,7 @@ function handlePageChange(payload: { current: number, pageSize: number }): void 
 function canConfirm(record: ExamScoreSummaryItemVO): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
-  // 未生成 / CALCULATED / WITHDRAWN / CORRECTED 都可以触发确认
-  return !s || s === 'CALCULATED' || s === 'WITHDRAWN' || s === 'CORRECTED'
+  return s === 'PENDING' || s === 'CALCULATED' || s === 'WITHDRAWN' || s === 'CORRECTED'
 }
 function confirmButtonLabel(record: ExamScoreSummaryItemVO): string {
   const s = record.finalScoreStatus
@@ -686,7 +650,7 @@ const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
   }
   for (const c of candidates.value) {
     const s = c.finalScoreStatus
-    if (s && s in buckets) buckets[s] += 1
+    buckets[s] += 1
   }
   return buckets
 })
@@ -932,7 +896,7 @@ async function loadPaperAuditLogs(): Promise<void> {
       targetType: 'FINAL_SCORE',
     })
     const targetPaper = detailCandidate.value.paperInstanceId
-    auditLogs.value = (all ?? [])
+    auditLogs.value = all
       .filter((log) => extractPaperInstanceFromAuditLog(log) === targetPaper)
       .sort((a, b) => {
         const ta = a.createTime ? dayjs(a.createTime).valueOf() : 0
@@ -955,7 +919,7 @@ const auditTimelineGroups = computed(() => {
       key: log.id ?? idx,
       title: scoreAuditTitle(log),
       content: log.reason || undefined,
-      time: log.createTime ? dayjs(log.createTime).format('YYYY-MM-DD HH:mm:ss') : undefined,
+      time: log.createTime ? formatDateTimeWithSeconds(log.createTime, '') : undefined,
       actor: log.operatorRole ? `操作角色：${log.operatorRole}` : undefined,
       tone: scoreAuditTone(log),
       tags: log.traceId
@@ -1007,29 +971,25 @@ async function loadHistoricalScores(): Promise<void> {
       pageSize: HISTORICAL_EXAMS_MAX,
       courseId,
     })
-    const courseExams = examsPage.list ?? []
+    const courseExams = examsPage.list
     const settled = await Promise.all(
       courseExams.map(async (exam) => {
-        try {
-          const result = await pageExamScoreSummary({
-            examId: exam.examId,
-            keyword: candidate.studentNo,
-            pageNum: 1,
-            pageSize: 1,
-          })
-          const item = result.list?.[0]
-          if (!item || item.finalScore == null) return null
-          const point: HistoricalScorePoint = {
-            examId: exam.examId,
-            examName: exam.examName,
-            examEndTime: exam.examEndTime,
-            finalScore: item.finalScore!,
-            isCurrent: exam.examId === selectedExamId.value,
-          }
-          return point
-        } catch {
-          return null
+        const result = await pageExamScoreSummary({
+          examId: exam.examId,
+          keyword: candidate.studentNo,
+          pageNum: 1,
+          pageSize: 1,
+        })
+        const item = result.list[0]
+        if (!item || item.finalScore == null) return null
+        const point: HistoricalScorePoint = {
+          examId: exam.examId,
+          examName: exam.examName,
+          examEndTime: exam.examEndTime,
+          finalScore: item.finalScore,
+          isCurrent: exam.examId === selectedExamId.value,
         }
+        return point
       }),
     )
     historicalScores.value = settled
@@ -1106,7 +1066,7 @@ async function handleDeanonymize(): Promise<void> {
       revealScenario: 'SCORE_FINALIZE_REVIEW',
       reason: '成绩确认明细查看考生身份',
     })
-    message.success(`解匿名成功：${result.studentName || ''}（${result.studentNo || ''}）`)
+    message.success(`解匿名成功：${result.studentName}（${result.studentNo}）`)
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '解匿名失败'
     message.error(errMsg)
@@ -1233,7 +1193,7 @@ async function handleConfirm(): Promise<void> {
       await publishFinalScore({ examId, paperInstanceId })
       message.success('成绩已确认并发布，学生通知已下发')
     } else {
-      message.success('成绩已确认（CONFIRMED），可在列表点击「发布」推进到 PUBLISHED')
+      message.success('成绩已确认，可在列表点击「发布」推送到学生侧')
     }
     confirmOpen.value = false
     await loadCandidates()

@@ -36,6 +36,7 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import {
   activateLocalAgent,
   cancelScanJob,
@@ -67,11 +68,27 @@ import {
 } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { getSemesterDescription, SemesterOptions } from '@/types/enums'
+import { formatDateTimeWithSeconds } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { promptModal } from '@/views/quality/_helpers'
 
 const route = useRoute()
 const gatewayBaseUrlEnv = import.meta.env.VITE_SCANNER_GATEWAY_BASE_URL
 const defaultGatewayBaseUrl = typeof gatewayBaseUrlEnv === 'string' ? gatewayBaseUrlEnv.trim() : ''
+
+type ScannerPolicy = NonNullable<ExamScannerKioskContextVO['policy']>
+
+const SCANNER_COLOR_MODE_LABEL: Record<ScannerPolicy['colorMode'], string> = {
+  COLOR: '彩色',
+  GRAY: '灰度',
+  LINEART: '黑白',
+}
+
+const SCANNER_DUPLEX_MODE_LABEL: Record<ScannerPolicy['duplexMode'], string> = {
+  SIMPLEX: '单面',
+  DUPLEX: '双面',
+}
 
 const health = ref<AgentHealthResponse | null>(null)
 const scanners = ref<ScannerDeviceInfo[]>([])
@@ -283,10 +300,10 @@ const scanBlockedReason = computed(() => {
   if (!kioskContext.value) return '考试扫描上下文未加载'
   if (currentJobBlocksWorkspace.value) return '当前扫描任务未结束'
   if (!kioskContext.value.canStartScan)
-    return kioskContext.value.blockReason || '服务端未允许启动扫描'
+    return kioskContext.value.blockReason
   if (scanMode.value === 'SUPPLEMENT') {
     if (!kioskContext.value.canStartSupplementScan)
-      return kioskContext.value.supplementBlockReason || '服务端未允许启动补扫'
+      return kioskContext.value.supplementBlockReason
     if (!supplementTargetPageNo.value || supplementTargetPageNo.value <= 0)
       return '补扫目标页号不能为空'
     if (!supplementReason.value.trim()) return '补扫原因不能为空'
@@ -328,7 +345,7 @@ const uploadStage = computed(() => {
 const latestBatchText = computed(() => {
   const batch = kioskContext.value?.latestBatch
   if (!batch) return '暂无批次'
-  return `${batch.batchNo || batch.batchExternalNo || batch.scanBatchId} · ${batch.statusMessage || batch.status}`
+  return `${batch.batchNo || batch.batchExternalNo || batch.scanBatchId} · ${batch.statusMessage}`
 })
 const latestBatchModeText = computed(() => {
   const batch = kioskContext.value?.latestBatch
@@ -386,7 +403,7 @@ const examTermText = computed(() => {
   const year = (exam.academicYear || '').trim()
   const semester = (exam.semester || '').trim()
   if (!year && !semester) return ''
-  const semesterLabel = semester === '1' ? '秋季学期' : semester === '2' ? '春季学期' : ''
+  const semesterLabel = semester ? getSemesterDescription(semester) : ''
   return [year, semesterLabel].filter(Boolean).join(' · ')
 })
 const declaredClassChips = computed(() => {
@@ -1304,7 +1321,7 @@ async function closeActiveBatch(discardPendingPages: boolean) {
       throw new TypeError('服务端批次关闭回执缺少 pending 页数')
     }
     if (lifecycle.pendingPageCount > 0) {
-      errorMessage.value = lifecycle.pendingPagesDiagnostic || '服务端批次仍存在未提交扫描页'
+      errorMessage.value = lifecycle.pendingPagesDiagnostic!
     }
   }
   activeBatchExternalNo.value = ''
@@ -1425,9 +1442,20 @@ function agentHealthStatusLabel(status?: AgentHealthStatus) {
   return '运行中'
 }
 
-function formatTime(value?: string | null) {
-  if (!value) return '-'
-  return value.replace('T', ' ').slice(0, 19)
+function endpointOnlineStatusLabel(status: NonNullable<ExamScannerKioskContextVO['device']>['onlineStatus']) {
+  return strictEnumLabel(SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, status, '扫描端点在线状态')
+}
+
+function scannerColorModeLabel(status: ScannerPolicy['colorMode']) {
+  return strictEnumLabel(SCANNER_COLOR_MODE_LABEL, status, '扫描色彩模式')
+}
+
+function scannerDuplexModeLabel(status: ScannerPolicy['duplexMode']) {
+  return strictEnumLabel(SCANNER_DUPLEX_MODE_LABEL, status, '扫描单双面模式')
+}
+
+function formatTime(value?: string | null): string {
+  return formatDateTimeWithSeconds(value)
 }
 
 function handleError(error: unknown) {
@@ -1539,7 +1567,7 @@ function ledgerErrorText(err: unknown) {
         <div class="eyebrow">高校期末考试</div>
         <h1>期末考试扫描工作台</h1>
         <p>
-          {{ kioskContext?.exam.examName || '等待考试上下文' }}
+          {{ kioskContext?.exam.examName }}
           <span v-if="examTermText" class="exam-term-tag">{{ examTermText }}</span>
         </p>
       </div>
@@ -1593,10 +1621,7 @@ function ledgerErrorText(err: unknown) {
           style="width: 140px"
           :disabled="!canSwitchExam"
           :title="canSwitchExam ? undefined : '当前扫描任务未结束，不能修改考试筛选条件'"
-          :options="[
-            { label: '秋季学期', value: '1' },
-            { label: '春季学期', value: '2' },
-          ]"
+          :options="SemesterOptions"
           @change="onExamFilterChange"
         />
         <a-button
@@ -1640,9 +1665,7 @@ function ledgerErrorText(err: unknown) {
               <span v-if="item.academicYear">· {{ item.academicYear }}</span>
               <span v-if="item.semester">
                 ·
-                {{
-                  item.semester === '1' ? '秋季' : item.semester === '2' ? '春季' : item.semester
-                }}
+                {{ getSemesterDescription(item.semester) }}
               </span>
               <span>· 班级 {{ item.classIds.length }}</span>
               <span>· 已扫批次 {{ item.scanBatchCount }}</span>
@@ -1887,11 +1910,11 @@ function ledgerErrorText(err: unknown) {
         <dl>
           <div>
             <dt>考试编号</dt>
-            <dd>{{ kioskContext?.exam.examNo || '-' }}</dd>
+            <dd>{{ kioskContext?.exam.examNo }}</dd>
           </div>
           <div>
             <dt>考试状态</dt>
-            <dd>{{ kioskContext?.exam.statusMessage || kioskContext?.exam.status || '-' }}</dd>
+            <dd>{{ kioskContext?.exam.statusMessage }}</dd>
           </div>
           <div>
             <dt>学年学期</dt>
@@ -1950,7 +1973,10 @@ function ledgerErrorText(err: unknown) {
         </div>
         <div class="device-line">
           <strong>{{ kioskContext?.device?.deviceName || '未定位设备' }}</strong>
-          <span>{{ kioskContext?.device?.onlineStatus || '-' }}</span>
+          <span v-if="kioskContext?.device">
+            {{ endpointOnlineStatusLabel(kioskContext.device.onlineStatus) }}
+          </span>
+          <span v-else>未定位</span>
         </div>
         <dl class="compact-list">
           <div>
@@ -1969,7 +1995,8 @@ function ledgerErrorText(err: unknown) {
           </div>
           <div>
             <dt>设备业务键</dt>
-            <dd>{{ kioskContext?.device?.scannerDeviceId || '-' }}</dd>
+            <dd v-if="kioskContext?.device">{{ kioskContext.device.scannerDeviceId }}</dd>
+            <dd v-else>未定位</dd>
           </div>
         </dl>
       </article>
@@ -1979,12 +2006,15 @@ function ledgerErrorText(err: unknown) {
           <ControlOutlined />
           <span>服务端扫描策略</span>
         </div>
-        <div class="policy-row">
-          <span>DPI</span><strong>{{ kioskContext?.policy?.dpi || '-' }}</strong>
+        <div v-if="kioskContext?.policy" class="policy-row">
+          <span>DPI</span><strong>{{ kioskContext.policy.dpi }}</strong>
           <span>色彩</span>
-          <strong>{{ kioskContext?.policy?.colorMode || '-' }}</strong>
+          <strong>{{ scannerColorModeLabel(kioskContext.policy.colorMode) }}</strong>
           <span>单双面</span>
-          <strong>{{ kioskContext?.policy?.duplexMode || '-' }}</strong>
+          <strong>{{ scannerDuplexModeLabel(kioskContext.policy.duplexMode) }}</strong>
+        </div>
+        <div v-else class="policy-row">
+          <span>策略</span><strong>未配置扫描策略</strong>
         </div>
         <label class="expected-input">
           <span>预计页数</span>

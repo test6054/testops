@@ -9,6 +9,7 @@ import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -45,7 +46,7 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    options.value = (await departmentCatalogApi.list()) || []
+    options.value = requireArrayResult(await departmentCatalogApi.list(), '院系')
   } catch (e) {
     console.error('[DepartmentSelector] 加载院系列表失败', e)
     message.error('加载院系列表失败')

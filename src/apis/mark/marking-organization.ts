@@ -248,7 +248,7 @@ export interface MarkingTaskClaimPayload {
 export interface MarkingTaskSubmitPayload {
   taskId: string
   /** 教师给分 */
-  score: string | number
+  score: number
   /** 批改批注 */
   annotationNote?: string
 }
@@ -267,23 +267,23 @@ export interface MarkingTaskQueryPayload {
 /** 题目阅卷小组详情响应 - 对应后端 QuestionMarkingGroupResponse */
 export interface QuestionMarkingGroupVO {
   id: string
-  groupName?: string
-  questionTemplateIds?: string[]
-  leaderUserId?: string
-  groupStatus?: QuestionMarkingGroupStatusCode
-  reviewerUserIds?: string[]
+  groupName: string
+  questionTemplateIds: string[]
+  leaderUserId: string
+  groupStatus: QuestionMarkingGroupStatusCode
+  reviewerUserIds: string[]
   createTime?: string
 }
 
 /** 阅卷组织详情响应 - 对应后端 MarkingOrganizationResponse */
 export interface MarkingOrganizationVO {
   id: string
-  examId?: string
-  leaderUserId?: string
-  organizationStatus?: MarkingOrganizationStatusCode
-  anonymousMode?: boolean
+  examId: string
+  leaderUserId: string
+  organizationStatus: MarkingOrganizationStatusCode
+  anonymousMode: boolean
   remark?: string
-  groups?: QuestionMarkingGroupVO[]
+  groups: QuestionMarkingGroupVO[]
   createTime?: string
   updateTime?: string
 }
@@ -291,18 +291,18 @@ export interface MarkingOrganizationVO {
 /** 阅卷任务详情响应 - 对应后端 MarkingTaskResponse */
 export interface MarkingTaskVO {
   id: string
-  examId?: string
-  groupId?: string
-  sessionId?: string
-  reviewerUserId?: string
-  paperInstanceId?: string
-  questionTemplateId?: string
-  sliceId?: string
+  examId: string
+  groupId: string
+  sessionId: string
+  reviewerUserId: string
+  paperInstanceId: string
+  questionTemplateId: string
+  sliceId: string
   /** 作答切片文件ID，用于前端拉取切片图 */
   sliceFileId?: string
-  taskStatus?: MarkingTaskStatusCode
+  taskStatus: MarkingTaskStatusCode
   /** 评阅轮次（试评轮次 / 正评轮次） */
-  reviewRound?: number
+  reviewRound: number
   score?: string | number
   annotationNote?: string
   /** 匿名令牌值，匿名模式下代替学生身份 */
@@ -369,10 +369,10 @@ export interface SessionListQueryPayload {
 /** 试评会话详情响应 - 对应后端 TrialSessionResponse */
 export interface TrialSessionVO {
   id: string
-  examId?: string
-  organizationId?: string
-  groupId?: string
-  sessionStatus?: TrialSessionStatusCode
+  examId: string
+  organizationId: string
+  groupId: string
+  sessionStatus: TrialSessionStatusCode
   /** 校准结论，JSON 格式 */
   calibrationResult?: string
   discussionNotes?: string
@@ -387,10 +387,10 @@ export interface TrialSessionVO {
 /** 正评会话详情响应 - 对应后端 FormalSessionResponse */
 export interface FormalSessionVO {
   id: string
-  examId?: string
-  organizationId?: string
-  groupId?: string
-  sessionStatus?: FormalSessionStatusCode
+  examId: string
+  organizationId: string
+  groupId: string
+  sessionStatus: FormalSessionStatusCode
   startTime?: string
   endTime?: string
   /** 任务范围描述，JSON 格式 */
@@ -409,6 +409,195 @@ export interface FormalSessionVO {
 
 // ─── API 调用 ────────────────────────────────────────────────
 
+function requireObject(value: unknown, fieldName: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError(`${fieldName}必须是对象`)
+  }
+  return value as Record<string, unknown>
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`${fieldName}必须是非空字符串`)
+  }
+  return value
+}
+
+function requireBoolean(value: unknown, fieldName: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new TypeError(`${fieldName}必须是布尔值`)
+  }
+  return value
+}
+
+function requireNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    throw new TypeError(`${fieldName}必须是数字`)
+  }
+  return value
+}
+
+function requireStringArray(value: unknown, fieldName: string): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || item.length === 0)) {
+    throw new TypeError(`${fieldName}必须是字符串数组`)
+  }
+  return value
+}
+
+function requireOrganizationStatus(value: unknown, fieldName: string): MarkingOrganizationStatusCode {
+  const code = requireString(value, fieldName) as MarkingOrganizationStatusCode
+  if (!MARKING_ORGANIZATION_STATUS_LABEL[code]) {
+    throw new TypeError(`${fieldName}存在未定义枚举值：${code}`)
+  }
+  return code
+}
+
+function requireQuestionGroupStatus(value: unknown, fieldName: string): QuestionMarkingGroupStatusCode {
+  const code = requireString(value, fieldName) as QuestionMarkingGroupStatusCode
+  if (!QUESTION_GROUP_STATUS_LABEL[code]) {
+    throw new TypeError(`${fieldName}存在未定义枚举值：${code}`)
+  }
+  return code
+}
+
+function requireMarkingTaskStatus(value: unknown, fieldName: string): MarkingTaskStatusCode {
+  const code = requireString(value, fieldName) as MarkingTaskStatusCode
+  if (!MARKING_TASK_STATUS_LABEL[code]) {
+    throw new TypeError(`${fieldName}存在未定义枚举值：${code}`)
+  }
+  return code
+}
+
+function requireTrialSessionStatus(value: unknown, fieldName: string): TrialSessionStatusCode {
+  const code = requireString(value, fieldName) as TrialSessionStatusCode
+  if (!TRIAL_SESSION_STATUS_LABEL[code]) {
+    throw new TypeError(`${fieldName}存在未定义枚举值：${code}`)
+  }
+  return code
+}
+
+function requireFormalSessionStatus(value: unknown, fieldName: string): FormalSessionStatusCode {
+  const code = requireString(value, fieldName) as FormalSessionStatusCode
+  if (!FORMAL_SESSION_STATUS_LABEL[code]) {
+    throw new TypeError(`${fieldName}存在未定义枚举值：${code}`)
+  }
+  return code
+}
+
+function validateQuestionMarkingGroup(value: unknown, fieldName: string): QuestionMarkingGroupVO {
+  const item = requireObject(value, fieldName)
+  return {
+    id: requireString(item.id, `${fieldName}.id`),
+    groupName: requireString(item.groupName, `${fieldName}.groupName`),
+    questionTemplateIds: requireStringArray(item.questionTemplateIds, `${fieldName}.questionTemplateIds`),
+    leaderUserId: requireString(item.leaderUserId, `${fieldName}.leaderUserId`),
+    groupStatus: requireQuestionGroupStatus(item.groupStatus, `${fieldName}.groupStatus`),
+    reviewerUserIds: requireStringArray(item.reviewerUserIds, `${fieldName}.reviewerUserIds`),
+    createTime: typeof item.createTime === 'string' ? item.createTime : undefined,
+  }
+}
+
+function validateMarkingOrganization(value: unknown): MarkingOrganizationVO {
+  const item = requireObject(value, '阅卷组织响应')
+  if (!Array.isArray(item.groups)) {
+    throw new TypeError('阅卷组织响应.groups必须是数组')
+  }
+  return {
+    id: requireString(item.id, '阅卷组织响应.id'),
+    examId: requireString(item.examId, '阅卷组织响应.examId'),
+    leaderUserId: requireString(item.leaderUserId, '阅卷组织响应.leaderUserId'),
+    organizationStatus: requireOrganizationStatus(item.organizationStatus, '阅卷组织响应.organizationStatus'),
+    anonymousMode: requireBoolean(item.anonymousMode, '阅卷组织响应.anonymousMode'),
+    remark: typeof item.remark === 'string' ? item.remark : undefined,
+    groups: item.groups.map((group, index) => validateQuestionMarkingGroup(group, `阅卷组织响应.groups[${index}]`)),
+    createTime: typeof item.createTime === 'string' ? item.createTime : undefined,
+    updateTime: typeof item.updateTime === 'string' ? item.updateTime : undefined,
+  }
+}
+
+function validateTrialSession(value: unknown, fieldName: string): TrialSessionVO {
+  const item = requireObject(value, fieldName)
+  return {
+    id: requireString(item.id, `${fieldName}.id`),
+    examId: requireString(item.examId, `${fieldName}.examId`),
+    organizationId: requireString(item.organizationId, `${fieldName}.organizationId`),
+    groupId: requireString(item.groupId, `${fieldName}.groupId`),
+    sessionStatus: requireTrialSessionStatus(item.sessionStatus, `${fieldName}.sessionStatus`),
+    calibrationResult: typeof item.calibrationResult === 'string' ? item.calibrationResult : undefined,
+    discussionNotes: typeof item.discussionNotes === 'string' ? item.discussionNotes : undefined,
+    closeReason: typeof item.closeReason === 'string' ? item.closeReason : undefined,
+    closeTime: typeof item.closeTime === 'string' ? item.closeTime : undefined,
+    createTime: typeof item.createTime === 'string' ? item.createTime : undefined,
+    updateTime: typeof item.updateTime === 'string' ? item.updateTime : undefined,
+  }
+}
+
+function validateFormalSession(value: unknown, fieldName: string): FormalSessionVO {
+  const item = requireObject(value, fieldName)
+  return {
+    id: requireString(item.id, `${fieldName}.id`),
+    examId: requireString(item.examId, `${fieldName}.examId`),
+    organizationId: requireString(item.organizationId, `${fieldName}.organizationId`),
+    groupId: requireString(item.groupId, `${fieldName}.groupId`),
+    sessionStatus: requireFormalSessionStatus(item.sessionStatus, `${fieldName}.sessionStatus`),
+    startTime: typeof item.startTime === 'string' ? item.startTime : undefined,
+    endTime: typeof item.endTime === 'string' ? item.endTime : undefined,
+    taskScope: typeof item.taskScope === 'string' ? item.taskScope : undefined,
+    pauseReason: typeof item.pauseReason === 'string' ? item.pauseReason : undefined,
+    pauseTime: typeof item.pauseTime === 'string' ? item.pauseTime : undefined,
+    closeReason: typeof item.closeReason === 'string' ? item.closeReason : undefined,
+    closeTime: typeof item.closeTime === 'string' ? item.closeTime : undefined,
+    createTime: typeof item.createTime === 'string' ? item.createTime : undefined,
+    updateTime: typeof item.updateTime === 'string' ? item.updateTime : undefined,
+  }
+}
+
+function validateMarkingTask(value: unknown, fieldName: string): MarkingTaskVO {
+  const item = requireObject(value, fieldName)
+  return {
+    id: requireString(item.id, `${fieldName}.id`),
+    examId: requireString(item.examId, `${fieldName}.examId`),
+    groupId: requireString(item.groupId, `${fieldName}.groupId`),
+    sessionId: requireString(item.sessionId, `${fieldName}.sessionId`),
+    reviewerUserId: requireString(item.reviewerUserId, `${fieldName}.reviewerUserId`),
+    paperInstanceId: requireString(item.paperInstanceId, `${fieldName}.paperInstanceId`),
+    questionTemplateId: requireString(item.questionTemplateId, `${fieldName}.questionTemplateId`),
+    sliceId: requireString(item.sliceId, `${fieldName}.sliceId`),
+    sliceFileId: typeof item.sliceFileId === 'string' ? item.sliceFileId : undefined,
+    taskStatus: requireMarkingTaskStatus(item.taskStatus, `${fieldName}.taskStatus`),
+    reviewRound: requireNumber(item.reviewRound, `${fieldName}.reviewRound`),
+    score: typeof item.score === 'number' || typeof item.score === 'string' ? item.score : undefined,
+    annotationNote: typeof item.annotationNote === 'string' ? item.annotationNote : undefined,
+    anonymousToken: typeof item.anonymousToken === 'string' ? item.anonymousToken : undefined,
+    allocatedAt: typeof item.allocatedAt === 'string' ? item.allocatedAt : undefined,
+    submittedAt: typeof item.submittedAt === 'string' ? item.submittedAt : undefined,
+  }
+}
+
+function validateTeacherClaimContext(value: unknown): TeacherClaimContextVO {
+  const item = requireObject(value, '教师领取上下文响应')
+  if (!Array.isArray(item.groups)) {
+    throw new TypeError('教师领取上下文响应.groups必须是数组')
+  }
+  return {
+    examId: requireString(item.examId, '教师领取上下文响应.examId'),
+    groups: item.groups.map((group, groupIndex) => {
+      const groupItem = requireObject(group, `教师领取上下文响应.groups[${groupIndex}]`)
+      if (!Array.isArray(groupItem.activeSessions)) {
+        throw new TypeError(`教师领取上下文响应.groups[${groupIndex}].activeSessions必须是数组`)
+      }
+      return {
+        groupId: requireString(groupItem.groupId, `教师领取上下文响应.groups[${groupIndex}].groupId`),
+        groupName: requireString(groupItem.groupName, `教师领取上下文响应.groups[${groupIndex}].groupName`),
+        organizationId: requireString(groupItem.organizationId, `教师领取上下文响应.groups[${groupIndex}].organizationId`),
+        activeSessions: groupItem.activeSessions.map((session, sessionIndex) =>
+          validateFormalSession(session, `教师领取上下文响应.groups[${groupIndex}].activeSessions[${sessionIndex}]`),
+        ),
+      }
+    }),
+  }
+}
+
 // ===================== 阅卷组织 =====================
 
 /**
@@ -416,7 +605,7 @@ export interface FormalSessionVO {
  * POST /api/mark/organization/create
  */
 export function createOrganization(payload: OrganizationCreatePayload): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/create', payload)
+  return http.post<unknown>('/api/mark/organization/create', payload).then(validateMarkingOrganization)
 }
 
 /**
@@ -424,7 +613,7 @@ export function createOrganization(payload: OrganizationCreatePayload): Promise<
  * POST /api/mark/organization/detail
  */
 export function getOrganization(payload: OrganizationQueryPayload): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/detail', payload)
+  return http.post<unknown>('/api/mark/organization/detail', payload).then(validateMarkingOrganization)
 }
 
 /**
@@ -432,7 +621,7 @@ export function getOrganization(payload: OrganizationQueryPayload): Promise<Mark
  * POST /api/mark/organization/detailById
  */
 export function getOrganizationById(payload: OrganizationQueryByIdPayload): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/detailById', payload)
+  return http.post<unknown>('/api/mark/organization/detailById', payload).then(validateMarkingOrganization)
 }
 
 /**
@@ -440,7 +629,7 @@ export function getOrganizationById(payload: OrganizationQueryByIdPayload): Prom
  * POST /api/mark/organization/update
  */
 export function updateOrganization(payload: OrganizationUpdatePayload): Promise<MarkingOrganizationVO> {
-  return http.post<MarkingOrganizationVO>('/api/mark/organization/update', payload)
+  return http.post<unknown>('/api/mark/organization/update', payload).then(validateMarkingOrganization)
 }
 
 /**
@@ -526,7 +715,8 @@ export function calibrateTrialSession(payload: TrialSessionCalibratePayload): Pr
  * POST /api/mark/organization/trial/list
  */
 export function listTrialSessions(payload: SessionListQueryPayload): Promise<TrialSessionVO[]> {
-  return http.post<TrialSessionVO[]>('/api/mark/organization/trial/list', payload)
+  return http.post<unknown[]>('/api/mark/organization/trial/list', payload)
+    .then(list => list.map((item, index) => validateTrialSession(item, `试评会话列表[${index}]`)))
 }
 
 // ===================== 正评会话 =====================
@@ -564,7 +754,8 @@ export function completeFormalSession(sessionId: string): Promise<boolean> {
  * POST /api/mark/organization/formal/list
  */
 export function listFormalSessions(payload: SessionListQueryPayload): Promise<FormalSessionVO[]> {
-  return http.post<FormalSessionVO[]>('/api/mark/organization/formal/list', payload)
+  return http.post<unknown[]>('/api/mark/organization/formal/list', payload)
+    .then(list => list.map((item, index) => validateFormalSession(item, `正评会话列表[${index}]`)))
 }
 
 // ===================== 阅卷任务 =====================
@@ -574,7 +765,8 @@ export function listFormalSessions(payload: SessionListQueryPayload): Promise<Fo
  * POST /api/mark/organization/task/claim
  */
 export function claimMarkingTasks(payload: MarkingTaskClaimPayload): Promise<MarkingTaskVO[]> {
-  return http.post<MarkingTaskVO[]>('/api/mark/organization/task/claim', payload)
+  return http.post<unknown[]>('/api/mark/organization/task/claim', payload)
+    .then(list => list.map((item, index) => validateMarkingTask(item, `领取阅卷任务响应[${index}]`)))
 }
 
 /**
@@ -590,7 +782,8 @@ export function submitMarkingTask(payload: MarkingTaskSubmitPayload): Promise<bo
  * POST /api/mark/organization/task/list
  */
 export function listMarkingTasks(payload: MarkingTaskQueryPayload): Promise<MarkingTaskVO[]> {
-  return http.post<MarkingTaskVO[]>('/api/mark/organization/task/list', payload)
+  return http.post<unknown[]>('/api/mark/organization/task/list', payload)
+    .then(list => list.map((item, index) => validateMarkingTask(item, `阅卷任务列表[${index}]`)))
 }
 
 /** 单任务详情查询请求 - 对应后端 MarkingTaskDetailQueryRequest */
@@ -603,7 +796,8 @@ export interface MarkingTaskDetailQueryPayload {
  * POST /api/mark/organization/task/detail
  */
 export function getMarkingTaskDetail(payload: MarkingTaskDetailQueryPayload): Promise<MarkingTaskVO> {
-  return http.post<MarkingTaskVO>('/api/mark/organization/task/detail', payload)
+  return http.post<unknown>('/api/mark/organization/task/detail', payload)
+    .then(item => validateMarkingTask(item, '阅卷任务详情响应'))
 }
 
 /** 教师领取上下文查询请求 - 对应后端 TeacherClaimContextQueryRequest */
@@ -614,7 +808,7 @@ export interface TeacherClaimContextQueryPayload {
 /** 题组级领取上下文 - 对应后端 TeacherClaimContextResponse.GroupClaimContext */
 export interface GroupClaimContextVO {
   groupId: string
-  groupName?: string
+  groupName: string
   organizationId: string
   /** 该题组下当前活跃的正评会话（session_status = SESSION_ACTIVE） */
   activeSessions: FormalSessionVO[]
@@ -636,7 +830,8 @@ export interface TeacherClaimContextVO {
 export function getTeacherClaimContext(
   payload: TeacherClaimContextQueryPayload,
 ): Promise<TeacherClaimContextVO> {
-  return http.post<TeacherClaimContextVO>('/api/mark/organization/task/claim-context', payload)
+  return http.post<unknown>('/api/mark/organization/task/claim-context', payload)
+    .then(validateTeacherClaimContext)
 }
 
 // ===================== 会话生命周期 =====================

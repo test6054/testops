@@ -3,8 +3,17 @@
  * 提供一致的错误提示和处理逻辑
  */
 
+import CloseCircleOutlined from '@ant-design/icons-vue/CloseCircleOutlined'
+import CloudOutlined from '@ant-design/icons-vue/CloudOutlined'
+import LockOutlined from '@ant-design/icons-vue/LockOutlined'
+import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
+import StopOutlined from '@ant-design/icons-vue/StopOutlined'
+import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import notification from 'ant-design-vue/es/notification'
+import { h } from 'vue'
 import {
   getCustomErrorMessage,
   shouldShowError,
@@ -108,19 +117,33 @@ const DEFAULT_ERROR_MESSAGES: Record<ErrorType, string> = {
 }
 
 /**
- * 错误消息图标
- * 使用 emoji 作为错误类型前缀标识，在现代浏览器（Chrome 60+, Firefox 55+, Safari 10+, Edge 79+）上渲染一致
- * 本平台面向高校用户，目标浏览器均为现代版本，无兼容性风险
+ * 错误消息标题
+ * 与 ERROR_TYPE_ICONS 配合使用，作为通知/Message 的标题文案
  */
-const ERROR_ICONS: Record<ErrorType, string> = {
-  [ErrorType.NETWORK]: '🌐',
-  [ErrorType.AUTH]: '🔒',
-  [ErrorType.PERMISSION]: '⛔',
-  [ErrorType.VALIDATION]: '⚠️',
-  [ErrorType.BUSINESS]: '❌',
-  [ErrorType.AI_QUOTA]: '🤖',
-  [ErrorType.SYSTEM]: '⚙️',
-  [ErrorType.UNKNOWN]: '❓'
+const ERROR_TYPE_TITLES: Record<ErrorType, string> = {
+  [ErrorType.NETWORK]: '网络异常',
+  [ErrorType.AUTH]: '认证失败',
+  [ErrorType.PERMISSION]: '权限不足',
+  [ErrorType.VALIDATION]: '参数有误',
+  [ErrorType.BUSINESS]: '业务异常',
+  [ErrorType.AI_QUOTA]: 'AI 资源不足',
+  [ErrorType.SYSTEM]: '系统繁忙',
+  [ErrorType.UNKNOWN]: '未知错误'
+}
+
+/**
+ * 错误类型图标组件
+ * 使用 Ant Design Icons 保持与全站图标体系一致，避免跨 OS 渲染差异
+ */
+const ERROR_TYPE_ICONS: Record<ErrorType, ReturnType<typeof h>> = {
+  [ErrorType.NETWORK]: h(CloudOutlined, { style: 'color: #f59e0b' }),
+  [ErrorType.AUTH]: h(LockOutlined, { style: 'color: #2563eb' }),
+  [ErrorType.PERMISSION]: h(StopOutlined, { style: 'color: #ef4444' }),
+  [ErrorType.VALIDATION]: h(WarningOutlined, { style: 'color: #f59e0b' }),
+  [ErrorType.BUSINESS]: h(CloseCircleOutlined, { style: 'color: #ef4444' }),
+  [ErrorType.AI_QUOTA]: h(RobotOutlined, { style: 'color: #7c3aed' }),
+  [ErrorType.SYSTEM]: h(SettingOutlined, { style: 'color: #ef4444' }),
+  [ErrorType.UNKNOWN]: h(QuestionCircleOutlined, { style: 'color: #64748b' })
 }
 
 /**
@@ -193,7 +216,15 @@ function formatErrorCode(_error: HandledError): string {
 function toHandledError(error: unknown): HandledError {
   if (error != null && typeof error === 'object') return error as HandledError
   if (typeof error === 'string') return { message: error }
-  return { message: '未知错误' }
+  return { message: '无法识别的错误对象' }
+}
+
+function resolveErrorCode(error: HandledError): number | string {
+  const code = error.code ?? error.response?.data?.code ?? error.response?.status ?? error.message
+  if (code == null || code === '') {
+    throw new Error('错误对象缺少可感知的错误码或错误消息')
+  }
+  return code
 }
 
 /**
@@ -203,7 +234,7 @@ export function standardizeError(error: unknown): StandardError {
   const handled = toHandledError(error)
   const errorType = parseErrorType(handled)
   const message = getErrorMessage(handled, errorType)
-  const code = handled.code || handled.response?.data?.code || handled.response?.status || 'UNKNOWN'
+  const code = resolveErrorCode(handled)
 
   return {
     type: errorType,
@@ -238,9 +269,9 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
     return
   }
 
-  const icon = ERROR_ICONS[standardError.type]
+  const iconVNode = ERROR_TYPE_ICONS[standardError.type]
   const displayMessage = customMessage || standardError.message
-  const displayTitle = title || `${icon} ${standardError.type === ErrorType.NETWORK ? '网络' : '系统'}错误`
+  const displayTitle = title || ERROR_TYPE_TITLES[standardError.type]
 
   if (useNotification) {
     // 如果有详细信息，将其附加到内容中
@@ -251,6 +282,7 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
     notification.error({
       message: displayTitle,
       description: notificationContent,
+      icon: () => iconVNode,
       duration: 5,
     })
   } else {
@@ -260,6 +292,7 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
 
     message.error({
       content,
+      icon: () => iconVNode,
       duration: 4,
     })
   }

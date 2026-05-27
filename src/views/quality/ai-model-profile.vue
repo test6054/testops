@@ -229,9 +229,9 @@ async function handleHealthCheck(record: AiModelProfileVO) {
   try {
     const result = await aiModelProfileApi.healthCheck({ profileId: record.id })
     if (result.healthStatus === 'HEALTHY') {
-      message.success(`连通 OK：${result.healthMessage || 'AI 健康检查通过'}`)
+      message.success(`连通 OK：${result.healthMessage}`)
     } else {
-      message.error(`连通失败：${result.healthMessage || '未知原因'}`)
+      message.error(`连通失败：${result.healthMessage}`)
     }
     await loadList()
   } finally {

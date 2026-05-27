@@ -21,8 +21,8 @@
       :show-count="showCount"
       :auto-size="props.autoSize"
       v-bind="$attrs"
-      @focus="(event: any) => emit('focus', event)"
-      @blur="(event: any) => emit('blur', event)"
+      @focus="(event: FocusEvent) => emit('focus', event)"
+      @blur="(event: FocusEvent) => emit('blur', event)"
     />
   </div>
 </template>

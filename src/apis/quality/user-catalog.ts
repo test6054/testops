@@ -82,7 +82,7 @@ export interface TenantSchoolDepartmentDto {
 export interface TeacherUserInfoDto {
   id: string
   userName: string
-  nickName?: string
+  nickName: string
   email?: string
   mobile?: string
   teacherNumber?: string

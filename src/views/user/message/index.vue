@@ -99,7 +99,7 @@
                   <template #title>
                     <button type="button" class="msg-item__title" @click="openMessageDetail(item)">
                       <span v-if="!item.isRead" class="dot dot--unread" />
-                      {{ item.subject || '无主题' }}
+                      {{ item.subject }}
                     </button>
                   </template>
                   <template #description>
@@ -107,8 +107,8 @@
                       <UiTag tone="blue" size="sm">
                         {{ formatMessageType(item.messageType) }}
                       </UiTag>
-                      <span>发自 {{ item.senderInfo?.nickName || '系统' }}</span>
-                      <span>{{ formatTime(item.sendTime) }}</span>
+                      <span>发自 {{ messageSenderName(item.senderInfo) }}</span>
+                      <span>{{ formatDateTime(item.sendTime) }}</span>
                     </div>
                   </template>
                 </a-list-item-meta>
@@ -211,10 +211,10 @@
                   <template #description>
                     <div class="msg-item__meta">
                       <UiTag :tone="getPriorityTone(item.priority)" size="sm">
-                        {{ item.priorityName || item.priority }}
+                        {{ item.priorityName }}
                       </UiTag>
-                      <span>发布 {{ item.createUserName || '系统' }}</span>
-                      <span>{{ formatTime(item.publishTime || item.createTime) }}</span>
+                      <span>发布 {{ item.createUserName }}</span>
+                      <span>{{ formatDateTime(item.publishTime) }}</span>
                       <span v-if="item.relativeTime" class="muted">{{ item.relativeTime }}</span>
                     </div>
                   </template>
@@ -235,7 +235,7 @@
   <!-- 站内信详情抽屉 -->
   <a-drawer
     v-model:open="messageDrawerOpen"
-    :title="activeMessage?.subject || '消息详情'"
+    :title="activeMessage?.subject"
     width="640"
     placement="right"
   >
@@ -244,11 +244,11 @@
         <div class="msg-detail__meta">
           <UiTag tone="blue" size="sm">{{ formatMessageType(messageDetail.messageType) }}</UiTag>
           <span>发自
-            {{ messageDetail.senderInfo?.nickName || messageDetail.senderUserId || '系统' }}</span>
-          <span>{{ formatTime(messageDetail.sendTime) }}</span>
+            {{ messageSenderName(messageDetail.senderInfo) }}</span>
+          <span>{{ formatDateTime(messageDetail.sendTime) }}</span>
         </div>
         <a-divider />
-        <div class="msg-detail__content" v-html="messageDetail.contentHtml || '<p>无正文</p>'" />
+        <div class="msg-detail__content" v-html="messageDetail.contentHtml" />
         <div v-if="messageDetail.metadata?.jumpUrl" class="msg-detail__jump">
           <UiButton size="sm" variant="outline" @click="goJump(messageDetail.metadata.jumpUrl)">
             跳转查看相关业务
@@ -262,7 +262,7 @@
   <!-- 公告详情抽屉 -->
   <a-drawer
     v-model:open="announcementDrawerOpen"
-    :title="activeAnnouncement?.title || '公告详情'"
+    :title="activeAnnouncement?.title"
     width="640"
     placement="right"
   >
@@ -270,15 +270,13 @@
       <div v-if="announcementDetail" class="msg-detail">
         <div class="msg-detail__meta">
           <UiTag :tone="getPriorityTone(announcementDetail.priority)" size="sm">
-            {{ announcementDetail.priorityName || announcementDetail.priority }}
+            {{ announcementDetail.priorityName }}
           </UiTag>
-          <span>发布 {{ announcementDetail.createUserName || '系统' }}</span>
-          <span>{{
-            formatTime(announcementDetail.publishTime || announcementDetail.createTime)
-          }}</span>
+          <span>发布 {{ announcementDetail.createUserName }}</span>
+          <span>{{ formatDateTime(announcementDetail.publishTime) }}</span>
         </div>
         <a-divider />
-        <div class="msg-detail__content" v-html="announcementDetail.content || '<p>无正文</p>'" />
+        <div class="msg-detail__content" v-html="announcementDetail.content" />
         <a-divider />
         <UiButton
           v-if="!announcementDetail.isRead"
@@ -299,13 +297,13 @@
 import type {
   InboxMessageDetailResponse,
   InboxMessageListItemDTO,
-  SystemAnnouncementResponse,
+  PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
+import type { UserDto } from '@/types/api-types.d'
 import BellOutlined from '@ant-design/icons-vue/BellOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -324,6 +322,7 @@ import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'UserMessage' })
 
@@ -374,10 +373,10 @@ async function loadMessages(page = messagePageState.pageNum) {
       pageNum: page,
       pageSize: messagePageState.pageSize,
     })
-    messages.value = result.list ?? []
-    messagePageState.pageNum = result.pageNum ?? page
-    messagePageState.pageSize = result.pageSize ?? messagePageState.pageSize
-    messagePageState.total = result.total ?? 0
+    messages.value = result.list
+    messagePageState.pageNum = result.pageNum
+    messagePageState.pageSize = result.pageSize
+    messagePageState.total = result.total
   } catch (error) {
     const msg = error instanceof Error ? error.message : '加载站内信失败'
     message.error(msg)
@@ -387,7 +386,7 @@ async function loadMessages(page = messagePageState.pageNum) {
 }
 
 // ─── 系统公告 ──────────────────────────────────
-const announcements = ref<SystemAnnouncementResponse[]>([])
+const announcements = ref<PublishedSystemAnnouncementResponse[]>([])
 const loadingAnnouncements = ref(false)
 const announcementFilter = reactive<{
   titleKeyword?: string
@@ -424,10 +423,10 @@ async function loadAnnouncements(page = announcementPageState.pageNum) {
       pageNum: page,
       pageSize: announcementPageState.pageSize,
     })
-    announcements.value = result.list ?? []
-    announcementPageState.pageNum = result.pageNum ?? page
-    announcementPageState.pageSize = result.pageSize ?? announcementPageState.pageSize
-    announcementPageState.total = result.total ?? 0
+    announcements.value = result.list
+    announcementPageState.pageNum = result.pageNum
+    announcementPageState.pageSize = result.pageSize
+    announcementPageState.total = result.total
   } catch (error) {
     const msg = error instanceof Error ? error.message : '加载系统公告失败'
     message.error(msg)
@@ -499,11 +498,11 @@ async function markAllInbox() {
 
 // 公告详情
 const announcementDrawerOpen = ref(false)
-const announcementDetail = ref<SystemAnnouncementResponse | null>(null)
+const announcementDetail = ref<PublishedSystemAnnouncementResponse | null>(null)
 const announcementDetailLoading = ref(false)
-const activeAnnouncement = ref<SystemAnnouncementResponse | null>(null)
+const activeAnnouncement = ref<PublishedSystemAnnouncementResponse | null>(null)
 
-async function openAnnouncementDetail(item: SystemAnnouncementResponse) {
+async function openAnnouncementDetail(item: PublishedSystemAnnouncementResponse) {
   activeAnnouncement.value = item
   announcementDrawerOpen.value = true
   announcementDetailLoading.value = true
@@ -519,7 +518,7 @@ async function openAnnouncementDetail(item: SystemAnnouncementResponse) {
 }
 
 const confirmingRead = ref(false)
-async function confirmAnnouncementRead(item: SystemAnnouncementResponse) {
+async function confirmAnnouncementRead(item: PublishedSystemAnnouncementResponse) {
   if (item.isRead) return
   confirmingRead.value = true
   try {
@@ -575,26 +574,50 @@ async function markAllReadAcrossTabs() {
   }
 }
 
-// ─── 工具 ──────────────────────────────────
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
-
-function formatMessageType(type?: NotificationTypeEnum): string {
-  if (!type) return '消息'
-  const map: Partial<Record<NotificationTypeEnum, string>> = {
+function formatMessageType(type: NotificationTypeEnum): string {
+  const map: Record<NotificationTypeEnum, string> = {
     [NotificationTypeEnum.SYSTEM_NOTIFICATION]: '系统通知',
     [NotificationTypeEnum.SYSTEM_ALERT]: '系统告警',
     [NotificationTypeEnum.CLASS_ANNOUNCEMENT]: '班级公告',
     [NotificationTypeEnum.ACCOUNT_SECURITY]: '账号安全',
+    [NotificationTypeEnum.TASK_ASSIGNED]: '任务发布',
+    [NotificationTypeEnum.TASK_DUE_REMINDER]: '任务到期提醒',
+    [NotificationTypeEnum.TASK_OVERDUE]: '任务逾期提醒',
+    [NotificationTypeEnum.TASK_REJECTED]: '任务驳回',
+    [NotificationTypeEnum.TASK_EXTENDED]: '任务延期',
+    [NotificationTypeEnum.AI_GRADING_COMPLETED]: 'AI评分完成',
+    [NotificationTypeEnum.PLAGIARISM_CHECK_COMPLETED]: '查重完成',
+    [NotificationTypeEnum.DEFENSE_OPENED]: '答辩开启',
+    [NotificationTypeEnum.DEFENSE_GRADED]: '答辩成绩',
+    [NotificationTypeEnum.UNSUBMITTED_STUDENTS_ALERT]: '未提交学生提醒',
+    [NotificationTypeEnum.PRACTICE_COMPLETION_NOTIFICATION]: '实践完成通知',
+    [NotificationTypeEnum.TOKEN_USAGE_ALERT]: 'Token使用预警',
     [NotificationTypeEnum.SCORE_PUBLISHED]: '成绩发布',
     [NotificationTypeEnum.SCORE_RULE_PUBLISHED]: '成绩规则',
+    [NotificationTypeEnum.EXAM_SCAN_COMPLETED]: '试卷扫描完成',
+    [NotificationTypeEnum.EXAM_REVIEW_PENDING]: '试卷待复核',
+    [NotificationTypeEnum.EXAM_SCORE_PUBLISHED]: '试卷成绩发布',
+    [NotificationTypeEnum.EXAM_EXPORT_COMPLETED]: '试卷导出完成',
+    [NotificationTypeEnum.EXAM_GRADE_REVIEW_UPDATED]: '试卷复核处理',
+    [NotificationTypeEnum.QUALITY_AI_TASK_COMPLETED]: '教学质量评价 AI 任务完成',
+    [NotificationTypeEnum.QUALITY_AI_TASK_FAILED]: '教学质量评价 AI 任务失败',
+    [NotificationTypeEnum.QUALITY_SCORE_IMPORT_COMPLETED]: '教学质量评价成绩导入完成',
+    [NotificationTypeEnum.QUALITY_SCORE_IMPORT_FAILED]: '教学质量评价成绩导入失败',
+    [NotificationTypeEnum.QUALITY_COURSE_REPORT_REMINDER]: '教学质量评价课程报告提交提醒',
+    [NotificationTypeEnum.QUALITY_PROGRAM_REPORT_COMPLETED]: '教学质量评价专业质量报告完成',
+    [NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_ASSIGNED]: '教学质量评价持续改进任务分配',
+    [NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_REVIEW_REMINDER]: '教学质量评价持续改进任务复评提醒',
+    [NotificationTypeEnum.QUALITY_EXPERT_PACKAGE_EXPORTED]: '教学质量评价专家材料包导出完成',
+    [NotificationTypeEnum.QUALITY_ACHIEVEMENT_AUDIT_TRANSITED]: '教学质量评价达成度审核流转',
     [NotificationTypeEnum.RESUBMIT_REQUESTED]: '重新提交申请',
     [NotificationTypeEnum.RESUBMIT_APPROVED]: '重新提交通过',
     [NotificationTypeEnum.RESUBMIT_REJECTED]: '重新提交驳回',
   }
-  return map[type] || type
+  return map[type]
+}
+
+function messageSenderName(senderInfo: UserDto): string {
+  return senderInfo.nickName
 }
 
 function getPriorityTone(priority?: string): ToneCode {

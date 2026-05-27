@@ -70,8 +70,8 @@
 
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
+            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+              {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="经验案例ID">
@@ -82,7 +82,7 @@
           </a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="生成时间" :span="2">
-            {{ fmt(record.createTime) }}
+            {{ formatDateTime(record.createTime) }}
           </a-descriptions-item>
           <a-descriptions-item label="trace ID">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -122,11 +122,11 @@
 import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { reactive, ref } from 'vue'
 import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
-import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'ExperienceEffectivenessCard' })
 
@@ -179,10 +179,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 function rateStyle(rate?: number): Record<string, string> {
   if (rate == null) return { color: 'inherit' }

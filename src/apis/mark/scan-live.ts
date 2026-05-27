@@ -19,8 +19,8 @@ export interface ScanLiveEventVO {
   /** 扫描事件ID（用作 SSE 重连补差的 afterEventId 游标） */
   eventId: string
   examId: string
-  scannerDeviceId?: string
-  scannerStationId?: string
+  scannerDeviceId: string
+  scannerStationId: string
   scannerIp?: string
   pageCount: number
   sourceFileIds?: string[]
@@ -31,7 +31,7 @@ export interface ScanLiveEventVO {
   status: ScanEventStatusCode
   scanBatchId?: string
   /** 事件入库时间，前端展示主时间 */
-  createTime?: string
+  createTime: string
 }
 
 /** 增量查询请求 - 对应 ScanLiveQueryRequest */
@@ -246,8 +246,8 @@ function validateScanLiveEvent(value: unknown): ScanLiveEventVO {
   return {
     eventId: requireString(record.eventId, 'eventId'),
     examId: requireString(record.examId, 'examId'),
-    scannerDeviceId: optionalString(record.scannerDeviceId, 'scannerDeviceId'),
-    scannerStationId: optionalString(record.scannerStationId, 'scannerStationId'),
+    scannerDeviceId: requireString(record.scannerDeviceId, 'scannerDeviceId'),
+    scannerStationId: requireString(record.scannerStationId, 'scannerStationId'),
     scannerIp: optionalString(record.scannerIp, 'scannerIp'),
     pageCount: requireFiniteNumber(record.pageCount, 'pageCount'),
     sourceFileIds: optionalStringList(record.sourceFileIds, 'sourceFileIds'),
@@ -257,7 +257,7 @@ function validateScanLiveEvent(value: unknown): ScanLiveEventVO {
     scanEndTime: optionalString(record.scanEndTime, 'scanEndTime'),
     status: requireScanEventStatus(record.status),
     scanBatchId: optionalString(record.scanBatchId, 'scanBatchId'),
-    createTime: optionalString(record.createTime, 'createTime'),
+    createTime: requireString(record.createTime, 'createTime'),
   }
 }
 

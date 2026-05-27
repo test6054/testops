@@ -51,16 +51,24 @@ export const ROLE_CONFIG: Record<RoleEnum, { name: string, description: string, 
   },
 }
 
+function requireRoleConfig(role: RoleEnum | string): { name: string, description: string, color: string } {
+  const config = ROLE_CONFIG[role as RoleEnum]
+  if (!config) {
+    throw new Error(`角色存在未定义枚举值：${role}`)
+  }
+  return config
+}
+
 /**
  * 获取角色显示名称
  */
 export function getRoleName(role: RoleEnum | string): string {
-  return ROLE_CONFIG[role as RoleEnum]?.name || role
+  return requireRoleConfig(role).name
 }
 
 /**
  * 获取角色颜色
  */
 export function getRoleColor(role: RoleEnum | string): string {
-  return ROLE_CONFIG[role as RoleEnum]?.color || 'var(--ant-color-text-tertiary)'
+  return requireRoleConfig(role).color
 }

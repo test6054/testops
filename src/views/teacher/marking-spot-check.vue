@@ -30,7 +30,7 @@
     <UiAlertStrip
       tone="info"
       title="抽检处理说明"
-      description="此处展示当前账号作为「被抽检教师」尚未处理的抽检记录（PENDING / IN_PROGRESS）。点击行尾「处理结论」可直接完成结论提交。"
+      description="此处展示当前账号作为「被抽检教师」尚未处理或处理中的抽检记录。点击行尾「处理结论」可直接完成结论提交。"
       dense
       class="spot-check-page__alert"
     />
@@ -76,10 +76,7 @@
             <div class="spot-check-page__sub">#{{ pendingItems[index].examId }}</div>
           </template>
           <template v-else-if="column.key === 'questionTemplateId'">
-            <span v-if="pendingItems[index].questionTemplateId">
-              题模板 #{{ pendingItems[index].questionTemplateId }}
-            </span>
-            <span v-else class="spot-check-page__hint">-</span>
+            <span>题模板 #{{ pendingItems[index].questionTemplateId }}</span>
           </template>
           <template v-else-if="column.key === 'originalScore'">
             <span class="spot-check-page__score">
@@ -92,7 +89,7 @@
             </UiTag>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatTime(pendingItems[index].createTime) }}
+            {{ formatDateTime(pendingItems[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiButton size="sm" @click="openHandleModal(pendingItems[index])"> 处理结论 </UiButton>
@@ -124,16 +121,16 @@
           {{ examNameOf(targetItem.examId) }}
         </a-descriptions-item>
         <a-descriptions-item label="题目模板ID">
-          {{ targetItem.questionTemplateId ?? '-' }}
+          {{ targetItem.questionTemplateId }}
         </a-descriptions-item>
         <a-descriptions-item label="试卷实例ID">
-          {{ targetItem.paperInstanceId ?? '-' }}
+          {{ targetItem.paperInstanceId }}
         </a-descriptions-item>
         <a-descriptions-item label="教师原分">
           {{ formatScore(targetItem.originalScore) }}
         </a-descriptions-item>
         <a-descriptions-item label="分派时间">
-          {{ formatTime(targetItem.createTime) }}
+          {{ formatDateTime(targetItem.createTime) }}
         </a-descriptions-item>
       </a-descriptions>
 
@@ -184,9 +181,13 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { handleSpotCheck, listMyPendingSpotChecks } from '@/apis/mark/marking-quality'
+import {
+  handleSpotCheck,
+  listMyPendingSpotChecks,
+  SPOT_CHECK_STATUS_LABEL,
+  SPOT_CHECK_STATUS_TONE,
+} from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,
@@ -199,6 +200,8 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingSpotCheck' })
 
@@ -213,10 +216,12 @@ const {
 } = useMarkExamSelector()
 
 // 题号 / 考试名缓存：从 exams 列表派生
-function examNameOf(examId?: string): string {
-  if (!examId) return '-'
+function examNameOf(examId: string): string {
   const exam = exams.value.find((item) => item.examId === examId)
-  return exam?.examName || `考试 #${examId}`
+  if (!exam) {
+    throw new Error(`抽检记录关联考试不在考试选择器中：examId=${examId}`)
+  }
+  return exam.examName
 }
 
 // ─── 待处理抽检列表 ──────────────────────────────────────
@@ -250,27 +255,18 @@ const columns: ColumnType<MyPendingSpotCheckItemVO>[] = [
   { title: '操作', key: 'actions', width: 120, fixed: 'right' },
 ]
 
-function statusTone(status?: MyPendingSpotCheckStatusCode): BadgeTone {
-  if (status === 'PENDING') return 'orange'
-  if (status === 'IN_PROGRESS') return 'blue'
-  return 'gray'
+function statusTone(status: MyPendingSpotCheckStatusCode): BadgeTone {
+  return strictEnumTone(SPOT_CHECK_STATUS_TONE, status, '抽检状态')
 }
 
-function statusLabel(status?: MyPendingSpotCheckStatusCode): string {
-  if (status === 'PENDING') return '待抽检'
-  if (status === 'IN_PROGRESS') return '抽检中'
-  return status || '-'
+function statusLabel(status: MyPendingSpotCheckStatusCode): string {
+  return strictEnumLabel(SPOT_CHECK_STATUS_LABEL, status, '抽检状态')
 }
 
-function formatScore(value?: number): string {
-  if (value == null) return '-'
+function formatScore(value: number): string {
   return value.toFixed(2)
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 // ─── 内联处理 Modal ─────────────────────────────────────
 const modalOpen = ref(false)

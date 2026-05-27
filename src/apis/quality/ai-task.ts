@@ -1,4 +1,10 @@
-import type { AiHealthStatus, AiOutputValidation, AiTaskStatus, AiTaskType } from './types'
+import type {
+  AiHealthStatus,
+  AiManualHandlingStatus,
+  AiOutputValidation,
+  AiTaskStatus,
+  AiTaskType,
+} from './types'
 /**
  * AI 异步任务 / 结果 / 模型配置 API
  *
@@ -14,6 +20,7 @@ import type { AiHealthStatus, AiOutputValidation, AiTaskStatus, AiTaskType } fro
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+import { isAiHealthStatus, isAiManualHandlingStatus, isAiTaskStatus, isAiTaskType } from './types'
 
 const TASK = '/api/quality/ai-tasks'
 const TRIGGER = '/api/quality/ai-task'
@@ -43,7 +50,7 @@ export interface AiTaskVO {
   resultId?: string
   startedAt?: string
   finishedAt?: string
-  manualHandlingStatus?: string
+  manualHandlingStatus: AiManualHandlingStatus
   manualHandlingRemark?: string
   createTime?: string
   updateTime?: string
@@ -148,6 +155,13 @@ export interface AiTaskSubmitResponseVO {
   status: string
 }
 
+/** AI 人工处置请求 - 对齐后端 AiTaskManualHandlingRequest */
+export interface AiTaskManualHandlePayload {
+  id: string
+  manualHandlingStatus: AiManualHandlingStatus
+  manualHandlingRemark?: string
+}
+
 /** AI 结果保存请求 - 严格对齐后端 AiResultSaveRequest */
 export interface AiResultSavePayload {
   aiTaskId: string
@@ -218,18 +232,117 @@ export interface AiModelProfileHealthCheckVO {
   /** UNKNOWN / HEALTHY / FAILED */
   healthStatus: AiHealthStatus
   /** 健康检查诊断消息 */
-  healthMessage?: string
+  healthMessage: string
   /** 模型原始返回摘要（截断后） */
   responseSummary?: string
 }
 
+function assertRecord(value: unknown, fieldName: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${fieldName}必须是对象`)
+  }
+  return value as Record<string, unknown>
+}
+
+function requireString(record: Record<string, unknown>, key: string, fieldName: string): string {
+  const value = record[key]
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`${fieldName}不能为空`)
+  }
+  return value
+}
+
+function optionalString(record: Record<string, unknown>, key: string, fieldName: string): string | undefined {
+  const value = record[key]
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'string') {
+    throw new TypeError(`${fieldName}必须是字符串`)
+  }
+  return value
+}
+
+function requireAiTaskStatus(record: Record<string, unknown>, key: string): AiTaskStatus {
+  const value = record[key]
+  if (isAiTaskStatus(value)) return value
+  throw new Error(`AI 任务状态存在未定义枚举值：${String(value)}`)
+}
+
+function requireAiTaskType(record: Record<string, unknown>, key: string): AiTaskType {
+  const value = record[key]
+  if (isAiTaskType(value)) return value
+  throw new Error(`AI 任务类型存在未定义枚举值：${String(value)}`)
+}
+
+function requireAiManualHandlingStatus(
+  record: Record<string, unknown>,
+  key: string,
+): AiManualHandlingStatus {
+  const value = record[key]
+  if (isAiManualHandlingStatus(value)) return value
+  throw new Error(`AI 人工处置状态存在未定义枚举值：${String(value)}`)
+}
+
+function requireAiHealthStatus(record: Record<string, unknown>, key: string): AiHealthStatus {
+  const value = record[key]
+  if (isAiHealthStatus(value)) return value
+  throw new Error(`AI 模型健康状态存在未定义枚举值：${String(value)}`)
+}
+
+function validateAiTaskDetail(payload: unknown): AiTaskVO {
+  const record = assertRecord(payload, 'AI 任务详情')
+  const status = requireAiTaskStatus(record, 'status')
+  const failureReason = optionalString(record, 'failureReason', 'AI 任务详情.failureReason')
+  if (status === 'FAILED' && !failureReason) {
+    throw new Error('AI 任务失败时必须返回 failureReason')
+  }
+  return {
+    id: requireString(record, 'id', 'AI 任务详情.id'),
+    tenantId: optionalString(record, 'tenantId', 'AI 任务详情.tenantId'),
+    operatorUserId: optionalString(record, 'operatorUserId', 'AI 任务详情.operatorUserId'),
+    taskType: requireAiTaskType(record, 'taskType'),
+    businessType: optionalString(record, 'businessType', 'AI 任务详情.businessType'),
+    businessId: optionalString(record, 'businessId', 'AI 任务详情.businessId'),
+    programId: optionalString(record, 'programId', 'AI 任务详情.programId'),
+    trainingPlanId: optionalString(record, 'trainingPlanId', 'AI 任务详情.trainingPlanId'),
+    qualityCourseId: optionalString(record, 'qualityCourseId', 'AI 任务详情.qualityCourseId'),
+    achievementResultId: optionalString(record, 'achievementResultId', 'AI 任务详情.achievementResultId'),
+    reportId: optionalString(record, 'reportId', 'AI 任务详情.reportId'),
+    status,
+    failurePhase: optionalString(record, 'failurePhase', 'AI 任务详情.failurePhase'),
+    failureReason,
+    businessSnapshotAnchor: optionalString(record, 'businessSnapshotAnchor', 'AI 任务详情.businessSnapshotAnchor'),
+    maskedInputAnchor: optionalString(record, 'maskedInputAnchor', 'AI 任务详情.maskedInputAnchor'),
+    promptSnapshotId: optionalString(record, 'promptSnapshotId', 'AI 任务详情.promptSnapshotId'),
+    maskMappingId: optionalString(record, 'maskMappingId', 'AI 任务详情.maskMappingId'),
+    resultId: optionalString(record, 'resultId', 'AI 任务详情.resultId'),
+    startedAt: optionalString(record, 'startedAt', 'AI 任务详情.startedAt'),
+    finishedAt: optionalString(record, 'finishedAt', 'AI 任务详情.finishedAt'),
+    manualHandlingStatus: requireAiManualHandlingStatus(record, 'manualHandlingStatus'),
+    manualHandlingRemark: optionalString(record, 'manualHandlingRemark', 'AI 任务详情.manualHandlingRemark'),
+    createTime: optionalString(record, 'createTime', 'AI 任务详情.createTime'),
+    updateTime: optionalString(record, 'updateTime', 'AI 任务详情.updateTime'),
+  }
+}
+
+function validateAiModelProfileHealthCheck(payload: unknown): AiModelProfileHealthCheckVO {
+  const record = assertRecord(payload, 'AI 模型健康检查响应')
+  return {
+    profileId: requireString(record, 'profileId', 'AI 模型健康检查响应.profileId'),
+    healthStatus: requireAiHealthStatus(record, 'healthStatus'),
+    healthMessage: requireString(record, 'healthMessage', 'AI 模型健康检查响应.healthMessage'),
+    responseSummary: optionalString(record, 'responseSummary', 'AI 模型健康检查响应.responseSummary'),
+  }
+}
+
 export const aiTaskApi = {
   page: (data: AiTaskQueryPayload) => http.post<PageResult<AiTaskVO>>(`${TASK}/page`, data),
-  detail: (id: string) => http.post<AiTaskVO>(`${TASK}/detail`, { id }),
+  detail: (id: string) => http.post<unknown>(`${TASK}/detail`, { id }).then(validateAiTaskDetail),
   submit: (data: AiTaskSubmitPayload) =>
     http.post<AiTaskSubmitResponseVO>(`${TRIGGER}/submit`, data),
   runNow: (id: string) => http.post<void>(`${TRIGGER}/run-now`, { id }),
   cancel: (id: string, reason?: string) => http.post<void>(`${TASK}/cancel`, { id, reason }),
+  manualHandle: (data: AiTaskManualHandlePayload) =>
+    http.post<void>(`${TASK}/manual-handle`, data),
 }
 
 export const aiResultApi = {
@@ -247,11 +360,11 @@ export const aiResultApi = {
 
 export const aiModelProfileApi = {
   /** 列表查询（后端不分页） */
-  list: (data?: AiModelProfileQueryPayload) =>
-    http.post<AiModelProfileVO[]>(`${MODEL}/list`, data || {}),
+  list: (data: AiModelProfileQueryPayload) =>
+    http.post<AiModelProfileVO[]>(`${MODEL}/list`, data),
   /** 新建或更新 */
   save: (data: AiModelProfileSavePayload) => http.post<string>(`${MODEL}/save`, data),
   /** 健康检查 */
   healthCheck: (data: AiModelProfileHealthCheckPayload) =>
-    http.post<AiModelProfileHealthCheckVO>(`${MODEL}/health-check`, data),
+    http.post<unknown>(`${MODEL}/health-check`, data).then(validateAiModelProfileHealthCheck),
 }

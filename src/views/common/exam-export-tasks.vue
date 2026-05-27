@@ -250,6 +250,7 @@ import {
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamExportTasks' })
 
@@ -297,24 +298,20 @@ const columns: ColumnType<ExportTaskVO>[] = [
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
 
-function statusTone(status: ExportTaskStatusCode | undefined): BadgeTone {
-  if (!status) return 'gray'
-  return EXPORT_STATUS_TONE[status] ?? 'gray'
+function statusTone(status: ExportTaskStatusCode): BadgeTone {
+  return strictEnumTone(EXPORT_STATUS_TONE, status, '导出任务状态')
 }
 
-function exportTypeLabel(code: ExportTypeCode | undefined): string {
-  if (!code) return '-'
-  return EXPORT_TYPE_LABEL[code] ?? code
+function exportTypeLabel(code: ExportTypeCode): string {
+  return strictEnumLabel(EXPORT_TYPE_LABEL, code, '导出类型')
 }
 
-function exportScopeLabel(code: ExportScopeCode | undefined): string {
-  if (!code) return '-'
-  return EXPORT_SCOPE_LABEL[code] ?? code
+function exportScopeLabel(code: ExportScopeCode): string {
+  return strictEnumLabel(EXPORT_SCOPE_LABEL, code, '导出范围')
 }
 
-function exportStatusLabel(code: ExportTaskStatusCode | undefined): string {
-  if (!code) return '-'
-  return EXPORT_STATUS_LABEL[code] ?? code
+function exportStatusLabel(code: ExportTaskStatusCode): string {
+  return strictEnumLabel(EXPORT_STATUS_LABEL, code, '导出任务状态')
 }
 
 function formatBytes(size: number): string {

@@ -9,6 +9,7 @@ import type { QualityCourseVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
 import { qualityCourseApi } from '@/apis/quality'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -64,7 +65,7 @@ async function loadOptions() {
       semester: props.semester || undefined,
       enabled: props.onlyEnabled ? true : undefined,
     })
-    options.value = res.list || []
+    options.value = requirePageList(res, '质量评价课程')
   } catch (e) {
     console.error('[CourseSelector] 加载质量评价课程列表失败', e)
     message.error('加载课程列表失败')

@@ -8,7 +8,7 @@
     @update:open="$emit('update:open', $event)"
     @ok="handleOk"
   >
-    <a-form layout="vertical">
+    <a-form v-if="resolution" layout="vertical">
       <a-alert
         type="info"
         show-icon
@@ -23,29 +23,26 @@
         :message="submitError"
       />
       <a-form-item label="页面哈希">
-        <a-input :value="resolution?.pageHash ?? '-'" disabled />
+        <a-input :value="resolution.pageHash" disabled />
       </a-form-item>
       <a-form-item label="基准扫描页 / 试卷实例">
         <a-input
-          :value="`页ID=${resolution?.firstPageId ?? '-'}，试卷=${resolution?.firstPaperInstanceId ?? '-'}`"
+          :value="`页ID=${resolution.firstPageId}，试卷=${resolution.firstPaperInstanceId}`"
           disabled
         />
       </a-form-item>
       <a-form-item label="重复扫描页 / 试卷实例">
         <a-input
-          :value="`页ID=${resolution?.secondPageId ?? '-'}，试卷=${resolution?.secondPaperInstanceId ?? '-'}`"
+          :value="`页ID=${resolution.secondPageId}，试卷=${resolution.secondPaperInstanceId}`"
           disabled
         />
       </a-form-item>
       <a-form-item label="保留的试卷实例" required>
         <a-radio-group v-model:value="selectedPaperInstanceId">
-          <a-radio v-if="resolution?.firstPaperInstanceId" :value="resolution.firstPaperInstanceId">
+          <a-radio :value="resolution.firstPaperInstanceId">
             保留基准试卷实例 {{ resolution.firstPaperInstanceId }}
           </a-radio>
-          <a-radio
-            v-if="resolution?.secondPaperInstanceId"
-            :value="resolution.secondPaperInstanceId"
-          >
+          <a-radio :value="resolution.secondPaperInstanceId">
             保留重复试卷实例 {{ resolution.secondPaperInstanceId }}
           </a-radio>
         </a-radio-group>
@@ -84,7 +81,7 @@ watch(
   () => props.open,
   (v) => {
     if (v) {
-      selectedPaperInstanceId.value = props.resolution?.firstPaperInstanceId ?? ''
+      selectedPaperInstanceId.value = props.resolution ? props.resolution.firstPaperInstanceId : ''
       resolutionReason.value = ''
       submitError.value = ''
     }
@@ -103,20 +100,15 @@ async function handleOk(): Promise<void> {
     message.warning('请选择保留的试卷实例')
     return
   }
-  if (!props.examId || !props.resolution?.id) {
-    submitError.value = '考试或重复记录信息缺失'
-    message.warning('考试或重复记录信息缺失')
+  if (!props.resolution) {
+    submitError.value = '重复影像记录未加载'
+    message.warning('重复影像记录未加载')
     return
   }
   const allowedIds = [
     props.resolution.firstPaperInstanceId,
     props.resolution.secondPaperInstanceId,
-  ].filter((id): id is string => Boolean(id))
-  if (allowedIds.length === 0) {
-    submitError.value = '当前重复记录缺少可保留的试卷实例'
-    message.warning('当前重复记录缺少可保留的试卷实例')
-    return
-  }
+  ]
   if (!allowedIds.includes(selectedPaperInstanceId.value)) {
     submitError.value = '保留的试卷实例必须来自当前重复影像记录'
     message.warning('保留的试卷实例必须来自当前重复影像记录')

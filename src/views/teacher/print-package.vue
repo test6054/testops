@@ -230,8 +230,8 @@ async function loadPackageList() {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
-    packageList.value = res.list ?? []
-    pagination.total = res.total ?? 0
+    packageList.value = res.list
+    pagination.total = res.total
   } catch (e) {
     packageListLoadError.value = e
     packageList.value = []
@@ -342,7 +342,7 @@ async function viewDetail(pkg: PrintPackageVO) {
       examId: pkg.examId,
       printPackageId: pkg.printPackageId,
     })
-    detailItems.value = res?.items ?? []
+    detailItems.value = res.items
   } catch {
     message.error('加载明细失败')
   } finally {

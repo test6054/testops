@@ -609,6 +609,41 @@ export const EXTERNAL_PULL_TASK_STATUS_COLOR: Record<ExternalPullTaskStatus, str
   CANCELLED: 'orange',
 }
 
+/** 外部数据拔取审计事件 - ExternalPullAuditEventEnum */
+export type ExternalPullAuditEvent
+  = | 'SQL_SAFETY_CHECK'
+    | 'FIELD_WHITELIST_CHECK'
+    | 'MASK_PREVIEW_CHECK'
+    | 'QUERY_TIMEOUT'
+    | 'ROW_LIMIT_EXCEEDED'
+    | 'TASK_FAILED'
+    | 'TASK_SUCCEEDED'
+    | 'MANUAL_REJECT'
+    | 'MANUAL_CONFIRM'
+    | 'TASK_CANCELLED'
+
+export const EXTERNAL_PULL_AUDIT_EVENT_LABEL: Record<ExternalPullAuditEvent, string> = {
+  SQL_SAFETY_CHECK: 'SQL 安全检测',
+  FIELD_WHITELIST_CHECK: '字段白名单校验',
+  MASK_PREVIEW_CHECK: '脱敏预览检查',
+  QUERY_TIMEOUT: '查询超时',
+  ROW_LIMIT_EXCEEDED: '返回行数超限',
+  TASK_FAILED: '任务执行失败',
+  TASK_SUCCEEDED: '任务执行完成',
+  MANUAL_REJECT: '人工驳回',
+  MANUAL_CONFIRM: '人工确认',
+  TASK_CANCELLED: '任务取消',
+}
+
+/** 外部数据拔取审计检查状态 */
+export type ExternalPullAuditCheckStatus = 'PASSED' | 'REJECTED' | 'WARNING'
+
+export const EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL: Record<ExternalPullAuditCheckStatus, string> = {
+  PASSED: '通过',
+  REJECTED: '拒绝',
+  WARNING: '预警',
+}
+
 /** 外部拔取结果确认状态 - ExternalPullConfirmationStatusEnum */
 export type ExternalPullConfirmationStatus = 'PREVIEW' | 'CONFIRMED' | 'REJECTED'
 
@@ -665,12 +700,16 @@ export type DataSourceMode
     | 'EXTERNAL_AI_CONNECTOR'
     | 'READ_ONLY_DATABASE_PULL'
     | 'MANUAL_CONFIRMATION'
+    | 'EDU_MARK_EXAM'
+    | 'EDU_MARK_FINAL_SCORE'
 
 export const DATA_SOURCE_MODE_LABEL: Record<DataSourceMode, string> = {
   EXCEL_IMPORT: 'Excel 异步导入',
   EXTERNAL_AI_CONNECTOR: '外部 AI 解析草稿',
   READ_ONLY_DATABASE_PULL: '只读数据库主动拔取',
   MANUAL_CONFIRMATION: '人工录入与确认',
+  EDU_MARK_EXAM: '阅卷中心考试环节',
+  EDU_MARK_FINAL_SCORE: '阅卷中心最终成绩',
 }
 
 /** 过程性评价节点类型 - 对应 ProcessNodeTypeEnum */
@@ -853,6 +892,25 @@ export function isExternalPullTaskStatus(value: unknown): value is ExternalPullT
   )
 }
 
+export function isExternalPullAuditEvent(value: unknown): value is ExternalPullAuditEvent {
+  return (
+    value === 'SQL_SAFETY_CHECK'
+    || value === 'FIELD_WHITELIST_CHECK'
+    || value === 'MASK_PREVIEW_CHECK'
+    || value === 'QUERY_TIMEOUT'
+    || value === 'ROW_LIMIT_EXCEEDED'
+    || value === 'TASK_FAILED'
+    || value === 'TASK_SUCCEEDED'
+    || value === 'MANUAL_REJECT'
+    || value === 'MANUAL_CONFIRM'
+    || value === 'TASK_CANCELLED'
+  )
+}
+
+export function isExternalPullAuditCheckStatus(value: unknown): value is ExternalPullAuditCheckStatus {
+  return value === 'PASSED' || value === 'REJECTED' || value === 'WARNING'
+}
+
 export function isExternalPullConfirmationStatus(value: unknown): value is ExternalPullConfirmationStatus {
   return value === 'PREVIEW' || value === 'CONFIRMED' || value === 'REJECTED'
 }
@@ -991,6 +1049,8 @@ export function isDataSourceMode(value: unknown): value is DataSourceMode {
     || value === 'EXTERNAL_AI_CONNECTOR'
     || value === 'READ_ONLY_DATABASE_PULL'
     || value === 'MANUAL_CONFIRMATION'
+    || value === 'EDU_MARK_EXAM'
+    || value === 'EDU_MARK_FINAL_SCORE'
   )
 }
 

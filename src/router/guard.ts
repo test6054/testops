@@ -33,7 +33,7 @@ export const setupRouterGuard = (router: Router) => {
     const authStore = useAuthStore()
     const userStore = useUserStore()
 
-    // 🚀 特殊处理：根路径根据登录状态动态重定向
+    // 根路径根据登录状态动态重定向
     if (to.path === '/') {
       await authStore.initializeAuth().catch(() => {})
       const token = getToken()
@@ -77,7 +77,7 @@ export const setupRouterGuard = (router: Router) => {
       return `/login?redirect=${encodeURIComponent(to.fullPath)}`
     }
 
-    // 🚀 优化：确保用户信息和权限完整加载后再生成菜单
+    // 确保用户信息和权限完整加载后再生成菜单
     const promises: Promise<unknown>[] = []
 
     // 只有在用户信息缺失时才获取
@@ -141,9 +141,29 @@ export const setupRouterGuard = (router: Router) => {
     if (needsSecurityRefresh) {
       try {
         await userStore.refreshSecurityState()
-      } catch {
-        await authStore.logoutCallBack()
-        return `/login?redirect=${encodeURIComponent(to.fullPath)}`
+      } catch (error: unknown) {
+        // 真正的认证失败（401 / refresh token 失效）才登出；
+        // 网络层 / 5xx 时使用本地缓存的安全状态继续放行，避免抖动登出。
+        const err = error as {
+          response?: { status?: number }
+          code?: string
+          _handledByInterceptor?: boolean
+        }
+        const status = err?.response?.status
+        const code = err?.code
+        const isNetworkLevel
+          = !err?.response
+            || code === 'ERR_NETWORK'
+            || code === 'ECONNABORTED'
+            || (typeof status === 'number' && status >= 500)
+
+        if (isNetworkLevel) {
+          // 仅记录日志，本次导航继续放行
+          console.warn('[Router Guard] 安全状态刷新失败（网络/5xx），本次导航沿用本地缓存。', error)
+        } else {
+          await authStore.logoutCallBack()
+          return `/login?redirect=${encodeURIComponent(to.fullPath)}`
+        }
       }
     }
 
@@ -175,7 +195,7 @@ export const setupRouterGuard = (router: Router) => {
   router.afterEach((to) => {
     NProgress.done()
 
-    // 🎯 SEO: 应用路由 SEO 配置
+    // SEO：应用路由 SEO 配置
     if (to.meta.seo) {
       applySeoMeta(to.meta.seo as SeoMeta)
     } else if (to.meta.title) {
@@ -185,7 +205,7 @@ export const setupRouterGuard = (router: Router) => {
       document.title = import.meta.env.VITE_APP_TITLE
     }
 
-    // 🚀 路由导航完成后触发预加载
+    // 路由导航完成后触发预加载
     const preloadManager = getRoutePreloadManager()
     const authStore = useAuthStore()
     if (preloadManager && authStore.isAuthenticated) {

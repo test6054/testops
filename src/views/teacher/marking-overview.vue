@@ -73,7 +73,7 @@
           <div class="marking-overview__recommend-main">
             <div class="marking-overview__recommend-title-row">
               <strong class="marking-overview__recommend-title">
-                {{ item.examName || '未命名考试' }}
+                {{ item.examName }}
               </strong>
               <span v-if="item.examNo" class="marking-overview__recommend-no">#{{ item.examNo }}</span>
               <UiTag v-if="item.attention > 0" tone="red" size="sm">
@@ -135,7 +135,7 @@
           </template>
           <template v-else-if="column.dataIndex === 'status'">
             <UiTag :tone="examStatusTone(record.status)" size="sm">
-              {{ record.statusMessage || examStatusLabel(record.status) }}
+              {{ record.statusMessage }}
             </UiTag>
           </template>
           <template v-else-if="column.dataIndex === 'examStartTime'">
@@ -183,7 +183,6 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 
-import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -203,23 +202,21 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageRail, StageWorkbenchShell } from '@/components/workbench'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
-/* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
+/**
+ * 紧急横幅触发阈值
+ *
+ * 阅卷概览页跨考试聚合后，达到这个待批改任务数即提示批量推进。
+ * 阈值参考依据：教师单次集中批阅 30 份属于工作日内可消化的常规上限；
+ * 当后端开放租户级配置后，此处可改为读取 tenantStore 配置值。
+ */
+const URGENT_PENDING_REVIEW_THRESHOLD = 30
 
-function isExamStatusCode(value: unknown): value is ExamStatusCode {
-  return value === 'ACTIVE' || value === 'CLOSED'
-}
-
-function examStatusLabel(value: unknown): string {
-  if (isExamStatusCode(value)) return EXAM_STATUS_LABEL[value]
-  return typeof value === 'string' && value ? value : '-'
-}
-
-function examStatusTone(value: unknown): BadgeTone {
-  if (isExamStatusCode(value)) return EXAM_STATUS_TONE[value]
-  return 'gray'
+function examStatusTone(status: ExamStatusCode): BadgeTone {
+  return EXAM_STATUS_TONE[status]
 }
 
 const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
@@ -268,12 +265,12 @@ const aggregate = computed(() => {
   let scanAttention = 0
   let unconfirmedQuestionGrades = 0
   for (const p of examProgressMap.value.values()) {
-    pendingReview += p.pendingReviewTaskCount ?? 0
-    inProgressReview += p.inProgressReviewTaskCount ?? 0
-    openProcessing += p.openProcessingTaskCount ?? 0
-    scanAttention += p.scanAttentionCount ?? 0
-    const total = p.totalQuestionGradeCount ?? 0
-    const confirmed = p.confirmedQuestionGradeCount ?? 0
+    pendingReview += p.pendingReviewTaskCount
+    inProgressReview += p.inProgressReviewTaskCount
+    openProcessing += p.openProcessingTaskCount
+    scanAttention += p.scanAttentionCount
+    const total = p.totalQuestionGradeCount
+    const confirmed = p.confirmedQuestionGradeCount
     unconfirmedQuestionGrades += Math.max(0, total - confirmed)
   }
   return {
@@ -345,8 +342,8 @@ const statMetrics = computed(() => {
  */
 interface RecommendedExamItem {
   examId: string
-  examName?: string
-  examNo?: string
+  examName: string
+  examNo: string
   totalGrades: number
   confirmedGrades: number
   pending: number
@@ -360,10 +357,10 @@ const recommendedExams = computed<RecommendedExamItem[]>(() => {
     if (exam.status !== 'ACTIVE') continue
     const p = examProgressMap.value.get(exam.examId)
     if (!p) continue
-    const totalGrades = p.totalQuestionGradeCount ?? 0
-    const confirmedGrades = p.confirmedQuestionGradeCount ?? 0
+    const totalGrades = p.totalQuestionGradeCount
+    const confirmedGrades = p.confirmedQuestionGradeCount
     const pending = Math.max(0, totalGrades - confirmedGrades)
-    const attention = p.scanAttentionCount ?? 0
+    const attention = p.scanAttentionCount
     // 推进价值排序信号：未确认题目 + 扫描异常都计入紧迫度
     if (pending === 0 && attention === 0) continue
     const completeRate = totalGrades > 0 ? Math.round((confirmedGrades / totalGrades) * 100) : 0
@@ -442,7 +439,7 @@ const urgentBanner = computed<{ title: string, description: string } | null>(() 
       description: '点击下方「扫描异常待处理」KPI 可直接进入处理工作台。',
     }
   }
-  if (a.pendingReview >= 30) {
+  if (a.pendingReview >= URGENT_PENDING_REVIEW_THRESHOLD) {
     return {
       title: `当前累计 ${a.pendingReview} 份待批阅任务，建议进入「阅卷任务池」批量推进`,
       description: '使用批阅工作区底部「提交并取下一份」可流水线接力批阅。',
@@ -451,9 +448,12 @@ const urgentBanner = computed<{ title: string, description: string } | null>(() 
   return null
 })
 
+/**
+ * 列表场景的日期时间格式化：空值返回空串以便模板侧 `|| '-'` 兜底。
+ * 委托统一 utils/format#formatDateTime。
+ */
 function formatTime(value?: string): string {
-  if (!value) return ''
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
+  return formatDateTime(value, '')
 }
 
 async function loadExams(): Promise<void> {
@@ -466,8 +466,8 @@ async function loadExams(): Promise<void> {
       keyword: keyword.value.trim() || undefined,
       status: statusFilter.value,
     })
-    exams.value = result.list ?? []
-    total.value = result.total ?? 0
+    exams.value = result.list
+    total.value = result.total
   } catch (error) {
     examsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '考试列表加载失败'

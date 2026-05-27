@@ -17,10 +17,10 @@ import router from './router'
 
 import 'ant-design-vue/dist/reset.css'
 
-// 🚀 关键CSS优先加载 - 提升LCP性能
+// 关键 CSS 优先加载，提升 LCP 性能
 import '@/styles/index.scss'
 
-// 🔧 Polyfill: Array.prototype.at (ES2022) - 解决 Monaco Editor 兼容性问题
+// Polyfill: Array.prototype.at (ES2022) — 解决 Monaco Editor 兼容性问题
 /* eslint-disable no-extend-native */
 if (!Array.prototype.at) {
   Array.prototype.at = function (index: number) {
@@ -33,7 +33,7 @@ if (!Array.prototype.at) {
 /* eslint-enable no-extend-native */
 
 
-// 🎯 延迟加载非关键CSS - 避免阻塞渲染
+// 延迟加载非关键 CSS，避免阻塞首屏渲染
 const loadNonCriticalCSS = () => {
   // 动画库
   import('animate.css/animate.min.css')

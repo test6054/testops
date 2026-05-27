@@ -82,7 +82,7 @@
         class="review-workspace__alert"
       />
 
-      <a-row :gutter="16" class="review-workspace__row">
+      <a-row v-if="detail" :gutter="16" class="review-workspace__row">
         <!-- 左：切片图 + 识别答案 + AI 诊断 -->
         <a-col :xs="24" :lg="16">
           <UiCard class="review-workspace__card">
@@ -133,7 +133,7 @@
                   size="sm"
                   variant="ghost"
                   :loading="executionsLoading"
-                  :disabled="!detail?.gradeResultId"
+                  :disabled="!detail"
                   @click="openExecutionsDrawer"
                 >
                   查看 AI 历史
@@ -153,10 +153,10 @@
             <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 诊断信息" />
             <pre v-else class="review-workspace__code-block">{{ detail.aiDiagnostic }}</pre>
             <UiAlertStrip
-              v-if="!canRescoreByAi && detail?.gradeResultId"
+              v-if="!canRescoreByAi && detail"
               tone="info"
               :title="rescoreBlockReason || '当前状态不允许重新生成 AI 复评'"
-              description="仅 PENDING / IN_PROGRESS 状态的复核任务在教师异议时可以重新调用单题 AI 复评。"
+              description="仅待处理或处理中状态的复核任务在教师异议时可以重新调用单题 AI 复评。"
               dense
             />
             <div class="review-workspace__ai-actions">
@@ -218,7 +218,7 @@
                         {{ statusLabel(item.status) }}
                       </UiTag>
                       <span class="review-workspace__execution-time">
-                        {{ formatTime(item.createTime) }}
+                        {{ formatDateTime(item.createTime) }}
                       </span>
                       <span
                         v-if="item.latencyMs != null"
@@ -232,7 +232,7 @@
                     </div>
                     <div v-if="item.modelName" class="review-workspace__execution-model">
                       模型：{{ item.modelName }}
-                      <span v-if="item.providerType"> / {{ item.providerType }}</span>
+                      <span> / {{ providerLabel(item.providerType) }}</span>
                     </div>
                     <div v-if="item.diagnostic" class="review-workspace__execution-diag">
                       <strong>诊断：</strong>{{ item.diagnostic }}
@@ -280,11 +280,11 @@
                 bordered
               >
                 <a-descriptions-item label="已批人数">
-                  {{ questionAnalysis.totalCount ?? '-' }}
+                  {{ questionAnalysis.totalCount }}
                 </a-descriptions-item>
                 <a-descriptions-item label="均分">
                   {{ formatNum(questionAnalysis.avgScore) }}
-                  <span class="review-workspace__hint">/ {{ questionAnalysis.fullScore ?? '-' }}</span>
+                  <span class="review-workspace__hint">/ {{ questionAnalysis.fullScore }}</span>
                 </a-descriptions-item>
                 <a-descriptions-item label="标准差">
                   {{ formatNum(questionAnalysis.scoreStddev) }}
@@ -316,35 +316,26 @@
               v-if="!canConfirm"
               tone="info"
               title="任务状态限制"
-              description="当前任务状态不允许提交批改（仅 PENDING / IN_PROGRESS 可提交）。"
+              description="当前任务状态不允许提交批改，仅待处理或处理中状态可提交。"
               dense
               class="review-workspace__alert"
             />
-            <UiAlertStrip
-              v-else-if="!detail?.gradeResultId"
-              tone="warning"
-              title="任务缺少 gradeResultId"
-              description="任务缺少批改结果ID（gradeResultId），暂无法提交。"
-              dense
-              class="review-workspace__alert"
-            />
-
             <a-form
               ref="gradeFormRef"
               :model="gradeForm"
               :rules="gradeFormRules"
               layout="vertical"
-              :disabled="!canConfirm || !detail?.gradeResultId"
+              :disabled="!canConfirm"
             >
               <a-form-item label="最终分" name="finalScore" required>
                 <a-input-number
                   v-model:value="gradeForm.finalScore"
                   :min="0"
-                  :max="detail?.fullScore ?? 100"
+                  :max="detail.fullScore"
                   :step="0.5"
                   class="review-workspace__score-input"
                 />
-                <div v-if="detail?.fullScore != null" class="review-workspace__hint">
+                <div class="review-workspace__hint">
                   满分 {{ detail.fullScore }} 分
                 </div>
               </a-form-item>
@@ -394,7 +385,7 @@
                       <div class="review-workspace__annotation-meta">
                         <span v-if="item.anchorText" class="review-workspace__hint">锚点：{{ item.anchorText }}</span>
                         <span class="review-workspace__hint">{{
-                          formatTime(item.createTime)
+                          formatDateTime(item.createTime)
                         }}</span>
                       </div>
                     </template>
@@ -411,7 +402,7 @@
     <footer v-if="detail" class="review-workspace__sticky">
       <div class="review-workspace__sticky-left">
         <span class="review-workspace__hint">
-          当前任务：{{ detail.anonymousNo || '-' }} · 题 {{ detail.questionNo ?? '-' }}
+          当前任务：{{ detail.anonymousNo }} · 题 {{ detail.questionNo }}
         </span>
         <span v-if="queueTotal > 0" class="review-workspace__hint">
           · 同题剩余 {{ Math.max(0, queueTotal - 1) }} 份
@@ -422,7 +413,7 @@
         <UiButton
           variant="outline"
           size="md"
-          :disabled="!canConfirm || !detail?.gradeResultId"
+          :disabled="!canConfirm"
           :loading="submitting"
           @click="openSubmitConfirm(false)"
         >
@@ -431,7 +422,7 @@
         <UiButton
           variant="primary"
           size="md"
-          :disabled="!canConfirm || !detail?.gradeResultId || queueTotal <= 1"
+          :disabled="!canConfirm || !detail.gradeResultId || queueTotal <= 1"
           :loading="submitting"
           @click="openSubmitConfirm(true)"
         >
@@ -447,10 +438,11 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
+  AiProviderTypeCode,
   AnnotationVO,
   ExamQuestionAiExecutionItemVO,
   ReviewTaskDetailVO,
-  ReviewTaskItemVO,
+  ReviewTaskItemVO, ReviewTaskStatusCode
 } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -461,23 +453,10 @@ import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import {
-  AI_ABILITY_LABEL,
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_LABEL,
-  AI_EXECUTION_STATUS_TONE,
-  claimReviewTask,
-  confirmQuestionGrade,
-  getReviewTaskDetail,
-  listAiExecutionsForQuestion,
-  listAnnotations,
-  listReviewTasks,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam'
+import { AI_ABILITY_LABEL, AI_ABILITY_TONE, AI_EXECUTION_STATUS_LABEL, AI_EXECUTION_STATUS_TONE, AI_PROVIDER_TYPE_LABEL, claimReviewTask, confirmQuestionGrade, getReviewTaskDetail, listAiExecutionsForQuestion, listAnnotations, listReviewTasks, rescoreQuestionByAi, REVIEW_TASK_STATUS_LABEL, REVIEW_TASK_STATUS_TONE } from '@/apis/mark/exam'
 import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
 import {
   UiAlertStrip,
@@ -491,54 +470,19 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewWorkspace' })
 
-type ReviewTaskStatusCode = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED'
 type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
 
-const STATUS_LABEL: Record<ReviewTaskStatusCode, string> = {
-  PENDING: '待复核',
-  IN_PROGRESS: '复核中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
+function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
+  return REVIEW_TASK_STATUS_TONE[value]
 }
 
-const STATUS_TONE: Record<ReviewTaskStatusCode, ToneCode> = {
-  PENDING: 'orange',
-  IN_PROGRESS: 'blue',
-  APPROVED: 'green',
-  REJECTED: 'red',
-}
-
-/**
- * 后端 ReviewTaskDetailResponse.status 是 String（宽类型），前端需在此狭化为 ReviewTaskStatusCode 才能查 LABEL/TONE。
- * 通过字面值 === 比较让 TS 自动缩窄类型，全程零 as 断言。
- */
-function reviewStatusTone(value: unknown): ToneCode {
-  if (typeof value !== 'string') return 'gray'
-  if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
-  ) {
-    return STATUS_TONE[value]
-  }
-  return 'gray'
-}
-
-function reviewStatusLabel(value: unknown): string {
-  if (typeof value !== 'string') return ''
-  if (
-    value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'APPROVED'
-    || value === 'REJECTED'
-  ) {
-    return STATUS_LABEL[value]
-  }
-  return value
+function reviewStatusLabel(value: ReviewTaskStatusCode): string {
+  return REVIEW_TASK_STATUS_LABEL[value]
 }
 
 const route = useRoute()
@@ -790,8 +734,9 @@ const gradeFormRules: Record<string, Rule[]> = {
       validator(_rule: Rule, value: number) {
         if (value === undefined || value === null) return Promise.resolve()
         if (value < 0) return Promise.reject(new Error('最终得分不能为负'))
-        const fullScore = detail.value?.fullScore
-        if (fullScore !== undefined && fullScore !== null && value > fullScore) {
+        if (!detail.value) return Promise.reject(new Error('复核任务尚未加载'))
+        const fullScore = detail.value.fullScore
+        if (value > fullScore) {
           return Promise.reject(new Error(`最终得分不能超过满分 ${fullScore}`))
         }
         return Promise.resolve()
@@ -811,7 +756,7 @@ const rescoring = ref(false)
 
 /** 复评可用不可用的原因，用于异议阶段以外状态提示教师 */
 const rescoreBlockReason = computed<string>(() => {
-  if (!detail.value?.gradeResultId) return '复核任务尚未载入题目批改结果'
+  if (!detail.value) return '复核任务尚未载入题目批改结果'
   if (detail.value.status === 'APPROVED' || detail.value.status === 'REJECTED') {
     return '任务已关闭，禁止重新生成 AI 复评'
   }
@@ -822,7 +767,7 @@ const rescoreBlockReason = computed<string>(() => {
 const canRescoreByAi = computed<boolean>(() => {
   if (rescoring.value || submitting.value) return false
   if (!examId.value) return false
-  if (!detail.value?.gradeResultId) return false
+  if (!detail.value) return false
   return detail.value.status === 'PENDING' || detail.value.status === 'IN_PROGRESS'
 })
 
@@ -846,7 +791,7 @@ function openRescoreConfirm(): void {
 
 /** 实际发起调用，成功后由 loadTask 重拉全量详情以同步重写后的 suggestedScore / aiDiagnostic */
 async function doRescoreByAi(): Promise<void> {
-  if (!canRescoreByAi.value || !examId.value || !detail.value?.gradeResultId) return
+  if (!canRescoreByAi.value || !examId.value || !detail.value) return
   rescoring.value = true
   try {
     const result = await rescoreQuestionByAi({
@@ -856,7 +801,7 @@ async function doRescoreByAi(): Promise<void> {
     if (Boolean(result.suggested) && result.suggestedScore != null) {
       message.success(`AI 复评完成，建议得分 ${result.suggestedScore}`)
     } else {
-      message.warning(result.diagnostic || 'AI 未产出可复核建议，请人工复核')
+      message.warning(result.diagnostic)
     }
     await loadTask()
     if (executionsDrawerOpen.value) {
@@ -878,7 +823,7 @@ const currentAiSourceLabel = computed<string>(() => {
   if (!traceId) return ''
   if (traceId.startsWith('MARK_PAPER_GRADE_AI')) return AI_ABILITY_LABEL.PAPER_GRADE_SUGGESTION
   if (traceId.startsWith('MARK_SUBJECTIVE_AI')) return AI_ABILITY_LABEL.SUBJECTIVE_GRADE_SUGGESTION
-  return 'AI 建议'
+  throw new Error(`AI traceId 来源不符合前后端契约：${traceId}`)
 })
 
 /** 当前 AI 建议来源色调，与 currentAiSourceLabel 保持一致区分 */
@@ -887,7 +832,7 @@ const currentAiSourceTone = computed<BadgeTone>(() => {
   if (!traceId) return 'gray'
   if (traceId.startsWith('MARK_PAPER_GRADE_AI')) return AI_ABILITY_TONE.PAPER_GRADE_SUGGESTION
   if (traceId.startsWith('MARK_SUBJECTIVE_AI')) return AI_ABILITY_TONE.SUBJECTIVE_GRADE_SUGGESTION
-  return 'gray'
+  throw new Error(`AI traceId 来源不符合前后端契约：${traceId}`)
 })
 
 /** 是否可采纳 AI 建议分：同时要求任务可提交、存在建议分 */
@@ -920,13 +865,13 @@ const aiExecutions = ref<ExamQuestionAiExecutionItemVO[]>([])
 
 /** 打开抽屉后拉取历史记录 */
 function openExecutionsDrawer(): void {
-  if (!detail.value?.gradeResultId || !examId.value) return
+  if (!detail.value || !examId.value) return
   executionsDrawerOpen.value = true
   void loadAiExecutions()
 }
 
 async function loadAiExecutions(): Promise<void> {
-  if (!examId.value || !detail.value?.gradeResultId) return
+  if (!examId.value || !detail.value) return
   executionsLoading.value = true
   executionsLoadError.value = ''
   try {
@@ -943,31 +888,32 @@ async function loadAiExecutions(): Promise<void> {
 }
 
 /** 能力编码 -> 来源文案 */
-function abilityLabel(code?: AiAbilityCode): string {
-  if (!code) return 'AI'
-  return AI_ABILITY_LABEL[code] ?? code
+function abilityLabel(code: AiAbilityCode): string {
+  return strictEnumLabel(AI_ABILITY_LABEL, code, 'AI 能力编码')
 }
 
 /** 能力编码 -> 来源色调 */
-function abilityTone(code?: AiAbilityCode): BadgeTone {
-  if (!code) return 'gray'
-  return AI_ABILITY_TONE[code] ?? 'gray'
+function abilityTone(code: AiAbilityCode): BadgeTone {
+  return strictEnumTone(AI_ABILITY_TONE, code, 'AI 能力编码')
 }
 
 /** 状态编码 -> 文案 */
-function statusLabel(status?: AiExecutionStatusCode): string {
-  if (!status) return '-'
-  return AI_EXECUTION_STATUS_LABEL[status] ?? status
+function statusLabel(status: AiExecutionStatusCode): string {
+  return strictEnumLabel(AI_EXECUTION_STATUS_LABEL, status, 'AI 执行状态')
 }
 
 /** 状态编码 -> 色调 */
-function statusTone(status?: AiExecutionStatusCode): BadgeTone {
-  if (!status) return 'gray'
-  return AI_EXECUTION_STATUS_TONE[status] ?? 'gray'
+function statusTone(status: AiExecutionStatusCode): BadgeTone {
+  return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
+}
+
+/** AI 供应商类型 -> 中文文案 */
+function providerLabel(providerType: AiProviderTypeCode): string {
+  return strictEnumLabel(AI_PROVIDER_TYPE_LABEL, providerType, 'AI 供应商类型')
 }
 
 /** 时间线节点色彩，与状态一致 */
-function timelineColor(status?: AiExecutionStatusCode): string {
+function timelineColor(status: AiExecutionStatusCode): string {
   switch (status) {
     case 'SUCCESS':
       return 'green'
@@ -976,7 +922,7 @@ function timelineColor(status?: AiExecutionStatusCode): string {
     case 'FAILED':
       return 'red'
     default:
-      return 'gray'
+      throw new Error(`AI 执行状态存在未定义枚举值：${status}`)
   }
 }
 
@@ -985,7 +931,7 @@ function timelineColor(status?: AiExecutionStatusCode): string {
  * advanceToNext=true 时进入"提交并取下一份"流水线，提示文案会区分。
  */
 async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
-  if (!examId.value || !detail.value?.gradeResultId) return
+  if (!examId.value || !detail.value) return
   if (!gradeFormRef.value) return
   try {
     await gradeFormRef.value.validate()
@@ -1007,7 +953,7 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
     : '提交后任务将被关闭，不可撤销。'
   void confirmAsync({
     title: advanceToNext ? '确认提交并继续下一份？' : '确认提交该题批改？',
-    content: `最终得分：${finalScore} / ${fullScore ?? '-'}（${ratio}）。${tailHint}`,
+    content: `最终得分：${finalScore} / ${fullScore}（${ratio}）。${tailHint}`,
     type: 'info',
     okText: advanceToNext ? '提交并取下一份' : '确认提交',
     cancelText: '取消',
@@ -1017,7 +963,7 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
 
 /** 提交核心：仅提交给分，成功返回 true；失败已 message.error 并返回 false */
 async function submitGrade(): Promise<boolean> {
-  if (!examId.value || !detail.value?.gradeResultId) return false
+  if (!examId.value || !detail.value) return false
   submitting.value = true
   try {
     await confirmQuestionGrade({
@@ -1074,7 +1020,7 @@ async function takeNextTask(): Promise<void> {
       void router.push({ name: 'TeacherMarkingOverview', query: { examId: examId.value } })
       return
     }
-    // 领取下一份；后端会把状态推进到 IN_PROGRESS 并绑定到当前教师
+      // 领取下一份；后端会把状态推进到处理中并绑定到当前教师
     await claimReviewTask({
       examId: examId.value,
       reviewTaskId: candidate.reviewTaskId,
@@ -1100,8 +1046,8 @@ const statMetrics = computed(() => {
   const d = detail.value
   if (!d) return []
   return [
-    { label: '题号', value: d.questionNo ?? '-', tone: 'blue' as const },
-    { label: '满分', value: d.fullScore ?? '-', unit: '分', tone: 'gray' as const },
+    { label: '题号', value: d.questionNo, tone: 'blue' as const },
+    { label: '满分', value: d.fullScore, unit: '分', tone: 'gray' as const },
     {
       label: '建议得分',
       value: d.suggestedScore ?? '-',
@@ -1120,16 +1066,11 @@ const statMetrics = computed(() => {
       unit: '条',
       tone: (annotations.value.length > 0 ? 'blue' : 'gray') as 'blue' | 'gray',
     },
-    { label: '状态', value: reviewStatusLabel(d.status) || '-', tone: reviewStatusTone(d.status) },
+    { label: '状态', value: reviewStatusLabel(d.status), tone: reviewStatusTone(d.status) },
   ]
 })
 
 // ─── 辅助函数 ─────────────────────────────
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
-
 /** 题目质量参考卡片用：null/undefined 显示 -，其余保留两位小数 */
 function formatNum(value: number | null | undefined): string {
   if (value == null) return '-'

@@ -17,7 +17,10 @@ import {
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   achievementApi,
+  isAchievementAuditStatus,
+  isAchievementTargetType,
 } from '@/apis/quality'
+import { requirePageList } from './page-contract'
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: '请选择达成度结果',
@@ -91,7 +94,7 @@ async function loadOptions() {
       schoolYear: props.schoolYear || undefined,
       semester: props.semester || undefined,
     })
-    options.value = res.list || []
+    options.value = requirePageList(res, '达成度结果')
   } catch (e) {
     console.error('[AchievementResultSelector] 加载达成度结果列表失败', e)
     message.error('加载达成度结果列表失败')
@@ -109,7 +112,7 @@ const filteredOptions = computed(() => {
   if (!kw) return options.value
   const lower = kw.toLowerCase()
   return options.value.filter((opt) => {
-    const targetTypeLabel = ACHIEVEMENT_TARGET_TYPE_LABEL[opt.targetType] || opt.targetType
+    const targetTypeLabel = achievementTargetTypeLabel(opt.targetType)
     return [
       opt.id,
       opt.targetId,
@@ -136,8 +139,30 @@ function handleChange(val: SelectValue) {
 }
 
 function labelOf(opt: AchievementResultVO) {
-  const typeLabel = ACHIEVEMENT_TARGET_TYPE_LABEL[opt.targetType] || opt.targetType
-  return `${typeLabel} #${opt.targetId}`
+  const typeLabel = achievementTargetTypeLabel(opt.targetType)
+  const statusLabel = opt.auditStatus ? auditStatusLabel(opt.auditStatus) : '未进入审核'
+  return `${typeLabel} · ${statusLabel}`
+}
+
+function achievementTargetTypeLabel(value: unknown) {
+  if (!isAchievementTargetType(value)) {
+    throw new Error('达成度目标类型不符合前后端契约')
+  }
+  return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
+}
+
+function auditStatusLabel(value: unknown) {
+  if (!isAchievementAuditStatus(value)) {
+    throw new Error('达成度审核状态不符合前后端契约')
+  }
+  return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
+}
+
+function auditStatusColor(value: unknown) {
+  if (!isAchievementAuditStatus(value)) {
+    throw new Error('达成度审核状态不符合前后端契约')
+  }
+  return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
 }
 
 onMounted(() => {
@@ -168,17 +193,17 @@ defineExpose({ reload: loadOptions })
     >
       {{ labelOf(opt) }}
       <span v-if="opt.qualityCourseId" class="text-gray-400 ml-1">
-        · 课程 #{{ opt.qualityCourseId }}
+        · 已关联课程
       </span>
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
         ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
       </span>
       <AuditStatusTag
         v-if="opt.auditStatus"
-        :color="ACHIEVEMENT_AUDIT_STATUS_COLOR[opt.auditStatus]"
+        :color="auditStatusColor(opt.auditStatus)"
         class="ml-1"
       >
-        {{ ACHIEVEMENT_AUDIT_STATUS_LABEL[opt.auditStatus] }}
+        {{ auditStatusLabel(opt.auditStatus) }}
       </AuditStatusTag>
     </a-select-option>
   </a-select>

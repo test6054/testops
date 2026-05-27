@@ -1,4 +1,6 @@
 import type {
+  ExternalPullAuditCheckStatus,
+  ExternalPullAuditEvent,
   ExternalPullConfirmationStatus,
   ExternalPullTaskStatus,
   ExternalSourceType,
@@ -160,13 +162,13 @@ export interface ExternalPullAuditVO {
   id: string
   tenantId?: string
   pullTaskId: string
-  sqlSafetyStatus?: string
+  sqlSafetyStatus?: ExternalPullAuditCheckStatus
   sqlSafetyDetail?: string
-  fieldWhitelistStatus?: string
+  fieldWhitelistStatus?: ExternalPullAuditCheckStatus
   fieldWhitelistDetail?: string
-  maskPreviewStatus?: string
+  maskPreviewStatus?: ExternalPullAuditCheckStatus
   operatorUserId?: string
-  auditEvent: string
+  auditEvent: ExternalPullAuditEvent
   auditDetail?: string
   auditedAt: string
   createTime?: string

@@ -54,7 +54,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { InboxMessageListItemDTO, SystemAnnouncementResponse } from '@/apis/edu/message'
+import type { InboxMessageListItemDTO, PublishedSystemAnnouncementResponse } from '@/apis/edu/message'
 import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
@@ -173,11 +173,11 @@ const getMessageData = async () => {
 
     const announcementMessages: UnifiedMessageItem[]
       = announcementResult.status === 'fulfilled'
-        ? announcementResult.value.list.map((item: SystemAnnouncementResponse) => ({
+        ? announcementResult.value.list.map((item: PublishedSystemAnnouncementResponse) => ({
             id: item.id,
             subject: `【公告】${item.title}`,
             content: stripHtmlAndTruncate(item.content),
-            sendTime: item.publishTime || item.createTime,
+            sendTime: item.publishTime,
             type: 'announcement' as const,
             metadata: { jumpUrl: `/messages?tab=notice&id=${item.id}` },
           }))

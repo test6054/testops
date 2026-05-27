@@ -113,7 +113,7 @@
           </template>
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="setStatusTone(sets[index].archiveStatus)" size="sm">
-              {{ sets[index].archiveStatusMessage || setStatusLabel(sets[index].archiveStatus) }}
+              {{ sets[index].archiveStatusMessage }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'tags'">
@@ -138,7 +138,7 @@
             </span>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatTime(sets[index].createTime) }}
+            {{ formatDateTime(sets[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
@@ -245,7 +245,6 @@ import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/p
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -260,6 +259,8 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperArchiveList' })
 
@@ -377,8 +378,8 @@ async function loadSets(): Promise<void> {
       examTerm: filterForm.examTerm?.trim() || undefined,
       archiveStatus: filterForm.archiveStatus,
     })
-    sets.value = result.list ?? []
-    pagination.total = Number(result.total ?? 0)
+    sets.value = result.list
+    pagination.total = Number(result.total)
     syncPaperArchiveStageToStore()
   } catch (error) {
     message.error(error instanceof Error ? error.message : '档案集列表加载失败')
@@ -446,7 +447,7 @@ async function submitCreate(): Promise<void> {
 function confirmActivate(record: PaperArchiveSetVO): void {
   void confirmAsync({
     title: '激活档案集？',
-    content: `档案集 ${record.archiveNo} 将从 DRAFT 推进到 ACTIVE，激活后即可正式接收新试卷上传。`,
+    content: `档案集 ${record.archiveNo} 将从草稿推进到保管中，激活后即可正式接收新试卷上传。`,
     type: 'info',
     okText: '激活',
     cancelText: '取消',
@@ -469,19 +470,10 @@ function goDetail(archiveSetId: string): void {
   })
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 function setStatusTone(status?: PaperArchiveSetStatusCode): BadgeTone {
   if (!status) return 'gray'
-  return PAPER_ARCHIVE_SET_STATUS_TONE[status] ?? 'gray'
-}
-
-function setStatusLabel(status?: PaperArchiveSetStatusCode): string {
-  if (!status) return '-'
-  return PAPER_ARCHIVE_SET_STATUS_LABEL[status] ?? status
+  return strictEnumTone(PAPER_ARCHIVE_SET_STATUS_TONE, status, '试卷档案集状态')
 }
 
 onMounted(() => {

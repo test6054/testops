@@ -15,7 +15,7 @@
             <div class="ledger-summary__hero-status">
               <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
               <span class="ledger-summary__hero-time">
-                最近对账：{{ fmt(ledger.balancedTime) }}
+                最近对账：{{ formatDateTime(ledger.balancedTime) }}
               </span>
             </div>
             <UiProgressBarNew
@@ -71,7 +71,6 @@
 <script lang="ts" setup>
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
-import dayjs from 'dayjs'
 import { computed } from 'vue'
 import { LEDGER_STATUS_COLOR, LEDGER_STATUS_LABEL } from '@/apis/mark/image-ledger'
 import {
@@ -82,6 +81,8 @@ import {
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'LedgerSummaryCard' })
 const props = defineProps<{
@@ -92,13 +93,11 @@ const props = defineProps<{
 defineEmits<{ (e: 'balance'): void }>()
 
 const statusLabel = computed(() => {
-  const code = props.ledger?.ledgerStatus
-  if (!code) return '未对账'
-  return LEDGER_STATUS_LABEL[code] || code
+  return strictEnumLabel(LEDGER_STATUS_LABEL, props.ledger?.ledgerStatus, '影像账本状态')
 })
 
 const statusTone = computed(() => {
-  return LEDGER_STATUS_COLOR[props.ledger?.ledgerStatus || ''] || 'gray'
+  return strictEnumTone(LEDGER_STATUS_COLOR, props.ledger?.ledgerStatus, '影像账本状态')
 })
 
 const scanPercent = computed(() => {
@@ -188,14 +187,9 @@ const deviationMetrics = computed(() => {
       unit: '条',
       tone: ledger.pendingDuplicateCount > 0 ? ('red' as const) : ('green' as const),
     },
-    { label: '账本 ID', value: ledger.ledgerId ?? '-', tone: 'gray' as const },
+    { label: '账本 ID', value: ledger.ledgerId, tone: 'gray' as const },
   ]
 })
-
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 </script>
 
 <style lang="scss" scoped>

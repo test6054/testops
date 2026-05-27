@@ -22,9 +22,9 @@ export interface ImageLedgerDetailPayload {
 
 /** 影像账本详情响应 - 对应 ImageLedgerDetailResponse */
 export interface ImageLedgerDetailVO {
-  ledgerId?: string
+  ledgerId: string
   examId: string
-  ledgerStatus?: string
+  ledgerStatus: LedgerStatusCode
   expectedCandidateCount: number
   expectedPageCount: number
   scannedPageCount: number
@@ -37,15 +37,18 @@ export interface ImageLedgerDetailVO {
   pendingDuplicateCount: number
 }
 
+/** 影像账本状态 - 对应后端 LedgerStatus 枚举 */
+export type LedgerStatusCode = 'BALANCING' | 'BALANCED' | 'INCIDENT_OPEN'
+
 /** 账本状态文案映射 */
-export const LEDGER_STATUS_LABEL: Record<string, string> = {
+export const LEDGER_STATUS_LABEL: Record<LedgerStatusCode, string> = {
   BALANCING: '对账中',
   BALANCED: '已平账',
   INCIDENT_OPEN: '存在异常',
 }
 
 /** 账本状态徽标颜色（统一 BadgeTone） */
-export const LEDGER_STATUS_COLOR: Record<string, BadgeTone> = {
+export const LEDGER_STATUS_COLOR: Record<LedgerStatusCode, BadgeTone> = {
   BALANCING: 'blue',
   BALANCED: 'green',
   INCIDENT_OPEN: 'red',
@@ -57,8 +60,8 @@ export const LEDGER_STATUS_COLOR: Record<string, BadgeTone> = {
  */
 export function getImageLedgerDetail(
   payload: ImageLedgerDetailPayload,
-): Promise<ImageLedgerDetailVO> {
-  return http.post<unknown>('/api/mark/exams/image-ledger/detail', payload).then(validateImageLedgerDetail)
+): Promise<ImageLedgerDetailVO | null> {
+  return http.post<unknown>('/api/mark/exams/image-ledger/detail', payload).then(validateNullableImageLedgerDetail)
 }
 
 /** 影像账本对账请求 - 对应 ImageLedgerBalanceRequest */
@@ -97,13 +100,13 @@ export const DUPLICATE_RESOLUTION_STATUS_COLOR: Record<DuplicateResolutionStatus
 export interface ExamPaperDuplicateResolutionVO {
   id: string
   examId: string
-  pageHash?: string
-  firstPageId?: string
-  secondPageId?: string
-  firstPaperInstanceId?: string
-  secondPaperInstanceId?: string
+  pageHash: string
+  firstPageId: string
+  secondPageId: string
+  firstPaperInstanceId: string
+  secondPaperInstanceId: string
   selectedPaperInstanceId?: string
-  resolutionStatus?: DuplicateResolutionStatusCode
+  resolutionStatus: DuplicateResolutionStatusCode
   resolutionReason?: string
   resolvedBy?: string
   resolvedTime?: string
@@ -171,9 +174,9 @@ function validateImageLedgerDetail(value: unknown): ImageLedgerDetailVO {
   }
   const record = value as Record<string, unknown>
   return {
-    ledgerId: optionalString(record.ledgerId, 'ledgerId'),
+    ledgerId: requireString(record.ledgerId, 'ledgerId'),
     examId: requireString(record.examId, 'examId'),
-    ledgerStatus: optionalString(record.ledgerStatus, 'ledgerStatus'),
+    ledgerStatus: requireLedgerStatus(record.ledgerStatus),
     expectedCandidateCount: requireFiniteNumber(record.expectedCandidateCount, 'expectedCandidateCount'),
     expectedPageCount: requireFiniteNumber(record.expectedPageCount, 'expectedPageCount'),
     scannedPageCount: requireFiniteNumber(record.scannedPageCount, 'scannedPageCount'),
@@ -187,10 +190,26 @@ function validateImageLedgerDetail(value: unknown): ImageLedgerDetailVO {
   }
 }
 
-function validateDuplicateResolutionStatus(value: unknown): DuplicateResolutionStatusCode | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
+function validateNullableImageLedgerDetail(value: unknown): ImageLedgerDetailVO | null {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('影像账本详情返回格式错误')
   }
+  const record = value as Record<string, unknown>
+  if (record.ledgerId === undefined || record.ledgerId === null || record.ledgerId === '') {
+    requireString(record.examId, 'examId')
+    return null
+  }
+  return validateImageLedgerDetail(record)
+}
+
+function requireLedgerStatus(value: unknown): LedgerStatusCode {
+  if (value !== 'BALANCING' && value !== 'BALANCED' && value !== 'INCIDENT_OPEN') {
+    throw new TypeError('影像账本状态格式错误')
+  }
+  return value
+}
+
+function requireDuplicateResolutionStatus(value: unknown): DuplicateResolutionStatusCode {
   if (value !== 'PENDING' && value !== 'RESOLVED') {
     throw new TypeError('重复影像处置状态格式错误')
   }
@@ -205,13 +224,13 @@ function validateDuplicateResolution(value: unknown): ExamPaperDuplicateResoluti
   return {
     id: requireString(record.id, 'id'),
     examId: requireString(record.examId, 'examId'),
-    pageHash: optionalString(record.pageHash, 'pageHash'),
-    firstPageId: optionalString(record.firstPageId, 'firstPageId'),
-    secondPageId: optionalString(record.secondPageId, 'secondPageId'),
-    firstPaperInstanceId: optionalString(record.firstPaperInstanceId, 'firstPaperInstanceId'),
-    secondPaperInstanceId: optionalString(record.secondPaperInstanceId, 'secondPaperInstanceId'),
+    pageHash: requireString(record.pageHash, 'pageHash'),
+    firstPageId: requireString(record.firstPageId, 'firstPageId'),
+    secondPageId: requireString(record.secondPageId, 'secondPageId'),
+    firstPaperInstanceId: requireString(record.firstPaperInstanceId, 'firstPaperInstanceId'),
+    secondPaperInstanceId: requireString(record.secondPaperInstanceId, 'secondPaperInstanceId'),
     selectedPaperInstanceId: optionalString(record.selectedPaperInstanceId, 'selectedPaperInstanceId'),
-    resolutionStatus: validateDuplicateResolutionStatus(record.resolutionStatus),
+    resolutionStatus: requireDuplicateResolutionStatus(record.resolutionStatus),
     resolutionReason: optionalString(record.resolutionReason, 'resolutionReason'),
     resolvedBy: optionalString(record.resolvedBy, 'resolvedBy'),
     resolvedTime: optionalString(record.resolvedTime, 'resolvedTime'),

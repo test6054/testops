@@ -128,11 +128,11 @@ export interface InboxMessageListItemDTO {
   /** 站内信主题 */
   subject: string
   /** 站内信正文 */
-  contentHtml?: string
+  contentHtml: string
   /** 发送者用户ID */
   senderUserId: string
   /** 发送者用户信息 */
-  senderInfo?: UserDto
+  senderInfo: UserDto
   /** 发送时间 */
   sendTime: string
   /** 是否已读 */
@@ -152,11 +152,11 @@ export interface InboxMessageDetailResponse {
   /** 站内信主题 */
   subject: string
   /** 站内信正文 */
-  contentHtml?: string
+  contentHtml: string
   /** 发送者用户ID */
   senderUserId: string
   /** 发送者用户信息 */
-  senderInfo?: UserDto
+  senderInfo: UserDto
   /** 发送时间 */
   sendTime: string
   /** 阅读时间 */
@@ -294,6 +294,14 @@ export interface SystemAnnouncementResponse {
   targetTenantIds?: string[]
   /** 目标租户名称列表 */
   targetTenantNames?: string[]
+}
+
+/** 已发布系统公告响应DTO - 用户端公告列表和详情只返回已发布公告 */
+export interface PublishedSystemAnnouncementResponse extends SystemAnnouncementResponse {
+  /** 发布时间（已发布公告必填） */
+  publishTime: string
+  /** 当前用户是否已读 */
+  isRead: boolean
 }
 
 /** 系统公告统计响应DTO - 对应后端SystemAnnouncementStatsResponse */
@@ -463,14 +471,14 @@ export function getAnnouncementStats(): Promise<SystemAnnouncementStatsResponse>
 /**
  * 分页查询已发布公告列表（用户查看）- 对应后端 POST /api/announcements/list
  */
-export function getPublishedAnnouncementList(data: SystemAnnouncementQueryRequest): Promise<PageResult<SystemAnnouncementResponse>> {
+export function getPublishedAnnouncementList(data: SystemAnnouncementQueryRequest): Promise<PageResult<PublishedSystemAnnouncementResponse>> {
   return http.post('/api/announcements/list', data)
 }
 
 /**
  * 获取已发布公告详情（用户查看）- 对应后端 POST /api/announcements/detail
  */
-export function getPublishedAnnouncementDetail(id: string): Promise<SystemAnnouncementResponse> {
+export function getPublishedAnnouncementDetail(id: string): Promise<PublishedSystemAnnouncementResponse> {
   return http.post('/api/announcements/detail', { id })
 }
 

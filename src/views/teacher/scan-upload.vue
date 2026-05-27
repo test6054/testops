@@ -256,8 +256,8 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'scanWindow'">
-              <div>{{ formatTime(batches[index].scanStartTime) }}</div>
-              <div class="muted">至 {{ formatTime(batches[index].scanEndTime) }}</div>
+              <div>{{ formatDateTimeWithSeconds(batches[index].scanStartTime) }}</div>
+              <div class="muted">至 {{ formatDateTimeWithSeconds(batches[index].scanEndTime) }}</div>
             </template>
             <template v-else-if="column.key === 'eventCount'">
               {{ batches[index].eventCount ?? '-' }} 条
@@ -378,7 +378,7 @@ import type {
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
-import type { ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
+import type { ExamScannerDeviceQueryPayload, ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -414,18 +414,11 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { formatDateTimeWithSeconds } from '@/utils/format'
 
 defineOptions({ name: 'TeacherScanUpload' })
 
 type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
-
-const BATCH_STATUS_LABEL: Record<ScanBatchStatusCode, string> = {
-  RECEIVED: '已接收',
-  BLOCKED: '已阻断',
-  BOUND: '已绑定',
-  COMPLETED: '已完成',
-  DISCARDED: '已废弃',
-}
 
 const BATCH_STATUS_TONE: Record<ScanBatchStatusCode, ToneCode> = {
   RECEIVED: 'blue',
@@ -436,15 +429,12 @@ const BATCH_STATUS_TONE: Record<ScanBatchStatusCode, ToneCode> = {
 }
 
 // helper 严格 typed 接收后端 API 对象 ExamScannerBatchVO。
-// ExamScannerBatchVO.status: ScanBatchStatusCode | undefined 本身已严格枚举，只需处理 undefined。
 function batchStatusTone(batch: ExamScannerBatchVO): ToneCode {
-  return batch.status ? BATCH_STATUS_TONE[batch.status] : 'gray'
+  return BATCH_STATUS_TONE[batch.status]
 }
 
 function batchStatusLabel(batch: ExamScannerBatchVO): string {
-  if (batch.statusMessage) return batch.statusMessage
-  if (batch.status) return BATCH_STATUS_LABEL[batch.status]
-  return '-'
+  return batch.statusMessage
 }
 
 const router = useRouter()
@@ -583,7 +573,8 @@ async function loadDevices(): Promise<void> {
   devicesLoading.value = true
   devicesLoadError.value = ''
   try {
-    devices.value = await listScannerDevices()
+    const query: ExamScannerDeviceQueryPayload = {}
+    devices.value = await listScannerDevices(query)
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '扫描设备列表加载失败'
     devicesLoadError.value = errMsg
@@ -889,12 +880,6 @@ function onBatchPageChange(payload: { current: number, pageSize: number }): void
   batchQuery.pageNum = payload.current
   batchQuery.pageSize = payload.pageSize
   void loadBatches()
-}
-
-// ─── 工具函数 ─────────────────────────────
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
 }
 
 // ─── 快捷入口 ─────────────────────────────

@@ -21,7 +21,7 @@ export type VisibleMaterialScopeCode = 'SCORE_ONLY' | 'SCORE_AND_ANNOTATION' | '
 /** 复核窗口状态文案映射 */
 export const REVIEW_WINDOW_STATUS_LABEL: Record<ReviewWindowPolicyStatusCode, string> = {
   DRAFT: '草稿',
-  ACTIVE: '已激活',
+  ACTIVE: '已开放',
   CLOSED: '已关闭',
 }
 
@@ -130,12 +130,12 @@ export const REVIEW_REQUEST_STATUS_TONE: Record<GradeReviewRequestStatusCode, Ba
 export interface GradeReviewSubmitPayload {
   examId: string
   paperInstanceId?: string
-  /** 申请复核的题目ID列表 JSON 数组字符串，例如 '[1001,1002]' */
-  questionIds?: string
+  /** 申请复核的题目ID列表；空数组表示总分复核 */
+  questionIds: string[]
   requestReason: string
   reasonType?: string
-  /** 佐证材料文件ID JSON 数组字符串 */
-  evidenceFileIds?: string
+  /** 佐证材料文件ID列表 */
+  evidenceFileIds?: string[]
 }
 
 /** 复核申请 - 对应 ExamGradeReviewRequest */
@@ -145,10 +145,10 @@ export interface ExamGradeReviewRequestVO {
   examId: string
   studentUserId?: string
   paperInstanceId?: string
-  questionIds?: string
+  questionIds: string[]
   requestReason?: string
   reasonType?: string
-  evidenceFileIds?: string
+  evidenceFileIds?: string[]
   requestStatus?: GradeReviewRequestStatusCode
   reviewerUserId?: string
   reviewNote?: string
@@ -204,18 +204,18 @@ export interface StudentGradeReviewRequestItemVO {
   id: string
   tenantId?: string
   examId: string
-  examName?: string
-  examNo?: string
+  examName: string
+  examNo: string
   paperInstanceId?: string
-  questionIds?: string
-  requestReason?: string
-  reasonType?: string
-  evidenceFileIds?: string
-  requestStatus?: GradeReviewRequestStatusCode
+  questionIds: string[]
+  requestReason: string
+  reasonType: string
+  evidenceFileIds?: string[]
+  requestStatus: GradeReviewRequestStatusCode
   reviewerUserId?: string
   reviewNote?: string
   reviewTime?: string
-  createTime?: string
+  createTime: string
   updateTime?: string
 }
 
@@ -364,7 +364,7 @@ export interface ExamBatchGradeCorrectionPlanVO {
   examId: string
   planName?: string
   correctionType?: GradeCorrectionTypeCode
-  affectedQuestionIds?: string
+  affectedQuestionIds?: string[]
   affectedStudentCount?: number
   beforeAfterDiff?: string
   approvalStatus?: BatchCorrectionApprovalStatusCode

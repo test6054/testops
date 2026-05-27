@@ -5,13 +5,13 @@
       <!-- 有头像URL且未加载失败时显示图片头像 -->
       <a-avatar
         v-if="hasImageAvatar && !imageLoadFailed"
-        :size="props.size as any"
+        :size="avatarSize"
         :src="imageAvatarSrc"
         :alt="props.alt"
         @error="handleAvatarError"
       />
       <!-- 兜底：显示文字头像 -->
-      <a-avatar v-else :size="props.size as any" :style="fallbackAvatarStyle">
+      <a-avatar v-else :size="avatarSize" :style="fallbackAvatarStyle">
         <span v-if="props.name" class="avatar-text">{{ avatarName }}</span>
         <span v-else class="avatar-text">{{ props.text || '?' }}</span>
       </a-avatar>
@@ -225,9 +225,25 @@ const avatarColor = computed(() => {
   return 'color-mix(in srgb, var(--ant-color-primary) 16%, var(--ant-color-bg-container))'
 })
 
+/**
+ * a-avatar 的 size prop 只接受 `number | 'small' | 'large' | 'default' | ScreenSizeMap`，
+ * 这里 props.size 允许 string | number（兼容历史调用方传 '40' 这类字符串）。
+ * 统一在此规范化为 number，并允许 'small' / 'large' / 'default' 字面值直通。
+ */
+type AntAvatarSize = number | 'small' | 'large' | 'default'
+
+const avatarSize = computed<AntAvatarSize>(() => {
+  if (typeof props.size === 'number') return props.size
+  if (props.size === 'small' || props.size === 'large' || props.size === 'default') {
+    return props.size
+  }
+  const parsed = Number.parseInt(props.size, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 32
+})
+
 // 根据头像大小计算合适的字体大小
 const avatarFontSize = computed(() => {
-  const size = typeof props.size === 'number' ? props.size : Number.parseInt(props.size) || 32
+  const size = typeof avatarSize.value === 'number' ? avatarSize.value : 32
   // 字体大小约为头像大小的50%，确保文字在圆形区域内美观显示
   return `${Math.max(13, Math.floor(size * 0.5))}px`
 })

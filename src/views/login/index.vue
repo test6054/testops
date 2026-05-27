@@ -5,9 +5,6 @@
   </article>
 
   <div class="login-page">
-    <div class="login-page__glow login-page__glow--left" />
-    <div class="login-page__glow login-page__glow--right" />
-
     <!-- 右上角 Logo -->
     <div class="login-brand__top">
       <img src="/logo.svg" alt="阅卷中心" class="login-brand__logo">
@@ -31,7 +28,6 @@
 
             <section class="login-panel">
               <div class="login-panel__header">
-                <p class="login-panel__eyebrow">欢迎回来</p>
                 <h3 class="login-panel__title">登录阅卷中心</h3>
                 <p v-if="isSubdomain && subdomainTenant" class="login-panel__subtitle">{{ subdomainTenant.tenantName }}</p>
                 <p v-else class="login-panel__subtitle">请选择登录方式并完成身份验证。</p>
@@ -210,11 +206,11 @@ onMounted(async () => {
 }
 
 .login-page {
-  --login-bg: #eaf3ff;
-  --login-surface: rgba(255, 255, 255, 0.9);
+  --login-bg: #f5f8fc;
+  --login-surface: #fff;
   --login-text: #17345d;
   --login-muted: #607696;
-  --login-accent: #3c7af0;
+  --login-accent: #2563eb;
   box-sizing: border-box;
   position: relative;
   display: flex;
@@ -222,33 +218,8 @@ onMounted(async () => {
   height: 100vh;
   padding: 24px 36px 18px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 15% 18%, rgba(123, 171, 255, 0.22) 0%, rgba(123, 171, 255, 0) 26%),
-    radial-gradient(circle at 86% 22%, rgba(159, 206, 255, 0.28) 0%, rgba(159, 206, 255, 0) 24%),
-    linear-gradient(180deg, #f6faff 0%, #eaf3ff 100%);
-}
-
-.login-page__glow {
-  position: absolute;
-  border-radius: 999px;
-  filter: blur(12px);
-  pointer-events: none;
-}
-
-.login-page__glow--left {
-  top: 90px;
-  left: 120px;
-  width: 280px;
-  height: 280px;
-  background: rgba(140, 184, 255, 0.2);
-}
-
-.login-page__glow--right {
-  right: 100px;
-  bottom: 140px;
-  width: 320px;
-  height: 320px;
-  background: rgba(188, 222, 255, 0.22);
+  /* 企业 SaaS 风格：单层柔和背景，去 radial-gradient / glow / 网格底纹 */
+  background: var(--login-bg);
 }
 
 .login-stage {
@@ -273,18 +244,6 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.login-brand::before {
-  content: '';
-  position: absolute;
-  inset: 10px 0 84px;
-  background:
-    linear-gradient(rgba(113, 152, 204, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(113, 152, 204, 0.06) 1px, transparent 1px);
-  background-size: 56px 56px;
-  opacity: 0.55;
-  pointer-events: none;
-}
-
 .login-brand__top,
 .login-brand__layout,
 .login-brand__content-row,
@@ -292,7 +251,6 @@ onMounted(async () => {
 .login-brand__hero,
 .login-brand__visual {
   position: relative;
-  z-index: 1;
 }
 
 .login-brand__top {
@@ -370,25 +328,12 @@ onMounted(async () => {
   justify-content: center;
 }
 
-.login-brand__visual::before {
-  content: '';
-  position: absolute;
-  inset: 12% 8% 14%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(122, 173, 255, 0.18) 0%, rgba(122, 173, 255, 0.02) 64%, transparent 100%);
-  filter: blur(24px);
-  pointer-events: none;
-}
-
 .login-brand__visual-image {
-  position: relative;
-  z-index: 1;
   display: block;
   max-width: 100%;
   max-height: 100%;
   width: auto;
   height: auto;
-  filter: drop-shadow(0 32px 48px rgba(94, 130, 183, 0.12));
 }
 
 .login-panel {
@@ -408,41 +353,34 @@ onMounted(async () => {
 
 .login-panel__header {
   margin-bottom: 0;
-  padding: 20px 20px 14px;
+  padding: 24px 24px 16px;
   border-radius: var(--dp-radius-panel, 8px) var(--dp-radius-panel, 8px) 0 0;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 18px 40px rgba(79, 108, 157, 0.1);
-}
-
-.login-panel__eyebrow {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--login-accent);
+  background: var(--login-surface);
+  border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+  border-bottom: none;
 }
 
 .login-panel__title {
   margin: 0;
-  font-size: 34px;
-  line-height: 1.12;
-  font-weight: 800;
-  color: #10294b;
+  font-size: 22px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--login-text);
 }
 
 .login-panel__subtitle {
-  margin: 10px 0 0;
-  font-size: 14px;
+  margin: 8px 0 0;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--login-muted);
 }
 
 .login-panel__surface {
-  padding: 20px;
-  margin-top: -2px;
+  padding: 20px 24px 24px;
   border-radius: 0 0 var(--dp-radius-panel, 8px) var(--dp-radius-panel, 8px);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 18px 40px rgba(79, 108, 157, 0.1);
+  background: var(--login-surface);
+  border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+  border-top: none;
 }
 
 .login-body {

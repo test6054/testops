@@ -8,6 +8,7 @@
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 /** 教学分析类型 */
 export type TeachingAnalysisTypeCode = 'TEACHING_IMPROVEMENT' | 'CLASS_WEAKNESS' | 'STUDENT_LEARNING_PROFILE'
@@ -46,6 +47,16 @@ export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, BadgeTone> =
   SUCCESS: 'green',
   FAILED: 'red',
   BLOCKED: 'red',
+}
+
+/** AI 分析状态中文文案，未知状态直接暴露合同错误 */
+export function aiAnalysisStatusLabel(status?: AiAnalysisStatusCode): string {
+  return strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, status, 'AI 分析状态')
+}
+
+/** AI 分析状态徽标颜色，未知状态直接暴露合同错误 */
+export function aiAnalysisStatusColor(status?: AiAnalysisStatusCode): BadgeTone {
+  return strictEnumTone(AI_ANALYSIS_STATUS_COLOR, status, 'AI 分析状态')
 }
 
 /** AI 教学分析记录 - 对应 ExamTeachingAnalysisRecord */

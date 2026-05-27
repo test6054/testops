@@ -155,12 +155,10 @@
             </template>
             <template v-else-if="column.key === 'sourceInfo'">
               <div class="scan-attention__source-cell">
-                <span v-if="record.sourceType">
-                  <b>{{ record.sourceType }}</b>
+                <span>
+                  <b>{{ sourceTypeLabel(record.sourceType) }}</b>
                 </span>
-                <span v-if="record.sourceId" class="scan-attention__hint">
-                  #{{ record.sourceId }}
-                </span>
+                <span class="scan-attention__hint"> #{{ record.sourceId }} </span>
               </div>
             </template>
             <template v-else-if="column.key === 'paperInstanceId'">
@@ -180,7 +178,7 @@
               <a-typography-text :content="record.diagnostic" :ellipsis="{ tooltip: true }" />
             </template>
             <template v-else-if="column.key === 'updateTime'">
-              {{ formatTime(record.updateTime) }}
+              {{ formatDateTimeWithSeconds(record.updateTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <a-space>
@@ -340,7 +338,7 @@
             class="scan-attention__batch-failure"
           >
             <a-typography-text strong :content="item.paperInstanceId" />
-            <span>{{ item.errorMessage || '后端未返回失败原因' }}</span>
+            <span>{{ item.errorMessage }}</span>
           </div>
         </div>
       </div>
@@ -398,16 +396,16 @@
     >
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
         <a-descriptions-item label="异常类型">
-          {{ detailRecord.attentionType || '-' }}
+          {{ attentionTypeLabel(detailRecord.attentionType) }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">
           {{ scanAttentionStatusLabel(detailRecord.status) }}
         </a-descriptions-item>
         <a-descriptions-item label="来源类型">
-          {{ detailRecord.sourceType || '-' }}
+          {{ sourceTypeLabel(detailRecord.sourceType) }}
         </a-descriptions-item>
-        <a-descriptions-item label="来源ID">{{ detailRecord.sourceId || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="考试ID">{{ detailRecord.examId || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="来源ID">{{ detailRecord.sourceId }}</a-descriptions-item>
+        <a-descriptions-item label="考试ID">{{ detailRecord.examId }}</a-descriptions-item>
         <a-descriptions-item label="扫描批次ID">
           {{ detailRecord.scanBatchId || '-' }}
         </a-descriptions-item>
@@ -422,7 +420,7 @@
           <pre class="scan-attention__diagnostic-pre">{{ detailRecord.diagnostic || '-' }}</pre>
         </a-descriptions-item>
         <a-descriptions-item label="更新时间">
-          {{ formatTime(detailRecord.updateTime) }}
+          {{ formatDateTimeWithSeconds(detailRecord.updateTime) }}
         </a-descriptions-item>
       </a-descriptions>
     </UiDrawer>
@@ -480,13 +478,13 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamCandidateVO,
   ScanAttentionItemVO,
+  ScanAttentionSourceTypeCode,
   ScanAttentionStatusCode,
   ScanAttentionTypeCode,
 } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
 import type { UiChartSliceItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
@@ -505,6 +503,8 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { formatDateTimeWithSeconds } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanAttention' })
 
@@ -537,7 +537,7 @@ const attentionsLoadError = ref<unknown>(null)
 const attentionTypeOptions: { label: string, value: ScanAttentionTypeCode }[] = [
   { label: '质量阻断', value: 'QUALITY_BLOCK' },
   { label: '处理阻断', value: 'PROCESSING_BLOCK' },
-  { label: '重复待处置', value: 'DUPLICATE_PENDING' },
+  { label: '重复影像', value: 'DUPLICATE_PENDING' },
   { label: '识别复核', value: 'RECOGNITION_REVIEW' },
 ]
 
@@ -552,10 +552,6 @@ const columns: ColumnType<ScanAttentionItemVO>[] = [
   { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
-}
 
 async function loadAttentions(): Promise<void> {
   if (!selectedExamId.value) return
@@ -599,18 +595,27 @@ const ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, 'red' | 'orange' | 'pur
 const ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
   QUALITY_BLOCK: '质量阻断',
   PROCESSING_BLOCK: '处理阻断',
-  DUPLICATE_PENDING: '重复待处置',
+  DUPLICATE_PENDING: '重复影像',
   RECOGNITION_REVIEW: '识别复核',
 }
 
-function attentionTypeTone(
-  type?: ScanAttentionTypeCode,
-): 'red' | 'orange' | 'purple' | 'blue' | 'gray' {
-  return type ? ATTENTION_TYPE_TONE[type] : 'gray'
+function attentionTypeTone(type: ScanAttentionTypeCode): 'red' | 'orange' | 'purple' | 'blue' {
+  return strictEnumTone(ATTENTION_TYPE_TONE, type, '扫描异常类型')
 }
 
-function attentionTypeLabel(type?: ScanAttentionTypeCode): string {
-  return type ? ATTENTION_TYPE_LABEL[type] : '-'
+function attentionTypeLabel(type: ScanAttentionTypeCode): string {
+  return strictEnumLabel(ATTENTION_TYPE_LABEL, type, '扫描异常类型')
+}
+
+const SCAN_ATTENTION_SOURCE_TYPE_LABEL: Record<ScanAttentionSourceTypeCode, string> = {
+  SCANNED_PAGE: '扫描页',
+  PROCESSING_TASK: '处理任务',
+  DUPLICATE_RESOLUTION: '重复扫描处置',
+  GRADE_RESULT: '批改结果',
+}
+
+function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {
+  return strictEnumLabel(SCAN_ATTENTION_SOURCE_TYPE_LABEL, type, '扫描异常来源类型')
 }
 
 const SCAN_ATTENTION_STATUS_LABEL: Record<ScanAttentionStatusCode, string> = {
@@ -627,14 +632,12 @@ const SCAN_ATTENTION_STATUS_TONE: Record<ScanAttentionStatusCode, 'red' | 'orang
   NEED_REVIEW: 'blue',
 }
 
-function scanAttentionStatusLabel(status?: ScanAttentionStatusCode): string {
-  return status ? SCAN_ATTENTION_STATUS_LABEL[status] : '-'
+function scanAttentionStatusLabel(status: ScanAttentionStatusCode): string {
+  return strictEnumLabel(SCAN_ATTENTION_STATUS_LABEL, status, '扫描异常状态')
 }
 
-function scanAttentionStatusTone(
-  status?: ScanAttentionStatusCode,
-): 'red' | 'orange' | 'blue' | 'gray' {
-  return status ? SCAN_ATTENTION_STATUS_TONE[status] : 'gray'
+function scanAttentionStatusTone(status: ScanAttentionStatusCode): 'red' | 'orange' | 'blue' {
+  return strictEnumTone(SCAN_ATTENTION_STATUS_TONE, status, '扫描异常状态')
 }
 
 const typeCounts = computed(() => {
@@ -645,8 +648,7 @@ const typeCounts = computed(() => {
     RECOGNITION_REVIEW: 0,
   }
   for (const a of attentions.value) {
-    const k = a.attentionType ?? ''
-    if (k in counts) counts[k] += 1
+    counts[a.attentionType] += 1
   }
   return counts
 })
@@ -665,7 +667,7 @@ const statPanelMetrics = computed(() => [
     tone: typeCounts.value.PROCESSING_BLOCK > 0 ? ('orange' as const) : ('gray' as const),
   },
   {
-    label: '重复待处置',
+    label: '重复影像',
     value: typeCounts.value.DUPLICATE_PENDING,
     unit: '条',
     tone: typeCounts.value.DUPLICATE_PENDING > 0 ? ('purple' as const) : ('gray' as const),
@@ -688,7 +690,7 @@ const donutItems = computed<UiChartSliceItem[]>(() => [
   },
   {
     key: 'duplicate',
-    label: '重复待处置',
+    label: '重复影像',
     value: typeCounts.value.DUPLICATE_PENDING,
     tone: 'purple',
   },
@@ -967,7 +969,7 @@ const batchBindRows = ref<
     paperInstanceId: string
     recognizedStudentNo?: string
     confirmedCandidateRosterId?: string
-    attemptStatus: BatchBindAttemptStatus | string
+    attemptStatus: BatchBindAttemptStatus
     attemptNo?: string
     diagnostic?: string
   }>
@@ -1057,7 +1059,7 @@ async function submitBatchBind(): Promise<void> {
     return
   }
   const invalidAttemptStatus = batchBindRows.value.find(
-    (item) => !parseBindAttemptStatus(item.attemptStatus.trim()),
+    (item) => !parseBindAttemptStatus(item.attemptStatus),
   )
   if (invalidAttemptStatus) {
     message.error(`试卷 ${invalidAttemptStatus.paperInstanceId} 的作答状态无效`)
@@ -1079,7 +1081,7 @@ async function submitBatchBind(): Promise<void> {
         paperInstanceId: item.paperInstanceId,
         recognizedStudentNo: item.recognizedStudentNo?.trim() || undefined,
         confirmedCandidateRosterId: item.confirmedCandidateRosterId!,
-        attemptStatus: parseBindAttemptStatus(item.attemptStatus.trim())!,
+        attemptStatus: parseBindAttemptStatus(item.attemptStatus)!,
         attemptNo: item.attemptNo?.trim() || undefined,
       })),
     })

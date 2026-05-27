@@ -52,8 +52,12 @@ export const AUTH_FAILURE_STATUS: number[] = [
 
 /**
  * 需要重新登录的业务错误码
- * 只包括真正的认证失败（401未认证）
- * 注意：403是权限不足，不是认证失败，不应退出登录
+ *
+ * 当前包含：
+ * - 401 (UNAUTHORIZED)：access token 失效或未携带
+ * - 4007 (TOKEN_KICKED)：同账号在其他设备登录被踢出，必须重新登录
+ *
+ * 注意：403 是权限不足（PERMISSION_DENIED），不是认证失败，不应退出登录。
  */
 export const AUTH_FAILURE_BUSINESS_CODES: number[] = [
     BUSINESS_CODE.UNAUTHORIZED, // 401

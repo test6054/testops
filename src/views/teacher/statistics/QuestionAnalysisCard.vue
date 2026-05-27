@@ -19,7 +19,7 @@
     </template>
 
     <!-- D-5 难度-区分度散点图：仅在有分析数据时显示 -->
-    <div v-if="scatterPoints.length > 0" class="question-analysis-card__chart-wrap">
+    <div v-if="scatterSeriesGroups.length > 0" class="question-analysis-card__chart-wrap">
       <div class="question-analysis-card__chart-meta">
         <strong>难度-区分度分布</strong>
         <span class="question-analysis-card__chart-hint">
@@ -69,14 +69,13 @@
           </a-typography-text>
         </template>
         <template v-else-if="column.key === 'snapshotTime'">
-          {{ fmtTime(rows[index].snapshotTime) }}
+          {{ formatDateTime(rows[index].snapshotTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-button
             type="link"
             size="small"
             :loading="generatingId === rows[index].questionTemplateId"
-            :disabled="!rows[index].questionTemplateId"
             @click="handleGenerateOne(rows[index].questionTemplateId)"
           >
             重新生成
@@ -92,7 +91,6 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { ScatterChart } from 'echarts/charts'
 import {
   GridComponent,
@@ -110,6 +108,7 @@ import {
   listQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
@@ -178,8 +177,7 @@ async function handleGenerateAll(): Promise<void> {
   }
 }
 
-async function handleGenerateOne(questionTemplateId?: string): Promise<void> {
-  if (!questionTemplateId) return
+async function handleGenerateOne(questionTemplateId: string): Promise<void> {
   generatingId.value = questionTemplateId
   try {
     await generateQuestionAnalysis({ examId: props.examId, questionTemplateId })
@@ -198,22 +196,18 @@ function fmtNum(v?: number): string {
   return Number(v).toFixed(2)
 }
 
-function fmtTime(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 function correctRatio(r: ExamQuestionAnalysisRecordVO): string {
-  const total = r.totalCount ?? 0
+  const total = r.totalCount
   if (total <= 0) return '-'
-  const ratio = ((r.correctCount ?? 0) / total) * 100
+  const ratio = (r.correctCount / total) * 100
   return `${ratio.toFixed(1)}%`
 }
 
 function getCorrectRatioType(r: ExamQuestionAnalysisRecordVO): 'danger' | 'warning' | undefined {
-  const total = r.totalCount ?? 0
+  const total = r.totalCount
   if (total <= 0) return undefined
-  const ratio = (r.correctCount ?? 0) / total
+  const ratio = r.correctCount / total
   if (ratio < 0.4) return 'danger'
   if (ratio < 0.6) return 'warning'
   return undefined
@@ -232,7 +226,11 @@ interface ScatterSeriesGroup {
   data: ScatterPointValue[]
 }
 
-const scatterPoints = computed<ScatterSeriesGroup[]>(() => {
+/**
+ * 该计算属性返回的是「以质量区段为单位的散点序列分组」，不是单个点；
+ * 原名 scatterPoints 与类型 ScatterSeriesGroup[] 不一致，重命名以避免维护者误读。
+ */
+const scatterSeriesGroups = computed<ScatterSeriesGroup[]>(() => {
   const ideal: ScatterPointValue[] = []
   const tooHard: ScatterPointValue[] = []
   const tooEasy: ScatterPointValue[] = []
@@ -241,8 +239,8 @@ const scatterPoints = computed<ScatterSeriesGroup[]>(() => {
     if (r.difficultyIndex == null || r.discriminationIndex == null) continue
     const d = Number(r.difficultyIndex)
     const dis = Number(r.discriminationIndex)
-    const total = r.totalCount ?? 0
-    const qid = r.questionTemplateId ?? '-'
+    const total = r.totalCount
+    const qid = r.questionTemplateId
     const point: ScatterPointValue = { value: [d, dis, total, qid] }
     if (d < 0.3) {
       tooHard.push(point)
@@ -302,12 +300,12 @@ const chartOption = computed(() => ({
     axisLine: { lineStyle: { color: '#94a3b8' } },
     splitLine: { lineStyle: { color: '#e2e8f0' } },
   },
-  series: scatterPoints.value.map((g) => ({
+  series: scatterSeriesGroups.value.map((g) => ({
     type: 'scatter',
     name: g.name,
     // 点大小随已批人数线性放大但不超过 40px，避免大题挤占小题视觉
     symbolSize: (val: [number, number, number, string]) => {
-      const total = val[2] ?? 0
+      const total = val[2]
       return Math.min(40, 10 + Math.sqrt(total) * 1.5)
     },
     itemStyle: { color: g.color, opacity: 0.85, borderColor: '#fff', borderWidth: 1 },

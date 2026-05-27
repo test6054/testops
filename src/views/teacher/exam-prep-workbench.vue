@@ -176,16 +176,16 @@ const prepSteps = computed<PrepStepCard[]>(() => {
     return []
   }
   const hasTemplate = !!d.templateId
-  const hasQuestions = (d.questionCount ?? 0) > 0
-  const hasAnswers = (d.answerCount ?? 0) > 0
-  const hasCandidates = (d.candidateCount ?? 0) > 0 || (d.classIds?.length ?? 0) > 0
+  const hasQuestions = d.questionCount > 0
+  const hasAnswers = d.answerCount > 0
+  const hasCandidates = d.candidateCount > 0 || d.classIds.length > 0
 
   return [
     {
       key: 'paperTemplate',
       title: '答题卡模板',
       description: hasTemplate
-        ? `已绑定模板 ${d.templateName || d.templateId}（${d.totalPages ?? 0} 页）`
+        ? `已绑定模板 ${d.templateName}（${d.totalPages} 页）`
         : '尚未配置答题卡模板，制卷与扫描识别均不可推进',
       status: hasTemplate ? 'completed' : 'blocked',
       statusText: hasTemplate ? '已配置' : '未配置',
@@ -221,10 +221,10 @@ const prepSteps = computed<PrepStepCard[]>(() => {
       key: 'candidateRoster',
       title: '考生名册',
       description: hasCandidates
-        ? `已绑定 ${d.candidateCount ?? 0} 名考生 / ${d.classIds.length} 个班级范围`
+        ? `已绑定 ${d.candidateCount} 名考生 / ${d.classIds.length} 个班级范围`
         : '尚未绑定考生名册，扫描后无法身份绑定',
       status: hasCandidates ? 'completed' : 'blocked',
-      statusText: hasCandidates ? `${d.candidateCount ?? 0} 人` : '未配置',
+      statusText: hasCandidates ? `${d.candidateCount} 人` : '未配置',
       routeName: 'TeacherCandidateRoster',
       primaryAction: hasCandidates ? '查看 / 调整' : '导入考生名册',
       blockedReason: hasCandidates ? undefined : '考生名册缺失：阻断身份绑定',
@@ -258,10 +258,10 @@ const statMetrics = computed(() => {
       unit: '项',
       tone: (blocked > 0 ? 'red' : 'gray') as 'red' | 'gray',
     },
-    { label: '题目数', value: d.questionCount ?? 0, unit: '道', tone: 'blue' as const },
-    { label: '标准答案', value: d.answerCount ?? 0, unit: '题', tone: 'gray' as const },
-    { label: '考生数', value: d.candidateCount ?? 0, unit: '人', tone: 'blue' as const },
-    { label: '班级范围', value: d.classIds?.length ?? 0, unit: '个', tone: 'gray' as const },
+    { label: '题目数', value: d.questionCount, unit: '道', tone: 'blue' as const },
+    { label: '标准答案', value: d.answerCount, unit: '题', tone: 'gray' as const },
+    { label: '考生数', value: d.candidateCount, unit: '人', tone: 'blue' as const },
+    { label: '班级范围', value: d.classIds.length, unit: '个', tone: 'gray' as const },
   ]
 })
 

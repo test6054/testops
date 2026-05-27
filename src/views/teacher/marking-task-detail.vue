@@ -3,10 +3,10 @@
     <template #context>
       <div class="marking-task-detail-page__context">
         <div class="marking-task-detail-page__context-left">
-          <UiTag v-if="task?.taskStatus" :tone="STATUS_TONE[task.taskStatus]" size="sm">
+          <UiTag v-if="task" :tone="STATUS_TONE[task.taskStatus]" size="sm">
             {{ STATUS_LABEL[task.taskStatus] }}
           </UiTag>
-          <UiTag v-if="task" tone="blue" size="sm">第 {{ task.reviewRound || 1 }} 轮</UiTag>
+          <UiTag v-if="task" tone="blue" size="sm">第 {{ task.reviewRound }} 轮</UiTag>
           <UiTag v-if="task?.anonymousToken" tone="gray" size="sm">{{ task.anonymousToken }}</UiTag>
         </div>
         <div class="marking-task-detail-page__context-right">
@@ -101,30 +101,30 @@
                 <a-typography-text copyable>{{ task.id }}</a-typography-text>
               </a-descriptions-item>
               <a-descriptions-item label="正评会话ID">
-                <a-typography-text copyable>{{ task.sessionId || '-' }}</a-typography-text>
+                <a-typography-text copyable>{{ task.sessionId }}</a-typography-text>
               </a-descriptions-item>
               <a-descriptions-item label="题组ID">
-                <a-typography-text copyable>{{ task.groupId || '-' }}</a-typography-text>
+                <a-typography-text copyable>{{ task.groupId }}</a-typography-text>
               </a-descriptions-item>
               <a-descriptions-item label="题目模板ID">
                 <a-typography-text copyable>
-                  {{ task.questionTemplateId || '-' }}
+                  {{ task.questionTemplateId }}
                 </a-typography-text>
               </a-descriptions-item>
               <a-descriptions-item label="试卷实例ID">
-                <a-typography-text copyable>{{ task.paperInstanceId || '-' }}</a-typography-text>
+                <a-typography-text copyable>{{ task.paperInstanceId }}</a-typography-text>
               </a-descriptions-item>
-              <a-descriptions-item label="评阅轮次">第 {{ task.reviewRound || 1 }} 轮</a-descriptions-item>
+              <a-descriptions-item label="评阅轮次">第 {{ task.reviewRound }} 轮</a-descriptions-item>
               <a-descriptions-item label="任务状态">
-                <UiTag :tone="task.taskStatus ? STATUS_TONE[task.taskStatus] : 'gray'" size="sm">
-                  {{ task.taskStatus ? STATUS_LABEL[task.taskStatus] : '-' }}
+                <UiTag :tone="STATUS_TONE[task.taskStatus]" size="sm">
+                  {{ STATUS_LABEL[task.taskStatus] }}
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="分配时间">
-                {{ formatTime(task.allocatedAt) }}
+                {{ formatDateTime(task.allocatedAt) }}
               </a-descriptions-item>
               <a-descriptions-item label="提交时间">
-                {{ formatTime(task.submittedAt) }}
+                {{ formatDateTime(task.submittedAt) }}
               </a-descriptions-item>
               <a-descriptions-item
                 v-if="task.score !== undefined && task.score !== null"
@@ -153,7 +153,7 @@
               type="info"
               show-icon
               message="当前任务状态不允许提交"
-              description="仅已分配 (ALLOCATED) 或批改中 (IN_PROGRESS) 状态可以提交批改。"
+              description="仅已分配或批改中状态可以提交批改。"
               style="margin-bottom: 12px"
             />
 
@@ -211,7 +211,6 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RightOutlined from '@ant-design/icons-vue/RightOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -225,6 +224,7 @@ import {
 import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherMarkingTaskDetail' })
 
@@ -265,13 +265,13 @@ const batchProgress = computed<BatchProgress | null>(() => {
 const prevTaskId = computed<string>(() => {
   if (!batchProgress.value) return ''
   const idx = batchProgress.value.current - 1
-  return idx > 0 ? (batchTasks.value[idx - 1].id ?? '') : ''
+  return idx > 0 ? batchTasks.value[idx - 1].id : ''
 })
 
 const nextTaskId = computed<string>(() => {
   if (!batchProgress.value) return ''
   const idx = batchProgress.value.current - 1
-  return idx < batchTasks.value.length - 1 ? (batchTasks.value[idx + 1].id ?? '') : ''
+  return idx < batchTasks.value.length - 1 ? batchTasks.value[idx + 1].id : ''
 })
 
 function goToTask(targetTaskId: string): void {
@@ -385,11 +385,6 @@ async function submit(): Promise<void> {
   } finally {
     submitting.value = false
   }
-}
-
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
 }
 
 watch(taskId, () => {

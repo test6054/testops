@@ -22,12 +22,12 @@
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
+            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+              {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="聚类数">{{ record.clusterCount ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{ fmt(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">{{ formatDateTime(record.createTime) }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="2">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -75,14 +75,15 @@
 import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
-import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictJsonArray } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
@@ -95,13 +96,7 @@ const generating = ref(false)
 const loadError = ref<unknown>(null)
 
 const parsedItems = computed(() => {
-  if (!record.value?.clusterItems) return []
-  try {
-    const parsed = JSON.parse(record.value.clusterItems)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return strictJsonArray(record.value?.clusterItems, 'AI 错因聚类条目')
 })
 
 async function reload(): Promise<void> {
@@ -131,10 +126,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 function formatItem(item: unknown): string {
   if (typeof item === 'string') return item

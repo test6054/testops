@@ -34,18 +34,30 @@ export const DIFFICULTY_CONFIG: Record<DifficultyEnum, {
   },
 }
 
+function requireDifficultyConfig(difficulty: DifficultyEnum | string): {
+  label: string
+  color: string
+  level: number
+} {
+  const config = DIFFICULTY_CONFIG[difficulty as DifficultyEnum]
+  if (!config) {
+    throw new Error(`难度等级存在未定义枚举值：${difficulty}`)
+  }
+  return config
+}
+
 /**
  * 获取难度标签
  */
 export function getDifficultyLabel(difficulty: DifficultyEnum | string): string {
-  return DIFFICULTY_CONFIG[difficulty as DifficultyEnum]?.label || difficulty
+  return requireDifficultyConfig(difficulty).label
 }
 
 /**
  * 获取难度颜色
  */
 export function getDifficultyColor(difficulty: DifficultyEnum | string): string {
-  return DIFFICULTY_CONFIG[difficulty as DifficultyEnum]?.color || 'var(--ant-color-text-tertiary)'
+  return requireDifficultyConfig(difficulty).color
 }
 
 /**

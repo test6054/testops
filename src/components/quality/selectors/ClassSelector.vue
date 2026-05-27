@@ -8,6 +8,7 @@ import type { ClassInfoDto } from '@/apis/edu/class'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
 import { getAllClasses, getClassesByDepartment } from '@/apis/edu/class'
+import { requireArrayResult } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -52,9 +53,12 @@ async function loadOptions() {
   loading.value = true
   try {
     if (props.departmentId) {
-      options.value = (await getClassesByDepartment({ departmentId: props.departmentId })) || []
+      options.value = requireArrayResult(
+        await getClassesByDepartment({ departmentId: props.departmentId }),
+        '班级',
+      )
     } else {
-      options.value = (await getAllClasses()) || []
+      options.value = requireArrayResult(await getAllClasses(), '班级')
     }
   } catch (e) {
     console.error('[ClassSelector] 加载班级列表失败', e)

@@ -1,3 +1,4 @@
+import type { ConfirmationStatus } from './types'
 /**
  * 培养方案 API - 对接 edu-quality / TrainingPlanController
  *
@@ -20,7 +21,7 @@ export interface TrainingPlanVO {
   accreditationProfileId?: string
   storageFileId?: string
   enabled: boolean
-  confirmationStatus?: string
+  confirmationStatus?: ConfirmationStatus
   confirmedBy?: string
   confirmedAt?: string
   createTime?: string
@@ -32,7 +33,7 @@ export interface TrainingPlanQueryPayload extends QueryDto {
   programId?: string
   schoolYear?: string
   gradeLevel?: string
-  confirmationStatus?: string
+  confirmationStatus?: ConfirmationStatus
   enabled?: boolean
   keyword?: string
 }
@@ -64,4 +65,6 @@ export const trainingPlanApi = {
     http.post<void>(`${BASE}/delete`, { id }),
   confirm: (id: string) =>
     http.post<void>(`${BASE}/confirm`, { id }),
+  revoke: (id: string) =>
+    http.post<void>(`${BASE}/revoke`, { id }),
 }

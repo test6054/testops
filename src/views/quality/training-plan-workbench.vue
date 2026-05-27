@@ -53,9 +53,12 @@ import {
   accreditationStandardApi,
   AGGREGATION_FUNCTION_LABEL,
   CIVIC_DIMENSION_LABEL,
+  CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
   graduationRequirementApi,
+  isAggregationFunction,
   isCivicDimension,
+  isConfirmationStatus,
   requirementIndicatorApi,
   requirementStandardMappingApi,
   trainingObjectiveApi,
@@ -295,17 +298,29 @@ const totalIndicators = computed(() =>
 )
 
 const planConfirmationStatus = computed<ConfirmationStatus | undefined>(() => {
-  const raw = currentPlan.value?.confirmationStatus
-  if (raw === 'DRAFT' || raw === 'SUBMITTED' || raw === 'CONFIRMED' || raw === 'RETURNED')
-    return raw
-  return 'DRAFT'
+  const raw: unknown = currentPlan.value?.confirmationStatus
+  if (raw === undefined || raw === null) return undefined
+  if (isConfirmationStatus(raw)) return raw
+  throw new Error('培养方案确认状态不符合前后端契约')
 })
+
+const canConfirmPlan = computed(
+  () =>
+    !!currentPlan.value
+    && (planConfirmationStatus.value === 'DRAFT' || planConfirmationStatus.value === 'RETURNED'),
+)
+
+const canRevokePlan = computed(
+  () => !!currentPlan.value && planConfirmationStatus.value === 'CONFIRMED',
+)
 
 const signals = computed<SignalMetric[]>(() => [
   {
     key: 'plan',
     label: '当前方案状态',
-    value: CONFIRMATION_STATUS_LABEL[planConfirmationStatus.value || 'DRAFT'],
+    value: planConfirmationStatus.value
+      ? CONFIRMATION_STATUS_LABEL[planConfirmationStatus.value]
+      : '未提交',
     tone:
       planConfirmationStatus.value === 'CONFIRMED'
         ? 'green'
@@ -466,7 +481,7 @@ async function submitPlan() {
 }
 
 async function confirmPlan() {
-  if (!currentPlan.value) return
+  if (!currentPlan.value || !canConfirmPlan.value) return
   const planId = currentPlan.value.id
   void confirmAsync({
     title: `确认提交培养方案 ${currentPlan.value.planCode}？`,
@@ -476,6 +491,22 @@ async function confirmPlan() {
     onOk: async () => {
       await trainingPlanApi.confirm(planId)
       message.success('培养方案已确认')
+      await loadCurrentPlan()
+    },
+  })
+}
+
+async function revokePlan() {
+  if (!currentPlan.value || !canRevokePlan.value) return
+  const planId = currentPlan.value.id
+  void confirmAsync({
+    title: `撤回培养方案 ${currentPlan.value.planCode}？`,
+    content: '撤回后方案回到起草状态，可继续编辑体系数据并重新提交确认。',
+    type: 'warning',
+    okText: '撤回',
+    onOk: async () => {
+      await trainingPlanApi.revoke(planId)
+      message.success('培养方案已撤回')
       await loadCurrentPlan()
     },
   })
@@ -726,6 +757,9 @@ function openRequirementCreate() {
 }
 
 function openRequirementEdit(record: GraduationRequirementVO) {
+  if (!isAggregationFunction(record.aggregation)) {
+    throw new Error('毕业要求聚合函数不符合前后端契约')
+  }
   requirementEditorMode.value = 'edit'
   Object.assign(requirementEditor, {
     id: record.id,
@@ -735,7 +769,7 @@ function openRequirementEdit(record: GraduationRequirementVO) {
     description: record.description || '',
     civicDimensions: record.civicDimensions || '',
     thresholdValue: record.thresholdValue ?? 0.7,
-    aggregation: record.aggregation || 'WEIGHTED_SUM',
+    aggregation: record.aggregation,
     sortOrder: record.sortOrder ?? 0,
   })
   requirementEditorVisible.value = true
@@ -1039,15 +1073,9 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
           />
           <a-tag
             v-if="currentPlan"
-            :color="
-              planConfirmationStatus === 'CONFIRMED'
-                ? 'green'
-                : planConfirmationStatus === 'RETURNED'
-                  ? 'orange'
-                  : 'default'
-            "
+            :color="planConfirmationStatus ? CONFIRMATION_STATUS_COLOR[planConfirmationStatus] : 'default'"
           >
-            {{ CONFIRMATION_STATUS_LABEL[planConfirmationStatus || 'DRAFT'] }}
+            {{ planConfirmationStatus ? CONFIRMATION_STATUS_LABEL[planConfirmationStatus] : '未提交' }}
           </a-tag>
           <span v-if="currentPlan" class="tpw__context-meta">
             学年 {{ currentPlan.schoolYear || '-' }} · 年级 {{ currentPlan.gradeLevel || '-' }}
@@ -1061,10 +1089,18 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
           <UiButton
             variant="primary"
             size="sm"
-            :disabled="!currentPlan || planConfirmationStatus === 'CONFIRMED'"
+            :disabled="!canConfirmPlan"
             @click="confirmPlan"
           >
             提交确认
+          </UiButton>
+          <UiButton
+            v-if="canRevokePlan"
+            variant="outline"
+            size="sm"
+            @click="revokePlan"
+          >
+            撤回修订
           </UiButton>
           <UiButton
             variant="ghost"
@@ -1186,7 +1222,7 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                 <a-space>
                   <a-tag :color="objectiveWeightHealthy ? 'green' : 'red'">
                     权重和：{{ objectiveWeightSum.toFixed(3) }}
-                    {{ objectiveWeightHealthy ? '✓' : '需=1' }}
+                    {{ objectiveWeightHealthy ? '合规' : '需=1' }}
                   </a-tag>
                   <UiButton variant="primary" size="sm" @click="openObjMappingCreate">
                     新增映射

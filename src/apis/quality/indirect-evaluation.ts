@@ -245,7 +245,7 @@ export const indirectResponseApi = {
   delete: (id: string) => http.post<void>(`${RESPONSE}/delete`, { id }),
   /** 统计某题项的有效样本数（用于覆盖率计算） */
   countValidByItem: (itemId: string) =>
-    http.post<number>(`${RESPONSE}/count-valid-by-item`, { id: itemId }),
+    http.post<string>(`${RESPONSE}/count-valid-by-item`, { id: itemId }),
   /** Excel 批量导入答卷 */
   importExcel: (formId: string, file: File) => {
     const formData = new FormData()

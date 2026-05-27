@@ -13,7 +13,15 @@ import {config} from './config'
 import service from './service'
 
 /**
- * 基础请求函数
+ * 内部基础请求函数
+ *
+ * 行为：
+ * - 调用 axios `service`；service 的响应拦截器已经做过 `code !== successCode` 失败判断，
+ *   失败情况会直接 reject；走到这里说明 code 校验通过。
+ * - 返回的是后端 ResultInfo 整包（包含 code / message / data）；
+ *   `http.get / http.post / http.upload` 会进一步 `.data` 解包，业务侧只看到 TResponse。
+ *
+ * 注意：这里不要直接给业务侧使用；业务侧只应通过 http.get / http.post 等门面方法。
  */
 async function request<TResponse = unknown, TData = unknown, TParams = unknown>(
     options: RequestOptions<TData, TParams>,

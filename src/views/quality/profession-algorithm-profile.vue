@@ -27,6 +27,7 @@ import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
   isAccreditationType,
+  isAggregationFunction,
   isConfirmationStatus,
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
@@ -64,6 +65,14 @@ function confirmationStatusLabel(value: unknown): string {
 function confirmationStatusColor(value: unknown): string {
   if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_COLOR[value]
   throw new Error(`专业算法实例确认状态不符合前后端契约：${String(value)}`)
+}
+
+function programName(value: unknown): string {
+  if (value == null || value === '') return '-'
+  if (typeof value !== 'string') {
+    throw new TypeError(`专业算法实例专业大类 ID 不符合前后端契约：${String(value)}`)
+  }
+  return programs.value.find((p) => p.id === value)?.majorCategoryName ?? '未匹配专业大类'
 }
 
 const list = ref<ProfessionAlgorithmProfileVO[]>([])
@@ -181,9 +190,18 @@ function applyTemplateDefaults(templateId: string) {
   editor.accreditationType = tpl.accreditationType
   editor.standardId = tpl.standardId
   editor.standardYear = tpl.standardYear || ''
-  editor.courseGoalAggregation = tpl.courseGoalAggregation || 'WEIGHTED_SUM'
-  editor.indicatorAggregation = tpl.indicatorAggregation || 'WEIGHTED_SUM'
-  editor.requirementAggregation = tpl.requirementAggregation || 'WEIGHTED_SUM'
+  if (!isAggregationFunction(tpl.courseGoalAggregation)) {
+    throw new Error('专业算法模板课程目标聚合函数不符合前后端契约')
+  }
+  if (!isAggregationFunction(tpl.indicatorAggregation)) {
+    throw new Error('专业算法模板观测点聚合函数不符合前后端契约')
+  }
+  if (!isAggregationFunction(tpl.requirementAggregation)) {
+    throw new Error('专业算法模板毕业要求聚合函数不符合前后端契约')
+  }
+  editor.courseGoalAggregation = tpl.courseGoalAggregation
+  editor.indicatorAggregation = tpl.indicatorAggregation
+  editor.requirementAggregation = tpl.requirementAggregation
   editor.directWeight = tpl.directWeightDefault ?? 0.7
   editor.indirectWeight = tpl.indirectWeightDefault ?? 0.3
   editor.indirectMinValidSampleCount = tpl.indirectMinValidSampleCount ?? 30
@@ -426,7 +444,7 @@ onMounted(async () => {
       >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'programId'">
-            {{ programs.find((p) => p.id === text)?.majorCategoryName || text }}
+            {{ programName(text) }}
           </template>
           <template v-else-if="column.key === 'accreditationType'">
             {{ accreditationTypeLabel(text) }}

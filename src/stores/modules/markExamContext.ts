@@ -18,12 +18,12 @@
 import type {
   ExamDetailVO,
   ExamPageQueryPayload,
-  ExamStatusCode,
   ExamSummaryVO,
 } from '@/apis/mark/exam'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
+import { formatSemester } from '@/types/enums/semester-enum'
 
 export const useMarkExamContextStore = defineStore(
   'markExamContext',
@@ -63,7 +63,7 @@ export const useMarkExamContextStore = defineStore(
       const detail = currentExamDetail.value
       if (!detail) return false
       const hasTemplate = !!detail.templateId
-      const hasCandidates = (detail.candidateCount ?? 0) > 0 || (detail.classIds?.length ?? 0) > 0
+      const hasCandidates = detail.candidateCount > 0 || detail.classIds.length > 0
       return hasTemplate && hasCandidates
     })
 
@@ -76,17 +76,16 @@ export const useMarkExamContextStore = defineStore(
     async function loadExams(payload?: Partial<ExamPageQueryPayload>): Promise<void> {
       examsLoading.value = true
       try {
-        const status: ExamStatusCode | undefined = payload?.status ?? 'ACTIVE'
         const result = await pageExams({
           pageNum: payload?.pageNum ?? 1,
           pageSize: payload?.pageSize ?? 200,
-          status,
+          status: payload?.status,
           keyword: payload?.keyword,
           createUserId: payload?.createUserId,
           startTime: payload?.startTime,
           endTime: payload?.endTime,
         })
-        exams.value = result.list ?? []
+        exams.value = result.list
       } finally {
         examsLoading.value = false
       }
@@ -137,12 +136,6 @@ export const useMarkExamContextStore = defineStore(
       currentExamId.value = ''
       exams.value = []
       detailCache.value = new Map()
-    }
-
-    function formatSemester(value?: string): string {
-      if (value === '1') return '秋季学期'
-      if (value === '2') return '春季学期'
-      return value ?? ''
     }
 
     function formatAcademicTerm(exam: ExamSummaryVO): string {

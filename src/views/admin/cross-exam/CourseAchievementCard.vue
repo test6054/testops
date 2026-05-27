@@ -69,14 +69,14 @@
 
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
+            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+              {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="课程ID">{{ record.courseId ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="生成时间" :span="2">
-            {{ fmt(record.createTime) }}
+            {{ formatDateTime(record.createTime) }}
           </a-descriptions-item>
           <a-descriptions-item label="trace ID">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -124,11 +124,12 @@
 import type { CourseObjectiveAchievementVO } from '@/apis/mark/cross-exam-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
 import { generateAchievement, listAchievements } from '@/apis/mark/cross-exam-analysis'
-import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictJsonArray } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CourseAchievementCard' })
 
@@ -145,13 +146,7 @@ const loadError = ref<unknown>(null)
 const generating = ref(false)
 
 const parsedItems = computed(() => {
-  if (!record.value?.achievementItems) return []
-  try {
-    const parsed = JSON.parse(record.value.achievementItems)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return strictJsonArray(record.value?.achievementItems, 'AI 课程达成度条目')
 })
 
 function parseExamIds(): string[] {
@@ -207,10 +202,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 function formatItem(item: unknown): string {
   if (typeof item === 'string') return item

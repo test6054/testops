@@ -97,8 +97,8 @@
 
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="AI_ANALYSIS_STATUS_COLOR[record.analysisStatus || 'PENDING']">
-              {{ AI_ANALYSIS_STATUS_LABEL[record.analysisStatus || 'PENDING'] }}
+            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+              {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="维度">
@@ -112,7 +112,7 @@
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="考试数">{{ record.examCount ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{ fmt(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">{{ formatDateTime(record.createTime) }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="3">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -162,15 +162,16 @@ import type {
 } from '@/apis/mark/school-quality'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
 } from '@/apis/mark/school-quality'
-import { AI_ANALYSIS_STATUS_COLOR, AI_ANALYSIS_STATUS_LABEL } from '@/apis/mark/teaching-analysis'
+import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictJsonArray } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SchoolQualityCard' })
 
@@ -196,13 +197,7 @@ const loadError = ref<unknown>(null)
 const generating = ref(false)
 
 const parsedItems = computed(() => {
-  if (!record.value?.qualityItems) return []
-  try {
-    const parsed = JSON.parse(record.value.qualityItems)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+  return strictJsonArray(record.value?.qualityItems, 'AI 校级质量条目')
 })
 
 function parseExamIds(): string[] {
@@ -253,10 +248,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 function formatItem(item: unknown): string {
   if (typeof item === 'string') return item

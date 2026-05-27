@@ -405,7 +405,7 @@ async function loadMasterData() {
       form.watermarkText = res.watermarkText ?? ''
       uploadedFileName.value = res.masterFileId ? `文件ID: ${res.masterFileId}` : ''
 
-      identityAreas.value = (res.identityAreas ?? []).map((a, i) => ({
+      identityAreas.value = res.identityAreas.map((a, i) => ({
         rowKey: `id-loaded-${i}`,
         areaType: a.areaType,
         pageNo: a.pageNo,
@@ -417,7 +417,7 @@ async function loadMasterData() {
       }))
       identitySeq = identityAreas.value.length
 
-      objectiveAreas.value = (res.objectiveAreas ?? []).map((a, i) => ({
+      objectiveAreas.value = res.objectiveAreas.map((a, i) => ({
         rowKey: `obj-loaded-${i}`,
         questionTemplateId: a.questionTemplateId,
         pageNo: a.pageNo,

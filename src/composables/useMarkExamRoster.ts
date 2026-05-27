@@ -1,0 +1,118 @@
+import type { ExamCandidateVO } from '@/apis/mark/exam'
+/**
+ * 批改主链：考试考生名册 composable
+ *
+ * 用途：
+ * - 在统计分析、班级薄弱、学生学情等页面统一加载某场考试的考生名册
+ * - 从名册派生「班级选择项」与「学生选择项」，避免在 UI 上让教师手输 classId / studentUserId
+ * - 切换 examId 时自动重载，调用方只需观察 examId 即可
+ *
+ * 后端契约：
+ * - POST /api/mark/exams/candidates 返回 ExamCandidateVO[]
+ * - ExamCandidateVO 不含 className，因此 classOption.label 使用「班级 #classId · n 名考生」
+ *
+ * 用法示例：
+ * ```ts
+ * const { classOptions, studentOptions, loading, load } = useMarkExamRoster()
+ * watch(() => examId.value, (id) => void load(id))
+ * ```
+ */
+import message from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
+import { listExamCandidates } from '@/apis/mark/exam'
+
+export interface MarkClassOption {
+  /** 班级 ID（后端 Long 字符串化） */
+  value: string
+  /** 下拉显示文案：班级 #classId · n 名考生 */
+  label: string
+  /** 该班级在名册中的考生数量 */
+  candidateCount: number
+}
+
+export interface MarkStudentOption {
+  /** 学生用户 ID（后端 Long 字符串化） */
+  value: string
+  /** 下拉显示文案：姓名 (学号) · 班级 #classId */
+  label: string
+  /** 学号，可用于二次搜索 */
+  studentNo: string
+  /** 学生姓名 */
+  studentName: string
+  /** 所属班级 ID，用于按班级联动过滤 */
+  classId?: string
+}
+
+export function useMarkExamRoster() {
+  const candidates = ref<ExamCandidateVO[]>([])
+  const loading = ref(false)
+  const loadError = ref<unknown>(null)
+
+  const classOptions = computed<MarkClassOption[]>(() => {
+    const counter = new Map<string, number>()
+    for (const item of candidates.value) {
+      const cid = item.classId
+      if (!cid) continue
+      counter.set(cid, (counter.get(cid) ?? 0) + 1)
+    }
+    return Array.from(counter.entries())
+      .sort((a, b) => {
+        // 班级 ID 是数字字符串，按数值排序更稳定；非数字时退化为字符串排序
+        const an = Number(a[0])
+        const bn = Number(b[0])
+        if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn
+        return a[0].localeCompare(b[0])
+      })
+      .map(([classId, count]) => ({
+        value: classId,
+        label: `班级 #${classId} · ${count} 名考生`,
+        candidateCount: count,
+      }))
+  })
+
+  const studentOptions = computed<MarkStudentOption[]>(() => {
+    return candidates.value.map((item) => ({
+      value: item.studentUserId,
+      studentNo: item.studentNo,
+      studentName: item.studentName,
+      classId: item.classId,
+      label: item.classId
+        ? `${item.studentName} (${item.studentNo}) · 班级 #${item.classId}`
+        : `${item.studentName} (${item.studentNo})`,
+    }))
+  })
+
+  async function load(examId: string | undefined): Promise<void> {
+    if (!examId) {
+      candidates.value = []
+      loadError.value = null
+      return
+    }
+    loading.value = true
+    loadError.value = null
+    try {
+      candidates.value = await listExamCandidates(examId)
+    } catch (e) {
+      candidates.value = []
+      loadError.value = e
+      message.error(e instanceof Error ? e.message : '考生名册加载失败')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function reset(): void {
+    candidates.value = []
+    loadError.value = null
+  }
+
+  return {
+    candidates,
+    classOptions,
+    studentOptions,
+    loading,
+    loadError,
+    load,
+    reset,
+  }
+}

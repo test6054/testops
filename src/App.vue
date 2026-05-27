@@ -7,6 +7,31 @@ import { useAppStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
 
 defineOptions({ name: 'App' })
+
+/**
+ * Ant Design Vue 全局主题配置
+ *
+ * 提到模块顶层常量：避免每次 setup 都重新构造对象，去掉响应式无意义开销。
+ * 主题色升级时仅改这一处即可（首屏 FOUC 兜底见 src/styles/ui-tokens.scss）。
+ */
+const THEME_CONFIG = Object.freeze({
+  cssVar: true,
+  token: Object.freeze({
+    borderRadius: 8,
+    fontSize: 14,
+    colorPrimary: '#2563eb',
+    colorBgLayout: '#f8fafc',
+    colorBorder: '#e2e8f0',
+    colorBorderSecondary: '#f1f5f9',
+    boxShadow: '0 4px 24px rgba(15, 23, 42, 0.02), 0 1px 2px rgba(15, 23, 42, 0.04)',
+  }),
+  components: Object.freeze({
+    Card: { paddingLG: 24 },
+    Table: { colorBorderSecondary: 'transparent', borderRadiusLG: 8 },
+  }),
+  algorithm: theme.defaultAlgorithm,
+})
+
 const userStore = useUserStore()
 const appStore = useAppStore()
 const notificationStore = useNotificationStore()
@@ -29,42 +54,17 @@ onBeforeUnmount(() => {
   notificationStore.stopPolling()
 })
 
-const themeConfig = {
-  cssVar: true,
-  token: {
-    borderRadius: 8,
-    fontSize: 14,
-    colorPrimary: '#2563eb',
-    colorBgLayout: '#f8fafc',
-    colorBorder: '#e2e8f0',
-    colorBorderSecondary: '#f1f5f9',
-    boxShadow: '0 4px 24px rgba(15, 23, 42, 0.02), 0 1px 2px rgba(15, 23, 42, 0.04)',
-  },
-  components: {
-    Card: {
-      paddingLG: 24,
-    },
-    Table: {
-      colorBorderSecondary: 'transparent',
-      borderRadiusLG: 8,
-    }
-  },
-  algorithm: theme.defaultAlgorithm,
-}
-
 const getWatermarkContent = () => {
   const userInfo = userStore?.userInfo
   if (!userInfo) return ''
-  const username = userInfo.userName || ''
-  if (username) return `${userInfo.nickName}(${username})`
-  return userInfo.nickName
+  return `${userInfo.nickName}(${userInfo.userName})`
 }
 
 appStore?.initSiteConfig?.()
 </script>
 
 <template>
-  <a-config-provider :theme="themeConfig" :locale="zhCN">
+  <a-config-provider :theme="THEME_CONFIG" :locale="zhCN">
     <a-watermark
       v-if="appStore.watermarkEnabled"
       :content="getWatermarkContent()"

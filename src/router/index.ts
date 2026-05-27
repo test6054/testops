@@ -1,9 +1,10 @@
+import Modal from 'ant-design-vue/es/modal'
 import {createRouter, createWebHistory} from 'vue-router'
 import {setupRouterGuard} from '@/router/guard'
 import {allRoutes} from '@/router/routes'
 import {setupRoutePreload} from './preload-strategy'
 
-function shouldHandleRouteLoadError(message: string) {
+function isChunkLoadError(message: string) {
   const chunkLoadPatterns = [
     /Loading chunk [\w-]+ failed/i,
     /Failed to fetch dynamically imported module/i,
@@ -12,6 +13,9 @@ function shouldHandleRouteLoadError(message: string) {
 
   return chunkLoadPatterns.some(pattern => pattern.test(message))
 }
+
+/** 防止重复弹窗：发版升级期间多个动态 import 都会失败，但只能引导用户刷一次 */
+let chunkReloadPrompted = false
 
 /**
  * 创建路由实例
@@ -23,21 +27,48 @@ const router = createRouter({
   scrollBehavior: () => ({left: 0, top: 0}),
 })
 
-// 处理路由加载异常（版本更新导致 chunk 丢失）
+/**
+ * 处理路由加载异常（版本更新导致 chunk 丢失）
+ *
+ * 触发场景：后端发版后，浏览器仍持有旧 index.html 引用，但旧 chunk 已被覆盖。
+ * 此时任何懒加载路由 import 都会失败，页面会僵在 NProgress 状态，用户感知不到。
+ *
+ * 处理策略：弹一次 confirm 引导用户刷新；用户拒绝时仅记录日志，不再强制。
+ */
 router.onError((error) => {
   const message = error instanceof Error ? error.message : String(error)
 
-  if (!shouldHandleRouteLoadError(message)) {
+  if (!isChunkLoadError(message)) {
     return
   }
 
-  console.error('路由资源加载失败，已禁止自动刷新。', error)
+  console.error('路由资源加载失败（chunk load failed）。', error)
+
+  if (chunkReloadPrompted) {
+    return
+  }
+  chunkReloadPrompted = true
+
+  Modal.confirm({
+    title: '系统已更新',
+    content: '检测到本地缓存的应用资源已过期。请刷新页面以加载最新版本，避免功能异常。',
+    okText: '立即刷新',
+    cancelText: '稍后再说',
+    centered: true,
+    onOk() {
+      window.location.reload()
+    },
+    onCancel() {
+      // 不强制刷新；下次再次触发 chunk 失败时会重新弹出
+      chunkReloadPrompted = false
+    },
+  })
 })
 
 // 设置路由守卫
 setupRouterGuard(router)
 
-// 🚀 设置路由预加载策略
+// 设置路由预加载策略
 setupRoutePreload(router)
 
 /**

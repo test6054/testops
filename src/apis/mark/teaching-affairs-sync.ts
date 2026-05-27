@@ -126,17 +126,17 @@ export interface SyncTaskVO {
   id?: string
   tenantId?: string
   examId: string
-  externalSystemType?: ExternalSystemTypeCode
-  syncType?: TeachingAffairsSyncTypeCode
+  externalSystemType: ExternalSystemTypeCode
+  syncType: TeachingAffairsSyncTypeCode
   externalCourseId?: string
   externalLineItemId?: string
   syncConfig?: string
-  taskStatus?: SyncTaskStatusCode
+  taskStatus: SyncTaskStatusCode
   lastSyncTime?: string
   lastErrorCode?: string
   lastErrorMessage?: string
-  retryCount?: number
-  maxRetryCount?: number
+  retryCount: number
+  maxRetryCount: number
   createTime?: string
   updateTime?: string
 }

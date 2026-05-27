@@ -47,7 +47,7 @@ export interface OperationLogDto {
   /** 被调用的方法名 */
   calledMethod: string
   /** 用户信息 - 后端返回UserDto对象 */
-  userDto?: {
+  userDto: {
     id: string
     userName: string
     nickName: string

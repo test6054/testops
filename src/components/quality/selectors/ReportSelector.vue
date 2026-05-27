@@ -8,7 +8,8 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ReportStatus, ReportType, ReportVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
-import { reportApi } from '@/apis/quality'
+import { isReportType, REPORT_TYPE_LABEL, reportApi } from '@/apis/quality'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -75,7 +76,7 @@ async function loadOptions() {
       status: props.status,
       reportType: props.reportType,
     })
-    options.value = res.list || []
+    options.value = requirePageList(res, '教学质量评价报告')
   } catch (e) {
     console.error('[ReportSelector] 加载报告列表失败', e)
     message.error('加载报告列表失败')
@@ -90,6 +91,13 @@ function handleChange(val: SelectValue) {
   const option = options.value.find((o) => o.id === next)
   emit('update:value', next)
   emit('change', next, option)
+}
+
+function reportTypeLabel(value: unknown) {
+  if (!isReportType(value)) {
+    throw new Error('报告类型不符合前后端契约')
+  }
+  return REPORT_TYPE_LABEL[value]
 }
 
 onMounted(() => {
@@ -113,7 +121,7 @@ defineExpose({ reload: loadOptions })
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.title">
       {{ opt.title }}
-      <span v-if="opt.reportType" class="text-gray-400 ml-1">· {{ opt.reportType }}</span>
+      <span v-if="opt.reportType" class="text-gray-400 ml-1">· {{ reportTypeLabel(opt.reportType) }}</span>
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
         ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
       </span>

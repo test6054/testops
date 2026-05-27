@@ -123,7 +123,7 @@
               {{ group.list.length }}
             </UiBadge>
             <span class="scan-live__station-time">
-              最近：{{ formatTime(group.list[0]?.scanEndTime) }}
+              最近：{{ formatTimeOfDay(group.list[0]?.scanEndTime) }}
             </span>
           </header>
           <transition-group tag="div" name="event-fade" class="scan-live__event-list">
@@ -137,13 +137,13 @@
                 <UiTag :tone="scanEventStatusTone(event.status)" size="sm">
                   {{ scanEventStatusLabel(event.status) }}
                 </UiTag>
-                <span class="scan-live__event-device">{{ event.scannerDeviceId || '-' }}</span>
+                <span class="scan-live__event-device">{{ event.scannerDeviceId }}</span>
                 <span class="scan-live__hint">·</span>
                 <span>{{ event.pageCount }} 页</span>
               </div>
               <div class="scan-live__event-meta">
                 <span class="scan-live__event-time">{{
-                  formatTime(event.scanEndTime || event.createTime)
+                  formatTimeOfDay(event.scanEndTime || event.createTime)
                 }}</span>
                 <span v-if="event.scannerIp" class="scan-live__hint">{{ event.scannerIp }}</span>
               </div>
@@ -163,12 +163,12 @@
     >
       <a-descriptions v-if="currentEvent" :column="1" size="small" bordered>
         <a-descriptions-item label="事件ID">{{ currentEvent.eventId }}</a-descriptions-item>
-        <a-descriptions-item label="考试ID">{{ currentEvent.examId || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="考试ID">{{ currentEvent.examId }}</a-descriptions-item>
         <a-descriptions-item label="工位机">
-          {{ currentEvent.scannerStationId || '-' }}
+          {{ currentEvent.scannerStationId }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描设备">
-          {{ currentEvent.scannerDeviceId || '-' }}
+          {{ currentEvent.scannerDeviceId }}
         </a-descriptions-item>
         <a-descriptions-item label="设备IP">
           {{ currentEvent.scannerIp || '-' }}
@@ -197,13 +197,13 @@
           </a-space>
         </a-descriptions-item>
         <a-descriptions-item label="扫描开始时间">
-          {{ formatTime(currentEvent.scanStartTime) }}
+          {{ formatTimeOfDay(currentEvent.scanStartTime) }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描结束时间">
-          {{ formatTime(currentEvent.scanEndTime) }}
+          {{ formatTimeOfDay(currentEvent.scanEndTime) }}
         </a-descriptions-item>
         <a-descriptions-item label="入库时间">
-          {{ formatTime(currentEvent.createTime) }}
+          {{ formatTimeOfDay(currentEvent.createTime) }}
         </a-descriptions-item>
       </a-descriptions>
     </UiDrawer>
@@ -222,7 +222,6 @@ import type { ScanEventStatusCode, ScanLiveEventVO } from '@/apis/mark/scan-live
 import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import dayjs from 'dayjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   UiBadge,
@@ -237,6 +236,7 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import { formatTimeOfDay } from '@/utils/format'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
 
@@ -305,11 +305,25 @@ const healthColor = computed(() => {
 })
 
 function scanEventStatusLabel(status: ScanEventStatusCode): string {
-  return status === 'BATCHED' ? '已聚合' : '待聚合'
+  const labels: Record<ScanEventStatusCode, string> = {
+    PENDING: '待聚合',
+    BATCHED: '已聚合',
+  }
+  if (!(status in labels)) {
+    throw new Error(`扫描事件状态不符合前后端契约：${String(status)}`)
+  }
+  return labels[status]
 }
 
 function scanEventStatusTone(status: ScanEventStatusCode): 'green' | 'orange' {
-  return status === 'BATCHED' ? 'green' : 'orange'
+  const tones: Record<ScanEventStatusCode, 'green' | 'orange'> = {
+    PENDING: 'orange',
+    BATCHED: 'green',
+  }
+  if (!(status in tones)) {
+    throw new Error(`扫描事件状态不符合前后端契约：${String(status)}`)
+  }
+  return tones[status]
 }
 
 const statMetrics = computed(() => [
@@ -349,7 +363,7 @@ const statMetrics = computed(() => [
 const groupedByStation = computed(() => {
   const groups = new Map<string, ScanLiveEventVO[]>()
   for (const event of events.value) {
-    const key = event.scannerStationId || '(未指定工位机)'
+    const key = event.scannerStationId
     const list = groups.get(key)
     if (list) {
       list.push(event)
@@ -360,10 +374,6 @@ const groupedByStation = computed(() => {
   return Array.from(groups, ([stationId, list]) => ({ stationId, list }))
 })
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('HH:mm:ss')
-}
 
 function openDetail(event: ScanLiveEventVO): void {
   currentEvent.value = event

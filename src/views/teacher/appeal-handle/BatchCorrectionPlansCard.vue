@@ -47,13 +47,13 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'approvedTime'">
-          {{ fmt(record.approvedTime) }}
+          {{ formatDateTime(record.approvedTime) }}
         </template>
         <template v-else-if="column.key === 'executedTime'">
-          {{ fmt(record.executedTime) }}
+          {{ formatDateTime(record.executedTime) }}
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{ fmt(record.createTime) }}
+          {{ formatDateTime(record.createTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-space size="small">
@@ -222,7 +222,6 @@ import type {
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { reactive, ref, watch } from 'vue'
 import {
   approveBatchCorrectionPlan,
@@ -235,6 +234,8 @@ import {
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
@@ -506,23 +507,17 @@ function canSubmit(row: ExamBatchGradeCorrectionPlanVO): boolean {
 
 function correctionTypeLabel(row: ExamBatchGradeCorrectionPlanVO): string {
   const code: GradeCorrectionTypeCode | undefined = row.correctionType
-  return code ? (GRADE_CORRECTION_TYPE_LABEL[code] ?? code) : '-'
+  return strictEnumLabel(GRADE_CORRECTION_TYPE_LABEL, code, '成绩更正类型')
 }
 
 function approvalStatusLabel(row: ExamBatchGradeCorrectionPlanVO): string {
-  const code: BatchCorrectionApprovalStatusCode = row.approvalStatus || 'DRAFT'
-  return BATCH_CORRECTION_STATUS_LABEL[code] ?? code
+  return strictEnumLabel(BATCH_CORRECTION_STATUS_LABEL, row.approvalStatus, '批量更正审批状态')
 }
 
 function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): string {
-  const code: BatchCorrectionApprovalStatusCode = row.approvalStatus || 'DRAFT'
-  return BATCH_CORRECTION_STATUS_COLOR[code] ?? 'default'
+  return strictEnumTone(BATCH_CORRECTION_STATUS_COLOR, row.approvalStatus, '批量更正审批状态')
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 watch(
   () => [props.examId, props.reloadToken],

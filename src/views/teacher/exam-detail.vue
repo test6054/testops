@@ -4,7 +4,7 @@
       <div class="exam-detail-page__context">
         <div class="exam-detail-page__context-left">
           <UiTag v-if="detail?.status" :tone="EXAM_STATUS_TONE[detail.status]" size="sm">
-            {{ detail.statusMessage || EXAM_STATUS_LABEL[detail.status] }}
+            {{ detail.statusMessage }}
           </UiTag>
           <UiTag v-if="detail?.examNo" tone="gray" size="sm">编号 {{ detail.examNo }}</UiTag>
           <UiTag v-if="detail" tone="blue" size="sm">
@@ -56,30 +56,30 @@
             <a-descriptions :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
               <a-descriptions-item label="考试名称">{{ detail.examName }}</a-descriptions-item>
               <a-descriptions-item label="考试编号">
-                {{ detail.examNo || '-' }}
+                {{ detail.examNo }}
               </a-descriptions-item>
               <a-descriptions-item label="学年学期">
                 {{ formatAcademicTerm(detail) || '未设置' }}
               </a-descriptions-item>
               <a-descriptions-item label="状态">
                 <UiTag :tone="EXAM_STATUS_TONE[detail.status]" size="sm">
-                  {{ detail.statusMessage || EXAM_STATUS_LABEL[detail.status] }}
+                  {{ detail.statusMessage }}
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="批改策略">
                 {{ detail.gradingStrategy || '默认' }}
               </a-descriptions-item>
               <a-descriptions-item label="开始时间">
-                {{ formatTime(detail.examStartTime) }}
+                {{ formatDateTime(detail.examStartTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="结束时间">
-                {{ formatTime(detail.examEndTime) }}
+                {{ formatDateTime(detail.examEndTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="创建时间">
-                {{ formatTime(detail.createTime) }}
+                {{ formatDateTime(detail.createTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="更新时间">
-                {{ formatTime(detail.updateTime) }}
+                {{ formatDateTime(detail.updateTime) }}
               </a-descriptions-item>
               <a-descriptions-item label="备注" :span="2">
                 {{ detail.remark || '-' }}
@@ -104,10 +104,10 @@
             <a-descriptions v-else :column="{ xs: 1, sm: 2 }" :label-style="labelStyle">
               <a-descriptions-item label="模板ID">{{ detail.templateId }}</a-descriptions-item>
               <a-descriptions-item label="模板名称">
-                {{ detail.templateName || '-' }}
+                {{ detail.templateName }}
               </a-descriptions-item>
               <a-descriptions-item label="总页数">
-                {{ detail.totalPages ?? '-' }}
+                {{ detail.totalPages }}
               </a-descriptions-item>
             </a-descriptions>
           </UiCard>
@@ -167,10 +167,9 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
+import { EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -180,6 +179,8 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { formatSemester } from '@/types/enums/semester-enum'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherExamDetail' })
 
@@ -193,17 +194,6 @@ const loading = ref(false)
 const detailLoadError = ref<unknown>(null)
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '88px' }
-
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
-
-function formatSemester(value?: string): string {
-  if (value === '1') return '秋季学期'
-  if (value === '2') return '春季学期'
-  return value ?? ''
-}
 
 function formatAcademicTerm(exam: ExamDetailVO): string {
   return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')

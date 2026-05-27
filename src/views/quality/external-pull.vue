@@ -24,6 +24,8 @@ import type { SignalMetric, TaskResultItem } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
+  EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
+  EXTERNAL_PULL_AUDIT_EVENT_LABEL,
   EXTERNAL_PULL_TASK_STATUS_COLOR,
   EXTERNAL_PULL_TASK_STATUS_LABEL,
   EXTERNAL_SOURCE_TYPE_LABEL,
@@ -31,6 +33,8 @@ import {
   externalPullAuditApi,
   externalPullResultApi,
   externalPullTaskApi,
+  isExternalPullAuditCheckStatus,
+  isExternalPullAuditEvent,
   isExternalPullTaskStatus,
   isExternalSourceType,
 } from '@/apis/quality'
@@ -100,6 +104,16 @@ function auditTone(status: unknown): string {
   if (status === 'WARNING') return 'orange'
   if (status === null || status === undefined || status === '') return 'gray'
   throw new Error(`外部拔取审计状态不在后端枚举内：${String(status)}`)
+}
+
+function auditEventLabel(value: unknown): string {
+  if (isExternalPullAuditEvent(value)) return EXTERNAL_PULL_AUDIT_EVENT_LABEL[value]
+  throw new Error(`外部拔取审计事件不在后端枚举内：${String(value)}`)
+}
+
+function auditCheckStatusLabel(value: unknown): string {
+  if (isExternalPullAuditCheckStatus(value)) return EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL[value]
+  throw new Error(`外部拔取审计状态不在后端枚举内：${String(value)}`)
 }
 
 const sources = ref<ExternalDataSourceVO[]>([])
@@ -693,7 +707,9 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'businessAnchor'">
             <div>{{ record.businessAnchor || '-' }}</div>
-            <div class="external-pull__sub-text">#{{ record.businessId || '-' }}</div>
+            <div class="external-pull__sub-text">
+              {{ record.businessId ? '已绑定业务对象' : '未绑定业务对象' }}
+            </div>
           </template>
           <template v-else-if="column.key === 'returnRows' || column.key === 'elapsedMs'">
             {{ text ?? '-' }}
@@ -931,7 +947,8 @@ onMounted(async () => {
             {{ sourceName(detailRecord.sourceId) }}
           </a-descriptions-item>
           <a-descriptions-item label="业务锚点">
-            {{ detailRecord.businessAnchor }} #{{ detailRecord.businessId }}
+            {{ detailRecord.businessAnchor }}
+            <span v-if="detailRecord.businessId"> / 已绑定业务对象</span>
           </a-descriptions-item>
           <a-descriptions-item label="返回行数">
             {{ detailRecord.returnRows ?? '-' }}
@@ -975,7 +992,8 @@ onMounted(async () => {
         >
           <template #bodyCell="{ column, record, text }">
             <template v-if="column.key === 'detailAnchor'">
-              {{ record.businessAnchor }} #{{ record.businessId }}
+              {{ record.businessAnchor }}
+              <span v-if="record.businessId"> / 已绑定业务对象</span>
             </template>
             <template v-else-if="column.key === 'previewRows' || column.key === 'confirmedRows'">
               {{ text ?? '-' }}
@@ -1022,24 +1040,24 @@ onMounted(async () => {
             :color="auditTone(audit.sqlSafetyStatus)"
           >
             <p class="external-pull__audit-event">
-              <strong>{{ audit.auditEvent }}</strong>
+              <strong>{{ auditEventLabel(audit.auditEvent) }}</strong>
             </p>
             <p v-if="audit.sqlSafetyStatus" class="external-pull__audit-line">
-              SQL 安全：{{ audit.sqlSafetyStatus }}
+              SQL 安全：{{ auditCheckStatusLabel(audit.sqlSafetyStatus) }}
               <span v-if="audit.sqlSafetyDetail"> · {{ audit.sqlSafetyDetail }}</span>
             </p>
             <p v-if="audit.fieldWhitelistStatus" class="external-pull__audit-line">
-              白名单：{{ audit.fieldWhitelistStatus }}
+              白名单：{{ auditCheckStatusLabel(audit.fieldWhitelistStatus) }}
               <span v-if="audit.fieldWhitelistDetail"> · {{ audit.fieldWhitelistDetail }}</span>
             </p>
             <p v-if="audit.maskPreviewStatus" class="external-pull__audit-line">
-              脱敏预览：{{ audit.maskPreviewStatus }}
+              脱敏预览：{{ auditCheckStatusLabel(audit.maskPreviewStatus) }}
             </p>
             <p v-if="audit.auditDetail" class="external-pull__audit-detail">
               {{ audit.auditDetail }}
             </p>
             <p class="external-pull__sub-text">
-              {{ audit.auditedAt || '-' }}
+              {{ audit.auditedAt }}
             </p>
           </a-timeline-item>
         </a-timeline>

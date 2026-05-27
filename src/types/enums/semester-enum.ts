@@ -41,10 +41,10 @@ export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
  * @returns 学期描述文本，如 "秋季学期"
  */
 export function getSemesterDescription(code: string | null | undefined): string {
-  if (!code) {
-    return '未知学期'
+  if (!code || !SemesterDescription[code]) {
+    throw new Error(`学期编码不符合前后端契约：${String(code)}`)
   }
-  return SemesterDescription[code] || '未知学期'
+  return SemesterDescription[code]
 }
 
 /**
@@ -55,4 +55,17 @@ export function getSemesterDescription(code: string | null | undefined): string 
  */
 export function isValidSemesterCode(code: string | null | undefined): boolean {
   return code === SemesterCode.AUTUMN || code === SemesterCode.SPRING
+}
+
+/**
+ * 学期代码宽容格式化：
+ * - 已知码（"1" / "2"）返回对应描述
+ * - 空值返回空串
+ * - 未知码原样返回（用于历史数据兼容展示，不抛错）
+ *
+ * @param value 学期代码或任意展示值
+ */
+export function formatSemester(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return ''
+  return SemesterDescription[value] ?? value
 }

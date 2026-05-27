@@ -26,6 +26,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
+  ACHIEVEMENT_DETAIL_TYPE_LABEL,
   ACHIEVEMENT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
@@ -34,8 +35,11 @@ import {
   achievementDetailApi,
   achievementManualReviewApi,
   isAchievementAuditStatus,
+  isAchievementDetailType,
   isAchievementStatus,
   isAchievementTargetType,
+  isManualReviewDecision,
+  MANUAL_REVIEW_DECISION_LABEL,
 } from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
@@ -94,6 +98,22 @@ function auditStatusLabel(value: unknown): string {
 function auditStatusColor(value: unknown): string {
   if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
   throw new Error('达成度审核状态不符合前后端契约')
+}
+
+function detailTypeLabel(value: unknown): string {
+  if (isAchievementDetailType(value)) return ACHIEVEMENT_DETAIL_TYPE_LABEL[value]
+  throw new Error('达成度明细类型不符合前后端契约')
+}
+
+function manualReviewDecisionLabel(value: unknown): string {
+  if (isManualReviewDecision(value)) return MANUAL_REVIEW_DECISION_LABEL[value]
+  throw new Error('人工复核决定不符合前后端契约')
+}
+
+function referenceNameText(record: AchievementDetailVO): string {
+  if (record.referenceName?.trim()) return record.referenceName
+  if (record.referenceCode?.trim()) return '未匹配引用对象'
+  throw new Error('达成度明细缺少引用对象名称')
 }
 
 const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
@@ -242,7 +262,7 @@ onMounted(loadAll)
       <div class="achievement-detail__context">
         <div class="achievement-detail__context-info">
           <UiButton variant="ghost" size="sm" @click="router.back()"> 返回 </UiButton>
-          <h2 class="achievement-detail__title">达成度详情 #{{ resultId }}</h2>
+          <h2 class="achievement-detail__title">达成度详情</h2>
           <a-tag v-if="result" :color="auditStatusColor(result.auditStatus)">
             {{ auditStatusLabel(result.auditStatus) }}
           </a-tag>
@@ -331,7 +351,7 @@ onMounted(loadAll)
           </header>
           <UiEmpty
             v-if="!details.length && !loading"
-            description="未生成明细记录。仅 DRAFT/CALCULATED 状态后才会产出主要明细。"
+            description="未生成明细记录。仅草稿或已计算状态后才会产出主要明细。"
             size="sm"
           />
           <UiDataTable
@@ -346,11 +366,14 @@ onMounted(loadAll)
             :total="details.length"
           >
             <template #bodyCell="{ column, record, text }">
-              <template v-if="column.key === 'referenceName'">
+              <template v-if="column.key === 'detailType'">
+                {{ detailTypeLabel(text) }}
+              </template>
+              <template v-else-if="column.key === 'referenceName'">
                 <span v-if="record.referenceCode" class="achievement-detail__ref-code">
                   {{ record.referenceCode }}
                 </span>
-                {{ text || record.referenceId || '-' }}
+                {{ referenceNameText(record) }}
               </template>
               <template
                 v-else-if="
@@ -386,7 +409,7 @@ onMounted(loadAll)
               :color="auditStatusColor(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
             >
               <p class="achievement-detail__audit-line">
-                <a-tag>{{ audit.auditEvent }}</a-tag>
+                <a-tag>{{ auditStatusLabel(audit.auditEvent) }}</a-tag>
                 <strong v-if="audit.auditStatusFrom">
                   {{ auditStatusLabel(audit.auditStatusFrom) }}
                 </strong>
@@ -396,7 +419,7 @@ onMounted(loadAll)
                 </strong>
               </p>
               <p class="achievement-detail__audit-meta">
-                {{ audit.auditorRole || '审核人' }}（{{ audit.auditorUserId }}）·
+                {{ audit.auditorRole }}（{{ audit.auditorNickName }}）·
                 {{ audit.auditedAt }}
               </p>
               <p v-if="audit.auditOpinion" class="achievement-detail__audit-opinion">
@@ -424,8 +447,8 @@ onMounted(loadAll)
           <template #renderItem="{ item }">
             <a-list-item>
               <a-list-item-meta
-                :title="`${item.decision} · ${item.reviewerRole || '审核人'}（${item.reviewerUserId}）`"
-                :description="item.reviewRemark || '-'"
+                :title="`${manualReviewDecisionLabel(item.decision)} · ${item.reviewerRole}（${item.reviewerNickName}）`"
+                :description="item.reviewRemark"
               />
               <template #actions>
                 <span class="achievement-detail__review-time">{{ item.reviewedAt }}</span>

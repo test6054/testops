@@ -135,7 +135,7 @@
             <div class="m-survey__q-header">
               <span class="m-survey__q-index">Q{{ currentIndex + 1 }}</span>
               <span v-if="currentItem?.required" class="m-survey__required">必填</span>
-              <span class="m-survey__q-type">{{ itemTypeLabel(currentItem?.itemType) }}</span>
+              <span v-if="currentItem" class="m-survey__q-type">{{ itemTypeLabel(currentItem.itemType) }}</span>
             </div>
             <h2 class="m-survey__q-text">{{ currentItem?.itemText }}</h2>
 
@@ -177,8 +177,20 @@
                 <span
                   v-if="answers[currentItem.itemToken] === opt.optionValue"
                   class="m-survey__choice-check"
+                  aria-hidden="true"
                 >
-                  ✓
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    width="18"
+                    height="18"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                 </span>
               </button>
             </div>
@@ -201,8 +213,20 @@
                 <span
                   v-if="(multiAnswers[currentItem.itemToken] || []).includes(opt.optionValue)"
                   class="m-survey__choice-check"
+                  aria-hidden="true"
                 >
-                  ✓
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    width="18"
+                    height="18"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                 </span>
               </button>
               <p class="m-survey__hint">可多选</p>
@@ -250,9 +274,17 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicSurveyItemVO } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { useSurveyFill } from '@/composables/useSurveyFill'
+
+const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<PublicSurveyItemVO['itemType'], string> = {
+  SCALE: '量表题',
+  SINGLE_CHOICE: '单选题',
+  MULTI_CHOICE: '多选题',
+  OPEN_TEXT: '填空题',
+}
 
 const {
   loading,
@@ -327,14 +359,12 @@ function toggleMulti(itemId: string, opt: string) {
   }
 }
 
-function itemTypeLabel(type?: string): string {
-  const map: Record<string, string> = {
-    SCALE: '量表题',
-    SINGLE_CHOICE: '单选题',
-    MULTI_CHOICE: '多选题',
-    OPEN_TEXT: '填空题',
+function itemTypeLabel(type: PublicSurveyItemVO['itemType']): string {
+  const label = PUBLIC_SURVEY_ITEM_TYPE_LABEL[type]
+  if (!label) {
+    throw new Error(`问卷题型不符合前后端契约：${String(type)}`)
   }
-  return map[type || ''] || ''
+  return label
 }
 
 async function handleSubmit() {

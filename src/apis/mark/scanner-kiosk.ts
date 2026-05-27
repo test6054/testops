@@ -1,9 +1,15 @@
-import type { ScanAttentionStatusCode, ScanAttentionTypeCode } from '@/apis/mark/exam'
+import type {
+  ScanAttentionSourceTypeCode,
+  ScanAttentionStatusCode,
+  ScanAttentionTypeCode,
+} from '@/apis/mark/exam'
+import type { ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
 import type { PageResult, QueryDto } from '@/types'
-import { validateScanAttentionStatus } from '@/apis/mark/exam'
+import { validateScanAttentionSourceType, validateScanAttentionStatus } from '@/apis/mark/exam'
 import http from '@/config/axios'
 
-export type { ScanAttentionStatusCode, ScanAttentionTypeCode }
+export type { ScanAttentionSourceTypeCode, ScanAttentionStatusCode, ScanAttentionTypeCode }
+export type { ScannerEndpointOnlineStatusCode }
 
 export type ScannerKioskScanMode = 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE'
 export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
@@ -44,7 +50,7 @@ export interface ExamScannerKioskDeviceVO {
   scannerStationName?: string
   deviceName: string
   status: string
-  onlineStatus: string
+  onlineStatus: ScannerEndpointOnlineStatusCode
   scannerConnected: boolean
   pendingJobCount: number
   pendingUploadPageCount: number
@@ -346,6 +352,7 @@ export interface ExamScannerPageLedgerItemVO {
   /** 异常类型编码：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW */
   attentionType?: ScanAttentionTypeCode
   attentionMessage?: string
+  /** 已落库扫描页的最后操作人昵称；未 commit 的 pending 页无操作人 */
   operatorName?: string
   occurredAt?: string
 }
@@ -356,11 +363,11 @@ export interface ExamScannerPageLedgerItemVO {
 export interface ExamScannerAttentionItemVO {
   id: string
   attentionType: ScanAttentionTypeCode
-  sourceType: string
+  sourceType: ScanAttentionSourceTypeCode
   sourceId?: string
   paperInstanceId?: string
   pageId?: string
-  status?: ScanAttentionStatusCode
+  status: ScanAttentionStatusCode
   diagnostic?: string
   updateTime?: string
 }
@@ -475,6 +482,16 @@ function requireScanMode(value: unknown, fieldName: string): ScannerKioskScanMod
   return value
 }
 
+function requireEndpointOnlineStatus(
+  value: unknown,
+  fieldName: string,
+): ScannerEndpointOnlineStatusCode {
+  if (value !== 'ONLINE' && value !== 'OFFLINE') {
+    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
+  }
+  return value
+}
+
 function requireLedgerDataSource(value: unknown): ExamScannerLedgerDataSource {
   if (value !== 'DATABASE' && value !== 'REDIS_PENDING' && value !== 'NONE') {
     throw new TypeError('扫描工作台接口 dataSource 格式错误')
@@ -552,7 +569,7 @@ function validateScannerKioskDevice(value: unknown): ExamScannerKioskDeviceVO {
     scannerStationName: optionalString(record.scannerStationName, 'device.scannerStationName'),
     deviceName: requireString(record.deviceName, 'device.deviceName'),
     status: requireString(record.status, 'device.status'),
-    onlineStatus: requireString(record.onlineStatus, 'device.onlineStatus'),
+    onlineStatus: requireEndpointOnlineStatus(record.onlineStatus, 'device.onlineStatus'),
     scannerConnected: requireBoolean(record.scannerConnected, 'device.scannerConnected'),
     pendingJobCount: requireFiniteNumber(record.pendingJobCount, 'device.pendingJobCount'),
     pendingUploadPageCount: requireFiniteNumber(
@@ -627,6 +644,11 @@ function validateScannerKioskContext(value: unknown): ExamScannerKioskContextVO 
     throw new TypeError('扫描工作台上下文返回格式错误')
   }
   const record = value as Record<string, unknown>
+  const canStartScan = requireBoolean(record.canStartScan, 'canStartScan')
+  const canStartSupplementScan = requireBoolean(
+    record.canStartSupplementScan,
+    'canStartSupplementScan',
+  )
   return {
     exam: validateScannerKioskExam(record.exam),
     classIds: requireStringList(record.classIds, 'classIds'),
@@ -649,10 +671,14 @@ function validateScannerKioskContext(value: unknown): ExamScannerKioskContextVO 
     scanBatchCount: requireFiniteNumber(record.scanBatchCount, 'scanBatchCount'),
     attentionCount: requireFiniteNumber(record.attentionCount, 'attentionCount'),
     scanMode: requireScanMode(record.scanMode, 'scanMode'),
-    canStartScan: requireBoolean(record.canStartScan, 'canStartScan'),
-    canStartSupplementScan: requireBoolean(record.canStartSupplementScan, 'canStartSupplementScan'),
-    blockReason: optionalString(record.blockReason, 'blockReason'),
-    supplementBlockReason: optionalString(record.supplementBlockReason, 'supplementBlockReason'),
+    canStartScan,
+    canStartSupplementScan,
+    blockReason: canStartScan
+      ? optionalString(record.blockReason, 'blockReason')
+      : requireString(record.blockReason, 'blockReason'),
+    supplementBlockReason: canStartSupplementScan
+      ? optionalString(record.supplementBlockReason, 'supplementBlockReason')
+      : requireString(record.supplementBlockReason, 'supplementBlockReason'),
   }
 }
 
@@ -703,6 +729,7 @@ function validateScannerBatchLifecycle(value: unknown): ExamScannerBatchLifecycl
     throw new TypeError('扫描工作台批次锚点返回格式错误')
   }
   const record = value as Record<string, unknown>
+  const pendingPageCount = optionalFiniteNumber(record.pendingPageCount, 'pendingPageCount')
   return {
     anchorExists: requireBoolean(record.anchorExists, 'anchorExists'),
     anchorMutated: requireBoolean(record.anchorMutated, 'anchorMutated'),
@@ -717,8 +744,11 @@ function validateScannerBatchLifecycle(value: unknown): ExamScannerBatchLifecycl
     declaredClassIds: optionalStringList(record.declaredClassIds, 'declaredClassIds'),
     startedAt: optionalString(record.startedAt, 'startedAt'),
     startedBy: optionalString(record.startedBy, 'startedBy'),
-    pendingPagesDiagnostic: optionalString(record.pendingPagesDiagnostic, 'pendingPagesDiagnostic'),
-    pendingPageCount: optionalFiniteNumber(record.pendingPageCount, 'pendingPageCount'),
+    pendingPagesDiagnostic:
+      pendingPageCount !== undefined && pendingPageCount > 0
+        ? requireString(record.pendingPagesDiagnostic, 'pendingPagesDiagnostic')
+        : optionalString(record.pendingPagesDiagnostic, 'pendingPagesDiagnostic'),
+    pendingPageCount,
     sealedAt: optionalString(record.sealedAt, 'sealedAt'),
     sealedBy: optionalString(record.sealedBy, 'sealedBy'),
   }
@@ -744,7 +774,10 @@ function validateScannerPageLedgerItem(value: unknown): ExamScannerPageLedgerIte
     registrationStatus: requireLedgerRegistrationStatus(record.registrationStatus),
     attentionType: optionalScanAttentionType(record.attentionType, 'items.attentionType'),
     attentionMessage: optionalString(record.attentionMessage, 'items.attentionMessage'),
-    operatorName: optionalString(record.operatorName, 'items.operatorName'),
+    operatorName:
+      record.operatorName === undefined || record.operatorName === null
+        ? undefined
+        : requireString(record.operatorName, 'items.operatorName'),
     occurredAt: optionalString(record.occurredAt, 'items.occurredAt'),
   }
 }
@@ -757,7 +790,7 @@ function validateScannerAttentionItem(value: unknown): ExamScannerAttentionItemV
   return {
     id: requireString(record.id, 'attentionItems.id'),
     attentionType: requireScanAttentionType(record.attentionType, 'attentionItems.attentionType'),
-    sourceType: requireString(record.sourceType, 'attentionItems.sourceType'),
+    sourceType: validateScanAttentionSourceType(record.sourceType, 'attentionItems.sourceType'),
     sourceId: optionalString(record.sourceId, 'attentionItems.sourceId'),
     paperInstanceId: optionalString(record.paperInstanceId, 'attentionItems.paperInstanceId'),
     pageId: optionalString(record.pageId, 'attentionItems.pageId'),

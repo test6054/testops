@@ -5,7 +5,7 @@
         <div class="profile-page__context-left">
           <span class="profile-page__title">{{ displayName }}</span>
           <UiTag tone="blue" size="sm">{{ roleLabel }}</UiTag>
-          <UiTag tone="gray" size="sm">{{ userInfo.userName || '-' }}</UiTag>
+          <UiTag tone="gray" size="sm">{{ userInfo.userName }}</UiTag>
           <UiTag v-if="tenantName" tone="gray" size="sm">{{ tenantName }}</UiTag>
         </div>
         <div class="profile-page__context-right">
@@ -33,11 +33,11 @@
           <div class="info-grid">
             <div class="info-grid__row">
               <span class="info-grid__label">姓名 / 昵称</span>
-              <span class="info-grid__value">{{ userInfo.nickName || '-' }}</span>
+              <span class="info-grid__value">{{ userInfo.nickName }}</span>
             </div>
             <div class="info-grid__row">
               <span class="info-grid__label">用户名</span>
-              <span class="info-grid__value">{{ userInfo.userName || '-' }}</span>
+              <span class="info-grid__value">{{ userInfo.userName }}</span>
             </div>
             <div class="info-grid__row">
               <span class="info-grid__label">邮箱</span>
@@ -93,11 +93,11 @@
             </div>
             <div class="info-grid__row">
               <span class="info-grid__label">注册时间</span>
-              <span class="info-grid__value">{{ formatTime(userInfo.createTime) }}</span>
+              <span class="info-grid__value">{{ formatDateTime(userInfo.createTime) }}</span>
             </div>
             <div class="info-grid__row">
               <span class="info-grid__label">最后登录</span>
-              <span class="info-grid__value">{{ formatTime(userInfo.lastLoginTime) }}</span>
+              <span class="info-grid__value">{{ formatDateTime(userInfo.lastLoginTime) }}</span>
             </div>
           </div>
         </UiCard>
@@ -116,7 +116,7 @@
               <div class="security-item__main">
                 <h4 class="security-item__title">登录密码</h4>
                 <p class="security-item__desc">
-                  上次修改：{{ formatTime(userInfo.passwordLastChangedTime) }}
+                  上次修改：{{ formatDateTime(userInfo.passwordLastChangedTime) }}
                 </p>
               </div>
               <UiButton size="sm" variant="outline" @click="goChangePassword"> 修改密码 </UiButton>
@@ -174,7 +174,6 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -183,6 +182,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
+import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'UserProfile' })
 
@@ -196,7 +196,7 @@ const refreshing = ref(false)
 
 const userInfo = computed(() => userStore.userInfo)
 const tenantName = computed(() => userInfo.value.tenantName || userInfo.value.schoolName || '')
-const displayName = computed(() => userInfo.value.nickName || '当前用户')
+const displayName = computed(() => userInfo.value.nickName)
 
 const roleLabel = computed(() => userInfo.value.roleDisplayName || userInfo.value.roleKey || '用户')
 
@@ -205,10 +205,6 @@ const isTenantAdmin = computed(() => userInfo.value.isTenantAdmin === true)
 
 const unreadTotal = computed(() => totalUnreadCount.value)
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
 
 async function refresh() {
   refreshing.value = true

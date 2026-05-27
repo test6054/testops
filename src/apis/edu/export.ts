@@ -7,13 +7,13 @@ import http from '@/config/axios'
  */
 export enum ExportBusinessType {
   /** 实践数据导出（ZIP格式：成绩表+交付物+答辩记录） */
-  PRACTICE_EXPORT = 'PRACTICE_EXPORT',
+  PRACTICE_EXPORT = 'practice_export',
   /** 学生成绩导出（Excel/PDF/Word） */
-  STUDENT_GRADES = 'STUDENT_GRADES',
+  STUDENT_GRADES = 'student_grades',
   /** 能力映射矩阵导出Excel */
-  COMPETENCY_MAPPING_MATRIX = 'COMPETENCY_MAPPING_MATRIX',
+  COMPETENCY_MAPPING_MATRIX = 'competency_mapping_matrix',
   /** 达成度报告PDF导出 */
-  COMPETENCY_ACHIEVEMENT_REPORT = 'COMPETENCY_ACHIEVEMENT_REPORT',
+  COMPETENCY_ACHIEVEMENT_REPORT = 'competency_achievement_report',
 }
 
 /**
@@ -22,8 +22,8 @@ export enum ExportBusinessType {
 export interface ExportJobCreateRequest {
   /** 业务类型 */
   businessType: ExportBusinessType
-  /** 导出格式，默认EXCEL */
-  exportFormat?: ExportFormatEnum
+  /** 导出格式 */
+  exportFormat: ExportFormatEnum
   /** 租户导出配置ID（可选） */
   configId?: string
   /** 业务查询参数（JSON格式） */
@@ -38,9 +38,9 @@ export interface ExportJobCreateRequest {
 
 export interface ExportJobStatusVO {
   jobId: string
-  businessType: string
-  exportFormat: ExportFormatEnum | string
-  status: AsyncTaskStatusEnum | string
+  businessType: ExportBusinessType
+  exportFormat: ExportFormatEnum
+  status: AsyncTaskStatusEnum
   /** 进度百分比（0-100） */
   progress?: number
   fileName?: string
@@ -62,8 +62,8 @@ export interface ExportJobStatusVO {
 export interface ExportJobQueryRequest {
   pageNum: number
   pageSize: number
-  businessType?: string
-  status?: string
+  businessType?: ExportBusinessType
+  status?: AsyncTaskStatusEnum
   startTime?: string
   endTime?: string
 }

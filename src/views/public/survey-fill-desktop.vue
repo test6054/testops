@@ -131,7 +131,20 @@
                   'd-survey__item-dot--req': item.required && !isItemAnswered(item),
                 }"
               >
-                <template v-if="isItemAnswered(item)">✓</template>
+                <svg
+                  v-if="isItemAnswered(item)"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  width="14"
+                  height="14"
+                  aria-hidden="true"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
                 <template v-else>{{ index + 1 }}</template>
               </div>
             </div>
@@ -180,8 +193,20 @@
                   <span
                     v-if="answers[item.itemToken] === opt.optionValue"
                     class="d-survey__choice-check"
+                    aria-hidden="true"
                   >
-                    ✓
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      width="16"
+                      height="16"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                   </span>
                 </button>
               </div>
@@ -204,8 +229,20 @@
                   <span
                     v-if="(multiAnswers[item.itemToken] || []).includes(opt.optionValue)"
                     class="d-survey__choice-check"
+                    aria-hidden="true"
                   >
-                    ✓
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      width="16"
+                      height="16"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                   </span>
                 </button>
                 <p class="d-survey__hint">可多选</p>
@@ -245,8 +282,16 @@
 
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
+import type { PublicSurveyItemVO } from '@/apis/public-survey'
 import { nextTick, ref } from 'vue'
 import { useSurveyFill } from '@/composables/useSurveyFill'
+
+const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<PublicSurveyItemVO['itemType'], string> = {
+  SCALE: '量表题',
+  SINGLE_CHOICE: '单选题',
+  MULTI_CHOICE: '多选题',
+  OPEN_TEXT: '填空题',
+}
 
 const {
   loading,
@@ -292,14 +337,12 @@ function toggleMulti(itemId: string, opt: string) {
   }
 }
 
-function itemTypeLabel(type?: string): string {
-  const map: Record<string, string> = {
-    SCALE: '量表题',
-    SINGLE_CHOICE: '单选题',
-    MULTI_CHOICE: '多选题',
-    OPEN_TEXT: '填空题',
+function itemTypeLabel(type: PublicSurveyItemVO['itemType']): string {
+  const label = PUBLIC_SURVEY_ITEM_TYPE_LABEL[type]
+  if (!label) {
+    throw new Error(`问卷题型不符合前后端契约：${String(type)}`)
   }
-  return map[type || ''] || ''
+  return label
 }
 
 async function handleSubmit() {

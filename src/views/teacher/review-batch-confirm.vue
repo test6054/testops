@@ -39,7 +39,6 @@
             刷新
           </UiButton>
           <UiButton
-            type="primary"
             size="sm"
             :disabled="selectedTaskIds.length === 0"
             :loading="submitting"
@@ -91,18 +90,18 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'reviewType'">
               <a-tag
-                v-if="(record as ReviewTaskItemVO).reviewType"
-                :color="REVIEW_TASK_TYPE_META[(record as ReviewTaskItemVO).reviewType!].color"
+                v-if="toReviewTask(record).reviewType"
+                :color="REVIEW_TASK_TYPE_META[toReviewTask(record).reviewType!].color"
               >
-                {{ REVIEW_TASK_TYPE_META[(record as ReviewTaskItemVO).reviewType!].label }}
+                {{ REVIEW_TASK_TYPE_META[toReviewTask(record).reviewType!].label }}
               </a-tag>
               <span v-else style="color: #94a3b8">未派生</span>
             </template>
             <template v-else-if="column.key === 'finalScore'">
               <a-input-number
-                v-model:value="finalScoreMap[(record as ReviewTaskItemVO).reviewTaskId]"
+                v-model:value="finalScoreMap[toReviewTask(record).reviewTaskId]"
                 :min="0"
-                :max="(record as ReviewTaskItemVO).fullScore ?? 100"
+                :max="toReviewTask(record).fullScore"
                 :step="0.5"
                 :precision="1"
                 style="width: 96px"
@@ -110,7 +109,7 @@
             </template>
             <template v-else-if="column.key === 'commentText'">
               <a-input
-                v-model:value="commentTextMap[(record as ReviewTaskItemVO).reviewTaskId]"
+                v-model:value="commentTextMap[toReviewTask(record).reviewTaskId]"
                 placeholder="评语，可空"
                 allow-clear
               />
@@ -119,7 +118,7 @@
               <a-button
                 type="link"
                 size="small"
-                @click="openSingleReview(record as ReviewTaskItemVO)"
+                @click="openSingleReview(toReviewTask(record))"
               >
                 查看单题
               </a-button>
@@ -149,12 +148,15 @@ import {
   pageExams,
   REVIEW_TASK_TYPE_META,
 } from '@/apis/mark/exam'
-import StageWorkbenchShell from '@/components/layout/StageWorkbenchShell.vue'
-import UiAlertStrip from '@/components/ui/UiAlertStrip.vue'
-import UiButton from '@/components/ui/UiButton.vue'
-import UiCard from '@/components/ui/UiCard.vue'
-import UiEmpty from '@/components/ui/UiEmpty.vue'
-import UiTag from '@/components/ui/UiTag.vue'
+import {
+  UiAlertStrip,
+  UiButton,
+  UiCard,
+  UiEmpty,
+  UiTag,
+} from '@/components/ui-guide/ui'
+import { StageWorkbenchShell } from '@/components/workbench'
+import { formatSemester } from '@/types/enums/semester-enum'
 
 const router = useRouter()
 const examLoading = ref(false)
@@ -209,7 +211,7 @@ async function loadExamOptions() {
   examLoading.value = true
   try {
     const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    examOptions.value = (result?.list ?? []).map((exam: ExamSummaryVO) => ({
+    examOptions.value = result.list.map((exam: ExamSummaryVO) => ({
       label: [formatExamOptionLabel(exam), formatAcademicTerm(exam)].filter(Boolean).join(' · '),
       value: exam.examId,
     }))
@@ -220,10 +222,8 @@ async function loadExamOptions() {
   }
 }
 
-function formatSemester(value?: string): string {
-  if (value === '1') return '秋季学期'
-  if (value === '2') return '春季学期'
-  return value ?? ''
+function toReviewTask(record: unknown): ReviewTaskItemVO {
+  return record as ReviewTaskItemVO
 }
 
 function formatAcademicTerm(exam: ExamSummaryVO): string {
@@ -233,7 +233,10 @@ function formatAcademicTerm(exam: ExamSummaryVO): string {
 }
 
 function formatExamOptionLabel(exam: ExamSummaryVO): string {
-  return `${exam.examName ?? '未命名考试'}（${exam.examNo ?? exam.examId}）`
+  if (!exam.examNo) {
+    throw new Error(`考试列表缺少考试编号：examId=${exam.examId}`)
+  }
+  return `${exam.examName}（${exam.examNo}）`
 }
 
 async function loadTasks() {
@@ -247,7 +250,6 @@ async function loadTasks() {
     const items = await listReviewTasks({ examId: selectedExamId.value, status: 'PENDING' })
     const channelCode = channelFilter.value
     tasks.value = items.filter((task) => {
-      if (!task.gradeResultId) return false
       if (!channelCode) return true
       return task.reviewType === channelCode
     })
@@ -275,9 +277,6 @@ function onExamChange() {
 }
 
 function openSingleReview(record: ReviewTaskItemVO) {
-  if (!record.reviewTaskId) {
-    return
-  }
   router.push({
     name: 'TeacherReviewWorkspace',
     query: { examId: record.examId, taskId: record.reviewTaskId },
@@ -291,22 +290,20 @@ async function submitBatch() {
   const items: ExamGradeBatchConfirmItem[] = []
   for (const taskId of selectedTaskIds.value) {
     const task = tasks.value.find((row) => row.reviewTaskId === taskId)
-    if (!task || !task.gradeResultId) {
+    if (!task) {
       continue
     }
     const finalScore = finalScoreMap.value[taskId]
     if (finalScore === undefined || finalScore === null || Number.isNaN(finalScore)) {
-      message.warning(`匿名号 ${task.anonymousNo ?? task.reviewTaskId} 的最终分不能为空，请先填写`)
+      message.warning(`匿名号 ${task.anonymousNo} 的最终分不能为空，请先填写`)
       return
     }
-    if (task.fullScore !== undefined && finalScore > task.fullScore) {
-      message.warning(
-        `匿名号 ${task.anonymousNo ?? task.reviewTaskId} 的最终分超过满分 ${task.fullScore}`,
-      )
+    if (finalScore > task.fullScore) {
+      message.warning(`匿名号 ${task.anonymousNo} 的最终分超过满分 ${task.fullScore}`)
       return
     }
     if (finalScore < 0) {
-      message.warning(`匿名号 ${task.anonymousNo ?? task.reviewTaskId} 的最终分不能为负`)
+      message.warning(`匿名号 ${task.anonymousNo} 的最终分不能为负`)
       return
     }
     items.push({
@@ -354,7 +351,7 @@ onMounted(() => {
 })
 </script>
 
-<style scoped lang="less">
+<style scoped lang="scss">
 .review-batch-confirm__context {
   display: flex;
   align-items: center;

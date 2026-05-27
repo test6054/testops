@@ -73,6 +73,8 @@ export const useAuthStore = defineStore(
     const refreshTimer = ref<ReturnType<typeof setTimeout> | null>(null)
     const refreshPromise = ref<Promise<RefreshTokenResponse> | null>(null)
     const refreshingToken = ref(false)
+    /** 后台预刷新取消信号；destroyAuth / 登出时 abort，避免登出后还有残留 retry 跑 */
+    let scheduledRefreshAbort: AbortController | null = null
 
     // 记住我功能相关
     const rememberMe = ref<boolean>(localStorage.getItem(STORAGE_REMEMBER_ME) === 'true')
@@ -197,6 +199,10 @@ export const useAuthStore = defineStore(
         clearTimeout(refreshTimer.value)
         refreshTimer.value = null
       }
+      if (scheduledRefreshAbort) {
+        scheduledRefreshAbort.abort()
+        scheduledRefreshAbort = null
+      }
     }
 
     const syncTokenStateFromStorage = (): boolean => {
@@ -235,10 +241,14 @@ export const useAuthStore = defineStore(
       const timeUntilRefresh = expireTime - now - 5 * 60 * 1000
 
       if (timeUntilRefresh > 0) {
+        const abort = new AbortController()
+        scheduledRefreshAbort = abort
+
         refreshTimer.value = setTimeout(async () => {
           let retries = 0
           const maxRetries = 3
           while (retries < maxRetries) {
+            if (abort.signal.aborted) return
             try {
               const success = await refreshTokenAutomatically()
               if (success) return
@@ -247,7 +257,21 @@ export const useAuthStore = defineStore(
             }
             retries++
             if (retries < maxRetries) {
-              await new Promise((r) => setTimeout(r, retries * 2000))
+              await new Promise<void>((resolve) => {
+                if (abort.signal.aborted) {
+                  resolve()
+                  return
+                }
+                const delayTimer = setTimeout(resolve, retries * 2000)
+                abort.signal.addEventListener(
+                  'abort',
+                  () => {
+                    clearTimeout(delayTimer)
+                    resolve()
+                  },
+                  { once: true },
+                )
+              })
             }
           }
         }, timeUntilRefresh)
@@ -268,23 +292,24 @@ export const useAuthStore = defineStore(
 
     const refreshTokenAutomatically = async (): Promise<boolean> => {
       try {
+        // 已有进行中的刷新 Promise：直接 await，不要 busy-wait 自旋
         if (refreshPromise.value) {
           try {
             await refreshPromise.value
-            return true
+            return token.value !== '' && !isTokenExpiredCheck(token.value)
           } catch {
             return false
           }
         }
 
+        // refreshingToken=true 但 refreshPromise 为空 是极短的状态切换窗口
+        // 给一次微任务让出 + 再次同步 storage，避免 100ms × 30 自旋
         if (refreshingToken.value) {
-          let retryCount = 0
-          const maxRetries = 30
-          while (refreshingToken.value && retryCount < maxRetries) {
-            await new Promise((resolve) => setTimeout(resolve, 100))
-            retryCount++
+          await Promise.resolve()
+          const synced = syncTokenStateFromStorage()
+          if (synced && token.value && !isTokenExpiredCheck(token.value)) {
+            return true
           }
-          return !refreshingToken.value && token.value !== ''
         }
 
         const syncedFromStorage = syncTokenStateFromStorage()
@@ -350,13 +375,17 @@ export const useAuthStore = defineStore(
           }
         }
 
-        if (
-          lastError?.code === 'NETWORK_ERROR'
-          || (lastError?.response !== undefined && lastError.response.status >= 500)
-        ) {
+        // 网络层错误 / 5xx：不强制登出，让上层下次再试
+        // axios 的网络错误 code 是 'ERR_NETWORK' / 'ECONNABORTED'，而非 'NETWORK_ERROR'
+        const isNetworkLevel
+          = lastError?.code === 'ERR_NETWORK'
+            || lastError?.code === 'ECONNABORTED'
+            || (lastError?.response !== undefined && lastError.response.status >= 500)
+        if (isNetworkLevel) {
           return false
         }
 
+        // 真实的 401 / refresh_token 失效场景才登出
         await logoutCallBack()
         return false
       } finally {

@@ -48,13 +48,13 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'questionIds'">
-          <span class="ellipsis">{{ rows[index].questionIds || '-' }}</span>
+          <span class="ellipsis">{{ formatQuestionIds(rows[index]) }}</span>
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{ fmt(rows[index].createTime) }}
+          {{ formatDateTime(rows[index].createTime) }}
         </template>
         <template v-else-if="column.key === 'reviewTime'">
-          {{ fmt(rows[index].reviewTime) }}
+          {{ formatDateTime(rows[index].reviewTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
           <a-space>
@@ -140,7 +140,6 @@ import type {
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import {
   handleReviewRequest,
@@ -149,6 +148,8 @@ import {
   REVIEW_REQUEST_STATUS_LABEL,
 } from '@/apis/mark/grade-review'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
@@ -244,18 +245,24 @@ async function submitHandle(): Promise<void> {
   }
 }
 
-function fmt(v?: string): string {
-  if (!v) return '-'
-  return dayjs(v).format('YYYY-MM-DD HH:mm')
-}
 
 // 严格 typed helper：rows[index].requestStatus 是 GradeReviewRequestStatusCode | undefined，避免 slot record:any 索引。
 function requestStatusColor(status?: GradeReviewRequestStatusCode): BadgeTone {
-  return REVIEW_REQUEST_STATUS_COLOR[status ?? 'PENDING']
+  return strictEnumTone(REVIEW_REQUEST_STATUS_COLOR, status, '复核申请状态')
 }
 
 function requestStatusLabel(status?: GradeReviewRequestStatusCode): string {
-  return REVIEW_REQUEST_STATUS_LABEL[status ?? 'PENDING']
+  return strictEnumLabel(REVIEW_REQUEST_STATUS_LABEL, status, '复核申请状态')
+}
+
+function formatQuestionIds(record: ExamGradeReviewRequestVO): string {
+  if (!Array.isArray(record.questionIds)) {
+    throw new TypeError(`复核申请缺少题目ID列表：reviewRequestId=${record.id}`)
+  }
+  if (record.questionIds.length === 0) {
+    return '总分申诉'
+  }
+  return record.questionIds.map((questionId) => `第 ${questionId} 题`).join('、')
 }
 
 watch(

@@ -123,9 +123,7 @@ const hasStats = computed(() => {
 
 .ui-page-hero__eyebrow {
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 600;
   color: var(--dp-blue-700, #1d4ed8);
 }
 
@@ -138,9 +136,9 @@ const hasStats = computed(() => {
 
 .ui-page-hero__title {
   margin: 0;
-  font-size: 30px;
-  line-height: 1.2;
-  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 600;
   color: var(--dp-text-primary, #0f172a);
 }
 
@@ -191,9 +189,9 @@ const hasStats = computed(() => {
 }
 
 .ui-page-hero__stat-value {
-  font-size: 24px;
-  line-height: 1.1;
-  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 600;
 }
 
 .ui-page-hero__stat-value--gray {
@@ -255,7 +253,7 @@ const hasStats = computed(() => {
   }
 
   .ui-page-hero__title {
-    font-size: 26px;
+    font-size: 18px;
   }
 
   .ui-page-hero__stats {

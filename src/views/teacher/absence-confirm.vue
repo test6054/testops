@@ -287,6 +287,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherAbsenceConfirm' })
 
@@ -328,11 +329,14 @@ const absentStudents = computed<AbsentStudentRow[]>(() => {
     .filter((sid) => !confirmedIds.has(sid))
     .map((sid) => {
       const c = candidateMap.get(sid)
+      if (!c) {
+        throw new Error(`缺考核对返回的学生 ${sid} 不在当前考试考生名册中`)
+      }
       return {
         studentUserId: sid,
-        studentNo: c?.studentNo ?? '-',
-        studentName: c?.studentName ?? '-',
-        classId: c?.classId,
+        studentNo: c.studentNo,
+        studentName: c.studentName,
+        classId: c.classId,
       }
     })
 })
@@ -396,27 +400,27 @@ const recordColumns: ColumnType<AbsenceRecordVO>[] = [
 
 function studentNameOf(studentUserId: string): string {
   const c = candidates.value.find((x) => x.studentUserId === studentUserId)
-  return c ? `${c.studentName}（${c.studentNo}）` : studentUserId
+  if (!c) {
+    throw new Error(`缺考记录中的学生 ${studentUserId} 不在当前考试考生名册中`)
+  }
+  return `${c.studentName}（${c.studentNo}）`
 }
 
 function statusLabel(status: AbsenceStatusCode | undefined): string {
-  if (!status) return '-'
-  return ABSENCE_STATUS_LABEL[status] ?? status
+  return strictEnumLabel(ABSENCE_STATUS_LABEL, status, '缺考状态')
 }
 
 function statusTone(status: AbsenceStatusCode | undefined): BadgeTone {
   if (!status) return 'gray'
-  return ABSENCE_STATUS_TONE[status] ?? 'gray'
+  return strictEnumTone(ABSENCE_STATUS_TONE, status, '缺考状态')
 }
 
 function reasonLabel(reason: AbsenceReasonCode | undefined): string {
-  if (!reason) return '-'
-  return ABSENCE_REASON_LABEL[reason] ?? '-'
+  return strictEnumLabel(ABSENCE_REASON_LABEL, reason, '缺考原因')
 }
 
 function scorePolicyLabel(policy: AbsenceScorePolicyCode | undefined): string {
-  if (!policy) return '-'
-  return ABSENCE_SCORE_POLICY_LABEL[policy] ?? '-'
+  return strictEnumLabel(ABSENCE_SCORE_POLICY_LABEL, policy, '缺考成绩策略')
 }
 
 async function loadCandidates(): Promise<void> {

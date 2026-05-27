@@ -3,7 +3,7 @@
     v-model:open="visible"
     :footer="null"
     :mask-closable="true"
-    :title="currentNotice?.title || '系统公告'"
+    :title="currentNotice?.title"
     :width="800"
     @cancel="onClose"
   >
@@ -14,13 +14,13 @@
             <span>
               <UserOutlined class="icon" />
               <span class="label">创建者：</span>
-              <span>{{ currentNotice?.createUserName || '未知' }}</span>
+              <span>{{ currentNotice?.createUserName }}</span>
             </span>
             <a-divider type="vertical" />
             <span>
               <HistoryOutlined class="icon" />
               <span class="label">创建时间：</span>
-              <span>{{ currentNotice?.publishTime || currentNotice?.createTime || '未知' }}</span>
+              <span>{{ currentNotice?.publishTime }}</span>
             </span>
             <a-divider v-if="currentNotice?.updateTime" type="vertical" />
             <span v-if="currentNotice?.updateTime">
@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { SystemAnnouncementResponse } from '@/apis/edu/message'
+import type { PublishedSystemAnnouncementResponse } from '@/apis/edu/message'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import ScheduleOutlined from '@ant-design/icons-vue/ScheduleOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
@@ -100,7 +100,7 @@ const unreadNoticeIds = ref<string[]>([])
 const currentIndex = ref(0)
 const loading = ref(false)
 const contentLoading = ref(false)
-const noticeCache = ref<Map<string, SystemAnnouncementResponse>>(new Map())
+const noticeCache = ref<Map<string, PublishedSystemAnnouncementResponse>>(new Map())
 
 const currentNotice = computed(() => {
   const noticeId = unreadNoticeIds.value[currentIndex.value]
@@ -115,7 +115,7 @@ watch(
   currentNotice,
   (newNotice) => {
     if (newNotice) {
-      currentNoticeContent.value = newNotice.content || ''
+      currentNoticeContent.value = newNotice.content
     } else {
       currentNoticeContent.value = ''
     }
@@ -140,7 +140,7 @@ const fetchNoticeDetail = async (index: number) => {
   try {
     // 使用用户端API获取公告详情，后端会自动记录阅读
     const data = await getPublishedAnnouncementDetail(noticeId)
-    noticeCache.value.set(noticeId, data as SystemAnnouncementResponse)
+    noticeCache.value.set(noticeId, data)
     currentIndex.value = index
     // 触发刷新未读计数事件
     mittBus.emit('count-refresh')

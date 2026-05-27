@@ -8,7 +8,12 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveVO } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
-import { archiveApi } from '@/apis/quality'
+import {
+  ARCHIVE_BUSINESS_TYPE_LABEL,
+  archiveApi,
+  isArchiveBusinessType,
+} from '@/apis/quality'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -61,13 +66,19 @@ async function loadOptions() {
       archiveCategory: props.archiveCategory || undefined,
       archiveOfficeConfirmed: props.onlyConfirmed ? true : undefined,
     })
-    options.value = res.list || []
+    options.value = requirePageList(res, '材料归档')
   } catch (e) {
     console.error('[ArchiveSelector] 加载归档列表失败', e)
     message.error('加载归档列表失败')
   } finally {
     loading.value = false
   }
+}
+
+function archiveBusinessTypeLabel(value: unknown): string {
+  if (value == null || value === '') return ''
+  if (isArchiveBusinessType(value)) return ARCHIVE_BUSINESS_TYPE_LABEL[value]
+  throw new Error(`材料归档业务类型不符合前后端契约：${String(value)}`)
 }
 
 function handleChange(val: SelectValue) {
@@ -100,7 +111,9 @@ defineExpose({ reload: loadOptions })
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.archiveCode">
       <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.archiveCode }}</span>
       <span v-if="opt.fileName">{{ opt.fileName }}</span>
-      <span v-if="opt.businessType" class="text-gray-400 ml-1">· {{ opt.businessType }}</span>
+      <span v-if="opt.businessType" class="text-gray-400 ml-1">
+        · {{ archiveBusinessTypeLabel(opt.businessType) }}
+      </span>
     </a-select-option>
   </a-select>
 </template>

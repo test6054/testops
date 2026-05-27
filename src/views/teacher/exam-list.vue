@@ -150,7 +150,7 @@
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'examName'">
             <button type="button" class="link-cell" @click="goDetail(dataSource[index])">
-              {{ dataSource[index].examName || '未命名考试' }}
+              {{ dataSource[index].examName }}
             </button>
             <div v-if="dataSource[index].examNo" class="link-cell__sub">
               编号：{{ dataSource[index].examNo }}
@@ -169,14 +169,14 @@
           </template>
           <template v-else-if="column.key === 'examWindow'">
             <span v-if="dataSource[index].examStartTime || dataSource[index].examEndTime">
-              {{ formatTime(dataSource[index].examStartTime) }}
+              {{ formatDateTime(dataSource[index].examStartTime) }}
               <span class="time-divider">~</span>
-              {{ formatTime(dataSource[index].examEndTime) }}
+              {{ formatDateTime(dataSource[index].examEndTime) }}
             </span>
             <span v-else class="muted">未设置</span>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatTime(dataSource[index].createTime) }}
+            {{ formatDateTime(dataSource[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
@@ -345,6 +345,9 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
+import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { formatDateTime } from '@/utils/format'
+import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamList' })
 
@@ -377,10 +380,8 @@ const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
 
-const semesterOptions: Array<{ label: string, value: string }> = [
-  { label: '秋季学期', value: '1' },
-  { label: '春季学期', value: '2' },
-]
+/** 学期下拉选项：直接复用 SemesterOptions 的强类型枚举，避免本地重复定义。 */
+const semesterOptions = SemesterOptions
 
 const dataSource = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
@@ -406,21 +407,13 @@ const columns: ColumnType<ExamSummaryVO>[] = [
 // helper 严格 typed 接收后端 API 对象 ExamSummaryVO。
 // 模板侧统一用 dataSource[index] 取同一个 VO 对象引用，避免 slot record:any。
 function examStatusTone(exam: ExamSummaryVO): BadgeTone {
-  return EXAM_STATUS_TONE[exam.status] ?? 'gray'
+  return strictEnumTone(EXAM_STATUS_TONE, exam.status, '考试状态')
 }
 
 function examStatusLabel(exam: ExamSummaryVO): string {
-  return exam.statusMessage || EXAM_STATUS_LABEL[exam.status] || exam.status
+  return exam.statusMessage
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm')
-}
-
-function formatSemester(value?: string): string {
-  return semesterOptions.find((item) => item.value === value)?.label ?? ''
-}
 
 function formatAcademicTerm(exam: ExamSummaryVO): string {
   if (!exam.academicYear && !exam.semester) return ''
@@ -443,8 +436,8 @@ async function loadExams(): Promise<void> {
       endTime: endTime || undefined,
       createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
     })
-    dataSource.value = result.list ?? []
-    pagination.total = result.total ?? 0
+    dataSource.value = result.list
+    pagination.total = result.total
   } catch (error) {
     examsLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
@@ -504,8 +497,8 @@ async function loadStatusTotals(): Promise<void> {
       pageExams({ pageNum: 1, pageSize: 1, status: 'ACTIVE', createUserId }),
       pageExams({ pageNum: 1, pageSize: 1, status: 'CLOSED', createUserId }),
     ])
-    activeTotal.value = activeRes.total ?? 0
-    closedTotal.value = closedRes.total ?? 0
+    activeTotal.value = activeRes.total
+    closedTotal.value = closedRes.total
   } catch (error) {
     statusTotalsError.value
       = error instanceof Error ? error.message : '进行中 / 已关闭考试计数加载失败'
@@ -653,7 +646,7 @@ function openEditModal(exam: ExamSummaryVO): void {
   editingExamId.value = exam.examId
   examForm.courseId = exam.courseId ?? null
   examForm.examName = exam.examName
-  examForm.examNo = exam.examNo ?? ''
+  examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
   examForm.examWindow = exam.examStartTime && exam.examEndTime

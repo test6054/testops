@@ -12,8 +12,11 @@ import { onMounted, ref, watch } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   EVALUATION_METHOD_LABEL,
+  isAccreditationType,
+  isEvaluationMethod,
   programEvaluationProfileApi,
 } from '@/apis/quality'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -64,7 +67,7 @@ async function loadOptions() {
       pageSize: 200,
       enabled: props.onlyEnabled ? true : undefined,
     })
-    const all = res.list || []
+    const all = requirePageList(res, '专业评价口径')
     options.value = props.programId ? all.filter((p) => p.programId === props.programId) : all
   } catch (e) {
     console.error('[ProgramEvaluationProfileSelector] 加载评价口径列表失败', e)
@@ -80,6 +83,20 @@ function handleChange(val: SelectValue) {
   const option = options.value.find((o) => o.id === next)
   emit('update:value', next)
   emit('change', next, option)
+}
+
+function accreditationTypeLabel(value: unknown) {
+  if (!isAccreditationType(value)) {
+    throw new Error('认证类型不符合前后端契约')
+  }
+  return ACCREDITATION_TYPE_LABEL[value]
+}
+
+function evaluationMethodLabel(value: unknown) {
+  if (!isEvaluationMethod(value)) {
+    throw new Error('评价方法不符合前后端契约')
+  }
+  return EVALUATION_METHOD_LABEL[value]
 }
 
 onMounted(() => {
@@ -105,21 +122,19 @@ defineExpose({ reload: loadOptions })
       v-for="opt in options"
       :key="opt.id"
       :value="opt.id"
-      :label="`${opt.programName} · ${ACCREDITATION_TYPE_LABEL[opt.accreditationType as keyof typeof ACCREDITATION_TYPE_LABEL] || opt.accreditationType}`"
+      :label="`${opt.programName} · ${accreditationTypeLabel(opt.accreditationType)}`"
     >
       <span>{{ opt.programName }}</span>
       <span class="text-gray-400 ml-1">
         ·
         {{
-          ACCREDITATION_TYPE_LABEL[
-            opt.accreditationType as keyof typeof ACCREDITATION_TYPE_LABEL
-          ] || opt.accreditationType
+          accreditationTypeLabel(opt.accreditationType)
         }}
       </span>
       <span class="text-gray-400 ml-1">
         ·
         {{
-          EVALUATION_METHOD_LABEL[opt.evaluationMethod as keyof typeof EVALUATION_METHOD_LABEL] || opt.evaluationMethod
+          evaluationMethodLabel(opt.evaluationMethod)
         }}
       </span>
     </a-select-option>

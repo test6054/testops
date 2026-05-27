@@ -59,7 +59,7 @@
               <FileOutlined
                 :style="{ color: getFormatColor(record.exportFormat), fontSize: '16px' }"
               />
-              <span class="file-name">{{ record.fileName || '导出任务' }}</span>
+              <span class="file-name">{{ record.fileName }}</span>
             </div>
           </template>
 
@@ -205,8 +205,10 @@ import LoadingOutlined from '@ant-design/icons-vue/LoadingOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { ExportBusinessType } from '@/apis/edu/export'
 import { UiFilterBar } from '@/components/ui-guide/ui'
 import { useExportTaskStore } from '@/stores/exportTask'
+import { AsyncTaskStatusEnum, ExportFormatEnum } from '@/types/enums'
 import { isErrorHandled } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 
@@ -216,12 +218,12 @@ const exportTaskStore = useExportTaskStore()
 
 // 筛选条件
 const filterForm = reactive({
-  businessType: undefined as string | undefined,
-  status: undefined as string | undefined,
+  businessType: undefined as ExportBusinessType | undefined,
+  status: undefined as AsyncTaskStatusEnum | undefined,
   dateRange: undefined as [string, string] | undefined,
 })
 const expandedTask = ref<ExportJobStatusVO | null>(null)
-const downloadingJobId = ref<string | number | null>(null)
+const downloadingJobId = ref<string | null>(null)
 
 // 筛选字段配置
 const filterFields: FilterField[] = [
@@ -232,20 +234,10 @@ const filterFields: FilterField[] = [
     allowClear: true,
     width: 180,
     options: [
-      { label: '成绩导出', value: 'grading' },
-      { label: '用户导出', value: 'user_list' },
-      { label: '班级学生', value: 'class_students' },
-      { label: '导入模板', value: 'import_template' },
-      { label: 'AI分析报告', value: 'ai_analysis' },
-      { label: '课程学生', value: 'course_students' },
-      { label: '提交统计', value: 'task_submission' },
-      { label: '学生报告', value: 'student_report' },
-      { label: '班级质量', value: 'class_quality' },
-      { label: '数据分析', value: 'data_analytics' },
-      { label: '实践查重报告', value: 'storage_practice_report' },
-      { label: '学生查重报告', value: 'storage_student_report' },
-      { label: '任务查重报告', value: 'storage_task_report' },
-      { label: '实践报告', value: 'practice_export' },
+      { label: '实践数据导出', value: ExportBusinessType.PRACTICE_EXPORT },
+      { label: '学生成绩导出', value: ExportBusinessType.STUDENT_GRADES },
+      { label: '能力映射矩阵导出', value: ExportBusinessType.COMPETENCY_MAPPING_MATRIX },
+      { label: '达成度报告导出', value: ExportBusinessType.COMPETENCY_ACHIEVEMENT_REPORT },
     ],
   },
   {
@@ -255,10 +247,10 @@ const filterFields: FilterField[] = [
     allowClear: true,
     width: 140,
     options: [
-      { label: '排队中', value: 'PENDING' },
-      { label: '处理中', value: 'PROCESSING' },
-      { label: '已完成', value: 'COMPLETED' },
-      { label: '失败', value: 'FAILED' },
+      { label: '排队中', value: AsyncTaskStatusEnum.PENDING },
+      { label: '处理中', value: AsyncTaskStatusEnum.PROCESSING },
+      { label: '已完成', value: AsyncTaskStatusEnum.COMPLETED },
+      { label: '失败', value: AsyncTaskStatusEnum.FAILED },
     ],
   },
   {
@@ -286,7 +278,7 @@ const exportTaskMap = computed(() => {
 watch(
   () => exportTaskStore.lastFetchParams.businessType,
   (value) => {
-    filterForm.businessType = value || undefined
+    filterForm.businessType = value
   },
   { immediate: true },
 )
@@ -382,10 +374,10 @@ async function fetchTasksWithFilter() {
     params.endTime = dateRangeVal[1]
   }
   if (filterForm.businessType) {
-    params.businessType = filterForm.businessType as string
+    params.businessType = filterForm.businessType
   }
   if (filterForm.status) {
-    params.status = filterForm.status as string
+    params.status = filterForm.status
   }
   exportTaskStore.updateFilter(params)
 
@@ -400,43 +392,34 @@ onMounted(() => {
 })
 
 const statusMap = {
-  PENDING: { label: '排队中', color: 'blue' },
-  PROCESSING: { label: '处理中', color: 'orange' },
-  COMPLETED: { label: '已完成', color: 'green' },
-  FAILED: { label: '失败', color: 'red' },
+  [AsyncTaskStatusEnum.PENDING]: { label: '排队中', color: 'blue' },
+  [AsyncTaskStatusEnum.PROCESSING]: { label: '处理中', color: 'orange' },
+  [AsyncTaskStatusEnum.COMPLETED]: { label: '已完成', color: 'green' },
+  [AsyncTaskStatusEnum.FAILED]: { label: '失败', color: 'red' },
 }
 
-const statusLabel = (status: keyof typeof statusMap) => statusMap[status]?.label || status
-const statusColor = (status: keyof typeof statusMap) => statusMap[status]?.color || 'blue'
+const statusLabel = (status: AsyncTaskStatusEnum) => statusMap[status].label
+const statusColor = (status: AsyncTaskStatusEnum) => statusMap[status].color
 
 // 格式映射
-const formatMap: Record<string, string> = {
-  EXCEL: 'Excel',
-  PDF: 'PDF',
-  WORD: 'Word',
+const formatMap: Record<ExportFormatEnum, string> = {
+  [ExportFormatEnum.EXCEL]: 'Excel',
+  [ExportFormatEnum.PDF]: 'PDF',
+  [ExportFormatEnum.WORD]: 'Word',
+  [ExportFormatEnum.ZIP]: 'ZIP',
 }
 
-const formatLabel = (format: string) => formatMap[format] || format
+const formatLabel = (format: ExportFormatEnum) => formatMap[format]
 
 // 业务类型映射（与后端ExportBusinessType.code对应）
-const businessTypeMap: Record<string, string> = {
-  grading: '成绩导出',
-  user_list: '用户导出',
-  class_students: '班级学生',
-  import_template: '导入模板',
-  ai_analysis: 'AI分析报告',
-  course_students: '课程学生',
-  task_submission: '提交统计',
-  student_report: '学生报告',
-  class_quality: '班级质量',
-  data_analytics: '数据分析',
-  storage_practice_report: '实践查重报告',
-  storage_student_report: '学生查重报告',
-  storage_task_report: '任务查重报告',
-  practice_export: '实践报告',
+const businessTypeMap: Record<ExportBusinessType, string> = {
+  [ExportBusinessType.PRACTICE_EXPORT]: '实践数据导出',
+  [ExportBusinessType.STUDENT_GRADES]: '学生成绩导出',
+  [ExportBusinessType.COMPETENCY_MAPPING_MATRIX]: '能力映射矩阵导出',
+  [ExportBusinessType.COMPETENCY_ACHIEVEMENT_REPORT]: '达成度报告导出',
 }
 
-const businessTypeLabel = (type: string) => businessTypeMap[type] || type
+const businessTypeLabel = (type: ExportBusinessType) => businessTypeMap[type]
 
 // 下载文件 - 使用统一下载工具，直接通过fileNodeId下载
 const downloadFile = async (task: ExportJobStatusVO) => {
@@ -450,7 +433,7 @@ const downloadFile = async (task: ExportJobStatusVO) => {
     await handleDownloadFile(
       {
         fileId: task.fileNodeId,
-        fileName: task.fileName || '导出文件',
+        fileName: task.fileName,
       },
       {
         showSuccessMessage: true,
@@ -467,10 +450,10 @@ const downloadFile = async (task: ExportJobStatusVO) => {
   }
 }
 
-const downloadFileByJobId = async (jobId: string | number) => {
-  const task = exportTaskMap.value.get(String(jobId))
+const downloadFileByJobId = async (jobId: string) => {
+  const task = exportTaskMap.value.get(jobId)
   if (!task) {
-    return
+    throw new Error(`导出任务不存在：${jobId}`)
   }
   await downloadFile(task)
 }
@@ -484,7 +467,12 @@ const deleteTask = async (jobId: string) => {
   try {
     await exportTaskStore.deleteTask(jobId)
     message.success('删除成功')
-  } catch {}
+  } catch (error) {
+    if (!isErrorHandled(error)) {
+      message.error('删除失败')
+    }
+    throw error
+  }
 }
 
 const handleClose = () => {
@@ -501,13 +489,14 @@ const formatFileSize = (bytes: number): string => {
 }
 
 // 根据格式返回颜色
-const getFormatColor = (format: string): string => {
-  const colorMap: Record<string, string> = {
-    EXCEL: 'var(--ant-color-success)',
-    PDF: 'var(--ant-color-error)',
-    WORD: 'var(--ant-color-primary)',
+const getFormatColor = (format: ExportFormatEnum): string => {
+  const colorMap: Record<ExportFormatEnum, string> = {
+    [ExportFormatEnum.EXCEL]: 'var(--ant-color-success)',
+    [ExportFormatEnum.PDF]: 'var(--ant-color-error)',
+    [ExportFormatEnum.WORD]: 'var(--ant-color-primary)',
+    [ExportFormatEnum.ZIP]: 'var(--ant-color-warning)',
   }
-  return colorMap[format] || 'var(--ant-color-primary)'
+  return colorMap[format]
 }
 </script>
 

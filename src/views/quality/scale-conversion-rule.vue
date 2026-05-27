@@ -200,6 +200,11 @@ async function handleDelete(record: ScaleConversionRuleVO) {
   })
 }
 
+function scaleTypeLabel(value: unknown): string {
+  if (isScaleType(value)) return SCALE_TYPE_LABEL[value]
+  throw new Error(`量表类型不符合前后端契约：${String(value)}`)
+}
+
 /* ========== 信号指标：量表换算规则库健康度 ========== */
 
 const signals = computed<SignalMetric[]>(() => {
@@ -260,7 +265,7 @@ onMounted(() => loadList())
       >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'scaleType'">
-            {{ scaleTypeOptions.find((o) => o.value === text)?.label || text }}
+            {{ scaleTypeLabel(text) }}
           </template>
           <template v-else-if="column.key === 'enabled'">
             <a-tag :color="text ? 'green' : 'default'">

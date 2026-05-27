@@ -55,6 +55,7 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { strictAuditChangeDetails } from '@/utils/strict-enum'
 
 function reportTypeLabel(value: unknown): string {
   if (isReportType(value)) return REPORT_TYPE_LABEL[value]
@@ -82,6 +83,16 @@ function exportStatusLabel(value: unknown): string {
 function exportStatusColor(value: unknown): string {
   if (isReportExportStatus(value)) return REPORT_EXPORT_STATUS_COLOR[value]
   throw new Error('报告导出状态不符合前后端契约')
+}
+
+function requireExportErrorMessage(record: ReportVO): string {
+  if (record.exportStatus !== 'FAILED') {
+    throw new Error('只有导出失败报告才能读取失败原因')
+  }
+  if (!record.exportErrorMessage) {
+    throw new Error('报告导出失败时后端必须返回 exportErrorMessage')
+  }
+  return record.exportErrorMessage
 }
 
 const qualityStore = useQualityStore()
@@ -305,7 +316,7 @@ function canEditReport(status: ReportStatus): boolean {
 async function handleTransit(record: ReportVO, to: ReportStatus) {
   if (to === 'RETURNED') {
     const ok = await confirmAsync({
-      title: `${REPORT_STATUS_LABEL[record.status]} → ${REPORT_STATUS_LABEL[to]}`,
+      title: `${reportStatusLabel(record.status)} → ${reportStatusLabel(to)}`,
       content: '驳回后报告会重新进入修订状态，驳回原因请在外层改进任务中记录。',
       type: 'error',
     })
@@ -335,34 +346,41 @@ async function pollExportStatus(id: string) {
       const detail = await reportApi.detail(id)
       const idx = list.value.findIndex((item) => item.id === id)
       if (idx >= 0) list.value[idx] = detail
+      const title = reportTitle(detail)
       const exportStatus = detail.exportStatus
       if (exportStatus === 'COMPLETED') {
-        message.success(`报告 #${id} 三格式导出完成`)
+        message.success(`${title} 三格式导出完成`)
         return
       }
       if (exportStatus === 'FAILED') {
         Modal.error({
-          title: `报告 #${id} 导出失败`,
-          content:
-            detail.exportErrorMessage || '后端未返回失败原因，请运维基于 Skywalking 链路排查。',
+          title: `${title} 导出失败`,
+          content: requireExportErrorMessage(detail),
           width: 640,
         })
         return
       }
     }
     message.warning(
-      `报告 #${id} 导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请稍后手工刷新列表查看最新状态。`,
+      `报告导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请稍后手工刷新列表查看最新状态。`,
     )
   } finally {
     pollingExportIds.value.delete(id)
   }
 }
 
+function reportTitle(record: ReportVO): string {
+  return record.title?.trim() || reportTypeLabel(record.reportType)
+}
+
 async function handleExport(record: ReportVO) {
-  const currentExport = record.exportStatus ?? 'IDLE'
+  if (!isReportExportStatus(record.exportStatus)) {
+    throw new Error('报告导出状态不符合前后端契约')
+  }
+  const currentExport = record.exportStatus
   if (currentExport === 'PENDING' || currentExport === 'PROCESSING') {
     message.info(
-      `报告 #${record.id} 当前处于「${REPORT_EXPORT_STATUS_LABEL[currentExport]}」，请等待完成`,
+      `${reportTitle(record)}当前处于「${REPORT_EXPORT_STATUS_LABEL[currentExport]}」，请等待完成`,
     )
     if (!pollingExportIds.value.has(record.id)) void pollExportStatus(record.id)
     return
@@ -509,17 +527,20 @@ async function openAuditDrawer(record: ReportVO) {
       category: 'QUALITY',
       description: record.id,
     })
-    auditEvents.value = page.list.map((log) => ({
-      id: log.id,
-      operatorName: log.userDto?.nickName || log.userDto?.userName || '-',
-      operationType: log.type,
-      operationLabel: log.detail || log.type,
-      time: log.createTime,
-      targetType: log.module,
-      targetId: log.bizId || undefined,
-      beforeValue: log.changeDetails ? JSON.parse(log.changeDetails)?.before : undefined,
-      afterValue: log.changeDetails ? JSON.parse(log.changeDetails)?.after : undefined,
-    }))
+    auditEvents.value = page.list.map((log) => {
+      const changeDetails = strictAuditChangeDetails(log.changeDetails, '报告审计变更详情')
+      return {
+        id: log.id,
+        operatorName: log.userDto.nickName,
+        operationType: log.type,
+        operationLabel: log.detail,
+        time: log.createTime,
+        targetType: log.module,
+        targetId: log.bizId || undefined,
+        beforeValue: changeDetails.beforeValue,
+        afterValue: changeDetails.afterValue,
+      }
+    })
   } finally {
     auditLoading.value = false
   }
@@ -531,13 +552,13 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     .slice(0, 5)
     .map((r) => ({
       id: r.id,
-      title: r.title || `报告 #${r.id}`,
+      title: reportTitle(r),
       statusLabel: r.status === 'RETURNED' ? '已驳回' : '导出失败',
       statusTone: 'red',
       description:
         r.status === 'RETURNED'
           ? '审核驳回，需修订后重新提交'
-          : r.exportErrorMessage || '三格式导出失败',
+          : requireExportErrorMessage(r),
       actions: [{ key: 'detail', label: '详情' }],
     }))
 })
@@ -667,8 +688,8 @@ onMounted(loadList)
                 {{ exportStatusLabel(record.exportStatus) }}
               </a-tag>
               <a-tooltip
-                v-if="record.exportStatus === 'FAILED' && record.exportErrorMessage"
-                :title="record.exportErrorMessage"
+                v-if="record.exportStatus === 'FAILED'"
+                :title="requireExportErrorMessage(record)"
               >
                 <a-tag color="red"> 错误详情 </a-tag>
               </a-tooltip>

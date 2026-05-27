@@ -60,7 +60,7 @@ const columns: ColumnsType = [
  * 把后端返回的 levelCode（String）渲染成中文标签。
  * - 严格对齐后端 WorkgroupLevelEnum：UNIVERSITY / COLLEGE / PROGRAM / INDUSTRY
  * - 通过字面值比较让 TS 自动缩窄类型，避免使用 as 断言
- * - 若后端落库了枚举之外的非法值，原样回显
+ * - 若后端落库了枚举之外的非法值，抛出前后端契约错误
  */
 function workgroupLevelLabel(value: unknown): string {
   if (typeof value !== 'string') {
@@ -74,7 +74,15 @@ function workgroupLevelLabel(value: unknown): string {
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
-  return value
+  throw new Error(`评价工作组层级不符合前后端契约：${String(value)}`)
+}
+
+function programName(value: unknown): string {
+  if (value == null || value === '') return '-'
+  if (typeof value !== 'string') {
+    throw new TypeError(`评价工作组专业大类 ID 不符合前后端契约：${String(value)}`)
+  }
+  return programs.value.find((p) => p.id === value)?.majorCategoryName ?? '未匹配专业大类'
 }
 
 const list = ref<EvaluationWorkgroupVO[]>([])
@@ -234,7 +242,10 @@ async function handleDelete(record: EvaluationWorkgroupVO) {
 
 function convenerDisplay(uid: string) {
   const t = teacherCache.value.get(uid)
-  return t ? t.nickName || t.userName : uid
+  if (!t) {
+    throw new Error(`评价工作组召集人缺少教师目录数据：${uid}`)
+  }
+  return t.nickName
 }
 
 /* ========== 工作组成员 Excel 导入与查看 ========== */
@@ -387,7 +398,7 @@ onMounted(async () => {
       >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'programId'">
-            {{ programs.find((p) => p.id === text)?.majorCategoryName || text }}
+            {{ programName(text) }}
           </template>
           <template v-else-if="column.key === 'levelCode'">
             <a-tag>{{ workgroupLevelLabel(text) }}</a-tag>

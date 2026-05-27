@@ -89,7 +89,7 @@ onMounted(() => {
     flex-direction: column;
   }
 
-  // 🚀 移动端适配
+  // 移动端适配
   &.mobile {
     .layout-default-right {
       width: 100%;

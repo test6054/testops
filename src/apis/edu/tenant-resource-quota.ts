@@ -154,7 +154,7 @@ export function getTenantQuotaHistory(query: TenantResourceQuotaHistoryQueryDto)
 
 /**
  * 批量设置租户资源配额 - 对应后端 POST /api/tenant/quota/batch-set
- * 🚀 优化后的批量设置接口，使用单个事务处理，确保数据一致性
+ * 单个事务处理，确保数据一致性
  */
 export function batchSetTenantQuotas(batchSetDto: TenantResourceQuotaBatchSetDto): Promise<TenantResourceQuotaBatchResultDto> {
     return http.post<TenantResourceQuotaBatchResultDto>('/api/tenant/quota/batch-set', batchSetDto)

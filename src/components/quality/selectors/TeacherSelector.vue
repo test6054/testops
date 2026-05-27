@@ -8,6 +8,7 @@ import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { message } from 'ant-design-vue'
 import { onMounted, ref, watch } from 'vue'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
+import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -58,13 +59,17 @@ async function loadOptions(keyword?: string) {
       departmentId: props.departmentId || undefined,
       roleKey: 'SCH_TECH',
     })
-    options.value = res.list || []
+    options.value = requirePageList(res, '教师')
   } catch (e) {
     console.error('[TeacherSelector] 加载教师列表失败', e)
     message.error('加载教师列表失败')
   } finally {
     loading.value = false
   }
+}
+
+function teacherDisplayName(opt: TeacherUserInfoDto): string {
+  return opt.nickName
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -106,9 +111,9 @@ defineExpose({ reload: loadOptions })
       v-for="opt in options"
       :key="opt.id"
       :value="opt.id"
-      :label="opt.nickName || opt.userName"
+      :label="teacherDisplayName(opt)"
     >
-      {{ opt.nickName || opt.userName }}
+      {{ teacherDisplayName(opt) }}
       <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 font-mono text-xs">({{ opt.teacherNumber }})</span>
       <span v-if="opt.department" class="text-gray-400 ml-1">{{ opt.department }}</span>
     </a-select-option>

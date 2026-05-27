@@ -150,7 +150,7 @@ export interface PaperArchiveSetVO {
   examRound?: string
   paperCount?: number
   archiveStatus: PaperArchiveSetStatusCode
-  archiveStatusMessage?: string
+  archiveStatusMessage: string
   tags?: string[]
   retentionYears?: number
   retentionUntil?: string

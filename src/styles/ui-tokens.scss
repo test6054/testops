@@ -1,5 +1,12 @@
-// Ant Design Vue 4.x 默认主题 CSS 变量声明
-// 用途：帮助 WebStorm 解析 --ant-* 自定义属性，运行时由 Ant Design Vue ConfigProvider 注入实际值覆盖
+// Ant Design Vue 4.x 主题 CSS 变量首屏 FOUC 兜底
+//
+// 作用层次：
+// 1. ConfigProvider `cssVar: true` 在挂载后会向 <html> 注入实际 token（覆盖以下 :root 值）
+// 2. 在 ConfigProvider 注入完成前的首屏（一般 < 100ms），:root 提供兜底颜色避免无样式闪烁
+// 3. 同时为 IDE / Volar 提供 --ant-* 自定义属性的解析依据
+//
+// 维护规则：主题色升级仅需改 App.vue 中的 ConfigProvider；以下值仅作为视觉兜底，
+// 即使略有色差也只在首屏几十毫秒内可见，不影响最终主题。
 :root {
   --ant-border-radius: 8px;
   --ant-padding: 16px;

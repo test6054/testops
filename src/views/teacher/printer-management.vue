@@ -733,6 +733,8 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
+import { formatSemester } from '@/types/enums/semester-enum'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrinterManagement' })
 
@@ -806,28 +808,26 @@ const columns = [
 
 // helper 严格只接受后端枚举类型，零 as 断言。
 function statusLabelOf(status?: ScannerDeviceStatusCode): string {
-  if (!status) return '—'
-  return SCANNER_DEVICE_STATUS_LABEL[status] ?? status
+  return strictEnumLabel(SCANNER_DEVICE_STATUS_LABEL, status, '扫描设备状态')
 }
 function statusColorOf(status?: ScannerDeviceStatusCode): string {
   if (!status) return 'default'
-  return SCANNER_DEVICE_STATUS_COLOR[status] ?? 'default'
+  return strictEnumTone(SCANNER_DEVICE_STATUS_COLOR, status, '扫描设备状态')
 }
 function interfaceModeLabelOf(mode?: ScannerInterfaceModeCode): string {
-  if (!mode) return '—'
-  return SCANNER_INTERFACE_MODE_LABEL[mode] ?? mode
+  return strictEnumLabel(SCANNER_INTERFACE_MODE_LABEL, mode, '扫描接入模式')
 }
 function interfaceModeColorOf(mode?: ScannerInterfaceModeCode): string {
   if (!mode) return 'default'
-  return SCANNER_INTERFACE_MODE_COLOR[mode] ?? 'default'
+  return strictEnumTone(SCANNER_INTERFACE_MODE_COLOR, mode, '扫描接入模式')
 }
 function endpointOnlineStatusLabelOf(status?: ScannerEndpointOnlineStatusCode): string {
   if (!status) return '未激活'
-  return SCANNER_ENDPOINT_ONLINE_STATUS_LABEL[status] ?? status
+  return strictEnumLabel(SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, status, '扫描端点在线状态')
 }
 function endpointOnlineStatusColorOf(status?: ScannerEndpointOnlineStatusCode): string {
   if (!status) return 'default'
-  return SCANNER_ENDPOINT_ONLINE_STATUS_COLOR[status] ?? 'default'
+  return strictEnumTone(SCANNER_ENDPOINT_ONLINE_STATUS_COLOR, status, '扫描端点在线状态')
 }
 
 async function loadDevices(): Promise<void> {
@@ -1309,12 +1309,6 @@ function filterExamOption(input: string, option?: DefaultOptionType): boolean {
   return String(option?.label ?? '')
     .toLowerCase()
     .includes(input.toLowerCase())
-}
-
-function formatSemester(value?: string): string {
-  if (value === '1') return '秋季学期'
-  if (value === '2') return '春季学期'
-  return value ?? ''
 }
 
 function formatAcademicTerm(exam: MarkExamSummaryVO): string {

@@ -81,13 +81,23 @@ const evaluationMethodOptions = evaluationMethods.map((value) => ({
   value,
   label: EVALUATION_METHOD_LABEL[value],
 }))
-const evaluationCycleOptions = [
+type EvaluationCycle = 'SEMESTER' | 'YEAR' | 'BIENNIAL' | 'TRIENNIAL' | 'PROGRAM_CYCLE'
+
+const evaluationCycleOptions: Array<{ value: EvaluationCycle, label: string }> = [
   { value: 'SEMESTER', label: '按学期' },
   { value: 'YEAR', label: '按学年' },
   { value: 'BIENNIAL', label: '每两年' },
   { value: 'TRIENNIAL', label: '每三年' },
   { value: 'PROGRAM_CYCLE', label: '按培养周期' },
 ]
+
+const EVALUATION_CYCLE_LABEL: Record<EvaluationCycle, string> = evaluationCycleOptions.reduce(
+  (labels, option) => {
+    labels[option.value] = option.label
+    return labels
+  },
+  {} as Record<EvaluationCycle, string>,
+)
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -137,9 +147,11 @@ function evaluationMethodLabel(value: unknown): string {
 }
 
 function evaluationCycleLabel(value: unknown): string {
-  if (typeof value !== 'string') return '-'
-  const found = evaluationCycleOptions.find((option) => option.value === value)
-  return found ? found.label : value || '-'
+  if (value == null || value === '') return '-'
+  if (typeof value !== 'string' || !(value in EVALUATION_CYCLE_LABEL)) {
+    throw new Error('专业评价口径评价周期不符合前后端契约')
+  }
+  return EVALUATION_CYCLE_LABEL[value as EvaluationCycle]
 }
 
 const enabledCount = computed(() => list.value.filter((item) => item.enabled).length)

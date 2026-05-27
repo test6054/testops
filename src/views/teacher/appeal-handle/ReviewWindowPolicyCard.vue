@@ -141,6 +141,10 @@ const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
   { label: '完整材料', value: 'FULL' },
 ]
 
+function isVisibleMaterialScopeCode(value: unknown): value is VisibleMaterialScopeCode {
+  return value === 'SCORE_ONLY' || value === 'SCORE_AND_ANNOTATION' || value === 'FULL'
+}
+
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
@@ -149,10 +153,13 @@ async function reload(): Promise<void> {
     const data = await getReviewWindowPolicy(props.examId)
     policy.value = data
     if (data) {
+      if (!isVisibleMaterialScopeCode(data.visibleMaterialScope)) {
+        throw new Error('复核窗口可见材料范围不符合前后端契约')
+      }
       form.openTime = data.openTime || ''
       form.closeTime = data.closeTime || ''
       form.maxRequestCount = data.maxRequestCount ?? 1
-      form.visibleMaterialScope = data.visibleMaterialScope || 'SCORE_ONLY'
+      form.visibleMaterialScope = data.visibleMaterialScope
       form.allowedReasonTypes = data.allowedReasonTypes || ''
     }
   } catch (e) {

@@ -1131,11 +1131,14 @@ async function openRuleEditor(goal: CourseGoalVO) {
       notes: existing.notes || '',
     })
   } else {
+    if (!isAggregationFunction(goal.aggregation)) {
+      throw new Error('课程目标聚合函数不符合前后端契约')
+    }
     ruleEditorMode.value = 'create'
     Object.assign(ruleEditor, {
       id: undefined,
       courseGoalId: goal.id,
-      aggregation: goal.aggregation || 'WEIGHTED_SUM',
+      aggregation: goal.aggregation,
       directWeight: goal.directWeight,
       indirectWeight: goal.indirectWeight,
       thresholdValue: goal.thresholdValue ?? 0.7,
