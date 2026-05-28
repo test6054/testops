@@ -53,7 +53,8 @@ export const qualityRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/quality/accreditation-standard.vue'),
         meta: {
           title: '认证标准',
-          roles: [RoleEnum.SUPER_ADMIN, RoleEnum.SCH_TECH],
+          // 认证标准是平台级工程教育专业认证主数据，仅允许平台超级管理员维护，避免学校教师误操作
+          roles: [RoleEnum.SUPER_ADMIN],
           icon: 'safety-certificate',
           hideInMenu: false,
           keepAlive: true,

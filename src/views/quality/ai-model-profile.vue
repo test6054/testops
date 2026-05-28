@@ -4,24 +4,24 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 质量评价 / AI 能力 - 模型可靠性台
  *
  * 后端契约（AiModelProfileController）：
- * - GET  /quality/ai-model-profile/list?enabledOnly  列表
- * - POST /quality/ai-model-profile/save              保存 / 启用切换，apiKey 留空 = 保留原密钥
- * - POST /quality/ai-model-profile/health-check      人工触发健康检查
+ * - POST /api/quality/ai/model-profiles/list         分页列表
+ * - POST /api/quality/ai/model-profiles/save         保存 / 启用切换，apiKey 留空 = 保留原密钥
+ * - POST /api/quality/ai/model-profiles/health-check 人工触发健康检查
  *
  * 唯一启用约束：同租户 enabled=true 最多 1 条。切换启用时后端会在 advisory lock 下
  *   串行化并把同租户其它配置置为停用。abilityCode 仅作为 AI 任务与脱敏证据快照的审计
  *   语义存在，不参与模型选择。
  */
 import type { AiModelProfileSavePayload, AiModelProfileVO } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AI_HEALTH_STATUS_COLOR,
   AI_HEALTH_STATUS_LABEL,
   aiModelProfileApi,
   isAiHealthStatus,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -85,9 +85,12 @@ const activatingId = ref<string>('')
 async function loadList() {
   loading.value = true
   try {
-    list.value = await aiModelProfileApi.list({
+    const result = await aiModelProfileApi.list({
       enabledOnly: enabledOnly.value || undefined,
+      pageNum: 1,
+      pageSize: 200,
     })
+    list.value = result.list
   } finally {
     loading.value = false
   }

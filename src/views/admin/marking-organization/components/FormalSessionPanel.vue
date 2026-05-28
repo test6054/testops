@@ -14,15 +14,6 @@
           :options="groupOptions"
         />
       </a-form-item>
-      <a-form-item label="任务范围描述">
-        <a-textarea
-          v-model:value="formalScope"
-          :rows="2"
-          :maxlength="200"
-          placeholder="可选，例如 '第一批 100 份'"
-          show-count
-        />
-      </a-form-item>
       <UiButton :disabled="!formalGroupId" :loading="creating" @click="submitCreate">
         <template #icon><PlusOutlined /></template>
         创建正评会话
@@ -48,7 +39,12 @@
           <template #icon><PlayCircleOutlined /></template>
           启动正评
         </UiButton>
-        <UiButton variant="outline" :disabled="!actionSessionId" :loading="completing" @click="submitComplete">
+        <UiButton
+          variant="outline"
+          :disabled="!actionSessionId"
+          :loading="completing"
+          @click="submitComplete"
+        >
           <template #icon><CheckCircleOutlined /></template>
           完成正评
         </UiButton>
@@ -64,20 +60,39 @@
         <a-list-item>
           <a-list-item-meta>
             <template #title>
-              <a-typography-text copyable>会话 #{{ (item as FormalSessionVO).id }}</a-typography-text>
+              <a-typography-text copyable
+                >会话 #{{ (item as FormalSessionVO).id }}</a-typography-text
+              >
               <UiTag
-                :tone="FORMAL_STATUS_TONE[(item as FormalSessionVO).sessionStatus]"
+                :tone="
+                  strictEnumTone(
+                    FORMAL_STATUS_TONE,
+                    (item as FormalSessionVO).sessionStatus,
+                    '正评会话状态',
+                  )
+                "
                 size="sm"
                 class="status-tag"
               >
-                {{ FORMAL_STATUS_LABEL[(item as FormalSessionVO).sessionStatus] }}
+                {{
+                  strictEnumLabel(
+                    FORMAL_STATUS_LABEL,
+                    (item as FormalSessionVO).sessionStatus,
+                    '正评会话状态',
+                  )
+                }}
               </UiTag>
             </template>
             <template #description>
               <span>
-                题组 #{{ (item as FormalSessionVO).groupId }} · 创建于 {{ formatDateTime((item as FormalSessionVO).createTime) }}
-                <template v-if="(item as FormalSessionVO).startTime">· 开始 {{ formatDateTime((item as FormalSessionVO).startTime) }}</template>
-                <template v-if="(item as FormalSessionVO).endTime">· 结束 {{ formatDateTime((item as FormalSessionVO).endTime) }}</template>
+                题组 #{{ (item as FormalSessionVO).groupId }} · 创建于
+                {{ formatDateTime((item as FormalSessionVO).createTime) }}
+                <template v-if="(item as FormalSessionVO).startTime"
+                  >· 开始 {{ formatDateTime((item as FormalSessionVO).startTime) }}</template
+                >
+                <template v-if="(item as FormalSessionVO).endTime"
+                  >· 结束 {{ formatDateTime((item as FormalSessionVO).endTime) }}</template
+                >
                 <template v-if="(item as FormalSessionVO).pauseReason">
                   · 暂停原因：{{ (item as FormalSessionVO).pauseReason }}
                 </template>
@@ -139,18 +154,7 @@
 </template>
 
 <script lang="ts" setup>
-import type {
-  FormalSessionStatusCode,
-  FormalSessionVO,
-} from '@/apis/mark/marking-organization'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
-import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
-import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import StopOutlined from '@ant-design/icons-vue/StopOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
+import type { FormalSessionStatusCode, FormalSessionVO } from '@/apis/mark/marking-organization'
 import {
   completeFormalSession,
   createFormalSession,
@@ -160,8 +164,17 @@ import {
   resumeFormalSession,
   startFormalSession,
 } from '@/apis/mark/marking-organization'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
+import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import StopOutlined from '@ant-design/icons-vue/StopOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 interface GroupOption {
   value: string
@@ -177,12 +190,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'refresh': []
+  refresh: []
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
 
 const formalGroupId = ref<string | undefined>(undefined)
-const formalScope = ref('')
 const creating = ref(false)
 const actionSessionId = ref<string | undefined>(undefined)
 const starting = ref(false)
@@ -191,16 +203,16 @@ const resumingId = ref<string | null>(null)
 const deletingId = ref<string | null>(null)
 
 const formalSessionOptions = computed(() =>
-  props.sessions.map(item => ({
+  props.sessions.map((item) => ({
     value: item.id,
-    label: `会话 #${item.id}（题组 #${item.groupId}） · ${FORMAL_STATUS_LABEL[item.sessionStatus]}`,
+    label: `会话 #${item.id}（题组 #${item.groupId}） · ${strictEnumLabel(FORMAL_STATUS_LABEL, item.sessionStatus, '正评会话状态')}`,
   })),
 )
 
 watch(
   () => props.sessions,
   (next) => {
-    if (actionSessionId.value && !next.some(s => s.id === actionSessionId.value)) {
+    if (actionSessionId.value && !next.some((s) => s.id === actionSessionId.value)) {
       actionSessionId.value = undefined
     }
   },
@@ -215,15 +227,14 @@ function canResume(status: FormalSessionStatusCode): boolean {
 }
 
 function canClose(status: FormalSessionStatusCode): boolean {
-  return status === 'SESSION_ACTIVE'
-    || status === 'SESSION_PAUSED'
-    || status === 'SESSION_COMPLETED'
+  return (
+    status === 'SESSION_ACTIVE' || status === 'SESSION_PAUSED' || status === 'SESSION_COMPLETED'
+  )
 }
 
 function canDelete(status: FormalSessionStatusCode): boolean {
   return status === 'SESSION_CREATED'
 }
-
 
 async function submitCreate(): Promise<void> {
   if (!props.organizationId || !formalGroupId.value) return
@@ -232,7 +243,7 @@ async function submitCreate(): Promise<void> {
     const sessionId = await createFormalSession({
       organizationId: props.organizationId,
       groupId: formalGroupId.value,
-      taskScope: formalScope.value?.trim() || undefined,
+      taskScope: undefined,
     })
     message.success(`正评会话 #${sessionId} 已创建`)
     actionSessionId.value = sessionId

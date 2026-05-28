@@ -11,14 +11,15 @@ import type {
   EvaluationWorkgroupQueryPayload,
   EvaluationWorkgroupSavePayload,
   EvaluationWorkgroupVO,
+  WorkgroupMember,
 } from '@/apis/quality'
+import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
 import type { MajorCategoryVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
-import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
@@ -67,10 +68,10 @@ function workgroupLevelLabel(value: unknown): string {
     return ''
   }
   if (
-    value === 'UNIVERSITY'
-    || value === 'COLLEGE'
-    || value === 'PROGRAM'
-    || value === 'INDUSTRY'
+    value === 'UNIVERSITY' ||
+    value === 'COLLEGE' ||
+    value === 'PROGRAM' ||
+    value === 'INDUSTRY'
   ) {
     return WORKGROUP_LEVEL_LABEL[value]
   }
@@ -104,6 +105,20 @@ const levelOptions = Object.entries(WORKGROUP_LEVEL_LABEL).map(([value, label]) 
   label,
 }))
 
+type WorkgroupMemberRole = 'CONVENER' | 'MEMBER' | 'EXTERNAL_EXPERT'
+
+const ROLE_LABEL: Record<WorkgroupMemberRole, string> = {
+  CONVENER: '召集人',
+  MEMBER: '成员',
+  EXTERNAL_EXPERT: '外部专家',
+}
+
+const memberRoleOptions = [
+  { value: 'CONVENER', label: '召集人' },
+  { value: 'MEMBER', label: '成员' },
+  { value: 'EXTERNAL_EXPERT', label: '外部专家' },
+]
+
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
 const editor = reactive<EvaluationWorkgroupSavePayload>({
@@ -112,11 +127,20 @@ const editor = reactive<EvaluationWorkgroupSavePayload>({
   workgroupName: '',
   levelCode: 'PROGRAM',
   convenerUserId: '',
-  members: '',
+  members: [],
   responsibility: '',
   enabled: true,
 })
 const submitting = ref(false)
+
+function createEmptyMember(): WorkgroupMember {
+  return {
+    userCode: '',
+    userName: '',
+    role: 'MEMBER',
+    note: '',
+  }
+}
 
 async function loadList() {
   loading.value = true
@@ -145,7 +169,7 @@ async function loadDicts() {
   programs.value = await majorCategoryCatalogApi.listAll()
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -185,7 +209,7 @@ function openCreate() {
     workgroupName: '',
     levelCode: 'PROGRAM',
     convenerUserId: '',
-    members: '',
+    members: [createEmptyMember()],
     responsibility: '',
     enabled: true,
   })
@@ -194,7 +218,26 @@ function openCreate() {
 
 function openEdit(record: EvaluationWorkgroupVO) {
   editorMode.value = 'edit'
-  Object.assign(editor, record)
+  Object.assign(editor, {
+    id: record.id,
+    programId: record.programId,
+    workgroupCode: record.workgroupCode,
+    workgroupName: record.workgroupName,
+    levelCode: record.levelCode,
+    convenerUserId: record.convenerUserId,
+    members: (record.members ?? []).map((member) => ({
+      userId: member.userId,
+      userCode: member.userCode,
+      userName: member.userName,
+      role: member.role || 'MEMBER',
+      note: member.note || '',
+    })),
+    responsibility: record.responsibility || '',
+    enabled: record.enabled,
+  })
+  if (editor.members.length === 0) {
+    editor.members.push(createEmptyMember())
+  }
   editorVisible.value = true
 }
 
@@ -206,20 +249,63 @@ function handleEditorConvenerChange(value: string | null) {
   editor.convenerUserId = value ?? ''
 }
 
+function appendMember() {
+  editor.members.push(createEmptyMember())
+}
+
+function removeMember(index: number) {
+  editor.members.splice(index, 1)
+  if (editor.members.length === 0) {
+    editor.members.push(createEmptyMember())
+  }
+}
+
 async function submitEditor() {
   if (
-    !editor.programId
-    || !editor.workgroupCode.trim()
-    || !editor.workgroupName.trim()
-    || !editor.convenerUserId
+    !editor.programId ||
+    !editor.workgroupCode.trim() ||
+    !editor.workgroupName.trim() ||
+    !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
   }
+  if (editor.members.length === 0) {
+    message.error('请至少填写一名工作组成员')
+    return
+  }
+  const members: WorkgroupMember[] = []
+  for (let index = 0; index < editor.members.length; index += 1) {
+    const member = editor.members[index]
+    const userCode = member.userCode.trim()
+    const userName = member.userName.trim()
+    if (!userCode || !userName) {
+      message.error(`请完整填写第 ${index + 1} 名成员的编号和姓名`)
+      return
+    }
+    members.push({
+      userId: member.userId,
+      userCode,
+      userName,
+      role: member.role && member.role.trim() ? member.role : 'MEMBER',
+      note: member.note ? member.note.trim() : '',
+    })
+  }
+  const payload: EvaluationWorkgroupSavePayload = {
+    id: editor.id,
+    programId: editor.programId,
+    workgroupCode: editor.workgroupCode.trim(),
+    workgroupName: editor.workgroupName.trim(),
+    levelCode: editor.levelCode,
+    convenerUserId: editor.convenerUserId,
+    members,
+    responsibility: editor.responsibility ? editor.responsibility.trim() : '',
+    enabled: editor.enabled,
+  }
   submitting.value = true
   try {
-    if (editorMode.value === 'create') await evaluationWorkgroupApi.create(editor)
-    else await evaluationWorkgroupApi.update(editor)
+    if (editorMode.value === 'create') await evaluationWorkgroupApi.create(payload)
+    else await evaluationWorkgroupApi.update(payload)
     message.success('已保存')
     editorVisible.value = false
     await loadList()
@@ -254,7 +340,7 @@ const importVisible = ref(false)
 const importTargetWorkgroup = ref<EvaluationWorkgroupVO | null>(null)
 const membersDrawerVisible = ref(false)
 const membersDrawerTarget = ref<EvaluationWorkgroupVO | null>(null)
-const membersDrawerRows = computed(() => membersDrawerTarget.value?.parsedMembers ?? [])
+const membersDrawerRows = computed(() => membersDrawerTarget.value?.members ?? [])
 
 const memberColumns: ColumnsType = [
   { title: '工号/编号', dataIndex: 'userCode', key: 'userCode', width: 140 },
@@ -262,14 +348,6 @@ const memberColumns: ColumnsType = [
   { title: '角色', dataIndex: 'role', key: 'role', width: 140 },
   { title: '备注', dataIndex: 'note', key: 'note' },
 ]
-
-type WorkgroupMemberRole = 'CONVENER' | 'MEMBER' | 'EXTERNAL_EXPERT'
-
-const ROLE_LABEL: Record<WorkgroupMemberRole, string> = {
-  CONVENER: '召集人',
-  MEMBER: '成员',
-  EXTERNAL_EXPERT: '外部专家',
-}
 
 function isWorkgroupMemberRole(role: unknown): role is WorkgroupMemberRole {
   return role === 'CONVENER' || role === 'MEMBER' || role === 'EXTERNAL_EXPERT'
@@ -282,7 +360,7 @@ function memberRoleLabel(role: unknown): string {
 }
 
 function memberCountOf(record: EvaluationWorkgroupVO): number {
-  return Array.isArray(record.parsedMembers) ? record.parsedMembers.length : 0
+  return record.members.length
 }
 
 function openImportMembers(record: EvaluationWorkgroupVO) {
@@ -467,12 +545,55 @@ onMounted(async () => {
           />
         </a-form-item>
         <a-form-item label="成员清单">
-          <a-alert
-            type="info"
-            show-icon
-            message="成员清单通过 Excel 导入维护"
-            description="保存当前工作组后，在「工作组台账」操作列点击「Excel 导入」上传成员名单。模板可在导入弹窗中下载。"
-          />
+          <div class="ewg__member-editor">
+            <div class="ewg__member-editor-header">
+              <p class="ewg__member-editor-tip">支持逐行录入，也可在保存后通过 Excel 覆盖导入。</p>
+              <UiButton variant="outline" size="sm" @click="appendMember">新增成员</UiButton>
+            </div>
+            <div
+              v-for="(member, index) in editor.members"
+              :key="`${editorMode}-${index}`"
+              class="ewg__member-row"
+            >
+              <a-row :gutter="12">
+                <a-col :span="5">
+                  <a-input
+                    v-model:value="member.userCode"
+                    :maxlength="64"
+                    placeholder="工号 / 编号"
+                  />
+                </a-col>
+                <a-col :span="5">
+                  <a-input v-model:value="member.userName" :maxlength="64" placeholder="姓名" />
+                </a-col>
+                <a-col :span="5">
+                  <a-select
+                    v-model:value="member.role"
+                    :options="memberRoleOptions"
+                    placeholder="角色"
+                  />
+                </a-col>
+                <a-col :span="7">
+                  <a-input
+                    v-model:value="member.note"
+                    :maxlength="255"
+                    placeholder="备注：单位 / 联系方式 / 组织角色"
+                  />
+                </a-col>
+                <a-col :span="2" class="ewg__member-row-action">
+                  <UiButton
+                    variant="ghost"
+                    status="danger"
+                    size="sm"
+                    :disabled="editor.members.length === 1"
+                    @click="removeMember(index)"
+                  >
+                    删除
+                  </UiButton>
+                </a-col>
+              </a-row>
+            </div>
+          </div>
         </a-form-item>
         <a-form-item label="职责">
           <a-textarea v-model:value="editor.responsibility" :rows="3" />
@@ -503,10 +624,7 @@ onMounted(async () => {
       :width="720"
       placement="right"
     >
-      <a-empty
-        v-if="!membersDrawerTarget?.parsedMembers?.length"
-        description="该工作组尚无成员，请通过「Excel 导入」上传"
-      />
+      <a-empty v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
       <UiDataTable
         v-else
         :columns="memberColumns"
@@ -591,6 +709,43 @@ onMounted(async () => {
 
   &__filter {
     width: 140px;
+  }
+
+  &__member-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface-elevated, #f8fafc);
+  }
+
+  &__member-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__member-editor-tip {
+    margin: 0;
+    font-size: 13px;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__member-row {
+    padding: 12px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface, #ffffff);
+  }
+
+  &__member-row-action {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
   }
 }
 </style>

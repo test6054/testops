@@ -12,6 +12,16 @@
 /**
  * 行级诊断：表达 Excel 单行解析与业务校验的结果。
  */
+export interface ImportDiagnosticField {
+  /** Excel 列名 */
+  columnName: string
+  /** Excel 单元格原始文本 */
+  cellValue: string
+}
+
+/**
+ * 行级诊断：表达 Excel 单行解析与业务校验的结果。
+ */
 export interface ImportDiagnostic {
   /** Excel 业务行号（表头位于第 1 行，业务行从第 2 行起） */
   rowIndex: number
@@ -21,8 +31,8 @@ export interface ImportDiagnostic {
   invalidReason?: string
   /** 机器可读的错误码；valid=false 时必填 */
   errorCode?: string
-  /** 行原始值快照：列名 -> 原始字符串值 */
-  rowSnapshot?: Record<string, string>
+  /** 行原始列值 */
+  rowFields?: ImportDiagnosticField[]
 }
 
 /**

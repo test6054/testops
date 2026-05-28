@@ -181,6 +181,10 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
+import {
+  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
@@ -189,10 +193,6 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -207,6 +207,7 @@ import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewAssignment' })
 
@@ -221,13 +222,12 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
-const currentUserId = computed(() => {
-  const userId = userStore.userInfo.userId
-  if (!userId) {
-    throw new Error('当前用户缺少 userId，无法领取复核任务')
-  }
-  return userId
-})
+/**
+ * 当前登录教师 ID 仅用于展示“我”标签。
+ *
+ * 用户态初始化存在短暂空窗，渲染路径必须允许该值暂缺，避免页面在响应式边界切换时崩溃。
+ */
+const currentUserId = computed(() => userStore.userInfo.userId || '')
 
 // ─── 列表筛选 + 数据 ─────────────────────────────
 const filterForm = reactive<{
@@ -242,34 +242,20 @@ const filterForm = reactive<{
 const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))
 
 function reviewStatusTone(value: ReviewTaskStatusCode) {
-  return STATUS_TONE[value]
+  return strictEnumTone(STATUS_TONE, value, '复核任务状态')
 }
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return STATUS_LABEL[value]
+  return strictEnumLabel(STATUS_LABEL, value, '复核任务状态')
 }
 
 const markTaskStore = useMarkTaskStore()
+// 注意：reviewTasks / reviewTasksLoading 仅用于读取；
+// 写入必须经 markTaskStore.loadReviewTasks / clearReviewTasks 等 action，
+// 避免组件直接修改 storeToRefs 解开后的 ref。
 const { reviewTasks: tasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
 // D-9 错误态：复核任务加载失败时 UiErrorRetryPanel 重试 + 上报
 const tasksLoadError = ref<unknown>(null)
-computed(() => {
-  const counter: Record<ReviewTaskStatusCode, number> = {
-    PENDING: 0,
-    IN_PROGRESS: 0,
-    APPROVED: 0,
-    REJECTED: 0,
-  }
-  tasks.value.forEach((task) => {
-    counter[task.status]++
-  })
-  const codes: ReviewTaskStatusCode[] = ['PENDING', 'IN_PROGRESS', 'APPROVED', 'REJECTED']
-  return codes.map((code) => ({
-    code,
-    label: STATUS_LABEL[code],
-    count: counter[code],
-  }))
-})
 const columns: ColumnType<ReviewTaskItemVO>[] = [
   { title: '匿名号', key: 'anonymousNo', width: 140 },
   { title: '题号', key: 'questionNo', width: 100 },
@@ -281,9 +267,10 @@ const columns: ColumnType<ReviewTaskItemVO>[] = [
   { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
 
-
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
+  // reviewTasksLoading 由 markTaskStore.loadReviewTasks 内部 try/finally 维护，
+  // 组件不再直接写 loading.value，防止与 store 状态机交叉。
   tasksLoadError.value = null
   try {
     await markTaskStore.loadReviewTasks({
@@ -295,8 +282,6 @@ async function loadTasks(): Promise<void> {
     tasksLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '复核任务加载失败'
     message.error(errMsg)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -349,7 +334,8 @@ watch(selectedExamId, (value) => {
   if (value) {
     void loadTasks()
   } else {
-    tasks.value = []
+    // 通过 store action 清空，保持 Pinia 单向数据流
+    markTaskStore.clearReviewTasks()
   }
 })
 

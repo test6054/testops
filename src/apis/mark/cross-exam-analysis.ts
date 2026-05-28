@@ -10,6 +10,35 @@ import type {AiAnalysisStatusCode} from './teaching-analysis'
  */
 import http from '@/config/axios'
 
+/** 跨考试趋势条目 */
+export interface CrossExamTrendItemVO {
+  title?: string
+  examName?: string
+  metricName?: string
+  trend?: string
+  summary?: string
+  suggestion?: string
+}
+
+/** 学期成长条目 */
+export interface SemesterGrowthItemVO {
+  stageName?: string
+  abilityName?: string
+  trend?: string
+  scoreRate?: string
+  summary?: string
+  suggestion?: string
+}
+
+/** 课程目标达成条目 */
+export interface CourseAchievementItemVO {
+  objectiveName?: string
+  achievementRate?: number
+  summary?: string
+  weakPoint?: string
+  suggestion?: string
+}
+
 /** 跨考试趋势分析记录 - 对应 CrossExamTrendAnalysis */
 export interface CrossExamTrendAnalysisVO {
   id: string
@@ -22,12 +51,11 @@ export interface CrossExamTrendAnalysisVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   trendSummary?: string
-  trendItems?: string
+  trendItems?: CrossExamTrendItemVO[]
   analysisStatus?: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
   updateTime?: string
 }
@@ -45,13 +73,12 @@ export interface SemesterAbilityGrowthVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   growthSummary?: string
-  growthItems?: string
+  growthItems?: SemesterGrowthItemVO[]
   growthTrend?: string
   analysisStatus?: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
   updateTime?: string
 }
@@ -67,13 +94,12 @@ export interface CourseObjectiveAchievementVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   achievementSummary?: string
-  achievementItems?: string
+  achievementItems?: CourseAchievementItemVO[]
   overallAchievementRate?: number
   analysisStatus?: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
   updateTime?: string
 }

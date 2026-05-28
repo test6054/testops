@@ -42,7 +42,10 @@
       flat
     >
       <template #bodyCell="{ column, index }">
-        <template v-if="column.key === 'requestStatus'">
+        <template v-if="column.key === 'reasonType'">
+          {{ formatReasonType(rows[index].reasonType) }}
+        </template>
+        <template v-else-if="column.key === 'requestStatus'">
           <a-tag :color="requestStatusColor(rows[index].requestStatus)">
             {{ requestStatusLabel(rows[index].requestStatus) }}
           </a-tag>
@@ -62,9 +65,9 @@
               type="link"
               size="small"
               :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'APPROVED')"
             >
@@ -75,9 +78,9 @@
               size="small"
               danger
               :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'REJECTED')"
             >
@@ -111,7 +114,10 @@
           <a-input :value="targetRequest?.id ?? ''" disabled />
         </a-form-item>
         <a-form-item label="原因类型">
-          <a-input :value="targetRequest?.reasonType ?? ''" disabled />
+          <a-input
+            :value="targetRequest ? formatReasonType(targetRequest.reasonType) : ''"
+            disabled
+          />
         </a-form-item>
         <a-form-item label="申请原因">
           <a-textarea :value="targetRequest?.requestReason ?? ''" :rows="3" disabled />
@@ -134,26 +140,28 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamGradeReviewRequestVO,
+  GradeReviewReasonTypeCode,
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
+  GRADE_REVIEW_REASON_TYPE_LABEL,
   handleReviewRequest,
   listReviewRequests,
   REVIEW_REQUEST_STATUS_COLOR,
   REVIEW_REQUEST_STATUS_LABEL,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
 const rows = ref<ExamGradeReviewRequestVO[]>([])
@@ -209,10 +217,13 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    rows.value = await listReviewRequests({
+    const page = await listReviewRequests({
       examId: props.examId,
       requestStatus: statusFilter.value,
+      pageNum: 1,
+      pageSize: 200,
     })
+    rows.value = page.list
   } catch (e) {
     rows.value = []
     loadError.value = e
@@ -245,7 +256,6 @@ async function submitHandle(): Promise<void> {
   }
 }
 
-
 // 严格 typed helper：rows[index].requestStatus 是 GradeReviewRequestStatusCode | undefined，避免 slot record:any 索引。
 function requestStatusColor(status?: GradeReviewRequestStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_REQUEST_STATUS_COLOR, status, '复核申请状态')
@@ -253,6 +263,10 @@ function requestStatusColor(status?: GradeReviewRequestStatusCode): BadgeTone {
 
 function requestStatusLabel(status?: GradeReviewRequestStatusCode): string {
   return strictEnumLabel(REVIEW_REQUEST_STATUS_LABEL, status, '复核申请状态')
+}
+
+function formatReasonType(reasonType: GradeReviewReasonTypeCode): string {
+  return strictEnumLabel(GRADE_REVIEW_REASON_TYPE_LABEL, reasonType, '复核原因类型')
 }
 
 function formatQuestionIds(record: ExamGradeReviewRequestVO): string {

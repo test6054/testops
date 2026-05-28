@@ -11,6 +11,9 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
+/** 试卷模板未配置业务码 - 与后端 ResultCodeEnum.EXAM_MARK_PAPER_TEMPLATE_NOT_CONFIGURED 对齐 */
+export const PAPER_TEMPLATE_NOT_CONFIGURED_CODE = 20014
+
 /** 考试状态编码 - 对应后端 ExamStatus 枚举（仅保留批改链有意义的状态） */
 export type ExamStatusCode = 'ACTIVE' | 'CLOSED'
 
@@ -66,12 +69,18 @@ export interface ExamSummaryVO {
   createTime?: string
 }
 
+/** 考试范围班级引用 - 对应 ExamClassRefVO */
+export interface ExamClassRefVO {
+  classId: string
+  className: string
+}
+
 /** 考试详情 - 对应 ExamDetailResponse */
 export interface ExamDetailVO {
   examId: string
   courseId?: string
   examName: string
-  examNo?: string
+  examNo: string
   academicYear?: string
   semester?: string
   status: ExamStatusCode
@@ -85,6 +94,11 @@ export interface ExamDetailVO {
   updateTime?: string
   /** 班级范围ID集合 */
   classIds: string[]
+  /**
+   * 班级范围引用集合（classId + className），与 classIds 一一对应、顺序一致。
+   * 由后端通过 edu-user 班级服务批量回填，前端列表/标签直接消费 className。
+   */
+  classRefs: ExamClassRefVO[]
   /** 当前模板ID（未配置则 undefined） */
   templateId?: string
   templateName?: string
@@ -260,7 +274,10 @@ export interface ExamStandardAnswerSavePayload {
   standardAnswer?: string
   answerExplain?: string
   comparePolicy?: ObjectiveComparePolicyCode
-  answerPayload?: string
+  numericExpectedValue?: string
+  numericTolerance?: string
+  numericUnit?: string
+  gradingRubric?: string
   aiHint?: string
   effectiveNow?: boolean
 }
@@ -269,6 +286,7 @@ export interface ExamStandardAnswerSavePayload {
 export interface ExamCandidateVO {
   candidateRosterId: string
   classId?: string
+  className?: string
   studentUserId: string
   studentNo: string
   studentName: string
@@ -344,11 +362,31 @@ export function saveExamTemplate(
  * 查询考试当前模板
  * POST /api/mark/exams/template
  *
- * 注意：当页面或题目为空时后端会抛 DATA_NOT_FOUND，业务层应捕获以显示"尚未配置"状态
+ * 注意：模板不存在、缺少页面或缺少题目时，后端返回 PAPER_TEMPLATE_NOT_CONFIGURED_CODE。
  */
 export function getExamTemplate(examId: string): Promise<ExamTemplateVO> {
   return http.post<unknown>('/api/mark/exams/template', { examId })
     .then(validateExamTemplate)
+}
+
+/**
+ * 判断后端是否返回“试卷模板尚未配置”业务态。
+ * 只读取稳定 code，不依赖可变错误文案。
+ */
+export function isPaperTemplateNotConfiguredError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+  const businessError = error as {
+    code?: number | string
+    response?: {
+      data?: {
+        code?: number | string
+      }
+    }
+  }
+  const code = businessError.code ?? businessError.response?.data?.code
+  return Number(code) === PAPER_TEMPLATE_NOT_CONFIGURED_CODE
 }
 
 /**
@@ -1024,7 +1062,7 @@ export interface ExamQuestionAiExecutionItemVO {
   requestSummary?: string
   responseSummary?: string
   diagnostic?: string
-  latencyMs: number
+  latencyMs: string
   createTime: string
   createUser: string
 }
@@ -1150,7 +1188,7 @@ function validateAiExecutionItem(payload: unknown): ExamQuestionAiExecutionItemV
     requestSummary: optionalRecordString(record, 'requestSummary', '单题 AI 执行记录.requestSummary'),
     responseSummary: optionalRecordString(record, 'responseSummary', '单题 AI 执行记录.responseSummary'),
     diagnostic: optionalRecordString(record, 'diagnostic', '单题 AI 执行记录.diagnostic'),
-    latencyMs: requireRecordNumber(record, 'latencyMs', '单题 AI 执行记录.latencyMs'),
+    latencyMs: requireRecordString(record, 'latencyMs', '单题 AI 执行记录.latencyMs'),
     createTime: requireRecordString(record, 'createTime', '单题 AI 执行记录.createTime'),
     createUser: requireRecordString(record, 'createUser', '单题 AI 执行记录.createUser'),
   }
@@ -1236,7 +1274,7 @@ export function getPaperScore(examId: string, paperInstanceId: string): Promise<
 // ─── 复核任务（匿名批阅）─────────────────────────────────────────
 
 /** 匿名批阅任务查询请求 - 对应 ReviewTaskQueryRequest */
-export interface ReviewTaskQueryPayload {
+export interface ReviewTaskQueryPayload extends QueryDto {
   examId: string
   /** 复核状态编码，空查全部 */
   status?: ReviewTaskStatusCode
@@ -1353,9 +1391,9 @@ export interface ReviewTaskDetailVO {
  * 查询匿名批阅任务列表
  * POST /api/mark/exams/review-tasks
  */
-export function listReviewTasks(payload: ReviewTaskQueryPayload): Promise<ReviewTaskItemVO[]> {
+export function listReviewTasks(payload: ReviewTaskQueryPayload): Promise<PageResult<ReviewTaskItemVO>> {
   return http.post<unknown>('/api/mark/exams/review-tasks', payload)
-    .then(validateReviewTaskList)
+    .then((value) => validatePageResult(value, validateReviewTaskItem, '复核任务分页'))
 }
 
 /**
@@ -1379,7 +1417,7 @@ export function claimReviewTask(payload: ReviewTaskActionPayload): Promise<Revie
 // ─── 批注与阅卷进度 ─────────────────────────────────────────────
 
 /** 批注查询请求 - 对应 AnnotationQueryRequest */
-export interface AnnotationQueryPayload {
+export interface AnnotationQueryPayload extends QueryDto {
   examId: string
   paperInstanceId?: string
   questionTemplateId?: string
@@ -1418,14 +1456,33 @@ export interface MarkingProgressVO {
   inProgressReviewTaskCount: number
   openProcessingTaskCount: number
   scanAttentionCount: number
+  reviewTaskStatusSummaryList: ReviewTaskStatusSummaryVO[]
+  reviewQuestionProgressList: ReviewQuestionProgressItemVO[]
+}
+
+/** 复核任务状态汇总项 - 对应 ReviewTaskStatusSummaryResponse */
+export interface ReviewTaskStatusSummaryVO {
+  statusCode: ReviewTaskStatusCode
+  taskCount: number
+}
+
+/** 按题目聚合的复核进度项 - 对应 ReviewQuestionProgressItemResponse */
+export interface ReviewQuestionProgressItemVO {
+  questionTemplateId: string
+  questionNo: string
+  totalTaskCount: number
+  pendingTaskCount: number
+  inProgressTaskCount: number
+  approvedTaskCount: number
+  rejectedTaskCount: number
 }
 
 /**
  * 查询批注记录
  * POST /api/mark/exams/annotations
  */
-export function listAnnotations(payload: AnnotationQueryPayload): Promise<AnnotationVO[]> {
-  return http.post<AnnotationVO[]>('/api/mark/exams/annotations', payload)
+export function listAnnotations(payload: AnnotationQueryPayload): Promise<PageResult<AnnotationVO>> {
+  return http.post<PageResult<AnnotationVO>>('/api/mark/exams/annotations', payload)
 }
 
 /**
@@ -1449,6 +1506,19 @@ function requireFiniteNumber(value: unknown, fieldName: string): number {
     throw new TypeError(`${fieldName} 接口返回格式错误`)
   }
   return value
+}
+
+function requirePageNumber(value: unknown, fieldName: string): number {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
+    return value
+  }
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
+    const parsed = Number(value)
+    if (Number.isSafeInteger(parsed)) {
+      return parsed
+    }
+  }
+  throw new TypeError(`${fieldName} 接口返回格式错误`)
 }
 
 function requireBoolean(value: unknown, fieldName: string): boolean {
@@ -1515,6 +1585,36 @@ function validateExamSummary(value: unknown): ExamSummaryVO {
   }
 }
 
+function validateExamClassRef(value: unknown): ExamClassRefVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('考试班级引用接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    classId: requireString(result.classId, '班级 ID'),
+    className: requireString(result.className, '班级名称'),
+  }
+}
+
+function validateExamClassRefs(
+  value: unknown,
+  classIds: string[],
+): ExamClassRefVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('考试班级引用集合接口返回格式错误')
+  }
+  if (value.length !== classIds.length) {
+    throw new TypeError('考试班级引用与班级 ID 数量不一致')
+  }
+  const refs = value.map(validateExamClassRef)
+  for (let i = 0; i < refs.length; i += 1) {
+    if (refs[i].classId !== classIds[i]) {
+      throw new TypeError('考试班级引用与班级 ID 顺序不一致')
+    }
+  }
+  return refs
+}
+
 function validateExamDetail(value: unknown): ExamDetailVO {
   if (!value || typeof value !== 'object') {
     throw new TypeError('考试详情接口返回格式错误')
@@ -1526,11 +1626,12 @@ function validateExamDetail(value: unknown): ExamDetailVO {
   if (templateId && (!templateName || totalPages === undefined)) {
     throw new TypeError('考试详情接口模板摘要返回格式错误')
   }
+  const classIds = requireStringList(result.classIds, '班级范围')
   return {
     examId: requireString(result.examId, '考试 ID'),
     courseId: optionalString(result.courseId, '课程 ID'),
     examName: requireString(result.examName, '考试名称'),
-    examNo: optionalString(result.examNo, '考试编号'),
+    examNo: requireString(result.examNo, '考试编号'),
     academicYear: optionalString(result.academicYear, '学年'),
     semester: optionalString(result.semester, '学期'),
     status: requireExamStatus(result.status, '考试状态'),
@@ -1542,7 +1643,8 @@ function validateExamDetail(value: unknown): ExamDetailVO {
     createUser: optionalString(result.createUser, '创建人'),
     createTime: optionalString(result.createTime, '创建时间'),
     updateTime: optionalString(result.updateTime, '更新时间'),
-    classIds: requireStringList(result.classIds, '班级范围'),
+    classIds,
+    classRefs: validateExamClassRefs(result.classRefs, classIds),
     templateId,
     templateName,
     totalPages,
@@ -1623,10 +1725,10 @@ function validatePageResult<T>(
   }
   return {
     list: result.list.map(itemValidator),
-    total: requireFiniteNumber(result.total, `${fieldName} 总数`),
-    pageNum: requireFiniteNumber(result.pageNum, `${fieldName} 页码`),
-    pageSize: requireFiniteNumber(result.pageSize, `${fieldName} 每页数量`),
-    pages: requireFiniteNumber(result.pages, `${fieldName} 总页数`),
+    total: requirePageNumber(result.total, `${fieldName} 总数`),
+    pageNum: requirePageNumber(result.pageNum, `${fieldName} 页码`),
+    pageSize: requirePageNumber(result.pageSize, `${fieldName} 每页数量`),
+    pages: requirePageNumber(result.pages, `${fieldName} 总页数`),
   }
 }
 
@@ -1710,9 +1812,11 @@ function validateExamCandidate(value: unknown): ExamCandidateVO {
     throw new TypeError('考生名册项接口返回格式错误')
   }
   const result = value as Record<string, unknown>
+  const classId = optionalString(result.classId, '班级 ID')
   return {
     candidateRosterId: requireString(result.candidateRosterId, '考生名册 ID'),
-    classId: optionalString(result.classId, '班级 ID'),
+    classId,
+    className: classId ? requireString(result.className, '班级名称') : optionalString(result.className, '班级名称'),
     studentUserId: requireString(result.studentUserId, '学生用户 ID'),
     studentNo: requireString(result.studentNo, '学号'),
     studentName: requireString(result.studentName, '学生姓名'),
@@ -1938,13 +2042,6 @@ function validateReviewTaskItem(value: unknown): ReviewTaskItemVO {
   }
 }
 
-function validateReviewTaskList(value: unknown): ReviewTaskItemVO[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError('复核任务列表接口返回格式错误')
-  }
-  return value.map(validateReviewTaskItem)
-}
-
 function validateReviewTaskDetail(value: unknown): ReviewTaskDetailVO {
   if (!value || typeof value !== 'object') {
     throw new TypeError('复核任务详情接口返回格式错误')
@@ -1973,11 +2070,44 @@ function validateReviewTaskDetail(value: unknown): ReviewTaskDetailVO {
   }
 }
 
+function validateReviewTaskStatusSummary(value: unknown): ReviewTaskStatusSummaryVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('复核任务状态汇总接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    statusCode: requireReviewTaskStatus(result.statusCode, '复核任务状态'),
+    taskCount: requireFiniteNumber(result.taskCount, '复核任务数量'),
+  }
+}
+
+function validateReviewQuestionProgressItem(value: unknown): ReviewQuestionProgressItemVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('按题目聚合的复核进度接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    questionTemplateId: requireString(result.questionTemplateId, '题目模板 ID'),
+    questionNo: requireString(result.questionNo, '题号'),
+    totalTaskCount: requireFiniteNumber(result.totalTaskCount, '复核任务总数'),
+    pendingTaskCount: requireFiniteNumber(result.pendingTaskCount, '待领取任务数'),
+    inProgressTaskCount: requireFiniteNumber(result.inProgressTaskCount, '处理中任务数'),
+    approvedTaskCount: requireFiniteNumber(result.approvedTaskCount, '已通过任务数'),
+    rejectedTaskCount: requireFiniteNumber(result.rejectedTaskCount, '已驳回任务数'),
+  }
+}
+
 function validateMarkingProgress(value: unknown): MarkingProgressVO {
   if (!value || typeof value !== 'object') {
     throw new TypeError('阅卷进度接口返回格式错误')
   }
   const result = value as Record<string, unknown>
+  if (!Array.isArray(result.reviewTaskStatusSummaryList)) {
+    throw new TypeError('复核任务状态汇总列表接口返回格式错误')
+  }
+  if (!Array.isArray(result.reviewQuestionProgressList)) {
+    throw new TypeError('按题目聚合的复核进度列表接口返回格式错误')
+  }
   return {
     examId: requireString(result.examId, '考试 ID'),
     paperCount: requireFiniteNumber(result.paperCount, '试卷数量'),
@@ -1989,5 +2119,7 @@ function validateMarkingProgress(value: unknown): MarkingProgressVO {
     inProgressReviewTaskCount: requireFiniteNumber(result.inProgressReviewTaskCount, '处理中复核任务数'),
     openProcessingTaskCount: requireFiniteNumber(result.openProcessingTaskCount, '开放处理任务数'),
     scanAttentionCount: requireFiniteNumber(result.scanAttentionCount, '扫描异常数'),
+    reviewTaskStatusSummaryList: result.reviewTaskStatusSummaryList.map(validateReviewTaskStatusSummary),
+    reviewQuestionProgressList: result.reviewQuestionProgressList.map(validateReviewQuestionProgressItem),
   }
 }

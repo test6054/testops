@@ -1,23 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-/**
- * 量表换算规则
- *
- * 后端：/api/quality/scale-conversion-rules
- * 用于间接评价跨量表归一：原始量表值 → 0~1 分值。
- * conversionMap 字段为 JSON 字符串：{ 原始值: 换算分值 }
- */
 import type {
+  ScaleConversionRuleItem,
   ScaleConversionRuleQueryPayload,
   ScaleConversionRuleSavePayload,
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
+import { isScaleType, SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { isScaleType, SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -32,7 +26,7 @@ const query = reactive<ScaleConversionRuleQueryPayload>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType, label: string }[] = [
+const scaleTypeOptions: { value: ScaleType; label: string }[] = [
   { value: 'FIVE_LEVEL', label: SCALE_TYPE_LABEL.FIVE_LEVEL },
   { value: 'FOUR_LEVEL', label: SCALE_TYPE_LABEL.FOUR_LEVEL },
   { value: 'TEN_POINT', label: SCALE_TYPE_LABEL.TEN_POINT },
@@ -40,7 +34,6 @@ const scaleTypeOptions: { value: ScaleType, label: string }[] = [
   { value: 'CUSTOM', label: SCALE_TYPE_LABEL.CUSTOM },
 ]
 
-// UiSearchForm 状态仓库：enabled 在表单使用字符串，@search 时映射回 query.enabled (boolean | undefined)
 const filterModel = ref<Record<string, unknown>>({
   scaleType: undefined,
   enabled: undefined,
@@ -52,18 +45,9 @@ const editor = reactive<ScaleConversionRuleSavePayload>({
   ruleCode: '',
   ruleName: '',
   scaleType: 'FIVE_LEVEL',
-  conversionMap: '',
+  items: [],
   description: '',
   enabled: true,
-})
-const editorJsonValid = computed(() => {
-  if (!editor.conversionMap.trim()) return false
-  try {
-    JSON.parse(editor.conversionMap)
-    return true
-  } catch {
-    return false
-  }
 })
 const submitting = ref(false)
 
@@ -93,12 +77,66 @@ const filterFields: FilterField[] = [
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'ruleCode', key: 'ruleCode', width: 140 },
-  { title: '名称', dataIndex: 'ruleName', key: 'ruleName' },
+  { title: '名称', dataIndex: 'ruleName', key: 'ruleName', width: 180 },
   { title: '量表类型', dataIndex: 'scaleType', key: 'scaleType', width: 140 },
+  { title: '换算条目', dataIndex: 'items', key: 'items', width: 360 },
   { title: '说明', dataIndex: 'description', key: 'description' },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 90 },
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
+
+function createRuleItem(
+  sourceValue = '',
+  normalizedScore = 0,
+  sortOrder?: number,
+): ScaleConversionRuleItem {
+  return { sourceValue, normalizedScore, sortOrder }
+}
+
+function defaultItemsByScaleType(scaleType: ScaleType): ScaleConversionRuleItem[] {
+  if (scaleType === 'FIVE_LEVEL') {
+    return [
+      createRuleItem('非常符合', 1, 1),
+      createRuleItem('比较符合', 0.75, 2),
+      createRuleItem('一般', 0.5, 3),
+      createRuleItem('比较不符合', 0.25, 4),
+      createRuleItem('非常不符合', 0, 5),
+    ]
+  }
+  if (scaleType === 'FOUR_LEVEL') {
+    return [
+      createRuleItem('优秀', 1, 1),
+      createRuleItem('良好', 0.75, 2),
+      createRuleItem('中等', 0.5, 3),
+      createRuleItem('较差', 0.25, 4),
+    ]
+  }
+  if (scaleType === 'TEN_POINT') {
+    return [
+      createRuleItem('10', 1, 1),
+      createRuleItem('8', 0.8, 2),
+      createRuleItem('6', 0.6, 3),
+      createRuleItem('4', 0.4, 4),
+    ]
+  }
+  if (scaleType === 'PERCENTAGE') {
+    return [
+      createRuleItem('100', 1, 1),
+      createRuleItem('90', 0.9, 2),
+      createRuleItem('80', 0.8, 3),
+      createRuleItem('60', 0.6, 4),
+    ]
+  }
+  return [createRuleItem('', 1, 1)]
+}
+
+function cloneItems(items: ScaleConversionRuleItem[]): ScaleConversionRuleItem[] {
+  return items.map((item, index) => ({
+    sourceValue: item.sourceValue,
+    normalizedScore: Number(item.normalizedScore),
+    sortOrder: item.sortOrder ?? index + 1,
+  }))
+}
 
 async function loadList() {
   loading.value = true
@@ -111,7 +149,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -146,7 +184,7 @@ function openCreate() {
     ruleCode: '',
     ruleName: '',
     scaleType: 'FIVE_LEVEL',
-    conversionMap: JSON.stringify({ 1: 0, 2: 0.25, 3: 0.5, 4: 0.75, 5: 1 }, null, 2),
+    items: defaultItemsByScaleType('FIVE_LEVEL'),
     description: '',
     enabled: true,
   })
@@ -155,31 +193,118 @@ function openCreate() {
 
 function openEdit(record: ScaleConversionRuleVO) {
   editorMode.value = 'edit'
+  if (!Array.isArray(record.items) || !record.items.length) {
+    throw new Error(`换算规则缺少条目数据：${record.ruleCode}`)
+  }
   Object.assign(editor, {
-    ...record,
-    conversionMap: prettyJson(record.conversionMap),
+    id: record.id,
+    ruleCode: record.ruleCode,
+    ruleName: record.ruleName,
+    scaleType: record.scaleType,
+    items: cloneItems(record.items),
+    description: record.description ?? '',
+    enabled: record.enabled,
   })
   editorVisible.value = true
 }
 
-function prettyJson(s: string): string {
-  if (!s) return ''
-  return JSON.stringify(JSON.parse(s), null, 2)
+function handleScaleTypeChange(value: unknown) {
+  if (!isScaleType(value)) {
+    throw new Error(`量表类型不符合前后端契约：${String(value)}`)
+  }
+  editor.scaleType = value
+  if (editorMode.value === 'create') {
+    editor.items = defaultItemsByScaleType(value)
+  }
+}
+
+function addItem() {
+  editor.items.push(createRuleItem('', 0, editor.items.length + 1))
+}
+
+function removeItem(index: number) {
+  editor.items.splice(index, 1)
+  editor.items.forEach((item, itemIndex) => {
+    item.sortOrder = itemIndex + 1
+  })
+}
+
+function formatScore(value: number): string {
+  return Number(value)
+    .toFixed(2)
+    .replace(/\.?0+$/, '')
+}
+
+function formatItems(items: ScaleConversionRuleItem[]): string {
+  if (!Array.isArray(items) || !items.length) {
+    throw new Error('换算规则缺少条目数据')
+  }
+  return items
+    .map((item) => `${item.sourceValue} -> ${formatScore(Number(item.normalizedScore))}`)
+    .join(' · ')
+}
+
+function scaleTypeLabel(value: unknown): string {
+  if (isScaleType(value)) return SCALE_TYPE_LABEL[value]
+  throw new Error(`量表类型不符合前后端契约：${String(value)}`)
+}
+
+function validateEditor(): ScaleConversionRuleItem[] | null {
+  if (!editor.ruleCode.trim() || !editor.ruleName.trim()) {
+    message.error('请填写编码与名称')
+    return null
+  }
+  if (!editor.items.length) {
+    message.error('请至少新增一条换算条目')
+    return null
+  }
+  const normalizedSourceValues = new Set<string>()
+  const items = editor.items.map((item, index) => {
+    const sourceValue = item.sourceValue.trim()
+    if (!sourceValue) {
+      throw new Error(`第 ${index + 1} 条原始值不能为空`)
+    }
+    if (item.normalizedScore === null || item.normalizedScore === undefined) {
+      throw new Error(`第 ${index + 1} 条换算分值不能为空`)
+    }
+    if (Number.isNaN(Number(item.normalizedScore))) {
+      throw new Error(`第 ${index + 1} 条换算分值不能为空`)
+    }
+    if (normalizedSourceValues.has(sourceValue)) {
+      throw new Error(`原始值重复：${sourceValue}`)
+    }
+    normalizedSourceValues.add(sourceValue)
+    return {
+      sourceValue,
+      normalizedScore: Number(item.normalizedScore),
+      sortOrder: item.sortOrder ?? index + 1,
+    }
+  })
+  return items
 }
 
 async function submitEditor() {
-  if (!editor.ruleCode.trim() || !editor.ruleName.trim()) {
-    message.error('请填写编码与名称')
+  let items: ScaleConversionRuleItem[] | null = null
+  try {
+    items = validateEditor()
+  } catch (error) {
+    message.error(error instanceof Error ? error.message : '换算条目校验失败')
     return
   }
-  if (!editorJsonValid.value) {
-    message.error('换算映射不是合法 JSON')
+  if (!items) {
     return
   }
   submitting.value = true
   try {
-    if (editorMode.value === 'create') await scaleConversionRuleApi.create(editor)
-    else await scaleConversionRuleApi.update(editor)
+    const payload: ScaleConversionRuleSavePayload = {
+      ...editor,
+      ruleCode: editor.ruleCode.trim(),
+      ruleName: editor.ruleName.trim(),
+      description: editor.description?.trim() ?? '',
+      items,
+    }
+    if (editorMode.value === 'create') await scaleConversionRuleApi.create(payload)
+    else await scaleConversionRuleApi.update(payload)
     message.success('已保存')
     editorVisible.value = false
     await loadList()
@@ -199,13 +324,6 @@ async function handleDelete(record: ScaleConversionRuleVO) {
     },
   })
 }
-
-function scaleTypeLabel(value: unknown): string {
-  if (isScaleType(value)) return SCALE_TYPE_LABEL[value]
-  throw new Error(`量表类型不符合前后端契约：${String(value)}`)
-}
-
-/* ========== 信号指标：量表换算规则库健康度 ========== */
 
 const signals = computed<SignalMetric[]>(() => {
   const enabled = list.value.filter((r) => r.enabled).length
@@ -267,6 +385,11 @@ onMounted(() => loadList())
           <template v-if="column.key === 'scaleType'">
             {{ scaleTypeLabel(text) }}
           </template>
+          <template v-else-if="column.key === 'items'">
+            <div class="scr__item-summary">
+              {{ formatItems(record.items) }}
+            </div>
+          </template>
           <template v-else-if="column.key === 'enabled'">
             <a-tag :color="text ? 'green' : 'default'">
               {{ text ? '启用' : '停用' }}
@@ -288,7 +411,7 @@ onMounted(() => loadList())
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建量表换算规则' : '编辑量表换算规则'"
       :confirm-loading="submitting"
-      width="640px"
+      width="860px"
       @ok="submitEditor"
     >
       <a-form layout="vertical" :model="editor">
@@ -300,7 +423,11 @@ onMounted(() => loadList())
           </a-col>
           <a-col :span="8">
             <a-form-item label="量表类型" required>
-              <a-select v-model:value="editor.scaleType" :options="scaleTypeOptions" />
+              <a-select
+                v-model:value="editor.scaleType"
+                :options="scaleTypeOptions"
+                @change="handleScaleTypeChange"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -312,13 +439,47 @@ onMounted(() => loadList())
         <a-form-item label="名称" required>
           <a-input v-model:value="editor.ruleName" />
         </a-form-item>
-        <a-form-item
-          label="换算映射（JSON）"
-          required
-          :validate-status="editorJsonValid ? 'success' : 'error'"
-          :help="editorJsonValid ? '' : '请输入合法 JSON，键为原始量表值，值为 0~1 分值'"
-        >
-          <a-textarea v-model:value="editor.conversionMap" :rows="8" class="scr__monospace" />
+        <a-form-item label="换算条目" required>
+          <div class="scr__items-header">
+            <span class="scr__items-tip">原始值与换算分值按当前业务条目直接维护</span>
+            <UiButton variant="ghost" size="sm" @click="addItem"> 新增条目 </UiButton>
+          </div>
+          <div v-if="editor.items.length" class="scr__item-list">
+            <div v-for="(item, index) in editor.items" :key="index" class="scr__item-row">
+              <div class="scr__item-cell scr__item-cell--index">
+                {{ index + 1 }}
+              </div>
+              <div class="scr__item-cell scr__item-cell--value">
+                <a-input v-model:value="item.sourceValue" placeholder="原始值" />
+              </div>
+              <div class="scr__item-cell scr__item-cell--score">
+                <a-input-number
+                  v-model:value="item.normalizedScore"
+                  :min="0"
+                  :max="1"
+                  :step="0.01"
+                  :precision="2"
+                  class="scr__number"
+                  placeholder="换算分值"
+                />
+              </div>
+              <div class="scr__item-cell scr__item-cell--sort">
+                <a-input-number
+                  v-model:value="item.sortOrder"
+                  :min="1"
+                  :precision="0"
+                  class="scr__number"
+                  placeholder="排序"
+                />
+              </div>
+              <div class="scr__item-cell scr__item-cell--action">
+                <UiButton variant="ghost" status="danger" size="sm" @click="removeItem(index)">
+                  删除
+                </UiButton>
+              </div>
+            </div>
+          </div>
+          <div v-else class="scr__empty">当前没有换算条目，请新增后再保存。</div>
         </a-form-item>
         <a-form-item label="说明">
           <a-textarea v-model:value="editor.description" :rows="3" />
@@ -368,16 +529,68 @@ onMounted(() => loadList())
     flex-wrap: wrap;
   }
 
-  &__filter {
-    width: 130px;
-
-    &--md {
-      width: 180px;
-    }
+  &__item-summary {
+    color: var(--dp-text-secondary, #475569);
+    line-height: 1.6;
+    white-space: normal;
+    word-break: break-all;
   }
 
-  &__monospace {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  &__items-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__items-tip {
+    color: var(--dp-text-secondary, #64748b);
+    font-size: 13px;
+  }
+
+  &__item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__item-row {
+    display: grid;
+    grid-template-columns: 48px minmax(180px, 1.5fr) minmax(140px, 0.9fr) minmax(120px, 0.8fr) 88px;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface-elevated, #f8fafc);
+  }
+
+  &__item-cell {
+    min-width: 0;
+  }
+
+  &__item-cell--index {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__number {
+    width: 100%;
+  }
+
+  &__empty {
+    padding: 16px;
+    border: 1px dashed var(--dp-border, #cbd5e1);
+    border-radius: 8px;
+    color: var(--dp-text-secondary, #64748b);
+    background: var(--dp-surface-elevated, #f8fafc);
   }
 }
 </style>

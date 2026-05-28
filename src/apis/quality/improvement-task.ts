@@ -35,8 +35,8 @@ export interface ImprovementTaskVO {
   dueDate: string
   status: ImprovementTaskStatus
   progressRemark?: string
-  /** 整改证据 JSON 字符串（前端按需 JSON.parse） */
-  rectificationEvidence?: string
+  /** 整改证据条目 */
+  rectificationEvidenceItems?: string[]
   reviewDecision?: string
   reviewRemark?: string
   closedAt?: string
@@ -80,8 +80,8 @@ export interface ImprovementTaskStatusUpdatePayload {
   id: string
   targetStatus: ImprovementTaskStatus
   progressRemark?: string
-  /** 整改证据 JSON 字符串 */
-  rectificationEvidence?: string
+  /** 整改证据条目 */
+  rectificationEvidenceItems?: string[]
 }
 
 /** 闭环复评 - 严格对齐后端 ImprovementTaskCloseRequest */

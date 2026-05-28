@@ -147,8 +147,20 @@
               <a-descriptions-item label="快照时间" :span="2">
                 {{ progress.snapshotTime }}
               </a-descriptions-item>
-              <a-descriptions-item v-if="progress.riskDetail" label="风险详情" :span="3">
-                <pre class="quality-dashboard__json-pre">{{ progress.riskDetail }}</pre>
+              <a-descriptions-item v-if="progressRiskItems.length > 0" label="风险详情" :span="3">
+                <ul class="quality-dashboard__risk-list">
+                  <li
+                    v-for="(riskItem, riskIndex) in progressRiskItems"
+                    :key="`${riskItem.riskCode}-${riskIndex}`"
+                    class="quality-dashboard__risk-item"
+                  >
+                    <UiTag :tone="riskTone(riskItem.riskLevel)" size="sm">
+                      {{ PROGRESS_RISK_LEVEL_LABEL[riskItem.riskLevel] }}
+                    </UiTag>
+                    <span class="quality-dashboard__risk-title">{{ riskItem.riskLabel }}</span>
+                    <span class="quality-dashboard__risk-desc">{{ riskItem.riskDescription }}</span>
+                  </li>
+                </ul>
               </a-descriptions-item>
             </a-descriptions>
           </UiCard>
@@ -367,9 +379,22 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   BatchReprocessScopeCode,
   ProgressMonitorRecordVO,
+  ProgressRiskItemVO,
   ProgressRiskLevelCode,
   ReviewerMetricStatusCode,
   ReviewerQualityMetricVO,
+} from '@/apis/mark/marking-quality'
+import {
+  createSpotCheckTasks,
+  getLatestProgress,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_LABEL,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_LABEL,
+  takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -383,18 +408,6 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  createSpotCheckTasks,
-  getLatestProgress,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_COLOR,
-  PROGRESS_RISK_LEVEL_LABEL,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_COLOR,
-  REVIEWER_METRIC_STATUS_LABEL,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,
@@ -438,6 +451,7 @@ const progressLoading = ref(false)
 const snapshotting = ref(false)
 // D-9 错误态：进度快照加载失败时，UiErrorRetryPanel 上报 + 重试
 const progressLoadError = ref<unknown>(null)
+const progressRiskItems = computed<ProgressRiskItemVO[]>(() => progress.value?.riskItems ?? [])
 
 async function loadProgress(): Promise<void> {
   if (!scopeValid.value) return
@@ -503,12 +517,15 @@ async function loadReviewerMetrics(): Promise<void> {
   reviewerLoading.value = true
   reviewerMetricsLoadError.value = null
   try {
-    reviewerMetrics.value = await listReviewerMetrics({
+    const page = await listReviewerMetrics({
       examId: selectedExamId.value,
       organizationId: organizationIdInput.value.trim() || undefined,
       groupId: groupIdInput.value.trim() || undefined,
       metricStatus: metricStatusFilter.value,
+      pageNum: 1,
+      pageSize: 200,
     })
+    reviewerMetrics.value = page.list
   } catch (error) {
     reviewerMetricsLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载教师质量指标失败')
@@ -625,8 +642,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0
@@ -809,15 +826,16 @@ onMounted(async () => {
     color: var(--ant-color-warning, #ea580c);
   }
 
-  &__json-pre {
-    background: var(--dp-surface-soft, #f8fafc);
-    padding: 8px;
-    border-radius: 4px;
+  &__risk-list {
     margin: 0;
-    white-space: pre-wrap;
-    word-break: break-all;
-    font-size: 12px;
+    padding-left: 18px;
+    display: grid;
+    gap: 8px;
+  }
+
+  &__risk-item {
     color: var(--dp-text-primary, #0f172a);
+    line-height: 1.6;
   }
 }
 

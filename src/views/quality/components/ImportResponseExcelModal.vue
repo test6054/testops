@@ -10,7 +10,7 @@
     <template v-if="!importResult">
       <a-alert
         message="模板说明"
-        description="Excel 列顺序：题项编码 | 原始值 | 开放文本 | 填写人姓名 | 联系方式 | 备注。其中题项编码和原始值为必填。"
+        description="Excel 列顺序：题项编码 | 量表分值 | 单选值 | 多选值 | 开放文本 | 填写人姓名 | 联系方式 | 备注。每行只填写当前题型对应的一列，多选值使用 | 分隔。"
         type="info"
         show-icon
         style="margin-bottom: 16px"
@@ -66,9 +66,9 @@
 
 <script setup lang="ts">
 import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evaluation'
+import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { computed, ref } from 'vue'
-import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 
 const props = defineProps<{
   open: boolean

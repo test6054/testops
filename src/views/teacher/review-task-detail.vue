@@ -98,7 +98,7 @@
               <span>识别答案</span>
             </template>
             <UiEmpty v-if="!detail?.recognizedAnswer" description="尚未产生识别答案" />
-            <pre v-else class="text-pre">{{ detail.recognizedAnswer }}</pre>
+            <div v-else class="text-block">{{ detail.recognizedAnswer }}</div>
           </UiCard>
 
           <UiCard class="info-card">
@@ -107,7 +107,7 @@
               <span>AI 诊断</span>
             </template>
             <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 诊断信息" />
-            <pre v-else class="text-pre">{{ detail.aiDiagnostic }}</pre>
+            <div v-else class="text-block">{{ detail.aiDiagnostic }}</div>
           </UiCard>
         </a-col>
 
@@ -128,7 +128,9 @@
                     </template>
                     <template #description>
                       <div class="annotation-meta">
-                        <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
+                        <span v-if="item.anchorText" class="muted"
+                          >锚点：{{ item.anchorText }}</span
+                        >
                         <span class="muted">{{ formatDateTime(item.createTime) }}</span>
                       </div>
                     </template>
@@ -145,7 +147,14 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AnnotationVO, ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
+import {
+  getReviewTaskDetail,
+  listAnnotations,
+  REVIEW_TASK_STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE,
+} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -155,15 +164,8 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import {
-  getReviewTaskDetail,
-  listAnnotations,
-  REVIEW_TASK_STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE,
-} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -235,12 +237,15 @@ const annotations = ref<AnnotationVO[]>([])
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
   try {
-    annotations.value = await listAnnotations({
+    const page = await listAnnotations({
       examId: examId.value,
       paperInstanceId: detail.value.paperInstanceId,
       questionTemplateId: detail.value.questionTemplateId,
       gradeResultId: detail.value.gradeResultId,
+      pageNum: 1,
+      pageSize: 200,
     })
+    annotations.value = page.list
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '批注记录加载失败'
     message.error(errMsg)
@@ -268,7 +273,6 @@ async function loadTask(): Promise<void> {
     loading.value = false
   }
 }
-
 
 function goWorkspace(): void {
   if (!hasParams.value) return
@@ -357,13 +361,12 @@ onBeforeUnmount(() => {
   object-fit: contain;
 }
 
-.text-pre {
+.text-block {
   margin: 0;
-  font-family: 'Monaco', 'Menlo', Consolas, monospace;
   font-size: 13px;
   line-height: 1.6;
   white-space: pre-wrap;
-  word-break: break-all;
+  overflow-wrap: anywhere;
   color: var(--ant-color-text);
   background: var(--ant-color-fill-quaternary);
   padding: 12px;

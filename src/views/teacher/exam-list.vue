@@ -264,11 +264,7 @@
         />
       </a-form-item>
       <a-form-item label="学年" name="academicYear">
-        <a-input
-          v-model:value="examForm.academicYear"
-          placeholder="2024-2025"
-          :maxlength="9"
-        />
+        <a-input v-model:value="examForm.academicYear" placeholder="2024-2025" :maxlength="9" />
       </a-form-item>
       <a-form-item label="学期" name="semester">
         <a-select
@@ -312,6 +308,14 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ExamCreatePayload, ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import {
+  createExam,
+  deleteExam,
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  pageExams,
+  updateExam,
+} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -322,14 +326,6 @@ import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createExam,
-  deleteExam,
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  pageExams,
-  updateExam,
-} from '@/apis/mark/exam'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import {
   UiAlertStrip,
@@ -375,7 +371,7 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -414,10 +410,11 @@ function examStatusLabel(exam: ExamSummaryVO): string {
   return exam.statusMessage
 }
 
-
 function formatAcademicTerm(exam: ExamSummaryVO): string {
   if (!exam.academicYear && !exam.semester) return ''
-  return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
+  return [exam.academicYear, formatSemester(exam.semester) || exam.semester]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 async function loadExams(): Promise<void> {
@@ -461,7 +458,7 @@ function handleReset(): void {
   pagination.current = 1
   void loadExams()
 }
-function handleUiPageChange(payload: { current: number, pageSize: number }): void {
+function handleUiPageChange(payload: { current: number; pageSize: number }): void {
   pagination.current = payload.current
   pagination.pageSize = payload.pageSize
   void loadExams()
@@ -500,8 +497,8 @@ async function loadStatusTotals(): Promise<void> {
     activeTotal.value = activeRes.total
     closedTotal.value = closedRes.total
   } catch (error) {
-    statusTotalsError.value
-      = error instanceof Error ? error.message : '进行中 / 已关闭考试计数加载失败'
+    statusTotalsError.value =
+      error instanceof Error ? error.message : '进行中 / 已关闭考试计数加载失败'
   }
 }
 
@@ -649,9 +646,8 @@ function openEditModal(exam: ExamSummaryVO): void {
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow = exam.examStartTime && exam.examEndTime
-    ? [exam.examStartTime, exam.examEndTime]
-    : undefined
+  examForm.examWindow =
+    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.gradingStrategy = exam.gradingStrategy ?? ''
   examForm.remark = exam.remark ?? ''
   formModalOpen.value = true
@@ -689,9 +685,24 @@ async function handleSave(): Promise<void> {
       await updateExam({ examId: editingExamId.value, ...payload })
       message.success('考试已更新')
     } else {
-      await createExam(payload)
+      const examId = await createExam(payload)
       message.success('考试已创建')
       pagination.current = 1
+      formModalOpen.value = false
+      await Promise.all([loadExams(), loadStatusTotals()])
+      Modal.confirm({
+        title: '下一步：配置考生名册',
+        content: '考试已创建。请选定班级并纳入考生后保存名册，否则扫描后无法完成身份绑定。',
+        okText: '去配置考生',
+        cancelText: '稍后再说',
+        onOk() {
+          void router.push({
+            name: 'TeacherCandidateRoster',
+            query: { examId, setup: '1' },
+          })
+        },
+      })
+      return
     }
     formModalOpen.value = false
     await Promise.all([loadExams(), loadStatusTotals()])

@@ -338,12 +338,58 @@
           placeholder="主观题给 AI 的额外评分提示（可选）"
         />
       </a-form-item>
-      <a-form-item label="结构化答案 JSON">
+      <a-form-item
+        v-if="
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+        "
+        label="标准值"
+        name="numericExpectedValue"
+      >
+        <a-input
+          v-model:value="answerForm.numericExpectedValue"
+          :maxlength="100"
+          placeholder="请输入数值题标准值"
+        />
+      </a-form-item>
+      <a-form-item
+        v-if="
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+        "
+        label="容差"
+        name="numericTolerance"
+      >
+        <a-input
+          v-model:value="answerForm.numericTolerance"
+          :maxlength="100"
+          placeholder="请输入允许误差范围"
+        />
+      </a-form-item>
+      <a-form-item
+        v-if="
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+        "
+        label="单位"
+      >
+        <a-input
+          v-model:value="answerForm.numericUnit"
+          :maxlength="100"
+          placeholder="请输入单位，可留空"
+        />
+      </a-form-item>
+      <a-form-item
+        v-if="answerContext.questionType === 'OBJECTIVE' && answerForm.comparePolicy === 'AI_GRADE'"
+        label="AI 评分细则"
+        name="gradingRubric"
+      >
         <a-textarea
-          v-model:value="answerForm.answerPayload"
-          :rows="3"
-          :maxlength="4000"
-          placeholder="结构化答案配置（如数值容差），JSON 字符串，可选"
+          v-model:value="answerForm.gradingRubric"
+          :rows="4"
+          :maxlength="2000"
+          placeholder="请录入 AI 评分细则，明确给分点、扣分点和判分边界"
+          show-count
         />
       </a-form-item>
       <a-form-item>
@@ -389,7 +435,15 @@ import type {
   ExamQuestionTemplateVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
+import {
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  saveExamTemplate,
+  saveStandardAnswer,
+} from '@/apis/mark/exam'
 import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -399,13 +453,6 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
-import {
-  getExamTemplate,
-  OBJECTIVE_COMPARE_POLICY_OPTIONS,
-  saveExamTemplate,
-  saveStandardAnswer,
-} from '@/apis/mark/exam'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   UiBadge,
   UiButton,
@@ -474,7 +521,7 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -565,12 +612,10 @@ async function loadTemplate(): Promise<void> {
     applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
   } catch (error) {
     clearTemplate()
-    const errMsg = error instanceof Error ? error.message : ''
-    const isNotConfigured
-      = errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('当前模板')
-    if (errMsg && !isNotConfigured) {
+    if (!isPaperTemplateNotConfiguredError(error)) {
       // 真实加载失败：D-9 错误态 + 警告提示
       templateLoadError.value = error
+      const errMsg = error instanceof Error ? error.message : '未知错误'
       message.warning(`当前考试尚未配置完整模板：${errMsg}`)
     }
   } finally {
@@ -797,15 +842,21 @@ const answerForm = reactive<{
   standardAnswer: string
   comparePolicy?: ObjectiveComparePolicyCode
   answerExplain?: string
+  numericExpectedValue?: string
+  numericTolerance?: string
+  numericUnit?: string
+  gradingRubric?: string
   aiHint?: string
-  answerPayload?: string
   effectiveNow: boolean
 }>({
   standardAnswer: '',
   comparePolicy: undefined,
   answerExplain: '',
+  numericExpectedValue: '',
+  numericTolerance: '',
+  numericUnit: '',
+  gradingRubric: '',
   aiHint: '',
-  answerPayload: '',
   effectiveNow: true,
 })
 
@@ -825,9 +876,9 @@ const answerFormRules: Record<string, Rule[]> = {
       validator: async (_rule: Rule, value: string) => {
         const trimmed = (value ?? '').trim()
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy !== 'AI_GRADE'
-          && !trimmed
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy !== 'AI_GRADE' &&
+          !trimmed
         ) {
           return Promise.reject(new Error('客观题需填写标准答案（选 AI 评分策略可留空）'))
         }
@@ -848,6 +899,51 @@ const answerFormRules: Record<string, Rule[]> = {
         return Promise.resolve()
       },
       trigger: 'change',
+    },
+  ],
+  numericExpectedValue: [
+    {
+      validator: async (_rule: Rule, value: string) => {
+        if (
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
+          !(value ?? '').trim()
+        ) {
+          return Promise.reject(new Error('数值容差策略必须填写标准值'))
+        }
+        return Promise.resolve()
+      },
+      trigger: 'blur',
+    },
+  ],
+  numericTolerance: [
+    {
+      validator: async (_rule: Rule, value: string) => {
+        if (
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
+          !(value ?? '').trim()
+        ) {
+          return Promise.reject(new Error('数值容差策略必须填写容差'))
+        }
+        return Promise.resolve()
+      },
+      trigger: 'blur',
+    },
+  ],
+  gradingRubric: [
+    {
+      validator: async (_rule: Rule, value: string) => {
+        if (
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'AI_GRADE' &&
+          !(value ?? '').trim()
+        ) {
+          return Promise.reject(new Error('AI 评分策略必须填写评分细则'))
+        }
+        return Promise.resolve()
+      },
+      trigger: 'blur',
     },
   ],
 }
@@ -896,8 +992,11 @@ function openAnswerModal(row: QuestionRow): void {
   answerForm.standardAnswer = ''
   answerForm.comparePolicy = undefined
   answerForm.answerExplain = ''
+  answerForm.numericExpectedValue = ''
+  answerForm.numericTolerance = ''
+  answerForm.numericUnit = ''
+  answerForm.gradingRubric = ''
   answerForm.aiHint = ''
-  answerForm.answerPayload = ''
   answerForm.effectiveNow = true
   answerModalOpen.value = true
 }
@@ -919,8 +1018,11 @@ async function handleSaveAnswer(): Promise<void> {
       standardAnswer: trimmedAnswer || undefined,
       comparePolicy: answerForm.comparePolicy,
       answerExplain: answerForm.answerExplain?.trim() || undefined,
+      numericExpectedValue: answerForm.numericExpectedValue?.trim() || undefined,
+      numericTolerance: answerForm.numericTolerance?.trim() || undefined,
+      numericUnit: answerForm.numericUnit?.trim() || undefined,
+      gradingRubric: answerForm.gradingRubric?.trim() || undefined,
       aiHint: answerForm.aiHint?.trim() || undefined,
-      answerPayload: answerForm.answerPayload?.trim() || undefined,
       effectiveNow: answerForm.effectiveNow,
     })
     message.success('标准答案已保存')

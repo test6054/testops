@@ -13,9 +13,6 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   isScoreBatchStatus,
@@ -24,6 +21,9 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   CourseSelector,
   StudentSelector,
@@ -201,7 +201,6 @@ const editor = ref<ScoreRecordSavePayload>({
   classId: '',
   rawScore: 0,
   fullScore: 100,
-  rubricBreakdown: '',
   validFlag: true,
   invalidReason: '',
   errorCodes: '',
@@ -224,7 +223,6 @@ function openCreate() {
     classId: '',
     rawScore: 0,
     fullScore: 100,
-    rubricBreakdown: '',
     validFlag: true,
     invalidReason: '',
     errorCodes: '',
@@ -246,8 +244,12 @@ async function submitEditor() {
   }
   editorSubmitting.value = true
   try {
-    if (editorMode.value === 'create') await scoreRecordApi.create(v)
-    else await scoreRecordApi.update(v)
+    const payload: ScoreRecordSavePayload = {
+      ...v,
+      rubricBreakdown: undefined,
+    }
+    if (editorMode.value === 'create') await scoreRecordApi.create(payload)
+    else await scoreRecordApi.update(payload)
     message.success('已保存')
     editorVisible.value = false
     await loadRecords()
@@ -290,10 +292,13 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    validByItemRecords.value = await scoreRecordApi.listValidByItem(
-      validByItemId.value,
-      qualityStore.currentQualityCourseId,
-    )
+    const page = await scoreRecordApi.listValidByItem({
+      assessmentItemId: validByItemId.value,
+      qualityCourseId: qualityStore.currentQualityCourseId,
+      pageNum: 1,
+      pageSize: 500,
+    })
+    validByItemRecords.value = page.list
   } finally {
     validByItemLoading.value = false
   }
@@ -564,12 +569,11 @@ function handleCourseChange(courseId: string | null) {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="Rubric 拆分（JSON）">
-          <a-textarea
-            v-model:value="editor.rubricBreakdown"
-            :rows="3"
-            placeholder="{&quot;rubricItemId&quot;: score, ...}"
-            class="score-record__mono"
+        <a-form-item label="评分项拆分">
+          <a-alert
+            type="info"
+            show-icon
+            message="评分项拆分由结构化评分功能维护，当前页面仅维护总分与有效性。"
           />
         </a-form-item>
         <a-row :gutter="12">

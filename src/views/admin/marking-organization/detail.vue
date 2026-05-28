@@ -6,10 +6,22 @@
           <h2 class="org-detail__title">阅卷交付 - 阅卷组织详情</h2>
           <UiTag
             v-if="organization"
-            :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
+            :tone="
+              strictEnumTone(
+                MARKING_ORGANIZATION_STATUS_TONE,
+                organization.organizationStatus,
+                '阅卷组织状态',
+              )
+            "
             size="sm"
           >
-            {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
+            {{
+              strictEnumLabel(
+                MARKING_ORGANIZATION_STATUS_LABEL,
+                organization.organizationStatus,
+                '阅卷组织状态',
+              )
+            }}
           </UiTag>
           <UiTag v-if="organization" tone="blue" size="sm">
             题组 {{ organization.groups.length }}
@@ -75,10 +87,22 @@
               </a-descriptions-item>
               <a-descriptions-item label="组织状态">
                 <UiTag
-                  :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
+                  :tone="
+                    strictEnumTone(
+                      MARKING_ORGANIZATION_STATUS_TONE,
+                      organization.organizationStatus,
+                      '阅卷组织状态',
+                    )
+                  "
                   size="sm"
                 >
-                  {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
+                  {{
+                    strictEnumLabel(
+                      MARKING_ORGANIZATION_STATUS_LABEL,
+                      organization.organizationStatus,
+                      '阅卷组织状态',
+                    )
+                  }}
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="匿名阅卷">
@@ -121,14 +145,10 @@
                   </a-typography-text>
                 </template>
                 <template v-else-if="column.key === 'questionTemplateIds'">
-                  <UiTag tone="blue" size="sm">
-                    {{ record.questionTemplateIds.length }} 题
-                  </UiTag>
+                  <UiTag tone="blue" size="sm"> {{ record.questionTemplateIds.length }} 题 </UiTag>
                 </template>
                 <template v-else-if="column.key === 'reviewerUserIds'">
-                  <UiTag tone="purple" size="sm">
-                    {{ record.reviewerUserIds.length }} 人
-                  </UiTag>
+                  <UiTag tone="purple" size="sm"> {{ record.reviewerUserIds.length }} 人 </UiTag>
                 </template>
                 <template v-else-if="column.key === 'groupStatus'">
                   <UiTag :tone="groupStatusTone(record.groupStatus)" size="sm">
@@ -232,11 +252,11 @@
                       allow-clear
                     />
                   </a-form-item>
-                  <a-form-item label="优先级规则（JSON / DSL）">
-                    <a-textarea
-                      v-model:value="policyForm.priorityRule"
-                      :rows="2"
-                      placeholder="可选，由后端策略层解析"
+                  <a-form-item label="优先级规则">
+                    <a-alert
+                      type="info"
+                      show-icon
+                      message="优先级规则已进入结构化治理，当前页面不再提供原始结构录入。"
                     />
                   </a-form-item>
                   <UiButton :loading="savingAllocation" @click="submitAllocation">
@@ -297,10 +317,22 @@
             <a-form layout="vertical" class="status-form">
               <a-form-item label="当前状态">
                 <UiTag
-                  :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
+                  :tone="
+                    strictEnumTone(
+                      MARKING_ORGANIZATION_STATUS_TONE,
+                      organization.organizationStatus,
+                      '阅卷组织状态',
+                    )
+                  "
                   size="md"
                 >
-                  {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
+                  {{
+                    strictEnumLabel(
+                      MARKING_ORGANIZATION_STATUS_LABEL,
+                      organization.organizationStatus,
+                      '阅卷组织状态',
+                    )
+                  }}
                 </UiTag>
               </a-form-item>
               <a-form-item label="目标状态" required>
@@ -423,6 +455,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   AllocationPolicySavePayload,
   AnonymousTokenPolicyCode,
@@ -436,21 +469,13 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySavePayload,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { getExamTemplate } from '@/apis/mark/exam'
 import {
   ANONYMOUS_TOKEN_POLICY_LABEL,
   closeQuestionGroup,
   deleteOrganization,
   deleteQuestionGroup,
   getOrganizationById,
+  isMarkingOrgNotCreatedError,
   MARKING_ALLOCATION_MODE_LABEL,
   MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
@@ -463,6 +488,14 @@ import {
   updateOrganization,
   updateOrganizationStatus,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getExamTemplate } from '@/apis/mark/exam'
 import {
   UiButton,
   UiDataTable,
@@ -485,7 +518,7 @@ const organizationId = computed(() => String(route.params.organizationId || ''))
 const organization = ref<MarkingOrganizationVO | null>(null)
 const examId = computed(() => String(organization.value?.examId || ''))
 const loading = ref(false)
-// D-9 错误态：仅当后端返回非“未找到”类错误时才上报
+// D-9 错误态：仅当后端返回非“未创建组织”业务码时才上报
 const organizationLoadError = ref<unknown>(null)
 const activeTab = ref<'info' | 'policy' | 'status'>('info')
 
@@ -524,9 +557,7 @@ async function loadOrganization(): Promise<void> {
     organization.value = await getOrganizationById({ organizationId: organizationId.value })
   } catch (error) {
     organization.value = null
-    const errMsg = error instanceof Error ? error.message : ''
-    const isNotFound = errMsg.includes('未找到') || errMsg.includes('不存在')
-    if (errMsg && !isNotFound) {
+    if (!isMarkingOrgNotCreatedError(error)) {
       organizationLoadError.value = error
     }
   } finally {
@@ -550,9 +581,7 @@ const teacherLoading = ref(false)
 const teacherOptions = computed(() =>
   teacherList.value.map((item) => ({
     value: item.id,
-    label: item.identifierNumber
-      ? `${item.nickName} (${item.identifierNumber})`
-      : item.nickName,
+    label: item.identifierNumber ? `${item.nickName} (${item.identifierNumber})` : item.nickName,
   })),
 )
 
@@ -576,17 +605,22 @@ interface QuestionOption {
 }
 
 const questionOptions = ref<QuestionOption[]>([])
+const loadedQuestionTemplateExamId = ref<string | null>(null)
 const templateLoading = ref(false)
 
 async function loadQuestionTemplates(): Promise<void> {
-  if (questionOptions.value.length > 0 || !examId.value) return
+  const currentExamId = examId.value
+  if (!currentExamId) return
+  if (loadedQuestionTemplateExamId.value === currentExamId && questionOptions.value.length > 0)
+    return
   templateLoading.value = true
   try {
-    const tpl = await getExamTemplate(examId.value)
+    const tpl = await getExamTemplate(currentExamId)
     questionOptions.value = (tpl.questions ?? []).map((q) => ({
       value: q.questionTemplateId,
       label: `第 ${q.questionNo} 题（${q.questionType}，满分 ${q.fullScore}）`,
     }))
+    loadedQuestionTemplateExamId.value = currentExamId
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '题目模板加载失败'
     message.error(errMsg)
@@ -835,7 +869,7 @@ async function submitAllocation(): Promise<void> {
       batchSize: policyForm.batchSize,
       loadLimit: policyForm.loadLimit,
       anonymousTokenPolicy: policyForm.anonymousTokenPolicy,
-      priorityRule: policyForm.priorityRule?.trim() || undefined,
+      priorityRule: undefined,
     }
     await saveAllocationPolicy(payload)
     message.success('分配策略已保存')
@@ -889,7 +923,7 @@ const statusTransitionOptions = computed(() => {
   if (!current) return []
   return STATUS_TRANSITIONS[current].map((code) => ({
     value: code,
-    label: MARKING_ORGANIZATION_STATUS_LABEL[code],
+    label: strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, code, '阅卷组织状态'),
   }))
 })
 
@@ -918,7 +952,6 @@ function goSessions(): void {
     params: { organizationId: organizationId.value },
   })
 }
-
 
 // 严格 typed helper：题组 groupStatus 是后端合同必返枚举。
 function groupStatusTone(status: QuestionMarkingGroupStatusCode): BadgeTone {

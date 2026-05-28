@@ -19,7 +19,9 @@
  * 不引入 AI 装饰能力；所有状态来自后端真实数据，不构造默认通过状态。
  */
 import type { Component } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
@@ -28,9 +30,7 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -147,9 +147,9 @@ function syncStageProgressToStore(): void {
     : blockedCount > 0
       ? 'blocked'
       : 'active'
-  const examPrepHint
-    = blockedReasons.value[0]
-      ?? (allCompleted
+  const examPrepHint =
+    blockedReasons.value[0] ??
+    (allCompleted
       ? `准备全部就绪（${completedCount}/${steps.length}）`
       : `准备进度 ${completedCount}/${steps.length}`)
   // 答题卡模板 → PAPER_TEMPLATE 阶段
@@ -226,7 +226,7 @@ const prepSteps = computed<PrepStepCard[]>(() => {
       status: hasCandidates ? 'completed' : 'blocked',
       statusText: hasCandidates ? `${d.candidateCount} 人` : '未配置',
       routeName: 'TeacherCandidateRoster',
-      primaryAction: hasCandidates ? '查看 / 调整' : '导入考生名册',
+      primaryAction: hasCandidates ? '查看 / 调整' : '配置考生名册',
       blockedReason: hasCandidates ? undefined : '考生名册缺失：阻断身份绑定',
     },
   ]

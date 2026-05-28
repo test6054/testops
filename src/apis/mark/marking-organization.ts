@@ -21,6 +21,9 @@ import http from '@/config/axios'
 
 // ─── 状态枚举与文案 ─────────────────────────────────────────
 
+/** 阅卷组织未创建业务码 - 与后端 ResultCodeEnum.MARKING_ORG_NOT_CREATED 对齐 */
+export const MARKING_ORG_NOT_CREATED_CODE = 20013
+
 /** 阅卷组织状态编码 - 与后端 OrganizationStatus enum 对齐 */
 export type MarkingOrganizationStatusCode
   = | 'ORG_DRAFT'
@@ -131,6 +134,26 @@ export const MARKING_TASK_STATUS_TONE: Record<MarkingTaskStatusCode, 'gray' | 'b
   RECYCLED: 'gray',
 }
 
+/**
+ * 判断后端是否返回“阅卷组织未创建”业务态。
+ * 只读取稳定 code，不依赖可变错误文案。
+ */
+export function isMarkingOrgNotCreatedError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+  const businessError = error as {
+    code?: number | string
+    response?: {
+      data?: {
+        code?: number | string
+      }
+    }
+  }
+  const code = businessError.code ?? businessError.response?.data?.code
+  return Number(code) === MARKING_ORG_NOT_CREATED_CODE
+}
+
 // ─── 请求载荷类型 ───────────────────────────────────────────
 
 /** 创建阅卷组织请求 - 对应后端 OrganizationCreateRequest */
@@ -201,7 +224,7 @@ export interface AllocationPolicySavePayload {
   /** 教师最大待处理任务数 */
   loadLimit?: number
   anonymousTokenPolicy?: AnonymousTokenPolicyCode
-  /** 优先级规则，自由文本（JSON 或 DSL，由后端策略层解析） */
+  /** 优先级规则原始字段，教师侧页面不再展示或编辑 */
   priorityRule?: string
 }
 
@@ -226,6 +249,7 @@ export interface TrialSessionCreatePayload {
 /** 试评校准请求 - 对应后端 TrialSessionCalibrateRequest */
 export interface TrialSessionCalibratePayload {
   sessionId: string
+  /** 校准结果原始字段，教师侧页面不再展示或编辑 */
   calibrationResult?: string
   discussionNotes?: string
 }
@@ -373,7 +397,7 @@ export interface TrialSessionVO {
   organizationId: string
   groupId: string
   sessionStatus: TrialSessionStatusCode
-  /** 校准结论，JSON 格式 */
+  /** 校准结论原始字段，教师侧页面不直接展示 */
   calibrationResult?: string
   discussionNotes?: string
   /** 试评关闭原因，closeTrialSession 写入 */
@@ -393,7 +417,7 @@ export interface FormalSessionVO {
   sessionStatus: FormalSessionStatusCode
   startTime?: string
   endTime?: string
-  /** 任务范围描述，JSON 格式 */
+  /** 任务范围原始字段，教师侧页面不直接展示 */
   taskScope?: string
   /** 正评暂停原因，pauseFormalSession 写入 */
   pauseReason?: string

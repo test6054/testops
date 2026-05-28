@@ -33,9 +33,7 @@ export interface EvaluationWorkgroupVO {
   workgroupName: string
   levelCode: string
   convenerUserId: string
-  members?: string
-  /** 后端从 members JSON 解析后的结构化列表 */
-  parsedMembers?: WorkgroupMember[]
+  members: WorkgroupMember[]
   responsibility?: string
   enabled: boolean
   createTime?: string
@@ -49,7 +47,7 @@ export interface EvaluationWorkgroupSavePayload {
   workgroupName: string
   levelCode: string
   convenerUserId: string
-  members?: string
+  members: WorkgroupMember[]
   responsibility?: string
   enabled?: boolean
 }

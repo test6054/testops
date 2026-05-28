@@ -112,7 +112,9 @@
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="考试数">{{ record.examCount ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{ formatDateTime(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">{{
+            formatDateTime(record.createTime)
+          }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="3">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -126,30 +128,35 @@
           <strong>质量摘要：</strong>{{ record.qualitySummary }}
         </a-typography-paragraph>
 
-        <div v-if="parsedItems.length > 0" class="ai-items">
+        <div v-if="qualityItems.length > 0" class="ai-items">
           <strong>分项评估：</strong>
-          <a-list size="small" :data-source="parsedItems" bordered>
+          <a-list size="small" :data-source="qualityItems" bordered>
             <template #renderItem="{ item, index }">
               <a-list-item>
-                <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
-                <a-typography-paragraph
-                  :content="formatItem(item)"
-                  :copyable="true"
-                  style="margin: 0 0 0 8px; flex: 1"
-                />
+                <div class="analysis-item">
+                  <div class="analysis-item__header">
+                    <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
+                    <span class="analysis-item__title">
+                      {{ item.dimensionName || item.metricName || '质量指标' }}
+                    </span>
+                    <span v-if="item.score != null" class="analysis-item__metric">
+                      {{ item.score.toFixed(2) }} 分
+                    </span>
+                  </div>
+                  <a-typography-paragraph v-if="item.summary" class="analysis-item__text">
+                    {{ item.summary }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.risk" class="analysis-item__text">
+                    <strong>风险：</strong>{{ item.risk }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.suggestion" class="analysis-item__text">
+                    <strong>建议：</strong>{{ item.suggestion }}
+                  </a-typography-paragraph>
+                </div>
               </a-list-item>
             </template>
           </a-list>
         </div>
-
-        <a-collapse v-if="record.evidenceSnapshot || record.aiRawResponse" :bordered="false">
-          <a-collapse-panel v-if="record.evidenceSnapshot" key="evidence" header="证据快照 JSON">
-            <pre class="raw-json">{{ record.evidenceSnapshot }}</pre>
-          </a-collapse-panel>
-          <a-collapse-panel v-if="record.aiRawResponse" key="raw" header="AI 原始响应">
-            <pre class="raw-json">{{ record.aiRawResponse }}</pre>
-          </a-collapse-panel>
-        </a-collapse>
       </div>
     </a-spin>
   </a-card>
@@ -160,18 +167,17 @@ import type {
   SchoolQualityAnalysisVO,
   SchoolQualityDimensionCode,
 } from '@/apis/mark/school-quality'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
 } from '@/apis/mark/school-quality'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
-import { strictJsonArray } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SchoolQualityCard' })
 
@@ -196,9 +202,7 @@ const loading = ref(false)
 const loadError = ref<unknown>(null)
 const generating = ref(false)
 
-const parsedItems = computed(() => {
-  return strictJsonArray(record.value?.qualityItems, 'AI 校级质量条目')
-})
+const qualityItems = computed(() => record.value?.qualityItems ?? [])
 
 function parseExamIds(): string[] {
   return form.examIdsText
@@ -248,12 +252,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-
-function formatItem(item: unknown): string {
-  if (typeof item === 'string') return item
-  return JSON.stringify(item, null, 2)
-}
-
 function scoreStyle(score?: number): Record<string, string> {
   if (score == null) return { color: 'inherit' }
   if (score >= 80) return { color: '#52c41a' }
@@ -280,19 +278,33 @@ function scoreStyle(score?: number): Record<string, string> {
   flex-direction: column;
   gap: 8px;
 }
+.analysis-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.analysis-item__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.analysis-item__title {
+  font-weight: 600;
+}
+.analysis-item__metric {
+  margin-left: auto;
+  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.65));
+}
+.analysis-item__text {
+  margin: 0;
+  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
+  line-height: 1.6;
+}
 .metric-row {
   background: var(--gi-color-bg-2, #f5f5f5);
   padding: 12px 8px;
   border-radius: 4px;
-}
-.raw-json {
-  margin: 0;
-  padding: 8px;
-  font-family: var(--gi-font-family-mono, monospace);
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: var(--gi-color-bg-2, #f5f5f5);
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

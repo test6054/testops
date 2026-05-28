@@ -115,11 +115,7 @@
               />
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-button
-                type="link"
-                size="small"
-                @click="openSingleReview(toReviewTask(record))"
-              >
+              <a-button type="link" size="small" @click="openSingleReview(toReviewTask(record))">
                 查看单题
               </a-button>
             </template>
@@ -138,29 +134,23 @@ import type {
   ReviewTaskItemVO,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam'
-import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   batchConfirmQuestionGrades,
   listReviewTasks,
   pageExams,
   REVIEW_TASK_TYPE_META,
 } from '@/apis/mark/exam'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiCard,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { UiAlertStrip, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { formatSemester } from '@/types/enums/semester-enum'
 
 const router = useRouter()
 const examLoading = ref(false)
-const examOptions = ref<{ label: string, value: string }[]>([])
+const examOptions = ref<{ label: string; value: string }[]>([])
 const selectedExamId = ref<string | undefined>(undefined)
 const loading = ref(false)
 const submitting = ref(false)
@@ -247,7 +237,13 @@ async function loadTasks() {
   loading.value = true
   try {
     // status=PENDING：尚未确认；后端按 GradeStatus.NEED_REVIEW + ReviewTaskStatus.PENDING 派生
-    const items = await listReviewTasks({ examId: selectedExamId.value, status: 'PENDING' })
+    const page = await listReviewTasks({
+      examId: selectedExamId.value,
+      status: 'PENDING',
+      pageNum: 1,
+      pageSize: 500,
+    })
+    const items = page.list
     const channelCode = channelFilter.value
     tasks.value = items.filter((task) => {
       if (!channelCode) return true

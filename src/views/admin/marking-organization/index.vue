@@ -256,10 +256,20 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreatePayload,
   OrganizationUpdatePayload,
+} from '@/apis/mark/marking-organization'
+import {
+  createOrganization,
+  deleteOrganization,
+  getOrganization,
+  isMarkingOrgNotCreatedError,
+  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
+  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
+  updateOrganization,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
@@ -267,15 +277,6 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import {
-  createOrganization,
-  deleteOrganization,
-  getOrganization,
-  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
-  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
-  updateOrganization,
-} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,
@@ -310,7 +311,7 @@ const selectedExamLabel = computed(() => {
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：仅当后端返回非“未创建”类错误时才上报
+// D-9 错误态：仅当后端返回非“未创建组织”业务码时才上报
 const organizationLoadError = ref<unknown>(null)
 
 async function loadOrganization(): Promise<void> {
@@ -324,10 +325,7 @@ async function loadOrganization(): Promise<void> {
     organization.value = await getOrganization({ examId: selectedExamId.value })
   } catch (error) {
     organization.value = null
-    const errMsg = error instanceof Error ? error.message : ''
-    const isNotCreated
-      = errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('未创建')
-    if (errMsg && !isNotCreated) {
+    if (!isMarkingOrgNotCreatedError(error)) {
       organizationLoadError.value = error
     }
   } finally {
@@ -362,9 +360,7 @@ const teacherLoading = ref(false)
 const teacherOptions = computed(() =>
   teacherList.value.map((item) => ({
     value: item.id,
-    label: item.identifierNumber
-      ? `${item.nickName} (${item.identifierNumber})`
-      : item.nickName,
+    label: item.identifierNumber ? `${item.nickName} (${item.identifierNumber})` : item.nickName,
   })),
 )
 
@@ -535,7 +531,6 @@ function goSessions(): void {
     params: { organizationId: organization.value.id },
   })
 }
-
 
 watch(selectedExamId, () => {
   void loadOrganization()

@@ -7,13 +7,6 @@ import type {
   MarkOcrRecognizeVO,
   PaddleOcrInstanceVO,
 } from '@/apis/mark/ocr'
-import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
-import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
@@ -25,7 +18,21 @@ import {
   recognizeMarkOcr,
   saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
-import { UiBadge, UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import {
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -76,19 +83,18 @@ const debugRules: Record<string, Rule[]> = {
   examId: [{ required: true, message: '请输入考试ID', trigger: 'blur' }],
 }
 
-const healthStatus = computed<MarkOcrHealthStatusCode>(
-  () => {
-    if (!currentConfig.value?.healthStatus) {
-      throw new Error('OCR 配置响应缺少健康状态')
-    }
-    return currentConfig.value.healthStatus
-  },
+const healthStatus = computed<MarkOcrHealthStatusCode | undefined>(
+  () => currentConfig.value?.healthStatus,
 )
 const healthColor = computed(() =>
-  strictEnumTone(MARK_OCR_HEALTH_STATUS_COLOR, healthStatus.value, 'OCR 健康状态'),
+  healthStatus.value
+    ? strictEnumTone(MARK_OCR_HEALTH_STATUS_COLOR, healthStatus.value, 'OCR 健康状态')
+    : undefined,
 )
-const healthLabel = computed(
-  () => strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, healthStatus.value, 'OCR 健康状态'),
+const healthLabel = computed(() =>
+  healthStatus.value
+    ? strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, healthStatus.value, 'OCR 健康状态')
+    : '',
 )
 const currentProviderLabel = computed(() => providerLabel(currentConfig.value?.providerType))
 const providerIntro = computed(() => MARK_OCR_PROVIDER_DESCRIPTION[configForm.value.providerType])
@@ -147,9 +153,7 @@ async function handleHealthCheck(): Promise<void> {
   checking.value = true
   try {
     const result = await checkMarkOcrHealth()
-    message[result.healthStatus === 'HEALTHY' ? 'success' : 'warning'](
-      result.healthMessage,
-    )
+    message[result.healthStatus === 'HEALTHY' ? 'success' : 'warning'](result.healthMessage)
     await loadConfig()
   } finally {
     checking.value = false
@@ -229,7 +233,7 @@ onMounted(loadConfig)
           <UiTag :tone="currentConfig?.enabled ? 'green' : 'gray'" size="sm">
             {{ currentConfig?.enabled ? '已启用' : '未启用' }}
           </UiTag>
-          <a-tag :color="healthColor">
+          <a-tag v-if="currentConfig" :color="healthColor">
             {{ healthLabel }}
           </a-tag>
         </div>
@@ -250,7 +254,7 @@ onMounted(loadConfig)
       @retry="loadConfig"
     />
 
-    <div v-else class="ocr-grid">
+    <div v-else-if="currentConfig" class="ocr-grid">
       <UiCard class="info-card">
         <template #title>
           <ApiOutlined />
@@ -317,7 +321,7 @@ onMounted(loadConfig)
     </div>
 
     <!-- PaddleOCR 实例列表：仅当当前渠道为 PADDLE 时展示，按健康状态排序 -->
-    <UiCard v-if="isPaddleProvider" class="info-card paddle-card">
+    <UiCard v-if="currentConfig && isPaddleProvider" class="info-card paddle-card">
       <template #title>
         <ClusterOutlined />
         <span>PaddleOCR 服务实例</span>
@@ -368,7 +372,9 @@ onMounted(loadConfig)
                   <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
                   <template v-if="item.consecutiveFailures > 0">
                     <span class="paddle-instance__sep">·</span>
-                    <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
+                    <span class="paddle-instance__failed"
+                      >连续失败 {{ item.consecutiveFailures }} 次</span
+                    >
                   </template>
                 </div>
                 <div v-if="item.lastHealthMessage" class="paddle-instance__msg">
@@ -381,7 +387,7 @@ onMounted(loadConfig)
       </a-list>
     </UiCard>
 
-    <UiCard class="info-card">
+    <UiCard v-if="currentConfig" class="info-card">
       <template #title>
         <ExperimentOutlined />
         <span>同步调试</span>
@@ -451,7 +457,7 @@ onMounted(loadConfig)
         </a-descriptions>
         <div class="result-text-block">
           <div class="result-text-label">识别文本</div>
-          <pre class="result-text-pre">{{ recognizeResult.recognizedText }}</pre>
+          <div class="result-text-content">{{ recognizeResult.recognizedText }}</div>
         </div>
       </template>
       <UiEmpty v-else-if="!recognizing" description="暂无识别结果" />
@@ -536,13 +542,13 @@ onMounted(loadConfig)
   color: var(--color-text-2);
 }
 
-.result-text-pre {
+.result-text-content {
   background: var(--color-fill-2, #f5f5f5);
   border: 1px solid var(--color-border, #e5e5e5);
   border-radius: 4px;
   padding: 12px;
   white-space: pre-wrap;
-  word-break: break-all;
+  overflow-wrap: anywhere;
   max-height: 300px;
   overflow-y: auto;
   font-size: 13px;

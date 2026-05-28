@@ -104,15 +104,6 @@
         <a-typography-paragraph v-if="record.recommendation" class="ai-summary">
           <strong>建议：</strong>{{ record.recommendation }}
         </a-typography-paragraph>
-
-        <a-collapse v-if="record.evidenceSnapshot || record.aiRawResponse" :bordered="false">
-          <a-collapse-panel v-if="record.evidenceSnapshot" key="evidence" header="证据快照 JSON">
-            <pre class="raw-json">{{ record.evidenceSnapshot }}</pre>
-          </a-collapse-panel>
-          <a-collapse-panel v-if="record.aiRawResponse" key="raw" header="AI 原始响应">
-            <pre class="raw-json">{{ record.aiRawResponse }}</pre>
-          </a-collapse-panel>
-        </a-collapse>
       </div>
     </a-spin>
   </a-card>
@@ -120,10 +111,10 @@
 
 <script lang="ts" setup>
 import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
+import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
-import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
@@ -179,7 +170,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-
 function rateStyle(rate?: number): Record<string, string> {
   if (rate == null) return { color: 'inherit' }
   if (rate >= 0.8) return { color: '#52c41a' }
@@ -214,15 +204,6 @@ function rateStyle(rate?: number): Record<string, string> {
 .drift-label {
   font-size: 12px;
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
-}
-.raw-json {
-  margin: 0;
-  padding: 8px;
-  font-family: var(--gi-font-family-mono, monospace);
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: var(--gi-color-bg-2, #f5f5f5);
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

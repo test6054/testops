@@ -112,7 +112,7 @@
               <span>识别答案</span>
             </template>
             <UiEmpty v-if="!detail?.recognizedAnswer" description="尚未产生识别答案" />
-            <pre v-else class="review-workspace__code-block">{{ detail.recognizedAnswer }}</pre>
+            <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
           </UiCard>
 
           <UiCard class="review-workspace__card">
@@ -151,7 +151,7 @@
               </a-space>
             </template>
             <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 诊断信息" />
-            <pre v-else class="review-workspace__code-block">{{ detail.aiDiagnostic }}</pre>
+            <div v-else class="review-workspace__text-block">{{ detail.aiDiagnostic }}</div>
             <UiAlertStrip
               v-if="!canRescoreByAi && detail"
               tone="info"
@@ -335,9 +335,7 @@
                   :step="0.5"
                   class="review-workspace__score-input"
                 />
-                <div class="review-workspace__hint">
-                  满分 {{ detail.fullScore }} 分
-                </div>
+                <div class="review-workspace__hint">满分 {{ detail.fullScore }} 分</div>
               </a-form-item>
               <a-form-item label="评语（面向学生）" name="commentText">
                 <a-textarea
@@ -383,7 +381,9 @@
                     </template>
                     <template #description>
                       <div class="review-workspace__annotation-meta">
-                        <span v-if="item.anchorText" class="review-workspace__hint">锚点：{{ item.anchorText }}</span>
+                        <span v-if="item.anchorText" class="review-workspace__hint"
+                          >锚点：{{ item.anchorText }}</span
+                        >
                         <span class="review-workspace__hint">{{
                           formatDateTime(item.createTime)
                         }}</span>
@@ -442,9 +442,27 @@ import type {
   AnnotationVO,
   ExamQuestionAiExecutionItemVO,
   ReviewTaskDetailVO,
-  ReviewTaskItemVO, ReviewTaskStatusCode
+  ReviewTaskItemVO,
+  ReviewTaskStatusCode,
+} from '@/apis/mark/exam'
+import {
+  AI_ABILITY_LABEL,
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_LABEL,
+  AI_EXECUTION_STATUS_TONE,
+  AI_PROVIDER_TYPE_LABEL,
+  claimReviewTask,
+  confirmQuestionGrade,
+  getReviewTaskDetail,
+  listAiExecutionsForQuestion,
+  listAnnotations,
+  listReviewTasks,
+  rescoreQuestionByAi,
+  REVIEW_TASK_STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
@@ -456,8 +474,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { AI_ABILITY_LABEL, AI_ABILITY_TONE, AI_EXECUTION_STATUS_LABEL, AI_EXECUTION_STATUS_TONE, AI_PROVIDER_TYPE_LABEL, claimReviewTask, confirmQuestionGrade, getReviewTaskDetail, listAiExecutionsForQuestion, listAnnotations, listReviewTasks, rescoreQuestionByAi, REVIEW_TASK_STATUS_LABEL, REVIEW_TASK_STATUS_TONE } from '@/apis/mark/exam'
-import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
 import {
   UiAlertStrip,
   UiBadge,
@@ -543,12 +559,15 @@ const annotations = ref<AnnotationVO[]>([])
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
   try {
-    annotations.value = await listAnnotations({
+    const page = await listAnnotations({
       examId: examId.value,
       paperInstanceId: detail.value.paperInstanceId,
       questionTemplateId: detail.value.questionTemplateId,
       gradeResultId: detail.value.gradeResultId,
+      pageNum: 1,
+      pageSize: 200,
     })
+    annotations.value = page.list
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '批注记录加载失败'
     message.error(errMsg)
@@ -573,26 +592,30 @@ async function loadReviewQueue(): Promise<void> {
   queueLoadError.value = ''
   try {
     // 后端 ReviewTaskQueryPayload.status 可选；同题下分别拉 PENDING / IN_PROGRESS 后合并去重
-    const [pending, inProgress] = await Promise.all([
+    const [pendingPage, inProgressPage] = await Promise.all([
       listReviewTasks({
         examId: examId.value,
         questionTemplateId: detail.value.questionTemplateId,
         status: 'PENDING',
+        pageNum: 1,
+        pageSize: 200,
       }),
       listReviewTasks({
         examId: examId.value,
         questionTemplateId: detail.value.questionTemplateId,
         status: 'IN_PROGRESS',
+        pageNum: 1,
+        pageSize: 200,
       }),
     ])
     const merged = new Map<string, ReviewTaskItemVO>()
-    for (const item of [...pending, ...inProgress]) {
+    for (const item of [...pendingPage.list, ...inProgressPage.list]) {
       merged.set(item.reviewTaskId, item)
     }
     reviewQueue.value = Array.from(merged.values())
   } catch (error) {
-    queueLoadError.value
-      = error instanceof Error ? error.message : '同题流水线加载失败，提交并取下一份暂不可用。'
+    queueLoadError.value =
+      error instanceof Error ? error.message : '同题流水线加载失败，提交并取下一份暂不可用。'
     reviewQueue.value = []
   } finally {
     queueLoading.value = false
@@ -655,7 +678,7 @@ async function loadQuestionAnalysis(): Promise<void> {
 }
 
 /** 难度系数文案 + 色调（难度区间参照教育测量学经验阈值） */
-const difficultyBadge = computed<{ label: string, tone: ToneCode } | null>(() => {
+const difficultyBadge = computed<{ label: string; tone: ToneCode } | null>(() => {
   const v = questionAnalysis.value?.difficultyIndex
   if (v == null) return null
   if (v < 0.3) return { label: '偏难', tone: 'red' }
@@ -664,7 +687,7 @@ const difficultyBadge = computed<{ label: string, tone: ToneCode } | null>(() =>
 })
 
 /** 区分度文案 + 色调（区分度 < 0.2 视为不足） */
-const discriminationBadge = computed<{ label: string, tone: ToneCode } | null>(() => {
+const discriminationBadge = computed<{ label: string; tone: ToneCode } | null>(() => {
   const v = questionAnalysis.value?.discriminationIndex
   if (v == null) return null
   if (v < 0.2) return { label: '区分度不足', tone: 'red' }
@@ -690,9 +713,9 @@ async function loadTask(): Promise<void> {
     await Promise.all([loadAnnotations(), loadQuestionAnalysis(), loadReviewQueue()])
     // 默认填充建议分（仅当表单空时；avoid 覆盖教师正在编辑的值）
     if (
-      gradeForm.finalScore === undefined
-      && detail.value?.suggestedScore !== undefined
-      && detail.value?.suggestedScore !== null
+      gradeForm.finalScore === undefined &&
+      detail.value?.suggestedScore !== undefined &&
+      detail.value?.suggestedScore !== null
     ) {
       gradeForm.finalScore = detail.value.suggestedScore
     }
@@ -940,8 +963,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const finalScore = gradeForm.finalScore
-  const ratio
-    = fullScore && fullScore > 0 && typeof finalScore === 'number'
+  const ratio =
+    fullScore && fullScore > 0 && typeof finalScore === 'number'
       ? `${Math.round((finalScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚批阅会继续
@@ -1012,15 +1035,15 @@ async function takeNextTask(): Promise<void> {
     const currentTaskId = taskId.value
     const candidate = reviewQueue.value.find(
       (item) =>
-        item.reviewTaskId !== currentTaskId
-        && (item.status === 'PENDING' || item.status === 'IN_PROGRESS'),
+        item.reviewTaskId !== currentTaskId &&
+        (item.status === 'PENDING' || item.status === 'IN_PROGRESS'),
     )
     if (!candidate) {
       message.success('同题剩余任务批阅完毕，返回阅卷概览')
       void router.push({ name: 'TeacherMarkingOverview', query: { examId: examId.value } })
       return
     }
-      // 领取下一份；后端会把状态推进到处理中并绑定到当前教师
+    // 领取下一份；后端会把状态推进到处理中并绑定到当前教师
     await claimReviewTask({
       examId: examId.value,
       reviewTaskId: candidate.reviewTaskId,
@@ -1195,13 +1218,12 @@ onBeforeUnmount(() => {
     object-fit: contain;
   }
 
-  &__code-block {
+  &__text-block {
     margin: 0;
-    font-family: 'Monaco', 'Menlo', Consolas, monospace;
     font-size: 13px;
     line-height: 1.6;
     white-space: pre-wrap;
-    word-break: break-all;
+    overflow-wrap: anywhere;
     color: var(--dp-text-primary, #0f172a);
     background: var(--dp-surface-soft, #f8fafc);
     padding: 12px;

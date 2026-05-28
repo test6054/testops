@@ -3,6 +3,7 @@ import type { AchievementTargetType, RespondentType } from './types'
 import type {
   SurveyChoiceOptionVO,
   SurveyIdentityFieldVO,
+  SurveyRespondentIdentityItemVO,
   SurveyScaleLabelVO,
 } from '@/apis/public-survey'
 /**
@@ -115,7 +116,11 @@ export interface IndirectEvaluationResponseVO {
   itemId: string
   respondentType: RespondentType
   respondentId?: string
-  rawValue?: string
+  scaleValue?: number
+  singleChoiceValue?: string
+  answerSummary?: string
+  multipleChoiceValues?: SurveyChoiceOptionVO[]
+  identityValues?: SurveyRespondentIdentityItemVO[]
   convertedScore?: number
   openText?: string
   validFlag?: boolean
@@ -135,7 +140,11 @@ export interface IndirectEvaluationResponseSavePayload {
   itemId: string
   respondentType: RespondentType
   respondentId?: string
-  rawValue?: string
+  scaleValue?: number
+  singleChoiceValue?: string
+  answerSummary?: string
+  multipleChoiceValues?: SurveyChoiceOptionVO[]
+  identityValues?: SurveyRespondentIdentityItemVO[]
   convertedScore?: number
   openText?: string
   validFlag?: boolean

@@ -1,13 +1,13 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
-export type FinalScoreStatusCode
-  = | 'PENDING'
-    | 'CALCULATED'
-    | 'CONFIRMED'
-    | 'CORRECTED'
-    | 'PUBLISHED'
-    | 'WITHDRAWN'
+export type FinalScoreStatusCode =
+  | 'PENDING'
+  | 'CALCULATED'
+  | 'CONFIRMED'
+  | 'CORRECTED'
+  | 'PUBLISHED'
+  | 'WITHDRAWN'
 
 export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
   PENDING: '待计算',
@@ -141,7 +141,7 @@ export interface StudentQuestionScoreVO {
   questionNo: string
   questionType: string
   fullScore: number
-  finalScore?: number
+  finalScore: number
   gradeStatus: GradeStatusCode
   objectiveResult?: ObjectiveResultCode
   /** 学生端 AI 改进建议，整卷 AI 批阅生成并随教师确认保留 */
@@ -177,6 +177,7 @@ export interface StudentScoreDetailVO {
 export interface StudentAiDiagnosisItemVO {
   questionType: string
   masteryLevel: MasteryLevelCode
+  /** 得分率，后端返回 0-1 小数比例字符串，前端展示时转为百分比 */
   scoreRate: string
   lostQuestionNos?: string[]
   causeAnalysis?: string
@@ -207,21 +208,80 @@ export interface StudentAiLearningReportVO {
   errorClusters?: StudentAiErrorClusterVO[]
 }
 
+/**
+ * 学生单题答题明细 VO，仅在成绩已发布时由后端返回。
+ *
+ * 必填字段（PUBLISHED 守门后由后端校验）：
+ * - examId / paperInstanceId / questionTemplateId / questionNo / questionType / fullScore / finalScore / gradeStatus
+ *
+ * 可空字段（按题型 / OCR / 教师批阅状态决定）：
+ * - sliceFileId / recognizedAnswer / commentText / objectiveResult
+ *   / improvementSuggestion / mistakeClusterLabel / aiDiagnostic
+ */
+export interface StudentQuestionAnswerDetailVO {
+  examId: string
+  paperInstanceId: string
+  questionTemplateId: string
+  questionNo: string
+  questionType: string
+  fullScore: number
+  finalScore: number
+  gradeStatus: GradeStatusCode
+  objectiveResult?: ObjectiveResultCode
+  /** 作答切片文件 ID，客观题或未生成切片时为空 */
+  sliceFileId?: string
+  /** OCR 识别后的学生作答文本，未识别或主观题原始空白时为空 */
+  recognizedAnswer?: string
+  /** 教师评语，未填写时为空 */
+  commentText?: string
+  /** 学生端 AI 学习建议 */
+  improvementSuggestion?: string
+  /** 学生端 AI 错题聚类标签 */
+  mistakeClusterLabel?: string
+  /** 题目级 AI 诊断信息 */
+  aiDiagnostic?: string
+}
+
 export function listMyExams(): Promise<StudentExamItemVO[]> {
-  return http.get<unknown>('/api/mark/student/exams/list')
-    .then(validateStudentExamList)
+  return http.get<unknown>('/api/mark/student/exams/list').then(validateStudentExamList)
 }
 
 export function getMyScoreDetail(examId: string): Promise<StudentScoreDetailVO> {
-  return http.get<StudentScoreDetailVO>('/api/mark/student/exams/score-detail', {
-    params: { examId },
-  })
+  return http
+    .get<unknown>('/api/mark/student/exams/score-detail', {
+      params: { examId },
+    })
+    .then(validateStudentScoreDetail)
 }
 
 export function getMyAiLearningReport(examId: string): Promise<StudentAiLearningReportVO> {
-  return http.get<unknown>('/api/mark/student/exams/ai-learning-report', {
-    params: { examId },
-  }).then(validateStudentAiLearningReport)
+  return http
+    .get<unknown>('/api/mark/student/exams/ai-learning-report', {
+      params: { examId },
+    })
+    .then(validateStudentAiLearningReport)
+}
+
+/**
+ * 查询当前学生指定考试中某一道题的答题明细。
+ *
+ * 后端守门：
+ * - 学生身份未命中 candidate_roster -> FORBIDDEN
+ * - 成绩未发布 -> CONFLICT（"成绩尚未发布，暂不能查看答题明细"）
+ * - 题目模板未命中 -> NOT_FOUND
+ *
+ * 调用方应保证仅在 finalScoreStatus = PUBLISHED 时调用，避免无谓的 CONFLICT 报错。
+ */
+export function getMyQuestionAnswerDetail(
+  examId: string,
+  questionTemplateId: string,
+): Promise<StudentQuestionAnswerDetailVO> {
+  return http
+    .post<unknown>('/api/mark/student/exams/question-answer-detail', {
+      examId,
+      questionTemplateId,
+    })
+    .then(validateStudentQuestionAnswerDetail)
 }
 
 export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailVO): boolean {
@@ -249,12 +309,12 @@ function requireString(value: unknown, fieldName: string): string {
 
 function requireFinalScoreStatus(value: unknown, fieldName: string): FinalScoreStatusCode {
   if (
-    value !== 'PENDING'
-    && value !== 'CALCULATED'
-    && value !== 'CONFIRMED'
-    && value !== 'CORRECTED'
-    && value !== 'PUBLISHED'
-    && value !== 'WITHDRAWN'
+    value !== 'PENDING' &&
+    value !== 'CALCULATED' &&
+    value !== 'CONFIRMED' &&
+    value !== 'CORRECTED' &&
+    value !== 'PUBLISHED' &&
+    value !== 'WITHDRAWN'
   ) {
     throw new TypeError(`${fieldName} 接口返回格式错误`)
   }
@@ -280,11 +340,11 @@ function requireAiAnalysisStatus(value: unknown, fieldName: string): AiAnalysisS
 
 function requireMasteryLevel(value: unknown, fieldName: string): MasteryLevelCode {
   if (
-    value !== 'EXCELLENT'
-    && value !== 'GOOD'
-    && value !== 'MEDIUM'
-    && value !== 'WEAK'
-    && value !== 'CRITICAL'
+    value !== 'EXCELLENT' &&
+    value !== 'GOOD' &&
+    value !== 'MEDIUM' &&
+    value !== 'WEAK' &&
+    value !== 'CRITICAL'
   ) {
     throw new TypeError(`${fieldName} 接口返回格式错误`)
   }
@@ -350,7 +410,7 @@ function requireObject(value: unknown, fieldName: string): Record<string, unknow
 
 function validateStudentExam(value: unknown): StudentExamItemVO {
   const result = requireObject(value, '学生考试列表项')
-  return {
+  const item = {
     candidateRosterId: requireString(result.candidateRosterId, '考生名册 ID'),
     studentUserId: requireString(result.studentUserId, '学生用户 ID'),
     studentNo: requireString(result.studentNo, '学号'),
@@ -373,6 +433,8 @@ function validateStudentExam(value: unknown): StudentExamItemVO {
     reviewWindowCloseTime: optionalString(result.reviewWindowCloseTime, '复核窗口结束时间'),
     reviewWindowStatus: requireReviewWindowStatus(result.reviewWindowStatus, '复核窗口状态'),
   }
+  validatePublishedStudentExamContract(item)
+  return item
 }
 
 function validateStudentExamList(value: unknown): StudentExamItemVO[] {
@@ -382,13 +444,131 @@ function validateStudentExamList(value: unknown): StudentExamItemVO[] {
   return value.map(validateStudentExam)
 }
 
+function validatePublishedStudentExamContract(item: StudentExamItemVO): void {
+  if (item.finalScoreStatus !== 'PUBLISHED') {
+    return
+  }
+  if (!item.paperInstanceId) {
+    throw new TypeError(`已发布成绩缺少试卷实例 ID：examId=${item.examId}`)
+  }
+  if (item.finalScore == null) {
+    throw new TypeError(`已发布成绩缺少最终分数：examId=${item.examId}`)
+  }
+  if (!item.publishedTime) {
+    throw new TypeError(`已发布成绩缺少发布时间：examId=${item.examId}`)
+  }
+}
+
+function validatePublishedStudentScoreDetailContract(detail: StudentScoreDetailVO): void {
+  if (detail.finalScoreStatus !== 'PUBLISHED') {
+    return
+  }
+  if (!detail.paperInstanceId) {
+    throw new TypeError(`已发布成绩缺少试卷实例 ID：examId=${detail.examId}`)
+  }
+  if (detail.totalScore == null) {
+    throw new TypeError(`已发布成绩缺少最终分数：examId=${detail.examId}`)
+  }
+  if (!detail.publishedTime) {
+    throw new TypeError(`已发布成绩缺少发布时间：examId=${detail.examId}`)
+  }
+}
+
+function requireGradeStatus(value: unknown, fieldName: string): GradeStatusCode {
+  if (value !== 'PENDING' && value !== 'NEED_REVIEW' && value !== 'CONFIRMED') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalObjectiveResult(
+  value: unknown,
+  fieldName: string,
+): ObjectiveResultCode | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (value !== 'CORRECT' && value !== 'WRONG' && value !== 'NEED_REVIEW') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function validateQuestionScore(value: unknown, index: number): StudentQuestionScoreVO {
+  const result = requireObject(value, `题目得分明细[${index}]`)
+  return {
+    questionTemplateId: requireString(
+      result.questionTemplateId,
+      `题目得分明细[${index}].questionTemplateId`,
+    ),
+    questionNo: requireString(result.questionNo, `题目得分明细[${index}].questionNo`),
+    questionType: requireString(result.questionType, `题目得分明细[${index}].questionType`),
+    fullScore: requireFiniteNumber(result.fullScore, `题目得分明细[${index}].fullScore`),
+    finalScore: requireFiniteNumber(result.finalScore, `题目得分明细[${index}].finalScore`),
+    gradeStatus: requireGradeStatus(result.gradeStatus, `题目得分明细[${index}].gradeStatus`),
+    objectiveResult: optionalObjectiveResult(
+      result.objectiveResult,
+      `题目得分明细[${index}].objectiveResult`,
+    ),
+    improvementSuggestion: optionalString(
+      result.improvementSuggestion,
+      `题目得分明细[${index}].improvementSuggestion`,
+    ),
+    mistakeClusterLabel: optionalString(
+      result.mistakeClusterLabel,
+      `题目得分明细[${index}].mistakeClusterLabel`,
+    ),
+  }
+}
+
+function validateStudentScoreDetail(value: unknown): StudentScoreDetailVO {
+  const result = requireObject(value, '学生成绩详情')
+  if (!Array.isArray(result.questions)) {
+    throw new TypeError('学生成绩详情 questions 接口返回格式错误')
+  }
+  const detail: StudentScoreDetailVO = {
+    examId: requireString(result.examId, '考试 ID'),
+    examName: requireString(result.examName, '考试名称'),
+    examNo: requireString(result.examNo, '考试编号'),
+    examStatus: requireString(result.examStatus, '考试状态'),
+    courseId: optionalString(result.courseId, '课程 ID'),
+    examStartTime: requireString(result.examStartTime, '考试开始时间'),
+    examEndTime: requireString(result.examEndTime, '考试结束时间'),
+    candidateRosterId: requireString(result.candidateRosterId, '考生名册 ID'),
+    studentUserId: requireString(result.studentUserId, '学生用户 ID'),
+    studentNo: requireString(result.studentNo, '学号'),
+    studentName: requireString(result.studentName, '学生姓名'),
+    paperInstanceId: optionalString(result.paperInstanceId, '试卷实例 ID'),
+    finalScoreId: optionalString(result.finalScoreId, '最终成绩 ID'),
+    finalScoreStatus: requireFinalScoreStatus(result.finalScoreStatus, '最终成绩状态'),
+    totalScore: optionalFiniteNumber(result.totalScore, '总分'),
+    fullScore: optionalFiniteNumber(result.fullScore, '满分'),
+    publishedTime: optionalString(result.publishedTime, '发布时间'),
+    questions: result.questions.map(validateQuestionScore),
+    reviewWindowOpenTime: optionalString(result.reviewWindowOpenTime, '复核窗口开始时间'),
+    reviewWindowCloseTime: optionalString(result.reviewWindowCloseTime, '复核窗口结束时间'),
+    reviewWindowStatus: requireReviewWindowStatus(result.reviewWindowStatus, '复核窗口状态'),
+  }
+  validatePublishedStudentScoreDetailContract(detail)
+  if (detail.finalScoreStatus === 'PUBLISHED') {
+    if (detail.fullScore == null) {
+      throw new TypeError(`已发布成绩缺少满分：examId=${detail.examId}`)
+    }
+    if (detail.questions.length === 0) {
+      throw new TypeError(`已发布成绩缺少逐题明细：examId=${detail.examId}`)
+    }
+  }
+  return detail
+}
+
 function validateDiagnosisItem(value: unknown, index: number): StudentAiDiagnosisItemVO {
   const result = requireObject(value, `AI 诊断条目[${index}]`)
   return {
     questionType: requireString(result.questionType, `AI 诊断条目[${index}].questionType`),
     masteryLevel: requireMasteryLevel(result.masteryLevel, `AI 诊断条目[${index}].masteryLevel`),
     scoreRate: requireString(result.scoreRate, `AI 诊断条目[${index}].scoreRate`),
-    lostQuestionNos: optionalStringArray(result.lostQuestionNos, `AI 诊断条目[${index}].lostQuestionNos`),
+    lostQuestionNos: optionalStringArray(
+      result.lostQuestionNos,
+      `AI 诊断条目[${index}].lostQuestionNos`,
+    ),
     causeAnalysis: optionalString(result.causeAnalysis, `AI 诊断条目[${index}].causeAnalysis`),
     suggestion: optionalString(result.suggestion, `AI 诊断条目[${index}].suggestion`),
   }
@@ -423,7 +603,7 @@ function validateStudentAiLearningReport(value: unknown): StudentAiLearningRepor
   if (!Array.isArray(result.errorClusters)) {
     throw new TypeError('学生 AI 学习报告 errorClusters 接口返回格式错误')
   }
-  return {
+  const report = {
     examId: requireString(result.examId, '考试 ID'),
     published: requireBoolean(result.published, '成绩发布状态'),
     available: requireBoolean(result.available, 'AI 学习报告可用状态'),
@@ -437,4 +617,30 @@ function validateStudentAiLearningReport(value: unknown): StudentAiLearningRepor
     improvementSuggestions: requireStringArray(result.improvementSuggestions, '个性化改进建议'),
     errorClusters: result.errorClusters.map(validateErrorCluster),
   }
+  if (!report.available && !report.profileMessage && !report.clusterMessage) {
+    throw new TypeError('学生 AI 学习报告不可用时缺少提示信息')
+  }
+  return report
+}
+
+function validateStudentQuestionAnswerDetail(value: unknown): StudentQuestionAnswerDetailVO {
+  const result = requireObject(value, '学生单题答题明细')
+  const detail: StudentQuestionAnswerDetailVO = {
+    examId: requireString(result.examId, '考试 ID'),
+    paperInstanceId: requireString(result.paperInstanceId, '试卷实例 ID'),
+    questionTemplateId: requireString(result.questionTemplateId, '题目模板 ID'),
+    questionNo: requireString(result.questionNo, '题号'),
+    questionType: requireString(result.questionType, '题型'),
+    fullScore: requireFiniteNumber(result.fullScore, '题目满分'),
+    finalScore: requireFiniteNumber(result.finalScore, '题目最终得分'),
+    gradeStatus: requireGradeStatus(result.gradeStatus, '批改状态'),
+    objectiveResult: optionalObjectiveResult(result.objectiveResult, '客观题判定'),
+    sliceFileId: optionalString(result.sliceFileId, '作答切片文件 ID'),
+    recognizedAnswer: optionalString(result.recognizedAnswer, 'OCR 识别作答'),
+    commentText: optionalString(result.commentText, '教师评语'),
+    improvementSuggestion: optionalString(result.improvementSuggestion, '学生端 AI 学习建议'),
+    mistakeClusterLabel: optionalString(result.mistakeClusterLabel, '学生端 AI 错题聚类标签'),
+    aiDiagnostic: optionalString(result.aiDiagnostic, '题目级 AI 诊断'),
+  }
+  return detail
 }

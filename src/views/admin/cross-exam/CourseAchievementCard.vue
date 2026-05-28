@@ -63,7 +63,10 @@
             <a-statistic title="考试数" :value="record.examCount ?? 0" />
           </a-col>
           <a-col :span="8">
-            <a-statistic title="耗时(ms)" :value="record.latencyMs ?? 0" />
+            <div class="metric-text">
+              <span class="metric-title">耗时(ms)</span>
+              <span class="metric-value">{{ record.latencyMs ?? '-' }}</span>
+            </div>
           </a-col>
         </a-row>
 
@@ -91,30 +94,35 @@
           <strong>达成度摘要：</strong>{{ record.achievementSummary }}
         </a-typography-paragraph>
 
-        <div v-if="parsedItems.length > 0" class="ai-items">
+        <div v-if="achievementItems.length > 0" class="ai-items">
           <strong>分目标达成情况：</strong>
-          <a-list size="small" :data-source="parsedItems" bordered>
+          <a-list size="small" :data-source="achievementItems" bordered>
             <template #renderItem="{ item, index }">
               <a-list-item>
-                <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
-                <a-typography-paragraph
-                  :content="formatItem(item)"
-                  :copyable="true"
-                  style="margin: 0 0 0 8px; flex: 1"
-                />
+                <div class="analysis-item">
+                  <div class="analysis-item__header">
+                    <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
+                    <span class="analysis-item__title">
+                      {{ item.objectiveName || '课程目标' }}
+                    </span>
+                    <span v-if="item.achievementRate != null" class="analysis-item__metric">
+                      达成率 {{ formatPercent(item.achievementRate) }}
+                    </span>
+                  </div>
+                  <a-typography-paragraph v-if="item.summary" class="analysis-item__text">
+                    {{ item.summary }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.weakPoint" class="analysis-item__text">
+                    <strong>薄弱点：</strong>{{ item.weakPoint }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.suggestion" class="analysis-item__text">
+                    <strong>建议：</strong>{{ item.suggestion }}
+                  </a-typography-paragraph>
+                </div>
               </a-list-item>
             </template>
           </a-list>
         </div>
-
-        <a-collapse v-if="record.evidenceSnapshot || record.aiRawResponse" :bordered="false">
-          <a-collapse-panel v-if="record.evidenceSnapshot" key="evidence" header="证据快照 JSON">
-            <pre class="raw-json">{{ record.evidenceSnapshot }}</pre>
-          </a-collapse-panel>
-          <a-collapse-panel v-if="record.aiRawResponse" key="raw" header="AI 原始响应">
-            <pre class="raw-json">{{ record.aiRawResponse }}</pre>
-          </a-collapse-panel>
-        </a-collapse>
       </div>
     </a-spin>
   </a-card>
@@ -122,14 +130,13 @@
 
 <script lang="ts" setup>
 import type { CourseObjectiveAchievementVO } from '@/apis/mark/cross-exam-analysis'
+import { generateAchievement, listAchievements } from '@/apis/mark/cross-exam-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
-import { generateAchievement, listAchievements } from '@/apis/mark/cross-exam-analysis'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
-import { strictJsonArray } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CourseAchievementCard' })
 
@@ -145,9 +152,7 @@ const loading = ref(false)
 const loadError = ref<unknown>(null)
 const generating = ref(false)
 
-const parsedItems = computed(() => {
-  return strictJsonArray(record.value?.achievementItems, 'AI 课程达成度条目')
-})
+const achievementItems = computed(() => record.value?.achievementItems ?? [])
 
 function parseExamIds(): string[] {
   return form.examIdsText
@@ -202,18 +207,16 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-
-function formatItem(item: unknown): string {
-  if (typeof item === 'string') return item
-  return JSON.stringify(item, null, 2)
-}
-
 function achievementStyle(rate?: number): Record<string, string> {
   if (rate == null) return { color: 'inherit' }
   if (rate >= 0.8) return { color: '#52c41a' }
   if (rate >= 0.6) return { color: '#1677ff' }
   if (rate >= 0.4) return { color: '#faad14' }
   return { color: '#f5222d' }
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`
 }
 </script>
 
@@ -234,19 +237,47 @@ function achievementStyle(rate?: number): Record<string, string> {
   flex-direction: column;
   gap: 8px;
 }
+.analysis-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.analysis-item__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.analysis-item__title {
+  font-weight: 600;
+}
+.analysis-item__metric {
+  margin-left: auto;
+  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.65));
+}
+.analysis-item__text {
+  margin: 0;
+  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
+  line-height: 1.6;
+}
 .metric-row {
   background: var(--gi-color-bg-2, #f5f5f5);
   padding: 12px 8px;
   border-radius: 4px;
 }
-.raw-json {
-  margin: 0;
-  padding: 8px;
-  font-family: var(--gi-font-family-mono, monospace);
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: var(--gi-color-bg-2, #f5f5f5);
+.metric-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.metric-title {
+  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+  font-size: 14px;
+}
+.metric-value {
+  color: var(--gi-color-text-1, rgba(0, 0, 0, 0.88));
+  font-size: 24px;
+  line-height: 1.2;
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

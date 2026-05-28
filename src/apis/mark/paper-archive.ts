@@ -13,7 +13,7 @@
  *   5. updateSetTags / updateItemTags 全量替换 tag
  *   6. triggerItemOcr 手动触发 OCR 识别（失败重试）
  */
-import type { PageResult } from '@/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 // ─── 状态枚举与文案 ───────────────────────────────────────────
@@ -26,7 +26,9 @@ export type PaperArchiveSetStatusCode
     | 'APPRAISAL_DECIDED'
     | 'DESTRUCTION_PENDING'
     | 'DESTRUCTION_APPROVED'
+    | 'DESTRUCTION_EXECUTING'
     | 'DESTROYED'
+    | 'DESTRUCTION_FAILED'
 
 export const PAPER_ARCHIVE_SET_STATUS_LABEL: Record<PaperArchiveSetStatusCode, string> = {
   DRAFT: '草稿',
@@ -35,7 +37,9 @@ export const PAPER_ARCHIVE_SET_STATUS_LABEL: Record<PaperArchiveSetStatusCode, s
   APPRAISAL_DECIDED: '鉴定完成',
   DESTRUCTION_PENDING: '销毁待审',
   DESTRUCTION_APPROVED: '销毁通过',
+  DESTRUCTION_EXECUTING: '销毁执行中',
   DESTROYED: '已销毁',
+  DESTRUCTION_FAILED: '销毁执行失败',
 }
 
 export const PAPER_ARCHIVE_SET_STATUS_TONE: Record<
@@ -48,7 +52,9 @@ export const PAPER_ARCHIVE_SET_STATUS_TONE: Record<
   APPRAISAL_DECIDED: 'purple',
   DESTRUCTION_PENDING: 'orange',
   DESTRUCTION_APPROVED: 'purple',
+  DESTRUCTION_EXECUTING: 'blue',
   DESTROYED: 'red',
+  DESTRUCTION_FAILED: 'red',
 }
 
 /** 档案项 OCR 状态编码 - 对应后端 PaperArchiveOcrStatus */
@@ -98,9 +104,7 @@ export interface PaperArchiveSetCreatePayload {
 }
 
 /** 档案集分页查询请求 - 对应 PaperArchiveSetQueryRequest */
-export interface PaperArchiveSetQueryPayload {
-  pageNum: number
-  pageSize: number
+export interface PaperArchiveSetQueryPayload extends QueryDto {
   archiveNoKeyword?: string
   titleKeyword?: string
   courseId?: string | null
@@ -118,9 +122,7 @@ export interface PaperArchiveTagUpdatePayload {
 }
 
 /** 档案项检索请求 - 对应 PaperArchiveItemSearchRequest */
-export interface PaperArchiveItemSearchPayload {
-  pageNum: number
-  pageSize: number
+export interface PaperArchiveItemSearchPayload extends QueryDto {
   /** 档案集 ID 过滤；为空表示跨档案集搜索 */
   archiveSetId?: string | null
   /** tag 任一匹配 */

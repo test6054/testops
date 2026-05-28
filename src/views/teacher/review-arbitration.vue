@@ -173,15 +173,17 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
-const currentUserId = computed(() => {
-  const { userId } = userStore.userInfo
-  if (!userId) {
-    throw new Error('当前用户缺少 userId，无法计算仲裁任务指派状态')
-  }
-  return userId
-})
+/**
+ * 当前登录教师 ID 仅用于展示“我”和统计“指派给我”。
+ *
+ * 用户信息异步恢复期间允许为空，避免模板求值时把过渡态误判为契约错误。
+ */
+const currentUserId = computed(() => userStore.userInfo.userId || '')
 
 const markTaskStore = useMarkTaskStore()
+// 注意：reviewTasks / reviewTasksLoading 仅用于读取；
+// 写入必须经 markTaskStore.loadReviewTasks / clearReviewTasks 等 action，
+// 避免组件直接修改 storeToRefs 解开后的 ref。
 const { reviewTasks: tasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
 // D-9 错误态：驳回任务加载失败时 UiErrorRetryPanel 重试 + 上报
 const tasksLoadError = ref<unknown>(null)
@@ -240,7 +242,6 @@ const kpiItems = computed(() => {
   ]
 })
 
-
 /** 建议分占满分百分比（保留 0 位整数）。当满分不存在或为 0 时返回 null。 */
 function getSuggestedRatio(record: ReviewTaskItemVO): number | null {
   const full = record.fullScore
@@ -260,6 +261,8 @@ function getSuggestedRatioTone(record: ReviewTaskItemVO): BadgeTone {
 
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
+  // reviewTasksLoading 由 markTaskStore.loadReviewTasks 内部 try/finally 维护，
+  // 组件不再直接写 loading.value，防止与 store 状态机交叉。
   tasksLoadError.value = null
   try {
     await markTaskStore.loadReviewTasks({
@@ -270,8 +273,6 @@ async function loadTasks(): Promise<void> {
     tasksLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '驳回任务加载失败'
     message.error(errMsg)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -296,7 +297,8 @@ watch(selectedExamId, (value) => {
   if (value) {
     void loadTasks()
   } else {
-    tasks.value = []
+    // 通过 store action 清空，保持 Pinia 单向数据流
+    markTaskStore.clearReviewTasks()
   }
 })
 

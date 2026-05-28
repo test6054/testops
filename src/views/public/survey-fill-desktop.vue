@@ -48,7 +48,9 @@
         <div class="d-survey__progress">
           <div class="d-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
         </div>
-        <span class="d-survey__progress-label">已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span>
+        <span class="d-survey__progress-label"
+          >已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span
+        >
       </div>
 
       <!-- 内容区 -->
@@ -168,9 +170,9 @@
                     :key="opt.value"
                     class="d-survey__scale-btn"
                     :class="{
-                      'd-survey__scale-btn--active': answers[item.itemToken] === String(opt.value),
+                      'd-survey__scale-btn--active': scaleAnswers[item.itemToken] === opt.value,
                     }"
-                    @click="answers[item.itemToken] = String(opt.value)"
+                    @click="scaleAnswers[item.itemToken] = opt.value"
                   >
                     {{ opt.value }}
                   </button>
@@ -184,14 +186,15 @@
                   :key="opt.optionValue"
                   class="d-survey__choice"
                   :class="{
-                    'd-survey__choice--active': answers[item.itemToken] === opt.optionValue,
+                    'd-survey__choice--active':
+                      singleChoiceAnswers[item.itemToken] === opt.optionValue,
                   }"
-                  @click="answers[item.itemToken] = opt.optionValue"
+                  @click="singleChoiceAnswers[item.itemToken] = opt.optionValue"
                 >
                   <span class="d-survey__choice-letter">{{ String.fromCharCode(65 + oi) }}</span>
                   <span class="d-survey__choice-text">{{ opt.optionLabel }}</span>
                   <span
-                    v-if="answers[item.itemToken] === opt.optionValue"
+                    v-if="singleChoiceAnswers[item.itemToken] === opt.optionValue"
                     class="d-survey__choice-check"
                     aria-hidden="true"
                   >
@@ -282,8 +285,8 @@
 
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import type { PublicSurveyItemVO } from '@/apis/public-survey'
 import { nextTick, ref } from 'vue'
+import type { PublicSurveyItemVO } from '@/apis/public-survey'
 import { useSurveyFill } from '@/composables/useSurveyFill'
 
 const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<PublicSurveyItemVO['itemType'], string> = {
@@ -301,7 +304,8 @@ const {
   submitting,
   thankYouMessage,
   identityValues,
-  answers,
+  scaleAnswers,
+  singleChoiceAnswers,
   multiAnswers,
   openTexts,
   totalCount,

@@ -17,6 +17,17 @@ import type {
   ReportType,
   ReportVO,
 } from '@/apis/quality'
+import {
+  isReportExportStatus,
+  isReportStatus,
+  isReportType,
+  REPORT_EXPORT_STATUS_COLOR,
+  REPORT_EXPORT_STATUS_LABEL,
+  REPORT_STATUS_COLOR,
+  REPORT_STATUS_LABEL,
+  REPORT_TYPE_LABEL,
+  reportApi,
+} from '@/apis/quality'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -29,17 +40,6 @@ import { message } from 'ant-design-vue'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import {
-  isReportExportStatus,
-  isReportStatus,
-  isReportType,
-  REPORT_EXPORT_STATUS_COLOR,
-  REPORT_EXPORT_STATUS_LABEL,
-  REPORT_STATUS_COLOR,
-  REPORT_STATUS_LABEL,
-  REPORT_TYPE_LABEL,
-  reportApi,
-} from '@/apis/quality'
 import {
   CourseSelector,
   ProgramSelector,
@@ -143,7 +143,7 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportType, label: string }> = [
+const reportTypeOptions: Array<{ value: ReportType; label: string }> = [
   { value: 'COURSE_ACHIEVEMENT', label: REPORT_TYPE_LABEL.COURSE_ACHIEVEMENT },
   { value: 'PROGRAM_QUALITY', label: REPORT_TYPE_LABEL.PROGRAM_QUALITY },
   { value: 'IMPROVEMENT', label: REPORT_TYPE_LABEL.IMPROVEMENT },
@@ -152,7 +152,7 @@ const reportTypeOptions: Array<{ value: ReportType, label: string }> = [
     label: REPORT_TYPE_LABEL.AUDIT_EVALUATION_RECTIFICATION,
   },
 ]
-const statusOptions: Array<{ value: ReportStatus, label: string }> = [
+const statusOptions: Array<{ value: ReportStatus; label: string }> = [
   { value: 'DRAFT', label: REPORT_STATUS_LABEL.DRAFT },
   { value: 'SUBMITTED', label: REPORT_STATUS_LABEL.SUBMITTED },
   { value: 'CONFIRMED', label: REPORT_STATUS_LABEL.CONFIRMED },
@@ -188,7 +188,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -455,7 +455,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatus, title: string }> = [
+  const order: Array<{ key: ReportStatus; title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'SUBMITTED', title: '待确认' },
     { key: 'CONFIRMED', title: '已确认' },
@@ -556,14 +556,12 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
       statusLabel: r.status === 'RETURNED' ? '已驳回' : '导出失败',
       statusTone: 'red',
       description:
-        r.status === 'RETURNED'
-          ? '审核驳回，需修订后重新提交'
-          : requireExportErrorMessage(r),
+        r.status === 'RETURNED' ? '审核驳回，需修订后重新提交' : requireExportErrorMessage(r),
       actions: [{ key: 'detail', label: '详情' }],
     }))
 })
 
-function handleReportResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
+function handleReportResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((r) => r.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -718,9 +716,9 @@ onMounted(loadList)
               </UiButton>
               <UiButton
                 v-if="
-                  record.status === 'SUBMITTED'
-                    || record.status === 'CONFIRMED'
-                    || record.status === 'ARCHIVED'
+                  record.status === 'SUBMITTED' ||
+                  record.status === 'CONFIRMED' ||
+                  record.status === 'ARCHIVED'
                 "
                 variant="ghost"
                 size="sm"
@@ -882,7 +880,7 @@ onMounted(loadList)
           {{ detailRecord.exportFinishedAt }}
         </a-descriptions-item>
         <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出错误" :span="2">
-          <pre class="report__error-pre">{{ detailRecord.exportErrorMessage }}</pre>
+          <a-alert type="error" show-icon :message="detailRecord.exportErrorMessage" />
         </a-descriptions-item>
         <a-descriptions-item v-if="detailRecord.confirmedAt" label="确认时间">
           {{ detailRecord.confirmedAt }}
@@ -895,9 +893,9 @@ onMounted(loadList)
         </a-descriptions-item>
       </a-descriptions>
       <h4 class="report__section-title">正文预览</h4>
-      <pre v-if="detailRecord?.bodyMarkdown" class="report__md-preview">{{
-        detailRecord.bodyMarkdown
-      }}</pre>
+      <div v-if="detailRecord?.bodyMarkdown" class="report__md-preview">
+        {{ detailRecord.bodyMarkdown }}
+      </div>
       <UiEmpty v-else description="尚无正文" size="sm" />
     </UiDrawer>
 

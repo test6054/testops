@@ -20,10 +20,6 @@ export interface ProfessionAlgorithmTemplateVO {
   standardId?: string
   standardYear?: string
   description?: string
-  defaultRequirementStructure?: string
-  defaultIndicatorStructure?: string
-  defaultEvidenceTypes?: string
-  professionEvidenceRubric?: string
   courseGoalAggregation?: AggregationFunction
   indicatorAggregation?: AggregationFunction
   requirementAggregation?: AggregationFunction
@@ -50,10 +46,6 @@ export interface ProfessionAlgorithmTemplateSavePayload {
   standardId?: string
   standardYear?: string
   description?: string
-  defaultRequirementStructure?: string
-  defaultIndicatorStructure?: string
-  defaultEvidenceTypes?: string
-  professionEvidenceRubric?: string
   courseGoalAggregation?: AggregationFunction
   indicatorAggregation?: AggregationFunction
   requirementAggregation?: AggregationFunction
@@ -78,14 +70,10 @@ export interface ProfessionAlgorithmTemplateQueryPayload extends QueryDto {
 export const professionAlgorithmTemplateApi = {
   page: (data: ProfessionAlgorithmTemplateQueryPayload) =>
     http.post<PageResult<ProfessionAlgorithmTemplateVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<ProfessionAlgorithmTemplateVO>(`${BASE}/detail`, { id }),
+  detail: (id: string) => http.post<ProfessionAlgorithmTemplateVO>(`${BASE}/detail`, { id }),
   create: (data: ProfessionAlgorithmTemplateSavePayload) =>
     http.post<string>(`${BASE}/create`, data),
-  copyToTenant: (id: string) =>
-    http.post<string>(`${BASE}/copy-to-tenant`, { id }),
-  update: (data: ProfessionAlgorithmTemplateSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
+  copyToTenant: (id: string) => http.post<string>(`${BASE}/copy-to-tenant`, { id }),
+  update: (data: ProfessionAlgorithmTemplateSavePayload) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
 }

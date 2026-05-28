@@ -1,28 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-/**
- * 质量评价 - 外部数据拔取中心
- *
- * 后端契约（ExternalPullTaskController + ExternalDataSourceController + ExternalPullResultController + ExternalPullAuditController）：
- * 1. 维护只读数据源：jdbcUrl / username / password 以明文请求字段提交，后端 AES-256-GCM 加密保存，VO 只返回配置状态。
- * 2. 创建拔取任务：仅允许 SELECT 语句，受 SqlGuard 与 fieldWhitelist 拦截。
- * 3. 调度器执行：状态机 PENDING -> RUNNING -> SUCCEEDED / FAILED / CANCELLED。
- * 4. 结果批次 confirmationStatus PREVIEW -> CONFIRMED / REJECTED（人工确认或驳回）。
- * 5. 审计记录写 t_quality_external_pull_audit，记录 SQL 安全 / 白名单 / 脱敏预览状态。
- */
 import type {
   ExternalDataSourceSavePayload,
   ExternalDataSourceVO,
   ExternalPullAuditVO,
+  ExternalPullFilterOperator,
   ExternalPullResultVO,
+  ExternalPullSortDirection,
   ExternalPullTaskCreatePayload,
   ExternalPullTaskQueryPayload,
   ExternalPullTaskVO,
+  ExternalSourceFieldScope,
   ExternalSourceType,
 } from '@/apis/quality'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
   EXTERNAL_PULL_AUDIT_EVENT_LABEL,
@@ -38,10 +28,40 @@ import {
   isExternalPullTaskStatus,
   isExternalSourceType,
 } from '@/apis/quality'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptModal } from './_helpers'
+
+interface SourceFieldScopeEditorRow {
+  key: string
+  sourceObjectName: string
+  fieldName: string
+  fieldLabel: string
+  fieldType: string
+  fieldOrder: number
+}
+
+interface PullFilterEditorRow {
+  key: string
+  fieldName: string
+  operator: ExternalPullFilterOperator
+  valueText: string
+}
+
+interface PullSortEditorRow {
+  key: string
+  fieldName: string
+  sortDirection: ExternalPullSortDirection
+}
+
+interface SelectOption {
+  value: string
+  label: string
+}
 
 const sourceColumns: ColumnsType = [
   { title: '编码', dataIndex: 'sourceCode', key: 'sourceCode', width: 160 },
@@ -49,7 +69,7 @@ const sourceColumns: ColumnsType = [
   { title: '数据库类型', dataIndex: 'sourceType', key: 'sourceType', width: 120 },
   { title: '驱动类', dataIndex: 'driverClass', key: 'driverClass', width: 200 },
   { title: '最大行数', dataIndex: 'maxRowCount', key: 'maxRowCount', width: 100 },
-  { title: '超时（秒）', dataIndex: 'queryTimeoutSeconds', key: 'queryTimeoutSeconds', width: 90 },
+  { title: '超时（秒）', dataIndex: 'queryTimeoutSeconds', key: 'queryTimeoutSeconds', width: 100 },
   { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 100 },
   { title: '操作', key: 'actions', width: 220, fixed: 'right' },
 ]
@@ -58,6 +78,7 @@ const taskColumns: ColumnsType = [
   { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 160 },
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
   { title: '数据源', dataIndex: 'sourceId', key: 'sourceId', width: 160 },
+  { title: '来源对象', dataIndex: 'sourceObjectName', key: 'sourceObjectName', width: 180 },
   { title: '业务锚点', dataIndex: 'businessAnchor', key: 'businessAnchor', width: 180 },
   { title: '返回行数', dataIndex: 'returnRows', key: 'returnRows', width: 100 },
   { title: '耗时（ms）', dataIndex: 'elapsedMs', key: 'elapsedMs', width: 110 },
@@ -74,47 +95,21 @@ const detailResultColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 180 },
 ]
 
-/* ========== 状态守卫 helper：禁用 as 类型断言 ========== */
+const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator; label: string }> = [
+  { value: 'EQ', label: '等于' },
+  { value: 'NE', label: '不等于' },
+  { value: 'GT', label: '大于' },
+  { value: 'GTE', label: '大于等于' },
+  { value: 'LT', label: '小于' },
+  { value: 'LTE', label: '小于等于' },
+  { value: 'LIKE', label: '包含' },
+  { value: 'IN', label: '属于多个值' },
+]
 
-function taskStatusLabel(value: unknown): string {
-  if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_LABEL[value]
-  throw new Error(`外部拔取任务状态不在后端枚举内：${String(value)}`)
-}
-
-function taskStatusColor(value: unknown): string {
-  if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_COLOR[value]
-  throw new Error(`外部拔取任务状态不在后端枚举内：${String(value)}`)
-}
-
-function sourceTypeLabel(value: unknown): string {
-  if (isExternalSourceType(value)) return EXTERNAL_SOURCE_TYPE_LABEL[value]
-  throw new Error(`外部数据源类型不在后端枚举内：${String(value)}`)
-}
-
-function confirmationStatusColor(value: unknown): string {
-  if (value === 'CONFIRMED') return 'green'
-  if (value === 'REJECTED') return 'red'
-  if (value === 'PREVIEW') return 'orange'
-  throw new Error(`结果批次确认状态不在后端枚举内：${String(value)}`)
-}
-
-function auditTone(status: unknown): string {
-  if (status === 'PASSED') return 'green'
-  if (status === 'REJECTED') return 'red'
-  if (status === 'WARNING') return 'orange'
-  if (status === null || status === undefined || status === '') return 'gray'
-  throw new Error(`外部拔取审计状态不在后端枚举内：${String(status)}`)
-}
-
-function auditEventLabel(value: unknown): string {
-  if (isExternalPullAuditEvent(value)) return EXTERNAL_PULL_AUDIT_EVENT_LABEL[value]
-  throw new Error(`外部拔取审计事件不在后端枚举内：${String(value)}`)
-}
-
-function auditCheckStatusLabel(value: unknown): string {
-  if (isExternalPullAuditCheckStatus(value)) return EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL[value]
-  throw new Error(`外部拔取审计状态不在后端枚举内：${String(value)}`)
-}
+const sortDirectionOptions: Array<{ value: ExternalPullSortDirection; label: string }> = [
+  { value: 'ASC', label: '升序' },
+  { value: 'DESC', label: '降序' },
+]
 
 const sources = ref<ExternalDataSourceVO[]>([])
 const sourceTotal = ref(0)
@@ -132,13 +127,11 @@ const taskQuery = reactive<ExternalPullTaskQueryPayload>({
   businessAnchor: undefined,
 })
 
-/**
- * 临时表单状态：包含明文输入。提交时直接按后端契约发送，服务端负责加密落库。
- */
 const sourceEditorVisible = ref(false)
 const sourceEditing = ref(false)
 const sourceEditorMode = ref<'create' | 'edit'>('create')
 const sourceEditingId = ref<string | undefined>(undefined)
+const sourceFieldScopes = ref<SourceFieldScopeEditorRow[]>([])
 const sourceForm = reactive({
   sourceCode: '',
   sourceName: '',
@@ -147,7 +140,6 @@ const sourceForm = reactive({
   username: '',
   password: '',
   driverClass: 'org.postgresql.Driver',
-  fieldWhitelist: '{}',
   maxRowCount: 10000,
   queryTimeoutSeconds: 30,
   enabled: true,
@@ -155,15 +147,19 @@ const sourceForm = reactive({
 
 const taskCreateVisible = ref(false)
 const taskCreating = ref(false)
+const taskSelectedFields = ref<string[]>([])
+const taskFilters = ref<PullFilterEditorRow[]>([])
+const taskSorts = ref<PullSortEditorRow[]>([])
 const taskForm = reactive<ExternalPullTaskCreatePayload>({
   sourceId: '',
   taskCode: '',
   taskName: '',
   businessAnchor: '',
   businessId: '',
-  sqlTemplate: '',
-  sqlParameters: '',
-  fieldWhitelist: '',
+  sourceObjectName: '',
+  fields: [],
+  filters: [],
+  sorts: [],
   maxRowCount: undefined,
   queryTimeoutSeconds: undefined,
 })
@@ -183,7 +179,37 @@ const taskStatusOptions = Object.entries(EXTERNAL_PULL_TASK_STATUS_LABEL).map(([
   label,
 }))
 
-/* ========== 信号指标带 ========== */
+const enabledSourceOptions = computed(() =>
+  sources.value.filter((s) => s.enabled).map((s) => ({ value: s.id, label: s.sourceName })),
+)
+
+const selectedTaskSource = computed(() =>
+  sources.value.find((source) => source.id === taskForm.sourceId),
+)
+
+const sourceObjectOptions = computed<SelectOption[]>(() => {
+  const source = selectedTaskSource.value
+  if (!source) return []
+  const names: string[] = []
+  for (const scope of source.fieldScopes || []) {
+    if (scope.sourceObjectName && !names.includes(scope.sourceObjectName)) {
+      names.push(scope.sourceObjectName)
+    }
+  }
+  return names.map((name) => ({ value: name, label: name }))
+})
+
+const taskFieldOptions = computed<SelectOption[]>(() => {
+  const source = selectedTaskSource.value
+  if (!source || !taskForm.sourceObjectName) return []
+  return (source.fieldScopes || [])
+    .filter((scope) => scope.sourceObjectName === taskForm.sourceObjectName)
+    .sort((a, b) => a.fieldOrder - b.fieldOrder)
+    .map((scope) => ({
+      value: scope.fieldName,
+      label: scope.fieldLabel ? `${scope.fieldLabel}（${scope.fieldName}）` : scope.fieldName,
+    }))
+})
 
 const signals = computed<SignalMetric[]>(() => {
   const enabledSources = sources.value.filter((s) => s.enabled).length
@@ -226,6 +252,102 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+const taskRuleSummaryLines = computed(() => {
+  const lines: string[] = []
+  if (taskForm.sourceObjectName) {
+    lines.push(`来源对象：${taskForm.sourceObjectName}`)
+  }
+  if (taskSelectedFields.value.length) {
+    lines.push(`返回字段：${taskSelectedFields.value.join('、')}`)
+  }
+  const activeFilters = taskFilters.value.filter((item) => item.fieldName && item.valueText.trim())
+  if (activeFilters.length) {
+    lines.push(
+      `筛选条件：${activeFilters
+        .map(
+          (item) => `${item.fieldName}${filterOperatorText(item.operator)}${item.valueText.trim()}`,
+        )
+        .join('；')}`,
+    )
+  }
+  const activeSorts = taskSorts.value.filter((item) => item.fieldName)
+  if (activeSorts.length) {
+    lines.push(
+      `排序规则：${activeSorts
+        .map((item) => `${item.fieldName}${item.sortDirection === 'ASC' ? '升序' : '降序'}`)
+        .join('；')}`,
+    )
+  }
+  return lines
+})
+
+const pullResultItems = computed<TaskResultItem[]>(() => {
+  return tasks.value
+    .filter(
+      (t) =>
+        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED') ||
+        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
+    )
+    .slice(0, 5)
+    .map((t) => ({
+      id: t.id,
+      title: `${t.taskCode} - ${t.taskName}`,
+      statusLabel: taskStatusLabel(t.status),
+      statusTone: isExternalPullTaskStatus(t.status) && t.status === 'FAILED' ? 'red' : 'blue',
+      description:
+        t.failureReason ||
+        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中' : undefined),
+      time: t.startedAt || undefined,
+      actions: [{ key: 'detail', label: '详情' }],
+    }))
+})
+
+function taskStatusLabel(value: unknown): string {
+  if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_LABEL[value]
+  throw new Error(`外部拔取任务状态不在后端枚举内：${String(value)}`)
+}
+
+function taskStatusColor(value: unknown): string {
+  if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_COLOR[value]
+  throw new Error(`外部拔取任务状态不在后端枚举内：${String(value)}`)
+}
+
+function sourceTypeLabel(value: unknown): string {
+  if (isExternalSourceType(value)) return EXTERNAL_SOURCE_TYPE_LABEL[value]
+  throw new Error(`外部数据源类型不在后端枚举内：${String(value)}`)
+}
+
+function confirmationStatusColor(value: unknown): string {
+  if (value === 'CONFIRMED') return 'green'
+  if (value === 'REJECTED') return 'red'
+  if (value === 'PREVIEW') return 'orange'
+  throw new Error(`结果批次确认状态不在后端枚举内：${String(value)}`)
+}
+
+function auditTone(status: unknown): string {
+  if (status === 'PASSED') return 'green'
+  if (status === 'REJECTED') return 'red'
+  if (status === 'WARNING') return 'orange'
+  if (status === null || status === undefined || status === '') return 'gray'
+  throw new Error(`外部拔取审计状态不在后端枚举内：${String(status)}`)
+}
+
+function auditEventLabel(value: unknown): string {
+  if (isExternalPullAuditEvent(value)) return EXTERNAL_PULL_AUDIT_EVENT_LABEL[value]
+  throw new Error(`外部拔取审计事件不在后端枚举内：${String(value)}`)
+}
+
+function auditCheckStatusLabel(value: unknown): string {
+  if (isExternalPullAuditCheckStatus(value)) return EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL[value]
+  throw new Error(`外部拔取审计状态不在后端枚举内：${String(value)}`)
+}
+
+function filterOperatorText(operator: ExternalPullFilterOperator): string {
+  const option = filterOperatorOptions.find((item) => item.value === operator)
+  if (!option) throw new Error(`筛选操作符不在后端枚举内：${operator}`)
+  return option.label
+}
+
 function sourceName(sourceId: string | undefined): string {
   if (!sourceId) throw new Error('外部拔取任务缺少数据源 ID')
   const source = sources.value.find((s) => s.id === sourceId)
@@ -233,9 +355,33 @@ function sourceName(sourceId: string | undefined): string {
   return source.sourceName
 }
 
-const enabledSourceOptions = computed(() =>
-  sources.value.filter((s) => s.enabled).map((s) => ({ value: s.id, label: s.sourceName })),
-)
+function createSourceFieldScopeRow(scope?: ExternalSourceFieldScope): SourceFieldScopeEditorRow {
+  return {
+    key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sourceObjectName: scope?.sourceObjectName || '',
+    fieldName: scope?.fieldName || '',
+    fieldLabel: scope?.fieldLabel || '',
+    fieldType: scope?.fieldType || '',
+    fieldOrder: scope?.fieldOrder || 1,
+  }
+}
+
+function createFilterRow(): PullFilterEditorRow {
+  return {
+    key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    fieldName: '',
+    operator: 'EQ',
+    valueText: '',
+  }
+}
+
+function createSortRow(): PullSortEditorRow {
+  return {
+    key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    fieldName: '',
+    sortDirection: 'ASC',
+  }
+}
 
 function canCancelTask(status: unknown): boolean {
   if (!isExternalPullTaskStatus(status)) {
@@ -244,10 +390,30 @@ function canCancelTask(status: unknown): boolean {
   return status === 'PENDING' || status === 'RUNNING'
 }
 
-function handleTaskPageChange(payload: { current: number, pageSize: number }) {
+function splitMultiValue(value: string): string[] {
+  return value
+    .split(/[\n,，]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function handleTaskPageChange(payload: { current: number; pageSize: number }) {
   taskQuery.pageNum = payload.current
   taskQuery.pageSize = payload.pageSize
   loadTasks()
+}
+
+function resetTaskRuleAfterSourceChange() {
+  taskForm.sourceObjectName = ''
+  taskSelectedFields.value = []
+  taskFilters.value = [createFilterRow()]
+  taskSorts.value = []
+}
+
+function resetTaskRuleAfterObjectChange() {
+  taskSelectedFields.value = []
+  taskFilters.value = [createFilterRow()]
+  taskSorts.value = []
 }
 
 async function reloadAll() {
@@ -284,6 +450,7 @@ async function loadTasks() {
 function openSourceCreate() {
   sourceEditorMode.value = 'create'
   sourceEditingId.value = undefined
+  sourceFieldScopes.value = [createSourceFieldScopeRow()]
   Object.assign(sourceForm, {
     sourceCode: '',
     sourceName: '',
@@ -292,7 +459,6 @@ function openSourceCreate() {
     username: '',
     password: '',
     driverClass: 'org.postgresql.Driver',
-    fieldWhitelist: '{}',
     maxRowCount: 10000,
     queryTimeoutSeconds: 30,
     enabled: true,
@@ -304,16 +470,17 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
   sourceEditorMode.value = 'edit'
   sourceEditingId.value = record.id
   const detail = await externalDataSourceApi.detail(record.id)
+  sourceFieldScopes.value = detail.fieldScopes?.length
+    ? detail.fieldScopes.map((scope) => createSourceFieldScopeRow(scope))
+    : [createSourceFieldScopeRow()]
   Object.assign(sourceForm, {
     sourceCode: detail.sourceCode,
     sourceName: detail.sourceName,
     sourceType: detail.sourceType,
-    // 后端不下行明文，编辑时必须重输
     jdbcUrl: '',
     username: '',
     password: '',
     driverClass: detail.driverClass,
-    fieldWhitelist: detail.fieldWhitelist,
     maxRowCount: detail.maxRowCount,
     queryTimeoutSeconds: detail.queryTimeoutSeconds,
     enabled: detail.enabled,
@@ -323,28 +490,51 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 
 async function submitSource() {
   if (
-    !sourceForm.sourceCode.trim()
-    || !sourceForm.sourceName.trim()
-    || !sourceForm.jdbcUrl.trim()
+    !sourceForm.sourceCode.trim() ||
+    !sourceForm.sourceName.trim() ||
+    !sourceForm.jdbcUrl.trim()
   ) {
-    message.error('请填写编码 / 名称 / JDBC URL')
+    message.error('请填写编码 / 名称 / 连接地址')
     return
   }
   if (!sourceForm.username.trim() || !sourceForm.password) {
-    message.error('账户与密码不能为空（加密保存；编辑时也必须重输）')
+    message.error('账户与密码不能为空（保存时加密）')
     return
   }
-  if (!sourceForm.driverClass.trim() || !sourceForm.fieldWhitelist.trim()) {
-    message.error('请填写驱动类与字段白名单 JSON')
+  if (!sourceForm.driverClass.trim()) {
+    message.error('请填写驱动类')
     return
   }
-  const whitelist = sourceForm.fieldWhitelist.trim()
-  try {
-    JSON.parse(whitelist)
-  } catch {
-    message.error('字段白名单必须是合法 JSON')
+
+  const seen = new Set<string>()
+  const fieldScopes: ExternalSourceFieldScope[] = []
+  for (let index = 0; index < sourceFieldScopes.value.length; index += 1) {
+    const row = sourceFieldScopes.value[index]
+    const sourceObjectName = row.sourceObjectName.trim()
+    const fieldName = row.fieldName.trim()
+    if (!sourceObjectName || !fieldName) {
+      message.error(`字段范围 ${index + 1} 需要填写来源对象和字段名`)
+      return
+    }
+    const duplicateKey = `${sourceObjectName}#${fieldName}`
+    if (seen.has(duplicateKey)) {
+      message.error(`字段范围重复：${sourceObjectName}.${fieldName}`)
+      return
+    }
+    seen.add(duplicateKey)
+    fieldScopes.push({
+      sourceObjectName,
+      fieldName,
+      fieldLabel: row.fieldLabel.trim(),
+      fieldType: row.fieldType.trim(),
+      fieldOrder: index + 1,
+    })
+  }
+  if (!fieldScopes.length) {
+    message.error('请至少登记一个可拔取字段')
     return
   }
+
   sourceEditing.value = true
   try {
     const payload: ExternalDataSourceSavePayload = {
@@ -356,7 +546,7 @@ async function submitSource() {
       username: sourceForm.username.trim(),
       password: sourceForm.password,
       driverClass: sourceForm.driverClass.trim(),
-      fieldWhitelist: whitelist,
+      fieldScopes,
       maxRowCount: sourceForm.maxRowCount,
       queryTimeoutSeconds: sourceForm.queryTimeoutSeconds,
       enabled: sourceForm.enabled,
@@ -393,20 +583,6 @@ async function deleteSource(record: ExternalDataSourceVO) {
   })
 }
 
-async function cancelTask(record: ExternalPullTaskVO) {
-  const reason = await promptModal({
-    title: `取消拔取任务 ${record.taskCode}`,
-    placeholder: '请填写取消原因',
-    required: true,
-    okType: 'danger',
-    emptyErrorMessage: '请填写取消原因',
-  })
-  if (!reason) return
-  await externalPullTaskApi.cancel(record.id, reason || undefined)
-  message.success('已取消')
-  await loadTasks()
-}
-
 function openTaskCreate() {
   Object.assign(taskForm, {
     sourceId: '',
@@ -414,43 +590,79 @@ function openTaskCreate() {
     taskName: '',
     businessAnchor: '',
     businessId: '',
-    sqlTemplate: '',
-    sqlParameters: '',
-    fieldWhitelist: '',
+    sourceObjectName: '',
+    fields: [],
+    filters: [],
+    sorts: [],
     maxRowCount: undefined,
     queryTimeoutSeconds: undefined,
   })
+  taskSelectedFields.value = []
+  taskFilters.value = [createFilterRow()]
+  taskSorts.value = []
   taskCreateVisible.value = true
 }
 
 async function submitTask() {
   if (
-    !taskForm.taskName.trim()
-    || !taskForm.taskCode.trim()
-    || !taskForm.sourceId
-    || !taskForm.businessAnchor.trim()
-    || !taskForm.businessId
-    || !taskForm.sqlTemplate.trim()
+    !taskForm.taskName.trim() ||
+    !taskForm.taskCode.trim() ||
+    !taskForm.sourceId ||
+    !taskForm.businessAnchor.trim() ||
+    !taskForm.businessId ||
+    !taskForm.sourceObjectName
   ) {
-    message.error('请填写任务编码 / 名称 / 数据源 / 业务锚点 / SQL')
+    message.error('请填写任务编码 / 名称 / 数据源 / 业务锚点 / 业务锚点 ID / 来源对象')
     return
   }
-  if (!/^\s*select\s/i.test(taskForm.sqlTemplate)) {
-    message.error('仅允许 SELECT 语句')
+  if (!taskSelectedFields.value.length) {
+    message.error('请至少选择一个返回字段')
     return
   }
-  if (taskForm.sqlParameters && taskForm.sqlParameters.trim()) {
-    try {
-      const sqlParameters = JSON.parse(taskForm.sqlParameters)
-      if (!Array.isArray(sqlParameters)) {
-        message.error('SQL 参数必须是 JSON 数组，按 ? 占位符顺序填写')
-        return
-      }
-    } catch {
-      message.error('SQL 参数必须是合法 JSON 数组')
+
+  const fields = taskSelectedFields.value.map((fieldName, index) => ({
+    fieldName,
+    fieldOrder: index + 1,
+  }))
+  const filters: NonNullable<ExternalPullTaskCreatePayload['filters']> = []
+  for (let index = 0; index < taskFilters.value.length; index += 1) {
+    const row = taskFilters.value[index]
+    if (!row.fieldName && !row.valueText.trim()) continue
+    if (!row.fieldName || !row.valueText.trim()) {
+      message.error(`筛选条件 ${index + 1} 需要同时选择字段并填写取值`)
       return
     }
+    if (row.operator === 'IN') {
+      const values = splitMultiValue(row.valueText)
+      if (!values.length) {
+        message.error(`筛选条件 ${index + 1} 至少填写一个取值`)
+        return
+      }
+      for (const value of values) {
+        filters.push({
+          fieldName: row.fieldName,
+          filterOperator: row.operator,
+          filterValue: value,
+          valueOrder: filters.length + 1,
+        })
+      }
+    } else {
+      filters.push({
+        fieldName: row.fieldName,
+        filterOperator: row.operator,
+        filterValue: row.valueText.trim(),
+        valueOrder: filters.length + 1,
+      })
+    }
   }
+  const sorts = taskSorts.value
+    .filter((row) => row.fieldName)
+    .map((row, index) => ({
+      fieldName: row.fieldName,
+      sortDirection: row.sortDirection,
+      sortOrder: index + 1,
+    }))
+
   taskCreating.value = true
   try {
     await externalPullTaskApi.create({
@@ -459,9 +671,10 @@ async function submitTask() {
       taskName: taskForm.taskName.trim(),
       businessAnchor: taskForm.businessAnchor.trim(),
       businessId: taskForm.businessId,
-      sqlTemplate: taskForm.sqlTemplate.trim(),
-      sqlParameters: taskForm.sqlParameters?.trim() || undefined,
-      fieldWhitelist: taskForm.fieldWhitelist?.trim() || undefined,
+      sourceObjectName: taskForm.sourceObjectName,
+      fields,
+      filters,
+      sorts,
       maxRowCount: taskForm.maxRowCount,
       queryTimeoutSeconds: taskForm.queryTimeoutSeconds,
     })
@@ -473,10 +686,20 @@ async function submitTask() {
   }
 }
 
-/**
- * 确认 / 驳回是对 **拔取结果批次** 操作而不是任务本身。
- * 任务成功后会生成一个 PREVIEW 状态的结果批次，在详情抽屉中对该批次 confirm / reject。
- */
+async function cancelTask(record: ExternalPullTaskVO) {
+  const reason = await promptModal({
+    title: `取消拔取任务 ${record.taskCode}`,
+    placeholder: '请填写取消原因',
+    required: true,
+    okType: 'danger',
+    emptyErrorMessage: '请填写取消原因',
+  })
+  if (!reason) return
+  await externalPullTaskApi.cancel(record.id, reason)
+  message.success('已取消')
+  await loadTasks()
+}
+
 async function confirmResult(result: ExternalPullResultVO) {
   const confirmedRows = result.previewRows
   if (confirmedRows === null || confirmedRows === undefined) {
@@ -513,7 +736,7 @@ async function rejectResult(result: ExternalPullResultVO) {
 
 async function openDetail(record: ExternalPullTaskVO) {
   detailVisible.value = true
-  detailRecord.value = record
+  detailRecord.value = await externalPullTaskApi.detail(record.id)
   await reloadDetail(record.id)
 }
 
@@ -531,30 +754,7 @@ async function reloadDetail(taskId: string) {
   }
 }
 
-const pullResultItems = computed<TaskResultItem[]>(() => {
-  return tasks.value
-    .filter(
-      (t) =>
-        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED')
-        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
-    )
-    .slice(0, 5)
-    .map((t) => ({
-      id: t.id,
-      title: `${t.taskCode} - ${t.taskName}`,
-      statusLabel: taskStatusLabel(t.status),
-      statusTone: (isExternalPullTaskStatus(t.status) && t.status === 'FAILED' ? 'red' : 'blue') as
-      | 'red'
-      | 'blue',
-      description:
-        t.failureReason
-        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中…' : undefined),
-      time: t.startedAt || undefined,
-      actions: [{ key: 'detail', label: '详情' }],
-    }))
-})
-
-function handlePullResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
+function handlePullResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
   const record = tasks.value.find((t) => t.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -640,7 +840,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openSourceEdit(record)"> 编辑 </UiButton>
+              <UiButton variant="ghost" size="sm" @click="openSourceEdit(record)">编辑</UiButton>
               <UiButton variant="ghost" size="sm" @click="toggleSourceEnabled(record)">
                 {{ record.enabled ? '停用' : '启用' }}
               </UiButton>
@@ -721,7 +921,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
+              <UiButton variant="ghost" size="sm" @click="openDetail(record)">详情</UiButton>
               <UiButton
                 v-if="canCancelTask(record.status)"
                 variant="ghost"
@@ -740,7 +940,7 @@ onMounted(async () => {
     <UiDrawer
       v-model:open="sourceEditorVisible"
       :title="sourceEditorMode === 'create' ? '新建数据源' : `编辑数据源 ${sourceForm.sourceCode}`"
-      :width="720"
+      :width="860"
       :confirm-loading="sourceEditing"
       :hide-footer="false"
       ok-text="保存"
@@ -750,8 +950,8 @@ onMounted(async () => {
         v-if="sourceEditorMode === 'edit'"
         type="warning"
         show-icon
-        message="编辑模式必须重新输入连接串 / 账号 / 密码"
-        description="后端不下行明文凭证，保存时连接串 / 账号 / 密码会覆盖原有密文。其他字段默认以当前值为准。"
+        message="编辑模式必须重新输入连接地址 / 账号 / 密码"
+        description="服务端不下行明文凭证，保存时连接地址 / 账号 / 密码会覆盖原有密文。其他字段默认以当前值为准。"
         class="external-pull__editor-alert"
       />
       <a-form layout="vertical" :model="sourceForm">
@@ -779,7 +979,7 @@ onMounted(async () => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="JDBC URL" required>
+        <a-form-item label="连接地址" required>
           <a-input
             v-model:value="sourceForm.jdbcUrl"
             placeholder="jdbc:postgresql://host:5432/db"
@@ -819,13 +1019,49 @@ onMounted(async () => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="字段白名单 JSON" required>
-          <a-textarea
-            v-model:value="sourceForm.fieldWhitelist"
-            :rows="3"
-            placeholder="如 {&quot;t_score&quot;:[&quot;id&quot;,&quot;score&quot;]}"
-            class="external-pull__mono"
-          />
+        <a-form-item label="可拔取字段" required>
+          <div class="external-pull__entry-list">
+            <div
+              v-for="(entry, index) in sourceFieldScopes"
+              :key="entry.key"
+              class="external-pull__entry-card"
+            >
+              <div class="external-pull__entry-header">
+                <span class="external-pull__entry-title">字段 {{ index + 1 }}</span>
+                <UiButton
+                  variant="ghost"
+                  size="sm"
+                  status="danger"
+                  :disabled="sourceFieldScopes.length === 1"
+                  @click="sourceFieldScopes.splice(index, 1)"
+                >
+                  删除
+                </UiButton>
+              </div>
+              <a-row :gutter="12">
+                <a-col :span="6">
+                  <a-input v-model:value="entry.sourceObjectName" placeholder="来源对象" />
+                </a-col>
+                <a-col :span="6">
+                  <a-input v-model:value="entry.fieldName" placeholder="字段名" />
+                </a-col>
+                <a-col :span="6">
+                  <a-input v-model:value="entry.fieldLabel" placeholder="展示名称" />
+                </a-col>
+                <a-col :span="6">
+                  <a-input v-model:value="entry.fieldType" placeholder="字段类型" />
+                </a-col>
+              </a-row>
+            </div>
+          </div>
+          <UiButton
+            variant="outline"
+            size="sm"
+            class="external-pull__inline-action"
+            @click="sourceFieldScopes.push(createSourceFieldScopeRow())"
+          >
+            新增字段
+          </UiButton>
         </a-form-item>
         <a-form-item label="启用">
           <a-switch v-model:checked="sourceForm.enabled" />
@@ -836,7 +1072,7 @@ onMounted(async () => {
     <UiDrawer
       v-model:open="taskCreateVisible"
       title="新建拔取任务"
-      :width="780"
+      :width="860"
       :confirm-loading="taskCreating"
       :hide-footer="false"
       ok-text="提交任务"
@@ -845,8 +1081,8 @@ onMounted(async () => {
       <a-alert
         type="info"
         show-icon
-        message="SQL 安全约束"
-        description="仅允许 SELECT 语句；后端 SqlGuard 会拒绝 INSERT/UPDATE/DELETE/DROP/ALTER 等；字段白名单可继承数据源默认或在任务覆盖。"
+        message="提取规则说明"
+        description="按来源对象、返回字段、筛选条件和排序规则登记拔取任务。教师只选择已登记字段，服务端负责执行只读数据读取。"
         class="external-pull__editor-alert"
       />
       <a-form layout="vertical" :model="taskForm">
@@ -867,6 +1103,7 @@ onMounted(async () => {
             v-model:value="taskForm.sourceId"
             :options="enabledSourceOptions"
             placeholder="仅显示已启用的数据源"
+            @change="resetTaskRuleAfterSourceChange"
           />
         </a-form-item>
         <a-row :gutter="12">
@@ -884,27 +1121,129 @@ onMounted(async () => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="SELECT SQL 模板" required>
-          <a-textarea
-            v-model:value="taskForm.sqlTemplate"
-            :rows="5"
-            placeholder="只允许 SELECT，禁止 INSERT/UPDATE/DELETE/DROP/ALTER 等"
-            class="external-pull__mono"
+        <a-form-item label="来源对象" required>
+          <a-select
+            v-model:value="taskForm.sourceObjectName"
+            :options="sourceObjectOptions"
+            placeholder="先选择数据源，再选择来源对象"
+            :disabled="!taskForm.sourceId"
+            @change="resetTaskRuleAfterObjectChange"
           />
         </a-form-item>
-        <a-form-item label="SQL 参数 JSON 数组（可选）">
-          <a-textarea
-            v-model:value="taskForm.sqlParameters"
-            :rows="2"
-            placeholder="如 [&quot;2025-01-01&quot;, &quot;2025-12-31&quot;]"
-            class="external-pull__mono"
+        <a-form-item label="返回字段" required>
+          <a-select
+            v-model:value="taskSelectedFields"
+            mode="multiple"
+            :options="taskFieldOptions"
+            placeholder="选择需要返回的字段"
+            :disabled="!taskForm.sourceObjectName"
           />
         </a-form-item>
-        <a-form-item label="字段白名单 JSON（可留空继承数据源白名单）">
-          <a-textarea
-            v-model:value="taskForm.fieldWhitelist"
-            :rows="2"
-            class="external-pull__mono"
+        <a-form-item label="筛选条件">
+          <div class="external-pull__entry-list">
+            <div
+              v-for="(entry, index) in taskFilters"
+              :key="entry.key"
+              class="external-pull__entry-card"
+            >
+              <div class="external-pull__entry-header">
+                <span class="external-pull__entry-title">条件 {{ index + 1 }}</span>
+                <UiButton
+                  variant="ghost"
+                  size="sm"
+                  status="danger"
+                  :disabled="taskFilters.length === 1"
+                  @click="taskFilters.splice(index, 1)"
+                >
+                  删除
+                </UiButton>
+              </div>
+              <a-row :gutter="12">
+                <a-col :span="8">
+                  <a-select
+                    v-model:value="entry.fieldName"
+                    :options="taskFieldOptions"
+                    placeholder="选择字段"
+                    :disabled="!taskForm.sourceObjectName"
+                  />
+                </a-col>
+                <a-col :span="6">
+                  <a-select v-model:value="entry.operator" :options="filterOperatorOptions" />
+                </a-col>
+                <a-col :span="10">
+                  <a-textarea
+                    v-model:value="entry.valueText"
+                    :rows="2"
+                    :placeholder="entry.operator === 'IN' ? '多值条件每行一个值' : '填写筛选值'"
+                  />
+                </a-col>
+              </a-row>
+            </div>
+          </div>
+          <UiButton
+            variant="outline"
+            size="sm"
+            class="external-pull__inline-action"
+            @click="taskFilters.push(createFilterRow())"
+          >
+            新增筛选条件
+          </UiButton>
+        </a-form-item>
+        <a-form-item label="排序规则">
+          <div class="external-pull__entry-list">
+            <div
+              v-for="(entry, index) in taskSorts"
+              :key="entry.key"
+              class="external-pull__entry-card external-pull__entry-card--compact"
+            >
+              <a-row :gutter="12" align="middle">
+                <a-col :span="10">
+                  <a-select
+                    v-model:value="entry.fieldName"
+                    :options="taskFieldOptions"
+                    placeholder="选择字段"
+                    :disabled="!taskForm.sourceObjectName"
+                  />
+                </a-col>
+                <a-col :span="8">
+                  <a-select v-model:value="entry.sortDirection" :options="sortDirectionOptions" />
+                </a-col>
+                <a-col :span="6">
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
+                    status="danger"
+                    @click="taskSorts.splice(index, 1)"
+                  >
+                    删除
+                  </UiButton>
+                </a-col>
+              </a-row>
+            </div>
+          </div>
+          <UiButton
+            variant="outline"
+            size="sm"
+            class="external-pull__inline-action"
+            @click="taskSorts.push(createSortRow())"
+          >
+            新增排序规则
+          </UiButton>
+        </a-form-item>
+        <a-form-item label="提取规则预览">
+          <div v-if="taskRuleSummaryLines.length" class="external-pull__detail-block">
+            <div
+              v-for="line in taskRuleSummaryLines"
+              :key="line"
+              class="external-pull__detail-line"
+            >
+              {{ line }}
+            </div>
+          </div>
+          <UiEmpty
+            v-else
+            description="选择来源对象和返回字段后展示提取规则预览"
+            class="external-pull__empty"
           />
         </a-form-item>
         <a-row :gutter="12">
@@ -932,7 +1271,7 @@ onMounted(async () => {
       </a-form>
     </UiDrawer>
 
-    <UiDrawer v-model:open="detailVisible" title="拔取任务详情" :width="820" :hide-footer="true">
+    <UiDrawer v-model:open="detailVisible" title="拔取任务详情" :width="860" :hide-footer="true">
       <template v-if="detailRecord">
         <a-descriptions :column="2" size="small" bordered class="external-pull__detail-desc">
           <a-descriptions-item label="任务编码">
@@ -945,6 +1284,9 @@ onMounted(async () => {
           </a-descriptions-item>
           <a-descriptions-item label="数据源">
             {{ sourceName(detailRecord.sourceId) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="来源对象">
+            {{ detailRecord.sourceObjectName }}
           </a-descriptions-item>
           <a-descriptions-item label="业务锚点">
             {{ detailRecord.businessAnchor }}
@@ -965,18 +1307,48 @@ onMounted(async () => {
           <a-descriptions-item v-if="detailRecord.failureReason" label="失败原因" :span="2">
             <span class="external-pull__error-text">{{ detailRecord.failureReason }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="SQL 模板" :span="2">
-            <pre class="external-pull__sql-pre">{{ detailRecord.sqlTemplate }}</pre>
-          </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.sqlParameters" label="SQL 参数" :span="2">
-            <pre class="external-pull__sql-pre">{{ detailRecord.sqlParameters }}</pre>
+          <a-descriptions-item label="提取规则" :span="2">
+            <div class="external-pull__detail-grid">
+              <div class="external-pull__detail-line">
+                <strong>返回字段</strong>
+                <span>{{ detailRecord.fields.map((field) => field.fieldName).join('、') }}</span>
+              </div>
+              <div class="external-pull__detail-line">
+                <strong>筛选条件</strong>
+                <span v-if="detailRecord.filters?.length">
+                  {{
+                    detailRecord.filters
+                      .map(
+                        (filter) =>
+                          `${filter.fieldName}${filterOperatorText(filter.filterOperator)}${filter.filterValue}`,
+                      )
+                      .join('；')
+                  }}
+                </span>
+                <span v-else>无</span>
+              </div>
+              <div class="external-pull__detail-line">
+                <strong>排序规则</strong>
+                <span v-if="detailRecord.sorts?.length">
+                  {{
+                    detailRecord.sorts
+                      .map(
+                        (sort) =>
+                          `${sort.fieldName}${sort.sortDirection === 'ASC' ? '升序' : '降序'}`,
+                      )
+                      .join('；')
+                  }}
+                </span>
+                <span v-else>无</span>
+              </div>
+            </div>
           </a-descriptions-item>
         </a-descriptions>
 
         <h4 class="external-pull__section-title">结果批次（可逐批确认 / 驳回）</h4>
         <UiEmpty
           v-if="!detailResults.length && !detailLoading"
-          description="任务暂未生成结果批次；任务执行成功后会出现 PREVIEW 状态的批次"
+          description="任务暂未生成结果批次；任务执行成功后会出现预览状态的批次"
           size="sm"
         />
         <UiDataTable
@@ -1037,18 +1409,18 @@ onMounted(async () => {
           <a-timeline-item
             v-for="audit in detailAudits"
             :key="audit.id"
-            :color="auditTone(audit.sqlSafetyStatus)"
+            :color="auditTone(audit.queryScopeStatus || audit.fieldScopeStatus)"
           >
             <p class="external-pull__audit-event">
               <strong>{{ auditEventLabel(audit.auditEvent) }}</strong>
             </p>
-            <p v-if="audit.sqlSafetyStatus" class="external-pull__audit-line">
-              SQL 安全：{{ auditCheckStatusLabel(audit.sqlSafetyStatus) }}
-              <span v-if="audit.sqlSafetyDetail"> · {{ audit.sqlSafetyDetail }}</span>
+            <p v-if="audit.queryScopeStatus" class="external-pull__audit-line">
+              查询范围：{{ auditCheckStatusLabel(audit.queryScopeStatus) }}
+              <span v-if="audit.queryScopeDetail"> · {{ audit.queryScopeDetail }}</span>
             </p>
-            <p v-if="audit.fieldWhitelistStatus" class="external-pull__audit-line">
-              白名单：{{ auditCheckStatusLabel(audit.fieldWhitelistStatus) }}
-              <span v-if="audit.fieldWhitelistDetail"> · {{ audit.fieldWhitelistDetail }}</span>
+            <p v-if="audit.fieldScopeStatus" class="external-pull__audit-line">
+              字段范围：{{ auditCheckStatusLabel(audit.fieldScopeStatus) }}
+              <span v-if="audit.fieldScopeDetail"> · {{ audit.fieldScopeDetail }}</span>
             </p>
             <p v-if="audit.maskPreviewStatus" class="external-pull__audit-line">
               脱敏预览：{{ auditCheckStatusLabel(audit.maskPreviewStatus) }}
@@ -1155,6 +1527,41 @@ onMounted(async () => {
     margin-bottom: 12px;
   }
 
+  &__entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__entry-card {
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--dp-surface-subtle, #f8fafc);
+
+    &--compact {
+      padding: 10px 12px;
+    }
+  }
+
+  &__entry-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__entry-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__inline-action {
+    margin-top: 12px;
+  }
+
   &__detail-desc {
     margin-bottom: 16px;
   }
@@ -1170,22 +1577,23 @@ onMounted(async () => {
     color: var(--ant-color-error, #dc2626);
   }
 
-  &__sql-pre {
-    margin: 0;
-    padding: 8px;
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
-    background: var(--dp-gray-50, #f8fafc);
-    border-radius: 4px;
+  &__detail-block,
+  &__detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  &__mono {
-    :deep(textarea) {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px;
-    }
+  &__detail-line {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: var(--dp-surface-subtle, #f8fafc);
+    border-radius: 6px;
+    color: var(--dp-text-primary, #0f172a);
+    line-height: 1.6;
+    word-break: break-word;
   }
 
   &__audit-event {

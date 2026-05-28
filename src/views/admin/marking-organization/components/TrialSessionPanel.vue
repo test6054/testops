@@ -34,13 +34,11 @@
           allow-clear
         />
       </a-form-item>
-      <a-form-item label="校准结果（JSON）">
-        <a-textarea
-          v-model:value="calibrateForm.calibrationResult"
-          :rows="3"
-          :maxlength="2000"
-          placeholder="可选，例如 {&quot;deltaThreshold&quot;:0.2,&quot;notes&quot;:&quot;...&quot;}"
-          show-count
+      <a-form-item label="校准结果">
+        <a-alert
+          type="info"
+          show-icon
+          message="校准结果已进入结构化治理，当前页面不再提供原始结构录入。"
         />
       </a-form-item>
       <a-form-item label="讨论笔记">
@@ -67,18 +65,33 @@
         <a-list-item>
           <a-list-item-meta>
             <template #title>
-              <a-typography-text copyable>会话 #{{ (item as TrialSessionVO).id }}</a-typography-text>
+              <a-typography-text copyable
+                >会话 #{{ (item as TrialSessionVO).id }}</a-typography-text
+              >
               <UiTag
-                :tone="TRIAL_STATUS_TONE[(item as TrialSessionVO).sessionStatus]"
+                :tone="
+                  strictEnumTone(
+                    TRIAL_STATUS_TONE,
+                    (item as TrialSessionVO).sessionStatus,
+                    '试评会话状态',
+                  )
+                "
                 size="sm"
                 class="status-tag"
               >
-                {{ TRIAL_STATUS_LABEL[(item as TrialSessionVO).sessionStatus] }}
+                {{
+                  strictEnumLabel(
+                    TRIAL_STATUS_LABEL,
+                    (item as TrialSessionVO).sessionStatus,
+                    '试评会话状态',
+                  )
+                }}
               </UiTag>
             </template>
             <template #description>
               <span>
-                题组 #{{ (item as TrialSessionVO).groupId }} · {{ formatDateTime((item as TrialSessionVO).createTime) }}
+                题组 #{{ (item as TrialSessionVO).groupId }} ·
+                {{ formatDateTime((item as TrialSessionVO).createTime) }}
                 <template v-if="(item as TrialSessionVO).closeReason">
                   · 关闭原因：{{ (item as TrialSessionVO).closeReason }}
                 </template>
@@ -124,13 +137,6 @@ import type {
   TrialSessionStatusCode,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import StopOutlined from '@ant-design/icons-vue/StopOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   calibrateTrialSession,
   createTrialSession,
@@ -138,8 +144,16 @@ import {
   TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
   TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import StopOutlined from '@ant-design/icons-vue/StopOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 interface GroupOption {
   value: string
@@ -155,14 +169,16 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'refresh': []
+  refresh: []
   'open-lifecycle': [action: 'closeTrial', sessionId: string]
 }>()
 
 const trialGroupId = ref<string | undefined>(undefined)
 const creating = ref(false)
 const calibrateSessionId = ref<string | undefined>(undefined)
-const calibrateForm = reactive<Pick<TrialSessionCalibratePayload, 'calibrationResult' | 'discussionNotes'>>({
+const calibrateForm = reactive<
+  Pick<TrialSessionCalibratePayload, 'calibrationResult' | 'discussionNotes'>
+>({
   calibrationResult: '',
   discussionNotes: '',
 })
@@ -170,31 +186,28 @@ const calibrating = ref(false)
 const deletingId = ref<string | null>(null)
 
 const trialSessionOptions = computed(() =>
-  props.sessions.map(item => ({
+  props.sessions.map((item) => ({
     value: item.id,
-    label: `会话 #${item.id}（题组 #${item.groupId}） · ${TRIAL_STATUS_LABEL[item.sessionStatus]}`,
+    label: `会话 #${item.id}（题组 #${item.groupId}） · ${strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态')}`,
   })),
 )
 
 watch(
   () => props.sessions,
   (next) => {
-    if (calibrateSessionId.value && !next.some(s => s.id === calibrateSessionId.value)) {
+    if (calibrateSessionId.value && !next.some((s) => s.id === calibrateSessionId.value)) {
       calibrateSessionId.value = undefined
     }
   },
 )
 
 function canCloseTrial(status: TrialSessionStatusCode): boolean {
-  return status === 'TRIAL_ASSIGNED'
-    || status === 'TRIAL_SUBMITTED'
-    || status === 'CALIBRATED'
+  return status === 'TRIAL_ASSIGNED' || status === 'TRIAL_SUBMITTED' || status === 'CALIBRATED'
 }
 
 function canDeleteTrial(status: TrialSessionStatusCode): boolean {
   return status === 'TRIAL_CREATED'
 }
-
 
 async function submitCreate(): Promise<void> {
   if (!props.organizationId || !trialGroupId.value) return
@@ -221,11 +234,10 @@ async function submitCalibrate(): Promise<void> {
   try {
     await calibrateTrialSession({
       sessionId: calibrateSessionId.value,
-      calibrationResult: calibrateForm.calibrationResult?.trim() || undefined,
+      calibrationResult: undefined,
       discussionNotes: calibrateForm.discussionNotes?.trim() || undefined,
     })
     message.success('试评校准结论已提交')
-    calibrateForm.calibrationResult = ''
     calibrateForm.discussionNotes = ''
     emit('refresh')
   } catch (error) {

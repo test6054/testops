@@ -33,9 +33,9 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
+import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { debounce } from 'lodash-es'
-import { ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
 import { useAppStore, useRouteStore } from '@/stores'
 import { isExternal } from '@/utils/validate'
@@ -166,7 +166,17 @@ const onMenuItemClick = ({ key }: { key: Key }) => {
     window.open(keyStr)
     return
   }
-  router.push({ path: keyStr })
+  // 修复：layout 子路由 path 在 routes 中是相对（如 'review-workspace'），
+  // vue-router 4 对 router.push({ path: 相对 }) 的解析规则是替换当前路由最后一段。
+  // 当用户处于含动态参数的兄弟详情路由（例如 /teacher/review/task/:taskId）时，
+  // 点击侧边栏菜单会跳到 /teacher/review/task/<menu-key>，
+  // 反而匹配到兄弟动态路由（如 review/task/:taskId）并把 menu-key 当作 taskId，
+  // 触发"缺少必要参数：examId / taskId"等假错误页。
+  // 这里把所有非外链、非绝对路径的 menu key 拼上当前 layout 前缀，强制绝对化。
+  const isAbsolute = keyStr.startsWith('/')
+  const prefix = activeLayoutPrefix.value
+  const target = !isAbsolute && prefix ? `${prefix}/${keyStr}` : keyStr
+  router.push({ path: target })
   emit('menu-item-click-after')
 }
 

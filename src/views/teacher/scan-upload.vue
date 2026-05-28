@@ -242,8 +242,8 @@
               <a-typography-text strong :content="batches[index].batchNo || '-'" />
               <div
                 v-if="
-                  batches[index].batchExternalNo
-                    && batches[index].batchExternalNo !== batches[index].batchNo
+                  batches[index].batchExternalNo &&
+                  batches[index].batchExternalNo !== batches[index].batchNo
                 "
                 class="muted"
               >
@@ -257,7 +257,9 @@
             </template>
             <template v-else-if="column.key === 'scanWindow'">
               <div>{{ formatDateTimeWithSeconds(batches[index].scanStartTime) }}</div>
-              <div class="muted">至 {{ formatDateTimeWithSeconds(batches[index].scanEndTime) }}</div>
+              <div class="muted">
+                至 {{ formatDateTimeWithSeconds(batches[index].scanEndTime) }}
+              </div>
             </template>
             <template v-else-if="column.key === 'eventCount'">
               {{ batches[index].eventCount ?? '-' }} 条
@@ -378,7 +380,17 @@ import type {
   MarkingProgressVO,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam'
-import type { ExamScannerDeviceQueryPayload, ExamScannerDeviceVO } from '@/apis/mark/exam-mark-scanner'
+import {
+  createScanBatchByCondition,
+  getMarkingProgress,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+} from '@/apis/mark/exam'
+import type {
+  ExamScannerDeviceQueryPayload,
+  ExamScannerDeviceVO,
+} from '@/apis/mark/exam-mark-scanner'
+import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -389,16 +401,8 @@ import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
 import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createScanBatchByCondition,
-  getMarkingProgress,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
-import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import {
   UiAlertStrip,
@@ -414,7 +418,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { formatDateTimeWithSeconds } from '@/utils/format'
+import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 
 defineOptions({ name: 'TeacherScanUpload' })
 
@@ -605,11 +609,11 @@ const batchFormRules: Record<string, Rule[]> = {
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value
-    && !devicesLoadError.value
-    && batchForm.scannerDeviceIds.length > 0
-    && !!batchForm.scanWindow
-    && batchForm.scanWindow.length === 2,
+    !!selectedExamId.value &&
+    !devicesLoadError.value &&
+    batchForm.scannerDeviceIds.length > 0 &&
+    !!batchForm.scanWindow &&
+    batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -643,7 +647,7 @@ function validateBatchCreateResult(result: {
   eventCount?: number
   fileCount?: number
   pageCount?: number
-}): { eventCount: number, fileCount: number, pageCount: number } {
+}): { eventCount: number; fileCount: number; pageCount: number } {
   return {
     eventCount: requireFiniteNumber(result.eventCount, '批次聚合事件数'),
     fileCount: requireFiniteNumber(result.fileCount, '批次聚合文件数'),
@@ -686,7 +690,7 @@ async function previewPendingEvents(): Promise<void> {
     pendingEventTotal.value = result.eventCount
     // 时间跨度
     if (result.scanStartTime && result.scanEndTime) {
-      previewTimeSpan.value = `${dayjs(result.scanStartTime).format('YYYY-MM-DD HH:mm')} ~ ${dayjs(result.scanEndTime).format('YYYY-MM-DD HH:mm')}`
+      previewTimeSpan.value = `${formatDateTime(result.scanStartTime)} ~ ${formatDateTime(result.scanEndTime)}`
     } else {
       previewTimeSpan.value = '-'
     }
@@ -748,7 +752,7 @@ const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
 const batchesLoadError = ref<unknown>(null)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -854,11 +858,11 @@ async function loadBatches(pageNum?: number): Promise<void> {
     }
     const result = await pageScannerBatches(payload)
     if (
-      !Array.isArray(result.list)
-      || !Number.isFinite(result.total)
-      || !Number.isFinite(result.pageNum)
-      || !Number.isFinite(result.pageSize)
-      || !Number.isFinite(result.pages)
+      !Array.isArray(result.list) ||
+      !Number.isFinite(result.total) ||
+      !Number.isFinite(result.pageNum) ||
+      !Number.isFinite(result.pageSize) ||
+      !Number.isFinite(result.pages)
     ) {
       const error = new TypeError('扫描批次列表接口返回格式错误')
       batchesLoadError.value = error
@@ -876,7 +880,7 @@ async function loadBatches(pageNum?: number): Promise<void> {
   }
 }
 
-function onBatchPageChange(payload: { current: number, pageSize: number }): void {
+function onBatchPageChange(payload: { current: number; pageSize: number }): void {
   batchQuery.pageNum = payload.current
   batchQuery.pageSize = payload.pageSize
   void loadBatches()

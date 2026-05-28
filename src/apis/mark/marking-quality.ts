@@ -13,6 +13,7 @@
  *   - Long ID 在前端均以 string 表达
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 // ─── 状态枚举 ─────────────────────────────────
@@ -87,7 +88,7 @@ export const BATCH_REPROCESS_SCOPE_LABEL: Record<BatchReprocessScopeCode, string
 // ─── DTO ─────────────────────────────────
 
 /** 教师质量指标查询 - 对应 ReviewerQualityQueryRequest */
-export interface ReviewerQualityQueryPayload {
+export interface ReviewerQualityQueryPayload extends QueryDto {
   examId: string
   organizationId?: string
   groupId?: string
@@ -150,6 +151,13 @@ export interface ReviewerQualityMetricVO {
 }
 
 /** 进度监控记录 VO - 对应 ExamProgressMonitorRecord */
+export interface ProgressRiskItemVO {
+  riskCode: string
+  riskLabel: string
+  riskDescription: string
+  riskLevel: ProgressRiskLevelCode
+}
+
 export interface ProgressMonitorRecordVO {
   id?: string
   tenantId?: string
@@ -165,7 +173,7 @@ export interface ProgressMonitorRecordVO {
   completionRate: number
   estimatedRemainingMinutes?: number
   riskLevel: ProgressRiskLevelCode
-  riskDetail: string
+  riskItems: ProgressRiskItemVO[]
   snapshotTime: string
 }
 
@@ -177,9 +185,9 @@ export interface ProgressMonitorRecordVO {
  */
 export function listReviewerMetrics(
   payload: ReviewerQualityQueryPayload,
-): Promise<ReviewerQualityMetricVO[]> {
+): Promise<PageResult<ReviewerQualityMetricVO>> {
   return http.post<unknown>('/api/mark/quality/reviewer/list', payload)
-    .then(validateReviewerQualityMetricList)
+    .then((value) => validatePageResult(value, validateReviewerQualityMetric, '阅卷教师质量指标分页'))
 }
 
 /**
@@ -253,10 +261,15 @@ export interface MyPendingSpotCheckItemVO {
   /** 抽检记录ID（提交结论时作为 spotCheckId 使用） */
   id: string
   examId: string
+  /** 考试名称快照，跨考试聚合时由后端直接返回 */
+  examName: string
+  /** 考试编号快照，跨考试聚合时由后端直接返回 */
+  examNo: string
   organizationId: string
   groupId: string
   markingTaskId: string
   questionTemplateId: string
+  questionNo: string
   paperInstanceId: string
   reviewerUserId: string
   /** 教师原始给分 */
@@ -328,6 +341,27 @@ function requireProgressRiskLevel(value: unknown): ProgressRiskLevelCode {
   return value
 }
 
+function requireProgressRiskItems(value: unknown): ProgressRiskItemVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('阅卷质量接口 riskItems 格式错误')
+  }
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object') {
+      throw new TypeError(`阅卷质量接口 riskItems[${index}] 格式错误`)
+    }
+    const record = item as Record<string, unknown>
+    return {
+      riskCode: requireString(record.riskCode, `riskItems[${index}].riskCode`),
+      riskLabel: requireString(record.riskLabel, `riskItems[${index}].riskLabel`),
+      riskDescription: requireString(
+        record.riskDescription,
+        `riskItems[${index}].riskDescription`,
+      ),
+      riskLevel: requireProgressRiskLevel(record.riskLevel),
+    }
+  })
+}
+
 function requireMyPendingSpotCheckStatus(value: unknown): MyPendingSpotCheckStatusCode {
   if (value !== 'PENDING' && value !== 'IN_PROGRESS') {
     throw new TypeError('当前教师待处理抽检接口 spotCheckStatus 格式错误')
@@ -360,11 +394,25 @@ function validateReviewerQualityMetric(value: unknown): ReviewerQualityMetricVO 
   }
 }
 
-function validateReviewerQualityMetricList(value: unknown): ReviewerQualityMetricVO[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError('阅卷教师质量指标列表接口返回格式错误')
+function validatePageResult<T>(
+  value: unknown,
+  itemValidator: (item: unknown) => T,
+  fieldName: string,
+): PageResult<T> {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
   }
-  return value.map(validateReviewerQualityMetric)
+  const result = value as Record<string, unknown>
+  if (!Array.isArray(result.list)) {
+    throw new TypeError(`${fieldName} 列表接口返回格式错误`)
+  }
+  return {
+    list: result.list.map(itemValidator),
+    total: requireFiniteNumber(result.total, `${fieldName} 总数`),
+    pageNum: requireFiniteNumber(result.pageNum, `${fieldName} 页码`),
+    pageSize: requireFiniteNumber(result.pageSize, `${fieldName} 每页数量`),
+    pages: requireFiniteNumber(result.pages, `${fieldName} 总页数`),
+  }
 }
 
 function validateProgressMonitorRecord(value: unknown): ProgressMonitorRecordVO {
@@ -390,7 +438,7 @@ function validateProgressMonitorRecord(value: unknown): ProgressMonitorRecordVO 
       'estimatedRemainingMinutes',
     ),
     riskLevel: requireProgressRiskLevel(record.riskLevel),
-    riskDetail: requireString(record.riskDetail, 'riskDetail'),
+    riskItems: requireProgressRiskItems(record.riskItems),
     snapshotTime: requireString(record.snapshotTime, 'snapshotTime'),
   }
 }
@@ -410,10 +458,13 @@ function validateMyPendingSpotCheckItem(value: unknown): MyPendingSpotCheckItemV
   return {
     id: requireString(record.id, 'id'),
     examId: requireString(record.examId, 'examId'),
+    examName: requireString(record.examName, 'examName'),
+    examNo: requireString(record.examNo, 'examNo'),
     organizationId: requireString(record.organizationId, 'organizationId'),
     groupId: requireString(record.groupId, 'groupId'),
     markingTaskId: requireString(record.markingTaskId, 'markingTaskId'),
     questionTemplateId: requireString(record.questionTemplateId, 'questionTemplateId'),
+    questionNo: requireString(record.questionNo, 'questionNo'),
     paperInstanceId: requireString(record.paperInstanceId, 'paperInstanceId'),
     reviewerUserId: requireString(record.reviewerUserId, 'reviewerUserId'),
     originalScore: requireFiniteNumber(record.originalScore, 'originalScore'),

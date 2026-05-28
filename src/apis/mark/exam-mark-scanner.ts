@@ -8,6 +8,7 @@
  */
 import type { ExamStatusCode, ScanAttentionTypeCode } from './exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 /** 接入模式编码 - 对应后端 ScannerInterfaceMode 枚举 */
@@ -356,6 +357,19 @@ function requireFiniteNumber(value: unknown, fieldName: string): number {
   return value
 }
 
+function requirePageNumber(value: unknown, fieldName: string): number {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
+    return value
+  }
+  if (typeof value === 'string' && /^[0-9]+$/.test(value)) {
+    const parsed = Number(value)
+    if (Number.isSafeInteger(parsed)) {
+      return parsed
+    }
+  }
+  throw new TypeError(`${fieldName} 接口返回格式错误`)
+}
+
 function requireBoolean(value: unknown, fieldName: string): boolean {
   if (typeof value !== 'boolean') {
     throw new TypeError(`${fieldName} 接口返回格式错误`)
@@ -601,7 +615,7 @@ export function batchBindPapers(
 export interface MarkExamSummaryVO {
   examId: string
   examName: string
-  examNo?: string
+  examNo: string
   academicYear?: string
   semester?: string
   status: ExamStatusCode
@@ -612,9 +626,7 @@ export interface MarkExamSummaryVO {
 }
 
 /** 考试分页查询请求 - 对应 ExamPageQueryRequest */
-export interface MarkExamPageQueryPayload {
-  pageNum: number
-  pageSize: number
+export interface MarkExamPageQueryPayload extends QueryDto {
   /** 课程ID（可选筛选） */
   courseId?: string
   status?: ExamStatusCode
@@ -624,22 +636,13 @@ export interface MarkExamPageQueryPayload {
   keyword?: string
 }
 
-/** 分页结果 */
-export interface MarkExamPageResult {
-  list: MarkExamSummaryVO[]
-  total: number
-  pageNum: number
-  pageSize: number
-  pages: number
-}
-
 /**
  * 分页查询考试列表（ACTIVE 状态）
  * POST /api/mark/exams/page
  */
 export function pageMarkExams(
   payload: MarkExamPageQueryPayload,
-): Promise<MarkExamPageResult> {
+): Promise<PageResult<MarkExamSummaryVO>> {
   return http.post<unknown>('/api/mark/exams/page', payload)
     .then(validateMarkExamPageResult)
 }
@@ -688,7 +691,7 @@ function validateMarkExamSummary(value: unknown): MarkExamSummaryVO {
   return {
     examId: requireString(result.examId, '考试 ID'),
     examName: requireString(result.examName, '考试名称'),
-    examNo: optionalString(result.examNo, '考试编号'),
+    examNo: requireString(result.examNo, '考试编号'),
     academicYear: optionalString(result.academicYear, '学年'),
     semester: optionalString(result.semester, '学期'),
     status: requireExamStatus(result.status, '考试状态'),
@@ -699,7 +702,7 @@ function validateMarkExamSummary(value: unknown): MarkExamSummaryVO {
   }
 }
 
-function validateMarkExamPageResult(value: unknown): MarkExamPageResult {
+function validateMarkExamPageResult(value: unknown): PageResult<MarkExamSummaryVO> {
   if (!value || typeof value !== 'object') {
     throw new TypeError('考试分页接口返回格式错误')
   }
@@ -710,9 +713,9 @@ function validateMarkExamPageResult(value: unknown): MarkExamPageResult {
   }
   return {
     list: list.map(validateMarkExamSummary),
-    total: requireFiniteNumber(result.total, '考试分页总数'),
-    pageNum: requireFiniteNumber(result.pageNum, '考试分页页码'),
-    pageSize: requireFiniteNumber(result.pageSize, '考试分页每页数量'),
-    pages: requireFiniteNumber(result.pages, '考试分页总页数'),
+    total: requirePageNumber(result.total, '考试分页总数'),
+    pageNum: requirePageNumber(result.pageNum, '考试分页页码'),
+    pageSize: requirePageNumber(result.pageSize, '考试分页每页数量'),
+    pages: requirePageNumber(result.pages, '考试分页总页数'),
   }
 }

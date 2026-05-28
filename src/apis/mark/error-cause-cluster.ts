@@ -10,6 +10,16 @@ import type { AiAnalysisStatusCode, AnalysisScopeTypeCode } from './teaching-ana
  */
 import http from '@/config/axios'
 
+/** 错因聚类条目 */
+export interface ErrorCauseClusterItemVO {
+  clusterName?: string
+  questionType?: string
+  causeAnalysis?: string
+  affectedQuestionNos?: Array<string | number>
+  studentCount?: number
+  suggestion?: string
+}
+
 /** 错因聚类分析记录 - 对应 ExamErrorCauseCluster */
 export interface ExamErrorCauseClusterVO {
   id: string
@@ -21,13 +31,12 @@ export interface ExamErrorCauseClusterVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   overallSummary?: string
-  clusterItems?: string
+  clusterItems?: ErrorCauseClusterItemVO[]
   clusterCount?: number
   analysisStatus?: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
   updateTime?: string
 }

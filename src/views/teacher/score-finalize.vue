@@ -341,7 +341,11 @@
         />
         <a-form-item label="考生">
           <a-input
-            :value="confirmCandidate ? `${confirmCandidate.studentName}（${confirmCandidate.studentNo}）` : ''"
+            :value="
+              confirmCandidate
+                ? `${confirmCandidate.studentName}（${confirmCandidate.studentNo}）`
+                : ''
+            "
             disabled
           />
         </a-form-item>
@@ -377,7 +381,11 @@
         />
         <a-form-item label="考生">
           <a-input
-            :value="withdrawCandidate ? `${withdrawCandidate.studentName}（${withdrawCandidate.studentNo}）` : ''"
+            :value="
+              withdrawCandidate
+                ? `${withdrawCandidate.studentName}（${withdrawCandidate.studentNo}）`
+                : ''
+            "
             disabled
           />
         </a-form-item>
@@ -434,21 +442,13 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogVO } from '@/apis/mark/admin-audit'
+import { listOperationLogs } from '@/apis/mark/admin-audit'
 import type {
   ExamPaperScoreVO,
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
-import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { listOperationLogs } from '@/apis/mark/admin-audit'
 import {
   confirmFinalScore,
   deanonymizePaper,
@@ -460,6 +460,14 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
+import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   UiActivityTimeline,
   UiAlertStrip,
@@ -533,7 +541,6 @@ const columns: ColumnType<ExamScoreSummaryItemVO>[] = [
   { title: '操作', key: 'actions', width: 320, fixed: 'right' },
 ]
 
-
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
@@ -572,7 +579,7 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }): void {
+function handlePageChange(payload: { current: number; pageSize: number }): void {
   pagination.current = payload.current
   pagination.pageSize = payload.pageSize
   void loadCandidates()
@@ -661,7 +668,7 @@ const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
  * 因后端为服务端分页，统计口径在视觉上限定为「当前页」，避免误导教师把页内异常当作整考试异常。
  * 当样本数 < 3 或方差为 0 时，stddev 返回 0，模板侧降级为「样本不足」展示。
  */
-const pageScoreStats = computed<{ count: number, mean: number, stddev: number }>(() => {
+const pageScoreStats = computed<{ count: number; mean: number; stddev: number }>(() => {
   const scores = candidates.value
     .map((c) => c.finalScore)
     .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
@@ -689,25 +696,25 @@ function classifyBias(score: number | undefined): BiasLevel {
 }
 
 const BIAS_LEVEL_LABEL: Record<BiasLevel, string> = {
-  "normal": '≈ 正常',
+  normal: '≈ 正常',
   'mild-high': '↑ 偏高',
   'mild-low': '↓ 偏低',
   'severe-high': '⇈ 显著偏高',
   'severe-low': '⇊ 显著偏低',
-  "insufficient": '-',
+  insufficient: '-',
 }
 
 const BIAS_LEVEL_TONE: Record<BiasLevel, BadgeTone> = {
-  "normal": 'gray',
+  normal: 'gray',
   'mild-high': 'blue',
   'mild-low': 'orange',
   'severe-high': 'purple',
   'severe-low': 'red',
-  "insufficient": 'gray',
+  insufficient: 'gray',
 }
 
 /** D-3 顶部偏差提示：当前页严重偏离样本数 */
-const biasAlert = computed<{ visible: boolean, severeCount: number, message: string }>(() => {
+const biasAlert = computed<{ visible: boolean; severeCount: number; message: string }>(() => {
   const { count, mean, stddev } = pageScoreStats.value
   if (count < 3 || stddev === 0) {
     return { visible: false, severeCount: 0, message: '' }
@@ -841,10 +848,10 @@ const SCORE_AUDIT_TONE: Record<ScoreAuditOperationType, BadgeTone> = {
 
 function isScoreAuditOperationType(value: unknown): value is ScoreAuditOperationType {
   return (
-    value === 'SCORE_CONFIRM'
-    || value === 'SCORE_PUBLISH'
-    || value === 'SCORE_WITHDRAW'
-    || value === 'SCORE_CHANGE'
+    value === 'SCORE_CONFIRM' ||
+    value === 'SCORE_PUBLISH' ||
+    value === 'SCORE_WITHDRAW' ||
+    value === 'SCORE_CHANGE'
   )
 }
 
@@ -858,32 +865,6 @@ function scoreAuditTone(log: OperationLogVO): BadgeTone {
   return 'red'
 }
 
-/**
- * 解析审计日志的 afterValue（后端 JSON.toJSONString(finalScore)），取出 paperInstanceId 用于过滤。
- * 由于后端 ExamPaperScoreResponse 未直接返回 finalScoreId，前端只能用 paperInstanceId 在 afterValue
- * 与 beforeValue 中匹配；任一字段命中均视为同一试卷。
- */
-function extractPaperInstanceFromAuditLog(log: OperationLogVO): string | undefined {
-  function readPaperInstanceId(value: object): string | undefined {
-    const paperInstanceId = Reflect.get(value, 'paperInstanceId')
-    if (typeof paperInstanceId === 'string') return paperInstanceId
-    if (typeof paperInstanceId === 'number') return String(paperInstanceId)
-    return undefined
-  }
-
-  function parseJsonField(raw: string | undefined): string | undefined {
-    if (!raw) return undefined
-    try {
-      const obj: unknown = JSON.parse(raw)
-      if (obj && typeof obj === 'object') return readPaperInstanceId(obj)
-    } catch {
-      // afterValue 不一定是 JSON（如部分非成绩操作类型），忽略解析失败
-    }
-    return undefined
-  }
-  return parseJsonField(log.afterValue) ?? parseJsonField(log.beforeValue)
-}
-
 async function loadPaperAuditLogs(): Promise<void> {
   if (!selectedExamId.value || !detailCandidate.value?.paperInstanceId) {
     auditLogs.value = []
@@ -894,15 +875,13 @@ async function loadPaperAuditLogs(): Promise<void> {
     const all = await listOperationLogs({
       examId: selectedExamId.value,
       targetType: 'FINAL_SCORE',
+      targetId: detailCandidate.value.paperInstanceId,
     })
-    const targetPaper = detailCandidate.value.paperInstanceId
-    auditLogs.value = all
-      .filter((log) => extractPaperInstanceFromAuditLog(log) === targetPaper)
-      .sort((a, b) => {
-        const ta = a.createTime ? dayjs(a.createTime).valueOf() : 0
-        const tb = b.createTime ? dayjs(b.createTime).valueOf() : 0
-        return tb - ta
-      })
+    auditLogs.value = all.sort((a, b) => {
+      const ta = a.createTime ? dayjs(a.createTime).valueOf() : 0
+      const tb = b.createTime ? dayjs(b.createTime).valueOf() : 0
+      return tb - ta
+    })
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : '操作记录加载失败'
     message.warning(errMsg)
@@ -1142,8 +1121,8 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next
-    = candidates.value.find(
+  const next =
+    candidates.value.find(
       (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
     ) ?? null
   if (next) {

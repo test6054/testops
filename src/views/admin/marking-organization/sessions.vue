@@ -16,10 +16,22 @@
         <div class="org-sessions__context-actions">
           <UiTag
             v-if="organization?.organizationStatus"
-            :tone="MARKING_ORGANIZATION_STATUS_TONE[organization.organizationStatus]"
+            :tone="
+              strictEnumTone(
+                MARKING_ORGANIZATION_STATUS_TONE,
+                organization.organizationStatus,
+                '阅卷组织状态',
+              )
+            "
             size="sm"
           >
-            {{ MARKING_ORGANIZATION_STATUS_LABEL[organization.organizationStatus] }}
+            {{
+              strictEnumLabel(
+                MARKING_ORGANIZATION_STATUS_LABEL,
+                organization.organizationStatus,
+                '阅卷组织状态',
+              )
+            }}
           </UiTag>
           <UiButton variant="outline" size="sm" :loading="loading" @click="reloadAll">
             刷新
@@ -78,15 +90,12 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import type {
   FormalSessionVO,
   MarkingOrganizationVO,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   getOrganizationById,
   listFormalSessions,
@@ -94,10 +103,14 @@ import {
   MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionPanel from './components/FormalSessionPanel.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })
@@ -194,10 +207,18 @@ const signalMetrics = computed<SignalMetric[]>(() => [
     key: 'status',
     label: '组织状态',
     value: organization.value?.organizationStatus
-      ? MARKING_ORGANIZATION_STATUS_LABEL[organization.value.organizationStatus]
+      ? strictEnumLabel(
+          MARKING_ORGANIZATION_STATUS_LABEL,
+          organization.value.organizationStatus,
+          '阅卷组织状态',
+        )
       : '-',
     tone: organization.value?.organizationStatus
-      ? MARKING_ORGANIZATION_STATUS_TONE[organization.value.organizationStatus]
+      ? strictEnumTone(
+          MARKING_ORGANIZATION_STATUS_TONE,
+          organization.value.organizationStatus,
+          '阅卷组织状态',
+        )
       : 'gray',
   },
 ])

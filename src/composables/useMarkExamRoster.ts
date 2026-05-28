@@ -1,4 +1,5 @@
 import type { ExamCandidateVO } from '@/apis/mark/exam'
+import { listExamCandidates } from '@/apis/mark/exam'
 /**
  * 批改主链：考试考生名册 composable
  *
@@ -9,7 +10,7 @@ import type { ExamCandidateVO } from '@/apis/mark/exam'
  *
  * 后端契约：
  * - POST /api/mark/exams/candidates 返回 ExamCandidateVO[]
- * - ExamCandidateVO 不含 className，因此 classOption.label 使用「班级 #classId · n 名考生」
+ * - ExamCandidateVO.className 由后端通过 edu-user 班级主数据回填
  *
  * 用法示例：
  * ```ts
@@ -19,13 +20,14 @@ import type { ExamCandidateVO } from '@/apis/mark/exam'
  */
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
-import { listExamCandidates } from '@/apis/mark/exam'
 
 export interface MarkClassOption {
   /** 班级 ID（后端 Long 字符串化） */
   value: string
-  /** 下拉显示文案：班级 #classId · n 名考生 */
+  /** 下拉显示文案：班级名称 · n 名考生 */
   label: string
+  /** 班级名称 */
+  className: string
   /** 该班级在名册中的考生数量 */
   candidateCount: number
 }
@@ -33,7 +35,7 @@ export interface MarkClassOption {
 export interface MarkStudentOption {
   /** 学生用户 ID（后端 Long 字符串化） */
   value: string
-  /** 下拉显示文案：姓名 (学号) · 班级 #classId */
+  /** 下拉显示文案：姓名 (学号) · 班级名称 */
   label: string
   /** 学号，可用于二次搜索 */
   studentNo: string
@@ -41,6 +43,8 @@ export interface MarkStudentOption {
   studentName: string
   /** 所属班级 ID，用于按班级联动过滤 */
   classId?: string
+  /** 所属班级名称 */
+  className?: string
 }
 
 export function useMarkExamRoster() {
@@ -49,13 +53,20 @@ export function useMarkExamRoster() {
   const loadError = ref<unknown>(null)
 
   const classOptions = computed<MarkClassOption[]>(() => {
-    const counter = new Map<string, number>()
+    const grouped = new Map<string, { className: string; count: number }>()
     for (const item of candidates.value) {
       const cid = item.classId
       if (!cid) continue
-      counter.set(cid, (counter.get(cid) ?? 0) + 1)
+      const current = grouped.get(cid)
+      if (!item.className) {
+        throw new TypeError(`考生名册缺少班级名称：classId=${cid}`)
+      }
+      grouped.set(cid, {
+        className: item.className,
+        count: (current?.count ?? 0) + 1,
+      })
     }
-    return Array.from(counter.entries())
+    return Array.from(grouped.entries())
       .sort((a, b) => {
         // 班级 ID 是数字字符串，按数值排序更稳定；非数字时退化为字符串排序
         const an = Number(a[0])
@@ -63,10 +74,11 @@ export function useMarkExamRoster() {
         if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn
         return a[0].localeCompare(b[0])
       })
-      .map(([classId, count]) => ({
+      .map(([classId, classInfo]) => ({
         value: classId,
-        label: `班级 #${classId} · ${count} 名考生`,
-        candidateCount: count,
+        label: `${classInfo.className} · ${classInfo.count} 名考生`,
+        className: classInfo.className,
+        candidateCount: classInfo.count,
       }))
   })
 
@@ -76,8 +88,9 @@ export function useMarkExamRoster() {
       studentNo: item.studentNo,
       studentName: item.studentName,
       classId: item.classId,
+      className: item.className,
       label: item.classId
-        ? `${item.studentName} (${item.studentNo}) · 班级 #${item.classId}`
+        ? `${item.studentName} (${item.studentNo}) · ${item.className}`
         : `${item.studentName} (${item.studentNo})`,
     }))
   })

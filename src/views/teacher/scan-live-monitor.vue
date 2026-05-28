@@ -219,6 +219,7 @@
  * - useMarkExamSelector：考试选择器（不同步 URL）
  */
 import type { ScanEventStatusCode, ScanLiveEventVO } from '@/apis/mark/scan-live'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
@@ -308,6 +309,7 @@ function scanEventStatusLabel(status: ScanEventStatusCode): string {
   const labels: Record<ScanEventStatusCode, string> = {
     PENDING: '待聚合',
     BATCHED: '已聚合',
+    INVALID: '已失效',
   }
   if (!(status in labels)) {
     throw new Error(`扫描事件状态不符合前后端契约：${String(status)}`)
@@ -315,10 +317,11 @@ function scanEventStatusLabel(status: ScanEventStatusCode): string {
   return labels[status]
 }
 
-function scanEventStatusTone(status: ScanEventStatusCode): 'green' | 'orange' {
-  const tones: Record<ScanEventStatusCode, 'green' | 'orange'> = {
+function scanEventStatusTone(status: ScanEventStatusCode): BadgeTone {
+  const tones: Record<ScanEventStatusCode, BadgeTone> = {
     PENDING: 'orange',
     BATCHED: 'green',
+    INVALID: 'red',
   }
   if (!(status in tones)) {
     throw new Error(`扫描事件状态不符合前后端契约：${String(status)}`)
@@ -373,7 +376,6 @@ const groupedByStation = computed(() => {
   }
   return Array.from(groups, ([stationId, list]) => ({ stationId, list }))
 })
-
 
 function openDetail(event: ScanLiveEventVO): void {
   currentEvent.value = event

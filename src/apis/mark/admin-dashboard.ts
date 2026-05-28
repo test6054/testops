@@ -42,9 +42,9 @@ export interface DashboardIncidentMetricsVO {
 /** 最近考试列表项 - 对应 MarkDashboardRecentExamItem */
 export interface DashboardRecentExamItemVO {
   examId: string
-  examName?: string
-  examNo?: string
-  status?: ExamStatusCode
+  examName: string
+  examNo: string
+  status: ExamStatusCode
   createTime?: string
   examStartTime?: string
   candidateCount: number
@@ -170,6 +170,13 @@ function optionalString(value: unknown, fieldName: string): string | undefined {
   return value
 }
 
+function requireExamStatus(value: unknown, fieldName: string): ExamStatusCode {
+  if (value === 'ACTIVE' || value === 'CLOSED') {
+    return value
+  }
+  throw new TypeError(`Dashboard 接口 ${fieldName} 格式错误`)
+}
+
 function requireIncidentType(value: unknown): IncidentTypeCode {
   if (
     value !== 'DUPLICATE_DETECTED'
@@ -230,6 +237,21 @@ function validateIncidentRecord(value: unknown): IncidentRecordVO {
   }
 }
 
+function validateRecentExamItem(value: unknown): DashboardRecentExamItemVO {
+  const record = requireRecord(value, 'Dashboard 最近考试返回格式错误')
+  return {
+    examId: requireString(record.examId, 'recentExams.examId'),
+    examName: requireString(record.examName, 'recentExams.examName'),
+    examNo: requireString(record.examNo, 'recentExams.examNo'),
+    status: requireExamStatus(record.status, 'recentExams.status'),
+    createTime: optionalString(record.createTime, 'recentExams.createTime'),
+    examStartTime: optionalString(record.examStartTime, 'recentExams.examStartTime'),
+    candidateCount: requireNumber(record.candidateCount, 'recentExams.candidateCount'),
+    openProcessingTaskCount: requireNumber(record.openProcessingTaskCount, 'recentExams.openProcessingTaskCount'),
+    publishedScoreCount: requireNumber(record.publishedScoreCount, 'recentExams.publishedScoreCount'),
+  }
+}
+
 function requireGradingMetrics(value: unknown): DashboardGradingMetricsVO {
   const record = requireRecord(value, 'Dashboard 接口缺少 gradingMetrics')
   return {
@@ -273,7 +295,7 @@ function validateDashboardOverview(value: unknown): MarkDashboardOverviewVO {
     // 核心 KPI 字段必须存在，缺失即视为后端协议异常 → loadOverview catch 显示错误面板
     gradingMetrics: requireGradingMetrics(record.gradingMetrics),
     incidentMetrics: requireIncidentMetrics(record.incidentMetrics),
-    recentExams: requireArray(record.recentExams, 'recentExams') as DashboardRecentExamItemVO[],
+    recentExams: requireArray(record.recentExams, 'recentExams').map(validateRecentExamItem),
     recentIncidents: requireArray(record.recentIncidents, 'recentIncidents').map(validateIncidentRecord),
   }
 }

@@ -1,0 +1,152 @@
+/**
+ * scanner-kiosk 设计 token
+ *
+ * 定位：医疗工作站 + 印刷机操作面板 + 后端工程感
+ * 不是 SaaS 后台 / 不是 Notion / 不是 Material 商业风
+ *
+ * 由 KioskLayout.vue 顶层 import 后，整个 scanner-kiosk 子树共享。
+ */
+
+/*
+ * 选择 :root 而非局部 scope class，避免 KioskLayout.vue 与子 stage 之间
+ * scoped style 隔离导致 CSS 变量取不到。token 名以 --kiosk- 前缀，命名空间
+ * 足够清晰，不会污染其他模块。
+ */
+:root {
+  /* ============================================================
+     色彩系统
+     ============================================================ */
+
+  /* 主色：稳重蓝（不与 ant primary 蓝撞） */
+  --kiosk-primary: #1f5fff;
+  --kiosk-primary-pressed: #1448cc;
+  --kiosk-primary-soft: #eaf1ff;
+  --kiosk-primary-on: #ffffff;
+
+  /* 状态色：高对比、像物理状态灯 */
+  --kiosk-success: #1f9d55;
+  --kiosk-success-soft: #e6f6ec;
+  --kiosk-warning: #d97706;
+  --kiosk-warning-soft: #fff5e6;
+  --kiosk-danger: #c5263e;
+  --kiosk-danger-soft: #fdecef;
+  --kiosk-neutral: #5e6573;
+  --kiosk-neutral-soft: #f0f2f7;
+
+  /* 表面层 */
+  --kiosk-canvas: #0d1320;          /* 大画布预览背景，深色衬白纸 */
+  --kiosk-canvas-soft: #161e30;     /* 画布工具浮层 */
+  --kiosk-surface: #ffffff;         /* 信息面板 */
+  --kiosk-surface-alt: #f7f9fc;     /* 次级面板 */
+  --kiosk-rail: #f4f6fb;            /* SideRail 背景 */
+  --kiosk-divider: #e4e8f0;
+  --kiosk-divider-strong: #ccd2dd;
+  --kiosk-page-bg: #eef1f6;         /* 全页背景 */
+
+  /* 文字 */
+  --kiosk-ink-primary: #0e1322;
+  --kiosk-ink-secondary: #4b5365;
+  --kiosk-ink-tertiary: #8993a8;
+  --kiosk-ink-disabled: #b6bcc9;
+  --kiosk-ink-on-canvas: #f7f9ff;
+  --kiosk-ink-on-canvas-secondary: #aab3c5;
+
+  /* ============================================================
+     字体
+     ============================================================ */
+
+  --kiosk-font-display:
+    'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei',
+    -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  --kiosk-font-mono:
+    'JetBrains Mono', 'SF Mono', 'Cascadia Code', Menlo, monospace;
+
+  --kiosk-fz-counter-xl: 72px;     /* 主进度计数器 */
+  --kiosk-fz-counter-lg: 56px;
+  --kiosk-fz-h1: 28px;
+  --kiosk-fz-h2: 22px;
+  --kiosk-fz-h3: 16px;
+  --kiosk-fz-body: 15px;
+  --kiosk-fz-label: 13px;
+  --kiosk-fz-caption: 12px;
+
+  --kiosk-fw-regular: 400;
+  --kiosk-fw-medium: 500;
+  --kiosk-fw-semibold: 600;
+  --kiosk-fw-bold: 700;
+
+  --kiosk-lh-tight: 1.2;
+  --kiosk-lh-base: 1.5;
+
+  /* ============================================================
+     间距（8 网格）
+     ============================================================ */
+
+  --kiosk-space-1: 4px;
+  --kiosk-space-2: 8px;
+  --kiosk-space-3: 12px;
+  --kiosk-space-4: 16px;
+  --kiosk-space-5: 24px;
+  --kiosk-space-6: 32px;
+  --kiosk-space-7: 48px;
+  --kiosk-space-8: 64px;
+
+  /* ============================================================
+     圆角
+     ============================================================ */
+
+  --kiosk-radius-sm: 6px;
+  --kiosk-radius-md: 10px;
+  --kiosk-radius-lg: 14px;
+  --kiosk-radius-xl: 20px;
+  --kiosk-radius-pill: 999px;
+
+  /* ============================================================
+     阴影
+     ============================================================ */
+
+  --kiosk-shadow-1: 0 1px 2px rgba(13, 19, 32, 0.06);
+  --kiosk-shadow-2: 0 4px 16px rgba(13, 19, 32, 0.08);
+  --kiosk-shadow-3: 0 12px 32px rgba(13, 19, 32, 0.14);
+  --kiosk-shadow-overlay: 0 24px 48px rgba(13, 19, 32, 0.18);
+
+  /* ============================================================
+     触屏 Fitts 控件尺寸（kiosk 强制）
+     ============================================================ */
+
+  --kiosk-h-cta: 96px;             /* 主 CTA */
+  --kiosk-h-action-lg: 64px;       /* 模式/阶段切换 */
+  --kiosk-h-action-md: 56px;       /* 一般操作按钮 */
+  --kiosk-h-icon-button: 48px;     /* 图标按钮 */
+  --kiosk-h-input: 56px;           /* 表单输入 */
+  --kiosk-h-input-sm: 48px;
+  --kiosk-h-stage-bar: 64px;       /* 阶段指示器条 */
+  --kiosk-h-app-bar: 72px;         /* 顶部 AppBar */
+  --kiosk-h-bottom-bar: 88px;      /* 底部操作栏 */
+  --kiosk-w-side-rail: 360px;      /* 右侧持久栏 */
+
+  --kiosk-thumb-w: 96px;
+  --kiosk-thumb-h: 132px;
+
+  /* ============================================================
+     动效
+     ============================================================ */
+
+  --kiosk-easing: cubic-bezier(0.2, 0.8, 0.4, 1);
+  --kiosk-dur-fast: 120ms;
+  --kiosk-dur-base: 200ms;
+  --kiosk-dur-slow: 280ms;
+
+  /* ============================================================
+     z-index 栈
+     ============================================================ */
+
+  --kiosk-z-base: 1;
+  --kiosk-z-rail: 10;
+  --kiosk-z-bottom: 20;
+  --kiosk-z-stage-bar: 30;
+  --kiosk-z-app-bar: 40;
+  --kiosk-z-toast: 80;
+  --kiosk-z-drawer: 90;
+  --kiosk-z-modal: 100;
+}

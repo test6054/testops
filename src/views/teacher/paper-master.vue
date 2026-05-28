@@ -256,6 +256,11 @@ import type {
   PaperMasterObjectiveAreaPayload,
   PaperMasterVO,
 } from '@/apis/mark/paper-master'
+import {
+  getPaperMaster,
+  isPaperMasterNotConfiguredError,
+  savePaperMaster,
+} from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -265,7 +270,6 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
-import { getPaperMaster, savePaperMaster } from '@/apis/mark/paper-master'
 import {
   UiButton,
   UiCard,
@@ -432,10 +436,7 @@ async function loadMasterData() {
     }
   } catch (error) {
     masterData.value = null
-    const errMsg = error instanceof Error ? error.message : ''
-    const isNotConfigured
-      = errMsg.includes('未找到') || errMsg.includes('不存在') || errMsg.includes('未配置')
-    if (errMsg && !isNotConfigured) {
+    if (!isPaperMasterNotConfiguredError(error)) {
       // 真实加载失败：D-9 错误态 + 警告提示
       masterLoadError.value = error
     }

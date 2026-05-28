@@ -12,7 +12,7 @@ import http from '@/config/axios'
 import { getValidToken } from '@/utils/auth'
 
 /** SSE 扫描事件状态码 - 对应后端 ScanEventStatus 枚举 */
-export type ScanEventStatusCode = 'PENDING' | 'BATCHED'
+export type ScanEventStatusCode = 'PENDING' | 'BATCHED' | 'INVALID'
 
 /** 扫描事件视图 - 对应 ScanLiveEventResponse */
 export interface ScanLiveEventVO {
@@ -232,7 +232,7 @@ function optionalStringList(value: unknown, fieldName: string): string[] | undef
 }
 
 function requireScanEventStatus(value: unknown): ScanEventStatusCode {
-  if (value !== 'PENDING' && value !== 'BATCHED') {
+  if (value !== 'PENDING' && value !== 'BATCHED' && value !== 'INVALID') {
     throw new TypeError('扫描实时事件 status 格式错误')
   }
   return value

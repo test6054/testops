@@ -63,7 +63,9 @@ export interface PublicSurveySubmitPayload {
 
 export interface PublicSurveyAnswerItem {
   itemToken: string
-  rawValue?: string
+  scaleValue?: number
+  singleChoiceValue?: string
+  multipleChoiceValues?: string[]
   openText?: string
 }
 

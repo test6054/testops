@@ -17,8 +17,8 @@
           <UiTag v-if="syncTasks.length > 0" tone="blue" size="sm">
             同步任务 {{ syncTasks.length }}
           </UiTag>
-          <UiTag v-if="passbackRecords.length > 0" tone="green" size="sm">
-            回写记录 {{ passbackRecords.length }}
+          <UiTag v-if="passbackPagination.total > 0" tone="green" size="sm">
+            回写记录 {{ passbackPagination.total }}
           </UiTag>
         </div>
         <div class="sync-page__context-right">
@@ -110,7 +110,9 @@
                 v-if="syncTasks[index].lastErrorMessage"
                 :title="syncTasks[index].lastErrorMessage"
               >
-                <span class="error-text">{{ requireLastErrorCode(syncTasks[index].lastErrorCode) }}</span>
+                <span class="error-text">{{
+                  requireLastErrorCode(syncTasks[index].lastErrorCode)
+                }}</span>
               </a-tooltip>
               <span v-else class="hint-text">-</span>
             </template>
@@ -164,7 +166,7 @@
         <template #title>
           <FileSyncOutlined />
           <span>回写记录</span>
-          <UiBadge tone="blue">{{ passbackRecords.length }}</UiBadge>
+          <UiBadge tone="blue">{{ passbackPagination.total }}</UiBadge>
         </template>
         <template #extra>
           <a-space>
@@ -173,14 +175,14 @@
               placeholder="任务ID过滤"
               style="width: 160px"
               allow-clear
-              @press-enter="loadPassbackRecords"
+              @press-enter="reloadPassbackRecordsFromFirstPage"
             />
             <a-select
               v-model:value="passbackStatusFilter"
               placeholder="回写状态"
               style="width: 160px"
               allow-clear
-              @change="loadPassbackRecords"
+              @change="reloadPassbackRecordsFromFirstPage"
             >
               <a-select-option
                 v-for="(label, code) in PASSBACK_STATUS_LABEL"
@@ -206,8 +208,10 @@
           :columns="passbackColumns"
           :data-source="passbackRecords"
           :loading="passbackLoading"
-          :page-size="50"
-          :total="passbackRecords.length"
+          v-model:current="passbackPagination.pageNum"
+          v-model:page-size="passbackPagination.pageSize"
+          :total="passbackPagination.total"
+          @page-change="handlePassbackPageChange"
           flat
           row-key="id"
           size="middle"
@@ -291,13 +295,6 @@
           placeholder="如成绩册中的成绩项 GUID"
         />
       </a-form-item>
-      <a-form-item label="同步配置 JSON">
-        <a-textarea
-          v-model:value="createForm.syncConfig"
-          :rows="4"
-          placeholder="{&quot;endpoint&quot;:&quot;https://sis.school/api&quot;,&quot;apiKey&quot;:&quot;xxx&quot;}"
-        />
-      </a-form-item>
     </a-form>
   </a-modal>
 
@@ -310,7 +307,12 @@
         <span>回写进度</span>
       </template>
       <template #extra>
-        <UiButton size="sm" variant="outline" :loading="progressLoading" @click="handleRefreshProgress">
+        <UiButton
+          size="sm"
+          variant="outline"
+          :loading="progressLoading"
+          @click="handleRefreshProgress"
+        >
           <template #icon><ReloadOutlined /></template>
           刷新
         </UiButton>
@@ -376,14 +378,17 @@
       <a-descriptions-item label="外部成绩项ID">
         {{ detailTask.externalLineItemId ?? '-' }}
       </a-descriptions-item>
-      <a-descriptions-item label="同步配置">
-        <pre class="json-pre">{{ detailTask.syncConfig || '（空）' }}</pre>
+      <a-descriptions-item label="同步目标">
+        {{ buildSyncTargetSummary(detailTask) }}
       </a-descriptions-item>
       <a-descriptions-item label="最后同步时间">
         {{ detailTask.lastSyncTime ?? '-' }}
       </a-descriptions-item>
       <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-        <span class="error-text">[{{ requireLastErrorCode(detailTask.lastErrorCode) }}] {{ detailTask.lastErrorMessage }}</span>
+        <span class="error-text"
+          >[{{ requireLastErrorCode(detailTask.lastErrorCode) }}]
+          {{ detailTask.lastErrorMessage }}</span
+        >
       </a-descriptions-item>
       <a-descriptions-item label="操作" :span="1">
         <a-space>
@@ -415,14 +420,6 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -441,6 +438,14 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -561,13 +566,11 @@ const createForm = reactive<{
   syncType: TeachingAffairsSyncTypeCode
   externalCourseId: string
   externalLineItemId: string
-  syncConfig: string
 }>({
   externalSystemType: 'SIS',
   syncType: 'GRADE_EXPORT',
   externalCourseId: '',
   externalLineItemId: '',
-  syncConfig: '',
 })
 
 const createValid = computed(() =>
@@ -579,7 +582,6 @@ function openCreateModal(): void {
   createForm.syncType = 'GRADE_EXPORT'
   createForm.externalCourseId = ''
   createForm.externalLineItemId = ''
-  createForm.syncConfig = ''
   createModalOpen.value = true
 }
 
@@ -593,7 +595,6 @@ async function handleCreate(): Promise<void> {
       syncType: createForm.syncType,
       externalCourseId: createForm.externalCourseId.trim() || undefined,
       externalLineItemId: createForm.externalLineItemId.trim() || undefined,
-      syncConfig: createForm.syncConfig.trim() || undefined,
     })
     message.success('已创建同步任务')
     createModalOpen.value = false
@@ -657,6 +658,16 @@ function openTaskDetail(record: SyncTaskVO): void {
   }
 }
 
+function buildSyncTargetSummary(task: SyncTaskVO): string {
+  const segments = [
+    externalSystemTypeLabel(task.externalSystemType),
+    syncTypeLabel(task.syncType),
+    task.externalCourseId ? `课程 ${task.externalCourseId}` : '',
+    task.externalLineItemId ? `成绩项 ${task.externalLineItemId}` : '',
+  ].filter(Boolean)
+  return segments.length > 0 ? segments.join(' / ') : '未配置同步目标'
+}
+
 async function handleRefreshProgress(): Promise<void> {
   if (detailTask.value?.id) {
     await loadProgress(detailTask.value.id)
@@ -683,6 +694,11 @@ const passbackRecords = ref<PassbackRecordVO[]>([])
 const passbackLoading = ref(false)
 const passbackTaskFilter = ref('')
 const passbackStatusFilter = ref<PassbackStatusCode | undefined>(undefined)
+const passbackPagination = reactive({
+  pageNum: 1,
+  pageSize: 50,
+  total: 0,
+})
 
 const passbackColumns: ColumnType<PassbackRecordVO>[] = [
   { title: '记录ID', key: 'id', dataIndex: 'id', width: 110 },
@@ -701,17 +717,34 @@ async function loadPassbackRecords(): Promise<void> {
   passbackLoading.value = true
   passbackLoadError.value = null
   try {
-    passbackRecords.value = await listPassbackRecords({
+    const page = await listPassbackRecords({
       examId: selectedExamId.value,
       syncTaskId: passbackTaskFilter.value.trim() || undefined,
       passbackStatus: passbackStatusFilter.value,
+      pageNum: passbackPagination.pageNum,
+      pageSize: passbackPagination.pageSize,
     })
+    passbackRecords.value = page.list
+    passbackPagination.pageNum = page.pageNum
+    passbackPagination.pageSize = page.pageSize
+    passbackPagination.total = page.total
   } catch (error) {
     passbackLoadError.value = error
     message.error(error instanceof Error ? error.message : '加载回写记录失败')
   } finally {
     passbackLoading.value = false
   }
+}
+
+function reloadPassbackRecordsFromFirstPage(): void {
+  passbackPagination.pageNum = 1
+  void loadPassbackRecords()
+}
+
+function handlePassbackPageChange(payload: { current: number; pageSize: number }): void {
+  passbackPagination.pageNum = payload.current
+  passbackPagination.pageSize = payload.pageSize
+  void loadPassbackRecords()
 }
 
 // ─── 共用 ─────────────────────────────────
@@ -769,6 +802,8 @@ function handleExamChange(value: unknown): void {
   onExamChange(value as string | number | undefined, [])
   syncTasks.value = []
   passbackRecords.value = []
+  passbackPagination.pageNum = 1
+  passbackPagination.total = 0
   if (selectedExamId.value) {
     void loadAll()
   }
@@ -778,6 +813,8 @@ function handleExamChange(value: unknown): void {
 watch(selectedExamId, (value) => {
   syncTasks.value = []
   passbackRecords.value = []
+  passbackPagination.pageNum = 1
+  passbackPagination.total = 0
   if (value) {
     void loadAll()
   }
@@ -838,16 +875,6 @@ onMounted(async () => {
 
 .empty-block {
   margin-top: 80px;
-}
-
-.json-pre {
-  background: rgba(0, 0, 0, 0.03);
-  padding: 8px;
-  border-radius: 4px;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-size: 12px;
 }
 
 .error-text {

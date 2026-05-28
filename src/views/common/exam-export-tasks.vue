@@ -51,7 +51,7 @@
       <template #title>
         <CloudDownloadOutlined />
         <span>当前考试导出任务</span>
-        <UiBadge tone="blue">{{ tasks.length }}</UiBadge>
+        <UiBadge tone="blue">{{ taskPagination.total }}</UiBadge>
       </template>
       <template #extra>
         <a-space>
@@ -82,11 +82,13 @@
         :columns="columns"
         :data-source="filteredTasks"
         :loading="loading"
-        :page-size="20"
-        :total="filteredTasks.length"
+        v-model:current="taskPagination.pageNum"
+        v-model:page-size="taskPagination.pageSize"
+        :total="taskPagination.total"
         flat
         row-key="taskId"
         size="middle"
+        @page-change="handleTaskPageChange"
       >
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'exportType'">
@@ -95,6 +97,9 @@
           <template v-else-if="column.key === 'exportScope'">
             {{ exportScopeLabel(filteredTasks[index].exportScope) }}
           </template>
+          <template v-else-if="column.key === 'scopeSummary'">
+            {{ filteredTasks[index].scopeSummary }}
+          </template>
           <template v-else-if="column.key === 'taskStatus'">
             <UiTag :tone="statusTone(filteredTasks[index].taskStatus)" size="sm">
               {{ exportStatusLabel(filteredTasks[index].taskStatus) }}
@@ -102,7 +107,9 @@
           </template>
           <template v-else-if="column.key === 'fileSize'">
             {{
-              filteredTasks[index].fileSize ? formatBytes(filteredTasks[index].fileSize ?? 0) : '-'
+              filteredTasks[index].fileSize
+                ? formatBytes(Number(filteredTasks[index].fileSize))
+                : '-'
             }}
           </template>
           <template v-else-if="column.key === 'errorMessage'">
@@ -167,16 +174,41 @@
           </a-radio-button>
         </a-radio-group>
       </a-form-item>
-      <a-form-item label="范围条件 JSON">
-        <a-textarea
-          v-model:value="createForm.scopePayload"
-          :rows="6"
-          :placeholder="scopePayloadPlaceholder"
+      <a-form-item v-if="createForm.exportScope === 'EXAM'" label="范围条件">
+        <UiTag tone="blue" size="sm">整场考试</UiTag>
+      </a-form-item>
+      <a-form-item v-else-if="createForm.exportScope === 'CLASS'" label="选择班级" required>
+        <a-select
+          v-model:value="createForm.classIds"
+          mode="multiple"
+          placeholder="选择需要导出的班级"
+          :options="classOptions"
+          :loading="rosterLoading"
+          show-search
+          option-filter-prop="label"
         />
-        <div class="hint-text" style="margin-top: 4px">
-          示例：CLASS 范围填 {&quot;classIds&quot;:[&quot;101&quot;]}；STUDENT 范围填
-          {&quot;studentUserIds&quot;:[&quot;1001&quot;]}；EXAM 范围可留空。
-        </div>
+      </a-form-item>
+      <a-form-item v-else-if="createForm.exportScope === 'QUESTION'" label="选择题目" required>
+        <a-select
+          v-model:value="createForm.questionTemplateIds"
+          mode="multiple"
+          placeholder="选择需要导出的题目"
+          :options="questionOptions"
+          :loading="questionLoading"
+          show-search
+          option-filter-prop="label"
+        />
+      </a-form-item>
+      <a-form-item v-else-if="createForm.exportScope === 'STUDENT'" label="选择学生" required>
+        <a-select
+          v-model:value="createForm.studentUserIds"
+          mode="multiple"
+          placeholder="选择需要导出的学生"
+          :options="studentOptions"
+          :loading="rosterLoading"
+          show-search
+          option-filter-prop="label"
+        />
       </a-form-item>
     </a-form>
   </a-modal>
@@ -198,7 +230,19 @@
         {{ exportScopeLabel(detailTask.exportScope) }}
       </a-descriptions-item>
       <a-descriptions-item label="范围条件">
-        <pre class="scope-pre">{{ detailTask.scopePayload || '（空）' }}</pre>
+        {{ detailTask.scopeSummary }}
+      </a-descriptions-item>
+      <a-descriptions-item v-if="detailTask.scopeItems.length > 0" label="范围明细">
+        <div class="scope-items">
+          <UiTag
+            v-for="item in detailTask.scopeItems"
+            :key="`${item.scopeType}-${item.targetId}`"
+            tone="blue"
+            size="sm"
+          >
+            {{ formatScopeItem(item) }}
+          </UiTag>
+        </div>
       </a-descriptions-item>
       <a-descriptions-item label="状态">
         <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
@@ -207,7 +251,7 @@
       </a-descriptions-item>
       <a-descriptions-item label="文件名">{{ detailTask.fileName ?? '-' }}</a-descriptions-item>
       <a-descriptions-item label="文件大小">
-        {{ detailTask.fileSize ? formatBytes(detailTask.fileSize) : '-' }}
+        {{ detailTask.fileSize ? formatBytes(Number(detailTask.fileSize)) : '-' }}
       </a-descriptions-item>
       <a-descriptions-item label="开始时间">
         {{ detailTask.startedTime ?? '-' }}
@@ -225,20 +269,16 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import { getExamTemplate } from '@/apis/mark/exam'
 import type {
+  ExportCreatePayload,
   ExportScopeCode,
+  ExportScopeItemVO,
   ExportTaskStatusCode,
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
-import type { BadgeTone } from '@/components/ui-guide/ui'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   createExportTask,
   EXPORT_SCOPE_LABEL,
@@ -247,8 +287,17 @@ import {
   EXPORT_TYPE_LABEL,
   listExportTasks,
 } from '@/apis/mark/exam-export'
+import type { BadgeTone } from '@/components/ui-guide/ui'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -262,9 +311,24 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
+const {
+  classOptions,
+  studentOptions,
+  loading: rosterLoading,
+  load: loadRoster,
+  reset: resetRoster,
+} = useMarkExamRoster()
+
 const tasks = ref<ExportTaskVO[]>([])
 const loading = ref(false)
 const downloadingId = ref<string | undefined>(undefined)
+const questionOptions = ref<Array<{ value: string; label: string }>>([])
+const questionLoading = ref(false)
+const taskPagination = reactive({
+  pageNum: 1,
+  pageSize: 20,
+  total: 0,
+})
 
 const statusFilter = ref<ExportTaskStatusCode | undefined>(undefined)
 const typeFilter = ref<ExportTypeCode | undefined>(undefined)
@@ -272,8 +336,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value)
-      && (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
+      (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 
@@ -289,6 +353,7 @@ const columns: ColumnType<ExportTaskVO>[] = [
   { title: '任务ID', key: 'taskId', dataIndex: 'taskId', width: 120 },
   { title: '类型', key: 'exportType', width: 120 },
   { title: '范围', key: 'exportScope', width: 100 },
+  { title: '范围条件', key: 'scopeSummary', width: 160 },
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '文件名', key: 'fileName', dataIndex: 'fileName', width: 200, ellipsis: true },
   { title: '文件大小', key: 'fileSize', width: 100 },
@@ -324,11 +389,20 @@ function formatBytes(size: number): string {
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) {
     tasks.value = []
+    taskPagination.total = 0
     return
   }
   loading.value = true
   try {
-    tasks.value = await listExportTasks({ examId: selectedExamId.value })
+    const page = await listExportTasks({
+      examId: selectedExamId.value,
+      pageNum: taskPagination.pageNum,
+      pageSize: taskPagination.pageSize,
+    })
+    tasks.value = page.list
+    taskPagination.pageNum = page.pageNum
+    taskPagination.pageSize = page.pageSize
+    taskPagination.total = page.total
   } catch (error) {
     message.error(error instanceof Error ? error.message : '加载导出任务失败')
   } finally {
@@ -336,12 +410,20 @@ async function loadTasks(): Promise<void> {
   }
 }
 
+function handleTaskPageChange(payload: { current: number; pageSize: number }): void {
+  taskPagination.pageNum = payload.current
+  taskPagination.pageSize = payload.pageSize
+  void loadTasks()
+}
+
 function handleExamChange(value: unknown): void {
   onExamChange(value as string | number | undefined, [])
   if (selectedExamId.value) {
+    taskPagination.pageNum = 1
     void loadTasks()
   } else {
     tasks.value = []
+    taskPagination.total = 0
   }
 }
 
@@ -352,49 +434,83 @@ const creating = ref(false)
 const createForm = reactive<{
   exportType: ExportTypeCode
   exportScope: ExportScopeCode
-  scopePayload: string
+  classIds: string[]
+  questionTemplateIds: string[]
+  studentUserIds: string[]
 }>({
   exportType: 'SCORE_EXCEL',
   exportScope: 'EXAM',
-  scopePayload: '',
+  classIds: [],
+  questionTemplateIds: [],
+  studentUserIds: [],
 })
 
-const createValid = computed(() =>
-  Boolean(selectedExamId.value && createForm.exportType && createForm.exportScope),
-)
-
-const scopePayloadPlaceholder = computed(() => {
-  switch (createForm.exportScope) {
-    case 'EXAM':
-      return '可留空，整场考试。'
-    case 'CLASS':
-      return '{"classIds":["101","102"]}'
-    case 'QUESTION':
-      return '{"questionTemplateIds":["5001","5002"]}'
-    case 'STUDENT':
-      return '{"studentUserIds":["1001","1002"]}'
-    default:
-      return ''
-  }
+const createValid = computed(() => {
+  if (!selectedExamId.value || !createForm.exportType || !createForm.exportScope) return false
+  if (createForm.exportScope === 'CLASS') return createForm.classIds.length > 0
+  if (createForm.exportScope === 'QUESTION') return createForm.questionTemplateIds.length > 0
+  if (createForm.exportScope === 'STUDENT') return createForm.studentUserIds.length > 0
+  return true
 })
 
-function openCreateModal(): void {
+function resetCreateForm(): void {
   createForm.exportType = 'SCORE_EXCEL'
   createForm.exportScope = 'EXAM'
-  createForm.scopePayload = ''
+  createForm.classIds = []
+  createForm.questionTemplateIds = []
+  createForm.studentUserIds = []
+}
+
+async function loadQuestionOptions(examId: string | undefined): Promise<void> {
+  if (!examId) {
+    questionOptions.value = []
+    return
+  }
+  questionLoading.value = true
+  try {
+    const template = await getExamTemplate(examId)
+    questionOptions.value = [...template.questions]
+      .sort(
+        (left: ExamQuestionTemplateVO, right: ExamQuestionTemplateVO) =>
+          (left.sortNo ?? 0) - (right.sortNo ?? 0),
+      )
+      .map((question) => ({
+        value: question.questionTemplateId,
+        label: `第 ${question.questionNo} 题 · ${question.fullScore} 分`,
+      }))
+  } catch (error) {
+    questionOptions.value = []
+    message.error(error instanceof Error ? error.message : '题目模板加载失败')
+  } finally {
+    questionLoading.value = false
+  }
+}
+
+async function openCreateModal(): Promise<void> {
+  resetCreateForm()
   createModalOpen.value = true
+  if (selectedExamId.value) {
+    await Promise.all([loadRoster(selectedExamId.value), loadQuestionOptions(selectedExamId.value)])
+  }
 }
 
 async function handleCreate(): Promise<void> {
   if (!selectedExamId.value || !createValid.value) return
   creating.value = true
   try {
-    await createExportTask({
+    const payload: ExportCreatePayload = {
       examId: selectedExamId.value,
       exportType: createForm.exportType,
       exportScope: createForm.exportScope,
-      scopePayload: createForm.scopePayload?.trim() || undefined,
-    })
+    }
+    if (createForm.exportScope === 'CLASS') {
+      payload.scopeCondition = { classIds: createForm.classIds }
+    } else if (createForm.exportScope === 'QUESTION') {
+      payload.scopeCondition = { questionTemplateIds: createForm.questionTemplateIds }
+    } else if (createForm.exportScope === 'STUDENT') {
+      payload.scopeCondition = { studentUserIds: createForm.studentUserIds }
+    }
+    await createExportTask(payload)
     message.success('已创建导出任务，等待后端生成')
     createModalOpen.value = false
     await loadTasks()
@@ -413,6 +529,13 @@ const detailTask = ref<ExportTaskVO | null>(null)
 function openDetailDrawer(record: ExportTaskVO): void {
   detailTask.value = record
   detailDrawerOpen.value = true
+}
+
+function formatScopeItem(item: ExportScopeItemVO): string {
+  if (item.targetCode && item.targetName) return `${item.targetName}（${item.targetCode}）`
+  if (item.targetName) return item.targetName
+  if (item.targetCode) return item.targetCode
+  return '范围明细缺少展示名称'
 }
 
 // ─── 下载 ─────────────────────────────────────
@@ -448,11 +571,24 @@ async function handleDownload(record: ExportTaskVO): Promise<void> {
 // B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
 watch(selectedExamId, (value) => {
   if (value) {
+    taskPagination.pageNum = 1
     void loadTasks()
   } else {
     tasks.value = []
+    taskPagination.total = 0
+    resetRoster()
+    questionOptions.value = []
   }
 })
+
+watch(
+  () => createForm.exportScope,
+  () => {
+    createForm.classIds = []
+    createForm.questionTemplateIds = []
+    createForm.studentUserIds = []
+  },
+)
 
 onMounted(async () => {
   await initExamSelector()
@@ -521,13 +657,9 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-.scope-pre {
-  background: rgba(0, 0, 0, 0.03);
-  padding: 8px;
-  border-radius: 4px;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-size: 12px;
+.scope-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

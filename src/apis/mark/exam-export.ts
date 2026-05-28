@@ -13,6 +13,7 @@
  *   - start/complete/fail 三个端点保留以备运维或 worker 调用，前端 UI 不直接暴露。
  *   - taskId / examId / fileId 在前端均以 string 形式传输（保持 Long ID 字符串语义）。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 // ─── 状态与类型枚举 ─────────────────────────────────
@@ -65,17 +66,27 @@ export const EXPORT_SCOPE_LABEL: Record<ExportScopeCode, string> = {
 
 // ─── DTO ─────────────────────────────────
 
+/** 导出任务结构化范围条件 - 对应 ExportScopeConditionRequest */
+export interface ExportScopeConditionPayload {
+  /** 班级 ID 集合，导出范围为 CLASS 时使用 */
+  classIds?: string[]
+  /** 题目模板 ID 集合，导出范围为 QUESTION 时使用 */
+  questionTemplateIds?: string[]
+  /** 学生用户 ID 集合，导出范围为 STUDENT 时使用 */
+  studentUserIds?: string[]
+}
+
 /** 导出任务创建请求 - 对应 ExportCreateRequest */
 export interface ExportCreatePayload {
   examId: string
   exportType: ExportTypeCode
   exportScope: ExportScopeCode
-  /** 范围条件载荷 JSON 字符串，例如 '{"classIds":["101"]}' */
-  scopePayload?: string
+  /** 结构化范围条件，EXAM 范围不传 */
+  scopeCondition?: ExportScopeConditionPayload
 }
 
 /** 导出任务查询请求 - 对应 ExportTaskQueryRequest */
-export interface ExportTaskQueryPayload {
+export interface ExportTaskQueryPayload extends QueryDto {
   examId: string
 }
 
@@ -89,7 +100,7 @@ export interface ExportCompletePayload {
   taskId: string
   fileId: string
   fileName: string
-  fileSize: number
+  fileSize: string
 }
 
 /** 导出任务失败请求 - 对应 ExportFailRequest */
@@ -98,16 +109,25 @@ export interface ExportFailPayload {
   errorMessage: string
 }
 
+/** 导出任务范围明细响应 - 对应 ExportScopeItemResponse */
+export interface ExportScopeItemVO {
+  scopeType: ExportScopeCode
+  targetId: string
+  targetCode?: string
+  targetName?: string
+}
+
 /** 导出任务响应 - 对应 ExportTaskResponse */
 export interface ExportTaskVO {
   taskId: string
   examId: string
   exportType: ExportTypeCode
   exportScope: ExportScopeCode
-  scopePayload?: string
+  scopeSummary: string
+  scopeItems: ExportScopeItemVO[]
   fileName?: string
   fileId?: string
-  fileSize?: number
+  fileSize?: string
   taskStatus: ExportTaskStatusCode
   errorMessage?: string
   startedTime?: string
@@ -128,8 +148,8 @@ export function createExportTask(payload: ExportCreatePayload): Promise<string> 
  * 按考试查询导出任务列表
  * POST /api/mark/exams/export/list
  */
-export function listExportTasks(payload: ExportTaskQueryPayload): Promise<ExportTaskVO[]> {
-  return http.post<ExportTaskVO[]>('/api/mark/exams/export/list', payload)
+export function listExportTasks(payload: ExportTaskQueryPayload): Promise<PageResult<ExportTaskVO>> {
+  return http.post<PageResult<ExportTaskVO>>('/api/mark/exams/export/list', payload)
 }
 
 /**

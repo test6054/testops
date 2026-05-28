@@ -219,6 +219,10 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
+import {
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -229,10 +233,6 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,
@@ -262,15 +262,16 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
-const currentUserId = computed(() => {
-  const userId = userStore.userInfo.userId
-  if (!userId) {
-    throw new Error('当前登录用户缺少 userId')
-  }
-  return userId
-})
+/**
+ * 当前登录教师 ID 参与查询条件组装。
+ *
+ * 渲染期允许为空，真正发起查询时再显式校验，避免用户态恢复瞬间在模板链路抛错。
+ */
+const currentUserId = computed(() => userStore.userInfo.userId || '')
 
 const markTaskStore = useMarkTaskStore()
+// 注意：tasks / tasksLoading 仅用于读取，写入必须经 markTaskStore.loadTasks /
+// clearTasks 等 action，避免组件直接修改 storeToRefs 解开后的 ref。
 const { tasks, tasksLoading: loading, claimContextLoading } = storeToRefs(markTaskStore)
 // D-9 错误态：任务列表加载失败时 UiErrorRetryPanel 重试 + 上报
 const tasksLoadError = ref<unknown>(null)
@@ -310,10 +311,18 @@ const columns: ColumnType<MarkingTaskVO>[] = [
 
 async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) {
-    tasks.value = []
+    // 通过 store action 清空，保持 Pinia 单向数据流
+    markTaskStore.clearTasks()
     return
   }
-  loading.value = true
+  if (!currentUserId.value) {
+    const error = new Error('当前登录用户缺少 userId，无法加载阅卷任务')
+    tasksLoadError.value = error
+    message.error(error.message)
+    return
+  }
+  // tasksLoading 由 markTaskStore.loadTasks 内部 try/finally 维护，
+  // 组件不再直接写 loading.value，防止与 store 状态机交叉
   tasksLoadError.value = null
   try {
     const payload: MarkingTaskQueryPayload = {
@@ -328,8 +337,6 @@ async function loadTasks(): Promise<void> {
     tasksLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '任务列表加载失败'
     message.error(errMsg)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -417,7 +424,6 @@ function goDetail(task: MarkingTaskVO): void {
     query: { examId: selectedExamId.value },
   })
 }
-
 
 /**
  * 把 record.taskStatus 渲染成中文标签，未知枚举直接暴露契约错误。

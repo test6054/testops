@@ -22,6 +22,16 @@ export const SCHOOL_QUALITY_DIMENSION_LABEL: Record<SchoolQualityDimensionCode, 
   SEMESTER: '学期维度',
 }
 
+/** 校级质量分析条目 */
+export interface SchoolQualityItemVO {
+  dimensionName?: string
+  metricName?: string
+  score?: number
+  summary?: string
+  risk?: string
+  suggestion?: string
+}
+
 /** 校级质量分析记录 - 对应 SchoolQualityAnalysis */
 export interface SchoolQualityAnalysisVO {
   id: string
@@ -35,15 +45,14 @@ export interface SchoolQualityAnalysisVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   qualitySummary?: string
-  qualityItems?: string
+  qualityItems?: SchoolQualityItemVO[]
   teachingQualityScore?: number
   questionQualityScore?: number
   markingQualityScore?: number
   analysisStatus?: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
   updateTime?: string
 }
@@ -57,7 +66,6 @@ export interface ExperienceEffectivenessEvalVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   evalSummary?: string
   consistencyRate?: number
   reuseCount?: number
@@ -66,7 +74,7 @@ export interface ExperienceEffectivenessEvalVO {
   recommendation?: string
   analysisStatus?: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
   updateTime?: string
 }

@@ -26,7 +26,9 @@
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{ formatDateTime(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">{{
+            formatDateTime(record.createTime)
+          }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="3">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -41,53 +43,59 @@
           <strong>总体摘要：</strong>{{ record.overallSummary }}
         </a-typography-paragraph>
 
-        <div v-if="parsedItems.length > 0" class="ai-items">
+        <div v-if="improvementItems.length > 0" class="ai-items">
           <strong>结构化建议：</strong>
-          <a-list size="small" :data-source="parsedItems" bordered>
+          <a-list size="small" :data-source="improvementItems" bordered>
             <template #renderItem="{ item, index }">
               <a-list-item>
-                <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
-                <a-typography-paragraph
-                  :content="formatItem(item)"
-                  :copyable="true"
-                  style="margin: 0 0 0 8px; flex: 1"
-                />
+                <div class="analysis-item">
+                  <div class="analysis-item__header">
+                    <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
+                    <span class="analysis-item__title">{{ item.title || '教学改进建议' }}</span>
+                    <a-tag v-if="item.priority">{{ item.priority }}</a-tag>
+                  </div>
+                  <a-typography-paragraph v-if="item.problem" class="analysis-item__text">
+                    <strong>问题：</strong>{{ item.problem }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.suggestion" class="analysis-item__text">
+                    <strong>建议：</strong>{{ item.suggestion }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.action" class="analysis-item__text">
+                    <strong>行动：</strong>{{ item.action }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.expectedOutcome" class="analysis-item__text">
+                    <strong>预期成效：</strong>{{ item.expectedOutcome }}
+                  </a-typography-paragraph>
+                </div>
               </a-list-item>
             </template>
           </a-list>
         </div>
-
-        <a-collapse v-if="record.evidenceSnapshot || record.aiRawResponse" :bordered="false">
-          <a-collapse-panel v-if="record.evidenceSnapshot" key="evidence" header="证据快照 JSON">
-            <pre class="raw-json">{{ record.evidenceSnapshot }}</pre>
-          </a-collapse-panel>
-          <a-collapse-panel v-if="record.aiRawResponse" key="raw" header="AI 原始响应">
-            <pre class="raw-json">{{ record.aiRawResponse }}</pre>
-          </a-collapse-panel>
-        </a-collapse>
       </div>
     </a-spin>
   </a-card>
 </template>
 
 <script lang="ts" setup>
-import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
+import type {
+  ExamTeachingAnalysisRecordVO,
+  TeachingImprovementItemVO,
+} from '@/apis/mark/teaching-analysis'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
   generateTeachingImprovement,
   getLatestTeachingImprovement,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
-import { strictJsonArray } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeachingImprovementCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
@@ -95,8 +103,8 @@ const generating = ref(false)
 // D-9 错误态：教学改进建议加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<unknown>(null)
 
-const parsedItems = computed(() => {
-  return strictJsonArray(record.value?.improvementItems, 'AI 教学改进建议条目')
+const improvementItems = computed<TeachingImprovementItemVO[]>(() => {
+  return (record.value?.improvementItems ?? []) as TeachingImprovementItemVO[]
 })
 
 async function reload(): Promise<void> {
@@ -126,12 +134,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-
-function formatItem(item: unknown): string {
-  if (typeof item === 'string') return item
-  return JSON.stringify(item, null, 2)
-}
-
 watch(
   () => [props.examId, props.reloadToken],
   () => {
@@ -155,14 +157,24 @@ watch(
   flex-direction: column;
   gap: 8px;
 }
-.raw-json {
+.analysis-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.analysis-item__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.analysis-item__title {
+  font-weight: 600;
+}
+.analysis-item__text {
   margin: 0;
-  padding: 8px;
-  font-family: var(--gi-font-family-mono, monospace);
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: var(--gi-color-bg-2, #f5f5f5);
+  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
+  line-height: 1.6;
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

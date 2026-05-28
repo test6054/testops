@@ -40,22 +40,6 @@
           <div v-if="event.reason" class="audit-timeline__reason">
             {{ event.reason }}
           </div>
-          <div
-            v-if="showDiff && (event.beforeValue || event.afterValue)"
-            class="audit-timeline__diff"
-          >
-            <details class="audit-timeline__diff-details">
-              <summary class="audit-timeline__diff-summary">查看变更详情</summary>
-              <div v-if="event.beforeValue" class="audit-timeline__diff-block">
-                <span class="audit-timeline__diff-label">变更前</span>
-                <pre class="audit-timeline__diff-pre">{{ event.beforeValue }}</pre>
-              </div>
-              <div v-if="event.afterValue" class="audit-timeline__diff-block">
-                <span class="audit-timeline__diff-label">变更后</span>
-                <pre class="audit-timeline__diff-pre">{{ event.afterValue }}</pre>
-              </div>
-            </details>
-          </div>
         </div>
       </li>
     </ul>

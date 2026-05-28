@@ -135,7 +135,9 @@
             <div class="m-survey__q-header">
               <span class="m-survey__q-index">Q{{ currentIndex + 1 }}</span>
               <span v-if="currentItem?.required" class="m-survey__required">必填</span>
-              <span v-if="currentItem" class="m-survey__q-type">{{ itemTypeLabel(currentItem.itemType) }}</span>
+              <span v-if="currentItem" class="m-survey__q-type">{{
+                itemTypeLabel(currentItem.itemType)
+              }}</span>
             </div>
             <h2 class="m-survey__q-text">{{ currentItem?.itemText }}</h2>
 
@@ -152,9 +154,9 @@
                   class="m-survey__scale-btn"
                   :class="{
                     'm-survey__scale-btn--active':
-                      answers[currentItem.itemToken] === String(opt.value),
+                      scaleAnswers[currentItem.itemToken] === opt.value,
                   }"
-                  @click="answers[currentItem.itemToken] = String(opt.value)"
+                  @click="scaleAnswers[currentItem.itemToken] = opt.value"
                 >
                   {{ opt.value }}
                 </button>
@@ -168,14 +170,15 @@
                 :key="opt.optionValue"
                 class="m-survey__choice"
                 :class="{
-                  'm-survey__choice--active': answers[currentItem.itemToken] === opt.optionValue,
+                  'm-survey__choice--active':
+                    singleChoiceAnswers[currentItem.itemToken] === opt.optionValue,
                 }"
-                @click="answers[currentItem.itemToken] = opt.optionValue"
+                @click="singleChoiceAnswers[currentItem.itemToken] = opt.optionValue"
               >
                 <span class="m-survey__choice-letter">{{ String.fromCharCode(65 + oi) }}</span>
                 <span class="m-survey__choice-text">{{ opt.optionLabel }}</span>
                 <span
-                  v-if="answers[currentItem.itemToken] === opt.optionValue"
+                  v-if="singleChoiceAnswers[currentItem.itemToken] === opt.optionValue"
                   class="m-survey__choice-check"
                   aria-hidden="true"
                 >
@@ -294,7 +297,8 @@ const {
   submitting,
   thankYouMessage,
   identityValues,
-  answers,
+  scaleAnswers,
+  singleChoiceAnswers,
   multiAnswers,
   openTexts,
   totalCount,

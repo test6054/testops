@@ -4,7 +4,7 @@
       <div class="archive-detail-page__context">
         <div class="archive-detail-page__context-left">
           <span class="archive-detail-page__title">{{ archive.archiveTitle }}</span>
-          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus]" size="sm">
+          <UiTag :tone="archiveStatusTone(archive.archiveStatus)" size="sm">
             {{ archive.archiveStatusMessage }}
           </UiTag>
           <UiTag v-if="archive.permanentRetention" tone="purple" size="sm">永久保管</UiTag>
@@ -52,7 +52,7 @@
       </template>
       <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" size="small" bordered>
         <a-descriptions-item label="状态">
-          <UiTag :tone="ARCHIVE_STATUS_TONE[archive.archiveStatus]" size="sm">
+          <UiTag :tone="archiveStatusTone(archive.archiveStatus)" size="sm">
             {{ archive.archiveStatusMessage }}
           </UiTag>
         </a-descriptions-item>
@@ -198,12 +198,6 @@
                 <span class="muted">· {{ formatDateTimeWithSeconds(event.eventTime) }}</span>
               </div>
               <div v-if="event.reason" class="event-reason">{{ event.reason }}</div>
-              <div v-if="event.payload" class="event-payload">
-                <details>
-                  <summary>查看 payload</summary>
-                  <pre>{{ event.payload }}</pre>
-                </details>
-              </div>
             </a-timeline-item>
           </a-timeline>
         </a-tab-pane>
@@ -307,9 +301,25 @@ import type {
   ArchiveDestructionDecisionCode,
   ArchiveEventVO,
   ArchiveItemVO,
+  ArchivePackageStatusCode,
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
+import {
+  appraiseArchive,
+  approveDestruction,
+  ARCHIVE_APPRAISAL_LABEL,
+  ARCHIVE_DESTRUCTION_LABEL,
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  executeDestruction,
+  getArchiveDetail,
+  packageArchive,
+  requestAppraisal,
+  requestDestruction,
+} from '@/apis/mark/archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -318,26 +328,13 @@ import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  appraiseArchive,
-  approveDestruction,
-  ARCHIVE_APPRAISAL_LABEL,
-  ARCHIVE_DESTRUCTION_LABEL,
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_TONE,
-  executeDestruction,
-  getArchiveDetail,
-  packageArchive,
-  requestAppraisal,
-  requestDestruction,
-} from '@/apis/mark/archive'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { formatDateTimeWithSeconds } from '@/utils/format'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveDetail' })
 
@@ -346,6 +343,14 @@ const examContextStore = useMarkExamContextStore()
 
 const route = useRoute()
 const router = useRouter()
+
+function archiveStatusTone(status: ArchivePackageStatusCode): BadgeTone {
+  return strictEnumTone(ARCHIVE_STATUS_TONE, status, '归档状态')
+}
+
+function archiveStatusLabel(status: ArchivePackageStatusCode): string {
+  return strictEnumLabel(ARCHIVE_STATUS_LABEL, status, '归档状态')
+}
 
 function archivePhaseLabel(phase?: ArchivePackagingPhase): string {
   if (!phase) return '未运行'
@@ -403,8 +408,8 @@ const itemColumns = [
 const showProgressCard = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'PACKAGING'
-    || archive.value.archiveStatus === 'PACKAGING_FAILED'
+    archive.value.archiveStatus === 'PACKAGING' ||
+    archive.value.archiveStatus === 'PACKAGING_FAILED'
   )
 })
 
@@ -426,20 +431,20 @@ const canPackage = computed(() => {
 const canRequestDestruction = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'APPRAISAL_DECIDED'
-    && archive.value.appraisalDecision === 'DESTROY'
+    archive.value.archiveStatus === 'APPRAISAL_DECIDED' &&
+    archive.value.appraisalDecision === 'DESTROY'
   )
 })
 
 const hasAnyAction = computed(() => {
   if (!archive.value) return false
   return (
-    canPackage.value
-    || archive.value.archiveStatus === 'ACTIVE'
-    || archive.value.archiveStatus === 'APPRAISAL_PENDING'
-    || canRequestDestruction.value
-    || archive.value.archiveStatus === 'DESTRUCTION_PENDING'
-    || archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
+    canPackage.value ||
+    archive.value.archiveStatus === 'ACTIVE' ||
+    archive.value.archiveStatus === 'APPRAISAL_PENDING' ||
+    canRequestDestruction.value ||
+    archive.value.archiveStatus === 'DESTRUCTION_PENDING' ||
+    archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
   )
 })
 
@@ -462,8 +467,8 @@ function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
     case 'PACKAGING_FAILED':
     case 'DESTRUCTION_FAILED':
       status = 'blocked'
-      hint
-        = pkg.archiveStatus === 'PACKAGING_FAILED'
+      hint =
+        pkg.archiveStatus === 'PACKAGING_FAILED'
           ? `打包失败${pkg.packagingDiagnostic ? ` · ${pkg.packagingDiagnostic}` : ''}`
           : pkg.archiveStatusMessage
       break
@@ -524,9 +529,9 @@ async function loadDetail(): Promise<void> {
 }
 
 function syncPolling(): void {
-  const shouldPoll
-    = archive.value?.archiveStatus === 'PACKAGING'
-      || archive.value?.archiveStatus === 'DESTRUCTION_EXECUTING'
+  const shouldPoll =
+    archive.value?.archiveStatus === 'PACKAGING' ||
+    archive.value?.archiveStatus === 'DESTRUCTION_EXECUTING'
   if (shouldPoll && !pollTimer) {
     pollTimer = setInterval(() => {
       void loadDetail()
@@ -681,7 +686,6 @@ function goBack(): void {
   void router.push({ name: 'TeacherArchiveList' })
 }
 
-
 function formatBytes(bytes: number): string {
   if (!bytes || bytes <= 0) return '-'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -790,16 +794,5 @@ onUnmounted(() => {
 .event-reason {
   margin-top: 4px;
   color: var(--ant-color-text);
-}
-
-.event-payload pre {
-  background: var(--ant-color-fill-quaternary);
-  padding: 8px 10px;
-  border-radius: 6px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  margin-top: 6px;
 }
 </style>

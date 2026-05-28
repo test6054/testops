@@ -14,15 +14,15 @@ import type {
   ProfessionAlgorithmTemplateSavePayload,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   isAccreditationType,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -151,10 +151,6 @@ function assignEditor(
     standardId: record.standardId,
     standardYear: record.standardYear,
     description: record.description,
-    defaultRequirementStructure: record.defaultRequirementStructure,
-    defaultIndicatorStructure: record.defaultIndicatorStructure,
-    defaultEvidenceTypes: record.defaultEvidenceTypes,
-    professionEvidenceRubric: record.professionEvidenceRubric,
     courseGoalAggregation: record.courseGoalAggregation,
     indicatorAggregation: record.indicatorAggregation,
     requirementAggregation: record.requirementAggregation,
@@ -190,7 +186,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -286,10 +282,6 @@ async function submitEditor() {
       standardId: editor.standardId,
       standardYear: editor.standardYear?.trim() || undefined,
       description: editor.description?.trim() || undefined,
-      defaultRequirementStructure: editor.defaultRequirementStructure,
-      defaultIndicatorStructure: editor.defaultIndicatorStructure,
-      defaultEvidenceTypes: editor.defaultEvidenceTypes,
-      professionEvidenceRubric: editor.professionEvidenceRubric,
       courseGoalAggregation: editor.courseGoalAggregation,
       indicatorAggregation: editor.indicatorAggregation,
       requirementAggregation: editor.requirementAggregation,
@@ -686,22 +678,6 @@ onMounted(async () => {
           </a-descriptions-item>
         </a-descriptions>
 
-        <a-divider>结构配置</a-divider>
-        <a-descriptions :column="1" size="small" bordered>
-          <a-descriptions-item label="默认毕业要求结构">
-            <pre class="json-preview">{{ detailRecord.defaultRequirementStructure || '-' }}</pre>
-          </a-descriptions-item>
-          <a-descriptions-item label="默认观测点结构">
-            <pre class="json-preview">{{ detailRecord.defaultIndicatorStructure || '-' }}</pre>
-          </a-descriptions-item>
-          <a-descriptions-item label="默认证据类型">
-            <pre class="json-preview">{{ detailRecord.defaultEvidenceTypes || '-' }}</pre>
-          </a-descriptions-item>
-          <a-descriptions-item label="专业证据评分基线">
-            <pre class="json-preview">{{ detailRecord.professionEvidenceRubric || '-' }}</pre>
-          </a-descriptions-item>
-        </a-descriptions>
-
         <a-divider v-if="isSharedTemplate(detailRecord)">租户继承</a-divider>
         <a-space v-if="isSharedTemplate(detailRecord)">
           <UiButton
@@ -789,16 +765,5 @@ onMounted(async () => {
       width: 220px;
     }
   }
-}
-
-.json-preview {
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0;
-  max-height: 180px;
-  overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
-  color: var(--dp-text-muted, #475569);
 }
 </style>

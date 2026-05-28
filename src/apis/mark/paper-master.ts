@@ -6,6 +6,10 @@
  */
 
 import http from '@/config/axios'
+import type { PageResult, QueryDto } from '@/types'
+
+/** 试卷母版未配置业务码 - 与后端 ResultCodeEnum.EXAM_MARK_PAPER_MASTER_NOT_CONFIGURED 对齐 */
+export const PAPER_MASTER_NOT_CONFIGURED_CODE = 20015
 
 // ─── 身份填涂区 ────────────────────────────────────────────────────────
 
@@ -199,19 +203,8 @@ export interface PrintPackageGeneratePayload {
 // ─── 印刷包分页查询 ────────────────────────────────────────────────────
 
 /** 印刷包分页查询请求 */
-export interface PrintPackagePagePayload {
+export interface PrintPackagePagePayload extends QueryDto {
   examId: string
-  pageNum: number
-  pageSize: number
-}
-
-/** 分页结果通用结构 */
-export interface PageResult<T> {
-  list: T[]
-  total: number
-  pages: number
-  pageNum: number
-  pageSize: number
 }
 
 // ─── API 函数 ──────────────────────────────────────────────────────────
@@ -230,6 +223,26 @@ export function savePaperMaster(payload: PaperMasterSavePayload): Promise<string
  */
 export function getPaperMaster(examId: string): Promise<PaperMasterVO> {
   return http.post<PaperMasterVO>('/api/mark/exams/paper-master/detail', { examId })
+}
+
+/**
+ * 判断后端是否返回“试卷母版尚未配置”业务态。
+ * 只读取稳定 code，不依赖可变错误文案。
+ */
+export function isPaperMasterNotConfiguredError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+  const businessError = error as {
+    code?: number | string
+    response?: {
+      data?: {
+        code?: number | string
+      }
+    }
+  }
+  const code = businessError.code ?? businessError.response?.data?.code
+  return Number(code) === PAPER_MASTER_NOT_CONFIGURED_CODE
 }
 
 /**

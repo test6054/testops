@@ -64,13 +64,54 @@ export const constantRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    // 一体机扫描工作站：父路由挂载 KioskLayout（AppBar / StageBar / SideRail / BottomBar），
+    // 4 个子路由对应扫描 lifecycle 的 4 个阶段，由 router-view 轮换主区。
     path: '/scanner-kiosk',
     name: 'ScannerKiosk',
-    component: () => import('@/views/scanner-kiosk/index.vue'),
+    component: () => import('@/views/scanner-kiosk/KioskLayout.vue'),
+    redirect: '/scanner-kiosk/setup',
     meta: {
       title: '扫描一体机',
       requiresAuth: false,
     },
+    children: [
+      {
+        path: 'setup',
+        name: 'ScannerKioskSetup',
+        component: () => import('@/views/scanner-kiosk/stages/SetupStage.vue'),
+        meta: {
+          title: '准备扫描',
+          requiresAuth: false,
+        },
+      },
+      {
+        path: 'scanning',
+        name: 'ScannerKioskScanning',
+        component: () => import('@/views/scanner-kiosk/stages/ScanningStage.vue'),
+        meta: {
+          title: '扫描中',
+          requiresAuth: false,
+        },
+      },
+      {
+        path: 'review',
+        name: 'ScannerKioskReview',
+        component: () => import('@/views/scanner-kiosk/stages/ReviewStage.vue'),
+        meta: {
+          title: '复核与异常处置',
+          requiresAuth: false,
+        },
+      },
+      {
+        path: 'finalize',
+        name: 'ScannerKioskFinalize',
+        component: () => import('@/views/scanner-kiosk/stages/FinalizeStage.vue'),
+        meta: {
+          title: '封存与历史',
+          requiresAuth: false,
+        },
+      },
+    ],
   },
   {
     path: '/survey/:token',

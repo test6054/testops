@@ -9,18 +9,19 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AccreditationStandardQueryPayload,
   AccreditationStandardSavePayload,
+  AccreditationStandardSummaryVO,
   AccreditationStandardVO,
   AccreditationType,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   isAccreditationType,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -28,6 +29,13 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 const list = ref<AccreditationStandardVO[]>([])
 const total = ref(0)
 const loading = ref(false)
+const summary = ref<AccreditationStandardSummaryVO>({
+  totalCount: 0,
+  enabledCount: 0,
+  disabledCount: 0,
+  pilotOnlyCount: 0,
+  accreditationTypeCount: 0,
+})
 const query = reactive<AccreditationStandardQueryPayload>({
   pageNum: 1,
   pageSize: 10,
@@ -140,7 +148,15 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+async function loadSummary() {
+  summary.value = await accreditationStandardApi.summary()
+}
+
+async function loadPageData() {
+  await Promise.all([loadList(), loadSummary()])
+}
+
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -202,7 +218,7 @@ async function submitEditor() {
     else await accreditationStandardApi.update(editor)
     message.success('已保存')
     editorVisible.value = false
-    await loadList()
+    await loadPageData()
   } finally {
     submitting.value = false
   }
@@ -216,31 +232,46 @@ async function handleDelete(record: AccreditationStandardVO) {
     onOk: async () => {
       await accreditationStandardApi.delete(record.id)
       message.success('已删除')
-      await loadList()
+      await loadPageData()
     },
   })
 }
 
 /* ========== 信号指标：认证标准库健康度 ==========
- * 说明：启用 / 停用 / 试点 / 覆盖类型 均以当前分页可见记录为口径，避免与「认证标准总数」的全局口径混淆；
- * 如今后需要全局口径，应由后端提供专门的聚合接口。
+ * 说明：启用 / 停用 / 试点 / 覆盖类型 使用后端全局聚合口径；当前页记录仅反映本页可见行数。
  */
 const signals = computed<SignalMetric[]>(() => {
-  const enabled = list.value.filter((s) => s.enabled).length
-  const disabled = list.value.filter((s) => !s.enabled).length
-  const pilot = list.value.filter((s) => s.isPilotOnly).length
-  const types = new Set(list.value.map((s) => s.accreditationType)).size
   return [
-    { key: 'total', label: '当前页记录', value: list.value.length, tone: 'blue' },
-    { key: 'all-total', label: '认证标准总数', value: total.value, tone: 'blue' },
-    { key: 'enabled', label: '当页启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
-    { key: 'disabled', label: '当页停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
-    { key: 'pilot', label: '当页仅试点', value: pilot, tone: pilot > 0 ? 'orange' : 'gray' },
-    { key: 'types', label: '当页覆盖认证类型', value: types, tone: 'blue' },
+    { key: 'page-total', label: '当前页记录', value: list.value.length, tone: 'blue' },
+    { key: 'all-total', label: '认证标准总数', value: summary.value.totalCount, tone: 'blue' },
+    {
+      key: 'enabled',
+      label: '全局启用',
+      value: summary.value.enabledCount,
+      tone: summary.value.enabledCount > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'disabled',
+      label: '全局停用',
+      value: summary.value.disabledCount,
+      tone: summary.value.disabledCount > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'pilot',
+      label: '全局仅试点',
+      value: summary.value.pilotOnlyCount,
+      tone: summary.value.pilotOnlyCount > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'types',
+      label: '全局覆盖认证类型',
+      value: summary.value.accreditationTypeCount,
+      tone: 'blue',
+    },
   ]
 })
 
-onMounted(() => loadList())
+onMounted(() => loadPageData())
 </script>
 
 <template>

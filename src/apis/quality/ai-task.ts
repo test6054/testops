@@ -5,6 +5,7 @@ import type {
   AiTaskStatus,
   AiTaskType,
 } from './types'
+import { isAiHealthStatus, isAiManualHandlingStatus, isAiTaskStatus, isAiTaskType } from './types'
 /**
  * AI 异步任务 / 结果 / 模型配置 API
  *
@@ -20,7 +21,6 @@ import type {
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
-import { isAiHealthStatus, isAiManualHandlingStatus, isAiTaskStatus, isAiTaskType } from './types'
 
 const TASK = '/api/quality/ai-tasks'
 const TRIGGER = '/api/quality/ai-task'
@@ -57,30 +57,46 @@ export interface AiTaskVO {
 }
 
 /** AI 结果 VO - 严格对齐后端 AiResultVO */
+export interface AiResultIssueItemVO {
+  issueTitle: string
+  issueDescription?: string
+  severity?: string
+}
+
+export interface AiResultEvidenceItemVO {
+  evidenceTitle: string
+  evidenceSource?: string
+  evidenceContent: string
+}
+
+export interface AiResultImprovementItemVO {
+  suggestionTitle: string
+  suggestionContent: string
+  priority?: string
+}
+
 export interface AiResultVO {
   id: string
   tenantId?: string
   aiTaskId: string
   /** 诊断摘要 */
   summary?: string
-  /** 问题列表（JSON 字符串） */
-  issueList?: string
-  /** 证据引用（JSON 字符串） */
-  evidenceReferences?: string
-  /** 改进建议（JSON 字符串） */
-  improvementSuggestions?: string
-  /** 报告正文（Markdown） */
+  /** 问题清单 */
+  issueItems?: AiResultIssueItemVO[]
+  /** 证据引用 */
+  evidenceItems?: AiResultEvidenceItemVO[]
+  /** 改进建议 */
+  improvementItems?: AiResultImprovementItemVO[]
+  /** 报告正文文本 */
   reportBody?: string
   /** 结构 / 证据 / 敏感综合校验状态 */
   outputValidation?: AiOutputValidation
   /** 敏感信息校验状态：运行时取值 CLEAN / LEAK_DETECTED */
   sensitiveCheckStatus?: string
-  /** 敏感信息校验明细（JSON 字符串） */
+  /** 敏感信息校验明细文本 */
   sensitiveCheckDetail?: string
   /** 业务快照锚点 */
   businessSnapshotAnchor?: string
-  /** 原始模型输出（脱敏后） */
-  rawModelOutput?: string
   /** 调用模型名 */
   modelName?: string
   /** 提示 token 数 */
@@ -166,15 +182,14 @@ export interface AiTaskManualHandlePayload {
 export interface AiResultSavePayload {
   aiTaskId: string
   summary?: string
-  issueList?: string
-  evidenceReferences?: string
-  improvementSuggestions?: string
+  issueItems?: AiResultIssueItemVO[]
+  evidenceItems?: AiResultEvidenceItemVO[]
+  improvementItems?: AiResultImprovementItemVO[]
   reportBody?: string
   outputValidation: AiOutputValidation
   sensitiveCheckStatus?: string
   sensitiveCheckDetail?: string
   businessSnapshotAnchor?: string
-  rawModelOutput?: string
   modelName: string
   promptTokenCount?: number
   completionTokenCount?: number
@@ -191,9 +206,9 @@ export interface AiResultValidationUpdatePayload {
 
 /**
  * AI 模型配置查询请求 - 对齐后端 AiModelProfileQueryRequest。
- * 后端仅支持 enabledOnly 过滤，不再接收 abilityCode / defaultProfile / keyword 。
+ * 后端继承 QueryDto，分页字段必传；仅支持 enabledOnly 过滤，不再接收 abilityCode / defaultProfile / keyword 。
  */
-export interface AiModelProfileQueryPayload {
+export interface AiModelProfileQueryPayload extends QueryDto {
   /** true 仅返回当前启用的唯一配置 */
   enabledOnly?: boolean
 }
@@ -252,7 +267,11 @@ function requireString(record: Record<string, unknown>, key: string, fieldName: 
   return value
 }
 
-function optionalString(record: Record<string, unknown>, key: string, fieldName: string): string | undefined {
+function optionalString(
+  record: Record<string, unknown>,
+  key: string,
+  fieldName: string,
+): string | undefined {
   const value = record[key]
   if (value === undefined || value === null) return undefined
   if (typeof value !== 'string') {
@@ -305,12 +324,20 @@ function validateAiTaskDetail(payload: unknown): AiTaskVO {
     programId: optionalString(record, 'programId', 'AI 任务详情.programId'),
     trainingPlanId: optionalString(record, 'trainingPlanId', 'AI 任务详情.trainingPlanId'),
     qualityCourseId: optionalString(record, 'qualityCourseId', 'AI 任务详情.qualityCourseId'),
-    achievementResultId: optionalString(record, 'achievementResultId', 'AI 任务详情.achievementResultId'),
+    achievementResultId: optionalString(
+      record,
+      'achievementResultId',
+      'AI 任务详情.achievementResultId',
+    ),
     reportId: optionalString(record, 'reportId', 'AI 任务详情.reportId'),
     status,
     failurePhase: optionalString(record, 'failurePhase', 'AI 任务详情.failurePhase'),
     failureReason,
-    businessSnapshotAnchor: optionalString(record, 'businessSnapshotAnchor', 'AI 任务详情.businessSnapshotAnchor'),
+    businessSnapshotAnchor: optionalString(
+      record,
+      'businessSnapshotAnchor',
+      'AI 任务详情.businessSnapshotAnchor',
+    ),
     maskedInputAnchor: optionalString(record, 'maskedInputAnchor', 'AI 任务详情.maskedInputAnchor'),
     promptSnapshotId: optionalString(record, 'promptSnapshotId', 'AI 任务详情.promptSnapshotId'),
     maskMappingId: optionalString(record, 'maskMappingId', 'AI 任务详情.maskMappingId'),
@@ -318,7 +345,11 @@ function validateAiTaskDetail(payload: unknown): AiTaskVO {
     startedAt: optionalString(record, 'startedAt', 'AI 任务详情.startedAt'),
     finishedAt: optionalString(record, 'finishedAt', 'AI 任务详情.finishedAt'),
     manualHandlingStatus: requireAiManualHandlingStatus(record, 'manualHandlingStatus'),
-    manualHandlingRemark: optionalString(record, 'manualHandlingRemark', 'AI 任务详情.manualHandlingRemark'),
+    manualHandlingRemark: optionalString(
+      record,
+      'manualHandlingRemark',
+      'AI 任务详情.manualHandlingRemark',
+    ),
     createTime: optionalString(record, 'createTime', 'AI 任务详情.createTime'),
     updateTime: optionalString(record, 'updateTime', 'AI 任务详情.updateTime'),
   }
@@ -330,7 +361,11 @@ function validateAiModelProfileHealthCheck(payload: unknown): AiModelProfileHeal
     profileId: requireString(record, 'profileId', 'AI 模型健康检查响应.profileId'),
     healthStatus: requireAiHealthStatus(record, 'healthStatus'),
     healthMessage: requireString(record, 'healthMessage', 'AI 模型健康检查响应.healthMessage'),
-    responseSummary: optionalString(record, 'responseSummary', 'AI 模型健康检查响应.responseSummary'),
+    responseSummary: optionalString(
+      record,
+      'responseSummary',
+      'AI 模型健康检查响应.responseSummary',
+    ),
   }
 }
 
@@ -341,8 +376,7 @@ export const aiTaskApi = {
     http.post<AiTaskSubmitResponseVO>(`${TRIGGER}/submit`, data),
   runNow: (id: string) => http.post<void>(`${TRIGGER}/run-now`, { id }),
   cancel: (id: string, reason?: string) => http.post<void>(`${TASK}/cancel`, { id, reason }),
-  manualHandle: (data: AiTaskManualHandlePayload) =>
-    http.post<void>(`${TASK}/manual-handle`, data),
+  manualHandle: (data: AiTaskManualHandlePayload) => http.post<void>(`${TASK}/manual-handle`, data),
 }
 
 export const aiResultApi = {
@@ -359,9 +393,9 @@ export const aiResultApi = {
 }
 
 export const aiModelProfileApi = {
-  /** 列表查询（后端不分页） */
+  /** 列表分页查询 */
   list: (data: AiModelProfileQueryPayload) =>
-    http.post<AiModelProfileVO[]>(`${MODEL}/list`, data),
+    http.post<PageResult<AiModelProfileVO>>(`${MODEL}/list`, data),
   /** 新建或更新 */
   save: (data: AiModelProfileSavePayload) => http.post<string>(`${MODEL}/save`, data),
   /** 健康检查 */

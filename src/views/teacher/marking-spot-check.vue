@@ -71,12 +71,15 @@
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'examId'">
             <span class="spot-check-page__exam-cell">
-              {{ examNameOf(pendingItems[index].examId) }}
+              {{ pendingItems[index].examName }}
             </span>
-            <div class="spot-check-page__sub">#{{ pendingItems[index].examId }}</div>
+            <div class="spot-check-page__sub">{{ pendingItems[index].examNo }}</div>
           </template>
           <template v-else-if="column.key === 'questionTemplateId'">
-            <span>题模板 #{{ pendingItems[index].questionTemplateId }}</span>
+            <span>第 {{ pendingItems[index].questionNo }} 题</span>
+            <div class="spot-check-page__sub">
+              模板 #{{ pendingItems[index].questionTemplateId }}
+            </div>
           </template>
           <template v-else-if="column.key === 'originalScore'">
             <span class="spot-check-page__score">
@@ -118,10 +121,10 @@
       >
         <a-descriptions-item label="抽检记录ID">{{ targetItem.id }}</a-descriptions-item>
         <a-descriptions-item label="考试">
-          {{ examNameOf(targetItem.examId) }}
+          {{ targetItem.examName }}（{{ targetItem.examNo }}）
         </a-descriptions-item>
         <a-descriptions-item label="题目模板ID">
-          {{ targetItem.questionTemplateId }}
+          第 {{ targetItem.questionNo }} 题（模板 #{{ targetItem.questionTemplateId }}）
         </a-descriptions-item>
         <a-descriptions-item label="试卷实例ID">
           {{ targetItem.paperInstanceId }}
@@ -177,17 +180,17 @@ import type {
   MyPendingSpotCheckStatusCode,
   SpotCheckConclusionCode,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   handleSpotCheck,
   listMyPendingSpotChecks,
   SPOT_CHECK_STATUS_LABEL,
   SPOT_CHECK_STATUS_TONE,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   UiAlertStrip,
   UiBadge,
@@ -208,21 +211,11 @@ defineOptions({ name: 'TeacherMarkingSpotCheck' })
 // ─── 考试选择器（可选过滤；不选 = 跨考试聚合） ──────────────
 const {
   examOptions,
-  exams,
   loading: examLoading,
   selectedExamId,
   onExamChange,
   init: initExams,
 } = useMarkExamSelector()
-
-// 题号 / 考试名缓存：从 exams 列表派生
-function examNameOf(examId: string): string {
-  const exam = exams.value.find((item) => item.examId === examId)
-  if (!exam) {
-    throw new Error(`抽检记录关联考试不在考试选择器中：examId=${examId}`)
-  }
-  return exam.examName
-}
 
 // ─── 待处理抽检列表 ──────────────────────────────────────
 const pendingItems = ref<MyPendingSpotCheckItemVO[]>([])
@@ -266,7 +259,6 @@ function statusLabel(status: MyPendingSpotCheckStatusCode): string {
 function formatScore(value: number): string {
   return value.toFixed(2)
 }
-
 
 // ─── 内联处理 Modal ─────────────────────────────────────
 const modalOpen = ref(false)

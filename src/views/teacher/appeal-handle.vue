@@ -83,7 +83,7 @@ import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
-import { listCorrections, listReviewRequests } from '@/apis/mark/grade-review'
+import { getReviewSummary } from '@/apis/mark/grade-review'
 import {
   UiAlertStrip,
   UiButton,
@@ -142,17 +142,13 @@ async function loadSummary(): Promise<void> {
   const examId = selectedExamId.value
   summaryLoadError.value = null
   try {
-    const [requests, corrections] = await Promise.all([
-      listReviewRequests({ examId }),
-      listCorrections({ examId }),
-    ])
-    const reqs = requests ?? []
-    pendingCount.value = reqs.filter((r) => r.requestStatus === 'PENDING').length
-    inReviewCount.value = reqs.filter((r) => r.requestStatus === 'IN_REVIEW').length
-    approvedCount.value = reqs.filter((r) => r.requestStatus === 'APPROVED').length
-    rejectedCount.value = reqs.filter((r) => r.requestStatus === 'REJECTED').length
-    correctedCount.value = reqs.filter((r) => r.requestStatus === 'CORRECTED').length
-    correctionRecordCount.value = corrections?.length ?? 0
+    const summary = await getReviewSummary(examId)
+    pendingCount.value = summary.pendingRequestCount
+    inReviewCount.value = summary.inReviewRequestCount
+    approvedCount.value = summary.approvedRequestCount
+    rejectedCount.value = summary.rejectedRequestCount
+    correctedCount.value = summary.correctedRequestCount
+    correctionRecordCount.value = summary.correctionRecordCount
   } catch (error) {
     summaryLoadError.value = error
     const errMsg = error instanceof Error ? error.message : '复核汇总加载失败'

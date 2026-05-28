@@ -196,10 +196,7 @@
         <UiCard class="info-card">
           <template #title>
             <span>答案聚类</span>
-            <UiBadge
-              v-if="latestCluster"
-              :tone="aiStatusTone(latestCluster.analysisStatus)"
-            >
+            <UiBadge v-if="latestCluster" :tone="aiStatusTone(latestCluster.analysisStatus)">
               {{ aiStatusLabel(latestCluster.analysisStatus) }}
             </UiBadge>
           </template>
@@ -265,10 +262,7 @@
                 <span class="error-text">{{ latestCluster.errorMessage }}</span>
               </a-descriptions-item>
               <a-descriptions-item label="聚类总结" :span="3">
-                <pre class="json-pre">{{ latestCluster.clusterSummary || '（无）' }}</pre>
-              </a-descriptions-item>
-              <a-descriptions-item label="分组明细 JSON" :span="3">
-                <pre class="json-pre">{{ latestCluster.answerGroups || '（无）' }}</pre>
+                <span>{{ latestCluster.clusterSummary || '（无）' }}</span>
               </a-descriptions-item>
             </a-descriptions>
           </template>
@@ -335,13 +329,7 @@
         {{ detailExperience.latencyMs ? `${detailExperience.latencyMs} ms` : '-' }}
       </a-descriptions-item>
       <a-descriptions-item label="经验总结">
-        <pre class="json-pre">{{ detailExperience.experienceSummary || '（无）' }}</pre>
-      </a-descriptions-item>
-      <a-descriptions-item label="结构化条目 JSON">
-        <pre class="json-pre">{{ detailExperience.experienceItems || '（无）' }}</pre>
-      </a-descriptions-item>
-      <a-descriptions-item label="风险标签">
-        <pre class="json-pre">{{ detailExperience.riskTags || '（无）' }}</pre>
+        <span>{{ detailExperience.experienceSummary || '（无）' }}</span>
       </a-descriptions-item>
       <a-descriptions-item label="适用边界">
         {{ detailExperience.applicableScope ?? '-' }}
@@ -363,14 +351,6 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -386,6 +366,14 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -696,16 +684,6 @@ onMounted(async () => {
 
 .empty-block {
   margin-top: 80px;
-}
-
-.json-pre {
-  background: rgba(0, 0, 0, 0.03);
-  padding: 8px;
-  border-radius: 4px;
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-size: 12px;
 }
 
 .error-text {

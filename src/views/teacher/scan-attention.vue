@@ -417,7 +417,7 @@
           {{ detailRecord.questionTemplateId || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="诊断">
-          <pre class="scan-attention__diagnostic-pre">{{ detailRecord.diagnostic || '-' }}</pre>
+          <div class="scan-attention__diagnostic-text">{{ detailRecord.diagnostic || '-' }}</div>
         </a-descriptions-item>
         <a-descriptions-item label="更新时间">
           {{ formatDateTimeWithSeconds(detailRecord.updateTime) }}
@@ -482,13 +482,13 @@ import type {
   ScanAttentionStatusCode,
   ScanAttentionTypeCode,
 } from '@/apis/mark/exam'
+import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import type { UiChartSliceItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
 import {
   UiAlertStrip,
@@ -534,7 +534,7 @@ const loading = ref(false)
 // D-9 错误态：扫描异常列表加载失败时 UiErrorRetryPanel 重试 + 上报
 const attentionsLoadError = ref<unknown>(null)
 
-const attentionTypeOptions: { label: string, value: ScanAttentionTypeCode }[] = [
+const attentionTypeOptions: { label: string; value: ScanAttentionTypeCode }[] = [
   { label: '质量阻断', value: 'QUALITY_BLOCK' },
   { label: '处理阻断', value: 'PROCESSING_BLOCK' },
   { label: '重复影像', value: 'DUPLICATE_PENDING' },
@@ -551,7 +551,6 @@ const columns: ColumnType<ScanAttentionItemVO>[] = [
   { title: '更新时间', key: 'updateTime', width: 170 },
   { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
-
 
 async function loadAttentions(): Promise<void> {
   if (!selectedExamId.value) return
@@ -825,8 +824,8 @@ function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   if (!kw || !option) return true
   const raw = option.raw as ExamCandidateVO
   return (
-    (raw.studentName ?? '').toLowerCase().includes(kw)
-    || (raw.studentNo ?? '').toLowerCase().includes(kw)
+    (raw.studentName ?? '').toLowerCase().includes(kw) ||
+    (raw.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
@@ -949,7 +948,7 @@ const batchBindError = ref('')
 const batchBindResult = ref<ExamPaperBatchBindResultVO | null>(null)
 type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
 
-const batchAttemptStatusOptions: Array<{ label: string, value: BatchBindAttemptStatus }> = [
+const batchAttemptStatusOptions: Array<{ label: string; value: BatchBindAttemptStatus }> = [
   { label: '普通答卷', value: 'NORMAL' },
   { label: '补考答卷', value: 'MAKEUP' },
   { label: '重考答卷', value: 'RETAKE' },
@@ -986,9 +985,9 @@ const rowSelection = computed(() => ({
   },
   getCheckboxProps: (record: ScanAttentionItemVO) => ({
     disabled:
-      record.attentionType !== 'RECOGNITION_REVIEW'
-      || !record.paperInstanceId
-      || !record.scanBatchId,
+      record.attentionType !== 'RECOGNITION_REVIEW' ||
+      !record.paperInstanceId ||
+      !record.scanBatchId,
   }),
 }))
 
@@ -999,10 +998,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id)
-      && item.attentionType === 'RECOGNITION_REVIEW'
-      && item.paperInstanceId
-      && item.scanBatchId,
+      selectedRowKeys.value.includes(item.id) &&
+      item.attentionType === 'RECOGNITION_REVIEW' &&
+      item.paperInstanceId &&
+      item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的识别复核异常项')
@@ -1237,12 +1236,11 @@ onMounted(async () => {
     font-size: 12px;
   }
 
-  &__diagnostic-pre {
+  &__diagnostic-text {
     margin: 0;
-    font-family: inherit;
     font-size: 12px;
     white-space: pre-wrap;
-    word-break: break-all;
+    overflow-wrap: anywhere;
     color: var(--dp-text-primary, #0f172a);
   }
 

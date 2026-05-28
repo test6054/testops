@@ -24,6 +24,14 @@ export interface AccreditationStandardVO {
   updateTime?: string
 }
 
+export interface AccreditationStandardSummaryVO {
+  totalCount: number
+  enabledCount: number
+  disabledCount: number
+  pilotOnlyCount: number
+  accreditationTypeCount: number
+}
+
 export interface AccreditationStandardSavePayload {
   id?: string
   standardCode: string
@@ -48,12 +56,9 @@ export interface AccreditationStandardQueryPayload extends QueryDto {
 export const accreditationStandardApi = {
   page: (data: AccreditationStandardQueryPayload) =>
     http.post<PageResult<AccreditationStandardVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<AccreditationStandardVO>(`${BASE}/detail`, { id }),
-  create: (data: AccreditationStandardSavePayload) =>
-    http.post<string>(`${BASE}/create`, data),
-  update: (data: AccreditationStandardSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
+  summary: () => http.post<AccreditationStandardSummaryVO>(`${BASE}/summary`, {}),
+  detail: (id: string) => http.post<AccreditationStandardVO>(`${BASE}/detail`, { id }),
+  create: (data: AccreditationStandardSavePayload) => http.post<string>(`${BASE}/create`, data),
+  update: (data: AccreditationStandardSavePayload) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
 }

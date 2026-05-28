@@ -40,9 +40,6 @@ import type {
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -61,6 +58,9 @@ import {
   isAuditSupervisionType,
   isImprovementTaskStatus,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,
@@ -164,11 +164,11 @@ function supervisionTypeLabel(value: unknown): string {
 
 type AuditSupervisionScope = 'COURSE' | 'PROGRAM' | 'TRAINING_PLAN' | 'COMPREHENSIVE'
 type AuditSupervisionConclusion = 'PASS' | 'NEEDS_IMPROVEMENT' | 'FAIL'
-type AuditIssueSource
-  = | 'SELF_AUDIT'
-    | 'EXPERT_AUDIT'
-    | 'ACCREDITATION_AUDIT'
-    | 'EXTERNAL_INSPECTION'
+type AuditIssueSource =
+  | 'SELF_AUDIT'
+  | 'EXPERT_AUDIT'
+  | 'ACCREDITATION_AUDIT'
+  | 'EXTERNAL_INSPECTION'
 type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
 
 function requiredContractText(value: unknown, message: string): string {
@@ -179,10 +179,10 @@ function requiredContractText(value: unknown, message: string): string {
 
 function isAuditIssueSource(value: unknown): value is AuditIssueSource {
   return (
-    value === 'SELF_AUDIT'
-    || value === 'EXPERT_AUDIT'
-    || value === 'ACCREDITATION_AUDIT'
-    || value === 'EXTERNAL_INSPECTION'
+    value === 'SELF_AUDIT' ||
+    value === 'EXPERT_AUDIT' ||
+    value === 'ACCREDITATION_AUDIT' ||
+    value === 'EXTERNAL_INSPECTION'
   )
 }
 
@@ -207,10 +207,10 @@ function severityColor(value: unknown): string {
 
 function isAuditSupervisionScope(value: unknown): value is AuditSupervisionScope {
   return (
-    value === 'COURSE'
-    || value === 'PROGRAM'
-    || value === 'TRAINING_PLAN'
-    || value === 'COMPREHENSIVE'
+    value === 'COURSE' ||
+    value === 'PROGRAM' ||
+    value === 'TRAINING_PLAN' ||
+    value === 'COMPREHENSIVE'
   )
 }
 
@@ -244,6 +244,23 @@ function supervisionConclusionColor(value: unknown): string {
 
 function selectedId(value: string | null | undefined): string {
   return value ?? ''
+}
+
+function normalizeTextareaLines(value: string | null | undefined): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const lines = value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean)
+  return lines.length ? lines.join('\n') : undefined
+}
+
+function normalizeTextareaLineItems(value: string | null | undefined): string[] {
+  if (typeof value !== 'string') return []
+  return value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 function handleImprovementOwnerChange(value: string | null | undefined) {
@@ -351,7 +368,7 @@ const improvementQuery = reactive<ImprovementTaskQueryPayload>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatus; label: string }> = [
   { value: 'OPEN', label: IMPROVEMENT_TASK_STATUS_LABEL.OPEN },
   { value: 'IN_PROGRESS', label: IMPROVEMENT_TASK_STATUS_LABEL.IN_PROGRESS },
   { value: 'SUBMITTED', label: IMPROVEMENT_TASK_STATUS_LABEL.SUBMITTED },
@@ -412,7 +429,7 @@ async function loadImprovementList() {
   }
 }
 
-function handleImprovementPageChange(payload: { current: number, pageSize: number }) {
+function handleImprovementPageChange(payload: { current: number; pageSize: number }) {
   improvementQuery.pageNum = payload.current
   improvementQuery.pageSize = payload.pageSize
   loadImprovementList()
@@ -469,12 +486,12 @@ function openImprovementEdit(record: ImprovementTaskVO) {
 
 async function submitImprovementEditor() {
   if (
-    !improvementEditor.taskTitle.trim()
-    || !improvementEditor.problemSummary.trim()
-    || !improvementEditor.proposedAction.trim()
-    || !improvementEditor.programId
-    || !improvementEditor.ownerUserId
-    || !improvementEditor.dueDate
+    !improvementEditor.taskTitle.trim() ||
+    !improvementEditor.problemSummary.trim() ||
+    !improvementEditor.proposedAction.trim() ||
+    !improvementEditor.programId ||
+    !improvementEditor.ownerUserId ||
+    !improvementEditor.dueDate
   ) {
     message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
     return
@@ -549,24 +566,24 @@ async function handleImprovementTransit(record: ImprovementTaskVO, to: Improveme
     okType: 'primary',
   })
   if (remark === null) return
-  let rectificationEvidence: string | undefined
+  let rectificationEvidenceItems: string[] | undefined
   if (to === 'SUBMITTED') {
     const evidenceText = await promptModal({
-      title: '填写整改证据（JSON）',
-      placeholder: '例如：{"docs":["file_id_1"], "actions":["调整考核权重"]}',
+      title: '填写整改证据说明',
+      placeholder: '每行填写一条证据，例如：已上传课程考核分析表',
       required: true,
       emptyErrorMessage: '提交复评必须填写整改证据',
       okType: 'primary',
     })
     if (evidenceText === null) return
     if (!evidenceText) return
-    rectificationEvidence = evidenceText
+    rectificationEvidenceItems = normalizeTextareaLineItems(evidenceText)
   }
   await improvementTaskApi.transitStatus({
     id: record.id,
     targetStatus: to,
     progressRemark: remark || undefined,
-    rectificationEvidence,
+    rectificationEvidenceItems,
   })
   message.success('流转成功')
   await loadImprovementList()
@@ -719,7 +736,7 @@ async function loadIssueList() {
   }
 }
 
-function handleIssuePageChange(payload: { current: number, pageSize: number }) {
+function handleIssuePageChange(payload: { current: number; pageSize: number }) {
   issueQuery.pageNum = payload.current
   issueQuery.pageSize = payload.pageSize
   loadIssueList()
@@ -786,10 +803,10 @@ function openIssueEdit(record: AuditIssueVO) {
 
 async function submitIssueEditor() {
   if (
-    !issueEditor.issueCode.trim()
-    || !issueEditor.issueTitle.trim()
-    || !issueEditor.issueSource
-    || !issueEditor.severity
+    !issueEditor.issueCode.trim() ||
+    !issueEditor.issueTitle.trim() ||
+    !issueEditor.issueSource ||
+    !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -926,7 +943,7 @@ function rectIssueCode(value: unknown): string {
   return rectIssuesCache.value.get(value)?.issueCode ?? '未匹配审核问题'
 }
 
-function handleRectPageChange(payload: { current: number, pageSize: number }) {
+function handleRectPageChange(payload: { current: number; pageSize: number }) {
   rectQuery.pageNum = payload.current
   rectQuery.pageSize = payload.pageSize
   loadRectList()
@@ -973,11 +990,11 @@ function openRectEdit(record: AuditRectificationVO) {
 
 async function submitRectEditor() {
   if (
-    !rectEditor.auditIssueId
-    || !rectEditor.rectificationCode.trim()
-    || !rectEditor.rectificationTitle.trim()
-    || !rectEditor.ownerUserId
-    || !rectEditor.dueDate
+    !rectEditor.auditIssueId ||
+    !rectEditor.rectificationCode.trim() ||
+    !rectEditor.rectificationTitle.trim() ||
+    !rectEditor.ownerUserId ||
+    !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -1034,13 +1051,13 @@ async function advanceRectProgress(
   let evidenceAnchors: string | undefined
   if (target === 'SUBMITTED') {
     const evidenceText = await promptModal({
-      title: '填写整改证据锚点',
-      placeholder: 'JSON 数组或对象，引用整改证据文件 / 业务对象',
+      title: '填写整改复核依据',
+      placeholder: '每行填写一条复核依据，例如：课程目标达成度复测结果',
       required: true,
       emptyErrorMessage: '提交复核必须填写整改证据锚点',
     })
     if (evidenceText === null || !evidenceText) return
-    evidenceAnchors = evidenceText
+    evidenceAnchors = normalizeTextareaLines(evidenceText)
   }
   await auditRectificationApi.updateProgress({
     id: record.id,
@@ -1097,7 +1114,7 @@ const supQuery = reactive<AuditSupervisionQueryPayload>({
   keyword: '',
 })
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionType; label: string }> = [
   { value: 'DAILY', label: AUDIT_SUPERVISION_TYPE_LABEL.DAILY },
   { value: 'SPECIAL', label: AUDIT_SUPERVISION_TYPE_LABEL.SPECIAL },
   { value: 'PRE_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.PRE_AUDIT },
@@ -1172,7 +1189,7 @@ async function loadSupList() {
   }
 }
 
-function handleSupPageChange(payload: { current: number, pageSize: number }) {
+function handleSupPageChange(payload: { current: number; pageSize: number }) {
   supQuery.pageNum = payload.current
   supQuery.pageSize = payload.pageSize
   loadSupList()
@@ -1237,9 +1254,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim()
-    || !supEditor.supervisionTitle.trim()
-    || !supEditor.supervisionType
+    !supEditor.supervisionCode.trim() ||
+    !supEditor.supervisionTitle.trim() ||
+    !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return
@@ -1261,7 +1278,7 @@ async function submitSupEditor() {
       findings: supEditor.findings || undefined,
       conclusion: supEditor.conclusion || undefined,
       archiveId: supEditor.archiveId || undefined,
-      evidenceAnchors: supEditor.evidenceAnchors || undefined,
+      evidenceAnchors: normalizeTextareaLines(supEditor.evidenceAnchors),
     }
     if (supEditorMode.value === 'create') {
       await auditSupervisionApi.create(payload)
@@ -2066,9 +2083,18 @@ onMounted(async () => {
           {{ improvementDetailRecord.progressRemark || '-' }}
         </a-descriptions-item>
         <a-descriptions-item label="整改证据">
-          <pre v-if="improvementDetailRecord.rectificationEvidence" class="iwb__evidence-pre">{{
-            improvementDetailRecord.rectificationEvidence
-          }}</pre>
+          <ul
+            v-if="improvementDetailRecord.rectificationEvidenceItems?.length"
+            class="iwb__evidence-list"
+          >
+            <li
+              v-for="(item, index) in improvementDetailRecord.rectificationEvidenceItems"
+              :key="`${improvementDetailRecord.id}-evidence-${index}`"
+              class="iwb__evidence-item"
+            >
+              {{ item }}
+            </li>
+          </ul>
           <span v-else>-</span>
         </a-descriptions-item>
         <a-descriptions-item label="复评结论">
@@ -2376,8 +2402,7 @@ onMounted(async () => {
           <a-textarea
             v-model:value="supEditor.evidenceAnchors"
             :rows="3"
-            placeholder="JSON 数组，引用证据文件 / 业务对象等"
-            class="iwb__monospace"
+            placeholder="每行填写一条证据锚点，例如：期末试卷抽检记录"
           />
         </a-form-item>
       </a-form>
@@ -2495,21 +2520,15 @@ onMounted(async () => {
     color: var(--dp-text-muted, #94a3b8);
   }
 
-  &__evidence-pre {
+  &__evidence-list {
     margin: 0;
-    padding: 8px;
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
-    background: var(--dp-gray-50, #f8fafc);
-    border-radius: 4px;
-    max-height: 240px;
-    overflow: auto;
+    padding-left: 18px;
+    color: var(--dp-text-secondary, #475569);
   }
 
-  &__monospace {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  &__evidence-item {
+    line-height: 1.7;
+    word-break: break-word;
   }
 }
 </style>

@@ -92,7 +92,6 @@ export interface GradingExperienceCaseVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   experienceSummary?: string
   experienceItems?: string
   riskTags?: string
@@ -101,7 +100,7 @@ export interface GradingExperienceCaseVO {
   effectivenessMetric?: string
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
 }
 
@@ -114,13 +113,12 @@ export interface AnswerClusterRecordVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   clusterSummary?: string
   answerGroups?: string
   groupCount?: number
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
 }
 
@@ -343,7 +341,6 @@ function validateGradingExperienceCase(value: unknown): GradingExperienceCaseVO 
     aiTraceId: optionalString(record.aiTraceId, 'aiTraceId'),
     aiModelProfileId: optionalString(record.aiModelProfileId, 'aiModelProfileId'),
     evidenceSnapshot: optionalString(record.evidenceSnapshot, 'evidenceSnapshot'),
-    aiRawResponse: optionalString(record.aiRawResponse, 'aiRawResponse'),
     experienceSummary: optionalString(record.experienceSummary, 'experienceSummary'),
     experienceItems: optionalString(record.experienceItems, 'experienceItems'),
     riskTags: optionalString(record.riskTags, 'riskTags'),
@@ -352,7 +349,7 @@ function validateGradingExperienceCase(value: unknown): GradingExperienceCaseVO 
     effectivenessMetric: optionalString(record.effectivenessMetric, 'effectivenessMetric'),
     analysisStatus: requireAiAnalysisStatus(record.analysisStatus, 'analysisStatus'),
     errorMessage: optionalString(record.errorMessage, 'errorMessage'),
-    latencyMs: typeof record.latencyMs === 'number' ? record.latencyMs : undefined,
+    latencyMs: optionalString(record.latencyMs, 'latencyMs'),
     createTime: optionalString(record.createTime, 'createTime'),
   }
 }
@@ -377,13 +374,12 @@ function validateAnswerClusterRecord(value: unknown): AnswerClusterRecordVO {
     aiTraceId: optionalString(record.aiTraceId, 'aiTraceId'),
     aiModelProfileId: optionalString(record.aiModelProfileId, 'aiModelProfileId'),
     evidenceSnapshot: optionalString(record.evidenceSnapshot, 'evidenceSnapshot'),
-    aiRawResponse: optionalString(record.aiRawResponse, 'aiRawResponse'),
     clusterSummary: optionalString(record.clusterSummary, 'clusterSummary'),
     answerGroups: optionalString(record.answerGroups, 'answerGroups'),
     groupCount: typeof record.groupCount === 'number' ? record.groupCount : undefined,
     analysisStatus: requireAiAnalysisStatus(record.analysisStatus, 'analysisStatus'),
     errorMessage: optionalString(record.errorMessage, 'errorMessage'),
-    latencyMs: typeof record.latencyMs === 'number' ? record.latencyMs : undefined,
+    latencyMs: optionalString(record.latencyMs, 'latencyMs'),
     createTime: optionalString(record.createTime, 'createTime'),
   }
 }

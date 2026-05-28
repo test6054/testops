@@ -7,6 +7,7 @@
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { MasteryLevelCode } from './student-exam'
 import http from '@/config/axios'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -59,6 +60,36 @@ export function aiAnalysisStatusColor(status?: AiAnalysisStatusCode): BadgeTone 
   return strictEnumTone(AI_ANALYSIS_STATUS_COLOR, status, 'AI 分析状态')
 }
 
+/** 教学改进建议条目 */
+export interface TeachingImprovementItemVO {
+  title?: string
+  problem?: string
+  suggestion?: string
+  action?: string
+  expectedOutcome?: string
+  priority?: string
+}
+
+/** 班级薄弱题型条目 */
+export interface ClassWeaknessItemVO {
+  questionType?: string
+  summary?: string
+  scoreRate?: string
+  lostQuestionNos?: Array<string | number>
+  causeAnalysis?: string
+  suggestion?: string
+}
+
+/** 学生学情诊断条目 */
+export interface StudentLearningDiagnosisItemVO {
+  questionType: string
+  masteryLevel: MasteryLevelCode
+  scoreRate: string
+  lostQuestionNos?: Array<string | number>
+  causeAnalysis?: string
+  suggestion?: string
+}
+
 /** AI 教学分析记录 - 对应 ExamTeachingAnalysisRecord */
 export interface ExamTeachingAnalysisRecordVO {
   id: string
@@ -70,12 +101,13 @@ export interface ExamTeachingAnalysisRecordVO {
   aiTraceId?: string
   aiModelProfileId?: string
   evidenceSnapshot?: string
-  aiRawResponse?: string
   overallSummary?: string
-  improvementItems?: string
+  improvementItems?: Array<TeachingImprovementItemVO | ClassWeaknessItemVO>
+  diagnosisItems?: StudentLearningDiagnosisItemVO[]
+  suggestions?: string[]
   analysisStatus?: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: number
+  latencyMs?: string
   createTime?: string
   updateTime?: string
 }

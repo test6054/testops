@@ -13,6 +13,7 @@
  *     是 syncTaskId 单参数 POST，使用 query 形式
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 // ─── 状态枚举 ─────────────────────────────────
@@ -111,11 +112,10 @@ export interface SyncTaskCreatePayload {
   syncType: TeachingAffairsSyncTypeCode
   externalCourseId?: string
   externalLineItemId?: string
-  syncConfig?: string
 }
 
 /** 回写记录查询请求 - 对应 PassbackRecordQueryRequest（2026-05-14 GET→POST 整改） */
-export interface PassbackRecordQueryPayload {
+export interface PassbackRecordQueryPayload extends QueryDto {
   examId: string
   syncTaskId?: string
   passbackStatus?: PassbackStatusCode
@@ -130,7 +130,6 @@ export interface SyncTaskVO {
   syncType: TeachingAffairsSyncTypeCode
   externalCourseId?: string
   externalLineItemId?: string
-  syncConfig?: string
   taskStatus: SyncTaskStatusCode
   lastSyncTime?: string
   lastErrorCode?: string
@@ -225,8 +224,8 @@ export function cancelSyncTask(syncTaskId: string): Promise<void> {
  * 查询回写记录列表（2026-05-14 已 GET→POST 整改）
  * POST /api/exam/teaching-affairs/passback/list
  */
-export function listPassbackRecords(payload: PassbackRecordQueryPayload): Promise<PassbackRecordVO[]> {
-  return http.post<PassbackRecordVO[]>('/api/exam/teaching-affairs/passback/list', payload)
+export function listPassbackRecords(payload: PassbackRecordQueryPayload): Promise<PageResult<PassbackRecordVO>> {
+  return http.post<PageResult<PassbackRecordVO>>('/api/exam/teaching-affairs/passback/list', payload)
 }
 
 /**

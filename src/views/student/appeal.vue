@@ -235,10 +235,19 @@
 
 <script lang="ts" setup>
 import type {
+  GradeReviewReasonTypeCode,
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
+import {
+  GRADE_REVIEW_REASON_TYPE_LABEL,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -248,13 +257,6 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import {
   UiBadge,
   UiButton,
@@ -287,7 +289,7 @@ const filterExamId = ref<string | undefined>(undefined)
 const filterStatus = ref<GradeReviewRequestStatusCode | undefined>(undefined)
 
 const form = reactive({
-  reasonType: 'SCORE_ERROR' as string,
+  reasonType: 'SCORE_ERROR' as GradeReviewReasonTypeCode,
   requestReason: '',
   questionIds: '',
 })
@@ -295,14 +297,13 @@ const form = reactive({
 // 来自 score-detail 题目级复核入口时，记录来源题号用于弹窗内提示
 const sourceQuestionId = ref<string | undefined>(undefined)
 
-const reasonTypeOptions = [
-  { value: 'SCORE_ERROR', label: '分数计算错误' },
-  { value: 'RUBRIC', label: '评分标准争议' },
-  { value: 'OBJECTIVE', label: '客观题判定争议' },
-  { value: 'OTHER', label: '其他' },
-]
+const reasonTypeOptions: Array<{ value: GradeReviewReasonTypeCode; label: string }> =
+  Object.entries(GRADE_REVIEW_REASON_TYPE_LABEL).map(([value, label]) => ({
+    value: value as GradeReviewReasonTypeCode,
+    label,
+  }))
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -394,7 +395,6 @@ async function reloadAll() {
   await loadRequests()
 }
 
-
 function formatPublishedScore(exam: StudentExamItemVO): string {
   if (exam.finalScoreStatus !== 'PUBLISHED') {
     throw new Error(`不可复核考试不是已发布状态：examId=${exam.examId}`)
@@ -413,15 +413,8 @@ function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
   return strictEnumLabel(REVIEW_REQUEST_STATUS_LABEL, status, '复核申请状态')
 }
 
-function formatReasonType(value?: string): string {
-  if (!value) {
-    throw new Error('复核原因类型不能为空')
-  }
-  const found = reasonTypeOptions.find((o) => o.value === value)
-  if (!found) {
-    throw new Error(`复核原因类型存在未定义枚举值：${value}`)
-  }
-  return found.label
+function formatReasonType(value: GradeReviewReasonTypeCode): string {
+  return strictEnumLabel(GRADE_REVIEW_REASON_TYPE_LABEL, value, '复核原因类型')
 }
 
 function openSubmitModal() {
@@ -444,10 +437,14 @@ async function submit() {
   }
   submitting.value = true
   try {
+    const paperInstanceId = selectedAppealableExam.value.paperInstanceId
+    if (!paperInstanceId) {
+      throw new Error(`可复核考试缺少试卷实例 ID：examId=${selectedAppealableExam.value.examId}`)
+    }
     const questionIdsArray = parseQuestionIds(form.questionIds)
     await submitReviewRequest({
       examId: selectedAppealableExam.value.examId,
-      paperInstanceId: selectedAppealableExam.value.paperInstanceId,
+      paperInstanceId,
       requestReason: form.requestReason.trim(),
       reasonType: form.reasonType,
       questionIds: questionIdsArray,

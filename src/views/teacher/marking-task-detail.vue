@@ -114,7 +114,9 @@
               <a-descriptions-item label="试卷实例ID">
                 <a-typography-text copyable>{{ task.paperInstanceId }}</a-typography-text>
               </a-descriptions-item>
-              <a-descriptions-item label="评阅轮次">第 {{ task.reviewRound }} 轮</a-descriptions-item>
+              <a-descriptions-item label="评阅轮次"
+                >第 {{ task.reviewRound }} 轮</a-descriptions-item
+              >
               <a-descriptions-item label="任务状态">
                 <UiTag :tone="STATUS_TONE[task.taskStatus]" size="sm">
                   {{ STATUS_LABEL[task.taskStatus] }}
@@ -204,6 +206,12 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
+import {
+  getMarkingTaskDetail,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+  submitMarkingTask,
+} from '@/apis/mark/marking-organization'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
@@ -215,15 +223,10 @@ import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import {
-  getMarkingTaskDetail,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-  submitMarkingTask,
-} from '@/apis/mark/marking-organization'
 import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
+import { useUserStore } from '@/stores/modules/user'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherMarkingTaskDetail' })
@@ -245,8 +248,12 @@ const canSubmit = computed(() => {
 
 // ─── P2 上下题快捷导航 ─────────────────────────────────
 // 来源：markTaskStore.tasks（教师在该考试下已加载的本批阅卷任务列表）
-// 仅当当前任务能在批次中找到位置时才显示导航；否则保持原行为。
+// 当用户从 marking-task-pool 进入详情时，store 已含本批任务，直接渲染导航；
+// 当用户刷新页面 / 复制链接 / 跨 tab 直链进入详情时，store 是空的，
+// 由 ensureBatchLoaded() 在 task 加载成功后兜底按 (examId + reviewerUserId)
+// 拉取该批任务列表填充 store，让导航在所有进入路径下都可用。
 const router = useRouter()
+const userStore = useUserStore()
 const markTaskStore = useMarkTaskStore()
 const { tasks: batchTasks } = storeToRefs(markTaskStore)
 
@@ -299,6 +306,8 @@ async function loadTask(): Promise<void> {
     if (detail.sliceFileId) {
       void loadSliceImage(detail.sliceFileId)
     }
+    // 详情加载成功后兜底回灌本批任务到 store，让上下题导航在直链刷新场景下也可用
+    void ensureBatchLoaded(detail.examId)
   } catch (error) {
     task.value = null
     taskLoadError.value = error
@@ -306,6 +315,26 @@ async function loadTask(): Promise<void> {
     message.error(errMsg)
   } finally {
     loading.value = false
+  }
+}
+
+/**
+ * 兜底拉取当前考试 + 当前教师的本批阅卷任务列表填充 store。
+ *
+ * 触发条件：当前 store 已加载的 examId 与 task 所属考试不一致（含 store 为空）。
+ * 静默失败：兜底失败仅意味着上下题导航不可用，不应阻断主任务详情显示，
+ * 因此用 try/catch 吞错并保留 console 警告，便于排查但不打扰教师。
+ */
+async function ensureBatchLoaded(examId: string): Promise<void> {
+  if (!examId) return
+  if (markTaskStore.tasksLoadedExamId === examId && batchTasks.value.length > 0) return
+  const reviewerUserId = userStore.userInfo.userId
+  if (!reviewerUserId) return
+  try {
+    await markTaskStore.loadTasks({ examId, reviewerUserId })
+  } catch (error) {
+    // 兜底失败不影响主流程，仅丢失上下题导航能力
+    console.warn('[marking-task-detail] 兜底加载本批任务列表失败：', error)
   }
 }
 
@@ -341,7 +370,7 @@ function releaseSliceImage(): void {
 }
 
 const formRef = ref<FormInstance>()
-const form = reactive<{ score?: number, annotationNote?: string }>({
+const form = reactive<{ score?: number; annotationNote?: string }>({
   score: undefined,
   annotationNote: '',
 })

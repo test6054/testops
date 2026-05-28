@@ -23,9 +23,6 @@ import type {
   RespondentType,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   indirectFormApi,
@@ -36,6 +33,9 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   CourseGoalSelector,
   GraduationRequirementSelector,
@@ -70,7 +70,7 @@ const itemColumns: ColumnsType = [
 
 const responseColumns: ColumnsType = [
   { title: '应答人', dataIndex: 'respondentType', key: 'respondentType', width: 100 },
-  { title: '原始值', dataIndex: 'rawValue', key: 'rawValue', width: 80 },
+  { title: '答案', dataIndex: 'answerSummary', key: 'answerSummary', width: 180 },
   { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 80 },
   { title: '开放回答', dataIndex: 'openText', key: 'openText' },
   { title: '有效', dataIndex: 'validFlag', key: 'validFlag', width: 70 },
@@ -97,7 +97,7 @@ const formTypeOptions = [
   { value: 'INTERNSHIP_SUPERVISOR', label: '实习导师' },
 ]
 
-const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
+const targetTypeOptions: { value: AchievementTargetType; label: string }[] = [
   { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
   { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
   { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
@@ -109,7 +109,7 @@ const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
     label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
   },
 ]
-const respondentTypeOptions: { value: RespondentType, label: string }[] = [
+const respondentTypeOptions: { value: RespondentType; label: string }[] = [
   { value: 'STUDENT', label: RESPONDENT_TYPE_LABEL.STUDENT },
   { value: 'GRADUATE', label: RESPONDENT_TYPE_LABEL.GRADUATE },
   { value: 'EMPLOYER', label: RESPONDENT_TYPE_LABEL.EMPLOYER },
@@ -117,7 +117,7 @@ const respondentTypeOptions: { value: RespondentType, label: string }[] = [
   { value: 'EXPERT', label: RESPONDENT_TYPE_LABEL.EXPERT },
   { value: 'SUPERVISOR', label: RESPONDENT_TYPE_LABEL.SUPERVISOR },
 ]
-const itemTypeOptions: { value: IndirectEvaluationItemType, label: string }[] = [
+const itemTypeOptions: { value: IndirectEvaluationItemType; label: string }[] = [
   { value: 'SCALE', label: '量表题' },
   { value: 'SINGLE_CHOICE', label: '单选题' },
   { value: 'MULTI_CHOICE', label: '多选题' },
@@ -241,7 +241,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(payload: { current: number, pageSize: number }) {
+function handleFormPageChange(payload: { current: number; pageSize: number }) {
   formQuery.pageNum = payload.current
   formQuery.pageSize = payload.pageSize
   loadForms()
@@ -430,8 +430,8 @@ async function submitItem() {
   } else if (v.itemType === 'SINGLE_CHOICE' || v.itemType === 'MULTI_CHOICE') {
     const options = v.choiceOptions ?? []
     if (
-      options.length < 2
-      || options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+      options.length < 2 ||
+      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
     ) {
       message.error('选择题至少配置 2 个完整选项')
       return
@@ -490,12 +490,17 @@ async function loadResponses() {
 
 const responseEditorVisible = ref(false)
 const responseEditorMode = ref<'create' | 'edit'>('create')
+const responseMultiChoiceValues = ref<string[]>([])
 const responseEditor = ref<IndirectEvaluationResponseSavePayload>({
   formId: '',
   itemId: '',
   respondentType: 'STUDENT',
   respondentId: '',
-  rawValue: '',
+  scaleValue: undefined,
+  singleChoiceValue: '',
+  answerSummary: '',
+  multipleChoiceValues: [],
+  identityValues: [],
   convertedScore: undefined,
   openText: '',
   validFlag: true,
@@ -505,12 +510,17 @@ const responseEditor = ref<IndirectEvaluationResponseSavePayload>({
 function openResponseCreate() {
   if (!selectedItem.value || !selectedForm.value) return
   responseEditorMode.value = 'create'
+  responseMultiChoiceValues.value = []
   responseEditor.value = {
     formId: selectedForm.value.id,
     itemId: selectedItem.value.id,
     respondentType: 'STUDENT',
     respondentId: '',
-    rawValue: '',
+    scaleValue: undefined,
+    singleChoiceValue: '',
+    answerSummary: '',
+    multipleChoiceValues: [],
+    identityValues: [],
     convertedScore: undefined,
     openText: '',
     validFlag: true,
@@ -521,7 +531,13 @@ function openResponseCreate() {
 
 function openResponseEdit(record: IndirectEvaluationResponseVO) {
   responseEditorMode.value = 'edit'
-  responseEditor.value = { ...record }
+  responseMultiChoiceValues.value =
+    record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
+  responseEditor.value = {
+    ...record,
+    multipleChoiceValues: record.multipleChoiceValues?.map((option) => ({ ...option })) ?? [],
+    identityValues: record.identityValues?.map((identity) => ({ ...identity })) ?? [],
+  }
   responseEditorVisible.value = true
 }
 
@@ -531,11 +547,96 @@ async function submitResponse() {
     message.error('请选择应答人类型')
     return
   }
+  if (!selectedItem.value) {
+    throw new Error('当前未选择题项，无法提交答卷')
+  }
+  if (selectedItem.value.itemType === 'SCALE' && v.scaleValue == null) {
+    message.error('请填写量表分值')
+    return
+  }
+  if (selectedItem.value.itemType === 'SINGLE_CHOICE' && !v.singleChoiceValue?.trim()) {
+    message.error('请选择单选答案')
+    return
+  }
+  if (
+    selectedItem.value.itemType === 'MULTI_CHOICE' &&
+    responseMultiChoiceValues.value.length === 0
+  ) {
+    message.error('请至少选择一个多选答案')
+    return
+  }
+  if (
+    selectedItem.value.itemType === 'OPEN_TEXT' &&
+    selectedItem.value.required &&
+    !v.openText?.trim()
+  ) {
+    message.error('请填写开放回答')
+    return
+  }
+  if (selectedItem.value.itemType === 'SCALE') {
+    const scaleLabel = selectedItemScaleOptions().find(
+      (option) => option.scaleValue === v.scaleValue,
+    )?.label
+    v.singleChoiceValue = undefined
+    v.multipleChoiceValues = []
+    v.openText = ''
+    v.answerSummary = scaleLabel ?? (v.scaleValue == null ? '' : `${v.scaleValue}分`)
+  } else if (selectedItem.value.itemType === 'SINGLE_CHOICE') {
+    const selectedOption = selectedItemChoiceOptions().find(
+      (option) => option.optionValue === v.singleChoiceValue,
+    )
+    v.scaleValue = undefined
+    v.multipleChoiceValues = []
+    v.openText = ''
+    v.answerSummary = selectedOption?.optionLabel ?? v.singleChoiceValue ?? ''
+  } else if (selectedItem.value.itemType === 'MULTI_CHOICE') {
+    v.scaleValue = undefined
+    v.singleChoiceValue = ''
+    v.openText = ''
+    v.multipleChoiceValues = selectedItemChoiceOptions().filter((option) =>
+      responseMultiChoiceValues.value.includes(option.optionValue),
+    )
+    v.answerSummary = v.multipleChoiceValues.map((option) => option.optionLabel).join(' | ')
+  } else {
+    v.scaleValue = undefined
+    v.singleChoiceValue = ''
+    v.multipleChoiceValues = []
+    v.answerSummary = ''
+    v.openText = v.openText?.trim() ?? ''
+  }
   if (responseEditorMode.value === 'create') await indirectResponseApi.create(v)
   else await indirectResponseApi.update(v)
   message.success('已保存')
   responseEditorVisible.value = false
   await loadResponses()
+}
+
+function responseChoiceValues(record: IndirectEvaluationResponseVO): string {
+  if (!record.multipleChoiceValues?.length) {
+    return '-'
+  }
+  return record.multipleChoiceValues.map((option) => option.optionLabel).join(' | ')
+}
+
+function selectedItemScaleOptions() {
+  if (!selectedItem.value) {
+    return []
+  }
+  if (selectedItem.value.scaleLabels?.length) {
+    return selectedItem.value.scaleLabels
+  }
+  if (selectedItem.value.scaleMin == null || selectedItem.value.scaleMax == null) {
+    return []
+  }
+  const labels = []
+  for (let value = selectedItem.value.scaleMin; value <= selectedItem.value.scaleMax; value++) {
+    labels.push({ scaleValue: value, label: `${value}分` })
+  }
+  return labels
+}
+
+function selectedItemChoiceOptions() {
+  return selectedItem.value?.choiceOptions ?? []
 }
 
 async function deleteResponse(record: IndirectEvaluationResponseVO) {
@@ -629,8 +730,8 @@ const signals = computed<SignalMetric[]>(() => {
   const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample ?? 0), 0)
   const validResponses = responses.value.filter((r) => r.validFlag).length
   const invalidResponses = responses.value.filter((r) => !r.validFlag).length
-  const sampleRatio
-    = expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+  const sampleRatio =
+    expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
 
   return [
     { key: 'forms-total', label: '问卷总数', value: forms.value.length, tone: 'blue' },
@@ -862,6 +963,23 @@ onMounted(async () => {
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.key === 'respondentType'">
                 {{ respondentTypeLabel(text) }}
+              </template>
+              <template v-else-if="column.key === 'answerSummary'">
+                <span v-if="selectedItem?.itemType === 'SCALE'">
+                  {{
+                    record.answerSummary ||
+                    (record.scaleValue == null ? '-' : `${record.scaleValue}分`)
+                  }}
+                </span>
+                <span v-else-if="selectedItem?.itemType === 'SINGLE_CHOICE'">
+                  {{ record.answerSummary || record.singleChoiceValue || '-' }}
+                </span>
+                <span v-else-if="selectedItem?.itemType === 'MULTI_CHOICE'">
+                  {{ responseChoiceValues(record) }}
+                </span>
+                <span v-else class="ie__sub-desc">
+                  {{ record.openText?.trim() || '-' }}
+                </span>
               </template>
               <template v-else-if="column.key === 'convertedScore'">
                 {{ formatOptionalNumber(text, '间接评价换算分', 2) }}
@@ -1183,8 +1301,56 @@ onMounted(async () => {
         </a-row>
         <a-row :gutter="12">
           <a-col :span="12">
-            <a-form-item label="原始值">
-              <a-input v-model:value="responseEditor.rawValue" placeholder="如 4" />
+            <a-form-item label="答案" required>
+              <a-radio-group
+                v-if="selectedItem?.itemType === 'SCALE'"
+                v-model:value="responseEditor.scaleValue"
+                class="ie__answer-group"
+              >
+                <a-radio
+                  v-for="option in selectedItemScaleOptions()"
+                  :key="option.scaleValue"
+                  :value="option.scaleValue"
+                >
+                  {{ option.label }}
+                </a-radio>
+              </a-radio-group>
+              <a-radio-group
+                v-else-if="selectedItem?.itemType === 'SINGLE_CHOICE'"
+                v-model:value="responseEditor.singleChoiceValue"
+                class="ie__answer-group"
+              >
+                <a-radio
+                  v-for="option in selectedItemChoiceOptions()"
+                  :key="option.optionValue"
+                  :value="option.optionValue"
+                >
+                  {{ option.optionLabel }}
+                </a-radio>
+              </a-radio-group>
+              <a-checkbox-group
+                v-else-if="selectedItem?.itemType === 'MULTI_CHOICE'"
+                v-model:value="responseMultiChoiceValues"
+                class="ie__answer-group"
+              >
+                <a-row :gutter="[8, 8]">
+                  <a-col
+                    v-for="option in selectedItemChoiceOptions()"
+                    :key="option.optionValue"
+                    :span="12"
+                  >
+                    <a-checkbox :value="option.optionValue">
+                      {{ option.optionLabel }}
+                    </a-checkbox>
+                  </a-col>
+                </a-row>
+              </a-checkbox-group>
+              <a-textarea
+                v-else
+                v-model:value="responseEditor.openText"
+                :rows="3"
+                placeholder="填写开放回答"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -1199,9 +1365,6 @@ onMounted(async () => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="开放回答">
-          <a-textarea v-model:value="responseEditor.openText" :rows="3" />
-        </a-form-item>
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="有效">
@@ -1354,6 +1517,12 @@ onMounted(async () => {
 
   &__config-value {
     width: 100%;
+  }
+
+  &__answer-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
   }
 }
 

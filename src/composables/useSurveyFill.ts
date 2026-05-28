@@ -1,12 +1,12 @@
-import type {PublicSurveyItemVO, PublicSurveyVO} from '@/apis/public-survey'
-import {message} from 'ant-design-vue'
+import type { PublicSurveyItemVO, PublicSurveyVO } from '@/apis/public-survey'
+import { publicSurveyApi } from '@/apis/public-survey'
+import { message } from 'ant-design-vue'
 /**
  * 公开问卷填写共享逻辑。
  * 供移动端（一题一页）和 PC 端（全页展示）共用。
  */
-import {computed, onMounted, reactive, ref} from 'vue'
-import {useRoute} from 'vue-router'
-import {publicSurveyApi} from '@/apis/public-survey'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 export function useSurveyFill() {
   const route = useRoute()
@@ -20,7 +20,8 @@ export function useSurveyFill() {
   const thankYouMessage = ref('感谢您的参与！')
 
   const identityValues = reactive<Record<string, string>>({})
-  const answers = reactive<Record<string, string>>({})
+  const scaleAnswers = reactive<Record<string, number | undefined>>({})
+  const singleChoiceAnswers = reactive<Record<string, string>>({})
   const multiAnswers = reactive<Record<string, string[]>>({})
   const openTexts = reactive<Record<string, string>>({})
 
@@ -41,8 +42,11 @@ export function useSurveyFill() {
   })
 
   function isItemAnswered(item: PublicSurveyItemVO): boolean {
-    if (item.itemType === 'SCALE' || item.itemType === 'SINGLE_CHOICE') {
-      return !!answers[item.itemToken]
+    if (item.itemType === 'SCALE') {
+      return scaleAnswers[item.itemToken] != null
+    }
+    if (item.itemType === 'SINGLE_CHOICE') {
+      return !!singleChoiceAnswers[item.itemToken]
     }
     if (item.itemType === 'MULTI_CHOICE') {
       return multiAnswers[item.itemToken] && multiAnswers[item.itemToken].length > 0
@@ -93,21 +97,37 @@ export function useSurveyFill() {
     if (!survey.value) return []
     return survey.value.items
       .map((item) => {
-        let rawValue: string | undefined
+        let scaleValue: number | undefined
+        let singleChoiceValue: string | undefined
+        let multipleChoiceValues: string[] | undefined
         let openText: string | undefined
 
-        if (item.itemType === 'SCALE' || item.itemType === 'SINGLE_CHOICE') {
-          rawValue = answers[item.itemToken]
+        if (item.itemType === 'SCALE') {
+          scaleValue = scaleAnswers[item.itemToken]
+        } else if (item.itemType === 'SINGLE_CHOICE') {
+          singleChoiceValue = singleChoiceAnswers[item.itemToken]
         } else if (item.itemType === 'MULTI_CHOICE') {
           const selected = multiAnswers[item.itemToken]
-          rawValue = selected && selected.length > 0 ? JSON.stringify(selected) : undefined
+          multipleChoiceValues = selected && selected.length > 0 ? [...selected] : undefined
         } else if (item.itemType === 'OPEN_TEXT') {
           openText = openTexts[item.itemToken]
         }
 
-        return { itemToken: item.itemToken, rawValue, openText }
+        return {
+          itemToken: item.itemToken,
+          scaleValue,
+          singleChoiceValue,
+          multipleChoiceValues,
+          openText,
+        }
       })
-      .filter((a) => a.rawValue || a.openText)
+      .filter(
+        (answer) =>
+          answer.scaleValue != null ||
+          !!answer.singleChoiceValue ||
+          !!answer.multipleChoiceValues?.length ||
+          !!answer.openText?.trim(),
+      )
   }
 
   async function loadSurvey() {
@@ -173,7 +193,8 @@ export function useSurveyFill() {
     submitting,
     thankYouMessage,
     identityValues,
-    answers,
+    scaleAnswers,
+    singleChoiceAnswers,
     multiAnswers,
     openTexts,
     totalCount,

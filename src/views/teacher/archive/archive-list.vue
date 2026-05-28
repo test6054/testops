@@ -3,7 +3,7 @@
     <template #context>
       <div class="archive-list-page__context">
         <div class="archive-list-page__context-left">
-          <UiTag tone="blue" size="sm">{{ archives.length }} 个归档</UiTag>
+          <UiTag tone="blue" size="sm">{{ archivePagination.total }} 个归档</UiTag>
           <UiTag v-if="filterForm.examId" tone="purple" size="sm">
             考试 #{{ filterForm.examId }}
           </UiTag>
@@ -74,7 +74,7 @@
       <template #title>
         <FileOutlined />
         <span>归档列表</span>
-        <UiBadge tone="blue">{{ archives.length }} 条</UiBadge>
+        <UiBadge tone="blue">{{ archivePagination.total }} 条</UiBadge>
       </template>
 
       <UiErrorRetryPanel
@@ -91,12 +91,14 @@
         :columns="columns"
         :data-source="archives"
         :loading="loading"
-        :show-pagination="false"
+        v-model:current="archivePagination.pageNum"
+        v-model:page-size="archivePagination.pageSize"
         flat
-        :total="archives.length"
+        :total="archivePagination.total"
         row-key="archiveId"
         size="middle"
         class="archive-table"
+        @page-change="handleArchivePageChange"
       >
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'archiveNo'">
@@ -111,8 +113,8 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
               {{
-                archives[index].archiveStatusMessage
-                  || archiveStatusLabel(archives[index].archiveStatus)
+                archives[index].archiveStatusMessage ||
+                archiveStatusLabel(archives[index].archiveStatus)
               }}
             </UiTag>
             <div
@@ -152,8 +154,8 @@
               </UiButton>
               <UiButton
                 v-if="
-                  archives[index].archiveStatus === 'DRAFT'
-                    || archives[index].archiveStatus === 'PACKAGING_FAILED'
+                  archives[index].archiveStatus === 'DRAFT' ||
+                  archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
                 size="sm"
                 @click="confirmPackage(archives[index])"
@@ -229,14 +231,6 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_PHASE_LABEL,
   ARCHIVE_STATUS_LABEL,
@@ -245,6 +239,14 @@ import {
   listArchives,
   packageArchive,
 } from '@/apis/mark/archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -260,6 +262,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveList' })
 
@@ -273,6 +276,11 @@ const loading = ref(false)
 const creating = ref(false)
 const createModalOpen = ref(false)
 const archiveLoadError = ref<unknown>(null)
+const archivePagination = reactive({
+  pageNum: 1,
+  pageSize: 20,
+  total: 0,
+})
 
 const filterForm = reactive<{
   examId?: string
@@ -331,7 +339,7 @@ interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
   description: string
-  action: { label: string, handler: () => void }
+  action: { label: string; handler: () => void }
 }
 
 const archiveAlert = computed<ArchiveAlert | null>(() => {
@@ -391,12 +399,12 @@ function syncArchiveStageToStore(): void {
   )
   const hasActive = statuses.some(
     (s) =>
-      s === 'PACKAGING'
-      || s === 'ACTIVE'
-      || s === 'APPRAISAL_PENDING'
-      || s === 'DESTRUCTION_PENDING'
-      || s === 'DESTRUCTION_APPROVED'
-      || s === 'DESTRUCTION_EXECUTING',
+      s === 'PACKAGING' ||
+      s === 'ACTIVE' ||
+      s === 'APPRAISAL_PENDING' ||
+      s === 'DESTRUCTION_PENDING' ||
+      s === 'DESTRUCTION_APPROVED' ||
+      s === 'DESTRUCTION_EXECUTING',
   )
   const hasCompleted = statuses.some((s) => s === 'APPRAISAL_DECIDED' || s === 'DESTROYED')
   let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
@@ -405,8 +413,8 @@ function syncArchiveStageToStore(): void {
     status = 'blocked'
     const draftOrFailed = statuses.filter((s) => s === 'DRAFT' || s === 'PACKAGING_FAILED').length
     const destructionFailed = statuses.filter((s) => s === 'DESTRUCTION_FAILED').length
-    hint
-      = destructionFailed > 0
+    hint =
+      destructionFailed > 0
         ? `${destructionFailed} 个销毁失败需人工处理`
         : `${draftOrFailed} 个草稿 / 打包失败待人工处理`
   } else if (hasActive) {
@@ -414,14 +422,14 @@ function syncArchiveStageToStore(): void {
     const packaging = statuses.filter((s) => s === 'PACKAGING').length
     const archived = statuses.filter(
       (s) =>
-        s === 'ACTIVE'
-        || s === 'APPRAISAL_PENDING'
-        || s === 'DESTRUCTION_PENDING'
-        || s === 'DESTRUCTION_APPROVED'
-        || s === 'DESTRUCTION_EXECUTING',
+        s === 'ACTIVE' ||
+        s === 'APPRAISAL_PENDING' ||
+        s === 'DESTRUCTION_PENDING' ||
+        s === 'DESTRUCTION_APPROVED' ||
+        s === 'DESTRUCTION_EXECUTING',
     ).length
-    hint
-      = packaging > 0
+    hint =
+      packaging > 0
         ? `${packaging} 个打包中 / ${archived} 个归档处理中`
         : `${archived} 个归档处理中`
   } else if (hasCompleted) {
@@ -438,18 +446,16 @@ async function loadArchives(): Promise<void> {
   loading.value = true
   archiveLoadError.value = null
   try {
-    const list = await listArchives({
+    const page = await listArchives({
       examId: filterForm.examId || undefined,
       archiveStatus: filterForm.archiveStatus,
+      pageNum: archivePagination.pageNum,
+      pageSize: archivePagination.pageSize,
     })
-    if (!Array.isArray(list)) {
-      const error = new TypeError('归档列表接口返回格式错误')
-      archives.value = []
-      archiveLoadError.value = error
-      message.error(error.message)
-      return
-    }
-    archives.value = list
+    archives.value = page.list
+    archivePagination.pageNum = page.pageNum
+    archivePagination.pageSize = page.pageSize
+    archivePagination.total = page.total
     syncArchiveStageToStore()
     if (filterForm.examId) examContextStore.currentExamId = filterForm.examId
   } catch (error) {
@@ -461,12 +467,20 @@ async function loadArchives(): Promise<void> {
 }
 
 function handleSearch(): void {
+  archivePagination.pageNum = 1
   void loadArchives()
 }
 
 function handleReset(): void {
   filterForm.examId = undefined
   filterForm.archiveStatus = undefined
+  archivePagination.pageNum = 1
+  void loadArchives()
+}
+
+function handleArchivePageChange(payload: { current: number; pageSize: number }): void {
+  archivePagination.pageNum = payload.current
+  archivePagination.pageSize = payload.pageSize
   void loadArchives()
 }
 
@@ -490,9 +504,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans
-    && !createForm.includeMarkedSlices
-    && !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans &&
+    !createForm.includeMarkedSlices &&
+    !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return
@@ -541,53 +555,17 @@ function goDetail(archiveId: string): void {
   void router.push({ name: 'TeacherArchiveDetail', params: { archiveId } })
 }
 
-
-// 严格 typed helper：模板侧的 archives[index] 字段都是后端 VO 字面联合，避免 slot record:any。
-function isArchivePackageStatusCode(value: unknown): value is ArchivePackageStatusCode {
-  return (
-    value === 'DRAFT'
-    || value === 'PACKAGING'
-    || value === 'PACKAGING_FAILED'
-    || value === 'STORED'
-    || value === 'ACTIVE'
-    || value === 'APPRAISAL_PENDING'
-    || value === 'APPRAISAL_DECIDED'
-    || value === 'DESTRUCTION_PENDING'
-    || value === 'DESTRUCTION_APPROVED'
-    || value === 'DESTRUCTION_EXECUTING'
-    || value === 'DESTRUCTION_FAILED'
-    || value === 'DESTROYED'
-  )
+function archiveStatusTone(status: ArchivePackageStatusCode): BadgeTone {
+  return strictEnumTone(ARCHIVE_STATUS_TONE, status, '归档状态')
 }
 
-function isArchivePackagingPhase(value: unknown): value is ArchivePackagingPhase {
-  return (
-    value === 'QUEUED'
-    || value === 'AGGREGATING'
-    || value === 'WRITING_ZIP'
-    || value === 'UPLOADING_PARTS'
-    || value === 'FINALIZING'
-    || value === 'COMPLETED'
-    || value === 'FAILED'
-  )
-}
-
-function archiveStatusTone(status?: ArchivePackageStatusCode): BadgeTone {
-  if (!status) return 'gray'
-  if (isArchivePackageStatusCode(status)) return ARCHIVE_STATUS_TONE[status]
-  throw new Error('归档包状态不符合前后端契约')
-}
-
-function archiveStatusLabel(status?: ArchivePackageStatusCode): string {
-  if (!status) return '-'
-  if (isArchivePackageStatusCode(status)) return ARCHIVE_STATUS_LABEL[status]
-  throw new Error('归档包状态不符合前后端契约')
+function archiveStatusLabel(status: ArchivePackageStatusCode): string {
+  return strictEnumLabel(ARCHIVE_STATUS_LABEL, status, '归档状态')
 }
 
 function archivePhaseLabel(phase?: ArchivePackagingPhase): string {
   if (!phase) return ''
-  if (isArchivePackagingPhase(phase)) return ARCHIVE_PHASE_LABEL[phase]
-  throw new Error('归档包打包阶段不符合前后端契约')
+  return strictEnumLabel(ARCHIVE_PHASE_LABEL, phase, '归档打包阶段')
 }
 
 function formatBytes(bytes: number): string {

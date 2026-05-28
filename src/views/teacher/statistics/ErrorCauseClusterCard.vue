@@ -27,7 +27,9 @@
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="聚类数">{{ record.clusterCount ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{ formatDateTime(record.createTime) }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">{{
+            formatDateTime(record.createTime)
+          }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="2">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -42,30 +44,38 @@
           <strong>总体摘要：</strong>{{ record.overallSummary }}
         </a-typography-paragraph>
 
-        <div v-if="parsedItems.length > 0" class="ai-items">
+        <div v-if="clusterItems.length > 0" class="ai-items">
           <strong>错因聚类：</strong>
-          <a-list size="small" :data-source="parsedItems" bordered>
+          <a-list size="small" :data-source="clusterItems" bordered>
             <template #renderItem="{ item, index }">
               <a-list-item>
-                <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
-                <a-typography-paragraph
-                  :content="formatItem(item)"
-                  :copyable="true"
-                  style="margin: 0 0 0 8px; flex: 1"
-                />
+                <div class="analysis-item">
+                  <div class="analysis-item__header">
+                    <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
+                    <span class="analysis-item__title">
+                      {{ item.clusterName || item.questionType || '错因聚类' }}
+                    </span>
+                    <span v-if="item.studentCount != null" class="analysis-item__metric">
+                      涉及学生 {{ item.studentCount }} 人
+                    </span>
+                  </div>
+                  <a-typography-paragraph v-if="item.causeAnalysis" class="analysis-item__text">
+                    <strong>原因分析：</strong>{{ item.causeAnalysis }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.suggestion" class="analysis-item__text">
+                    <strong>改进建议：</strong>{{ item.suggestion }}
+                  </a-typography-paragraph>
+                  <div
+                    v-if="item.affectedQuestionNos && item.affectedQuestionNos.length > 0"
+                    class="analysis-item__text"
+                  >
+                    <strong>关联题号：</strong>{{ item.affectedQuestionNos.join(', ') }}
+                  </div>
+                </div>
               </a-list-item>
             </template>
           </a-list>
         </div>
-
-        <a-collapse v-if="record.evidenceSnapshot || record.aiRawResponse" :bordered="false">
-          <a-collapse-panel v-if="record.evidenceSnapshot" key="evidence" header="证据快照 JSON">
-            <pre class="raw-json">{{ record.evidenceSnapshot }}</pre>
-          </a-collapse-panel>
-          <a-collapse-panel v-if="record.aiRawResponse" key="raw" header="AI 原始响应">
-            <pre class="raw-json">{{ record.aiRawResponse }}</pre>
-          </a-collapse-panel>
-        </a-collapse>
       </div>
     </a-spin>
   </a-card>
@@ -73,21 +83,20 @@
 
 <script lang="ts" setup>
 import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
-import { strictJsonArray } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)
@@ -95,9 +104,7 @@ const generating = ref(false)
 // D-9 错误态：AI 错因聚类加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<unknown>(null)
 
-const parsedItems = computed(() => {
-  return strictJsonArray(record.value?.clusterItems, 'AI 错因聚类条目')
-})
+const clusterItems = computed(() => record.value?.clusterItems ?? [])
 
 async function reload(): Promise<void> {
   if (!props.examId) return
@@ -126,12 +133,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-
-function formatItem(item: unknown): string {
-  if (typeof item === 'string') return item
-  return JSON.stringify(item, null, 2)
-}
-
 watch(
   () => [props.examId, props.reloadToken],
   () => {
@@ -155,14 +156,28 @@ watch(
   flex-direction: column;
   gap: 8px;
 }
-.raw-json {
+.analysis-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.analysis-item__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.analysis-item__title {
+  font-weight: 600;
+}
+.analysis-item__metric {
+  margin-left: auto;
+  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.65));
+}
+.analysis-item__text {
   margin: 0;
-  padding: 8px;
-  font-family: var(--gi-font-family-mono, monospace);
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: var(--gi-color-bg-2, #f5f5f5);
+  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
+  line-height: 1.6;
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

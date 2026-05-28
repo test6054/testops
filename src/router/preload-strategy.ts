@@ -31,7 +31,8 @@
  */
 
 import type { Router } from 'vue-router'
-import { useAuthStore } from '@/stores'
+import { hasRouteNamePermission } from '@/router/permission'
+import { useAuthStore, useUserStore } from '@/stores'
 import { RoleEnum } from '@/utils/permission'
 
 // ============================================================================
@@ -381,13 +382,27 @@ export class RoutePreloadManager {
   }
 
   /**
-   * 调度单个路由的预加载（idle 时段执行，失败容忍，已加载短路）
+   * 调度单个路由的预加载（idle 时段执行，失败容忍，已加载短路）。
+   *
+   * 预加载必须与路由权限一致：当前登录用户无权限访问的路由不仅菜单不可见、导航会被拦截，其 chunk
+   * 也不应被 idle preload 白下载。允许未认证场景冷启动预加载（如 login chunk）。
    */
   private schedulePreload(routeName: string): void {
     if (this.preloaded.has(routeName)) return
     if (this.inflight.has(routeName)) return
     const loader = ROUTE_LOADERS[routeName]
     if (!loader) return
+
+    // 已认证用户：按其角色 + 租户管理员状态过滤无权限路由，避免白下载 chunk
+    const authStore = useAuthStore()
+    if (authStore.isAuthenticated) {
+      const userStore = useUserStore()
+      const userRole = authStore.userRole
+      const isTenantAdmin = userStore.isTenantAdmin
+      if (!hasRouteNamePermission(routeName, userRole, isTenantAdmin)) {
+        return
+      }
+    }
 
     const task = new Promise<void>((resolve) => {
       const execute = () => {

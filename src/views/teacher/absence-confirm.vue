@@ -115,7 +115,7 @@
         <template #title>
           <SolutionOutlined />
           <span>缺考记录</span>
-          <UiBadge tone="blue">{{ records.length }}</UiBadge>
+          <UiBadge tone="blue">{{ recordPagination.total }}</UiBadge>
         </template>
         <template #extra>
           <a-space>
@@ -140,11 +140,13 @@
           :columns="recordColumns"
           :data-source="records"
           :loading="recordLoading"
+          v-model:current="recordPagination.pageNum"
+          v-model:page-size="recordPagination.pageSize"
           flat
-          :total="records.length"
-          :page-size="20"
+          :total="recordPagination.total"
           row-key="absenceRecordId"
           size="middle"
+          @page-change="handleRecordPageChange"
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'absenceStatus'">
@@ -173,7 +175,7 @@
                 @click="
                   openConfirmModal(
                     records[index].studentUserId,
-                    studentNameOf(records[index].studentUserId),
+                    formatStudentSnapshot(records[index]),
                   )
                 "
               >
@@ -252,17 +254,9 @@ import type {
   AbsenceRecordVO,
   AbsenceScorePolicyCode,
   AbsenceStatusCode,
+  AbsentStudentSnapshotVO,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
-import type { ExamCandidateVO } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -273,7 +267,14 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
-import { listExamCandidates } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -307,7 +308,6 @@ interface AbsentStudentRow {
   classId?: string
 }
 
-const candidates = ref<ExamCandidateVO[]>([])
 const reconcileVO = ref<AttendanceReconcileVO | null>(null)
 const reconciling = ref(false)
 
@@ -316,6 +316,11 @@ const recordLoading = ref(false)
 // D-9 错误态：缺考记录加载失败时 UiErrorRetryPanel 重试 + 上报
 const recordsLoadError = ref<unknown>(null)
 const statusFilter = ref<AbsenceStatusCode | undefined>(undefined)
+const recordPagination = reactive({
+  pageNum: 1,
+  pageSize: 20,
+  total: 0,
+})
 
 const absentStudents = computed<AbsentStudentRow[]>(() => {
   if (!reconcileVO.value) return []
@@ -324,21 +329,9 @@ const absentStudents = computed<AbsentStudentRow[]>(() => {
       .filter((r) => r.absenceStatus === 'CONFIRMED' || r.absenceStatus === 'PENDING')
       .map((r) => r.studentUserId),
   )
-  const candidateMap = new Map(candidates.value.map((c) => [c.studentUserId, c]))
-  return (reconcileVO.value.absentStudentUserIds ?? [])
-    .filter((sid) => !confirmedIds.has(sid))
-    .map((sid) => {
-      const c = candidateMap.get(sid)
-      if (!c) {
-        throw new Error(`缺考核对返回的学生 ${sid} 不在当前考试考生名册中`)
-      }
-      return {
-        studentUserId: sid,
-        studentNo: c.studentNo,
-        studentName: c.studentName,
-        classId: c.classId,
-      }
-    })
+  return reconcileVO.value.absentStudents
+    .filter((student) => !confirmedIds.has(student.studentUserId))
+    .map(toAbsentStudentRow)
 })
 
 const attendancePercent = computed(() => {
@@ -387,8 +380,8 @@ const recordColumns: ColumnType<AbsenceRecordVO>[] = [
   {
     title: '姓名',
     key: 'studentName',
+    dataIndex: 'studentName',
     width: 120,
-    customRender: ({ record }) => studentNameOf(record.studentUserId),
   },
   { title: '状态', key: 'absenceStatus', width: 100 },
   { title: '缺考原因', key: 'absenceReason', width: 120 },
@@ -398,12 +391,17 @@ const recordColumns: ColumnType<AbsenceRecordVO>[] = [
   { title: '操作', key: 'actions', width: 100, fixed: 'right' },
 ]
 
-function studentNameOf(studentUserId: string): string {
-  const c = candidates.value.find((x) => x.studentUserId === studentUserId)
-  if (!c) {
-    throw new Error(`缺考记录中的学生 ${studentUserId} 不在当前考试考生名册中`)
+function toAbsentStudentRow(student: AbsentStudentSnapshotVO): AbsentStudentRow {
+  return {
+    studentUserId: student.studentUserId,
+    studentNo: student.studentNo,
+    studentName: student.studentName,
+    classId: student.classId,
   }
-  return `${c.studentName}（${c.studentNo}）`
+}
+
+function formatStudentSnapshot(record: Pick<AbsenceRecordVO, 'studentName' | 'studentNo'>): string {
+  return `${record.studentName}（${record.studentNo}）`
 }
 
 function statusLabel(status: AbsenceStatusCode | undefined): string {
@@ -423,30 +421,25 @@ function scorePolicyLabel(policy: AbsenceScorePolicyCode | undefined): string {
   return strictEnumLabel(ABSENCE_SCORE_POLICY_LABEL, policy, '缺考成绩策略')
 }
 
-async function loadCandidates(): Promise<void> {
-  if (!selectedExamId.value) {
-    candidates.value = []
-    return
-  }
-  try {
-    candidates.value = await listExamCandidates(selectedExamId.value)
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '加载考生名册失败')
-  }
-}
-
 async function loadRecords(): Promise<void> {
   if (!selectedExamId.value) {
     records.value = []
+    recordPagination.total = 0
     recordsLoadError.value = null
     return
   }
   recordLoading.value = true
   try {
-    records.value = await listAbsenceRecords({
+    const page = await listAbsenceRecords({
       examId: selectedExamId.value,
       absenceStatus: statusFilter.value,
+      pageNum: recordPagination.pageNum,
+      pageSize: recordPagination.pageSize,
     })
+    records.value = page.list
+    recordPagination.pageNum = page.pageNum
+    recordPagination.pageSize = page.pageSize
+    recordPagination.total = page.total
     recordsLoadError.value = null
   } catch (error) {
     recordsLoadError.value = error
@@ -454,6 +447,12 @@ async function loadRecords(): Promise<void> {
   } finally {
     recordLoading.value = false
   }
+}
+
+function handleRecordPageChange(payload: { current: number; pageSize: number }): void {
+  recordPagination.pageNum = payload.current
+  recordPagination.pageSize = payload.pageSize
+  void loadRecords()
 }
 
 async function handleReconcile(createPending: boolean): Promise<void> {
@@ -530,7 +529,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })
@@ -538,7 +537,7 @@ const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
 function openRevokeModal(record: AbsenceRecordVO): void {
   revokeForm.studentUserId = record.studentUserId
   revokeForm.revokeReason = ''
-  revokeTargetName.value = studentNameOf(record.studentUserId)
+  revokeTargetName.value = formatStudentSnapshot(record)
   revokeModalOpen.value = true
 }
 
@@ -569,9 +568,10 @@ async function handleExamChange(value: unknown, option: unknown): Promise<void> 
   onExamChange(value as never, option as never)
   reconcileVO.value = null
   records.value = []
-  candidates.value = []
+  recordPagination.pageNum = 1
+  recordPagination.total = 0
   if (selectedExamId.value) {
-    await Promise.all([loadCandidates(), loadRecords()])
+    await loadRecords()
   }
 }
 
@@ -579,6 +579,7 @@ watch(
   () => statusFilter.value,
   () => {
     if (selectedExamId.value) {
+      recordPagination.pageNum = 1
       void loadRecords()
     }
   },
@@ -587,7 +588,7 @@ watch(
 onMounted(async () => {
   await initExamSelector()
   if (selectedExamId.value) {
-    await Promise.all([loadCandidates(), loadRecords()])
+    await loadRecords()
   }
 })
 </script>

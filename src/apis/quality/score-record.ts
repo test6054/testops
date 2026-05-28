@@ -4,6 +4,7 @@
  *
  * 成绩明细是直接评价的数据底座；达成度计算会按 (assessmentItem, qualityCourse) 抽取 validFlag=true 的明细。
  */
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/score-records'
@@ -19,7 +20,7 @@ export interface ScoreRecordVO {
   classId?: string
   rawScore: number
   fullScore: number
-  /** JSON：{ rubricItemId: score } */
+  /** 评分项拆分原始字段，教师侧页面不再展示或编辑 */
   rubricBreakdown?: string
   validFlag?: boolean
   invalidReason?: string
@@ -40,21 +41,24 @@ export interface ScoreRecordSavePayload {
   classId?: string
   rawScore: number
   fullScore: number
+  /** 评分项拆分原始字段，教师侧页面不再展示或编辑 */
   rubricBreakdown?: string
   validFlag?: boolean
   invalidReason?: string
   errorCodes?: string
 }
 
+export interface ScoreRecordValidQueryPayload extends QueryDto {
+  assessmentItemId: string
+  qualityCourseId: string
+}
+
 export const scoreRecordApi = {
   listByBatch: (batchId: string) =>
     http.post<ScoreRecordVO[]>(`${BASE}/list-by-batch`, { id: batchId }),
   /** 查询某考核环节下批次已确认且样本有效的全部成绩，用于达成度计算 */
-  listValidByItem: (assessmentItemId: string, qualityCourseId: string) =>
-    http.post<ScoreRecordVO[]>(`${BASE}/list-valid-by-item`, {
-      assessmentItemId,
-      qualityCourseId,
-    }),
+  listValidByItem: (payload: ScoreRecordValidQueryPayload) =>
+    http.post<PageResult<ScoreRecordVO>>(`${BASE}/list-valid-by-item`, payload),
   detail: (id: string) =>
     http.post<ScoreRecordVO>(`${BASE}/detail`, { id }),
   create: (data: ScoreRecordSavePayload) =>

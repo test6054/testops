@@ -8,6 +8,7 @@
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 // ─── 复核窗口策略 ─────────────────────────────────
@@ -39,8 +40,8 @@ export interface ReviewWindowPolicySavePayload {
   closeTime: string
   maxRequestCount?: number
   visibleMaterialScope?: VisibleMaterialScopeCode
-  /** 允许的申请原因类型 JSON 数组字符串，例如 '["SCORE_ERROR","RUBRIC"]' */
-  allowedReasonTypes?: string
+  /** 允许的申请原因类型 */
+  allowedReasonTypes?: GradeReviewReasonTypeCode[]
 }
 
 /** 复核窗口策略 - 对应 ExamReviewWindowPolicy */
@@ -52,7 +53,7 @@ export interface ExamReviewWindowPolicyVO {
   closeTime?: string
   maxRequestCount?: number
   visibleMaterialScope?: VisibleMaterialScopeCode
-  allowedReasonTypes?: string
+  allowedReasonTypes?: GradeReviewReasonTypeCode[]
   policyStatus?: ReviewWindowPolicyStatusCode
   createTime?: string
   updateTime?: string
@@ -126,14 +127,25 @@ export const REVIEW_REQUEST_STATUS_TONE: Record<GradeReviewRequestStatusCode, Ba
   CORRECTED: 'purple',
 }
 
+/** 复核原因类型编码 - 与后端 GradeReviewReasonType 完全一致 */
+export type GradeReviewReasonTypeCode = 'SCORE_ERROR' | 'RUBRIC' | 'OBJECTIVE' | 'OTHER'
+
+/** 复核原因类型文案映射 */
+export const GRADE_REVIEW_REASON_TYPE_LABEL: Record<GradeReviewReasonTypeCode, string> = {
+  SCORE_ERROR: '分数计算错误',
+  RUBRIC: '评分标准争议',
+  OBJECTIVE: '客观题判定争议',
+  OTHER: '其他',
+}
+
 /** 复核申请提交请求 - 对应 GradeReviewSubmitRequest */
 export interface GradeReviewSubmitPayload {
   examId: string
-  paperInstanceId?: string
+  paperInstanceId: string
   /** 申请复核的题目ID列表；空数组表示总分复核 */
   questionIds: string[]
   requestReason: string
-  reasonType?: string
+  reasonType: GradeReviewReasonTypeCode
   /** 佐证材料文件ID列表 */
   evidenceFileIds?: string[]
 }
@@ -143,18 +155,28 @@ export interface ExamGradeReviewRequestVO {
   id: string
   tenantId?: string
   examId: string
-  studentUserId?: string
-  paperInstanceId?: string
+  studentUserId: string
+  paperInstanceId: string
   questionIds: string[]
-  requestReason?: string
-  reasonType?: string
+  requestReason: string
+  reasonType: GradeReviewReasonTypeCode
   evidenceFileIds?: string[]
-  requestStatus?: GradeReviewRequestStatusCode
+  requestStatus: GradeReviewRequestStatusCode
   reviewerUserId?: string
   reviewNote?: string
   reviewTime?: string
-  createTime?: string
+  createTime: string
   updateTime?: string
+}
+
+/** 复核处理汇总 - 对应 GradeReviewSummaryResponse */
+export interface GradeReviewSummaryVO {
+  pendingRequestCount: number
+  inReviewRequestCount: number
+  approvedRequestCount: number
+  rejectedRequestCount: number
+  correctedRequestCount: number
+  correctionRecordCount: number
 }
 
 /** 复核处理结论 */
@@ -174,13 +196,14 @@ export interface GradeReviewHandlePayload {
 export function submitReviewRequest(
   payload: GradeReviewSubmitPayload,
 ): Promise<ExamGradeReviewRequestVO> {
-  return http.post<ExamGradeReviewRequestVO>('/api/exam/grade-review/request/submit', payload)
+  return http.post<unknown>('/api/exam/grade-review/request/submit', payload)
+    .then(validateExamGradeReviewRequest)
 }
 
 /**
  * 复核申请列表查询请求 - 对应 GradeReviewRequestListQuery
  */
-export interface GradeReviewRequestListQueryPayload {
+export interface GradeReviewRequestListQueryPayload extends QueryDto {
   examId: string
   studentUserId?: string
   requestStatus?: GradeReviewRequestStatusCode
@@ -195,8 +218,9 @@ export interface GradeReviewRequestListQueryPayload {
  */
 export function listReviewRequests(
   payload: GradeReviewRequestListQueryPayload,
-): Promise<ExamGradeReviewRequestVO[]> {
-  return http.post<ExamGradeReviewRequestVO[]>('/api/exam/grade-review/request/list', payload)
+): Promise<PageResult<ExamGradeReviewRequestVO>> {
+  return http.post<unknown>('/api/exam/grade-review/request/list', payload)
+    .then((value) => validatePageResult(value, validateExamGradeReviewRequest, '复核申请分页'))
 }
 
 /** 学生“我的复核申请”列表项 - 对应 StudentGradeReviewRequestItemResponse */
@@ -209,7 +233,7 @@ export interface StudentGradeReviewRequestItemVO {
   paperInstanceId?: string
   questionIds: string[]
   requestReason: string
-  reasonType: string
+  reasonType: GradeReviewReasonTypeCode
   evidenceFileIds?: string[]
   requestStatus: GradeReviewRequestStatusCode
   reviewerUserId?: string
@@ -227,10 +251,20 @@ export interface StudentGradeReviewRequestItemVO {
 export function listMyReviewRequests(params: {
   requestStatus?: GradeReviewRequestStatusCode
 } = {}): Promise<StudentGradeReviewRequestItemVO[]> {
-  return http.get<StudentGradeReviewRequestItemVO[]>(
+  return http.get<unknown>(
     '/api/exam/grade-review/request/student-list',
     { params },
-  )
+  ).then(validateStudentGradeReviewRequestList)
+}
+
+/**
+ * 查询复核处理汇总
+ * GET /api/exam/grade-review/summary?examId=
+ */
+export function getReviewSummary(examId: string): Promise<GradeReviewSummaryVO> {
+  return http.get<unknown>('/api/exam/grade-review/summary', {
+    params: { examId },
+  }).then(validateGradeReviewSummary)
 }
 
 /**
@@ -324,6 +358,174 @@ export function listCorrections(params: {
   studentUserId?: string
 }): Promise<ExamGradeCorrectionRecordVO[]> {
   return http.get<ExamGradeCorrectionRecordVO[]>('/api/exam/grade-review/correction/list', { params })
+}
+
+function requireFiniteNumber(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requirePageNumber(value: unknown, fieldName: string): number {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
+    return value
+  }
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
+    const parsed = Number(value)
+    if (Number.isSafeInteger(parsed)) {
+      return parsed
+    }
+  }
+  throw new TypeError(`${fieldName} 接口返回格式错误`)
+}
+
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function optionalString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value !== 'string') {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireStringArray(value: unknown, fieldName: string): string[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value.map((item, index) => requireString(item, `${fieldName}[${index}]`))
+}
+
+function optionalStringArray(value: unknown, fieldName: string): string[] | undefined {
+  if (value === undefined || value === null) return undefined
+  return requireStringArray(value, fieldName)
+}
+
+function requireObject(value: unknown, fieldName: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value as Record<string, unknown>
+}
+
+function requireGradeReviewRequestStatus(
+  value: unknown,
+  fieldName: string,
+): GradeReviewRequestStatusCode {
+  if (
+    value !== 'PENDING'
+    && value !== 'IN_REVIEW'
+    && value !== 'APPROVED'
+    && value !== 'REJECTED'
+    && value !== 'CORRECTED'
+  ) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function requireGradeReviewReasonType(
+  value: unknown,
+  fieldName: string,
+): GradeReviewReasonTypeCode {
+  if (
+    value !== 'SCORE_ERROR'
+    && value !== 'RUBRIC'
+    && value !== 'OBJECTIVE'
+    && value !== 'OTHER'
+  ) {
+    throw new TypeError(`${fieldName} 接口返回格式错误`)
+  }
+  return value
+}
+
+function validateGradeReviewSummary(value: unknown): GradeReviewSummaryVO {
+  if (!value || typeof value !== 'object') {
+    throw new TypeError('复核处理汇总接口返回格式错误')
+  }
+  const result = value as Record<string, unknown>
+  return {
+    pendingRequestCount: requireFiniteNumber(result.pendingRequestCount, '待处理复核申请数量'),
+    inReviewRequestCount: requireFiniteNumber(result.inReviewRequestCount, '处理中复核申请数量'),
+    approvedRequestCount: requireFiniteNumber(result.approvedRequestCount, '已通过复核申请数量'),
+    rejectedRequestCount: requireFiniteNumber(result.rejectedRequestCount, '已驳回复核申请数量'),
+    correctedRequestCount: requireFiniteNumber(result.correctedRequestCount, '已更正复核申请数量'),
+    correctionRecordCount: requireFiniteNumber(result.correctionRecordCount, '成绩更正记录数量'),
+  }
+}
+
+function validatePageResult<T>(
+  value: unknown,
+  itemValidator: (item: unknown) => T,
+  fieldName: string,
+): PageResult<T> {
+  const result = requireObject(value, fieldName)
+  if (!Array.isArray(result.list)) {
+    throw new TypeError(`${fieldName} 列表接口返回格式错误`)
+  }
+  return {
+    list: result.list.map(itemValidator),
+    total: requirePageNumber(result.total, `${fieldName} 总数`),
+    pageNum: requirePageNumber(result.pageNum, `${fieldName} 页码`),
+    pageSize: requirePageNumber(result.pageSize, `${fieldName} 每页数量`),
+    pages: requirePageNumber(result.pages, `${fieldName} 总页数`),
+  }
+}
+
+function validateExamGradeReviewRequest(value: unknown): ExamGradeReviewRequestVO {
+  const result = requireObject(value, '复核申请')
+  return {
+    id: requireString(result.id, '复核申请 ID'),
+    tenantId: optionalString(result.tenantId, '租户 ID'),
+    examId: requireString(result.examId, '考试 ID'),
+    studentUserId: requireString(result.studentUserId, '学生用户 ID'),
+    paperInstanceId: requireString(result.paperInstanceId, '试卷实例 ID'),
+    questionIds: requireStringArray(result.questionIds, '申请复核题目 ID 列表'),
+    requestReason: requireString(result.requestReason, '申请原因'),
+    reasonType: requireGradeReviewReasonType(result.reasonType, '复核原因类型'),
+    evidenceFileIds: optionalStringArray(result.evidenceFileIds, '佐证材料文件 ID 列表'),
+    requestStatus: requireGradeReviewRequestStatus(result.requestStatus, '复核申请状态'),
+    reviewerUserId: optionalString(result.reviewerUserId, '复核教师用户 ID'),
+    reviewNote: optionalString(result.reviewNote, '复核备注'),
+    reviewTime: optionalString(result.reviewTime, '复核时间'),
+    createTime: requireString(result.createTime, '申请创建时间'),
+    updateTime: optionalString(result.updateTime, '申请更新时间'),
+  }
+}
+
+function validateStudentGradeReviewRequestItem(value: unknown): StudentGradeReviewRequestItemVO {
+  const result = requireObject(value, '学生复核申请列表项')
+  return {
+    id: requireString(result.id, '复核申请 ID'),
+    tenantId: optionalString(result.tenantId, '租户 ID'),
+    examId: requireString(result.examId, '考试 ID'),
+    examName: requireString(result.examName, '考试名称'),
+    examNo: requireString(result.examNo, '考试编号'),
+    paperInstanceId: optionalString(result.paperInstanceId, '试卷实例 ID'),
+    questionIds: requireStringArray(result.questionIds, '申请复核题目 ID 列表'),
+    requestReason: requireString(result.requestReason, '申请原因'),
+    reasonType: requireGradeReviewReasonType(result.reasonType, '复核原因类型'),
+    evidenceFileIds: optionalStringArray(result.evidenceFileIds, '佐证材料文件 ID 列表'),
+    requestStatus: requireGradeReviewRequestStatus(result.requestStatus, '复核申请状态'),
+    reviewerUserId: optionalString(result.reviewerUserId, '复核教师用户 ID'),
+    reviewNote: optionalString(result.reviewNote, '复核备注'),
+    reviewTime: optionalString(result.reviewTime, '复核时间'),
+    createTime: requireString(result.createTime, '申请创建时间'),
+    updateTime: optionalString(result.updateTime, '申请更新时间'),
+  }
+}
+
+function validateStudentGradeReviewRequestList(value: unknown): StudentGradeReviewRequestItemVO[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('学生复核申请列表接口返回格式错误')
+  }
+  return value.map(validateStudentGradeReviewRequestItem)
 }
 
 // ─── 批量更正计划 ─────────────────────────────────

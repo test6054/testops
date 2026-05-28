@@ -66,6 +66,16 @@ function getFlatRoutes(): FlatRoute[] {
 }
 
 /**
+ * 根据路由 name 查找路由配置。
+ *
+ * 与 findRouteByPath 不同，本函数不需要构造完整 path，避免在动态路由（含 :param）场景下 router.resolve({ name })
+ * 因缺少 params 而失败。主要服务于路由预加载策略的权限过滤。
+ */
+function findRouteByName(name: string): RouteRecordRaw | undefined {
+    return getFlatRoutes().find(route => route.name === name)
+}
+
+/**
  * 根据路径查找路由配置
  */
 function findRouteByPath(path: string): RouteRecordRaw | undefined {
@@ -140,6 +150,35 @@ export function hasRoutePermission(
 }
 
 /**
+ * 按路由 name 检查当前用户是否有访问权限。
+ *
+ * 与 hasRoutePermission 语义一致，但以路由 name 为查询键，供预加载策略与菜单生成等需要参考权限但
+ * 手头只有 RouteRecord.name 的场景复用。路由未配置、meta 缺失、该角色不在 roles 列表中都返回 false。
+ */
+export function hasRouteNamePermission(
+    name: string,
+    userRole: string,
+    isTenantAdmin: boolean = false
+): boolean {
+    const route = findRouteByName(name)
+    if (!route?.meta) {
+        return false
+    }
+
+    const roles = (route.meta.roles as RoleEnum[]) ?? []
+    if (!roles.includes(userRole as RoleEnum)) {
+        return false
+    }
+
+    const requireTenantAdmin = route.meta.requireTenantAdmin as boolean | undefined
+    if (requireTenantAdmin && !isTenantAdmin) {
+        return userRole === RoleEnum.SUPER_ADMIN
+    }
+
+    return true
+}
+
+/**
  * 根据角色获取默认重定向路径（阅卷端业务）
  */
 export function getDefaultRoute(userRole: string): string {
@@ -166,7 +205,6 @@ export function requiresAuth(path: string): boolean {
     '/login',
     '/forgot-password',
     '/cas-first-login-completion',
-    '/scanner-kiosk',
     '/403',
     '/404',
   ]
@@ -175,6 +213,11 @@ export function requiresAuth(path: string): boolean {
   // /requirement 是公开的需求收集页面，不需要认证
   // /403、/404 错误页允许未认证访问，避免权限不足时无法展示错误页
   if (path.startsWith('/survey/')) {
+    return false
+  }
+  // /scanner-kiosk 父路由及其全部子路由（/setup、/scanning、/review、/finalize）均部署在
+  // 一体机本地浏览器，不走教师/学生认证体系，统一前缀匹配放行。
+  if (path === '/scanner-kiosk' || path.startsWith('/scanner-kiosk/')) {
     return false
   }
   return !noAuthPaths.includes(path)

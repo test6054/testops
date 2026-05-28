@@ -62,10 +62,12 @@
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="允许的原因类型 JSON">
-              <a-input
+            <a-form-item label="允许的原因类型">
+              <a-select
                 v-model:value="form.allowedReasonTypes"
-                placeholder="如 [&quot;SCORE_ERROR&quot;,&quot;RUBRIC&quot;]"
+                mode="multiple"
+                allow-clear
+                :options="reasonTypeOptions"
               />
             </a-form-item>
           </a-col>
@@ -95,23 +97,28 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamReviewWindowPolicyVO, VisibleMaterialScopeCode } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
+import type {
+  ExamReviewWindowPolicyVO,
+  GradeReviewReasonTypeCode,
+  VisibleMaterialScopeCode,
+} from '@/apis/mark/grade-review'
 import {
   activateReviewWindow,
   closeReviewWindow,
   getReviewWindowPolicy,
+  GRADE_REVIEW_REASON_TYPE_LABEL,
   REVIEW_WINDOW_STATUS_COLOR,
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const policy = ref<ExamReviewWindowPolicyVO | null>(null)
 const loading = ref(false)
@@ -126,19 +133,26 @@ const form = reactive<{
   closeTime: string
   maxRequestCount: number
   visibleMaterialScope: VisibleMaterialScopeCode
-  allowedReasonTypes: string
+  allowedReasonTypes: GradeReviewReasonTypeCode[]
 }>({
   openTime: '',
   closeTime: '',
   maxRequestCount: 1,
   visibleMaterialScope: 'SCORE_ONLY',
-  allowedReasonTypes: '',
+  allowedReasonTypes: [],
 })
 
-const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
   { label: '仅分数', value: 'SCORE_ONLY' },
   { label: '分数+批注', value: 'SCORE_AND_ANNOTATION' },
   { label: '完整材料', value: 'FULL' },
+]
+
+const reasonTypeOptions: { label: string; value: GradeReviewReasonTypeCode }[] = [
+  { label: GRADE_REVIEW_REASON_TYPE_LABEL.SCORE_ERROR, value: 'SCORE_ERROR' },
+  { label: GRADE_REVIEW_REASON_TYPE_LABEL.RUBRIC, value: 'RUBRIC' },
+  { label: GRADE_REVIEW_REASON_TYPE_LABEL.OBJECTIVE, value: 'OBJECTIVE' },
+  { label: GRADE_REVIEW_REASON_TYPE_LABEL.OTHER, value: 'OTHER' },
 ]
 
 function isVisibleMaterialScopeCode(value: unknown): value is VisibleMaterialScopeCode {
@@ -160,7 +174,7 @@ async function reload(): Promise<void> {
       form.closeTime = data.closeTime || ''
       form.maxRequestCount = data.maxRequestCount ?? 1
       form.visibleMaterialScope = data.visibleMaterialScope
-      form.allowedReasonTypes = data.allowedReasonTypes || ''
+      form.allowedReasonTypes = data.allowedReasonTypes || []
     }
   } catch (e) {
     policy.value = null
@@ -188,7 +202,7 @@ async function handleSave(): Promise<void> {
       closeTime: form.closeTime,
       maxRequestCount: form.maxRequestCount,
       visibleMaterialScope: form.visibleMaterialScope,
-      allowedReasonTypes: form.allowedReasonTypes.trim() || undefined,
+      allowedReasonTypes: form.allowedReasonTypes.length > 0 ? form.allowedReasonTypes : undefined,
     })
     message.success('复核窗口策略已保存')
   } catch (e) {

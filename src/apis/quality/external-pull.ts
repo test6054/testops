@@ -39,12 +39,22 @@ export interface ExternalDataSourceVO {
   usernameConfigured?: boolean
   passwordConfigured?: boolean
   driverClass: string
-  fieldWhitelist: string
+  fieldScopes: ExternalSourceFieldScope[]
   maxRowCount: number
   queryTimeoutSeconds: number
   enabled: boolean
   createTime?: string
   updateTime?: string
+}
+
+export interface ExternalSourceFieldScope {
+  id?: string
+  sourceId?: string
+  sourceObjectName: string
+  fieldName: string
+  fieldLabel: string
+  fieldType: string
+  fieldOrder: number
 }
 
 export interface ExternalDataSourceSavePayload {
@@ -59,8 +69,7 @@ export interface ExternalDataSourceSavePayload {
   /** 密码明文 */
   password: string
   driverClass: string
-  /** 字段白名单 JSON（table -> [columns]） */
-  fieldWhitelist: string
+  fieldScopes: ExternalSourceFieldScope[]
   maxRowCount: number
   queryTimeoutSeconds: number
   enabled: boolean
@@ -84,9 +93,10 @@ export interface ExternalPullTaskVO {
   taskName: string
   businessAnchor: string
   businessId: string
-  sqlTemplate: string
-  sqlParameters?: string
-  fieldWhitelist?: string
+  sourceObjectName: string
+  fields: ExternalPullTaskField[]
+  filters?: ExternalPullTaskFilter[]
+  sorts?: ExternalPullTaskSort[]
   maxRowCount?: number
   queryTimeoutSeconds?: number
   status: ExternalPullTaskStatus
@@ -107,17 +117,40 @@ export interface ExternalPullTaskQueryPayload extends QueryDto {
   businessId?: string
 }
 
+export type ExternalPullFilterOperator = 'EQ' | 'NE' | 'GT' | 'GTE' | 'LT' | 'LTE' | 'LIKE' | 'IN'
+export type ExternalPullSortDirection = 'ASC' | 'DESC'
+
+export interface ExternalPullTaskField {
+  id?: string
+  fieldName: string
+  fieldOrder: number
+}
+
+export interface ExternalPullTaskFilter {
+  id?: string
+  fieldName: string
+  filterOperator: ExternalPullFilterOperator
+  filterValue: string
+  valueOrder: number
+}
+
+export interface ExternalPullTaskSort {
+  id?: string
+  fieldName: string
+  sortDirection: ExternalPullSortDirection
+  sortOrder: number
+}
+
 export interface ExternalPullTaskCreatePayload {
   sourceId: string
   taskCode: string
   taskName: string
   businessAnchor: string
   businessId: string
-  /** 仅允许 SELECT */
-  sqlTemplate: string
-  /** SQL 参数 JSON 数组，按 ? 占位符顺序绑定 */
-  sqlParameters?: string
-  fieldWhitelist?: string
+  sourceObjectName: string
+  fields: ExternalPullTaskField[]
+  filters?: ExternalPullTaskFilter[]
+  sorts?: ExternalPullTaskSort[]
   maxRowCount?: number
   queryTimeoutSeconds?: number
 }
@@ -162,10 +195,10 @@ export interface ExternalPullAuditVO {
   id: string
   tenantId?: string
   pullTaskId: string
-  sqlSafetyStatus?: ExternalPullAuditCheckStatus
-  sqlSafetyDetail?: string
-  fieldWhitelistStatus?: ExternalPullAuditCheckStatus
-  fieldWhitelistDetail?: string
+  queryScopeStatus?: ExternalPullAuditCheckStatus
+  queryScopeDetail?: string
+  fieldScopeStatus?: ExternalPullAuditCheckStatus
+  fieldScopeDetail?: string
   maskPreviewStatus?: ExternalPullAuditCheckStatus
   operatorUserId?: string
   auditEvent: ExternalPullAuditEvent

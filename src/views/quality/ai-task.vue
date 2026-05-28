@@ -22,17 +22,6 @@ import type {
   AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   AI_MANUAL_HANDLING_STATUS_LABEL,
   AI_OUTPUT_VALIDATION_COLOR,
@@ -50,6 +39,17 @@ import {
   isAiTaskStatus,
   isAiTaskType,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   CourseSelector,
   ProgramSelector,
@@ -165,7 +165,7 @@ const auditDrawerOpen = ref(false)
 const auditEvents = ref<AuditTimelineEvent[]>([])
 const auditLoading = ref(false)
 
-const taskTypeOptions: Array<{ value: AiTaskType, label: string }> = [
+const taskTypeOptions: Array<{ value: AiTaskType; label: string }> = [
   { value: 'SYLLABUS_PARSE', label: AI_TASK_TYPE_LABEL.SYLLABUS_PARSE },
   { value: 'TRAINING_PLAN_PARSE', label: AI_TASK_TYPE_LABEL.TRAINING_PLAN_PARSE },
   { value: 'ACHIEVEMENT_DIAGNOSIS', label: AI_TASK_TYPE_LABEL.ACHIEVEMENT_DIAGNOSIS },
@@ -181,26 +181,26 @@ const taskTypeOptions: Array<{ value: AiTaskType, label: string }> = [
     label: AI_TASK_TYPE_LABEL.INDIRECT_RESPONSE_DOC_PARSE,
   },
 ]
-const statusOptions: Array<{ value: AiTaskStatus, label: string }> = [
+const statusOptions: Array<{ value: AiTaskStatus; label: string }> = [
   { value: 'PENDING', label: AI_TASK_STATUS_LABEL.PENDING },
   { value: 'PROCESSING', label: AI_TASK_STATUS_LABEL.PROCESSING },
   { value: 'SUCCEEDED', label: AI_TASK_STATUS_LABEL.SUCCEEDED },
   { value: 'FAILED', label: AI_TASK_STATUS_LABEL.FAILED },
   { value: 'CANCELLED', label: AI_TASK_STATUS_LABEL.CANCELLED },
 ]
-const businessTypeOptions: { value: AiTaskBusinessType, label: string }[] = [
+const businessTypeOptions: { value: AiTaskBusinessType; label: string }[] = [
   { value: 'ACHIEVEMENT_RESULT', label: AI_TASK_BUSINESS_TYPE_LABEL.ACHIEVEMENT_RESULT },
   { value: 'QUALITY_COURSE', label: AI_TASK_BUSINESS_TYPE_LABEL.QUALITY_COURSE },
   { value: 'TRAINING_PLAN', label: AI_TASK_BUSINESS_TYPE_LABEL.TRAINING_PLAN },
   { value: 'REPORT', label: AI_TASK_BUSINESS_TYPE_LABEL.REPORT },
   { value: 'INDIRECT_FORM', label: AI_TASK_BUSINESS_TYPE_LABEL.INDIRECT_FORM },
 ]
-const validationOptions: { value: AiOutputValidation, label: string, color: string }[] = [
+const validationOptions: { value: AiOutputValidation; label: string; color: string }[] = [
   { value: 'PASSED', label: '通过（接受）', color: 'green' },
   { value: 'WARN', label: '警告（需人工审核）', color: 'orange' },
   { value: 'REJECTED', label: '退回（拒绝）', color: 'red' },
 ]
-const manualHandlingOptions: { value: AiManualHandlingStatus, label: string }[] = [
+const manualHandlingOptions: { value: AiManualHandlingStatus; label: string }[] = [
   { value: 'NONE', label: AI_MANUAL_HANDLING_STATUS_LABEL.NONE },
   { value: 'PENDING', label: AI_MANUAL_HANDLING_STATUS_LABEL.PENDING },
   { value: 'IN_PROGRESS', label: AI_MANUAL_HANDLING_STATUS_LABEL.IN_PROGRESS },
@@ -208,7 +208,49 @@ const manualHandlingOptions: { value: AiManualHandlingStatus, label: string }[] 
   { value: 'IGNORED', label: AI_MANUAL_HANDLING_STATUS_LABEL.IGNORED },
 ]
 
+const promptSections = [
+  { key: 'systemPrompt', title: '系统段', valueKey: 'systemPrompt' },
+  { key: 'taskPrompt', title: '任务段', valueKey: 'taskPrompt' },
+  { key: 'standardSection', title: '标准段', valueKey: 'standardSection' },
+  { key: 'profileSection', title: '专业实例段', valueKey: 'profileSection' },
+  { key: 'calculationSection', title: '计算段', valueKey: 'calculationSection' },
+  { key: 'sampleSection', title: '样本段', valueKey: 'sampleSection' },
+  { key: 'auditSection', title: '审核段', valueKey: 'auditSection' },
+  { key: 'outputFormatSection', title: '输出格式段', valueKey: 'outputFormatSection' },
+  { key: 'forbiddenSection', title: '禁止指令段', valueKey: 'forbiddenSection' },
+] as const
+
+function normalizeRichText(value: string | undefined): string[] {
+  if (!value) return []
+  return value
+    .split(/\n+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 const submitDisabled = computed(() => !submitForm.taskType)
+
+const resultSummaryLines = computed(() => normalizeRichText(detailResult.value?.summary))
+const sensitiveCheckLines = computed(() =>
+  normalizeRichText(detailResult.value?.sensitiveCheckDetail),
+)
+const issueItems = computed(() => detailResult.value?.issueItems ?? [])
+const evidenceItems = computed(() => detailResult.value?.evidenceItems ?? [])
+const improvementItems = computed(() => detailResult.value?.improvementItems ?? [])
+const reportLines = computed(() => normalizeRichText(detailResult.value?.reportBody))
+const promptSectionSummaries = computed(() =>
+  promptSections.map((section) => {
+    const content = promptSnapshot.value?.[section.valueKey] ?? ''
+    const lines = normalizeRichText(content)
+    return {
+      key: section.key,
+      title: section.title,
+      state: content ? '已生成' : '未生成',
+      lineCount: lines.length,
+      charCount: content.length,
+    }
+  }),
+)
 
 async function loadList() {
   loading.value = true
@@ -234,7 +276,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
+function handlePageChange(payload: { current: number; pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -440,10 +482,10 @@ watch(
     if (cached.id !== detailRecord.value.id) return
     // 仅在状态变化时赋值，避免不必要的引用改变
     if (
-      cached.status !== detailRecord.value.status
-      || cached.failurePhase !== detailRecord.value.failurePhase
-      || cached.failureReason !== detailRecord.value.failureReason
-      || cached.finishedAt !== detailRecord.value.finishedAt
+      cached.status !== detailRecord.value.status ||
+      cached.failurePhase !== detailRecord.value.failurePhase ||
+      cached.failureReason !== detailRecord.value.failureReason ||
+      cached.finishedAt !== detailRecord.value.finishedAt
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -535,7 +577,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleTaskResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
+function handleTaskResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((t) => t.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -558,7 +600,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatus, title: string, completed?: boolean }> = [
+  const order: Array<{ key: AiTaskStatus; title: string; completed?: boolean }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PROCESSING', title: '运行中' },
     { key: 'SUCCEEDED', title: '成功', completed: true },
@@ -682,11 +724,7 @@ onMounted(async () => {
           />
           <a-input
             v-model:value="query.trainingPlanId"
-            :placeholder="
-              qualityStore.currentTrainingPlanId
-                ? '当前培养方案'
-                : '培养方案 ID'
-            "
+            :placeholder="qualityStore.currentTrainingPlanId ? '当前培养方案' : '培养方案 ID'"
             class="ai-task__filter ai-task__filter--md"
           />
           <a-input
@@ -914,15 +952,9 @@ onMounted(async () => {
         <a-descriptions-item label="业务锚点">
           <a-space wrap>
             <a-tag v-if="detailRecord.programId">已关联专业</a-tag>
-            <a-tag v-if="detailRecord.trainingPlanId">
-              已关联培养方案
-            </a-tag>
-            <a-tag v-if="detailRecord.qualityCourseId">
-              已关联课程
-            </a-tag>
-            <a-tag v-if="detailRecord.achievementResultId">
-              已关联达成度结果
-            </a-tag>
+            <a-tag v-if="detailRecord.trainingPlanId"> 已关联培养方案 </a-tag>
+            <a-tag v-if="detailRecord.qualityCourseId"> 已关联课程 </a-tag>
+            <a-tag v-if="detailRecord.achievementResultId"> 已关联达成度结果 </a-tag>
             <a-tag v-if="detailRecord.reportId">已关联合规报告</a-tag>
           </a-space>
         </a-descriptions-item>
@@ -1000,9 +1032,15 @@ onMounted(async () => {
                 {{ detailResult.completionTokenCount ?? '-' }}
               </a-descriptions-item>
               <a-descriptions-item label="敏感检测明细" :span="2">
-                <pre v-if="detailResult.sensitiveCheckDetail" class="ai-task__pre">{{
-                  detailResult.sensitiveCheckDetail
-                }}</pre>
+                <ul v-if="sensitiveCheckLines.length" class="ai-task__list">
+                  <li
+                    v-for="(line, index) in sensitiveCheckLines"
+                    :key="`sensitive-${index}`"
+                    class="ai-task__list-item"
+                  >
+                    {{ line }}
+                  </li>
+                </ul>
                 <span v-else>-</span>
               </a-descriptions-item>
             </a-descriptions>
@@ -1035,22 +1073,72 @@ onMounted(async () => {
             <a-divider class="ai-task__divider" />
 
             <h4 class="ai-task__section-title">诊断摘要</h4>
-            <pre class="ai-task__pre">{{ detailResult.summary || '-' }}</pre>
+            <div v-if="resultSummaryLines.length" class="ai-task__text-block">
+              <p
+                v-for="(line, index) in resultSummaryLines"
+                :key="`summary-${index}`"
+                class="ai-task__paragraph"
+              >
+                {{ line }}
+              </p>
+            </div>
+            <p v-else class="ai-task__placeholder">未生成诊断摘要</p>
 
-            <h4 class="ai-task__section-title">问题列表（JSON）</h4>
-            <pre class="ai-task__pre">{{ detailResult.issueList || '-' }}</pre>
+            <h4 class="ai-task__section-title">问题清单</h4>
+            <ul v-if="issueItems.length" class="ai-task__list">
+              <li
+                v-for="(item, index) in issueItems"
+                :key="`issue-${index}`"
+                class="ai-task__list-item"
+              >
+                <strong>{{ item.issueTitle }}</strong>
+                <span v-if="item.severity"> · {{ item.severity }}</span>
+                <p v-if="item.issueDescription" class="ai-task__paragraph">
+                  {{ item.issueDescription }}
+                </p>
+              </li>
+            </ul>
+            <p v-else class="ai-task__placeholder">未生成问题清单</p>
 
-            <h4 class="ai-task__section-title">证据引用（JSON）</h4>
-            <pre class="ai-task__pre">{{ detailResult.evidenceReferences || '-' }}</pre>
+            <h4 class="ai-task__section-title">证据引用</h4>
+            <ul v-if="evidenceItems.length" class="ai-task__list">
+              <li
+                v-for="(item, index) in evidenceItems"
+                :key="`evidence-${index}`"
+                class="ai-task__list-item"
+              >
+                <strong>{{ item.evidenceTitle }}</strong>
+                <span v-if="item.evidenceSource"> · {{ item.evidenceSource }}</span>
+                <p class="ai-task__paragraph">{{ item.evidenceContent }}</p>
+              </li>
+            </ul>
+            <p v-else class="ai-task__placeholder">未生成证据引用</p>
 
-            <h4 class="ai-task__section-title">改进建议（JSON）</h4>
-            <pre class="ai-task__pre">{{ detailResult.improvementSuggestions || '-' }}</pre>
+            <h4 class="ai-task__section-title">改进建议</h4>
+            <ul v-if="improvementItems.length" class="ai-task__list">
+              <li
+                v-for="(item, index) in improvementItems"
+                :key="`suggestion-${index}`"
+                class="ai-task__list-item"
+              >
+                <strong>{{ item.suggestionTitle }}</strong>
+                <span v-if="item.priority"> · {{ item.priority }}</span>
+                <p class="ai-task__paragraph">{{ item.suggestionContent }}</p>
+              </li>
+            </ul>
+            <p v-else class="ai-task__placeholder">未生成改进建议</p>
 
-            <h4 class="ai-task__section-title">报告正文（Markdown）</h4>
-            <pre class="ai-task__pre">{{ detailResult.reportBody || '-' }}</pre>
-
-            <h4 class="ai-task__section-title">原始模型输出（脱敏后）</h4>
-            <pre class="ai-task__pre">{{ detailResult.rawModelOutput || '-' }}</pre>
+            <h4 class="ai-task__section-title">报告正文</h4>
+            <div v-if="reportLines.length" class="ai-task__text-block">
+              <p
+                v-for="(line, index) in reportLines"
+                :key="`report-${index}`"
+                class="ai-task__paragraph"
+              >
+                {{ line }}
+              </p>
+            </div>
+            <p v-else class="ai-task__placeholder">未生成报告正文</p>
           </template>
         </a-tab-pane>
         <a-tab-pane key="prompt" tab="提示词快照">
@@ -1067,35 +1155,24 @@ onMounted(async () => {
                 {{ promptSnapshot.digest || '-' }}
               </a-descriptions-item>
             </a-descriptions>
-            <a-collapse class="ai-task__collapse">
-              <a-collapse-panel key="system" header="系统段（systemPrompt）">
-                <pre class="ai-task__pre">{{ promptSnapshot.systemPrompt || '-' }}</pre>
-              </a-collapse-panel>
-              <a-collapse-panel key="task" header="任务段（taskPrompt）">
-                <pre class="ai-task__pre">{{ promptSnapshot.taskPrompt || '-' }}</pre>
-              </a-collapse-panel>
-              <a-collapse-panel key="standard" header="标准段（standardSection）">
-                <pre class="ai-task__pre">{{ promptSnapshot.standardSection || '-' }}</pre>
-              </a-collapse-panel>
-              <a-collapse-panel key="profile" header="专业实例段（profileSection）">
-                <pre class="ai-task__pre">{{ promptSnapshot.profileSection || '-' }}</pre>
-              </a-collapse-panel>
-              <a-collapse-panel key="calculation" header="计算段（calculationSection）">
-                <pre class="ai-task__pre">{{ promptSnapshot.calculationSection || '-' }}</pre>
-              </a-collapse-panel>
-              <a-collapse-panel key="sample" header="样本段（sampleSection）">
-                <pre class="ai-task__pre">{{ promptSnapshot.sampleSection || '-' }}</pre>
-              </a-collapse-panel>
-              <a-collapse-panel key="audit" header="审核段（auditSection）">
-                <pre class="ai-task__pre">{{ promptSnapshot.auditSection || '-' }}</pre>
-              </a-collapse-panel>
-              <a-collapse-panel key="output" header="输出格式段（outputFormatSection）">
-                <pre class="ai-task__pre">{{ promptSnapshot.outputFormatSection || '-' }}</pre>
-              </a-collapse-panel>
-              <a-collapse-panel key="forbidden" header="禁止指令段（forbiddenSection）">
-                <pre class="ai-task__pre">{{ promptSnapshot.forbiddenSection || '-' }}</pre>
-              </a-collapse-panel>
-            </a-collapse>
+            <div class="ai-task__prompt-grid">
+              <section
+                v-for="section in promptSectionSummaries"
+                :key="section.key"
+                class="ai-task__prompt-card"
+              >
+                <header class="ai-task__prompt-header">
+                  <h4 class="ai-task__section-title">{{ section.title }}</h4>
+                  <span class="ai-task__prompt-state">
+                    {{ section.state }}
+                  </span>
+                </header>
+                <div class="ai-task__prompt-metrics">
+                  <span>行数 {{ section.lineCount }}</span>
+                  <span>字数 {{ section.charCount }}</span>
+                </div>
+              </section>
+            </div>
           </template>
         </a-tab-pane>
       </a-tabs>
@@ -1225,18 +1302,78 @@ onMounted(async () => {
     margin-top: 12px;
   }
 
-  &__pre {
-    margin: 0;
+  &__text-block,
+  &__prompt-card,
+  &__list {
     background: var(--dp-gray-50, #f6f8fa);
     border: 1px solid var(--dp-border, #e1e4e8);
     border-radius: 6px;
-    padding: 8px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
-    white-space: pre-wrap;
+    padding: 10px 12px;
+  }
+
+  &__text-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__paragraph,
+  &__placeholder {
+    margin: 0;
+    color: var(--dp-text-secondary, #475569);
+    line-height: 1.7;
     word-break: break-word;
-    max-height: 320px;
-    overflow: auto;
+  }
+
+  &__placeholder {
+    padding: 10px 12px;
+    background: var(--dp-surface-subtle, #f8fafc);
+    border: 1px dashed var(--dp-border, #e2e8f0);
+    border-radius: 6px;
+  }
+
+  &__list {
+    margin: 0;
+    padding-left: 28px;
+  }
+
+  &__list-item {
+    color: var(--dp-text-secondary, #475569);
+    line-height: 1.7;
+    word-break: break-word;
+  }
+
+  &__prompt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  &__prompt-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__prompt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__prompt-state {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+
+  &__prompt-metrics {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: var(--dp-text-secondary, #475569);
+    font-size: 12px;
   }
 }
 </style>
