@@ -219,10 +219,6 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import {
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -233,6 +229,10 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,

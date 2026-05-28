@@ -102,6 +102,9 @@ import type {
   GradeReviewReasonTypeCode,
   VisibleMaterialScopeCode,
 } from '@/apis/mark/grade-review'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -111,14 +114,11 @@ import {
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const policy = ref<ExamReviewWindowPolicyVO | null>(null)
 const loading = ref(false)
@@ -142,13 +142,13 @@ const form = reactive<{
   allowedReasonTypes: [],
 })
 
-const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
   { label: '仅分数', value: 'SCORE_ONLY' },
   { label: '分数+批注', value: 'SCORE_AND_ANNOTATION' },
   { label: '完整材料', value: 'FULL' },
 ]
 
-const reasonTypeOptions: { label: string; value: GradeReviewReasonTypeCode }[] = [
+const reasonTypeOptions: { label: string, value: GradeReviewReasonTypeCode }[] = [
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.SCORE_ERROR, value: 'SCORE_ERROR' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.RUBRIC, value: 'RUBRIC' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.OBJECTIVE, value: 'OBJECTIVE' },

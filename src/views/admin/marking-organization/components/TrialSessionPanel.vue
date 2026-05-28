@@ -34,13 +34,6 @@
           allow-clear
         />
       </a-form-item>
-      <a-form-item label="校准结果">
-        <a-alert
-          type="info"
-          show-icon
-          message="校准结果已进入结构化治理，当前页面不再提供原始结构录入。"
-        />
-      </a-form-item>
       <a-form-item label="讨论笔记">
         <a-textarea
           v-model:value="calibrateForm.discussionNotes"
@@ -65,9 +58,9 @@
         <a-list-item>
           <a-list-item-meta>
             <template #title>
-              <a-typography-text copyable
-                >会话 #{{ (item as TrialSessionVO).id }}</a-typography-text
-              >
+              <a-typography-text copyable>
+                会话 #{{ (item as TrialSessionVO).id }}
+              </a-typography-text>
               <UiTag
                 :tone="
                   strictEnumTone(
@@ -137,13 +130,6 @@ import type {
   TrialSessionStatusCode,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import {
-  calibrateTrialSession,
-  createTrialSession,
-  deleteTrialSession,
-  TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
-  TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
@@ -151,6 +137,13 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import {
+  calibrateTrialSession,
+  createTrialSession,
+  deleteTrialSession,
+  TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
+  TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -169,17 +162,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refresh: []
+  "refresh": []
   'open-lifecycle': [action: 'closeTrial', sessionId: string]
 }>()
 
 const trialGroupId = ref<string | undefined>(undefined)
 const creating = ref(false)
 const calibrateSessionId = ref<string | undefined>(undefined)
-const calibrateForm = reactive<
-  Pick<TrialSessionCalibratePayload, 'calibrationResult' | 'discussionNotes'>
->({
-  calibrationResult: '',
+const calibrateForm = reactive<Pick<TrialSessionCalibratePayload, 'discussionNotes'>>({
   discussionNotes: '',
 })
 const calibrating = ref(false)
@@ -234,7 +224,6 @@ async function submitCalibrate(): Promise<void> {
   try {
     await calibrateTrialSession({
       sessionId: calibrateSessionId.value,
-      calibrationResult: undefined,
       discussionNotes: calibrateForm.discussionNotes?.trim() || undefined,
     })
     message.success('试评校准结论已提交')

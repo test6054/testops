@@ -10,6 +10,9 @@
  *  - 从 AI 任务详情抽屉点击「查看脱敏审计」跳转，自动加载（query.aiTaskId）
  */
 import type { AiMaskMappingVO, AiTaskVO } from '@/apis/quality'
+import { message } from 'ant-design-vue'
+import { onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AI_TASK_BUSINESS_TYPE_LABEL,
   AI_TASK_STATUS_COLOR,
@@ -21,9 +24,6 @@ import {
   isAiTaskStatus,
   isAiTaskType,
 } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { UiButton, UiEmpty } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 

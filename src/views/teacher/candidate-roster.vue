@@ -134,9 +134,9 @@
               </span>
             </template>
             <template v-else-if="column.key === 'serverStatus'">
-              <UiTag v-if="(record as CandidateRow).candidateRosterId" tone="green" size="sm"
-                >已保存</UiTag
-              >
+              <UiTag v-if="(record as CandidateRow).candidateRosterId" tone="green" size="sm">
+                已保存
+              </UiTag>
               <UiTag v-else tone="orange" size="sm">待保存</UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -200,10 +200,9 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type { UserDto } from '@/types/api-types.d'
-import type { ExamCandidateRosterPayload } from '@/apis/mark/exam'
-import { getExamDetail, listExamCandidates, saveExamScope } from '@/apis/mark/exam'
 import type { CandidateRow } from './candidate-roster/types'
+import type { ExamCandidateRosterPayload } from '@/apis/mark/exam'
+import type { UserDto } from '@/types/api-types.d'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
@@ -215,6 +214,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadUserImportTemplate, tenantBatchImportUsers } from '@/apis/edu/admin-user'
 import { getAllClasses } from '@/apis/edu/class'
+import { getExamDetail, listExamCandidates, saveExamScope } from '@/apis/mark/exam'
 import BatchImportModal from '@/components/common/BatchImportModal.vue'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
@@ -260,7 +260,7 @@ const {
 } = useMarkExamSelector()
 
 const classIds = ref<string[]>([])
-const classOptions = ref<Array<{ label: string; value: string }>>([])
+const classOptions = ref<Array<{ label: string, value: string }>>([])
 const classOptionsLoading = ref(false)
 const classNameById = ref<Record<string, string>>({})
 

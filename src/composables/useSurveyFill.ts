@@ -1,5 +1,4 @@
 import type { PublicSurveyItemVO, PublicSurveyVO } from '@/apis/public-survey'
-import { publicSurveyApi } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 /**
  * 公开问卷填写共享逻辑。
@@ -7,6 +6,7 @@ import { message } from 'ant-design-vue'
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { publicSurveyApi } from '@/apis/public-survey'
 
 export function useSurveyFill() {
   const route = useRoute()
@@ -123,10 +123,10 @@ export function useSurveyFill() {
       })
       .filter(
         (answer) =>
-          answer.scaleValue != null ||
-          !!answer.singleChoiceValue ||
-          !!answer.multipleChoiceValues?.length ||
-          !!answer.openText?.trim(),
+          answer.scaleValue != null
+          || !!answer.singleChoiceValue
+          || !!answer.multipleChoiceValues?.length
+          || !!answer.openText?.trim(),
       )
   }
 

@@ -128,9 +128,7 @@
                     </template>
                     <template #description>
                       <div class="annotation-meta">
-                        <span v-if="item.anchorText" class="muted"
-                          >锚点：{{ item.anchorText }}</span
-                        >
+                        <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
                         <span class="muted">{{ formatDateTime(item.createTime) }}</span>
                       </div>
                     </template>
@@ -147,14 +145,7 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AnnotationVO, ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
-import {
-  getReviewTaskDetail,
-  listAnnotations,
-  REVIEW_TASK_STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE,
-} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -164,8 +155,15 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import {
+  getReviewTaskDetail,
+  listAnnotations,
+  REVIEW_TASK_STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,

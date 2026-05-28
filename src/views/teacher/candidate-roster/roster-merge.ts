@@ -16,7 +16,7 @@ export function toCandidateRow(draft: CandidateDraft, candidateRosterId?: string
 export function mergeCandidateDrafts(
   existing: CandidateRow[],
   incoming: CandidateDraft[],
-): { rows: CandidateRow[]; added: number; skipped: number } {
+): { rows: CandidateRow[]; added: number, skipped: number } {
   const byUserId = new Set(existing.map((row) => row.studentUserId))
   let added = 0
   let skipped = 0

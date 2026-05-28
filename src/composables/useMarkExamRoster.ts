@@ -1,5 +1,4 @@
 import type { ExamCandidateVO } from '@/apis/mark/exam'
-import { listExamCandidates } from '@/apis/mark/exam'
 /**
  * 批改主链：考试考生名册 composable
  *
@@ -20,6 +19,7 @@ import { listExamCandidates } from '@/apis/mark/exam'
  */
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
+import { listExamCandidates } from '@/apis/mark/exam'
 
 export interface MarkClassOption {
   /** 班级 ID（后端 Long 字符串化） */
@@ -53,7 +53,7 @@ export function useMarkExamRoster() {
   const loadError = ref<unknown>(null)
 
   const classOptions = computed<MarkClassOption[]>(() => {
-    const grouped = new Map<string, { className: string; count: number }>()
+    const grouped = new Map<string, { className: string, count: number }>()
     for (const item of candidates.value) {
       const cid = item.classId
       if (!cid) continue

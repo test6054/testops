@@ -117,14 +117,14 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisVO } from '@/apis/mark/cross-exam-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
 import {
   generateClassTrend,
   generateCourseTrend,
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
@@ -190,8 +190,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    record.value =
-      scopeMode.value === 'COURSE'
+    record.value
+      = scopeMode.value === 'COURSE'
         ? await generateCourseTrend({ courseId, examIds })
         : await generateClassTrend({ courseId, classId: form.classId.trim(), examIds })
     message.success('已生成趋势分析')

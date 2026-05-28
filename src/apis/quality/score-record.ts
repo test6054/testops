@@ -20,8 +20,6 @@ export interface ScoreRecordVO {
   classId?: string
   rawScore: number
   fullScore: number
-  /** 评分项拆分原始字段，教师侧页面不再展示或编辑 */
-  rubricBreakdown?: string
   validFlag?: boolean
   invalidReason?: string
   /** 逗号分隔异常码 */
@@ -41,8 +39,6 @@ export interface ScoreRecordSavePayload {
   classId?: string
   rawScore: number
   fullScore: number
-  /** 评分项拆分原始字段，教师侧页面不再展示或编辑 */
-  rubricBreakdown?: string
   validFlag?: boolean
   invalidReason?: string
   errorCodes?: string

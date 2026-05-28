@@ -48,9 +48,7 @@
         <div class="d-survey__progress">
           <div class="d-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
         </div>
-        <span class="d-survey__progress-label"
-          >已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span
-        >
+        <span class="d-survey__progress-label">已完成 {{ answeredCount }}/{{ totalCount }} 题（{{ progressPercent }}%）</span>
       </div>
 
       <!-- 内容区 -->
@@ -285,8 +283,8 @@
 
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import { nextTick, ref } from 'vue'
 import type { PublicSurveyItemVO } from '@/apis/public-survey'
+import { nextTick, ref } from 'vue'
 import { useSurveyFill } from '@/composables/useSurveyFill'
 
 const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<PublicSurveyItemVO['itemType'], string> = {

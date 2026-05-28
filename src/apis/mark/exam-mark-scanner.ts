@@ -361,7 +361,7 @@ function requirePageNumber(value: unknown, fieldName: string): number {
   if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
     return value
   }
-  if (typeof value === 'string' && /^[0-9]+$/.test(value)) {
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
     const parsed = Number(value)
     if (Number.isSafeInteger(parsed)) {
       return parsed

@@ -13,6 +13,9 @@ import type {
   ExternalSourceFieldScope,
   ExternalSourceType,
 } from '@/apis/quality'
+import type { SignalMetric, TaskResultItem } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
   EXTERNAL_PULL_AUDIT_EVENT_LABEL,
@@ -28,9 +31,6 @@ import {
   isExternalPullTaskStatus,
   isExternalSourceType,
 } from '@/apis/quality'
-import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -95,7 +95,7 @@ const detailResultColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 180 },
 ]
 
-const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator; label: string }> = [
+const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator, label: string }> = [
   { value: 'EQ', label: '等于' },
   { value: 'NE', label: '不等于' },
   { value: 'GT', label: '大于' },
@@ -106,7 +106,7 @@ const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator; label: s
   { value: 'IN', label: '属于多个值' },
 ]
 
-const sortDirectionOptions: Array<{ value: ExternalPullSortDirection; label: string }> = [
+const sortDirectionOptions: Array<{ value: ExternalPullSortDirection, label: string }> = [
   { value: 'ASC', label: '升序' },
   { value: 'DESC', label: '降序' },
 ]
@@ -285,8 +285,8 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
   return tasks.value
     .filter(
       (t) =>
-        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED') ||
-        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
+        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED')
+        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
     )
     .slice(0, 5)
     .map((t) => ({
@@ -295,8 +295,8 @@ const pullResultItems = computed<TaskResultItem[]>(() => {
       statusLabel: taskStatusLabel(t.status),
       statusTone: isExternalPullTaskStatus(t.status) && t.status === 'FAILED' ? 'red' : 'blue',
       description:
-        t.failureReason ||
-        (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中' : undefined),
+        t.failureReason
+        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中' : undefined),
       time: t.startedAt || undefined,
       actions: [{ key: 'detail', label: '详情' }],
     }))
@@ -397,7 +397,7 @@ function splitMultiValue(value: string): string[] {
     .filter(Boolean)
 }
 
-function handleTaskPageChange(payload: { current: number; pageSize: number }) {
+function handleTaskPageChange(payload: { current: number, pageSize: number }) {
   taskQuery.pageNum = payload.current
   taskQuery.pageSize = payload.pageSize
   loadTasks()
@@ -490,9 +490,9 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 
 async function submitSource() {
   if (
-    !sourceForm.sourceCode.trim() ||
-    !sourceForm.sourceName.trim() ||
-    !sourceForm.jdbcUrl.trim()
+    !sourceForm.sourceCode.trim()
+    || !sourceForm.sourceName.trim()
+    || !sourceForm.jdbcUrl.trim()
   ) {
     message.error('请填写编码 / 名称 / 连接地址')
     return
@@ -605,12 +605,12 @@ function openTaskCreate() {
 
 async function submitTask() {
   if (
-    !taskForm.taskName.trim() ||
-    !taskForm.taskCode.trim() ||
-    !taskForm.sourceId ||
-    !taskForm.businessAnchor.trim() ||
-    !taskForm.businessId ||
-    !taskForm.sourceObjectName
+    !taskForm.taskName.trim()
+    || !taskForm.taskCode.trim()
+    || !taskForm.sourceId
+    || !taskForm.businessAnchor.trim()
+    || !taskForm.businessId
+    || !taskForm.sourceObjectName
   ) {
     message.error('请填写任务编码 / 名称 / 数据源 / 业务锚点 / 业务锚点 ID / 来源对象')
     return
@@ -754,7 +754,7 @@ async function reloadDetail(taskId: string) {
   }
 }
 
-function handlePullResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+function handlePullResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
   const record = tasks.value.find((t) => t.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }

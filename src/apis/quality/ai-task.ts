@@ -5,7 +5,6 @@ import type {
   AiTaskStatus,
   AiTaskType,
 } from './types'
-import { isAiHealthStatus, isAiManualHandlingStatus, isAiTaskStatus, isAiTaskType } from './types'
 /**
  * AI 异步任务 / 结果 / 模型配置 API
  *
@@ -21,6 +20,7 @@ import { isAiHealthStatus, isAiManualHandlingStatus, isAiTaskStatus, isAiTaskTyp
  */
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
+import { isAiHealthStatus, isAiManualHandlingStatus, isAiTaskStatus, isAiTaskType } from './types'
 
 const TASK = '/api/quality/ai-tasks'
 const TRIGGER = '/api/quality/ai-task'

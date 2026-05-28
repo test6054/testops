@@ -351,6 +351,14 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -366,14 +374,6 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,

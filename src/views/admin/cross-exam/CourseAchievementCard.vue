@@ -130,10 +130,10 @@
 
 <script lang="ts" setup>
 import type { CourseObjectiveAchievementVO } from '@/apis/mark/cross-exam-analysis'
-import { generateAchievement, listAchievements } from '@/apis/mark/cross-exam-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
+import { generateAchievement, listAchievements } from '@/apis/mark/cross-exam-analysis'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'

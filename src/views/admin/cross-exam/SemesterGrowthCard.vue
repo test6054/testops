@@ -124,10 +124,10 @@
 
 <script lang="ts" setup>
 import type { SemesterAbilityGrowthVO } from '@/apis/mark/cross-exam-analysis'
-import { generateClassGrowth, listGrowth } from '@/apis/mark/cross-exam-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
+import { generateClassGrowth, listGrowth } from '@/apis/mark/cross-exam-analysis'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'

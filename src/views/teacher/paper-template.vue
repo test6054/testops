@@ -340,8 +340,8 @@
       </a-form-item>
       <a-form-item
         v-if="
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          answerContext.questionType === 'OBJECTIVE'
+            && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
         "
         label="标准值"
         name="numericExpectedValue"
@@ -354,8 +354,8 @@
       </a-form-item>
       <a-form-item
         v-if="
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          answerContext.questionType === 'OBJECTIVE'
+            && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
         "
         label="容差"
         name="numericTolerance"
@@ -368,8 +368,8 @@
       </a-form-item>
       <a-form-item
         v-if="
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          answerContext.questionType === 'OBJECTIVE'
+            && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
         "
         label="单位"
       >
@@ -435,15 +435,7 @@ import type {
   ExamQuestionTemplateVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
-import {
-  getExamTemplate,
-  isPaperTemplateNotConfiguredError,
-  OBJECTIVE_COMPARE_POLICY_OPTIONS,
-  saveExamTemplate,
-  saveStandardAnswer,
-} from '@/apis/mark/exam'
 import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -453,6 +445,14 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
+import {
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  saveExamTemplate,
+  saveStandardAnswer,
+} from '@/apis/mark/exam'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   UiBadge,
   UiButton,
@@ -521,7 +521,7 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string; totalPages?: number }>({
+const form = reactive<{ templateName: string, totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -876,9 +876,9 @@ const answerFormRules: Record<string, Rule[]> = {
       validator: async (_rule: Rule, value: string) => {
         const trimmed = (value ?? '').trim()
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy !== 'AI_GRADE' &&
-          !trimmed
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy !== 'AI_GRADE'
+          && !trimmed
         ) {
           return Promise.reject(new Error('客观题需填写标准答案（选 AI 评分策略可留空）'))
         }
@@ -905,9 +905,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写标准值'))
         }
@@ -920,9 +920,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写容差'))
         }
@@ -935,9 +935,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'AI_GRADE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'AI_GRADE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('AI 评分策略必须填写评分细则'))
         }

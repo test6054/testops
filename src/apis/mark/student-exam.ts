@@ -1,13 +1,13 @@
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type {BadgeTone} from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
-export type FinalScoreStatusCode =
-  | 'PENDING'
-  | 'CALCULATED'
-  | 'CONFIRMED'
-  | 'CORRECTED'
-  | 'PUBLISHED'
-  | 'WITHDRAWN'
+export type FinalScoreStatusCode
+  = | 'PENDING'
+    | 'CALCULATED'
+    | 'CONFIRMED'
+    | 'CORRECTED'
+    | 'PUBLISHED'
+    | 'WITHDRAWN'
 
 export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
   PENDING: '待计算',
@@ -16,15 +16,6 @@ export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
   CORRECTED: '已更正',
   PUBLISHED: '已发布',
   WITHDRAWN: '已撤回',
-}
-
-export const FINAL_SCORE_STATUS_COLOR: Record<FinalScoreStatusCode, BadgeTone> = {
-  PENDING: 'gray',
-  CALCULATED: 'blue',
-  CONFIRMED: 'blue',
-  CORRECTED: 'purple',
-  PUBLISHED: 'green',
-  WITHDRAWN: 'red',
 }
 
 export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, BadgeTone> = {
@@ -309,12 +300,12 @@ function requireString(value: unknown, fieldName: string): string {
 
 function requireFinalScoreStatus(value: unknown, fieldName: string): FinalScoreStatusCode {
   if (
-    value !== 'PENDING' &&
-    value !== 'CALCULATED' &&
-    value !== 'CONFIRMED' &&
-    value !== 'CORRECTED' &&
-    value !== 'PUBLISHED' &&
-    value !== 'WITHDRAWN'
+    value !== 'PENDING'
+    && value !== 'CALCULATED'
+    && value !== 'CONFIRMED'
+    && value !== 'CORRECTED'
+    && value !== 'PUBLISHED'
+    && value !== 'WITHDRAWN'
   ) {
     throw new TypeError(`${fieldName} 接口返回格式错误`)
   }
@@ -340,11 +331,11 @@ function requireAiAnalysisStatus(value: unknown, fieldName: string): AiAnalysisS
 
 function requireMasteryLevel(value: unknown, fieldName: string): MasteryLevelCode {
   if (
-    value !== 'EXCELLENT' &&
-    value !== 'GOOD' &&
-    value !== 'MEDIUM' &&
-    value !== 'WEAK' &&
-    value !== 'CRITICAL'
+    value !== 'EXCELLENT'
+    && value !== 'GOOD'
+    && value !== 'MEDIUM'
+    && value !== 'WEAK'
+    && value !== 'CRITICAL'
   ) {
     throw new TypeError(`${fieldName} 接口返回格式错误`)
   }
@@ -625,7 +616,7 @@ function validateStudentAiLearningReport(value: unknown): StudentAiLearningRepor
 
 function validateStudentQuestionAnswerDetail(value: unknown): StudentQuestionAnswerDetailVO {
   const result = requireObject(value, '学生单题答题明细')
-  const detail: StudentQuestionAnswerDetailVO = {
+  return {
     examId: requireString(result.examId, '考试 ID'),
     paperInstanceId: requireString(result.paperInstanceId, '试卷实例 ID'),
     questionTemplateId: requireString(result.questionTemplateId, '题目模板 ID'),
@@ -642,5 +633,4 @@ function validateStudentQuestionAnswerDetail(value: unknown): StudentQuestionAns
     mistakeClusterLabel: optionalString(result.mistakeClusterLabel, '学生端 AI 错题聚类标签'),
     aiDiagnostic: optionalString(result.aiDiagnostic, '题目级 AI 诊断'),
   }
-  return detail
 }

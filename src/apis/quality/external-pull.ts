@@ -10,7 +10,7 @@ import type {
  *
  * 后端路径:
  * - /api/quality/external-data-sources    create / update / delete / detail / page / toggle-enabled
- * - /api/quality/external-pull-tasks      create / detail / page / claim / complete / fail / cancel
+ * - /api/quality/external-pull-tasks      create / update / delete / detail / page / claim / complete / fail / cancel
  * - /api/quality/external-pull-results    create / detail / list-by-task / confirm / reject
  * - /api/quality/external-pull-audits     create / detail / list-by-task
  *
@@ -141,7 +141,8 @@ export interface ExternalPullTaskSort {
   sortOrder: number
 }
 
-export interface ExternalPullTaskCreatePayload {
+export interface ExternalPullTaskSavePayload {
+  id?: string
   sourceId: string
   taskCode: string
   taskName: string
@@ -223,7 +224,9 @@ export const externalPullTaskApi = {
   page: (data: ExternalPullTaskQueryPayload) =>
     http.post<PageResult<ExternalPullTaskVO>>(`${TASK}/page`, data),
   detail: (id: string) => http.post<ExternalPullTaskVO>(`${TASK}/detail`, { id }),
-  create: (data: ExternalPullTaskCreatePayload) => http.post<string>(`${TASK}/create`, data),
+  create: (data: ExternalPullTaskSavePayload) => http.post<string>(`${TASK}/create`, data),
+  update: (data: ExternalPullTaskSavePayload) => http.post<void>(`${TASK}/update`, data),
+  delete: (id: string) => http.post<void>(`${TASK}/delete`, { id }),
   /** 取消未启动 / 进行中的任务 */
   cancel: (id: string, reason?: string) => http.post<void>(`${TASK}/cancel`, { id, reason }),
 }

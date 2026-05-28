@@ -93,15 +93,9 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
       </button>
     </div>
     <div class="bottom-counters">
-      <span
-        >已扫 <b>{{ counterScanned }}</b></span
-      >
-      <span
-        >已上传 <b>{{ counterUploaded }}</b></span
-      >
-      <span class="warn"
-        >异常 <b>{{ counterException }}</b></span
-      >
+      <span>已扫 <b>{{ counterScanned }}</b></span>
+      <span>已上传 <b>{{ counterUploaded }}</b></span>
+      <span class="warn">异常 <b>{{ counterException }}</b></span>
     </div>
   </footer>
 </template>

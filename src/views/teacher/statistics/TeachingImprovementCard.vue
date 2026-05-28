@@ -26,9 +26,11 @@
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{
-            formatDateTime(record.createTime)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">
+            {{
+              formatDateTime(record.createTime)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="3">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -81,21 +83,21 @@ import type {
   ExamTeachingAnalysisRecordVO,
   TeachingImprovementItemVO,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
   generateTeachingImprovement,
   getLatestTeachingImprovement,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeachingImprovementCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)

@@ -60,9 +60,9 @@
         <a-list-item>
           <a-list-item-meta>
             <template #title>
-              <a-typography-text copyable
-                >会话 #{{ (item as FormalSessionVO).id }}</a-typography-text
-              >
+              <a-typography-text copyable>
+                会话 #{{ (item as FormalSessionVO).id }}
+              </a-typography-text>
               <UiTag
                 :tone="
                   strictEnumTone(
@@ -87,12 +87,8 @@
               <span>
                 题组 #{{ (item as FormalSessionVO).groupId }} · 创建于
                 {{ formatDateTime((item as FormalSessionVO).createTime) }}
-                <template v-if="(item as FormalSessionVO).startTime"
-                  >· 开始 {{ formatDateTime((item as FormalSessionVO).startTime) }}</template
-                >
-                <template v-if="(item as FormalSessionVO).endTime"
-                  >· 结束 {{ formatDateTime((item as FormalSessionVO).endTime) }}</template
-                >
+                <template v-if="(item as FormalSessionVO).startTime">· 开始 {{ formatDateTime((item as FormalSessionVO).startTime) }}</template>
+                <template v-if="(item as FormalSessionVO).endTime">· 结束 {{ formatDateTime((item as FormalSessionVO).endTime) }}</template>
                 <template v-if="(item as FormalSessionVO).pauseReason">
                   · 暂停原因：{{ (item as FormalSessionVO).pauseReason }}
                 </template>
@@ -155,6 +151,14 @@
 
 <script lang="ts" setup>
 import type { FormalSessionStatusCode, FormalSessionVO } from '@/apis/mark/marking-organization'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
+import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import StopOutlined from '@ant-design/icons-vue/StopOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   completeFormalSession,
   createFormalSession,
@@ -164,14 +168,6 @@ import {
   resumeFormalSession,
   startFormalSession,
 } from '@/apis/mark/marking-organization'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
-import PauseCircleOutlined from '@ant-design/icons-vue/PauseCircleOutlined'
-import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import StopOutlined from '@ant-design/icons-vue/StopOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -190,7 +186,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refresh: []
+  "refresh": []
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
 

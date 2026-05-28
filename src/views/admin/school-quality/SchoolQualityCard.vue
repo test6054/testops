@@ -112,9 +112,11 @@
           <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="考试数">{{ record.examCount ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{
-            formatDateTime(record.createTime)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">
+            {{
+              formatDateTime(record.createTime)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="3">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
             <span v-else class="text-muted">-</span>
@@ -167,14 +169,14 @@ import type {
   SchoolQualityAnalysisVO,
   SchoolQualityDimensionCode,
 } from '@/apis/mark/school-quality'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
 } from '@/apis/mark/school-quality'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'

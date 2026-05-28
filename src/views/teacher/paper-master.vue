@@ -256,11 +256,6 @@ import type {
   PaperMasterObjectiveAreaPayload,
   PaperMasterVO,
 } from '@/apis/mark/paper-master'
-import {
-  getPaperMaster,
-  isPaperMasterNotConfiguredError,
-  savePaperMaster,
-} from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -270,6 +265,11 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
+import {
+  getPaperMaster,
+  isPaperMasterNotConfiguredError,
+  savePaperMaster,
+} from '@/apis/mark/paper-master'
 import {
   UiButton,
   UiCard,

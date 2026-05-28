@@ -7,11 +7,11 @@
  */
 
 import type { InjectionKey, Ref } from 'vue'
-import { inject } from 'vue'
-import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
 import type { KioskMutex } from './useKioskMutex'
-import type { KioskStageMachine } from './useStageMachine'
 import type { KioskWorkflow } from './useKioskWorkflow'
+import type { KioskStageMachine } from './useStageMachine'
+import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
+import { inject } from 'vue'
 
 /**
  * UI 视图层共享状态（不属于业务 workflow，仅控制持久 UI 元素的显隐）。
@@ -27,14 +27,14 @@ import type { KioskWorkflow } from './useKioskWorkflow'
 export interface KioskUiState {
   settingsDrawerOpen: Ref<boolean>
   shortcutHintsOpen: Ref<boolean>
-  openSettings(): void
-  closeSettings(): void
+  openSettings: () => void
+  closeSettings: () => void
   /** 触发查看历史批次 ledger（先关闭其它抽屉再调用 workflow.viewBatchHistoryLedger） */
-  viewHistoryLedger(item: ExamScannerKioskBatchHistoryItem): void
+  viewHistoryLedger: (item: ExamScannerKioskBatchHistoryItem) => void
   /** 关闭历史批次 ledger 抽屉（清空 workflow.historyLedgerBatch） */
-  closeHistoryLedger(): void
-  openShortcutHints(): void
-  closeShortcutHints(): void
+  closeHistoryLedger: () => void
+  openShortcutHints: () => void
+  closeShortcutHints: () => void
 }
 
 export interface KioskCtx {

@@ -66,9 +66,9 @@
 
 <script setup lang="ts">
 import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evaluation'
-import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { computed, ref } from 'vue'
+import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 
 const props = defineProps<{
   open: boolean

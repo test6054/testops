@@ -36,7 +36,7 @@
             :tone="riskTone(progress.riskLevel)"
             size="sm"
           >
-            {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel] }}
+            {{ riskLabel(progress.riskLevel) }}
           </UiTag>
         </div>
       </div>
@@ -62,7 +62,7 @@
             <template #title>
               <span>进度快照</span>
               <UiBadge v-if="progress" :tone="riskTone(progress.riskLevel)">
-                {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel] }}
+                {{ riskLabel(progress.riskLevel) }}
               </UiBadge>
             </template>
             <template #extra>
@@ -141,7 +141,7 @@
               </a-descriptions-item>
               <a-descriptions-item label="风险等级">
                 <UiTag :tone="riskTone(progress.riskLevel)" size="sm">
-                  {{ PROGRESS_RISK_LEVEL_LABEL[progress.riskLevel] }}
+                  {{ riskLabel(progress.riskLevel) }}
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="快照时间" :span="2">
@@ -155,7 +155,7 @@
                     class="quality-dashboard__risk-item"
                   >
                     <UiTag :tone="riskTone(riskItem.riskLevel)" size="sm">
-                      {{ PROGRESS_RISK_LEVEL_LABEL[riskItem.riskLevel] }}
+                      {{ riskLabel(riskItem.riskLevel) }}
                     </UiTag>
                     <span class="quality-dashboard__risk-title">{{ riskItem.riskLabel }}</span>
                     <span class="quality-dashboard__risk-desc">{{ riskItem.riskDescription }}</span>
@@ -384,18 +384,6 @@ import type {
   ReviewerMetricStatusCode,
   ReviewerQualityMetricVO,
 } from '@/apis/mark/marking-quality'
-import {
-  createSpotCheckTasks,
-  getLatestProgress,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_COLOR,
-  PROGRESS_RISK_LEVEL_LABEL,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_COLOR,
-  REVIEWER_METRIC_STATUS_LABEL,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
@@ -408,6 +396,18 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  createSpotCheckTasks,
+  getLatestProgress,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_LABEL,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_LABEL,
+  takeProgressSnapshot,
+} from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,
@@ -633,6 +633,10 @@ function riskTone(level: ProgressRiskLevelCode): BadgeTone {
   return strictEnumTone(PROGRESS_RISK_LEVEL_COLOR, level, '进度风险等级')
 }
 
+function riskLabel(level: ProgressRiskLevelCode): string {
+  return strictEnumLabel(PROGRESS_RISK_LEVEL_LABEL, level, '进度风险等级')
+}
+
 /* ========== 信号指标：阅卷质量全局风险面板 ========== */
 
 const signalMetrics = computed<SignalMetric[]>(() => {
@@ -642,8 +646,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate =
-    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate
+    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0

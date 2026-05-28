@@ -13,6 +13,9 @@ import type {
   ScoreRecordSavePayload,
   ScoreRecordVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   isScoreBatchStatus,
@@ -21,9 +24,6 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   CourseSelector,
   StudentSelector,
@@ -245,8 +245,19 @@ async function submitEditor() {
   editorSubmitting.value = true
   try {
     const payload: ScoreRecordSavePayload = {
-      ...v,
-      rubricBreakdown: undefined,
+      id: v.id,
+      batchId: v.batchId,
+      assessmentItemId: v.assessmentItemId,
+      qualityCourseId: v.qualityCourseId,
+      studentUserId: v.studentUserId,
+      studentNumber: v.studentNumber,
+      studentName: v.studentName,
+      classId: v.classId,
+      rawScore: v.rawScore,
+      fullScore: v.fullScore,
+      validFlag: v.validFlag,
+      invalidReason: v.invalidReason,
+      errorCodes: v.errorCodes,
     }
     if (editorMode.value === 'create') await scoreRecordApi.create(payload)
     else await scoreRecordApi.update(payload)

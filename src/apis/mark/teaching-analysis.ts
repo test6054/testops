@@ -1,3 +1,4 @@
+import type { MasteryLevelCode } from './student-exam'
 /**
  * AI 教学分析 API - 对接 edu-mark 模块 TeachingAnalysisController
  *
@@ -7,7 +8,6 @@
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { MasteryLevelCode } from './student-exam'
 import http from '@/config/axios'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

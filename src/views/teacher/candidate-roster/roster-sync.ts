@@ -1,6 +1,6 @@
+import type { CandidateDraft } from './types'
 import type { UserDto } from '@/types/api-types.d'
 import { getStudentsByClass } from '@/apis/edu/class'
-import type { CandidateDraft } from './types'
 
 function mapUserToDraft(user: UserDto): CandidateDraft | null {
   const studentUserId = String(user.id ?? '').trim()

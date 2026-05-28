@@ -17,10 +17,25 @@
 import type {
   AgentHealthResponse,
   AgentHealthStatus,
-  LocalScanPageStatus,
   ScanJobResponse,
-  ScannerDeviceInfo,
+  ScannerDeviceInfo
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBatchLifecycleVO,
+  ExamScannerKioskBatchHistoryItem,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskContextVO,
+  ExamScannerKioskExamOptionRequest,
+  ExamScannerKioskExamOptionVO,
+  ExamScannerLedgerDataSource,
+  ExamScannerPageLedgerVO,
+  ExamScannerPageRegistrationStatus,
+  ScanAttentionTypeCode,
+  ScannerKioskScanMode
+} from '@/apis/mark/scanner-kiosk'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import {
   activateLocalAgent,
   cancelScanJob,
@@ -39,21 +54,8 @@ import {
   retryUpload,
   ScannerBusyError,
   startScanJob,
-  unbindLocalAgent,
+  unbindLocalAgent
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBatchLifecycleVO,
-  ExamScannerKioskBatchHistoryItem,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskContextVO,
-  ExamScannerKioskExamOptionRequest,
-  ExamScannerKioskExamOptionVO,
-  ExamScannerLedgerDataSource,
-  ExamScannerPageLedgerVO,
-  ExamScannerPageRegistrationStatus,
-  ScanAttentionTypeCode,
-  ScannerKioskScanMode,
-} from '@/apis/mark/scanner-kiosk'
 import {
   closeScannerKioskBatch,
   discardScannedPage,
@@ -63,11 +65,8 @@ import {
   pageScannerKioskBatchHistory,
   pageScannerKioskExamOptions,
   sealScannerKioskBatch,
-  startScannerKioskBatch,
+  startScannerKioskBatch
 } from '@/apis/mark/scanner-kiosk'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
@@ -92,7 +91,7 @@ export const SCANNER_DUPLEX_MODE_LABEL: Record<ScannerPolicy['duplexMode'], stri
   DUPLEX: '双面',
 }
 
-export { SemesterOptions, getSemesterDescription }
+export { getSemesterDescription, SemesterOptions }
 
 // ================================================================
 // 主 composable
@@ -114,17 +113,14 @@ export function useKioskWorkflow() {
   const kioskContext = ref<ExamScannerKioskContextVO | null>(null)
   const currentJob = ref<ScanJobResponse | null>(null)
   const loading = ref(false)
-  const contextLoading = ref(false)
   const errorMessage = ref('')
   const successMessage = ref('')
   const previewPageNo = ref(0)
-  const configOpen = ref(false)
   const expectedPages = ref<number | undefined>()
   const scanMode = ref<ScannerKioskScanMode>('DIRECT')
   const supplementTargetPageNo = ref<number | undefined>()
   const supplementReason = ref('')
   const activeBatchExternalNo = ref('')
-  const localJobRecoveryMessage = ref('')
   /**
    * 补扫子模式：true=替换目标页（旧扫描页 SUPERSEDED），false=纯追加补扫。
    * 仅在 scanMode==='SUPPLEMENT' 时有效；切到其他模式由 changeScanMode 自动重置。
@@ -427,36 +423,6 @@ export function useKioskWorkflow() {
     return `${mode} · ${replaceText} · ${targetText}`
   })
 
-  const latestBatchLifecycleItems = computed(() => {
-    const batch = kioskContext.value?.latestBatch
-    if (!batch) return [] as { label: string, value: string, danger?: boolean }[]
-    const items: { label: string, value: string, danger?: boolean }[] = []
-    if (batch.sealedAt) {
-      items.push({
-        label: '封存',
-        value: `${formatTime(batch.sealedAt)}${batch.sealedBy ? ` · #${batch.sealedBy}` : ''}`,
-      })
-    }
-    if (batch.discardedAt || batch.status === 'DISCARDED') {
-      items.push({
-        label: '废弃',
-        value: `${formatTime(batch.discardedAt)}${batch.discardedBy ? ` · #${batch.discardedBy}` : ''}`,
-        danger: true,
-      })
-    }
-    if (batch.discardReason) {
-      items.push({ label: '原因', value: batch.discardReason, danger: true })
-    }
-    if (batch.pendingUploadCount > 0) {
-      items.push({
-        label: '阻断',
-        value: `仍有 ${batch.pendingUploadCount} 页待上传，不能封存`,
-        danger: true,
-      })
-    }
-    return items
-  })
-
   const latestBatchSealBlockedReason = computed(() => {
     const batch = kioskContext.value?.latestBatch
     const device = kioskContext.value?.device
@@ -515,28 +481,6 @@ export function useKioskWorkflow() {
     }
   })
 
-  const latestBatchPageStats = computed(() => {
-    const batch = kioskContext.value?.latestBatch
-    if (!batch) return null
-    return {
-      declared: batch.pageCount,
-      received: batch.receivedPageCount,
-      pending: batch.pendingUploadCount,
-      attention: batch.attentionItemCount,
-    }
-  })
-
-  const latestBatchStatsText = computed(() => {
-    const stats = latestBatchPageStats.value
-    if (!stats) return { declared: '-', received: '-', pending: '-', attention: '-' }
-    return {
-      declared: String(stats.declared),
-      received: String(stats.received),
-      pending: String(stats.pending),
-      attention: String(stats.attention),
-    }
-  })
-
   const latestBatchPeriodText = computed(() => {
     const batch = kioskContext.value?.latestBatch
     if (!batch) return '-'
@@ -551,20 +495,6 @@ export function useKioskWorkflow() {
     return `${health.value.pendingUploadJobs} 个任务`
   })
 
-  const pendingUploadDiagnosticText = computed(() => {
-    if (!health.value || health.value.pendingUploadJobs <= 0 || currentJob.value) return ''
-    if (!localJobRecoveryMessage.value) {
-      return '本地 Agent 存在未完成上传任务，但不属于当前考试、设备或班级范围'
-    }
-    return localJobRecoveryMessage.value
-  })
-
-  const busyStateText = computed(() => {
-    const job = busyState.value.activeJob
-    if (job?.status === 'FAILED') return '扫描仪任务已失败，请先处理失败项'
-    return '扫描仪正在执行任务'
-  })
-
   // -------------------------------------------------------------
   // helpers - 文案 / 工具函数（旧 demo 中的 helper 直接迁移）
   // -------------------------------------------------------------
@@ -573,15 +503,6 @@ export function useKioskWorkflow() {
     if (mode === 'SUPPLEMENT') return `补扫${suffix}`
     if (mode === 'ARCHIVE') return `历史存档${suffix}`
     return `首次扫描${suffix}`
-  }
-
-  function pageStatusText(status: LocalScanPageStatus) {
-    if (status === 'CAPTURED') return '已采集'
-    if (status === 'PREPROCESSED') return '已预处理'
-    if (status === 'UPLOADING') return '上传中'
-    if (status === 'UPLOADED') return '已上传'
-    if (status === 'FAILED') return '失败'
-    return '已删除'
   }
 
   function agentHealthStatusLabel(status?: AgentHealthStatus) {
@@ -759,17 +680,12 @@ export function useKioskWorkflow() {
       kioskContext.value = null
       return
     }
-    contextLoading.value = true
-    try {
-      kioskContext.value = await getScannerKioskContext({
-        examId: examId.value,
-        scannerDeviceId: queryScannerDeviceId.value || undefined,
-        scannerStationId: queryScannerStationId.value || undefined,
-        scanMode: scanMode.value,
-      })
-    } finally {
-      contextLoading.value = false
-    }
+    kioskContext.value = await getScannerKioskContext({
+      examId: examId.value,
+      scannerDeviceId: queryScannerDeviceId.value || undefined,
+      scannerStationId: queryScannerStationId.value || undefined,
+      scanMode: scanMode.value,
+    })
   }
 
   async function refreshScannersByUser() {
@@ -934,13 +850,13 @@ export function useKioskWorkflow() {
         historyLedgerError.value = '历史批次缺少 scannerStationId，无法查询账本'
         return
       }
-      const snapshot = await fetchScannerPageLedger({
+
+      historyLedgerSnapshot.value = await fetchScannerPageLedger({
         examId: examId.value,
         scannerDeviceId: item.scannerDeviceId,
         scannerStationId: stationId,
         batchExternalNo: item.batchExternalNo,
       })
-      historyLedgerSnapshot.value = snapshot
     } catch (error) {
       historyLedgerError.value = error instanceof Error
         ? error.message
@@ -993,7 +909,6 @@ export function useKioskWorkflow() {
     const deviceId = getActiveScannerDeviceId()
     const stationId = getActiveScannerStationId()
     if (!examId.value || !ctx || !deviceId || !stationId) {
-      localJobRecoveryMessage.value = ''
       return
     }
     const response = await listScanJobs({
@@ -1015,7 +930,7 @@ export function useKioskWorkflow() {
         && (hasActiveCurrentJob || isRecoverableLocalJob(currentPersistedJob))
         ? currentPersistedJob
         : undefined)
-        || (!hasActiveCurrentJob
+      || (!hasActiveCurrentJob
           ? recoverableJobs.find((job) => {
               return (
                 job.examId === examId.value
@@ -1029,7 +944,6 @@ export function useKioskWorkflow() {
     if (hasActiveCurrentJob && recoverableJob) {
       currentJob.value = recoverableJob
       activeBatchExternalNo.value = recoverableJob.batchExternalNo
-      localJobRecoveryMessage.value = ''
       if (shouldPollRecoveredJob(recoverableJob)) {
         startJobPolling(recoverableJob.scanJobId)
       }
@@ -1039,13 +953,10 @@ export function useKioskWorkflow() {
       return
     }
     if (!recoverableJob) {
-      localJobRecoveryMessage.value
-        = recoverableJobs.length > 0 ? '本地任务与当前班级范围不一致，未自动接管' : ''
       return
     }
     currentJob.value = recoverableJob
     activeBatchExternalNo.value = recoverableJob.batchExternalNo
-    localJobRecoveryMessage.value = ''
     if (shouldPollRecoveredJob(recoverableJob)) {
       startJobPolling(recoverableJob.scanJobId)
     }
@@ -1068,19 +979,6 @@ export function useKioskWorkflow() {
       supplementReason.value = ''
       supplementReplaceTargetPage.value = false
     }
-    errorMessage.value = ''
-    await refreshKioskContext()
-  }
-
-  async function prepareSupplementScan(pageNo: number, action: '补扫' | '替换') {
-    if (currentJobBlocksWorkspace.value) {
-      errorMessage.value = '当前扫描任务未结束，不能切换到补扫模式'
-      return
-    }
-    scanMode.value = 'SUPPLEMENT'
-    supplementTargetPageNo.value = pageNo
-    supplementReason.value = `${action}第 ${pageNo} 页`
-    supplementReplaceTargetPage.value = action === '替换'
     errorMessage.value = ''
     await refreshKioskContext()
   }
@@ -1486,7 +1384,6 @@ export function useKioskWorkflow() {
       await activateLocalAgent(payload)
       successMessage.value = '一体机已激活'
       await refreshAll()
-      configOpen.value = false
     } catch (error) {
       handleError(error)
     } finally {
@@ -1767,19 +1664,14 @@ export function useKioskWorkflow() {
     kioskContext,
     currentJob,
     loading,
-    contextLoading,
     errorMessage,
     successMessage,
     previewPageNo,
-    configOpen,
     expectedPages,
     scanMode,
     supplementTargetPageNo,
     supplementReason,
     supplementReplaceTargetPage,
-    activeBatchExternalNo,
-    localJobRecoveryMessage,
-    busyState,
     activationForm,
     examId,
     examOptions,
@@ -1806,7 +1698,6 @@ export function useKioskWorkflow() {
 
     // ---- computed ----
     selectedExamOption,
-    availableScanners,
     selectedScanner,
     visiblePages,
     exceptionPages,
@@ -1824,7 +1715,6 @@ export function useKioskWorkflow() {
     canStartScan,
     canSwitchScanMode,
     canSwitchExam,
-    canSwitchScanner,
     canEditScanSetup,
     canActivateAgent,
     canUnbindAgent,
@@ -1833,26 +1723,16 @@ export function useKioskWorkflow() {
     uploadStage,
     latestBatchText,
     latestBatchModeText,
-    latestBatchLifecycleItems,
     latestBatchSealBlockedReason,
     canSealLatestBatch,
     examTermText,
     declaredClassChips,
     kioskMetrics,
-    latestBatchPageStats,
-    latestBatchStatsText,
     latestBatchPeriodText,
     pendingUploadJobsText,
-    pendingUploadDiagnosticText,
-    busyStateText,
-
-    // ---- query 透传 ----
-    queryScannerDeviceId,
-    queryScannerStationId,
 
     // ---- 文案 helper ----
     scanModeText,
-    pageStatusText,
     agentHealthStatusLabel,
     endpointOnlineStatusLabel,
     scannerColorModeLabel,
@@ -1866,9 +1746,6 @@ export function useKioskWorkflow() {
 
     // ---- 数据刷新 ----
     refreshAll,
-    refreshHealth,
-    refreshScanners,
-    refreshKioskContext,
     refreshScannersByUser,
     refreshPageLedger,
     onManualRefreshLedger,
@@ -1893,7 +1770,6 @@ export function useKioskWorkflow() {
 
     // ---- 模式切换 ----
     changeScanMode,
-    prepareSupplementScan,
 
     // ---- 扫描任务操作 ----
     submitScanJob,
@@ -1911,14 +1787,6 @@ export function useKioskWorkflow() {
     activateAgent,
     unbindAgent,
     triggerDiagnosticsExport,
-
-    // ---- busy state ----
-    resetBusyState,
-
-    // ---- 内部诊断 helper（部分 stage 需要） ----
-    getActiveBatchExternalNo,
-    getActiveScannerDeviceId,
-    getActiveScannerStationId,
   }
 }
 

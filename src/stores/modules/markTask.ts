@@ -1,5 +1,4 @@
-import type { ReviewTaskItemVO, ReviewTaskQueryPayload } from '@/apis/mark/exam'
-import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
+import type {ReviewTaskItemVO, ReviewTaskQueryPayload} from '@/apis/mark/exam'
 /**
  * 阅卷任务 Store
  *
@@ -25,13 +24,10 @@ import type {
   TeacherClaimContextQueryPayload,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import {
-  claimMarkingTasks,
-  getTeacherClaimContext,
-  listMarkingTasks,
-} from '@/apis/mark/marking-organization'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import {defineStore} from 'pinia'
+import {computed, ref} from 'vue'
+import {claimReviewTask, listReviewTasks} from '@/apis/mark/exam'
+import {claimMarkingTasks, getTeacherClaimContext, listMarkingTasks,} from '@/apis/mark/marking-organization'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
@@ -49,7 +45,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
    * pagination 暴露给消费侧用于检查截断或显示分页 UI。
    */
   const REVIEW_TASKS_DEFAULT_PAGE_SIZE = 200
-  const reviewTasksPagination = ref<{ pageNum: number; pageSize: number; total: number }>({
+  const reviewTasksPagination = ref<{ pageNum: number, pageSize: number; total: number }>({
     pageNum: 1,
     pageSize: 0,
     total: 0,
@@ -78,8 +74,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   async function loadTasks(payload: MarkingTaskQueryPayload): Promise<MarkingTaskVO[]> {
     tasksLoading.value = true
     try {
-      const result = await listMarkingTasks(payload)
-      tasks.value = result
+      tasks.value = await listMarkingTasks(payload)
       tasksLoadedExamId.value = payload.examId
       return tasks.value
     } finally {

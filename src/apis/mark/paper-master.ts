@@ -5,8 +5,8 @@
  * 基路径: /api/mark/exams
  */
 
-import http from '@/config/axios'
 import type { PageResult, QueryDto } from '@/types'
+import http from '@/config/axios'
 
 /** 试卷母版未配置业务码 - 与后端 ResultCodeEnum.EXAM_MARK_PAPER_MASTER_NOT_CONFIGURED 对齐 */
 export const PAPER_MASTER_NOT_CONFIGURED_CODE = 20015

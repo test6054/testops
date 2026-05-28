@@ -224,7 +224,7 @@ export interface AllocationPolicySavePayload {
   /** 教师最大待处理任务数 */
   loadLimit?: number
   anonymousTokenPolicy?: AnonymousTokenPolicyCode
-  /** 优先级规则原始字段，教师侧页面不再展示或编辑 */
+  /** 优先级策略备注 */
   priorityRule?: string
 }
 
@@ -249,7 +249,7 @@ export interface TrialSessionCreatePayload {
 /** 试评校准请求 - 对应后端 TrialSessionCalibrateRequest */
 export interface TrialSessionCalibratePayload {
   sessionId: string
-  /** 校准结果原始字段，教师侧页面不再展示或编辑 */
+  /** 校准结论 */
   calibrationResult?: string
   discussionNotes?: string
 }
@@ -397,7 +397,7 @@ export interface TrialSessionVO {
   organizationId: string
   groupId: string
   sessionStatus: TrialSessionStatusCode
-  /** 校准结论原始字段，教师侧页面不直接展示 */
+  /** 校准结论 */
   calibrationResult?: string
   discussionNotes?: string
   /** 试评关闭原因，closeTrialSession 写入 */
@@ -417,7 +417,7 @@ export interface FormalSessionVO {
   sessionStatus: FormalSessionStatusCode
   startTime?: string
   endTime?: string
-  /** 任务范围原始字段，教师侧页面不直接展示 */
+  /** 正评任务范围描述 */
   taskScope?: string
   /** 正评暂停原因，pauseFormalSession 写入 */
   pauseReason?: string

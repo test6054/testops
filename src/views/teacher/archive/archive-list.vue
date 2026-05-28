@@ -113,8 +113,8 @@
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
               {{
-                archives[index].archiveStatusMessage ||
-                archiveStatusLabel(archives[index].archiveStatus)
+                archives[index].archiveStatusMessage
+                  || archiveStatusLabel(archives[index].archiveStatus)
               }}
             </UiTag>
             <div
@@ -154,8 +154,8 @@
               </UiButton>
               <UiButton
                 v-if="
-                  archives[index].archiveStatus === 'DRAFT' ||
-                  archives[index].archiveStatus === 'PACKAGING_FAILED'
+                  archives[index].archiveStatus === 'DRAFT'
+                    || archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
                 size="sm"
                 @click="confirmPackage(archives[index])"
@@ -231,14 +231,6 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
-import {
-  ARCHIVE_PHASE_LABEL,
-  ARCHIVE_STATUS_LABEL,
-  ARCHIVE_STATUS_TONE,
-  createArchive,
-  listArchives,
-  packageArchive,
-} from '@/apis/mark/archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -247,6 +239,14 @@ import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  ARCHIVE_PHASE_LABEL,
+  ARCHIVE_STATUS_LABEL,
+  ARCHIVE_STATUS_TONE,
+  createArchive,
+  listArchives,
+  packageArchive,
+} from '@/apis/mark/archive'
 import {
   UiAlertStrip,
   UiBadge,
@@ -339,7 +339,7 @@ interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
   description: string
-  action: { label: string; handler: () => void }
+  action: { label: string, handler: () => void }
 }
 
 const archiveAlert = computed<ArchiveAlert | null>(() => {
@@ -399,12 +399,12 @@ function syncArchiveStageToStore(): void {
   )
   const hasActive = statuses.some(
     (s) =>
-      s === 'PACKAGING' ||
-      s === 'ACTIVE' ||
-      s === 'APPRAISAL_PENDING' ||
-      s === 'DESTRUCTION_PENDING' ||
-      s === 'DESTRUCTION_APPROVED' ||
-      s === 'DESTRUCTION_EXECUTING',
+      s === 'PACKAGING'
+      || s === 'ACTIVE'
+      || s === 'APPRAISAL_PENDING'
+      || s === 'DESTRUCTION_PENDING'
+      || s === 'DESTRUCTION_APPROVED'
+      || s === 'DESTRUCTION_EXECUTING',
   )
   const hasCompleted = statuses.some((s) => s === 'APPRAISAL_DECIDED' || s === 'DESTROYED')
   let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
@@ -413,8 +413,8 @@ function syncArchiveStageToStore(): void {
     status = 'blocked'
     const draftOrFailed = statuses.filter((s) => s === 'DRAFT' || s === 'PACKAGING_FAILED').length
     const destructionFailed = statuses.filter((s) => s === 'DESTRUCTION_FAILED').length
-    hint =
-      destructionFailed > 0
+    hint
+      = destructionFailed > 0
         ? `${destructionFailed} 个销毁失败需人工处理`
         : `${draftOrFailed} 个草稿 / 打包失败待人工处理`
   } else if (hasActive) {
@@ -422,14 +422,14 @@ function syncArchiveStageToStore(): void {
     const packaging = statuses.filter((s) => s === 'PACKAGING').length
     const archived = statuses.filter(
       (s) =>
-        s === 'ACTIVE' ||
-        s === 'APPRAISAL_PENDING' ||
-        s === 'DESTRUCTION_PENDING' ||
-        s === 'DESTRUCTION_APPROVED' ||
-        s === 'DESTRUCTION_EXECUTING',
+        s === 'ACTIVE'
+        || s === 'APPRAISAL_PENDING'
+        || s === 'DESTRUCTION_PENDING'
+        || s === 'DESTRUCTION_APPROVED'
+        || s === 'DESTRUCTION_EXECUTING',
     ).length
-    hint =
-      packaging > 0
+    hint
+      = packaging > 0
         ? `${packaging} 个打包中 / ${archived} 个归档处理中`
         : `${archived} 个归档处理中`
   } else if (hasCompleted) {
@@ -478,7 +478,7 @@ function handleReset(): void {
   void loadArchives()
 }
 
-function handleArchivePageChange(payload: { current: number; pageSize: number }): void {
+function handleArchivePageChange(payload: { current: number, pageSize: number }): void {
   archivePagination.pageNum = payload.current
   archivePagination.pageSize = payload.pageSize
   void loadArchives()
@@ -504,9 +504,9 @@ async function submitCreate(): Promise<void> {
     return
   }
   if (
-    !createForm.includeOriginalScans &&
-    !createForm.includeMarkedSlices &&
-    !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans
+    && !createForm.includeMarkedSlices
+    && !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return

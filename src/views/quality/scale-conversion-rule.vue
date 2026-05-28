@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {ColumnsType} from 'ant-design-vue/es/table'
 import type {
   ScaleConversionRuleItem,
   ScaleConversionRuleQueryPayload,
@@ -7,14 +7,14 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
-import { isScaleType, SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
-import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import { confirmAsync } from '@/composables/useConfirmDialog'
+import {isScaleType, SCALE_TYPE_LABEL, scaleConversionRuleApi} from '@/apis/quality'
+import type {FilterField} from '@/components/ui-guide/ui/types'
+import type {SignalMetric} from '@/types/workbench'
+import {message} from 'ant-design-vue'
+import {computed, onMounted, reactive, ref} from 'vue'
+import {UiButton, UiDataTable, UiSearchForm} from '@/components/ui-guide/ui'
+import {ContextBar, SignalBand, StageWorkbenchShell} from '@/components/workbench'
+import {confirmAsync} from '@/composables/useConfirmDialog'
 
 const list = ref<ScaleConversionRuleVO[]>([])
 const total = ref(0)
@@ -26,7 +26,7 @@ const query = reactive<ScaleConversionRuleQueryPayload>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType; label: string }[] = [
+const scaleTypeOptions: { value: ScaleType, label: string }[] = [
   { value: 'FIVE_LEVEL', label: SCALE_TYPE_LABEL.FIVE_LEVEL },
   { value: 'FOUR_LEVEL', label: SCALE_TYPE_LABEL.FOUR_LEVEL },
   { value: 'TEN_POINT', label: SCALE_TYPE_LABEL.TEN_POINT },
@@ -149,7 +149,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -259,7 +259,7 @@ function validateEditor(): ScaleConversionRuleItem[] | null {
     return null
   }
   const normalizedSourceValues = new Set<string>()
-  const items = editor.items.map((item, index) => {
+  return editor.items.map((item, index) => {
     const sourceValue = item.sourceValue.trim()
     if (!sourceValue) {
       throw new Error(`第 ${index + 1} 条原始值不能为空`)
@@ -268,7 +268,7 @@ function validateEditor(): ScaleConversionRuleItem[] | null {
       throw new Error(`第 ${index + 1} 条换算分值不能为空`)
     }
     if (Number.isNaN(Number(item.normalizedScore))) {
-      throw new Error(`第 ${index + 1} 条换算分值不能为空`)
+      throw new TypeError(`第 ${index + 1} 条换算分值不能为空`)
     }
     if (normalizedSourceValues.has(sourceValue)) {
       throw new Error(`原始值重复：${sourceValue}`)
@@ -280,7 +280,6 @@ function validateEditor(): ScaleConversionRuleItem[] | null {
       sortOrder: item.sortOrder ?? index + 1,
     }
   })
-  return items
 }
 
 async function submitEditor() {

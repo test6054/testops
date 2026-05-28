@@ -1,3 +1,4 @@
+import type { KioskCtx } from './kioskInjection'
 /**
  * useKioskShortcuts - 全局键盘快捷键绑定
  *
@@ -22,7 +23,6 @@
  *   Alt+4    切到 finalize
  */
 import { onBeforeUnmount, onMounted } from 'vue'
-import type { KioskCtx } from './kioskInjection'
 import { KIOSK_STAGES } from './useStageMachine'
 
 /**
@@ -34,8 +34,7 @@ function shouldIgnoreKey(event: KeyboardEvent): boolean {
   if (!target) return false
   const tag = target.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
-  if ((target as HTMLElement).isContentEditable) return true
-  return false
+  return (target as HTMLElement).isContentEditable;
 }
 
 /**
@@ -46,8 +45,7 @@ function isSpaceOnButton(event: KeyboardEvent): boolean {
   const target = event.target as HTMLElement | null
   if (!target) return false
   if (target.tagName === 'BUTTON') return true
-  if (target.getAttribute && target.getAttribute('role') === 'button') return true
-  return false
+  return target.getAttribute && target.getAttribute('role') === 'button';
 }
 
 export function useKioskShortcuts(ctx: KioskCtx): void {

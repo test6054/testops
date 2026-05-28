@@ -169,12 +169,12 @@
 import type { DataNode } from 'ant-design-vue/es/vc-tree/interface'
 import type { CheckInfo } from 'ant-design-vue/es/vc-tree/props'
 import type { ClassStudentTreeNode } from '@/apis/edu/class'
-import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import { isErrorHandled } from '@/utils/error-handler'
 
 // Props

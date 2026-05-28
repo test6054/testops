@@ -239,15 +239,7 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
-import {
-  GRADE_REVIEW_REASON_TYPE_LABEL,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -257,6 +249,14 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  GRADE_REVIEW_REASON_TYPE_LABEL,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
+import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
 import {
   UiBadge,
   UiButton,
@@ -297,13 +297,13 @@ const form = reactive({
 // 来自 score-detail 题目级复核入口时，记录来源题号用于弹窗内提示
 const sourceQuestionId = ref<string | undefined>(undefined)
 
-const reasonTypeOptions: Array<{ value: GradeReviewReasonTypeCode; label: string }> =
-  Object.entries(GRADE_REVIEW_REASON_TYPE_LABEL).map(([value, label]) => ({
+const reasonTypeOptions: Array<{ value: GradeReviewReasonTypeCode, label: string }>
+  = Object.entries(GRADE_REVIEW_REASON_TYPE_LABEL).map(([value, label]) => ({
     value: value as GradeReviewReasonTypeCode,
     label,
   }))
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -439,7 +439,8 @@ async function submit() {
   try {
     const paperInstanceId = selectedAppealableExam.value.paperInstanceId
     if (!paperInstanceId) {
-      throw new Error(`可复核考试缺少试卷实例 ID：examId=${selectedAppealableExam.value.examId}`)
+      message.error(`可复核考试缺少试卷实例 ID：examId=${selectedAppealableExam.value.examId}`)
+      return
     }
     const questionIdsArray = parseQuestionIds(form.questionIds)
     await submitReviewRequest({

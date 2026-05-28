@@ -1091,14 +1091,6 @@ function optionalRecordString(record: Record<string, unknown>, key: string, fiel
   return value
 }
 
-function requireRecordNumber(record: Record<string, unknown>, key: string, fieldName: string): number {
-  const value = record[key]
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`${fieldName}必须是数字`)
-  }
-  return value
-}
-
 function optionalRecordNumber(record: Record<string, unknown>, key: string, fieldName: string): number | undefined {
   const value = record[key]
   if (value === undefined || value === null) return undefined

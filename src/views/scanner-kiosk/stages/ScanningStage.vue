@@ -66,7 +66,7 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: { status: string; diagnostic?: unknown }) =>
+const isPageException = (page: { status: string, diagnostic?: unknown }) =>
   page.status === 'FAILED' || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {
@@ -166,8 +166,7 @@ function shouldIgnoreKey(event: KeyboardEvent): boolean {
   if (!target) return false
   const tag = target.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
-  if (target.isContentEditable) return true
-  return false
+  return target.isContentEditable;
 }
 
 function onViewKeyDown(event: KeyboardEvent) {
@@ -224,7 +223,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
       </div>
       <div v-if="hasJob" class="ribbon-progress">
         <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: workflow.scanProgress.value + '%' }" />
+          <div class="progress-fill" :style="{ width: `${workflow.scanProgress.value}%` }" />
         </div>
         <span class="progress-pct">{{ workflow.scanProgress.value }}%</span>
       </div>

@@ -252,13 +252,6 @@
                       allow-clear
                     />
                   </a-form-item>
-                  <a-form-item label="优先级规则">
-                    <a-alert
-                      type="info"
-                      show-icon
-                      message="优先级规则已进入结构化治理，当前页面不再提供原始结构录入。"
-                    />
-                  </a-form-item>
                   <UiButton :loading="savingAllocation" @click="submitAllocation">
                     <template #icon><SaveOutlined /></template>
                     保存分配策略
@@ -455,7 +448,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   AllocationPolicySavePayload,
   AnonymousTokenPolicyCode,
@@ -469,6 +461,15 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySavePayload,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
+import { getExamTemplate } from '@/apis/mark/exam'
 import {
   ANONYMOUS_TOKEN_POLICY_LABEL,
   closeQuestionGroup,
@@ -488,14 +489,6 @@ import {
   updateOrganization,
   updateOrganizationStatus,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getExamTemplate } from '@/apis/mark/exam'
 import {
   UiButton,
   UiDataTable,
@@ -819,7 +812,6 @@ interface PolicyForm {
   batchSize?: number
   loadLimit?: number
   anonymousTokenPolicy?: AnonymousTokenPolicyCode
-  priorityRule?: string
   recycleGroupId?: string
   timeoutMinutes?: number
   maxPendingCount?: number
@@ -832,7 +824,6 @@ const policyForm = reactive<PolicyForm>({
   batchSize: 20,
   loadLimit: 50,
   anonymousTokenPolicy: 'PER_EXAM',
-  priorityRule: '',
   recycleGroupId: undefined,
   timeoutMinutes: 60,
   maxPendingCount: 30,
@@ -869,7 +860,6 @@ async function submitAllocation(): Promise<void> {
       batchSize: policyForm.batchSize,
       loadLimit: policyForm.loadLimit,
       anonymousTokenPolicy: policyForm.anonymousTokenPolicy,
-      priorityRule: undefined,
     }
     await saveAllocationPolicy(payload)
     message.success('分配策略已保存')

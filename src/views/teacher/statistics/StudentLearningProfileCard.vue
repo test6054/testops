@@ -55,9 +55,11 @@
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="学生ID">{{ record.scopeId ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{
-            formatDateTime(record.createTime)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">
+            {{
+              formatDateTime(record.createTime)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="2">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -115,18 +117,19 @@
 </template>
 
 <script lang="ts" setup>
+import type { MasteryLevelCode } from '@/apis/mark/student-exam';
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
-import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -235,8 +238,8 @@ watch(
   (next) => {
     // 考试名册变化后，如果当前选中学生不在范围内，重置选择避免跨考试串号
     if (
-      selectedStudentUserId.value &&
-      !next.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value
+      && !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -250,8 +253,8 @@ watch(
   () => {
     // 班级联动变化时，如果当前学生不在新班级范围内，需重置选择
     if (
-      selectedStudentUserId.value &&
-      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value
+      && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false

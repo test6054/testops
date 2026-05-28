@@ -265,9 +265,9 @@
 
             <section
               v-if="
-                currentDetail.improvementSuggestion ||
-                currentDetail.mistakeClusterLabel ||
-                currentDetail.aiDiagnostic
+                currentDetail.improvementSuggestion
+                  || currentDetail.mistakeClusterLabel
+                  || currentDetail.aiDiagnostic
               "
               class="answer-drawer__section"
             >
@@ -456,6 +456,17 @@ import type {
   StudentQuestionScoreVO,
   StudentScoreDetailVO,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -472,17 +483,6 @@ import {
   OBJECTIVE_RESULT_LABEL,
   OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   UiAlertStrip,
   UiBadge,
@@ -512,7 +512,7 @@ const selectedClusterLabel = ref<string | undefined>(undefined)
  * 从题目明细中提取所有出现过的 mistakeClusterLabel，供顶部下拉选择。
  * 学生可以按错题聚类快速查看同一类型的错题。
  */
-const clusterLabelOptions = computed<Array<{ value: string; label: string }>>(() => {
+const clusterLabelOptions = computed<Array<{ value: string, label: string }>>(() => {
   const labels = new Set<string>()
   for (const question of detailQuestions.value) {
     if (question.mistakeClusterLabel) {

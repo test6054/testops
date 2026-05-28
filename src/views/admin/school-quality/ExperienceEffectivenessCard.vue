@@ -111,10 +111,10 @@
 
 <script lang="ts" setup>
 import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
-import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
+import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'

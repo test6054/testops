@@ -181,10 +181,6 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
-import {
-  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
@@ -193,6 +189,10 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,

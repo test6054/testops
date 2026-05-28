@@ -212,17 +212,17 @@ import type {
   ReviewQuestionProgressItemVO,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam'
-import {
-  getMarkingProgress,
-  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/exam'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
+import {
+  getMarkingProgress,
+  REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE as STATUS_TONE,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,

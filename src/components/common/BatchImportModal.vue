@@ -402,11 +402,11 @@ const handleDownloadTemplate = async () => {
 }
 
 const beforeUpload = (file: File) => {
-  const isExcel =
-    file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-    file.type === 'application/vnd.ms-excel' ||
-    file.name.endsWith('.xlsx') ||
-    file.name.endsWith('.xls')
+  const isExcel
+    = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      || file.type === 'application/vnd.ms-excel'
+      || file.name.endsWith('.xlsx')
+      || file.name.endsWith('.xls')
 
   if (!isExcel) {
     ErrorHandler.handle(new Error('只能上传 Excel 文件（.xlsx 或 .xls 格式）'))

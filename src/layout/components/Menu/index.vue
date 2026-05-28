@@ -33,9 +33,9 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
-import { ref, watch } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { debounce } from 'lodash-es'
+import { ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
 import { useAppStore, useRouteStore } from '@/stores'
 import { isExternal } from '@/utils/validate'

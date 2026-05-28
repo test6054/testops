@@ -3,9 +3,9 @@ import type {
   ScanAttentionStatusCode,
   ScanAttentionTypeCode,
 } from '@/apis/mark/exam'
-import { validateScanAttentionSourceType, validateScanAttentionStatus } from '@/apis/mark/exam'
 import type { ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
 import type { PageResult, QueryDto } from '@/types'
+import { validateScanAttentionSourceType, validateScanAttentionStatus } from '@/apis/mark/exam'
 import http from '@/config/axios'
 
 export type { ScanAttentionSourceTypeCode, ScanAttentionStatusCode, ScanAttentionTypeCode }
@@ -16,11 +16,11 @@ export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
 export type ExamScannerPageServerReceiveStatus = 'RECEIVED'
-export type ExamScannerPageRegistrationStatus =
-  | 'REGISTERED'
-  | 'PENDING'
-  | 'DISCARDED'
-  | 'SUPERSEDED'
+export type ExamScannerPageRegistrationStatus
+  = | 'REGISTERED'
+    | 'PENDING'
+    | 'DISCARDED'
+    | 'SUPERSEDED'
 
 export interface ExamScannerKioskContextRequest {
   examId: string
@@ -500,7 +500,7 @@ function requirePageNumber(value: unknown, fieldName: string): number {
   if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
     return value
   }
-  if (typeof value === 'string' && /^[0-9]+$/.test(value)) {
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
     const parsed = Number(value)
     if (Number.isSafeInteger(parsed)) {
       return parsed
@@ -525,8 +525,8 @@ function requireBoolean(value: unknown, fieldName: string): boolean {
 
 function requireStringList(value: unknown, fieldName: string): string[] {
   if (
-    !Array.isArray(value) ||
-    value.some((item) => typeof item !== 'string' || item.length === 0)
+    !Array.isArray(value)
+    || value.some((item) => typeof item !== 'string' || item.length === 0)
   ) {
     throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
   }
@@ -542,8 +542,8 @@ function optionalStringList(value: unknown, fieldName: string): string[] | undef
 
 function requireNullableStringList(value: unknown, fieldName: string): (string | null)[] {
   if (
-    !Array.isArray(value) ||
-    value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
+    !Array.isArray(value)
+    || value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
   ) {
     throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
   }
@@ -611,10 +611,10 @@ function requireLedgerServerReceiveStatus(value: unknown): ExamScannerPageServer
 
 function requireLedgerRegistrationStatus(value: unknown): ExamScannerPageRegistrationStatus {
   if (
-    value !== 'REGISTERED' &&
-    value !== 'PENDING' &&
-    value !== 'DISCARDED' &&
-    value !== 'SUPERSEDED'
+    value !== 'REGISTERED'
+    && value !== 'PENDING'
+    && value !== 'DISCARDED'
+    && value !== 'SUPERSEDED'
   ) {
     throw new TypeError('扫描工作台接口 items.registrationStatus 格式错误')
   }
@@ -902,10 +902,10 @@ function optionalScanAttentionType(
 
 function requireScanAttentionType(value: unknown, fieldName: string): ScanAttentionTypeCode {
   if (
-    value !== 'QUALITY_BLOCK' &&
-    value !== 'PROCESSING_BLOCK' &&
-    value !== 'DUPLICATE_PENDING' &&
-    value !== 'RECOGNITION_REVIEW'
+    value !== 'QUALITY_BLOCK'
+    && value !== 'PROCESSING_BLOCK'
+    && value !== 'DUPLICATE_PENDING'
+    && value !== 'RECOGNITION_REVIEW'
   ) {
     throw new TypeError(`${fieldName} 格式错误`)
   }

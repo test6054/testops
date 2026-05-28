@@ -27,9 +27,11 @@
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="聚类数">{{ record.clusterCount ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{
-            formatDateTime(record.createTime)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成时间">
+            {{
+              formatDateTime(record.createTime)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
           <a-descriptions-item label="trace ID" :span="2">
             <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
@@ -83,20 +85,20 @@
 
 <script lang="ts" setup>
 import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)

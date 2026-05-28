@@ -22,6 +22,17 @@ import type {
   AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   AI_MANUAL_HANDLING_STATUS_LABEL,
   AI_OUTPUT_VALIDATION_COLOR,
@@ -39,17 +50,6 @@ import {
   isAiTaskStatus,
   isAiTaskType,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   CourseSelector,
   ProgramSelector,
@@ -165,7 +165,7 @@ const auditDrawerOpen = ref(false)
 const auditEvents = ref<AuditTimelineEvent[]>([])
 const auditLoading = ref(false)
 
-const taskTypeOptions: Array<{ value: AiTaskType; label: string }> = [
+const taskTypeOptions: Array<{ value: AiTaskType, label: string }> = [
   { value: 'SYLLABUS_PARSE', label: AI_TASK_TYPE_LABEL.SYLLABUS_PARSE },
   { value: 'TRAINING_PLAN_PARSE', label: AI_TASK_TYPE_LABEL.TRAINING_PLAN_PARSE },
   { value: 'ACHIEVEMENT_DIAGNOSIS', label: AI_TASK_TYPE_LABEL.ACHIEVEMENT_DIAGNOSIS },
@@ -181,26 +181,26 @@ const taskTypeOptions: Array<{ value: AiTaskType; label: string }> = [
     label: AI_TASK_TYPE_LABEL.INDIRECT_RESPONSE_DOC_PARSE,
   },
 ]
-const statusOptions: Array<{ value: AiTaskStatus; label: string }> = [
+const statusOptions: Array<{ value: AiTaskStatus, label: string }> = [
   { value: 'PENDING', label: AI_TASK_STATUS_LABEL.PENDING },
   { value: 'PROCESSING', label: AI_TASK_STATUS_LABEL.PROCESSING },
   { value: 'SUCCEEDED', label: AI_TASK_STATUS_LABEL.SUCCEEDED },
   { value: 'FAILED', label: AI_TASK_STATUS_LABEL.FAILED },
   { value: 'CANCELLED', label: AI_TASK_STATUS_LABEL.CANCELLED },
 ]
-const businessTypeOptions: { value: AiTaskBusinessType; label: string }[] = [
+const businessTypeOptions: { value: AiTaskBusinessType, label: string }[] = [
   { value: 'ACHIEVEMENT_RESULT', label: AI_TASK_BUSINESS_TYPE_LABEL.ACHIEVEMENT_RESULT },
   { value: 'QUALITY_COURSE', label: AI_TASK_BUSINESS_TYPE_LABEL.QUALITY_COURSE },
   { value: 'TRAINING_PLAN', label: AI_TASK_BUSINESS_TYPE_LABEL.TRAINING_PLAN },
   { value: 'REPORT', label: AI_TASK_BUSINESS_TYPE_LABEL.REPORT },
   { value: 'INDIRECT_FORM', label: AI_TASK_BUSINESS_TYPE_LABEL.INDIRECT_FORM },
 ]
-const validationOptions: { value: AiOutputValidation; label: string; color: string }[] = [
+const validationOptions: { value: AiOutputValidation, label: string, color: string }[] = [
   { value: 'PASSED', label: '通过（接受）', color: 'green' },
   { value: 'WARN', label: '警告（需人工审核）', color: 'orange' },
   { value: 'REJECTED', label: '退回（拒绝）', color: 'red' },
 ]
-const manualHandlingOptions: { value: AiManualHandlingStatus; label: string }[] = [
+const manualHandlingOptions: { value: AiManualHandlingStatus, label: string }[] = [
   { value: 'NONE', label: AI_MANUAL_HANDLING_STATUS_LABEL.NONE },
   { value: 'PENDING', label: AI_MANUAL_HANDLING_STATUS_LABEL.PENDING },
   { value: 'IN_PROGRESS', label: AI_MANUAL_HANDLING_STATUS_LABEL.IN_PROGRESS },
@@ -276,7 +276,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(payload: { current: number; pageSize: number }) {
+function handlePageChange(payload: { current: number, pageSize: number }) {
   query.pageNum = payload.current
   query.pageSize = payload.pageSize
   loadList()
@@ -482,10 +482,10 @@ watch(
     if (cached.id !== detailRecord.value.id) return
     // 仅在状态变化时赋值，避免不必要的引用改变
     if (
-      cached.status !== detailRecord.value.status ||
-      cached.failurePhase !== detailRecord.value.failurePhase ||
-      cached.failureReason !== detailRecord.value.failureReason ||
-      cached.finishedAt !== detailRecord.value.finishedAt
+      cached.status !== detailRecord.value.status
+      || cached.failurePhase !== detailRecord.value.failurePhase
+      || cached.failureReason !== detailRecord.value.failureReason
+      || cached.finishedAt !== detailRecord.value.finishedAt
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -577,7 +577,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleTaskResultAction(payload: { item: TaskResultItem; action: { key: string } }) {
+function handleTaskResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
   const record = list.value.find((t) => t.id === payload.item.id)
   if (record && payload.action.key === 'detail') openDetail(record)
 }
@@ -600,7 +600,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatus; title: string; completed?: boolean }> = [
+  const order: Array<{ key: AiTaskStatus, title: string, completed?: boolean }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PROCESSING', title: '运行中' },
     { key: 'SUCCEEDED', title: '成功', completed: true },

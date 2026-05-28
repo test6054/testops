@@ -13,15 +13,15 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   语义存在，不参与模型选择。
  */
 import type { AiModelProfileSavePayload, AiModelProfileVO } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AI_HEALTH_STATUS_COLOR,
   AI_HEALTH_STATUS_LABEL,
   aiModelProfileApi,
   isAiHealthStatus,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
