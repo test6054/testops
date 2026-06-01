@@ -273,16 +273,10 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
-import { getExamTemplate } from '@/apis/mark/exam'
 import type {
   PaperMasterIdentityAreaRequest,
   PaperMasterObjectiveAreaRequest,
   PaperMasterVO,
-} from '@/apis/mark/paper-master'
-import {
-  getPaperMaster,
-  isPaperMasterNotConfiguredError,
-  savePaperMaster,
 } from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -293,6 +287,12 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
+import { getExamTemplate } from '@/apis/mark/exam'
+import {
+  getPaperMaster,
+  isPaperMasterNotConfiguredError,
+  savePaperMaster,
+} from '@/apis/mark/paper-master'
 import {
   UiButton,
   UiCard,

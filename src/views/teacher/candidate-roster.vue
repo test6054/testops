@@ -189,15 +189,6 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
 import type { ExamCandidateRosterRequest } from '@/apis/mark/exam'
-import {
-  getExamDetail,
-  listExamCandidates,
-  listExamClassOptions,
-  mergeExamCandidates,
-  previewExamCandidates,
-  removeExamCandidates,
-  saveExamClassScope,
-} from '@/apis/mark/exam'
 import type { UserDto } from '@/types/api-types.d'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
@@ -208,6 +199,15 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadUserImportTemplate, tenantBatchImportUsers } from '@/apis/edu/admin-user'
+import {
+  getExamDetail,
+  listExamCandidates,
+  listExamClassOptions,
+  mergeExamCandidates,
+  previewExamCandidates,
+  removeExamCandidates,
+  saveExamClassScope,
+} from '@/apis/mark/exam'
 import BatchImportModal from '@/components/common/BatchImportModal.vue'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import StudentSelector from '@/components/quality/selectors/StudentSelector.vue'
@@ -243,7 +243,7 @@ const {
 } = useMarkExamSelector()
 
 const classIds = ref<string[]>([])
-const classOptions = ref<Array<{ label: string; value: string }>>([])
+const classOptions = ref<Array<{ label: string, value: string }>>([])
 const classOptionsLoading = ref(false)
 const classScopeHydrating = ref(false)
 const lastSavedClassIds = ref<string[]>([])
@@ -400,7 +400,7 @@ async function mergeCandidatesWithPreview(
 }
 
 function buildMergeRequest(
-  rows: Array<{ id: string; classId?: string }>,
+  rows: Array<{ id: string, classId?: string }>,
 ): ExamCandidateRosterRequest[] {
   const existing = new Set(rosterStudentUserIds.value)
   const request: ExamCandidateRosterRequest[] = []

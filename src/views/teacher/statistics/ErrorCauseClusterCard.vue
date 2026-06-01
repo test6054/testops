@@ -30,9 +30,11 @@
           <a-descriptions-item label="生成时间">
             {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
-          <a-descriptions-item label="生成耗时">{{
-            analysisLatencyText(record)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成耗时">
+            {{
+              analysisLatencyText(record)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="处理追踪编号" :span="2">
             <a-typography-text
               v-if="analysisTraceId(record)"
@@ -97,13 +99,13 @@
 
 <script lang="ts" setup>
 import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -111,7 +113,7 @@ import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)
@@ -139,8 +141,8 @@ function acceptErrorCauseClusterRecord(
     if (!value.clusterItems?.length) throw new Error('AI 错因聚类成功但缺失聚类明细')
   }
   if (
-    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') &&
-    !value.errorMessage?.trim()
+    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED')
+    && !value.errorMessage?.trim()
   ) {
     throw new Error('AI 错因聚类失败但缺失处理说明')
   }

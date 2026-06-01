@@ -320,6 +320,12 @@ import type {
   OperationLogVO,
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
+import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -331,13 +337,7 @@ import {
   OPERATION_TYPE_OPTIONS,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
-import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -370,7 +370,7 @@ const logLoading = ref(false)
 const logsLoadError = ref<Error | null>(null)
 const operationLogs = ref<OperationLogVO[]>([])
 const logFilter = reactive<{ operationType?: OperationTypeCode }>({})
-const operationTypeOptions = computed<Array<{ value: OperationTypeCode; label: string }>>(
+const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(
   () => OPERATION_TYPE_OPTIONS,
 )
 const logColumns = [
@@ -479,7 +479,7 @@ const samplesLoadError = ref<Error | null>(null)
 const diagnosticSamples = ref<DiagnosticSampleVO[]>([])
 const sampleFilter = reactive<{ sampleType?: DiagnosticSampleTypeCode }>({})
 const diagnosticSampleTypeOptions = computed<
-  Array<{ value: DiagnosticSampleTypeCode; label: string }>
+  Array<{ value: DiagnosticSampleTypeCode, label: string }>
 >(() => DIAGNOSTIC_SAMPLE_TYPE_OPTIONS)
 const sampleColumns = [
   { title: '样本类型', key: 'sampleType', dataIndex: 'sampleType', width: 160 },

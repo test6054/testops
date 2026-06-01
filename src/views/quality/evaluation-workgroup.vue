@@ -16,16 +16,16 @@ import type {
   WorkgroupMember,
   WorkgroupMemberRole,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   evaluationWorkgroupApi,
   WORKGROUP_LEVEL_LABEL,
   WORKGROUP_LEVEL_OPTIONS,
   WORKGROUP_MEMBER_ROLE_LABEL,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
@@ -127,7 +127,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -156,15 +156,23 @@ function handleFilterProgramChange(value: string | null, update: SearchFieldUpda
   update(value ?? undefined)
 }
 
+function isWorkgroupLevel(value: string): value is WorkgroupLevel {
+  return WORKGROUP_LEVEL_OPTIONS.some((item) => item.value === value)
+}
+
 function handleFilterLevelChange(value: SelectValue, update: SearchFieldUpdate) {
   if (value === undefined || value === null) {
     update(undefined)
     return
   }
-  if (typeof value !== 'string' || !WORKGROUP_LEVEL_OPTIONS.some((item) => item.value === value)) {
+  if (typeof value !== 'string' || !isWorkgroupLevel(value)) {
     throw new TypeError(`评价工作组层级选择值异常：${String(value)}`)
   }
-  update(value as WorkgroupLevel)
+  update(value)
+}
+
+function createFilterLevelChangeHandler(update: SearchFieldUpdate) {
+  return (value: SelectValue) => handleFilterLevelChange(value, update)
 }
 
 function openCreate() {
@@ -230,10 +238,10 @@ function removeMember(index: number) {
 
 async function submitEditor() {
   if (
-    !editor.programId ||
-    !editor.workgroupCode.trim() ||
-    !editor.workgroupName.trim() ||
-    !editor.convenerUserId
+    !editor.programId
+    || !editor.workgroupCode.trim()
+    || !editor.workgroupName.trim()
+    || !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -411,7 +419,7 @@ onMounted(async () => {
             allow-clear
             class="ewg__filter"
             :options="levelOptions"
-            @update:value="(v) => handleFilterLevelChange(v, update)"
+            @update:value="createFilterLevelChangeHandler(update)"
           />
         </template>
       </UiSearchForm>

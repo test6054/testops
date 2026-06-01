@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
+import { pageExams } from '@/apis/mark/exam'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 
@@ -20,7 +20,7 @@ withDefaults(
 )
 
 const loading = ref(false)
-const examOptions = ref<{ label: string; value: string }[]>([])
+const examOptions = ref<{ label: string, value: string }[]>([])
 
 /** 加载当前租户考试范围，供 AI 分析卡片选择单个考试实体。 */
 async function loadExamOptions(): Promise<void> {

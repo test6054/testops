@@ -54,15 +54,19 @@
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="学生编号">{{
-            analysisScopeText(record)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="学生编号">
+            {{
+              analysisScopeText(record)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="生成时间">
             {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
-          <a-descriptions-item label="生成耗时">{{
-            analysisLatencyText(record)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成耗时">
+            {{
+              analysisLatencyText(record)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="处理追踪编号" :span="2">
             <a-typography-text
               v-if="analysisTraceId(record)"
@@ -119,18 +123,18 @@
 
 <script lang="ts" setup>
 import type { MasteryLevelCode } from '@/apis/mark/student-exam'
-import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
-import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -195,8 +199,8 @@ function acceptStudentLearningProfileRecord(
     if (!value.diagnosisItems?.length) throw new Error('AI 学生学情成功但缺失诊断明细')
   }
   if (
-    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') &&
-    !value.errorMessage?.trim()
+    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED')
+    && !value.errorMessage?.trim()
   ) {
     throw new Error('AI 学生学情失败但缺失处理说明')
   }
@@ -302,8 +306,8 @@ watch(
   (next) => {
     // 考试名册变化后，如果当前选中学生不在范围内，重置选择避免跨考试串号
     if (
-      selectedStudentUserId.value &&
-      !next.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value
+      && !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -317,8 +321,8 @@ watch(
   () => {
     // 班级联动变化时，如果当前学生不在新班级范围内，需重置选择
     if (
-      selectedStudentUserId.value &&
-      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value
+      && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false

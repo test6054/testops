@@ -5,8 +5,8 @@
  * 用 vue h() 构造 Modal.confirm 的 content VNode。
  */
 import type { VNode } from 'vue'
-import { h, ref } from 'vue'
 import { message, Modal, Textarea } from 'ant-design-vue'
+import { h, ref } from 'vue'
 
 export interface PromptModalOptions {
   title: string

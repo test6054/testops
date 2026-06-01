@@ -122,13 +122,6 @@ import type {
   TrialSessionStatusCode,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import {
-  calibrateTrialSession,
-  createTrialSession,
-  deleteTrialSession,
-  TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
-  TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
@@ -136,6 +129,13 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import {
+  calibrateTrialSession,
+  createTrialSession,
+  deleteTrialSession,
+  TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
+  TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -156,7 +156,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refresh: []
+  "refresh": []
   'open-lifecycle': [action: 'closeTrial', sessionId: string]
 }>()
 
@@ -190,8 +190,8 @@ watch(
 
 function canCloseTrial(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage &&
-    (status === 'TRIAL_ASSIGNED' || status === 'TRIAL_SUBMITTED' || status === 'CALIBRATED')
+    props.canManage
+    && (status === 'TRIAL_ASSIGNED' || status === 'TRIAL_SUBMITTED' || status === 'CALIBRATED')
   )
 }
 

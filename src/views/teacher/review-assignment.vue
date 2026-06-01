@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
-import { getExamTemplate, isPaperTemplateNotConfiguredError } from '@/apis/mark/exam'
 import type {
   AllocationUnitCode,
   AnonymityModeCode,
@@ -10,16 +9,7 @@ import type {
   ExamAllocationPlanVO,
   MarkingAllocationModeCode,
 } from '@/apis/mark/marking-organization'
-import {
-  ALLOCATION_UNIT_LABEL,
-  ALLOCATION_UNIT_OPTIONS,
-  ANONYMITY_MODE_OPTIONS,
-  ANONYMOUS_TOKEN_POLICY_OPTIONS,
-  MARKING_ALLOCATION_MODE_LABEL,
-  planAllocation,
-} from '@/apis/mark/marking-organization'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeploymentUnitOutlined from '@ant-design/icons-vue/DeploymentUnitOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -28,6 +18,16 @@ import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { getExamTemplate, isPaperTemplateNotConfiguredError } from '@/apis/mark/exam'
+import {
+  ALLOCATION_UNIT_LABEL,
+  ALLOCATION_UNIT_OPTIONS,
+  ANONYMITY_MODE_OPTIONS,
+  ANONYMOUS_TOKEN_POLICY_OPTIONS,
+  MARKING_ALLOCATION_MODE_LABEL,
+  planAllocation,
+} from '@/apis/mark/marking-organization'
+import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import { UiAlertStrip, UiBadge, UiButton, UiCard, UiEmpty } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
@@ -101,8 +101,8 @@ const anonymityModeOptions = ANONYMITY_MODE_OPTIONS
 const anonymousTokenPolicyOptions = ANONYMOUS_TOKEN_POLICY_OPTIONS
 
 const allocationModeOptions = computed(() => {
-  const allowed: MarkingAllocationModeCode[] =
-    form.allocationUnit === 'WHOLE_PAPER'
+  const allowed: MarkingAllocationModeCode[]
+    = form.allocationUnit === 'WHOLE_PAPER'
       ? ['BY_PAPER_RANDOM']
       : ['BY_QUESTION', 'ROUND_ROBIN', 'RANDOM']
   return allowed.map((value) => ({
@@ -124,15 +124,15 @@ const selectedQuestions = computed(() =>
 
 const canSubmit = computed(
   () =>
-    Boolean(selectedExamId.value) &&
-    Boolean(form.leaderUserId) &&
-    form.reviewerUserIds.length > 0 &&
-    dualReviewContractValid.value &&
-    questionScopeValid.value &&
-    form.batchSize > 0 &&
-    form.loadLimit > 0 &&
-    !templateLoading.value &&
-    !questionLoadError.value,
+    Boolean(selectedExamId.value)
+    && Boolean(form.leaderUserId)
+    && form.reviewerUserIds.length > 0
+    && dualReviewContractValid.value
+    && questionScopeValid.value
+    && form.batchSize > 0
+    && form.loadLimit > 0
+    && !templateLoading.value
+    && !questionLoadError.value,
 )
 
 const questionScopeValid = computed(() => {
@@ -143,28 +143,28 @@ const questionScopeValid = computed(() => {
     return form.questionTemplateIds.length > 0
   }
   return (
-    form.questionTemplateIds.length > 0 &&
-    form.randomQuestionSampleSize !== null &&
-    form.randomQuestionSampleSize > 0 &&
-    form.randomQuestionSampleSize <= form.questionTemplateIds.length
+    form.questionTemplateIds.length > 0
+    && form.randomQuestionSampleSize !== null
+    && form.randomQuestionSampleSize > 0
+    && form.randomQuestionSampleSize <= form.questionTemplateIds.length
   )
 })
 
 const dualReviewContractValid = computed(() => {
   if (!form.dualReviewEnabled) {
     return (
-      form.arbitrationScoreThreshold === null &&
-      form.arbitrationRatioThreshold === null &&
-      form.arbitratorUserId === null
+      form.arbitrationScoreThreshold === null
+      && form.arbitrationRatioThreshold === null
+      && form.arbitratorUserId === null
     )
   }
   return (
-    form.allocationUnit === 'WHOLE_PAPER' &&
-    form.allocationMode === 'BY_PAPER_RANDOM' &&
-    form.reviewerUserIds.length >= 2 &&
-    Boolean(form.arbitratorUserId) &&
-    !form.reviewerUserIds.includes(String(form.arbitratorUserId)) &&
-    (form.arbitrationScoreThreshold !== null || form.arbitrationRatioThreshold !== null)
+    form.allocationUnit === 'WHOLE_PAPER'
+    && form.allocationMode === 'BY_PAPER_RANDOM'
+    && form.reviewerUserIds.length >= 2
+    && Boolean(form.arbitratorUserId)
+    && !form.reviewerUserIds.includes(String(form.arbitratorUserId))
+    && (form.arbitrationScoreThreshold !== null || form.arbitrationRatioThreshold !== null)
   )
 })
 
@@ -464,9 +464,7 @@ onMounted(async () => {
       <div class="review-assignment__context">
         <div class="review-assignment__context-main">
           <h2 class="review-assignment__title">分派批阅</h2>
-          <span class="review-assignment__subtitle"
-            >考试创建人配置阅卷负责人、评阅教师和任务生成策略</span
-          >
+          <span class="review-assignment__subtitle">考试创建人配置阅卷负责人、评阅教师和任务生成策略</span>
         </div>
         <div class="review-assignment__context-actions">
           <a-select
@@ -555,9 +553,9 @@ onMounted(async () => {
 
             <a-form-item v-if="form.allocationUnit !== 'WHOLE_PAPER'" label="题目范围" required>
               <div class="review-assignment__question-toolbar">
-                <UiButton size="sm" variant="outline" @click="selectAllQuestions"
-                  >全选题目</UiButton
-                >
+                <UiButton size="sm" variant="outline" @click="selectAllQuestions">
+                  全选题目
+                </UiButton>
                 <UiButton size="sm" variant="ghost" @click="clearSelectedQuestions">清空</UiButton>
                 <UiBadge tone="blue">已选 {{ selectedQuestions.length }} 题</UiBadge>
               </div>
@@ -802,9 +800,9 @@ onMounted(async () => {
                 组织 {{ result.organizationId }}，题组 {{ result.groupId }}，正评会话
                 {{ result.sessionId }}
               </p>
-              <UiButton size="sm" variant="outline" @click="goOrganizationDetail"
-                >查看组织详情</UiButton
-              >
+              <UiButton size="sm" variant="outline" @click="goOrganizationDetail">
+                查看组织详情
+              </UiButton>
             </div>
           </div>
         </UiCard>

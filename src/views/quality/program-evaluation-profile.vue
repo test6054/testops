@@ -15,6 +15,9 @@ import type {
   ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
@@ -22,9 +25,6 @@ import {
   EVALUATION_METHOD_LABEL,
   programEvaluationProfileApi,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { ProgramSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
@@ -80,7 +80,7 @@ const evaluationMethodOptions = evaluationMethods.map((value) => ({
   label: strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法'),
 }))
 
-const evaluationCycleOptions: Array<{ value: EvaluationCycle; label: string }> = [
+const evaluationCycleOptions: Array<{ value: EvaluationCycle, label: string }> = [
   { value: 'SEMESTER', label: EVALUATION_CYCLE_LABEL.SEMESTER },
   { value: 'YEAR', label: EVALUATION_CYCLE_LABEL.YEAR },
   { value: 'BIENNIAL', label: EVALUATION_CYCLE_LABEL.BIENNIAL },
@@ -179,7 +179,7 @@ async function loadDicts() {
   standards.value = std.list
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()

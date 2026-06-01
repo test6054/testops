@@ -251,9 +251,11 @@
           {{ exportStatusLabel(detailTask.taskStatus) }}
         </UiTag>
       </a-descriptions-item>
-      <a-descriptions-item label="文件名">{{
-        exportTaskFileNameText(detailTask)
-      }}</a-descriptions-item>
+      <a-descriptions-item label="文件名">
+        {{
+          exportTaskFileNameText(detailTask)
+        }}
+      </a-descriptions-item>
       <a-descriptions-item label="文件大小">
         {{ exportTaskFileSizeText(detailTask) }}
       </a-descriptions-item>
@@ -277,15 +279,24 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
-import { getExamTemplate } from '@/apis/mark/exam'
 import type {
   ExportCreateRequest,
   ExportScopeCode,
   ExportScopeItemVO,
+  ExportTaskCompletedVO,
   ExportTaskStatusCode,
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
+import type { BadgeTone } from '@/components/ui-guide/ui'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
+import { getExamTemplate } from '@/apis/mark/exam'
 import {
   createExportTask,
   EXPORT_SCOPE_LABEL,
@@ -294,7 +305,6 @@ import {
   EXPORT_TYPE_LABEL,
   listExportTasks,
 } from '@/apis/mark/exam-export'
-import type { BadgeTone } from '@/components/ui-guide/ui'
 import {
   UiBadge,
   UiButton,
@@ -304,13 +314,6 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -340,7 +343,7 @@ const tasks = ref<ExportTaskVO[]>([])
 const loading = ref(false)
 const tasksLoadError = ref<Error | null>(null)
 const downloadingId = ref<string | undefined>(undefined)
-const questionOptions = ref<Array<{ value: string; label: string }>>([])
+const questionOptions = ref<Array<{ value: string, label: string }>>([])
 const questionLoading = ref(false)
 const taskPagination = reactive({
   pageNum: 1,
@@ -354,8 +357,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
-      (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value)
+      && (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 
@@ -455,7 +458,7 @@ function clippedExportTaskFailureMessage(task: ExportTaskVO): string {
   return messageText.length > 24 ? `${messageText.slice(0, 24)}…` : messageText
 }
 
-function canDownloadExportTask(task: ExportTaskVO): boolean {
+function canDownloadExportTask(task: ExportTaskVO): task is ExportTaskCompletedVO {
   return task.taskStatus === 'COMPLETED'
 }
 
@@ -486,7 +489,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function handleTaskPageChange(page: { current: number; pageSize: number }): void {
+function handleTaskPageChange(page: { current: number, pageSize: number }): void {
   taskPagination.pageNum = page.current
   taskPagination.pageSize = page.pageSize
   void loadTasks()
@@ -589,7 +592,8 @@ async function handleCreate(): Promise<void> {
     }
     const createdTask = await createExportTask(request)
     if (!createdTask.taskId) {
-      throw new TypeError('导出任务创建响应缺少任务ID')
+      showUserError(new Error('导出任务创建响应缺少任务ID'), '导出任务创建失败')
+      return
     }
     message.success('已创建导出任务，系统正在生成文件')
     createModalOpen.value = false

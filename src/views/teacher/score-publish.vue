@@ -342,6 +342,13 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
+import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
@@ -351,13 +358,6 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
-import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -373,7 +373,7 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -441,15 +441,14 @@ async function loadCandidates(): Promise<void> {
       pageSize: pagination.pageSize ?? 20,
     })
     if (!Array.isArray(result.list)) {
-      throw new TypeError('成绩发布候选列表响应缺少 list 数组')
+      candidatesLoadError.value = toUserError(null, '成绩发布名单加载失败，请稍后重试')
+      showUserError(candidatesLoadError.value, '成绩发布名单加载失败，请稍后重试')
+      return
     }
     candidates.value = result.list
     pagination.total = Number(result.total)
   } catch (error) {
-    candidatesLoadError.value =
-      error instanceof Error
-        ? error
-        : new Error(getUserErrorMessage(error, '成绩发布名单加载失败，请稍后重试'))
+    candidatesLoadError.value = toUserError(error, '成绩发布名单加载失败，请稍后重试')
     showUserError(error, '成绩发布名单加载失败，请稍后重试')
   } finally {
     loading.value = false
@@ -468,7 +467,7 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()

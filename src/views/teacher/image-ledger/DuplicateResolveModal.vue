@@ -46,9 +46,9 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
-import { resolveDuplicate } from '@/apis/mark/image-ledger'
 import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
+import { resolveDuplicate } from '@/apis/mark/image-ledger'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'DuplicateResolveModal' })

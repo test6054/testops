@@ -30,16 +30,16 @@ import type { WorkbenchStageStatus } from '@/types/workbench'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-export type MarkStageKey =
-  | 'EXAM_PREP'
-  | 'PAPER_TEMPLATE'
-  | 'SCAN'
-  | 'MARKING_ORG'
-  | 'TRIAL_MARK'
-  | 'FORMAL_MARK'
-  | 'SCORE_PUBLISH'
-  | 'GRADE_REVIEW'
-  | 'ARCHIVE'
+export type MarkStageKey
+  = | 'EXAM_PREP'
+    | 'PAPER_TEMPLATE'
+    | 'SCAN'
+    | 'MARKING_ORG'
+    | 'TRIAL_MARK'
+    | 'FORMAL_MARK'
+    | 'SCORE_PUBLISH'
+    | 'GRADE_REVIEW'
+    | 'ARCHIVE'
 
 export interface MarkStageProgress {
   current: MarkStageKey

@@ -34,13 +34,13 @@ type MarkBusinessError = Error & {
 }
 
 /** 阅卷组织状态编码 - 与后端 OrganizationStatus enum 对齐 */
-export type MarkingOrganizationStatusCode =
-  | 'ORG_DRAFT'
-  | 'ORG_CONFIGURED'
-  | 'TRIAL_MARKING'
-  | 'FORMAL_MARKING'
-  | 'QUALITY_REVIEW'
-  | 'CLOSED'
+export type MarkingOrganizationStatusCode
+  = | 'ORG_DRAFT'
+    | 'ORG_CONFIGURED'
+    | 'TRIAL_MARKING'
+    | 'FORMAL_MARKING'
+    | 'QUALITY_REVIEW'
+    | 'CLOSED'
 
 export const MARKING_ORGANIZATION_STATUS_LABEL: Record<MarkingOrganizationStatusCode, string> = {
   ORG_DRAFT: '草稿',
@@ -64,11 +64,11 @@ export const MARKING_ORGANIZATION_STATUS_TONE: Record<
 }
 
 /** 题组状态编码 - 与后端 QuestionGroupStatus enum 对齐 */
-export type QuestionMarkingGroupStatusCode =
-  | 'GROUP_DRAFT'
-  | 'GROUP_CONFIGURED'
-  | 'GROUP_ACTIVE'
-  | 'GROUP_CLOSED'
+export type QuestionMarkingGroupStatusCode
+  = | 'GROUP_DRAFT'
+    | 'GROUP_CONFIGURED'
+    | 'GROUP_ACTIVE'
+    | 'GROUP_CLOSED'
 
 export const QUESTION_GROUP_STATUS_LABEL: Record<QuestionMarkingGroupStatusCode, string> = {
   GROUP_DRAFT: '草稿',
@@ -88,12 +88,12 @@ export const QUESTION_GROUP_STATUS_TONE: Record<
 }
 
 /** 任务分配模式编码 - 与后端 AllocationMode enum 对齐 */
-export type MarkingAllocationModeCode =
-  | 'BY_QUESTION'
-  | 'BY_CLASS'
-  | 'ROUND_ROBIN'
-  | 'RANDOM'
-  | 'BY_PAPER_RANDOM'
+export type MarkingAllocationModeCode
+  = | 'BY_QUESTION'
+    | 'BY_CLASS'
+    | 'ROUND_ROBIN'
+    | 'RANDOM'
+    | 'BY_PAPER_RANDOM'
 
 export const MARKING_ALLOCATION_MODE_LABEL: Record<MarkingAllocationModeCode, string> = {
   BY_QUESTION: '按题目分配',
@@ -102,19 +102,6 @@ export const MARKING_ALLOCATION_MODE_LABEL: Record<MarkingAllocationModeCode, st
   RANDOM: '随机分配',
   BY_PAPER_RANDOM: '整卷随机派发',
 }
-
-/** 任务分配模式下拉选项，值必须与后端 AllocationMode 枚举完全一致 */
-export const MARKING_ALLOCATION_MODE_OPTIONS: Array<{
-  label: string
-  value: MarkingAllocationModeCode
-}> = [
-  { value: 'BY_QUESTION', label: MARKING_ALLOCATION_MODE_LABEL.BY_QUESTION },
-  { value: 'BY_CLASS', label: MARKING_ALLOCATION_MODE_LABEL.BY_CLASS },
-  { value: 'ROUND_ROBIN', label: MARKING_ALLOCATION_MODE_LABEL.ROUND_ROBIN },
-  { value: 'RANDOM', label: MARKING_ALLOCATION_MODE_LABEL.RANDOM },
-  { value: 'BY_PAPER_RANDOM', label: MARKING_ALLOCATION_MODE_LABEL.BY_PAPER_RANDOM },
-]
-
 /** 阅卷分配单元编码 - 与后端 AllocationUnit enum 对齐 */
 export type AllocationUnitCode = 'WHOLE_PAPER' | 'SELECTED_QUESTIONS' | 'RANDOM_QUESTIONS'
 
@@ -179,12 +166,12 @@ export const ANONYMOUS_TOKEN_POLICY_OPTIONS: Array<{
 ]
 
 /** 阅卷任务状态编码 - 与后端 MarkingTaskStatus enum 对齐 */
-export type MarkingTaskStatusCode =
-  | 'ALLOCATED'
-  | 'IN_PROGRESS'
-  | 'SUBMITTED'
-  | 'FINALIZED'
-  | 'RECYCLED'
+export type MarkingTaskStatusCode
+  = | 'ALLOCATED'
+    | 'IN_PROGRESS'
+    | 'SUBMITTED'
+    | 'FINALIZED'
+    | 'RECYCLED'
 
 export const MARKING_TASK_STATUS_LABEL: Record<MarkingTaskStatusCode, string> = {
   ALLOCATED: '已分配',
@@ -227,14 +214,6 @@ export const QUESTION_TYPE_LABEL: Record<QuestionTypeCode, string> = {
 
 /** 生效状态编码 - 与后端 EffectiveStatus enum 对齐 */
 export type EffectiveStatusCode = 'DRAFT' | 'ACTIVE' | 'SUPERSEDED' | 'DISCARDED'
-
-export const EFFECTIVE_STATUS_LABEL: Record<EffectiveStatusCode, string> = {
-  DRAFT: '草稿',
-  ACTIVE: '已生效',
-  SUPERSEDED: '已被替换',
-  DISCARDED: '已废弃',
-}
-
 /**
  * 判断后端是否返回“阅卷组织未创建”业务态。
  * 只读取稳定 code，不依赖可变错误文案。
@@ -528,12 +507,12 @@ export interface MarkingTaskVO {
 }
 
 /** 试评会话状态编码 - 与后端 TrialSessionStatus enum 对齐 */
-export type TrialSessionStatusCode =
-  | 'TRIAL_CREATED'
-  | 'TRIAL_ASSIGNED'
-  | 'TRIAL_SUBMITTED'
-  | 'CALIBRATED'
-  | 'TRIAL_CLOSED'
+export type TrialSessionStatusCode
+  = | 'TRIAL_CREATED'
+    | 'TRIAL_ASSIGNED'
+    | 'TRIAL_SUBMITTED'
+    | 'CALIBRATED'
+    | 'TRIAL_CLOSED'
 
 export const TRIAL_SESSION_STATUS_LABEL: Record<TrialSessionStatusCode, string> = {
   TRIAL_CREATED: '已创建',
@@ -555,12 +534,12 @@ export const TRIAL_SESSION_STATUS_TONE: Record<
 }
 
 /** 正评会话状态编码 - 与后端 FormalSessionStatus enum 对齐 */
-export type FormalSessionStatusCode =
-  | 'SESSION_CREATED'
-  | 'SESSION_ACTIVE'
-  | 'SESSION_PAUSED'
-  | 'SESSION_COMPLETED'
-  | 'SESSION_CLOSED'
+export type FormalSessionStatusCode
+  = | 'SESSION_CREATED'
+    | 'SESSION_ACTIVE'
+    | 'SESSION_PAUSED'
+    | 'SESSION_COMPLETED'
+    | 'SESSION_CLOSED'
 
 export const FORMAL_SESSION_STATUS_LABEL: Record<FormalSessionStatusCode, string> = {
   SESSION_CREATED: '已创建',

@@ -146,7 +146,6 @@
 
 <script lang="ts" setup>
 import type { PasswordHistoryDto } from '@/apis/edu/user-management'
-import { getPasswordHistory } from '@/apis/edu/user-management'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import MinusCircleOutlined from '@ant-design/icons-vue/MinusCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -156,6 +155,7 @@ import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { changePassword } from '@/apis/auth'
+import { getPasswordHistory } from '@/apis/edu/user-management'
 import { UiCard, UiDataTable, UiFormSection, UiPageHeader } from '@/components/ui-guide/ui'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'

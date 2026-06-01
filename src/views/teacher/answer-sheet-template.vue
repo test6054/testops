@@ -179,6 +179,7 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
+  ExamAnswerSheetTemplateSaveRequest,
   ExamPageTemplateRequest,
   ExamPaperPageTemplateVO,
   ExamQuestionTemplateVO,
@@ -366,7 +367,12 @@ async function handleUploadPage(file: File, index: number): Promise<boolean> {
   return false
 }
 
-function buildPagesRequest(): ExamPageTemplateRequest[] | null {
+interface AnswerSheetPagesBuildResult {
+  pages: ExamPageTemplateRequest[]
+  totalPages: ExamAnswerSheetTemplateSaveRequest['totalPages']
+}
+
+function buildPagesRequest(): AnswerSheetPagesBuildResult | null {
   const total = form.totalPages
   if (typeof total !== 'number' || total <= 0) {
     message.error('请填写总页数')
@@ -418,7 +424,7 @@ function buildPagesRequest(): ExamPageTemplateRequest[] | null {
       heightPx: row.heightPx,
     })
   }
-  return request
+  return { pages: request, totalPages: total }
 }
 
 async function handleSave(): Promise<void> {
@@ -432,17 +438,16 @@ async function handleSave(): Promise<void> {
     message.error('当前考试尚未配置题目，请先到「试卷模板」页面录入题目结构。')
     return
   }
-  const pagesRequest = buildPagesRequest()
-  if (pagesRequest === null) return
-  const totalPages = form.totalPages
+  const builtPages = buildPagesRequest()
+  if (builtPages === null) return
 
   saving.value = true
   try {
     await saveAnswerSheetTemplate({
       examId: selectedExamId.value,
       templateName: name,
-      totalPages,
-      pages: pagesRequest,
+      totalPages: builtPages.totalPages,
+      pages: builtPages.pages,
     })
     message.success('答题卡页面配置已保存')
     await loadTemplate()

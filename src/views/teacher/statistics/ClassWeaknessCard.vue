@@ -46,15 +46,19 @@
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="班级编号">{{
-            analysisScopeText(record)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="班级编号">
+            {{
+              analysisScopeText(record)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="生成时间">
             {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
-          <a-descriptions-item label="生成耗时">{{
-            analysisLatencyText(record)
-          }}</a-descriptions-item>
+          <a-descriptions-item label="生成耗时">
+            {{
+              analysisLatencyText(record)
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="处理追踪编号" :span="2">
             <a-typography-text
               v-if="analysisTraceId(record)"
@@ -120,16 +124,16 @@ import type {
   ClassWeaknessItemVO,
   ExamTeachingAnalysisRecordVO,
 } from '@/apis/mark/teaching-analysis'
+import type { MarkClassOption } from '@/composables/useMarkExamRoster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
-import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -189,8 +193,8 @@ function acceptClassWeaknessRecord(
     if (!value.weaknessItems?.length) throw new Error('AI 班级薄弱题型分析成功但缺失薄弱题型明细')
   }
   if (
-    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') &&
-    !value.errorMessage?.trim()
+    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED')
+    && !value.errorMessage?.trim()
   ) {
     throw new Error('AI 班级薄弱题型分析失败但缺失处理说明')
   }

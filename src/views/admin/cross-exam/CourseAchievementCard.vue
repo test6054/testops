@@ -63,9 +63,11 @@
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="课程">{{
-            requiredRecordText(record.courseName, '课程名称')
-          }}</a-descriptions-item>
+          <a-descriptions-item label="课程">
+            {{
+              requiredRecordText(record.courseName, '课程名称')
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="学年学期">
             {{
               record.semesterCode ? formatAcademicTermCode(record.semesterCode) : '未限定学年学期'
@@ -141,16 +143,16 @@ import type {
   CourseAchievementStatusCode,
   CourseObjectiveAchievementVO,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
 import {
   COURSE_ACHIEVEMENT_STATUS_COLOR,
   COURSE_ACHIEVEMENT_STATUS_LABEL,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'

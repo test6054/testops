@@ -284,12 +284,18 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import {
   createOrganization,
   deleteOrganization,
@@ -300,12 +306,6 @@ import {
   updateOrganization,
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -329,7 +329,6 @@ const route = useRoute()
 const userStore = useUserStore()
 
 const {
-  exams,
   examOptions,
   loading: examLoading,
   selectedExamId,

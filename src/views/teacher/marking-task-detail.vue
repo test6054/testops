@@ -216,9 +216,11 @@
                 <a-typography-text copyable>{{ task.sessionId }}</a-typography-text>
               </a-descriptions-item>
               <a-descriptions-item label="题组编号">
-                <a-typography-text v-if="task.groupId" copyable>{{
-                  task.groupId
-                }}</a-typography-text>
+                <a-typography-text v-if="task.groupId" copyable>
+                  {{
+                    task.groupId
+                  }}
+                </a-typography-text>
                 <UiTag v-else tone="gray" size="sm">组织级任务</UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="任务单元">
@@ -364,7 +366,6 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type {
   AllocationUnitCode,
   AnonymityModeCode,
@@ -376,16 +377,6 @@ import type {
   MarkingTaskVO,
   QuestionMarkingGroupQuestionVO,
   ScannedPageRef,
-} from '@/apis/mark/marking-organization'
-import {
-  ALLOCATION_UNIT_LABEL,
-  ANONYMITY_MODE_LABEL,
-  getMarkingQuestionView,
-  getMarkingTaskDetail,
-  getWholePaperView,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-  submitMarkingTask,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -400,6 +391,17 @@ import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import { getExamDetail } from '@/apis/mark/exam'
+import {
+  ALLOCATION_UNIT_LABEL,
+  ANONYMITY_MODE_LABEL,
+  getMarkingQuestionView,
+  getMarkingTaskDetail,
+  getWholePaperView,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+  submitMarkingTask,
+} from '@/apis/mark/marking-organization'
 import RevealAnonymousModal from '@/components/mark/RevealAnonymousModal.vue'
 import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
@@ -709,7 +711,7 @@ function handleAnonymousRevealed(result: AnonymousRevealVO): void {
 }
 
 const formRef = ref<FormInstance>()
-const form = reactive<{ score?: number; annotationNote?: string }>({
+const form = reactive<{ score?: number, annotationNote?: string }>({
   score: undefined,
   annotationNote: '',
 })
@@ -792,8 +794,8 @@ async function submit(): Promise<void> {
   }
   submitting.value = true
   try {
-    const submitRequest =
-      task.value.taskUnit === 'WHOLE_PAPER'
+    const submitRequest
+      = task.value.taskUnit === 'WHOLE_PAPER'
         ? buildWholePaperSubmitRequest()
         : {
             questionScores: [buildQuestionSubmitRequest()],

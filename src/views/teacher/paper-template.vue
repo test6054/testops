@@ -333,9 +333,9 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'SUBJECTIVE' ||
-            answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
-            answerForm.comparePolicy === 'REGEX'
+            answerContext.questionType === 'SUBJECTIVE'
+              || answerForm.comparePolicy === 'EXACT_NORMALIZED'
+              || answerForm.comparePolicy === 'REGEX'
           "
           :label="answerTextLabel"
           name="standardAnswer"
@@ -366,8 +366,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE' &&
-            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE'
+              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="标准值"
           name="numericExpectedValue"
@@ -380,8 +380,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE' &&
-            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE'
+              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="容差"
           name="numericTolerance"
@@ -394,8 +394,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE' &&
-            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE'
+              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="单位"
         >
@@ -467,18 +467,8 @@ import type {
   ExamStandardAnswerVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
-import {
-  getExamTemplate,
-  getStandardAnswer,
-  isPaperTemplateNotConfiguredError,
-  OBJECTIVE_COMPARE_POLICY_OPTIONS,
-  saveExamTemplate,
-  saveStandardAnswer,
-} from '@/apis/mark/exam'
 import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import type { PaperMasterObjectiveOptionVO } from '@/apis/mark/paper-master'
-import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -488,6 +478,16 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
+import {
+  getExamTemplate,
+  getStandardAnswer,
+  isPaperTemplateNotConfiguredError,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  saveExamTemplate,
+  saveStandardAnswer,
+} from '@/apis/mark/exam'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
 import {
   UiBadge,
   UiButton,
@@ -563,7 +563,7 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string; totalPages?: number }>({
+const form = reactive<{ templateName: string, totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -675,18 +675,23 @@ async function loadTemplate(): Promise<void> {
       })
     } catch (error) {
       if (!(error instanceof Error)) {
-        throw error
+        message.warning(
+          getUserErrorMessage(error, '客观题选项读取失败，选择题标准答案暂不可录入'),
+        )
+        return
       }
       if (!isPaperMasterNotConfiguredError(error)) {
         message.warning(
-          getUserErrorMessage(error, '客观题选项空间读取失败，选择题集合答案暂不可录入'),
+          getUserErrorMessage(error, '客观题选项读取失败，选择题标准答案暂不可录入'),
         )
       }
     }
   } catch (error) {
     clearTemplate()
     if (!(error instanceof Error)) {
-      throw error
+      templateLoadError.value = toUserError(error, '试卷模板加载失败')
+      message.warning(getUserErrorMessage(error, '题目模板加载失败，请稍后重试'))
+      return
     }
     if (!isPaperTemplateNotConfiguredError(error)) {
       // 真实加载失败：D-9 错误态 + 警告提示
@@ -977,10 +982,10 @@ const answerFormRules: Record<string, Rule[]> = {
       validator: async (_rule: Rule, value: string) => {
         const trimmed = (value ?? '').trim()
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          (answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
-            answerForm.comparePolicy === 'REGEX') &&
-          !trimmed
+          answerContext.questionType === 'OBJECTIVE'
+          && (answerForm.comparePolicy === 'EXACT_NORMALIZED'
+            || answerForm.comparePolicy === 'REGEX')
+          && !trimmed
         ) {
           return Promise.reject(new Error('当前评分策略必须填写答案文本'))
         }
@@ -996,9 +1001,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string[]) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'CHOICE_SET' &&
-          (!Array.isArray(value) || value.length === 0)
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'CHOICE_SET'
+          && (!Array.isArray(value) || value.length === 0)
         ) {
           return Promise.reject(new Error('请选择至少一个正确选项'))
         }
@@ -1022,9 +1027,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写标准值'))
         }
@@ -1037,9 +1042,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写容差'))
         }
@@ -1052,9 +1057,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'AI_GRADE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'AI_GRADE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('AI 评分策略必须填写评分细则'))
         }
@@ -1145,7 +1150,11 @@ async function openAnswerModal(row: QuestionRow): Promise<void> {
       const answerLabels = currentAnswer.choiceOptions.map((option) => option.optionLabel)
       const invalidLabel = answerLabels.find((optionLabel) => !declaredLabels.has(optionLabel))
       if (invalidLabel) {
-        throw new Error(`标准答案选项 ${invalidLabel} 不在当前母版选项空间中，请先治理数据`)
+        showUserError(
+          new Error(`标准答案选项“${invalidLabel}”与当前试卷客观题选项不一致，请先核对试卷母版配置`),
+          '标准答案加载失败',
+        )
+        return
       }
       answerForm.choiceAnswers = answerLabels
     }
@@ -1182,12 +1191,13 @@ async function handleSaveAnswer(): Promise<void> {
           sortNo: index + 1,
         }))
       if (!choiceOptions || choiceOptions.length !== answerForm.choiceAnswers.length) {
-        throw new Error('正确选项不在当前母版选项空间中，请重新选择')
+        showUserError(new Error('所选正确选项与当前试卷客观题选项不一致，请重新选择'), '标准答案保存失败')
+        return
       }
     } else if (
-      answerContext.questionType === 'SUBJECTIVE' ||
-      answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
-      answerForm.comparePolicy === 'REGEX'
+      answerContext.questionType === 'SUBJECTIVE'
+      || answerForm.comparePolicy === 'EXACT_NORMALIZED'
+      || answerForm.comparePolicy === 'REGEX'
     ) {
       standardAnswer = answerForm.standardAnswer.trim() || undefined
     }

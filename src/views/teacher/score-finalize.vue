@@ -423,13 +423,20 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
-import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
 import type {
   ExamPaperScoreVO,
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
+import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
 import {
   confirmFinalScore,
   FINAL_SCORE_STATUS_LABEL,
@@ -441,13 +448,6 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   UiActivityTimeline,
   UiAlertStrip,
@@ -465,7 +465,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -531,15 +531,14 @@ async function loadCandidates(): Promise<void> {
       pageSize: pagination.pageSize ?? 20,
     })
     if (!Array.isArray(result.list)) {
-      throw new TypeError('成绩确认候选列表响应缺少 list 数组')
+      candidatesLoadError.value = toUserError(null, '成绩确认名单加载失败，请稍后重试')
+      showUserError(candidatesLoadError.value, '成绩确认名单加载失败，请稍后重试')
+      return
     }
     candidates.value = result.list
     pagination.total = Number(result.total)
   } catch (error) {
-    candidatesLoadError.value =
-      error instanceof Error
-        ? error
-        : new Error(getUserErrorMessage(error, '成绩确认名单加载失败，请稍后重试'))
+    candidatesLoadError.value = toUserError(error, '成绩确认名单加载失败，请稍后重试')
     showUserError(error, '成绩确认名单加载失败，请稍后重试')
   } finally {
     loading.value = false
@@ -558,7 +557,7 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -647,7 +646,7 @@ const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
  * 因后端为服务端分页，统计口径在视觉上限定为「当前页」，避免误导教师把页内异常当作整考试异常。
  * 当样本数 < 3 或方差为 0 时，stddev 返回 0，模板侧降级为「样本不足」展示。
  */
-const pageScoreStats = computed<{ count: number; mean: number; stddev: number }>(() => {
+const pageScoreStats = computed<{ count: number, mean: number, stddev: number }>(() => {
   const scores = candidates.value
     .map((c) => c.finalScore)
     .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
@@ -675,21 +674,21 @@ function classifyBias(score: number | undefined): BiasLevel {
 }
 
 const BIAS_LEVEL_LABEL: Record<BiasLevel, string> = {
-  normal: '≈ 正常',
+  "normal": '≈ 正常',
   'mild-high': '↑ 偏高',
   'mild-low': '↓ 偏低',
   'severe-high': '⇈ 显著偏高',
   'severe-low': '⇊ 显著偏低',
-  insufficient: '-',
+  "insufficient": '-',
 }
 
 const BIAS_LEVEL_TONE: Record<BiasLevel, BadgeTone> = {
-  normal: 'gray',
+  "normal": 'gray',
   'mild-high': 'blue',
   'mild-low': 'orange',
   'severe-high': 'purple',
   'severe-low': 'red',
-  insufficient: 'gray',
+  "insufficient": 'gray',
 }
 
 function biasLevelLabel(level: BiasLevel): string {
@@ -701,7 +700,7 @@ function biasLevelTone(level: BiasLevel): BadgeTone {
 }
 
 /** D-3 顶部偏差提示：当前页严重偏离样本数 */
-const biasAlert = computed<{ visible: boolean; severeCount: number; message: string }>(() => {
+const biasAlert = computed<{ visible: boolean, severeCount: number, message: string }>(() => {
   const { count, mean, stddev } = pageScoreStats.value
   if (count < 3 || stddev === 0) {
     return { visible: false, severeCount: 0, message: '' }
@@ -1101,8 +1100,8 @@ function deriveNextStepSuggestion(): void {
     return
   }
   // 当前页找下一份未确认
-  const next =
-    candidates.value.find(
+  const next
+    = candidates.value.find(
       (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
     ) ?? null
   if (next) {

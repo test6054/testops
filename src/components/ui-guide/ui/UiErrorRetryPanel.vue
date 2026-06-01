@@ -104,7 +104,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   retry: []
-  report: [{ message: string; route: string }]
+  report: [{ message: string, route: string }]
 }>()
 
 const router = useRouter()

@@ -48,7 +48,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
 }>()
 
 const reason = ref('')
@@ -124,8 +124,6 @@ async function confirm(): Promise<void> {
         await closeTrialSession({ sessionId: props.sessionId, reason: trimmed })
         message.success('试评会话已关闭')
         break
-      default:
-        throw new Error('不支持的会话生命周期动作')
     }
     emit('success')
     emit('update:open', false)

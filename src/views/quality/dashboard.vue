@@ -17,6 +17,10 @@ import type {
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -34,10 +38,6 @@ import {
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
 } from '@/apis/quality'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -129,11 +129,11 @@ const planConfirmationColor = computed(() => {
 const stages = computed<WorkbenchStage[]>(() => {
   const planSelected = !!trainingPlanId.value
   const planConfirmed = planConfirmationStatus.value === 'CONFIRMED'
-  const dataReached =
-    achievementCounts.calculated > 0 ||
-    achievementCounts.submitted > 0 ||
-    achievementCounts.confirmed > 0 ||
-    achievementCounts.archived > 0
+  const dataReached
+    = achievementCounts.calculated > 0
+      || achievementCounts.submitted > 0
+      || achievementCounts.confirmed > 0
+      || achievementCounts.archived > 0
   const calcDone = dataReached
   const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
   const improvementActive = improvementCounts.total > 0
@@ -522,9 +522,9 @@ function goScoreBatch() {
                 <span
                   class="quality-dashboard__value"
                   :class="[
-                    record.finalValue !== null &&
-                    record.thresholdValue !== null &&
-                    record.finalValue >= record.thresholdValue
+                    record.finalValue !== null
+                      && record.thresholdValue !== null
+                      && record.finalValue >= record.thresholdValue
                       ? 'quality-dashboard__value--ok'
                       : 'quality-dashboard__value--bad',
                   ]"

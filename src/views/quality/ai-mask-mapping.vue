@@ -17,6 +17,8 @@ import type {
   AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AI_TASK_BUSINESS_TYPE_LABEL,
   AI_TASK_STATUS_COLOR,
@@ -25,8 +27,6 @@ import {
   aiMaskMappingApi,
   aiTaskApi,
 } from '@/apis/quality'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { UiButton, UiEmpty } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -55,7 +55,7 @@ const selectedAiTaskId = ref<string>(
 )
 const loading = ref(false)
 const taskLoading = ref(false)
-const taskOptions = ref<Array<{ value: string; label: string }>>([])
+const taskOptions = ref<Array<{ value: string, label: string }>>([])
 
 const taskVO = ref<AiTaskVO | null>(null)
 const mappingVO = ref<AiMaskMappingVO | null>(null)

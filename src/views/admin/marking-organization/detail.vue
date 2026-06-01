@@ -533,9 +533,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type { ExamDetailVO } from '@/apis/mark/exam'
-import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
 import type {
   AllocationPolicySaveRequest,
   AllocationUnitCode,
@@ -551,6 +549,16 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
+import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   ALLOCATION_UNIT_LABEL,
   ANONYMITY_MODE_LABEL,
@@ -573,14 +581,6 @@ import {
   updateOrganizationStatus,
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   UiAlertStrip,
   UiButton,
@@ -845,8 +845,8 @@ function canDeleteGroup(record: QuestionMarkingGroupVO): boolean {
 
 function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
   return (
-    canManageOrganization.value &&
-    (record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED')
+    canManageOrganization.value
+    && (record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED')
   )
 }
 

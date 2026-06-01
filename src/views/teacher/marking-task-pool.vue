@@ -254,12 +254,6 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import {
-  FORMAL_SESSION_STATUS_LABEL,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -270,6 +264,12 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  FORMAL_SESSION_STATUS_LABEL,
+  MARKING_TASK_STATUS_LABEL,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,
@@ -355,8 +355,7 @@ async function loadTasks(): Promise<void> {
     return
   }
   if (!currentUserId.value) {
-    const error = new Error('当前登录用户缺少 userId，无法加载阅卷任务')
-    tasksLoadError.value = error
+    tasksLoadError.value = new Error('当前登录用户缺少 userId，无法加载阅卷任务')
     message.error('登录状态异常，请重新登录后再加载阅卷任务')
     return
   }
@@ -373,8 +372,8 @@ async function loadTasks(): Promise<void> {
     }
     await markTaskStore.loadTasks(request)
   } catch (error) {
-    tasksLoadError.value =
-      error instanceof Error ? error : new Error(getUserErrorMessage(error, '阅卷任务列表加载失败'))
+    tasksLoadError.value
+      = error instanceof Error ? error : new Error(getUserErrorMessage(error, '阅卷任务列表加载失败'))
     showUserError(error, '阅卷任务列表加载失败')
   }
 }
@@ -480,14 +479,14 @@ function goDetail(task: MarkingTaskVO): void {
  * 把 record.taskStatus 渲染成中文标签，未知枚举直接暴露契约错误。
  */
 function taskStatusLabel(value: MarkingTaskStatusCode): string {
-  return strictEnumLabel(STATUS_LABEL, value, '阅卷任务状态')
+  return strictEnumLabel(MARKING_TASK_STATUS_LABEL, value, '阅卷任务状态')
 }
 
 /**
  * 把 record.taskStatus 渲染成 UiTag 色调，未知枚举直接暴露契约错误。
  */
 function taskStatusTone(value: MarkingTaskStatusCode): BadgeTone {
-  return strictEnumTone(STATUS_TONE, value, '阅卷任务状态')
+  return strictEnumTone(MARKING_TASK_STATUS_TONE, value, '阅卷任务状态')
 }
 
 watch(selectedExamId, () => {

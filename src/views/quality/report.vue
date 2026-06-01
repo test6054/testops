@@ -17,14 +17,6 @@ import type {
   ReportType,
   ReportVO,
 } from '@/apis/quality'
-import {
-  REPORT_EXPORT_STATUS_COLOR,
-  REPORT_EXPORT_STATUS_LABEL,
-  REPORT_STATUS_COLOR,
-  REPORT_STATUS_LABEL,
-  REPORT_TYPE_LABEL,
-  reportApi,
-} from '@/apis/quality'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -37,6 +29,14 @@ import { message } from 'ant-design-vue'
 import Modal from 'ant-design-vue/es/modal'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import {
+  REPORT_EXPORT_STATUS_COLOR,
+  REPORT_EXPORT_STATUS_LABEL,
+  REPORT_STATUS_COLOR,
+  REPORT_STATUS_LABEL,
+  REPORT_TYPE_LABEL,
+  reportApi,
+} from '@/apis/quality'
 import {
   AchievementResultSelector,
   CourseSelector,
@@ -139,7 +139,7 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportType; label: string }> = [
+const reportTypeOptions: Array<{ value: ReportType, label: string }> = [
   { value: 'COURSE_ACHIEVEMENT', label: REPORT_TYPE_LABEL.COURSE_ACHIEVEMENT },
   { value: 'PROGRAM_QUALITY', label: REPORT_TYPE_LABEL.PROGRAM_QUALITY },
   { value: 'IMPROVEMENT', label: REPORT_TYPE_LABEL.IMPROVEMENT },
@@ -148,7 +148,7 @@ const reportTypeOptions: Array<{ value: ReportType; label: string }> = [
     label: REPORT_TYPE_LABEL.AUDIT_EVALUATION_RECTIFICATION,
   },
 ]
-const statusOptions: Array<{ value: ReportStatus; label: string }> = [
+const statusOptions: Array<{ value: ReportStatus, label: string }> = [
   { value: 'DRAFT', label: REPORT_STATUS_LABEL.DRAFT },
   { value: 'SUBMITTED', label: REPORT_STATUS_LABEL.SUBMITTED },
   { value: 'CONFIRMED', label: REPORT_STATUS_LABEL.CONFIRMED },
@@ -184,7 +184,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -445,7 +445,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatus; title: string }> = [
+  const order: Array<{ key: ReportStatus, title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'SUBMITTED', title: '待确认' },
     { key: 'CONFIRMED', title: '已确认' },
@@ -551,7 +551,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleReportResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+function handleReportResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -711,9 +711,9 @@ onMounted(loadList)
               </UiButton>
               <UiButton
                 v-if="
-                  record.status === 'SUBMITTED' ||
-                  record.status === 'CONFIRMED' ||
-                  record.status === 'ARCHIVED'
+                  record.status === 'SUBMITTED'
+                    || record.status === 'CONFIRMED'
+                    || record.status === 'ARCHIVED'
                 "
                 variant="ghost"
                 size="sm"

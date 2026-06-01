@@ -17,6 +17,10 @@ import type {
   ScoreRecordSaveRequest,
   ScoreRecordVO,
 } from '@/apis/quality'
+import type { UserDto } from '@/types/api-types.d'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   rubricItemApi,
@@ -25,10 +29,6 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
-import type { UserDto } from '@/types/api-types.d'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ClassSelector,
   CourseSelector,

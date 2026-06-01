@@ -2,13 +2,13 @@ import type { ExamScannerKioskContextVO, ScannerKioskScanMode } from './scanner-
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 
-type LocalAgentJsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | LocalAgentJsonObject
-  | LocalAgentJsonValue[]
+type LocalAgentJsonValue
+  = | string
+    | number
+    | boolean
+    | null
+    | LocalAgentJsonObject
+    | LocalAgentJsonValue[]
 
 interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
@@ -53,24 +53,24 @@ export type AgentHealthStatus = 'RUNNING'
 
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
 
-export type LocalScanJobStatus =
-  | 'CREATED'
-  | 'SCANNING'
-  | 'PAUSED'
-  | 'READYTOUPLOAD'
-  | 'UPLOADING'
-  | 'REPORTED'
-  | 'FAILED'
-  | 'RETRYING'
-  | 'CANCELLED'
+export type LocalScanJobStatus
+  = | 'CREATED'
+    | 'SCANNING'
+    | 'PAUSED'
+    | 'READYTOUPLOAD'
+    | 'UPLOADING'
+    | 'REPORTED'
+    | 'FAILED'
+    | 'RETRYING'
+    | 'CANCELLED'
 
-export type LocalScanPageStatus =
-  | 'CAPTURED'
-  | 'PREPROCESSED'
-  | 'UPLOADING'
-  | 'UPLOADED'
-  | 'FAILED'
-  | 'DELETED'
+export type LocalScanPageStatus
+  = | 'CAPTURED'
+    | 'PREPROCESSED'
+    | 'UPLOADING'
+    | 'UPLOADED'
+    | 'FAILED'
+    | 'DELETED'
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -499,15 +499,15 @@ function requireAgentDiagnosticStatus(
 function requireScanJobStatus(value: LocalAgentJsonObject, field: string): LocalScanJobStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CREATED' &&
-    fieldValue !== 'SCANNING' &&
-    fieldValue !== 'PAUSED' &&
-    fieldValue !== 'READYTOUPLOAD' &&
-    fieldValue !== 'UPLOADING' &&
-    fieldValue !== 'REPORTED' &&
-    fieldValue !== 'FAILED' &&
-    fieldValue !== 'RETRYING' &&
-    fieldValue !== 'CANCELLED'
+    fieldValue !== 'CREATED'
+    && fieldValue !== 'SCANNING'
+    && fieldValue !== 'PAUSED'
+    && fieldValue !== 'READYTOUPLOAD'
+    && fieldValue !== 'UPLOADING'
+    && fieldValue !== 'REPORTED'
+    && fieldValue !== 'FAILED'
+    && fieldValue !== 'RETRYING'
+    && fieldValue !== 'CANCELLED'
   ) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描任务状态`)
   }
@@ -517,12 +517,12 @@ function requireScanJobStatus(value: LocalAgentJsonObject, field: string): Local
 function requireScanPageStatus(value: LocalAgentJsonObject, field: string): LocalScanPageStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CAPTURED' &&
-    fieldValue !== 'PREPROCESSED' &&
-    fieldValue !== 'UPLOADING' &&
-    fieldValue !== 'UPLOADED' &&
-    fieldValue !== 'FAILED' &&
-    fieldValue !== 'DELETED'
+    fieldValue !== 'CAPTURED'
+    && fieldValue !== 'PREPROCESSED'
+    && fieldValue !== 'UPLOADING'
+    && fieldValue !== 'UPLOADED'
+    && fieldValue !== 'FAILED'
+    && fieldValue !== 'DELETED'
   ) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描页状态`)
   }

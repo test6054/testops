@@ -5,8 +5,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import { onMounted, ref, watch } from 'vue'
+import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import { showUserError } from '@/utils/error-handler'
 import { requirePageList } from './page-contract'
 
@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | string[] | null]
-  change: [value: string | string[] | null, option?: TeacherUserInfoDto | TeacherUserInfoDto[]]
+  "change": [value: string | string[] | null, option?: TeacherUserInfoDto | TeacherUserInfoDto[]]
 }>()
 
 const options = ref<TeacherUserInfoDto[]>([])
@@ -122,9 +122,7 @@ defineExpose({ reload: loadOptions })
       :label="teacherDisplayName(opt)"
     >
       {{ teacherDisplayName(opt) }}
-      <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 text-xs"
-        >({{ opt.teacherNumber }})</span
-      >
+      <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 text-xs">({{ opt.teacherNumber }})</span>
       <span v-if="opt.department" class="text-gray-400 ml-1">{{ opt.department }}</span>
     </a-select-option>
   </a-select>

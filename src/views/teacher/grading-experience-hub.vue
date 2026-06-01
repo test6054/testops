@@ -445,6 +445,14 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -460,14 +468,6 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -654,10 +654,7 @@ async function loadLatestCluster(): Promise<void> {
       selectedExamId.value,
       clusterQuestionTemplateId.value,
     )
-    if (!cluster) {
-      throw new TypeError('答案聚类接口未返回当前题目的最新聚类结果')
-    }
-    latestCluster.value = acceptAnswerClusterRecord(cluster)
+    latestCluster.value = cluster ? acceptAnswerClusterRecord(cluster) : null
   } catch (error) {
     clusterLoadError.value = toUserError(error, '错误簇加载失败')
     showUserError(error, '答案聚类结果加载失败')
@@ -726,7 +723,8 @@ function requireArray<T>(value: T[] | undefined, fieldName: string): T[] {
   return value
 }
 
-function ellipsis(text: string, len = 60): string {
+function ellipsis(text: QuestionSignatureVO['questionDigest'] | GradingExperienceCaseVO['experienceSummary'], len = 60): string {
+  if (!text) return '-'
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 

@@ -3,8 +3,8 @@ import { StudentTaskStatusEnum } from '@/types/enums/student-task-status'
 import { TeacherReviewStatusEnum } from '@/types/enums/teacher-review-status'
 import { strictEnumTone } from '@/utils/strict-enum'
 
-export type StatusVariant =
-  | 'neutral'
+export type StatusVariant
+  = | 'neutral'
   | 'info'
   | 'pending'
   | 'success'
@@ -88,8 +88,8 @@ export function mapStudentStatusToVariant(status?: string | null): StatusVariant
 
   // 先检查前端自定义状态（GradingCenterTab使用的状态）
   const customStatusMap: Record<string, StatusVariant> = {
-    pending: 'pending', // 待审核 - 橙色
-    completed: 'success', // 已通过 - 绿色
+    "pending": 'pending', // 待审核 - 橙色
+    "completed": 'success', // 已通过 - 绿色
     'review-needed': 'danger', // 已驳回 - 红色
     'not-submitted': 'neutral', // 未提交 - 灰色
   }

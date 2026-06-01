@@ -126,16 +126,16 @@
 
 <script lang="ts" setup>
 import type { GradingExperienceCaseVO, QuestionTypeCode } from '@/apis/mark/grading-experience'
+import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   EXPERIENCE_CASE_STATUS_LABEL,
   listExperiences,
   QUESTION_TYPE_LABEL,
 } from '@/apis/mark/grading-experience'
-import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
 import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'

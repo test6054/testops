@@ -204,7 +204,7 @@
                 >
                   身份绑定
                 </UiButton>
-                <UiButton v-else size="sm" @click="openLedger(record)">处置入口</UiButton>
+                <UiButton v-else size="sm" @click="openLedger">处置入口</UiButton>
                 <UiButton
                   v-if="record.sourceType === 'SCANNED_PAGE' && record.pageId"
                   size="sm"
@@ -421,9 +421,9 @@
         <a-descriptions-item label="来源">
           {{ sourceTypeLabel(detailRecord.sourceType) }}
         </a-descriptions-item>
-        <a-descriptions-item label="来源说明">{{
-          detailRecord.sourceDisplayName
-        }}</a-descriptions-item>
+        <a-descriptions-item label="来源说明">
+          {{ detailRecord.sourceDisplayName }}
+        </a-descriptions-item>
         <a-descriptions-item label="当前考试">{{ selectedExamLabel }}</a-descriptions-item>
         <a-descriptions-item label="扫描批次">
           {{ detailRecord.scanBatchDisplayName }}
@@ -507,6 +507,12 @@ import type {
   ScanAttentionTypeCode,
   TaskStatusCode,
 } from '@/apis/mark/exam'
+import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
+import type { GradeStatusCode } from '@/apis/mark/student-exam'
+import type { BadgeTone, UiChartSliceItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   bindPaper,
   FINAL_SCORE_STATUS_LABEL,
@@ -516,13 +522,7 @@ import {
   pageScannerBatches,
   SCAN_BATCH_STATUS_LABEL,
 } from '@/apis/mark/exam'
-import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
 import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
-import type { GradeStatusCode } from '@/apis/mark/student-exam'
-import type { BadgeTone, UiChartSliceItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
 import {
   UiAlertStrip,
@@ -599,7 +599,7 @@ const paperCandidateOptions = computed(() =>
     })),
 )
 
-const attentionTypeOptions: { label: string; value: ScanAttentionTypeCode }[] = [
+const attentionTypeOptions: { label: string, value: ScanAttentionTypeCode }[] = [
   { label: '质量阻断', value: 'QUALITY_BLOCK' },
   { label: '处理阻断', value: 'PROCESSING_BLOCK' },
   { label: '重复影像', value: 'DUPLICATE_PENDING' },
@@ -952,8 +952,7 @@ async function confirmDiscardPage(): Promise<void> {
     pageDiscardReason.value = ''
     await loadAttentions()
   } catch (error) {
-    const errMsg = getUserErrorMessage(error, '扫描页废弃失败')
-    pageDiscardError.value = errMsg
+    pageDiscardError.value = getUserErrorMessage(error, '扫描页废弃失败')
     showUserError(error, '扫描页废弃失败')
   } finally {
     pageDiscarding.value = null
@@ -1011,8 +1010,8 @@ function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   const candidate = candidates.value.find((item) => item.candidateRosterId === option.value)
   if (!candidate) return false
   return (
-    (candidate.studentName ?? '').toLowerCase().includes(kw) ||
-    (candidate.studentNo ?? '').toLowerCase().includes(kw)
+    (candidate.studentName ?? '').toLowerCase().includes(kw)
+    || (candidate.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
@@ -1065,7 +1064,7 @@ function openBindDrawer(record: ScanAttentionItemVO): void {
   void ensureCandidatesLoaded()
 }
 
-function openLedger(record: ScanAttentionItemVO): void {
+function openLedger(): void {
   if (!selectedExamId.value) return
   void router.push({
     path: '/teacher/image-ledger',
@@ -1105,8 +1104,7 @@ async function handleBind(): Promise<void> {
     bindDrawerOpen.value = false
     await loadAttentions()
   } catch (error) {
-    const errMsg = getUserErrorMessage(error, '试卷身份绑定失败')
-    bindSubmitError.value = errMsg
+    bindSubmitError.value = getUserErrorMessage(error, '试卷身份绑定失败')
     showUserError(error, '试卷身份绑定失败')
   } finally {
     binding.value = false
@@ -1130,7 +1128,7 @@ const batchBindError = ref('')
 const batchBindResult = ref<ExamPaperBatchBindResultVO | null>(null)
 type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
 
-const batchAttemptStatusOptions: Array<{ label: string; value: BatchBindAttemptStatus }> = [
+const batchAttemptStatusOptions: Array<{ label: string, value: BatchBindAttemptStatus }> = [
   { label: '普通答卷', value: 'NORMAL' },
   { label: '补考答卷', value: 'MAKEUP' },
   { label: '重考答卷', value: 'RETAKE' },
@@ -1181,9 +1179,9 @@ const rowSelection = computed(() => ({
   },
   getCheckboxProps: (record: ScanAttentionItemVO) => ({
     disabled:
-      record.attentionType !== 'RECOGNITION_REVIEW' ||
-      !record.paperInstanceId ||
-      !record.scanBatchId,
+      record.attentionType !== 'RECOGNITION_REVIEW'
+      || !record.paperInstanceId
+      || !record.scanBatchId,
   }),
 }))
 
@@ -1194,10 +1192,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id) &&
-      item.attentionType === 'RECOGNITION_REVIEW' &&
-      item.paperInstanceId &&
-      item.scanBatchId,
+      selectedRowKeys.value.includes(item.id)
+      && item.attentionType === 'RECOGNITION_REVIEW'
+      && item.paperInstanceId
+      && item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的识别复核异常项')
@@ -1291,8 +1289,7 @@ async function submitBatchBind(): Promise<void> {
       batchBindDrawerOpen.value = false
     }
   } catch (error) {
-    const errMsg = getUserErrorMessage(error, '批量绑定失败')
-    batchBindError.value = errMsg
+    batchBindError.value = getUserErrorMessage(error, '批量绑定失败')
     showUserError(error, '批量绑定失败')
   } finally {
     batchBinding.value = false

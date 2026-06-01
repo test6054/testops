@@ -190,17 +190,17 @@ import type {
   MyPendingSpotCheckStatusCode,
   SpotCheckConclusionCode,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   handleSpotCheck,
   listMyPendingSpotChecks,
   SPOT_CHECK_STATUS_LABEL,
   SPOT_CHECK_STATUS_TONE,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   UiAlertStrip,
   UiBadge,

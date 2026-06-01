@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveBusinessType, ArchiveVO } from '@/apis/quality'
-import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi } from '@/apis/quality'
 import { onMounted, ref, watch } from 'vue'
+import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'

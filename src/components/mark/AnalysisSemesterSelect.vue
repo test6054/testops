@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
+import { pageExams } from '@/apis/mark/exam'
 import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 
@@ -22,7 +22,7 @@ withDefaults(
 )
 
 const loading = ref(false)
-const semesterOptions = ref<{ label: string; value: string }[]>([])
+const semesterOptions = ref<{ label: string, value: string }[]>([])
 
 /** 加载考试中的学年学期范围，供 AI 分析卡片按业务周期选择。 */
 async function loadSemesterOptions(): Promise<void> {

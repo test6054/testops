@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import { onMounted, ref, watch } from 'vue'
+import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 

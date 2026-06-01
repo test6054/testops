@@ -76,10 +76,10 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
-import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, ref, watch } from 'vue'
+import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'

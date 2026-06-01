@@ -119,8 +119,8 @@
                     v-if="item.startValue != null || item.endValue != null"
                     class="analysis-item__text"
                   >
-                    <strong>起止值：</strong>{{ growthValueText(item.startValue, '起始值') }} /
-                    {{ growthValueText(item.endValue, '结束值') }}
+                    <strong>起止值：</strong>{{ growthValueText(item.startValue) }} /
+                    {{ growthValueText(item.endValue) }}
                   </a-typography-paragraph>
                   <a-typography-paragraph v-if="item.improvementNote" class="analysis-item__text">
                     <strong>提升说明：</strong>{{ item.improvementNote }}
@@ -143,6 +143,10 @@ import type {
   SemesterAbilityGrowthVO,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   ANALYSIS_SCOPE_TYPE_LABEL,
   generateClassGrowth,
@@ -150,11 +154,7 @@ import {
   SEMESTER_GROWTH_TREND_COLOR,
   SEMESTER_GROWTH_TREND_LABEL,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import { getExamDetail } from '@/apis/mark/exam'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
@@ -174,7 +174,7 @@ const form = reactive({
 
 const record = ref<SemesterAbilityGrowthVO | null>(null)
 const selectedExams = ref<ExamSummaryVO[]>([])
-const classOptions = ref<{ label: string; value: string }[]>([])
+const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 // D-9 错误态：AI 学期成长加载失败时 UiErrorRetryPanel 重试 + 上报
@@ -195,7 +195,7 @@ watch(
     classLoading.value = true
     try {
       const details = await Promise.all(examIds.map((examId) => getExamDetail(examId)))
-      const classCount = new Map<string, { className: string; count: number }>()
+      const classCount = new Map<string, { className: string, count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -340,7 +340,7 @@ function acceptSemesterGrowthRecord(value: SemesterAbilityGrowthVO | null): void
   record.value = value
 }
 
-function growthValueText(value: number | undefined, fieldName: string): string {
+function growthValueText(value: number | undefined): string {
   return String(value)
 }
 </script>

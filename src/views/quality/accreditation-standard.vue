@@ -13,11 +13,11 @@ import type {
   AccreditationStandardVO,
   AccreditationType,
 } from '@/apis/quality'
-import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -153,7 +153,7 @@ async function loadPageData() {
   await Promise.all([loadList(), loadSummary()])
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -161,8 +161,8 @@ function handlePageChange(page: { current: number; pageSize: number }) {
 
 function syncFilterToQuery() {
   query.accreditationType = filterModel.value.accreditationType
-  query.enabled =
-    filterModel.value.enabled === 'enabled'
+  query.enabled
+    = filterModel.value.enabled === 'enabled'
       ? true
       : filterModel.value.enabled === 'disabled'
         ? false

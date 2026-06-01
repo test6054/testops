@@ -336,7 +336,6 @@
 
 <script setup lang="ts">
 import type { UploadFile } from 'ant-design-vue'
-import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PaperArchiveItemVO,
@@ -344,6 +343,19 @@ import type {
   PaperArchiveSetStatusCode,
   PaperArchiveSetVO,
 } from '@/apis/mark/paper-archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import {
+  ArrowLeftOutlined,
+  DownloadOutlined,
+  FileSearchOutlined,
+  ProfileOutlined,
+  ReloadOutlined,
+  UploadOutlined,
+} from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile, uploadFile } from '@/apis/edu/file-management'
 import {
   getPaperArchiveSetDetail,
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
@@ -356,21 +368,6 @@ import {
   updatePaperArchiveItemTags,
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import {
-  ArrowLeftOutlined,
-  DownloadOutlined,
-  FileSearchOutlined,
-  ProfileOutlined,
-  ReloadOutlined,
-  UploadOutlined,
-} from '@ant-design/icons-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  downloadFile as downloadStorageFile,
-  uploadFile as uploadStorageFile,
-} from '@/apis/edu/file-management'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -626,7 +623,7 @@ async function submitUpload(): Promise<void> {
   uploadProgress.value = 0
   try {
     // Step 1：直传 edu-storage
-    const node = await uploadStorageFile(uploadForm.file, {
+    const node = await uploadFile(uploadForm.file, {
       businessType: 'paper-archive-scan',
     })
     if (!node?.id) {
@@ -673,7 +670,7 @@ async function handleDownloadItem(item: PaperArchiveItemVO): Promise<void> {
     return
   }
   try {
-    await downloadStorageFile({ nodeId: item.fileId })
+    await downloadFile({ nodeId: item.fileId })
   } catch (error) {
     showUserError(error, '扫描试卷下载失败')
   }

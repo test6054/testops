@@ -22,6 +22,8 @@ import type {
   InboxMessageMarkRequest,
   InboxUnreadCountResponse,
 } from '@/apis/edu/message'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import {
   getInboxMessages,
   getUnreadCount,
@@ -30,8 +32,6 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 import { getValidToken } from '@/utils/auth'
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000

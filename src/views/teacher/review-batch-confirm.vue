@@ -145,16 +145,16 @@ import type {
   ReviewTaskItemVO,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam'
+import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   batchConfirmQuestionGrades,
   listReviewTasks,
   pageExams,
   REVIEW_TASK_TYPE_META,
 } from '@/apis/mark/exam'
-import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { UiAlertStrip, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { formatSemester } from '@/types/enums/semester-enum'
@@ -162,7 +162,7 @@ import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 const router = useRouter()
 const examLoading = ref(false)
-const examOptions = ref<{ label: string; value: string }[]>([])
+const examOptions = ref<{ label: string, value: string }[]>([])
 const selectedExamId = ref<string | undefined>(undefined)
 const loading = ref(false)
 const submitting = ref(false)
@@ -310,9 +310,9 @@ async function submitBatch() {
     const draft = confirmDrafts.value.find((row) => row.reviewTaskId === taskId)
     const teacherReviewScore = draft?.teacherReviewScore
     if (
-      teacherReviewScore === undefined ||
-      teacherReviewScore === null ||
-      Number.isNaN(teacherReviewScore)
+      teacherReviewScore === undefined
+      || teacherReviewScore === null
+      || Number.isNaN(teacherReviewScore)
     ) {
       message.warning(`${task.paperDisplay.primaryText} 的教师复核评分不能为空，请先填写`)
       return

@@ -139,7 +139,7 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
           :key="item.key"
           class="issue-item"
           :class="{
-            active: selectedItem?.key === item.key,
+            'active': selectedItem?.key === item.key,
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -225,9 +225,9 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
           type="button"
           class="op-btn op-btn--danger"
           :disabled="
-            !selectedItem ||
-            selectedItem.source !== 'ledger' ||
-            !workflow.canDiscardLedgerPage.value
+            !selectedItem
+              || selectedItem.source !== 'ledger'
+              || !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem

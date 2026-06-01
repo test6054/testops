@@ -103,6 +103,10 @@ import type {
   ReviewWindowPolicyStatusCode,
   VisibleMaterialScopeCode,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -112,17 +116,13 @@ import {
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_WINDOW_STATUS_COLOR, status, '复核窗口状态')
@@ -154,13 +154,13 @@ const form = reactive<{
   allowedReasonTypes: [],
 })
 
-const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
   { label: '仅分数', value: 'SCORE_ONLY' },
   { label: '分数+批注', value: 'SCORE_AND_ANNOTATION' },
   { label: '完整材料', value: 'FULL' },
 ]
 
-const reasonTypeOptions: { label: string; value: GradeReviewReasonTypeCode }[] = [
+const reasonTypeOptions: { label: string, value: GradeReviewReasonTypeCode }[] = [
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.SCORE_ERROR, value: 'SCORE_ERROR' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.RUBRIC, value: 'RUBRIC' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.OBJECTIVE, value: 'OBJECTIVE' },
@@ -183,8 +183,8 @@ async function reload(): Promise<void> {
     }
   } catch (e) {
     policy.value = null
-    loadError.value =
-      e instanceof Error ? e : new Error(getUserErrorMessage(e, '成绩复核窗口加载失败'))
+    loadError.value
+      = e instanceof Error ? e : new Error(getUserErrorMessage(e, '成绩复核窗口加载失败'))
     showUserError(e, '成绩复核窗口加载失败')
   } finally {
     loading.value = false
