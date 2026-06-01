@@ -16,31 +16,31 @@ export interface AchievementDetailVO {
   detailType: AchievementDetailType
   referenceId: string
   referenceCode?: string
-  referenceName?: string
+  referenceName: string
   weight?: number
   fullScore?: number
   averageScore?: number
   achievementValue?: number
-  sampleTotal?: number
-  sampleValid?: number
+  sampleTotal: number
+  sampleValid: number
   excludedSampleReason?: string
   notes?: string
   createTime?: string
   updateTime?: string
 }
 
-export interface AchievementDetailSavePayload {
+export interface AchievementDetailSaveRequest {
   achievementResultId: string
   detailType: AchievementDetailType
   referenceId: string
   referenceCode?: string
-  referenceName?: string
+  referenceName: string
   weight?: number
   fullScore?: number
   averageScore?: number
   achievementValue?: number
-  sampleTotal?: number
-  sampleValid?: number
+  sampleTotal: number
+  sampleValid: number
   excludedSampleReason?: string
   notes?: string
 }
@@ -48,10 +48,10 @@ export interface AchievementDetailSavePayload {
 export const achievementDetailApi = {
   listByResult: (achievementResultId: string) =>
     http.post<AchievementDetailVO[]>(`${BASE}/list-by-result`, { id: achievementResultId }),
-  create: (data: AchievementDetailSavePayload) =>
+  create: (data: AchievementDetailSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),
   /** 按结果 ID 全量替换（内部重算用，用户端一般不直接调用） */
-  replaceByResult: (achievementResultId: string, details: AchievementDetailSavePayload[]) =>
+  replaceByResult: (achievementResultId: string, details: AchievementDetailSaveRequest[]) =>
     http.post<void>(`${BASE}/replace-by-result`, { achievementResultId, details }),
   /** 按结果 ID 软删除全部明细 */
   deleteByResult: (achievementResultId: string) =>

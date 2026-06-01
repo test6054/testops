@@ -19,6 +19,7 @@ export interface ProfessionAlgorithmProfileVO {
   profileName: string
   templateId: string
   programId: string
+  programName: string
   standardId?: string
   accreditationType: AccreditationType
   accreditationLevel?: string
@@ -33,8 +34,12 @@ export interface ProfessionAlgorithmProfileVO {
   courseGoalThreshold?: number
   indicatorThreshold?: number
   requirementThreshold?: number
-  inheritedFields?: string
-  overriddenFields?: string
+  inheritAggregationStrategy?: boolean
+  inheritWeightStrategy?: boolean
+  inheritThresholdStrategy?: boolean
+  overrideAggregationStrategy?: boolean
+  overrideWeightStrategy?: boolean
+  overrideThresholdStrategy?: boolean
   overrideReason?: string
   confirmationStatus: ConfirmationStatus
   confirmedBy?: string
@@ -44,7 +49,7 @@ export interface ProfessionAlgorithmProfileVO {
   updateTime?: string
 }
 
-export interface ProfessionAlgorithmProfileSavePayload {
+export interface ProfessionAlgorithmProfileSaveRequest {
   id?: string
   profileCode: string
   profileName: string
@@ -64,13 +69,17 @@ export interface ProfessionAlgorithmProfileSavePayload {
   courseGoalThreshold?: number
   indicatorThreshold?: number
   requirementThreshold?: number
-  inheritedFields?: string
-  overriddenFields?: string
+  inheritAggregationStrategy?: boolean
+  inheritWeightStrategy?: boolean
+  inheritThresholdStrategy?: boolean
+  overrideAggregationStrategy?: boolean
+  overrideWeightStrategy?: boolean
+  overrideThresholdStrategy?: boolean
   overrideReason?: string
   enabled?: boolean
 }
 
-export interface ProfessionAlgorithmProfileQueryPayload extends QueryDto {
+export interface ProfessionAlgorithmProfileQueryRequest extends QueryDto {
   programId?: string
   accreditationType?: AccreditationType
   confirmationStatus?: ConfirmationStatus
@@ -79,12 +88,12 @@ export interface ProfessionAlgorithmProfileQueryPayload extends QueryDto {
 }
 
 export const professionAlgorithmProfileApi = {
-  page: (data: ProfessionAlgorithmProfileQueryPayload) =>
+  page: (data: ProfessionAlgorithmProfileQueryRequest) =>
     http.post<PageResult<ProfessionAlgorithmProfileVO>>(`${BASE}/page`, data),
   detail: (id: string) => http.post<ProfessionAlgorithmProfileVO>(`${BASE}/detail`, { id }),
-  create: (data: ProfessionAlgorithmProfileSavePayload) =>
+  create: (data: ProfessionAlgorithmProfileSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),
-  update: (data: ProfessionAlgorithmProfileSavePayload) => http.post<void>(`${BASE}/update`, data),
+  update: (data: ProfessionAlgorithmProfileSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   /** DRAFT/SUBMITTED/RETURNED → CONFIRMED：专业负责人确认实例 */
   confirm: (id: string) => http.post<void>(`${BASE}/confirm`, { id }),
@@ -92,5 +101,7 @@ export const professionAlgorithmProfileApi = {
   revoke: (id: string) => http.post<void>(`${BASE}/revoke`, { id }),
   /** 按专业 ID 取当前生效（CONFIRMED + enabled）的实例 */
   activeByProgram: (programId: string) =>
-    http.post<ProfessionAlgorithmProfileVO | null>(`${BASE}/active-by-program`, { id: programId }),
+    http.post<ProfessionAlgorithmProfileVO | null>(`${BASE}/active-by-program`, {
+      id: programId,
+    }),
 }

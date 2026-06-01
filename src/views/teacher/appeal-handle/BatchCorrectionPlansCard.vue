@@ -41,6 +41,9 @@
         <template v-if="column.key === 'correctionType'">
           {{ correctionTypeLabel(record) }}
         </template>
+        <template v-else-if="column.key === 'affectedQuestionRefs'">
+          {{ affectedQuestionSummary(record) }}
+        </template>
         <template v-else-if="column.key === 'approvalStatus'">
           <a-tag :color="approvalStatusColor(record)">
             {{ approvalStatusLabel(record) }}
@@ -141,8 +144,16 @@
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item v-if="form.correctionType === 'SINGLE_QUESTION'" label="题目模板ID" required>
-          <a-input v-model:value="form.questionTemplateId" placeholder="单题批量更正必填" />
+        <a-form-item v-if="form.correctionType === 'SINGLE_QUESTION'" label="更正题目" required>
+          <a-select
+            v-model:value="form.questionTemplateId"
+            :loading="reviewRequestLoading"
+            :options="questionOptions"
+            placeholder="选择需要批量更正的题目"
+            show-search
+            option-filter-prop="label"
+            @change="handleQuestionChange"
+          />
         </a-form-item>
         <a-form-item label="更正原因" required>
           <a-textarea v-model:value="form.reason" :rows="3" :maxlength="500" show-count />
@@ -156,14 +167,16 @@
           </div>
           <div v-for="(item, index) in form.items" :key="item.localId" class="batch-plan-item">
             <a-row :gutter="12" align="middle">
-              <a-col :span="7">
-                <a-form-item label="学生用户ID" required>
-                  <a-input v-model:value="item.studentUserId" placeholder="必填" />
-                </a-form-item>
-              </a-col>
-              <a-col :span="7">
-                <a-form-item label="试卷实例ID" required>
-                  <a-input v-model:value="item.paperInstanceId" placeholder="必填" />
+              <a-col :span="14">
+                <a-form-item label="复核申请" required>
+                  <a-select
+                    v-model:value="item.reviewRequestId"
+                    :loading="reviewRequestLoading"
+                    :options="itemReviewRequestOptions"
+                    placeholder="选择已通过的复核申请"
+                    show-search
+                    option-filter-prop="label"
+                  />
                 </a-form-item>
               </a-col>
               <a-col :span="6">
@@ -215,44 +228,48 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   BatchCorrectionApprovalStatusCode,
-  BatchCorrectionPlanCreatePayload,
+  BatchCorrectionPlanCreateRequest,
   ExamBatchGradeCorrectionPlanVO,
   GradeCorrectionTypeCode,
+  GradeReviewQuestionRefVO,
+  GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_STATUS_COLOR,
   BATCH_CORRECTION_STATUS_LABEL,
+  BATCH_CORRECTION_STATUS_OPTIONS,
   createBatchCorrectionPlan,
   executeBatchCorrectionPlan,
   GRADE_CORRECTION_TYPE_LABEL,
   listBatchCorrectionPlans,
+  listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 type OperationAction = 'submit' | 'approve' | 'reject' | 'execute' | ''
 
 interface PlanItemForm {
   localId: number
-  studentUserId: string
-  paperInstanceId: string
+  reviewRequestId: string
   afterScore: number | undefined
 }
 
 const rows = ref<ExamBatchGradeCorrectionPlanVO[]>([])
 const loading = ref(false)
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 const statusFilter = ref<BatchCorrectionApprovalStatusCode | undefined>(undefined)
 const createOpen = ref(false)
 const creating = ref(false)
@@ -262,10 +279,12 @@ const rejectModalOpen = ref(false)
 const rejectPlanId = ref('')
 const rejectReason = ref('')
 const nextLocalId = ref(1)
+const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
+const reviewRequestLoading = ref(false)
 
 const form = reactive<{
   planName: string
-  correctionType: BatchCorrectionPlanCreatePayload['correctionType']
+  correctionType: BatchCorrectionPlanCreateRequest['correctionType']
   questionTemplateId: string
   reason: string
   items: PlanItemForm[]
@@ -277,20 +296,47 @@ const form = reactive<{
   items: [],
 })
 
-const statusOptions = Object.entries(BATCH_CORRECTION_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const statusOptions = BATCH_CORRECTION_STATUS_OPTIONS
 
 const correctionTypeOptions = [
   { value: 'SINGLE_QUESTION', label: GRADE_CORRECTION_TYPE_LABEL.SINGLE_QUESTION },
   { value: 'TOTAL_SCORE', label: GRADE_CORRECTION_TYPE_LABEL.TOTAL_SCORE },
 ]
 
+const questionOptions = computed(() => {
+  const questionMap = new Map<string, GradeReviewQuestionRefVO>()
+  for (const request of approvedReviewRequests.value) {
+    for (const question of request.questionRefs) {
+      if (!questionMap.has(question.questionTemplateId)) {
+        questionMap.set(question.questionTemplateId, question)
+      }
+    }
+  }
+  return Array.from(questionMap.values()).map((question) => ({
+    value: question.questionTemplateId,
+    label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
+  }))
+})
+
+const itemReviewRequestOptions = computed(() =>
+  approvedReviewRequests.value
+    .filter(
+      (request) =>
+        form.correctionType === 'TOTAL_SCORE' ||
+        request.questionRefs.some(
+          (question) => question.questionTemplateId === form.questionTemplateId,
+        ),
+    )
+    .map((request) => ({
+      value: request.id,
+      label: `${reviewRequestStudentLabel(request)} · ${reviewRequestQuestionLabel(request)}`,
+    })),
+)
+
 const columns: ColumnType<ExamBatchGradeCorrectionPlanVO>[] = [
-  { title: '计划ID', dataIndex: 'id', key: 'id', width: 140 },
   { title: '名称', dataIndex: 'planName', key: 'planName', ellipsis: true },
   { title: '类型', key: 'correctionType', width: 110 },
+  { title: '受影响题目', key: 'affectedQuestionRefs', width: 160 },
   {
     title: '受影响学生',
     dataIndex: 'affectedStudentCount',
@@ -310,32 +356,35 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    rows.value = await listBatchCorrectionPlans({
+    const plans = await listBatchCorrectionPlans({
       examId: props.examId,
       approvalStatus: statusFilter.value,
     })
+    validateBatchCorrectionPlanDisplayContracts(plans)
+    rows.value = plans
   } catch (e) {
     rows.value = []
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '批量更正计划加载失败')
+    loadError.value = toUserError(e, '批量成绩更正计划加载失败')
+    showUserError(e, '批量成绩更正计划加载失败')
   } finally {
     loading.value = false
   }
 }
 
-function openCreateModal(): void {
+async function openCreateModal(): Promise<void> {
   form.planName = ''
   form.correctionType = 'SINGLE_QUESTION'
   form.questionTemplateId = ''
   form.reason = ''
   form.items = [createEmptyItem()]
   createOpen.value = true
+  await loadApprovedReviewRequests()
 }
 
 function createEmptyItem(): PlanItemForm {
   const localId = nextLocalId.value
   nextLocalId.value += 1
-  return { localId, studentUserId: '', paperInstanceId: '', afterScore: 0 }
+  return { localId, reviewRequestId: '', afterScore: 0 }
 }
 
 function addItem(): void {
@@ -348,18 +397,66 @@ function removeItem(index: number): void {
 }
 
 function handleCorrectionTypeChange(): void {
-  if (form.correctionType === 'TOTAL_SCORE') {
-    form.questionTemplateId = ''
+  form.questionTemplateId = ''
+  for (const item of form.items) {
+    item.reviewRequestId = ''
   }
 }
 
-function buildCreatePayload(): BatchCorrectionPlanCreatePayload | null {
+function handleQuestionChange(): void {
+  for (const item of form.items) {
+    item.reviewRequestId = ''
+  }
+}
+
+async function loadApprovedReviewRequests(): Promise<void> {
+  if (!props.examId) return
+  reviewRequestLoading.value = true
+  try {
+    const page = await listReviewRequests({
+      examId: props.examId,
+      requestStatus: 'APPROVED',
+      pageNum: 1,
+      pageSize: 200,
+    })
+    validateReviewRequestDisplayContracts(page.list)
+    approvedReviewRequests.value = page.list
+  } catch (e) {
+    approvedReviewRequests.value = []
+    showUserError(e, '已通过复核申请加载失败')
+  } finally {
+    reviewRequestLoading.value = false
+  }
+}
+
+/** 校验批量更正计划列表所需受影响题目字段，缺失时进入组件错误态。 */
+function validateBatchCorrectionPlanDisplayContracts(list: ExamBatchGradeCorrectionPlanVO[]): void {
+  for (const row of list) {
+    if (
+      row.correctionType !== 'TOTAL_SCORE' &&
+      (!row.affectedQuestionRefs || row.affectedQuestionRefs.length === 0)
+    ) {
+      throw new Error(`批量更正计划受影响题目信息缺失：${row.id}`)
+    }
+  }
+}
+
+/** 校验可纳入批量更正的复核申请学生展示字段，缺失时中断弹窗数据源。 */
+function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemResponse[]): void {
+  for (const request of list) {
+    if (!request.studentName.trim() || !request.studentNo.trim()) {
+      throw new Error(`复核申请学生信息缺失：${request.id}`)
+    }
+  }
+}
+
+function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
   if (!form.planName.trim()) {
     message.warning('计划名称必填')
     return null
   }
-  if (form.correctionType === 'SINGLE_QUESTION' && !form.questionTemplateId.trim()) {
-    message.warning('单题批量更正必须填写题目模板ID')
+  if (form.correctionType === 'SINGLE_QUESTION' && !form.questionTemplateId) {
+    message.warning('单题批量更正请选择题目')
     return null
   }
   if (!form.reason.trim()) {
@@ -370,54 +467,65 @@ function buildCreatePayload(): BatchCorrectionPlanCreatePayload | null {
     message.warning('更正明细不能为空')
     return null
   }
-  const items: BatchCorrectionPlanCreatePayload['items'] = []
+  const items: BatchCorrectionPlanCreateRequest['items'] = []
   for (const item of form.items) {
+    const request = approvedReviewRequests.value.find(
+      (approvedRequest) => approvedRequest.id === item.reviewRequestId,
+    )
+    if (!request) {
+      message.warning('更正明细请选择已通过的复核申请')
+      return null
+    }
+    if (
+      form.correctionType === 'SINGLE_QUESTION' &&
+      !request.questionRefs.some(
+        (question) => question.questionTemplateId === form.questionTemplateId,
+      )
+    ) {
+      message.warning('更正明细包含未申请该题目的学生')
+      return null
+    }
     if (typeof item.afterScore !== 'number') {
       message.warning('更正明细中的更正后分数必填')
       return null
     }
     items.push({
-      studentUserId: item.studentUserId.trim(),
-      paperInstanceId: item.paperInstanceId.trim(),
+      reviewRequestId: request.id,
       afterScore: item.afterScore,
     })
   }
-  const invalidItem = items.find(item => !item.studentUserId || !item.paperInstanceId)
-  if (invalidItem) {
-    message.warning('更正明细中的学生用户ID和试卷实例ID必填')
-    return null
-  }
-  const duplicatePaper = new Set<string>()
-  const duplicated = items.some(item => {
-    if (duplicatePaper.has(item.paperInstanceId)) return true
-    duplicatePaper.add(item.paperInstanceId)
+  const duplicateReviewRequest = new Set<string>()
+  const duplicated = items.some((item) => {
+    if (duplicateReviewRequest.has(item.reviewRequestId)) return true
+    duplicateReviewRequest.add(item.reviewRequestId)
     return false
   })
   if (duplicated) {
-    message.warning('同一计划中不能重复填写试卷实例ID')
+    message.warning('同一计划中不能重复选择同一名学生的复核申请')
     return null
   }
   return {
     examId: props.examId,
     planName: form.planName.trim(),
     correctionType: form.correctionType,
-    questionTemplateId: form.questionTemplateId.trim() || undefined,
+    questionTemplateId:
+      form.correctionType === 'SINGLE_QUESTION' ? form.questionTemplateId : undefined,
     items,
     reason: form.reason.trim(),
   }
 }
 
 async function handleCreate(): Promise<void> {
-  const payload = buildCreatePayload()
-  if (!payload) return
+  const request = buildCreateRequest()
+  if (!request) return
   creating.value = true
   try {
-    await createBatchCorrectionPlan(payload)
+    await createBatchCorrectionPlan(request)
     message.success('批量更正计划草稿已创建')
     createOpen.value = false
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '创建失败')
+    showUserError(e, '批量成绩更正计划创建失败')
   } finally {
     creating.value = false
   }
@@ -431,7 +539,7 @@ async function handleSubmitPlan(planId: string): Promise<void> {
     message.success('已提交审批')
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '提交失败')
+    showUserError(e, '批量成绩更正计划提交失败')
   } finally {
     resetOperating()
   }
@@ -445,7 +553,7 @@ async function handleApprove(planId: string): Promise<void> {
     message.success('已审批通过')
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '审批失败')
+    showUserError(e, '批量成绩更正计划审批失败')
   } finally {
     resetOperating()
   }
@@ -471,7 +579,7 @@ async function handleReject(): Promise<void> {
     rejectModalOpen.value = false
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '驳回失败')
+    showUserError(e, '批量成绩更正计划驳回失败')
   } finally {
     resetOperating()
     rejectPlanId.value = ''
@@ -486,7 +594,7 @@ async function handleExecute(planId: string): Promise<void> {
     message.success('批量更正执行完成')
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '执行失败')
+    showUserError(e, '批量成绩更正计划执行失败')
   } finally {
     resetOperating()
   }
@@ -510,6 +618,33 @@ function correctionTypeLabel(row: ExamBatchGradeCorrectionPlanVO): string {
   return strictEnumLabel(GRADE_CORRECTION_TYPE_LABEL, code, '成绩更正类型')
 }
 
+function affectedQuestionSummary(row: ExamBatchGradeCorrectionPlanVO): string {
+  if (row.correctionType === 'TOTAL_SCORE') {
+    return '总分'
+  }
+  return (row.affectedQuestionRefs ?? [])
+    .map((questionRef) => `${questionRef.questionNo}（${questionRef.fullScore} 分）`)
+    .join('、')
+}
+
+function reviewRequestStudentLabel(request: GradeReviewRequestItemResponse): string {
+  const name = request.studentName.trim()
+  const no = request.studentNo.trim()
+  return `${name}（${no}）`
+}
+
+function reviewRequestQuestionLabel(request: GradeReviewRequestItemResponse): string {
+  if (request.questionRefs.length === 0) {
+    return '总分复核'
+  }
+  return request.questionRefs
+    .map(
+      (question) =>
+        `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
+    )
+    .join('、')
+}
+
 function approvalStatusLabel(row: ExamBatchGradeCorrectionPlanVO): string {
   return strictEnumLabel(BATCH_CORRECTION_STATUS_LABEL, row.approvalStatus, '批量更正审批状态')
 }
@@ -517,7 +652,6 @@ function approvalStatusLabel(row: ExamBatchGradeCorrectionPlanVO): string {
 function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): string {
   return strictEnumTone(BATCH_CORRECTION_STATUS_COLOR, row.approvalStatus, '批量更正审批状态')
 }
-
 
 watch(
   () => [props.examId, props.reloadToken],

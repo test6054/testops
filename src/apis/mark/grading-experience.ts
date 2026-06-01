@@ -59,66 +59,84 @@ export const EXPERIENCE_CASE_STATUS_COLOR: Record<ExperienceCaseStatusCode, Badg
 // ─── DTO ─────────────────────────────────
 
 /** 跨考试相似题检索 - 对应 SimilarQuestionSearchRequest */
-export interface SimilarQuestionSearchPayload {
+export interface SimilarQuestionSearchRequest {
   examId: string
   questionTemplateId: string
   /** 最大返回条数，默认 10 */
   limit?: number
 }
 
-/** 题目签名 VO - 对应 CrossExamQuestionSignature */
+/** 题目签名 VO - 对应 QuestionSignatureResponse */
 export interface QuestionSignatureVO {
   id?: string
-  tenantId?: string
   examId: string
+  examName: string
+  examNo: string
   questionTemplateId: string
-  questionType?: QuestionTypeCode
+  questionType: QuestionTypeCode
   questionNo: string
   questionDigest?: string
   standardAnswerDigest?: string
-  structureFeatures?: string
-  signatureHash?: string
-  signatureSimhash?: string
   createTime?: string
 }
 
-/** 经验案例 VO - 对应 ExamGradingExperienceCase */
+/** 批改经验单项 */
+export interface ExperienceItemVO {
+  experienceType?: string
+  description?: string
+  frequency?: number
+  scoringPattern?: string
+  applicableScenario?: string
+  riskNote?: string
+}
+
+/** 经验案例 VO - 对应 GradingExperienceCaseResponse */
 export interface GradingExperienceCaseVO {
   id?: string
-  tenantId?: string
   sourceExamId: string
+  sourceExamName: string
+  sourceExamNo: string
   questionTemplateId: string
-  questionType?: QuestionTypeCode
+  questionNo: string
+  questionDigest?: string
+  questionType: QuestionTypeCode
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   experienceSummary?: string
-  experienceItems?: string
-  riskTags?: string
+  experienceItems?: ExperienceItemVO[]
+  riskTags?: string[]
   applicableScope?: string
   caseStatus: ExperienceCaseStatusCode
   effectivenessMetric?: string
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
+  latencyMs?: number
   createTime?: string
+}
+
+/** 答案聚类单组 */
+export interface AnswerGroupVO {
+  groupNo?: number
+  groupLabel?: string
+  groupDescription?: string
+  representativeAnswers?: string[]
+  answerCount?: number
+  avgScore?: number
+  suggestedAction?: string
+  controversyNote?: string
 }
 
 /** 答案聚类记录 VO - 对应 ExamAnswerClusterRecord */
 export interface AnswerClusterRecordVO {
   id?: string
-  tenantId?: string
   examId: string
   questionTemplateId: string
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   clusterSummary?: string
-  answerGroups?: string
+  answerGroups?: AnswerGroupVO[]
   groupCount?: number
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
+  latencyMs?: number
   createTime?: string
 }
 
@@ -129,11 +147,11 @@ export interface AnswerClusterRecordVO {
  * POST /api/exam/grading-experience/signature/generate?examId=
  */
 export function generateSignatures(examId: string): Promise<QuestionSignatureVO[]> {
-  return http.post<unknown>(
+  return http.post<QuestionSignatureVO[]>(
     '/api/exam/grading-experience/signature/generate',
     null,
     { params: { examId } },
-  ).then(validateQuestionSignatureList)
+  )
 }
 
 /**
@@ -141,10 +159,10 @@ export function generateSignatures(examId: string): Promise<QuestionSignatureVO[
  * GET /api/exam/grading-experience/signature/list?examId=
  */
 export function listSignatures(examId: string): Promise<QuestionSignatureVO[]> {
-  return http.get<unknown>(
+  return http.get<QuestionSignatureVO[]>(
     '/api/exam/grading-experience/signature/list',
     { params: { examId } },
-  ).then(validateQuestionSignatureList)
+  )
 }
 
 /**
@@ -152,12 +170,12 @@ export function listSignatures(examId: string): Promise<QuestionSignatureVO[]> {
  * POST /api/exam/grading-experience/signature/similar
  */
 export function searchSimilar(
-  payload: SimilarQuestionSearchPayload,
+  request: SimilarQuestionSearchRequest,
 ): Promise<QuestionSignatureVO[]> {
-  return http.post<unknown>(
+  return http.post<QuestionSignatureVO[]>(
     '/api/exam/grading-experience/signature/similar',
-    payload,
-  ).then(validateQuestionSignatureList)
+    request,
+  )
 }
 
 // ─── AI 经验提取 API ─────────────────────────────────
@@ -170,11 +188,11 @@ export function extractExperience(
   examId: string,
   questionTemplateId: string,
 ): Promise<GradingExperienceCaseVO> {
-  return http.post<unknown>(
+  return http.post<GradingExperienceCaseVO>(
     '/api/exam/grading-experience/experience/extract',
     null,
     { params: { examId, questionTemplateId } },
-  ).then(validateGradingExperienceCase)
+  )
 }
 
 /**
@@ -182,10 +200,10 @@ export function extractExperience(
  * GET /api/exam/grading-experience/experience/list?examId=
  */
 export function listExperiences(examId: string): Promise<GradingExperienceCaseVO[]> {
-  return http.get<unknown>(
+  return http.get<GradingExperienceCaseVO[]>(
     '/api/exam/grading-experience/experience/list',
     { params: { examId } },
-  ).then(validateGradingExperienceCaseList)
+  )
 }
 
 /**
@@ -196,10 +214,10 @@ export function listExperiencesByQuestion(
   examId: string,
   questionTemplateId: string,
 ): Promise<GradingExperienceCaseVO[]> {
-  return http.get<unknown>(
+  return http.get<GradingExperienceCaseVO[]>(
     '/api/exam/grading-experience/experience/by-question',
     { params: { examId, questionTemplateId } },
-  ).then(validateGradingExperienceCaseList)
+  )
 }
 
 // ─── AI 答案聚类 API ─────────────────────────────────
@@ -212,11 +230,11 @@ export function generateAnswerCluster(
   examId: string,
   questionTemplateId: string,
 ): Promise<AnswerClusterRecordVO> {
-  return http.post<unknown>(
+  return http.post<AnswerClusterRecordVO>(
     '/api/exam/grading-experience/answer-cluster/generate',
     null,
     { params: { examId, questionTemplateId } },
-  ).then(validateAnswerClusterRecord)
+  )
 }
 
 /**
@@ -227,159 +245,8 @@ export function getLatestAnswerCluster(
   examId: string,
   questionTemplateId: string,
 ): Promise<AnswerClusterRecordVO | null> {
-  return http.get<unknown>(
+  return http.get<AnswerClusterRecordVO | null>(
     '/api/exam/grading-experience/answer-cluster/latest',
     { params: { examId, questionTemplateId } },
-  ).then((value) => {
-    if (value === null) {
-      return null
-    }
-    return validateAnswerClusterRecord(value)
-  })
-}
-
-function requireString(value: unknown, fieldName: string): string {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw new TypeError(`批改经验接口缺少 ${fieldName}`)
-  }
-  return value
-}
-
-function optionalString(value: unknown, fieldName: string): string | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string') {
-    throw new TypeError(`批改经验接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function optionalQuestionType(value: unknown, fieldName: string): QuestionTypeCode | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (
-    value !== 'OBJECTIVE'
-    && value !== 'SUBJECTIVE'
-  ) {
-    throw new TypeError(`批改经验接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireQuestionType(value: unknown, fieldName: string): QuestionTypeCode {
-  const result = optionalQuestionType(value, fieldName)
-  if (!result) {
-    throw new TypeError(`批改经验接口缺少 ${fieldName}`)
-  }
-  return result
-}
-
-function requireAiAnalysisStatus(value: unknown, fieldName: string): AiAnalysisStatusCode {
-  if (
-    value !== 'PENDING'
-    && value !== 'SUCCESS'
-    && value !== 'FAILED'
-    && value !== 'BLOCKED'
-  ) {
-    throw new TypeError(`批改经验接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireExperienceCaseStatus(value: unknown, fieldName: string): ExperienceCaseStatusCode {
-  if (
-    value !== 'DRAFT'
-    && value !== 'CONFIRMED'
-    && value !== 'DEPRECATED'
-  ) {
-    throw new TypeError(`批改经验接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function validateQuestionSignature(value: unknown): QuestionSignatureVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('题目签名接口返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    id: optionalString(record.id, 'id'),
-    tenantId: optionalString(record.tenantId, 'tenantId'),
-    examId: requireString(record.examId, 'examId'),
-    questionTemplateId: requireString(record.questionTemplateId, 'questionTemplateId'),
-    questionType: optionalQuestionType(record.questionType, 'questionType'),
-    questionNo: requireString(record.questionNo, 'questionNo'),
-    questionDigest: optionalString(record.questionDigest, 'questionDigest'),
-    standardAnswerDigest: optionalString(record.standardAnswerDigest, 'standardAnswerDigest'),
-    structureFeatures: optionalString(record.structureFeatures, 'structureFeatures'),
-    signatureHash: optionalString(record.signatureHash, 'signatureHash'),
-    signatureSimhash: optionalString(record.signatureSimhash, 'signatureSimhash'),
-    createTime: optionalString(record.createTime, 'createTime'),
-  }
-}
-
-function validateQuestionSignatureList(value: unknown): QuestionSignatureVO[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError('题目签名列表接口返回格式错误')
-  }
-  return value.map(validateQuestionSignature)
-}
-
-function validateGradingExperienceCase(value: unknown): GradingExperienceCaseVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('批改经验案例接口返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    id: optionalString(record.id, 'id'),
-    tenantId: optionalString(record.tenantId, 'tenantId'),
-    sourceExamId: requireString(record.sourceExamId, 'sourceExamId'),
-    questionTemplateId: requireString(record.questionTemplateId, 'questionTemplateId'),
-    questionType: requireQuestionType(record.questionType, 'questionType'),
-    aiTraceId: optionalString(record.aiTraceId, 'aiTraceId'),
-    aiModelProfileId: optionalString(record.aiModelProfileId, 'aiModelProfileId'),
-    evidenceSnapshot: optionalString(record.evidenceSnapshot, 'evidenceSnapshot'),
-    experienceSummary: optionalString(record.experienceSummary, 'experienceSummary'),
-    experienceItems: optionalString(record.experienceItems, 'experienceItems'),
-    riskTags: optionalString(record.riskTags, 'riskTags'),
-    applicableScope: optionalString(record.applicableScope, 'applicableScope'),
-    caseStatus: requireExperienceCaseStatus(record.caseStatus, 'caseStatus'),
-    effectivenessMetric: optionalString(record.effectivenessMetric, 'effectivenessMetric'),
-    analysisStatus: requireAiAnalysisStatus(record.analysisStatus, 'analysisStatus'),
-    errorMessage: optionalString(record.errorMessage, 'errorMessage'),
-    latencyMs: optionalString(record.latencyMs, 'latencyMs'),
-    createTime: optionalString(record.createTime, 'createTime'),
-  }
-}
-
-function validateGradingExperienceCaseList(value: unknown): GradingExperienceCaseVO[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError('批改经验案例列表接口返回格式错误')
-  }
-  return value.map(validateGradingExperienceCase)
-}
-
-function validateAnswerClusterRecord(value: unknown): AnswerClusterRecordVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('答案聚类接口返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    id: optionalString(record.id, 'id'),
-    tenantId: optionalString(record.tenantId, 'tenantId'),
-    examId: requireString(record.examId, 'examId'),
-    questionTemplateId: requireString(record.questionTemplateId, 'questionTemplateId'),
-    aiTraceId: optionalString(record.aiTraceId, 'aiTraceId'),
-    aiModelProfileId: optionalString(record.aiModelProfileId, 'aiModelProfileId'),
-    evidenceSnapshot: optionalString(record.evidenceSnapshot, 'evidenceSnapshot'),
-    clusterSummary: optionalString(record.clusterSummary, 'clusterSummary'),
-    answerGroups: optionalString(record.answerGroups, 'answerGroups'),
-    groupCount: typeof record.groupCount === 'number' ? record.groupCount : undefined,
-    analysisStatus: requireAiAnalysisStatus(record.analysisStatus, 'analysisStatus'),
-    errorMessage: optionalString(record.errorMessage, 'errorMessage'),
-    latencyMs: optionalString(record.latencyMs, 'latencyMs'),
-    createTime: optionalString(record.createTime, 'createTime'),
-  }
+  )
 }

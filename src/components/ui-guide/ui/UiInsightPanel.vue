@@ -8,12 +8,7 @@
       :divided="props.divided"
     >
       <template v-if="showMeta" #meta>
-        <UiBadge
-          v-if="props.level"
-          :tone="props.scoreTone"
-          variant="soft"
-          size="sm"
-        >
+        <UiBadge v-if="props.level" :tone="props.scoreTone" variant="soft" size="sm">
           {{ props.level }}
         </UiBadge>
         <slot name="meta" />
@@ -24,12 +19,9 @@
       </template>
     </UiPanelHeader>
 
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div v-if="hasContent" class="ui-insight-panel__content">
-        <section
-          v-if="showSummary"
-          class="ui-insight-panel__summary-card"
-        >
+        <section v-if="showSummary" class="ui-insight-panel__summary-card">
           <slot name="summary">
             <div
               v-if="props.score !== undefined && props.score !== null && props.score !== ''"
@@ -50,12 +42,7 @@
                 <h4 class="ui-insight-panel__summary-title">
                   {{ props.summaryTitle }}
                 </h4>
-                <UiTag
-                  v-if="props.level"
-                  :tone="props.scoreTone"
-                  size="sm"
-                  variant="outline"
-                >
+                <UiTag v-if="props.level" :tone="props.scoreTone" size="sm" variant="outline">
                   {{ props.level }}
                 </UiTag>
               </div>
@@ -68,10 +55,7 @@
         </section>
 
         <div class="ui-insight-panel__grid">
-          <section
-            v-if="showIssues"
-            class="ui-insight-panel__section"
-          >
+          <section v-if="showIssues" class="ui-insight-panel__section">
             <div class="ui-insight-panel__section-head">
               <h4 class="ui-insight-panel__section-title">{{ props.issueTitle }}</h4>
               <UiBadge tone="orange" variant="soft" size="sm">
@@ -87,10 +71,7 @@
                   class="ui-insight-panel__issue"
                 >
                   <div class="ui-insight-panel__issue-head">
-                    <UiTag
-                      :tone="item.tone || 'orange'"
-                      size="sm"
-                    >
+                    <UiTag :tone="item.tone || 'orange'" size="sm">
                       {{ item.tag || `问题 ${index + 1}` }}
                     </UiTag>
                     <h5 class="ui-insight-panel__issue-title">{{ item.title }}</h5>
@@ -104,10 +85,7 @@
             </slot>
           </section>
 
-          <section
-            v-if="showSuggestions"
-            class="ui-insight-panel__section"
-          >
+          <section v-if="showSuggestions" class="ui-insight-panel__section">
             <div class="ui-insight-panel__section-head">
               <h4 class="ui-insight-panel__section-title">{{ props.suggestionTitle }}</h4>
               <UiBadge tone="blue" variant="soft" size="sm">
@@ -130,15 +108,10 @@
           </section>
         </div>
 
-        <section
-          v-if="showMetrics"
-          class="ui-insight-panel__metrics"
-        >
+        <section v-if="showMetrics" class="ui-insight-panel__metrics">
           <div class="ui-insight-panel__section-head">
             <h4 class="ui-insight-panel__section-title">{{ props.metricTitle }}</h4>
-            <UiTag tone="gray" variant="outline" size="sm">
-              趋势与辅助指标
-            </UiTag>
+            <UiTag tone="gray" variant="outline" size="sm"> 趋势与辅助指标 </UiTag>
           </div>
 
           <slot name="metrics">
@@ -161,11 +134,7 @@
 
                 <div class="ui-insight-panel__metric-value-row">
                   <span class="ui-insight-panel__metric-value">{{ item.value }}</span>
-                  <UiTag
-                    :tone="item.tone || 'gray'"
-                    size="sm"
-                    variant="outline"
-                  >
+                  <UiTag :tone="item.tone || 'gray'" size="sm" variant="outline">
                     {{ getToneLabel(item.tone) }}
                   </UiTag>
                 </div>
@@ -177,12 +146,7 @@
         </section>
       </div>
 
-      <UiEmpty
-        v-else
-        size="sm"
-        title="暂无洞察内容"
-        :description="props.emptyText"
-      />
+      <UiEmpty v-else size="sm" title="暂无洞察内容" :description="props.emptyText" />
     </a-spin>
 
     <footer v-if="$slots.footer" class="ui-insight-panel__footer">
@@ -204,52 +168,62 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  score?: string | number
-  scoreUnit?: string
-  scoreLabel?: string
-  scoreTone?: BadgeTone
-  level?: string
-  summaryTitle?: string
-  summary?: string
-  issueTitle?: string
-  suggestionTitle?: string
-  metricTitle?: string
-  issues?: UiInsightItem[]
-  suggestions?: string[]
-  metrics?: UiInsightMetric[]
-  loading?: boolean
-  emptyText?: string
-  divided?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  score: undefined,
-  scoreUnit: '分',
-  scoreLabel: '综合评分',
-  scoreTone: 'blue',
-  level: '',
-  summaryTitle: '整体评估',
-  summary: '',
-  issueTitle: '问题清单',
-  suggestionTitle: '建议措施',
-  metricTitle: '数据洞察',
-  issues: () => [],
-  suggestions: () => [],
-  metrics: () => [],
-  loading: false,
-  emptyText: '请通过 props 或插槽传入洞察内容',
-  divided: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    score?: string | number
+    scoreUnit?: string
+    scoreLabel?: string
+    scoreTone?: BadgeTone
+    level?: string
+    summaryTitle?: string
+    summary?: string
+    issueTitle?: string
+    suggestionTitle?: string
+    metricTitle?: string
+    issues?: UiInsightItem[]
+    suggestions?: string[]
+    metrics?: UiInsightMetric[]
+    loading?: boolean
+    emptyText?: string
+    divided?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    score: undefined,
+    scoreUnit: '分',
+    scoreLabel: '综合评分',
+    scoreTone: 'blue',
+    level: '',
+    summaryTitle: '整体评估',
+    summary: '',
+    issueTitle: '问题清单',
+    suggestionTitle: '改进措施',
+    metricTitle: '数据洞察',
+    issues: () => [],
+    suggestions: () => [],
+    metrics: () => [],
+    loading: false,
+    emptyText: '请通过 props 或插槽传入洞察内容',
+    divided: true,
+  },
+)
 
 const slots = useSlots()
 
 const hasHeader = computed(() => {
-  return !!props.title || !!props.description || !!props.eyebrow || !!props.level || !!slots.meta || !!slots.actions
+  return (
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!props.level ||
+    !!slots.meta ||
+    !!slots.actions
+  )
 })
 
 const showMeta = computed(() => {

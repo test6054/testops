@@ -113,8 +113,108 @@ const DEFAULT_ERROR_MESSAGES: Record<ErrorType, string> = {
   [ErrorType.BUSINESS]: '业务处理失败',
   [ErrorType.AI_QUOTA]: 'AI资源不足，请联系老师',
   [ErrorType.SYSTEM]: '系统繁忙，请稍后重试',
-  [ErrorType.UNKNOWN]: '未知错误，请联系技术支持'
+  [ErrorType.UNKNOWN]: '操作未完成，请稍后重试或联系管理员'
 }
+
+/**
+ * 前端合同诊断消息特征
+ * 这类消息用于开发排查接口契约，不直接展示给教师、阅卷员或学生。
+ */
+const DEVELOPER_DIAGNOSTIC_PATTERNS: RegExp[] = [
+  /接口返回格式错误/,
+  /接口缺少/,
+  /接口 .*缺少/,
+  /接口 .*返回格式错误/,
+  /列表接口返回格式错误/,
+  /分页接口返回格式错误/,
+  /响应格式异常/,
+  /返回格式错误/,
+  /返回格式异常/,
+  /响应缺少/,
+  /响应 data 必须是/,
+  /缺少 .*字段/,
+  /缺少 .*数组/,
+  /缺少 .*列表/,
+  /缺少 .*ID/,
+  /缺少 .*Id/,
+  /缺少 .*id/,
+  /缺少 data 字段/,
+  /缺少 list 数组/,
+  /分页响应缺少 list 数组/,
+  /列表响应不是数组/,
+  /成功响应缺少 data 字段/,
+  /不符合 ResultInfo/,
+  /不符合前后端契约/,
+  /存在未定义枚举值/,
+  /必须是结构化数组/,
+  /必须是结构化对象/,
+  /必须是数组/,
+  /必须是对象/,
+  /必须是字符串/,
+  /必须是数字/,
+  /必须是布尔值/,
+  /必须是有效数字/,
+  /必须是合法/,
+  /格式错误/,
+  /字段异常/,
+  /字段 .*异常/,
+  /字段 .*格式错误/,
+  /字段 .*必须是/,
+  /枚举格式错误/,
+  /接口 .*格式错误/,
+  /响应字段 .*不合法/,
+  /响应字段 .*必须是/,
+  /不符合前后端数值契约/,
+  /事件来源不符合前端组件契约/,
+  /^TypeError:/,
+  /^Error:/,
+  /响应格式异常/,
+  /列表响应格式错误/,
+  /聚合明细接口返回格式错误/,
+  /考生名册接口返回格式错误/,
+  /扫描异常列表接口返回格式错误/,
+  /扫描批次列表接口返回格式错误/,
+  /设备聚合明细接口返回格式错误/,
+  /导入结果响应格式异常/,
+  /Agent 诊断信息/,
+  /Agent 检测信息/
+]
+
+/**
+ * 后台处理失败原因中的系统诊断特征。
+ * 异步导出、AI 分析等失败原因来自服务端持久化字段，不能默认作为用户文案透出。
+ */
+const PROCESS_FAILURE_TECHNICAL_PATTERNS: RegExp[] = [
+  /\b[A-Za-z]+Exception\b/,
+  /\bTypeError\b/,
+  /\bAxiosError\b/,
+  /\bStackTrace\b/,
+  /\bat\s+[\w.$]+/,
+  /\bjava\./,
+  /\borg\.springframework\b/,
+  /\borg\.postgresql\b/,
+  /\bPSQLException\b/,
+  /\bSQLException\b/,
+  /\bNullPointerException\b/,
+  /\bundefined\b/,
+  /\bnull\b/,
+  /\bNaN\b/,
+  /\bResultInfo\b/,
+  /\bexportErrorMessage\b/,
+  /\berrorMessage\b/,
+  /\btenantId\b/,
+  /\buserId\b/,
+  /\bfileId\b/,
+  /\btraceId\b/,
+  /https?:\/\//,
+  /\/api\//,
+  /\/Users\//,
+  /[A-Z]:\\/i,
+  /\bSQL\b/i,
+  /\bselect\b.+\bfrom\b/i,
+  /\binsert\s+into\b/i,
+  /\bupdate\b.+\bset\b/i
+]
 
 /**
  * 错误消息标题
@@ -188,7 +288,12 @@ function getErrorMessage(error: HandledError, errorType: ErrorType): string {
   }
 
   // 1. 使用后端返回的具体消息（仅对业务错误）
-  if (backendMessage && statusCode != null && statusCode < 500) {
+  if (
+    backendMessage
+    && statusCode != null
+    && statusCode < 500
+    && !isDeveloperDiagnosticMessage(backendMessage)
+  ) {
     return backendMessage
   }
 
@@ -202,8 +307,100 @@ function getErrorMessage(error: HandledError, errorType: ErrorType): string {
 }
 
 /**
- * 格式化错误码显示
- * 优化：不再显示技术性错误码，只依赖后端返回的消息
+ * 判断消息是否属于开发诊断，不应作为用户可见文案。
+ */
+export function isDeveloperDiagnosticMessage(messageText: string): boolean {
+  const normalized = messageText.trim()
+  if (!normalized) return false
+  return DEVELOPER_DIAGNOSTIC_PATTERNS.some(pattern => pattern.test(normalized))
+}
+
+function isTechnicalProcessFailureMessage(messageText: string): boolean {
+  const normalized = messageText.trim()
+  if (!normalized) return false
+  return PROCESS_FAILURE_TECHNICAL_PATTERNS.some(pattern => pattern.test(normalized))
+}
+
+function getResponseMessage(error: unknown): string | undefined {
+  if (error == null || typeof error !== 'object') return undefined
+  const obj = error as Record<string, unknown>
+  const directMsg = obj.msg
+  if (typeof directMsg === 'string' && directMsg.trim()) return directMsg
+
+  const response = obj.response
+  if (response == null || typeof response !== 'object') return undefined
+  const data = (response as Record<string, unknown>).data
+  if (data == null || typeof data !== 'object') return undefined
+  const responseData = data as Record<string, unknown>
+  const backendMsg = responseData.msg ?? responseData.message
+  return typeof backendMsg === 'string' && backendMsg.trim() ? backendMsg : undefined
+}
+
+function getDirectMessage(error: unknown): string | undefined {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error != null && typeof error === 'object') {
+    const messageText = (error as Record<string, unknown>).message
+    if (typeof messageText === 'string' && messageText.trim()) return messageText
+  }
+  return undefined
+}
+
+/**
+ * 提取用户可见错误文案。
+ * 保留后端业务错误，屏蔽接口契约、类型校验、组件事件来源等开发诊断。
+ */
+export function getUserErrorMessage(error: unknown, fallback = '操作失败，请稍后重试'): string {
+  const backendMessage = getResponseMessage(error)
+  if (backendMessage && !isDeveloperDiagnosticMessage(backendMessage)) {
+    return backendMessage
+  }
+
+  const directMessage = getDirectMessage(error)
+  if (directMessage && !isDeveloperDiagnosticMessage(directMessage)) {
+    return directMessage
+  }
+
+  return fallback
+}
+
+/**
+ * 将协议边界捕获到的异常收敛为页面错误态可直接持有的 Error。
+ */
+export function toUserError(error: unknown, fallback = '操作失败，请稍后重试'): Error {
+  if (error instanceof Error && !isDeveloperDiagnosticMessage(error.message)) {
+    return error
+  }
+  return new Error(getUserErrorMessage(error, fallback))
+}
+
+/**
+ * 提取异步任务、导出任务、AI 分析记录中的用户可见处理说明。
+ * 这类字段是持久化失败原因，默认比普通接口业务错误更保守，避免把堆栈、字段名、路径或接口合同诊断展示给用户。
+ */
+export function getUserProcessFailureMessage(
+  messageText: string | undefined | null,
+  fallback = '处理未完成，请稍后重试或联系管理员',
+): string {
+  const normalized = messageText?.trim()
+  if (!normalized) return fallback
+  if (isDeveloperDiagnosticMessage(normalized)) return fallback
+  if (isTechnicalProcessFailureMessage(normalized)) return fallback
+  return normalized
+}
+
+/**
+ * 显示用户可见错误提示。
+ * 已由 Axios 拦截器提示过的错误不重复弹出。
+ */
+export function showUserError(error: unknown, fallback = '操作失败，请稍后重试') {
+  if (isErrorHandled(error)) return
+  message.error(getUserErrorMessage(error, fallback))
+}
+
+/**
+ * 格式化错误码显示。
+ * 不向用户显示错误码，只依赖后端返回的业务消息。
  */
 function formatErrorCode(_error: HandledError): string {
   // 用户体验优化：错误码对普通用户没有意义，只显示后端返回的业务消息
@@ -360,21 +557,7 @@ export function handleErrorSmart(error: unknown, config: ErrorHandlerConfig = {}
  * 用于 catch (error) 块中替代 error.message 的直接访问
  */
 export function getErrMsg(error: unknown, fallback = '操作失败'): string {
-  if (error instanceof Error) return error.message || fallback
-  if (typeof error === 'string') return error || fallback
-  if (error != null && typeof error === 'object') {
-    const obj = error as Record<string, unknown>
-    if (typeof obj.message === 'string') return obj.message || fallback
-    if (typeof obj.msg === 'string') return obj.msg || fallback
-    // Axios 响应结构
-    const resp = obj.response as Record<string, unknown> | undefined
-    if (resp?.data && typeof resp.data === 'object') {
-      const data = resp.data as Record<string, unknown>
-      if (typeof data.message === 'string') return data.message || fallback
-      if (typeof data.msg === 'string') return data.msg || fallback
-    }
-  }
-  return fallback
+  return getUserErrorMessage(error, fallback)
 }
 
 /**

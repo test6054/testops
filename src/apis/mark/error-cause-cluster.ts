@@ -1,3 +1,4 @@
+import type { QuestionTypeCode } from './grading-experience'
 import type { AiAnalysisStatusCode, AnalysisScopeTypeCode } from './teaching-analysis'
 
 /**
@@ -12,33 +13,30 @@ import http from '@/config/axios'
 
 /** 错因聚类条目 */
 export interface ErrorCauseClusterItemVO {
-  clusterName?: string
-  questionType?: string
-  causeAnalysis?: string
-  affectedQuestionNos?: Array<string | number>
-  studentCount?: number
+  causeName?: string
+  causeDescription?: string
+  affectedCount?: number
+  proportion?: number
+  typicalExamples?: string[]
+  questionType?: QuestionTypeCode
   suggestion?: string
 }
 
 /** 错因聚类分析记录 - 对应 ExamErrorCauseCluster */
 export interface ExamErrorCauseClusterVO {
   id: string
-  tenantId?: string
   examId?: string
   questionTemplateId?: string
   scopeType?: AnalysisScopeTypeCode
   scopeId?: string
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   overallSummary?: string
   clusterItems?: ErrorCauseClusterItemVO[]
   clusterCount?: number
-  analysisStatus?: AiAnalysisStatusCode
+  analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
+  latencyMs?: number
   createTime?: string
-  updateTime?: string
 }
 
 /**

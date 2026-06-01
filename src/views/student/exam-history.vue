@@ -82,18 +82,15 @@
             </div>
           </template>
           <template v-else-if="column.key === 'finalScoreStatus'">
-            <UiTag
-              :tone="finalScoreStatusTone(filteredExams[index].finalScoreStatus)"
-              size="sm"
-            >
+            <UiTag :tone="finalScoreStatusTone(filteredExams[index].finalScoreStatus)" size="sm">
               {{ finalScoreStatusLabel(filteredExams[index].finalScoreStatus) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'finalScore'">
             <span
               v-if="
-                filteredExams[index].finalScoreStatus === 'PUBLISHED'
-                  && filteredExams[index].finalScore != null
+                filteredExams[index].finalScoreStatus === 'PUBLISHED' &&
+                filteredExams[index].finalScore != null
               "
               class="score-cell"
             >
@@ -152,19 +149,18 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode, StudentExamItemVO } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   canSubmitReview,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_TONE,
   listMyExams,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   UiBadge,
   UiButton,
@@ -175,6 +171,7 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -183,12 +180,12 @@ defineOptions({ name: 'StudentExamHistory' })
 const router = useRouter()
 const loading = ref(false)
 // D-9 错误态：学生考试列表加载失败时 UiErrorRetryPanel 重试入口
-const examsLoadError = ref<unknown>(null)
+const examsLoadError = ref<Error | null>(null)
 const exams = ref<StudentExamItemVO[]>([])
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
-const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
+const statusOptions: Array<{ value: FinalScoreStatusCode; label: string }> = [
   { value: 'PENDING', label: '待计算' },
   { value: 'CALCULATED', label: '已计算' },
   { value: 'CONFIRMED', label: '已确认' },
@@ -240,14 +237,12 @@ async function loadExams() {
   try {
     exams.value = await listMyExams()
   } catch (error) {
-    examsLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载考试失败'
-    message.error(msg)
+    examsLoadError.value = toUserError(error, '考试列表加载失败')
+    showUserError(error, '历次考试加载失败')
   } finally {
     loading.value = false
   }
 }
-
 
 function finalScoreStatusTone(status: FinalScoreStatusCode): BadgeTone {
   return strictEnumTone(FINAL_SCORE_STATUS_TONE, status, '最终成绩状态')

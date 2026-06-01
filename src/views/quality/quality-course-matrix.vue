@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
  *
@@ -27,29 +29,24 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AggregationFunction,
-  AssessmentGoalWeightSavePayload,
+  AssessmentGoalWeightSaveRequest,
   AssessmentGoalWeightVO,
-  AssessmentItemSavePayload,
+  AssessmentItemSaveRequest,
   AssessmentItemType,
   AssessmentItemVO,
-  CourseGoalAssessmentRuleSavePayload,
-  CourseGoalRequirementSavePayload,
+  CourseGoalAssessmentRuleSaveRequest,
+  CourseGoalRequirementSaveRequest,
   CourseGoalRequirementVO,
-  CourseGoalSavePayload,
+  CourseGoalSaveRequest,
   CourseGoalVO,
   GraduationRequirementVO,
-  QualityCourseSavePayload,
+  QualityCourseSaveRequest,
   QualityCourseVO,
   RequirementIndicatorVO,
-  RubricItemSavePayload,
+  RubricItemSaveRequest,
   RubricItemVO,
   SupportLevel,
 } from '@/apis/quality'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AGGREGATION_FUNCTION_LABEL,
   ASSESSMENT_ITEM_TYPE_LABEL,
@@ -59,15 +56,18 @@ import {
   courseGoalAssessmentRuleApi,
   courseGoalRequirementApi,
   graduationRequirementApi,
-  isAggregationFunction,
-  isAssessmentItemType,
-  isSupportLevel,
   qualityCourseApi,
   requirementIndicatorApi,
   rubricItemApi,
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
 } from '@/apis/quality'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
@@ -75,10 +75,9 @@ import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatOptionalNumber, formatRequiredNumber } from './_helpers'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const itemColumns: ColumnsType = [
   { title: '编码', dataIndex: 'itemCode', key: 'itemCode', width: 100 },
@@ -113,16 +112,12 @@ const qualityStore = useQualityStore()
 
 const WEIGHT_EPSILON = 1e-3
 
-function assessmentItemTypeLabel(value: unknown): string {
-  if (isAssessmentItemType(value)) return ASSESSMENT_ITEM_TYPE_LABEL[value]
-  if (value === undefined || value === null || value === '') return '-'
-  throw new Error('考核环节类型不符合前后端契约')
+function assessmentItemTypeLabel(value: AssessmentItemType | null | undefined): string {
+  return strictEnumLabel(ASSESSMENT_ITEM_TYPE_LABEL, value, '考核环节类型')
 }
 
-function aggregationFunctionLabel(value: unknown): string {
-  if (isAggregationFunction(value)) return AGGREGATION_FUNCTION_LABEL[value]
-  if (value === undefined || value === null || value === '') return '-'
-  throw new Error('课程目标聚合函数不符合前后端契约')
+function aggregationFunctionLabel(value: AggregationFunction | null | undefined): string {
+  return strictEnumLabel(AGGREGATION_FUNCTION_LABEL, value, '聚合函数')
 }
 
 /* ========== 当前课程 ========== */
@@ -435,8 +430,8 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
         ? `R::${support.requirementId}`
         : null
     if (!colKey) continue
-    const tone: MatrixCell['tone']
-      = support.supportLevel === 'HIGH'
+    const tone: MatrixCell['tone'] =
+      support.supportLevel === 'HIGH'
         ? 'red'
         : support.supportLevel === 'MEDIUM'
           ? 'orange'
@@ -445,7 +440,7 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
       rowKey: support.courseGoalId,
       colKey,
       primary: support.supportLevel.charAt(0),
-      secondary: `w=${formatRequiredNumber(support.supportWeight, '课程目标支撑权重', 2)}`,
+      secondary: `w=${support.supportWeight.toFixed(2)}`,
       tone,
     })
   }
@@ -489,8 +484,8 @@ const assessMatrixCells = computed<MatrixCell[]>(() => {
       cells.push({
         rowKey: item.id,
         colKey: w.courseGoalId,
-        primary: `w=${formatRequiredNumber(w.weight, '考核目标权重', 2)}`,
-        secondary: `满分 ${formatRequiredNumber(w.fullScore, '考核目标满分', 0)}`,
+        primary: `w=${w.weight.toFixed(2)}`,
+        secondary: `满分 ${w.fullScore.toFixed(0)}`,
         tone: 'green',
       })
     }
@@ -502,7 +497,7 @@ const assessMatrixCells = computed<MatrixCell[]>(() => {
 
 const courseEditorVisible = ref(false)
 const courseEditorMode = ref<'create' | 'edit'>('create')
-const courseEditor = reactive<QualityCourseSavePayload>({
+const courseEditor = reactive<QualityCourseSaveRequest>({
   trainingPlanId: '',
   programId: '',
   courseId: '',
@@ -521,6 +516,8 @@ const courseEditor = reactive<QualityCourseSavePayload>({
   enabled: true,
 })
 const courseSubmitting = ref(false)
+const syllabusFileUploading = ref(false)
+const syllabusFileName = ref('')
 
 function openCourseCreate() {
   if (!qualityStore.currentTrainingPlanId) {
@@ -547,6 +544,7 @@ function openCourseCreate() {
     syllabusFileId: '',
     enabled: true,
   })
+  syllabusFileName.value = ''
   courseEditorVisible.value = true
 }
 
@@ -554,7 +552,29 @@ function openCourseEdit() {
   if (!currentCourse.value) return
   courseEditorMode.value = 'edit'
   Object.assign(courseEditor, currentCourse.value)
+  syllabusFileName.value = currentCourse.value.syllabusFileId ? '已关联教学大纲附件' : ''
   courseEditorVisible.value = true
+}
+
+async function handleSyllabusFileUpload(options: UploadRequestOption): Promise<void> {
+  syllabusFileUploading.value = true
+  try {
+    const { file } = options
+    if (!(file instanceof File)) {
+      message.error('无效的教学大纲附件')
+      options.onError?.(new TypeError('无效的教学大纲附件'))
+      return
+    }
+    const uploaded = await uploadFile(file, { businessType: 'QUALITY_COURSE_SYLLABUS' })
+    courseEditor.syllabusFileId = uploaded.id
+    syllabusFileName.value = uploaded.nodeName
+    message.success(`已上传教学大纲附件：${uploaded.nodeName}`)
+    options.onSuccess?.({})
+  } catch (err) {
+    options.onError?.(err instanceof Error ? err : new Error(String(err)))
+  } finally {
+    syllabusFileUploading.value = false
+  }
 }
 
 /**
@@ -586,7 +606,8 @@ function handleTrainingPlanChange(value: string | null) {
   courseEditor.trainingPlanId = value ?? ''
 }
 
-function handleTeacherChange(value: string | null) {
+function handleTeacherChange(value: string | string[] | null) {
+  if (Array.isArray(value)) throw new Error('授课教师不支持多选值')
   courseEditor.teacherUserId = value ?? ''
 }
 
@@ -596,11 +617,11 @@ function handleClassChange(value: string | null) {
 
 async function submitCourse() {
   if (
-    !courseEditor.programId.trim()
-    || !courseEditor.trainingPlanId.trim()
-    || !courseEditor.courseId.trim()
-    || !courseEditor.courseCode.trim()
-    || !courseEditor.courseName.trim()
+    !courseEditor.programId.trim() ||
+    !courseEditor.trainingPlanId.trim() ||
+    !courseEditor.courseId.trim() ||
+    !courseEditor.courseCode.trim() ||
+    !courseEditor.courseName.trim()
   ) {
     message.error('请填写专业、培养方案、目录课程、编码、名称')
     return
@@ -650,7 +671,7 @@ async function deleteCourse() {
 
 const goalEditorVisible = ref(false)
 const goalEditorMode = ref<'create' | 'edit'>('create')
-const goalEditor = reactive<CourseGoalSavePayload>({
+const goalEditor = reactive<CourseGoalSaveRequest>({
   qualityCourseId: '',
   goalCode: '',
   goalName: '',
@@ -730,18 +751,26 @@ async function deleteGoal(record: CourseGoalVO) {
 
 const supportEditorVisible = ref(false)
 const supportEditorMode = ref<'create' | 'edit'>('create')
-const supportEditor = reactive<CourseGoalRequirementSavePayload>({
+const supportEditor = reactive<CourseGoalRequirementSaveRequest>({
   courseGoalId: '',
   requirementId: undefined,
   indicatorId: undefined,
   supportLevel: 'MEDIUM',
   supportWeight: 0.8,
 })
+const supportEditorDisplay = reactive({
+  courseGoalName: '',
+  supportTargetLabel: '',
+})
 
 function openSupportCreate(rowKey: string, colKey: string) {
   supportEditorMode.value = 'create'
   const colMeta = supportCols.value.find((c) => c.key === colKey)
   if (!colMeta) return
+  const courseGoal = courseGoals.value.find((g) => g.id === rowKey)
+  if (!courseGoal) {
+    throw new Error(`课程目标选项缺失：${rowKey}`)
+  }
   Object.assign(supportEditor, {
     id: undefined,
     courseGoalId: rowKey,
@@ -749,6 +778,12 @@ function openSupportCreate(rowKey: string, colKey: string) {
     indicatorId: colMeta.indicatorId,
     supportLevel: 'MEDIUM',
     supportWeight: SUPPORT_LEVEL_DEFAULT_FACTOR.MEDIUM,
+  })
+  Object.assign(supportEditorDisplay, {
+    courseGoalName: `${courseGoal.goalCode} ${courseGoal.goalName}`,
+    supportTargetLabel: colMeta.indicatorId
+      ? `观测点：${colMeta.label} ${colMeta.hint}`
+      : `毕业要求：${colMeta.label} ${colMeta.hint}`,
   })
   supportEditorVisible.value = true
 }
@@ -763,6 +798,12 @@ function openSupportEdit(record: CourseGoalRequirementVO) {
     supportLevel: record.supportLevel,
     supportWeight: Number(record.supportWeight) || 0,
   })
+  Object.assign(supportEditorDisplay, {
+    courseGoalName: `${record.courseGoalCode} ${record.courseGoalName}`,
+    supportTargetLabel: record.indicatorId
+      ? `观测点：${record.indicatorCode} ${record.indicatorName}`
+      : `毕业要求：${record.requirementCode} ${record.requirementName}`,
+  })
   supportEditorVisible.value = true
 }
 
@@ -772,9 +813,9 @@ async function submitSupport() {
     return
   }
   if (
-    supportEditor.supportWeight == null
-    || supportEditor.supportWeight <= 0
-    || supportEditor.supportWeight > 1
+    supportEditor.supportWeight == null ||
+    supportEditor.supportWeight <= 0 ||
+    supportEditor.supportWeight > 1
   ) {
     message.error('权重必须在 (0, 1] 之间')
     return
@@ -800,15 +841,16 @@ async function deleteSupport(record: CourseGoalRequirementVO) {
 
 function handleDeleteSupportClick() {
   if (supportEditor.id) {
-    const record: CourseGoalRequirementVO = {
-      id: supportEditor.id,
-      courseGoalId: supportEditor.courseGoalId,
-      requirementId: supportEditor.requirementId,
-      indicatorId: supportEditor.indicatorId,
-      supportLevel: supportEditor.supportLevel,
-      supportWeight: supportEditor.supportWeight,
-    }
-    deleteSupport(record)
+    void confirmAsync({
+      title: '删除该支撑映射？',
+      type: 'error',
+      onOk: async () => {
+        await courseGoalRequirementApi.delete(supportEditor.id!)
+        message.success('已删除')
+        supportEditorVisible.value = false
+        await loadAllSupports()
+      },
+    })
   }
 }
 
@@ -818,36 +860,35 @@ function handleSupportLevelChange(level: SupportLevel) {
 }
 
 function handleSupportLevelRadioChange(event: RadioChangeEvent) {
-  const value = event.target?.value
-  if (!isSupportLevel(value)) throw new Error('课程目标支撑等级不符合前后端契约')
+  const value = event.target?.value as SupportLevel
   handleSupportLevelChange(value)
 }
 
-function handleSupportCellClick(payload: {
+function handleSupportCellClick(cellEvent: {
   row: MatrixRow
   col: MatrixCol
   cell: MatrixCell | undefined
 }) {
-  const colMeta = supportCols.value.find((c) => c.key === payload.col.key)
+  const colMeta = supportCols.value.find((c) => c.key === cellEvent.col.key)
   if (!colMeta) return
-  const goalSupports = supportsOfGoal(payload.row.key)
+  const goalSupports = supportsOfGoal(cellEvent.row.key)
   const matched = goalSupports.find(
     (s) =>
-      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId)
-      || (colMeta.reqId
-        && !colMeta.indicatorId
-        && s.requirementId === colMeta.reqId
-        && !s.indicatorId),
+      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId) ||
+      (colMeta.reqId &&
+        !colMeta.indicatorId &&
+        s.requirementId === colMeta.reqId &&
+        !s.indicatorId),
   )
   if (matched) openSupportEdit(matched)
-  else openSupportCreate(payload.row.key, payload.col.key)
+  else openSupportCreate(cellEvent.row.key, cellEvent.col.key)
 }
 
 /* ========== 编辑器：考核环节 ========== */
 
 const itemEditorVisible = ref(false)
 const itemEditorMode = ref<'create' | 'edit'>('create')
-const itemEditor = reactive<AssessmentItemSavePayload>({
+const itemEditor = reactive<AssessmentItemSaveRequest>({
   qualityCourseId: '',
   itemCode: '',
   itemName: '',
@@ -937,16 +978,27 @@ async function validateRubricFullScore(item: AssessmentItemVO) {
 
 const weightEditorVisible = ref(false)
 const weightEditorMode = ref<'create' | 'edit'>('create')
-const weightEditor = reactive<AssessmentGoalWeightSavePayload>({
+const weightEditor = reactive<AssessmentGoalWeightSaveRequest>({
   assessmentItemId: '',
   courseGoalId: '',
   weight: 0,
   fullScore: 0,
 })
+const weightEditorDisplay = reactive({
+  assessmentItemName: '',
+  courseGoalName: '',
+})
 
 function openWeightCreate(itemId: string, goalId: string) {
   weightEditorMode.value = 'create'
-  const itemFullScore = assessmentItems.value.find((i) => i.id === itemId)?.fullScore || 100
+  const item = assessmentItems.value.find((i) => i.id === itemId)
+  const courseGoal = courseGoals.value.find((g) => g.id === goalId)
+  if (!item) {
+    throw new Error(`考核环节选项缺失：${itemId}`)
+  }
+  if (!courseGoal) {
+    throw new Error(`课程目标选项缺失：${goalId}`)
+  }
   const sumNow = itemWeightSum(itemId)
   const remain = Math.max(0, 1 - sumNow)
   Object.assign(weightEditor, {
@@ -954,7 +1006,11 @@ function openWeightCreate(itemId: string, goalId: string) {
     assessmentItemId: itemId,
     courseGoalId: goalId,
     weight: Number(remain.toFixed(3)),
-    fullScore: itemFullScore,
+    fullScore: item.fullScore,
+  })
+  Object.assign(weightEditorDisplay, {
+    assessmentItemName: `${item.itemCode} ${item.itemName}`,
+    courseGoalName: `${courseGoal.goalCode} ${courseGoal.goalName}`,
   })
   weightEditorVisible.value = true
 }
@@ -967,6 +1023,10 @@ function openWeightEdit(record: AssessmentGoalWeightVO) {
     courseGoalId: record.courseGoalId,
     weight: Number(record.weight) || 0,
     fullScore: Number(record.fullScore) || 0,
+  })
+  Object.assign(weightEditorDisplay, {
+    assessmentItemName: `${record.assessmentItemCode} ${record.assessmentItemName}`,
+    courseGoalName: `${record.courseGoalCode} ${record.courseGoalName}`,
   })
   weightEditorVisible.value = true
 }
@@ -1006,21 +1066,21 @@ function handleDeleteWeightClick() {
   }
 }
 
-function handleAssessCellClick(payload: {
+function handleAssessCellClick(cellEvent: {
   row: MatrixRow
   col: MatrixCol
   cell: MatrixCell | undefined
 }) {
-  const matched = weightsOfItem(payload.row.key).find((w) => w.courseGoalId === payload.col.key)
+  const matched = weightsOfItem(cellEvent.row.key).find((w) => w.courseGoalId === cellEvent.col.key)
   if (matched) openWeightEdit(matched)
-  else openWeightCreate(payload.row.key, payload.col.key)
+  else openWeightCreate(cellEvent.row.key, cellEvent.col.key)
 }
 
 /* ========== 编辑器：Rubric ========== */
 
 const rubricDrawerVisible = ref(false)
 const rubricItem = ref<AssessmentItemVO | null>(null)
-const rubricEditor = reactive<RubricItemSavePayload>({
+const rubricEditor = reactive<RubricItemSaveRequest>({
   assessmentItemId: '',
   courseGoalId: '',
   rubricCode: '',
@@ -1058,8 +1118,8 @@ function openRubricEdit(record: RubricItemVO) {
   Object.assign(rubricEditor, {
     id: record.id,
     assessmentItemId: record.assessmentItemId,
-    courseGoalId: record.courseGoalId || '',
-    rubricCode: record.rubricCode || '',
+    courseGoalId: record.courseGoalId,
+    rubricCode: record.rubricCode,
     rubricName: record.rubricName,
     description: record.description || '',
     fullScore: Number(record.fullScore) || 0,
@@ -1070,9 +1130,9 @@ function openRubricEdit(record: RubricItemVO) {
 
 async function submitRubric() {
   if (
-    !rubricEditor.rubricName.trim()
-    || rubricEditor.fullScore == null
-    || rubricEditor.fullScore <= 0
+    !rubricEditor.rubricName.trim() ||
+    rubricEditor.fullScore == null ||
+    rubricEditor.fullScore <= 0
   ) {
     message.error('请填写名称与满分')
     return
@@ -1101,7 +1161,7 @@ async function deleteRubric(record: RubricItemVO) {
 const ruleEditorVisible = ref(false)
 const ruleEditorMode = ref<'create' | 'edit'>('create')
 const ruleGoal = ref<CourseGoalVO | null>(null)
-const ruleEditor = reactive<CourseGoalAssessmentRuleSavePayload>({
+const ruleEditor = reactive<CourseGoalAssessmentRuleSaveRequest>({
   courseGoalId: '',
   aggregation: 'WEIGHTED_SUM',
   directWeight: undefined,
@@ -1131,9 +1191,6 @@ async function openRuleEditor(goal: CourseGoalVO) {
       notes: existing.notes || '',
     })
   } else {
-    if (!isAggregationFunction(goal.aggregation)) {
-      throw new Error('课程目标聚合函数不符合前后端契约')
-    }
     ruleEditorMode.value = 'create'
     Object.assign(ruleEditor, {
       id: undefined,
@@ -1196,20 +1253,19 @@ onMounted(async () => {
 
 /* ========== 字典 ========== */
 
-const supportLevelOptions: { value: SupportLevel, label: string }[] = [
+const supportLevelOptions: { value: SupportLevel; label: string }[] = [
   { value: 'HIGH', label: SUPPORT_LEVEL_LABEL.HIGH },
   { value: 'MEDIUM', label: SUPPORT_LEVEL_LABEL.MEDIUM },
   { value: 'LOW', label: SUPPORT_LEVEL_LABEL.LOW },
 ]
 
-const aggregationOptions: { value: AggregationFunction, label: string }[] = [
+const aggregationOptions: { value: AggregationFunction; label: string }[] = [
   { value: 'WEIGHTED_SUM', label: AGGREGATION_FUNCTION_LABEL.WEIGHTED_SUM },
   { value: 'MINIMUM', label: AGGREGATION_FUNCTION_LABEL.MINIMUM },
-  { value: 'WEIGHTED_MINIMUM_MIXED', label: AGGREGATION_FUNCTION_LABEL.WEIGHTED_MINIMUM_MIXED },
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
 ]
 
-const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
+const itemTypeOptions: { value: AssessmentItemType; label: string }[] = [
   { value: 'FINAL_EXAM', label: ASSESSMENT_ITEM_TYPE_LABEL.FINAL_EXAM },
   { value: 'HOMEWORK', label: ASSESSMENT_ITEM_TYPE_LABEL.HOMEWORK },
   { value: 'EXPERIMENT', label: ASSESSMENT_ITEM_TYPE_LABEL.EXPERIMENT },
@@ -1359,15 +1415,15 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
             flat
             :total="assessmentItems.length"
           >
-            <template #bodyCell="{ column, record, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'itemType'">
                 {{ assessmentItemTypeLabel(record.itemType) }}
               </template>
               <template v-else-if="column.key === 'fullScore'">
-                {{ formatRequiredNumber(text, '考核环节满分', 0) }}
+                {{ record.fullScore.toFixed(0) }}
               </template>
               <template v-else-if="column.key === 'isProcessOriented'">
-                <a-tag v-if="text" color="purple"> 过程 </a-tag>
+                <a-tag v-if="record.isProcessOriented" color="purple"> 过程 </a-tag>
                 <span v-else class="qcm__muted">-</span>
               </template>
               <template v-else-if="column.key === 'weightSum'">
@@ -1421,12 +1477,12 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
             flat
             :total="courseGoals.length"
           >
-            <template #bodyCell="{ column, record, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'thresholdValue'">
-                {{ formatOptionalNumber(text, '课程目标达成阈值', 2) }}
+                {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(2) }}
               </template>
               <template v-else-if="column.key === 'aggregation'">
-                {{ aggregationFunctionLabel(text) }}
+                {{ aggregationFunctionLabel(record.aggregation) }}
               </template>
               <template v-else-if="column.key === 'supportCount'">
                 {{ supportsOfGoal(record.id).length }}
@@ -1438,12 +1494,13 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
                   <a-tag v-if="record.complexEngineeringFlag" color="orange"> 复杂工程 </a-tag>
                   <span
                     v-if="
-                      !record.civicObjectiveFlag
-                        && !record.aiLiteracyFlag
-                        && !record.complexEngineeringFlag
+                      !record.civicObjectiveFlag &&
+                      !record.aiLiteracyFlag &&
+                      !record.complexEngineeringFlag
                     "
                     class="qcm__muted"
-                  >-</span>
+                    >-</span
+                  >
                 </a-space>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -1590,11 +1647,19 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
-            <a-form-item label="教学大纲文件 ID">
-              <a-input
-                v-model:value="courseEditor.syllabusFileId"
-                placeholder="MinIO 文件 ID（可选）"
-              />
+            <a-form-item label="教学大纲附件">
+              <a-upload
+                :show-upload-list="false"
+                :custom-request="handleSyllabusFileUpload"
+                :disabled="syllabusFileUploading"
+              >
+                <UiButton variant="outline" size="sm" :loading="syllabusFileUploading">
+                  上传教学大纲附件
+                </UiButton>
+              </a-upload>
+              <div v-if="syllabusFileName" class="qcm__file-name">
+                {{ syllabusFileName }}
+              </div>
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -1702,20 +1767,10 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
     >
       <a-form layout="vertical" :model="supportEditor">
         <a-form-item label="课程目标">
-          <a-input
-            :value="courseGoals.find((g) => g.id === supportEditor.courseGoalId)?.goalName || ''"
-            disabled
-          />
+          <a-input :value="supportEditorDisplay.courseGoalName" disabled />
         </a-form-item>
         <a-form-item label="支撑对象">
-          <a-input
-            :value="
-              supportEditor.indicatorId
-                ? `观测点：${indicators.find((i) => i.id === supportEditor.indicatorId)?.indicatorName || supportEditor.indicatorId}`
-                : `毕业要求：${requirements.find((r) => r.id === supportEditor.requirementId)?.requirementName || supportEditor.requirementId}`
-            "
-            disabled
-          />
+          <a-input :value="supportEditorDisplay.supportTargetLabel" disabled />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
@@ -1748,7 +1803,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
         </a-row>
         <a-alert
           v-if="supportEditorMode === 'edit'"
-          :message="`默认权重：H=${SUPPORT_LEVEL_DEFAULT_FACTOR.HIGH} / M=${SUPPORT_LEVEL_DEFAULT_FACTOR.MEDIUM} / L=${SUPPORT_LEVEL_DEFAULT_FACTOR.LOW}`"
+          :message="`默认权重：高支撑 ${SUPPORT_LEVEL_DEFAULT_FACTOR.HIGH} / 中支撑 ${SUPPORT_LEVEL_DEFAULT_FACTOR.MEDIUM} / 低支撑 ${SUPPORT_LEVEL_DEFAULT_FACTOR.LOW}`"
           type="info"
           show-icon
         />
@@ -1837,18 +1892,10 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
     >
       <a-form layout="vertical" :model="weightEditor">
         <a-form-item label="考核环节">
-          <a-input
-            :value="
-              assessmentItems.find((i) => i.id === weightEditor.assessmentItemId)?.itemName || ''
-            "
-            disabled
-          />
+          <a-input :value="weightEditorDisplay.assessmentItemName" disabled />
         </a-form-item>
         <a-form-item label="课程目标">
-          <a-input
-            :value="courseGoals.find((g) => g.id === weightEditor.courseGoalId)?.goalName || ''"
-            disabled
-          />
+          <a-input :value="weightEditorDisplay.courseGoalName" disabled />
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
@@ -1903,15 +1950,15 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
         flat
         :total="rubricItem ? rubricsOfItem(rubricItem.id).length : 0"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'rubricCode'">
-            {{ text || '-' }}
+            {{ record.rubricCode }}
           </template>
           <template v-else-if="column.key === 'goalCode'">
-            {{ courseGoals.find((g) => g.id === record.courseGoalId)?.goalCode || '-' }}
+            {{ record.courseGoalCode }}
           </template>
           <template v-else-if="column.key === 'fullScore'">
-            {{ formatRequiredNumber(text, 'Rubric 满分', 0) }}
+            {{ record.fullScore.toFixed(0) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
@@ -1957,7 +2004,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
                 allow-clear
               >
                 <a-select-option v-for="g in courseGoals" :key="g.id" :value="g.id">
-                  <span class="font-mono text-xs text-gray-500 mr-1">{{ g.goalCode }}</span>
+                  <span class="text-xs text-gray-500 mr-1">{{ g.goalCode }}</span>
                   {{ g.goalName }}
                 </a-select-option>
               </a-select>
@@ -2138,10 +2185,12 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
   &__muted {
     color: var(--dp-text-muted, #94a3b8);
   }
-}
 
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  &__file-name {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
+  }
 }
 
 .text-xs {

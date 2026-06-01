@@ -39,6 +39,7 @@ import BugOutlined from '@ant-design/icons-vue/BugOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { getUserErrorMessage } from '@/utils/error-handler'
 import UiButton from './Button.vue'
 import UiStateBlock from './UiStateBlock.vue'
 
@@ -103,21 +104,14 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   retry: []
-  report: [{ message: string, route: string }]
+  report: [{ message: string; route: string }]
 }>()
 
 const router = useRouter()
 const retrying = ref(false)
 
 const errorMessage = computed<string>(() => {
-  const e = props.error
-  if (!e) return ''
-  if (typeof e === 'string') return e
-  if (e instanceof Error) return e.message
-  if (typeof e === 'object') {
-    return String(Reflect.get(e, 'message') ?? '')
-  }
-  return ''
+  return getUserErrorMessage(props.error, '')
 })
 
 const resolvedTitle = computed(() => props.title || '数据加载失败')
@@ -125,9 +119,9 @@ const resolvedTitle = computed(() => props.title || '数据加载失败')
 const resolvedDescription = computed(() => {
   if (props.description) return props.description
   if (errorMessage.value) {
-    return `请求未成功完成：${errorMessage.value}。请稍后重试，或联系管理员排查后端日志。`
+    return errorMessage.value
   }
-  return '当前请求未成功完成，请检查参数或稍后重试。'
+  return '当前内容加载失败，请稍后重试。'
 })
 
 const resolvedHelper = computed(() => props.helper)
@@ -147,17 +141,17 @@ async function handleRetry(): Promise<void> {
 
 function handleReport(): void {
   const currentRoute = router.currentRoute.value
-  const payload = {
+  const reportData = {
     message: errorMessage.value,
     route: currentRoute.fullPath,
   }
-  emit('report', payload)
+  emit('report', reportData)
   // 默认行为：跳转 admin 审计看板，附带来源页 & 错误摘要
   void router.push({
     name: props.reportRouteName,
     query: {
       sourcePath: currentRoute.fullPath,
-      errorMessage: errorMessage.value || '未知错误',
+      errorMessage: errorMessage.value || '当前内容加载失败',
     },
   })
 }

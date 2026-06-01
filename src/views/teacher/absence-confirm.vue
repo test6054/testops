@@ -33,7 +33,7 @@
             @click="handleReconcile(true)"
           >
             <template #icon><PlusOutlined /></template>
-            核对并新建 PENDING
+            核对并新建待确认记录
           </UiButton>
         </div>
       </div>
@@ -93,7 +93,7 @@
             <template v-if="column.key === 'actions'">
               <UiButton
                 size="sm"
-                @click="openConfirmModal(record.studentUserId, record.studentName)"
+                @click="openConfirmModal(record.studentUserId, formatStudentSnapshot(record))"
               >
                 确认缺考
               </UiButton>
@@ -107,7 +107,7 @@
         v-if="recordsLoadError"
         :error="recordsLoadError"
         title="缺考记录加载失败"
-        :helper="`考试 ID：${selectedExamId}`"
+        :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
         compact
         @retry="loadRecords"
       />
@@ -248,6 +248,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AbsenceReasonCode,
@@ -257,14 +258,6 @@ import type {
   AbsentStudentSnapshotVO,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -275,6 +268,14 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -288,6 +289,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherAbsenceConfirm' })
@@ -297,6 +299,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -305,7 +308,7 @@ interface AbsentStudentRow {
   studentUserId: string
   studentNo: string
   studentName: string
-  classId?: string
+  className: string
 }
 
 const reconcileVO = ref<AttendanceReconcileVO | null>(null)
@@ -314,7 +317,7 @@ const reconciling = ref(false)
 const records = ref<AbsenceRecordVO[]>([])
 const recordLoading = ref(false)
 // D-9 错误态：缺考记录加载失败时 UiErrorRetryPanel 重试 + 上报
-const recordsLoadError = ref<unknown>(null)
+const recordsLoadError = ref<Error | null>(null)
 const statusFilter = ref<AbsenceStatusCode | undefined>(undefined)
 const recordPagination = reactive({
   pageNum: 1,
@@ -360,7 +363,7 @@ const reconcileMetrics = computed(() => [
     tone: (reconcileVO.value?.absentCount ?? 0) > 0 ? ('orange' as const) : ('green' as const),
   },
   {
-    label: '本次新建 PENDING',
+    label: '本次新建待确认记录',
     value: reconcileVO.value?.createdPendingCount ?? 0,
     unit: '条',
     tone: (reconcileVO.value?.createdPendingCount ?? 0) > 0 ? ('blue' as const) : ('gray' as const),
@@ -370,19 +373,19 @@ const reconcileMetrics = computed(() => [
 const absentColumns: ColumnType<AbsentStudentRow>[] = [
   { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 160 },
   { title: '姓名', key: 'studentName', dataIndex: 'studentName', width: 140 },
-  { title: '学生用户ID', key: 'studentUserId', dataIndex: 'studentUserId', width: 160 },
-  { title: '班级ID', key: 'classId', dataIndex: 'classId', width: 120 },
+  { title: '班级', key: 'className', dataIndex: 'className', width: 180 },
   { title: '操作', key: 'actions', width: 100, fixed: 'right' },
 ]
 
 const recordColumns: ColumnType<AbsenceRecordVO>[] = [
-  { title: '学生用户ID', key: 'studentUserId', dataIndex: 'studentUserId', width: 140 },
+  { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 150 },
   {
     title: '姓名',
     key: 'studentName',
     dataIndex: 'studentName',
     width: 120,
   },
+  { title: '班级', key: 'className', dataIndex: 'className', width: 180 },
   { title: '状态', key: 'absenceStatus', width: 100 },
   { title: '缺考原因', key: 'absenceReason', width: 120 },
   { title: '成绩处理策略', key: 'scorePolicy', width: 140 },
@@ -396,28 +399,29 @@ function toAbsentStudentRow(student: AbsentStudentSnapshotVO): AbsentStudentRow 
     studentUserId: student.studentUserId,
     studentNo: student.studentNo,
     studentName: student.studentName,
-    classId: student.classId,
+    className: student.className,
   }
 }
 
-function formatStudentSnapshot(record: Pick<AbsenceRecordVO, 'studentName' | 'studentNo'>): string {
-  return `${record.studentName}（${record.studentNo}）`
+function formatStudentSnapshot(
+  record: Pick<AbsenceRecordVO, 'studentName' | 'studentNo' | 'className'>,
+): string {
+  return `${record.studentName}（${record.studentNo}，${record.className}）`
 }
 
-function statusLabel(status: AbsenceStatusCode | undefined): string {
+function statusLabel(status: AbsenceStatusCode): string {
   return strictEnumLabel(ABSENCE_STATUS_LABEL, status, '缺考状态')
 }
 
-function statusTone(status: AbsenceStatusCode | undefined): BadgeTone {
-  if (!status) return 'gray'
+function statusTone(status: AbsenceStatusCode): BadgeTone {
   return strictEnumTone(ABSENCE_STATUS_TONE, status, '缺考状态')
 }
 
-function reasonLabel(reason: AbsenceReasonCode | undefined): string {
+function reasonLabel(reason: AbsenceReasonCode): string {
   return strictEnumLabel(ABSENCE_REASON_LABEL, reason, '缺考原因')
 }
 
-function scorePolicyLabel(policy: AbsenceScorePolicyCode | undefined): string {
+function scorePolicyLabel(policy: AbsenceScorePolicyCode): string {
   return strictEnumLabel(ABSENCE_SCORE_POLICY_LABEL, policy, '缺考成绩策略')
 }
 
@@ -439,19 +443,19 @@ async function loadRecords(): Promise<void> {
     records.value = page.list
     recordPagination.pageNum = page.pageNum
     recordPagination.pageSize = page.pageSize
-    recordPagination.total = page.total
+    recordPagination.total = Number(page.total)
     recordsLoadError.value = null
   } catch (error) {
-    recordsLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载缺考记录失败')
+    recordsLoadError.value = toUserError(error, '缺考记录加载失败')
+    showUserError(error, '缺考记录加载失败')
   } finally {
     recordLoading.value = false
   }
 }
 
-function handleRecordPageChange(payload: { current: number, pageSize: number }): void {
-  recordPagination.pageNum = payload.current
-  recordPagination.pageSize = payload.pageSize
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
+  recordPagination.pageNum = page.current
+  recordPagination.pageSize = page.pageSize
   void loadRecords()
 }
 
@@ -468,7 +472,7 @@ async function handleReconcile(createPending: boolean): Promise<void> {
     }
     await loadRecords()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '出勤核对失败')
+    showUserError(error, '出勤核对失败')
   } finally {
     reconciling.value = false
   }
@@ -518,7 +522,7 @@ async function handleConfirm(): Promise<void> {
     confirmModalOpen.value = false
     await Promise.all([loadRecords(), handleReconcile(false)])
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '确认缺考失败')
+    showUserError(error, '缺考确认失败')
   } finally {
     confirming.value = false
   }
@@ -529,7 +533,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })
@@ -556,7 +560,7 @@ async function handleRevoke(): Promise<void> {
     revokeModalOpen.value = false
     await loadRecords()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '撤销缺考失败')
+    showUserError(error, '缺考撤销失败')
   } finally {
     revoking.value = false
   }
@@ -564,8 +568,11 @@ async function handleRevoke(): Promise<void> {
 
 // ─── 事件处理 ─────────────────────────────────
 
-async function handleExamChange(value: unknown, option: unknown): Promise<void> {
-  onExamChange(value as never, option as never)
+async function handleExamChange(
+  value: SelectValue,
+  option: DefaultOptionType | DefaultOptionType[],
+): Promise<void> {
+  onExamChange(value, option)
   reconcileVO.value = null
   records.value = []
   recordPagination.pageNum = 1

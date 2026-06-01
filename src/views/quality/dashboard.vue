@@ -1,15 +1,22 @@
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 年度工作台
  *
  * 阶段：专业配置 -> 培养方案 -> 数据接入 -> 计算 -> 审核 -> 改进 -> 归档
  */
-import type { AchievementResultVO, AiTaskVO, ImprovementTaskVO } from '@/apis/quality'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import type {
+  AchievementAuditStatus,
+  AchievementResultVO,
+  AchievementStatus,
+  AchievementTargetType,
+  AiTaskStatus,
+  AiTaskType,
+  AiTaskVO,
+  ImprovementTaskStatus,
+  ImprovementTaskVO,
+} from '@/apis/quality'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -26,23 +33,20 @@ import {
   IMPROVEMENT_TASK_STATUS_COLOR,
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
-  isAchievementAuditStatus,
-  isAchievementStatus,
-  isAchievementTargetType,
-  isAiTaskStatus,
-  isAiTaskType,
-  isConfirmationStatus,
-  isImprovementTaskStatus,
 } from '@/apis/quality'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
-import { formatOptionalNumber } from './_helpers'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const recentAchievementColumns: ColumnsType = [
   { title: '目标类型', dataIndex: 'targetType', key: 'targetType' },
-  { title: '目标 ID', dataIndex: 'targetId', key: 'targetId', width: 120 },
+  { title: '目标对象', dataIndex: 'targetLabel', key: 'targetLabel', width: 220 },
   { title: '达成值', dataIndex: 'finalValue', key: 'finalValue' },
   { title: '达成结论', dataIndex: 'achievementStatus', key: 'achievementStatus' },
   { title: '审核', dataIndex: 'auditStatus', key: 'auditStatus' },
@@ -51,7 +55,7 @@ const recentAchievementColumns: ColumnsType = [
 const recentImprovementColumns: ColumnsType = [
   { title: '编号', dataIndex: 'taskCode', key: 'taskCode' },
   { title: '标题', dataIndex: 'taskTitle', key: 'taskTitle' },
-  { title: '负责人 ID', dataIndex: 'ownerUserId', key: 'ownerUserId' },
+  { title: '负责人', key: 'ownerRef' },
   { title: '截止', dataIndex: 'dueDate', key: 'dueDate' },
   { title: '状态', dataIndex: 'status', key: 'status' },
 ]
@@ -59,7 +63,6 @@ const recentImprovementColumns: ColumnsType = [
 const recentAiTaskColumns: ColumnsType = [
   { title: '能力', dataIndex: 'taskType', key: 'taskType' },
   { title: '状态', dataIndex: 'status', key: 'status' },
-  { title: '模型', dataIndex: 'modelName', key: 'modelName' },
   { title: '失败阶段', dataIndex: 'failurePhase', key: 'failurePhase' },
   { title: '开始时间', dataIndex: 'startedAt', key: 'startedAt' },
   { title: '结束时间', dataIndex: 'finishedAt', key: 'finishedAt' },
@@ -108,31 +111,29 @@ const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId)
 const trainingPlanLabel = computed(() => qualityStore.currentPlan?.planName || '未选择')
 
 const planConfirmationStatus = computed(() => {
-  const raw = qualityStore.currentPlan?.confirmationStatus
   if (!qualityStore.currentPlan) return undefined
-  if (isConfirmationStatus(raw)) return raw
-  throw new Error('培养方案确认状态不符合前后端契约')
+  return qualityStore.currentPlan.confirmationStatus
 })
 
 const planConfirmationLabel = computed(() => {
   const status = planConfirmationStatus.value
-  return status ? CONFIRMATION_STATUS_LABEL[status] : '未提交'
+  return status ? strictEnumLabel(CONFIRMATION_STATUS_LABEL, status, '培养方案确认状态') : '未提交'
 })
 
 const planConfirmationColor = computed(() => {
   const status = planConfirmationStatus.value
-  return status ? CONFIRMATION_STATUS_COLOR[status] : 'default'
+  return status ? strictEnumTone(CONFIRMATION_STATUS_COLOR, status, '培养方案确认状态') : 'default'
 })
 
 // 年度评价阶段推断：依据培养方案确认状态与各能力块计数
 const stages = computed<WorkbenchStage[]>(() => {
   const planSelected = !!trainingPlanId.value
   const planConfirmed = planConfirmationStatus.value === 'CONFIRMED'
-  const dataReached
-    = achievementCounts.calculated > 0
-      || achievementCounts.submitted > 0
-      || achievementCounts.confirmed > 0
-      || achievementCounts.archived > 0
+  const dataReached =
+    achievementCounts.calculated > 0 ||
+    achievementCounts.submitted > 0 ||
+    achievementCounts.confirmed > 0 ||
+    achievementCounts.archived > 0
   const calcDone = dataReached
   const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
   const improvementActive = improvementCounts.total > 0
@@ -211,54 +212,44 @@ const signals = computed<SignalMetric[]>(() => [
   { key: 'ai-fail', label: 'AI 失败', value: aiCounts.failed, tone: 'red' },
 ])
 
-function targetTypeLabel(value: unknown): string {
-  if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
-  throw new Error('达成度目标类型不符合前后端契约')
+function targetTypeLabel(value: AchievementTargetType): string {
+  return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成目标类型')
 }
 
-function achievementStatusLabel(value: unknown): string {
-  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_LABEL[value]
-  throw new Error('达成度结论不符合前后端契约')
+function achievementStatusLabel(value: AchievementStatus): string {
+  return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
 }
 
-function achievementStatusColor(value: unknown): string {
-  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
-  throw new Error('达成度结论不符合前后端契约')
+function achievementStatusColor(value: AchievementStatus): string {
+  return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
-function auditStatusLabel(value: unknown): string {
-  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
-  throw new Error('达成度审核状态不符合前后端契约')
+function auditStatusLabel(value: AchievementAuditStatus): string {
+  return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
 }
 
-function auditStatusColor(value: unknown): string {
-  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
-  throw new Error('达成度审核状态不符合前后端契约')
+function auditStatusColor(value: AchievementAuditStatus): string {
+  return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
 }
 
-function improvementStatusLabelOf(value: unknown): string {
-  if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_LABEL[value]
-  throw new Error('改进任务状态不符合前后端契约')
+function improvementStatusLabelOf(value: ImprovementTaskStatus): string {
+  return strictEnumLabel(IMPROVEMENT_TASK_STATUS_LABEL, value, '持续改进任务状态')
 }
 
-function improvementStatusColorOf(value: unknown): string {
-  if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_COLOR[value]
-  throw new Error('改进任务状态不符合前后端契约')
+function improvementStatusColorOf(value: ImprovementTaskStatus): string {
+  return strictEnumTone(IMPROVEMENT_TASK_STATUS_COLOR, value, '持续改进任务状态')
 }
 
-function aiStatusLabel(value: unknown): string {
-  if (isAiTaskStatus(value)) return AI_TASK_STATUS_LABEL[value]
-  throw new Error('AI 任务状态不符合前后端契约')
+function aiStatusLabel(value: AiTaskStatus): string {
+  return strictEnumLabel(AI_TASK_STATUS_LABEL, value, 'AI 任务状态')
 }
 
-function aiStatusColor(value: unknown): string {
-  if (isAiTaskStatus(value)) return AI_TASK_STATUS_COLOR[value]
-  throw new Error('AI 任务状态不符合前后端契约')
+function aiStatusColor(value: AiTaskStatus): string {
+  return strictEnumTone(AI_TASK_STATUS_COLOR, value, 'AI 任务状态')
 }
 
-function aiTypeLabel(value: unknown): string {
-  if (isAiTaskType(value)) return AI_TASK_TYPE_LABEL[value]
-  throw new Error('AI 任务类型不符合前后端契约')
+function aiTypeLabel(value: AiTaskType): string {
+  return strictEnumLabel(AI_TASK_TYPE_LABEL, value, 'AI 任务类型')
 }
 
 async function loadTrainingPlan() {
@@ -283,7 +274,7 @@ async function loadAchievement() {
       trainingPlanId: trainingPlanId.value,
     })
     recentAchievements.value = page.list
-    achievementCounts.total = page.total
+    achievementCounts.total = Number(page.total)
 
     const [calculated, submitted, confirmed, archived, notAchieved] = await Promise.all([
       achievementApi.page({
@@ -317,11 +308,11 @@ async function loadAchievement() {
         achievementStatus: 'NOT_ACHIEVED',
       }),
     ])
-    achievementCounts.calculated = calculated.total
-    achievementCounts.submitted = submitted.total
-    achievementCounts.confirmed = confirmed.total
-    achievementCounts.archived = archived.total
-    achievementCounts.notAchieved = notAchieved.total
+    achievementCounts.calculated = Number(calculated.total)
+    achievementCounts.submitted = Number(submitted.total)
+    achievementCounts.confirmed = Number(confirmed.total)
+    achievementCounts.archived = Number(archived.total)
+    achievementCounts.notAchieved = Number(notAchieved.total)
   } finally {
     loading.achievement = false
   }
@@ -337,7 +328,7 @@ async function loadImprovement() {
       trainingPlanId: trainingPlanId.value,
     })
     recentImprovements.value = page.list
-    improvementCounts.total = page.total
+    improvementCounts.total = Number(page.total)
 
     const [open, inProgress, submitted, closed] = await Promise.all([
       improvementTaskApi.page({
@@ -365,10 +356,10 @@ async function loadImprovement() {
         status: 'CLOSED',
       }),
     ])
-    improvementCounts.open = open.total
-    improvementCounts.inProgress = inProgress.total
-    improvementCounts.submitted = submitted.total
-    improvementCounts.closed = closed.total
+    improvementCounts.open = Number(open.total)
+    improvementCounts.inProgress = Number(inProgress.total)
+    improvementCounts.submitted = Number(submitted.total)
+    improvementCounts.closed = Number(closed.total)
   } finally {
     loading.improvement = false
   }
@@ -385,7 +376,7 @@ async function loadAiTasks() {
       trainingPlanId: plan,
     })
     recentAiTasks.value = page.list
-    aiCounts.total = page.total
+    aiCounts.total = Number(page.total)
 
     const [pending, processing, succeeded, failed] = await Promise.all([
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'PENDING' }),
@@ -393,10 +384,10 @@ async function loadAiTasks() {
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'SUCCEEDED' }),
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'FAILED' }),
     ])
-    aiCounts.pending = pending.total
-    aiCounts.processing = processing.total
-    aiCounts.succeeded = succeeded.total
-    aiCounts.failed = failed.total
+    aiCounts.pending = Number(pending.total)
+    aiCounts.processing = Number(processing.total)
+    aiCounts.succeeded = Number(succeeded.total)
+    aiCounts.failed = Number(failed.total)
   } finally {
     loading.ai = false
   }
@@ -415,9 +406,16 @@ async function reload() {
   ])
 }
 
-function handlePlanChange(value: unknown) {
-  const id = typeof value === 'string' ? value : ''
-  qualityStore.setTrainingPlan(id)
+function handlePlanChange(value: SelectValue) {
+  if (value === null || value === undefined) {
+    qualityStore.setTrainingPlan('')
+    reload()
+    return
+  }
+  if (typeof value !== 'string') {
+    throw new TypeError(`培养方案选择值必须是字符串：${String(value)}`)
+  }
+  qualityStore.setTrainingPlan(value)
   reload()
 }
 
@@ -513,36 +511,36 @@ function goScoreBatch() {
             flat
             :total="recentAchievements.length"
           >
-            <template #bodyCell="{ column, record, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'targetType'">
-                {{ targetTypeLabel(text) }}
+                {{ targetTypeLabel(record.targetType) }}
               </template>
-              <template v-else-if="column.key === 'targetId'">
-                {{ text || '-' }}
+              <template v-else-if="column.key === 'targetLabel'">
+                {{ record.targetLabel }}
               </template>
               <template v-else-if="column.key === 'finalValue'">
                 <span
                   class="quality-dashboard__value"
                   :class="[
-                    record.finalValue !== null
-                      && record.thresholdValue !== null
-                      && record.finalValue >= record.thresholdValue
+                    record.finalValue !== null &&
+                    record.thresholdValue !== null &&
+                    record.finalValue >= record.thresholdValue
                       ? 'quality-dashboard__value--ok'
                       : 'quality-dashboard__value--bad',
                   ]"
                 >
-                  {{ formatOptionalNumber(text, '达成值', 3) }}
-                  / {{ formatOptionalNumber(record.thresholdValue, '达成阈值', 3) }}
+                  {{ record.finalValue == null ? '-' : record.finalValue.toFixed(3) }}
+                  / {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(3) }}
                 </span>
               </template>
               <template v-else-if="column.key === 'achievementStatus'">
-                <a-tag :color="achievementStatusColor(text)">
-                  {{ achievementStatusLabel(text) }}
+                <a-tag :color="achievementStatusColor(record.achievementStatus)">
+                  {{ achievementStatusLabel(record.achievementStatus) }}
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'auditStatus'">
-                <a-tag :color="auditStatusColor(text)">
-                  {{ auditStatusLabel(text) }}
+                <a-tag :color="auditStatusColor(record.auditStatus)">
+                  {{ auditStatusLabel(record.auditStatus) }}
                 </a-tag>
               </template>
             </template>
@@ -563,13 +561,16 @@ function goScoreBatch() {
             flat
             :total="recentImprovements.length"
           >
-            <template #bodyCell="{ column, text }">
-              <template v-if="column.key === 'ownerUserId' || column.key === 'dueDate'">
-                {{ text || '-' }}
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'ownerRef'">
+                {{ record.ownerUserName }}
+              </template>
+              <template v-else-if="column.key === 'dueDate'">
+                {{ record.dueDate }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="improvementStatusColorOf(text)">
-                  {{ improvementStatusLabelOf(text) }}
+                <a-tag :color="improvementStatusColorOf(record.status)">
+                  {{ improvementStatusLabelOf(record.status) }}
                 </a-tag>
               </template>
             </template>
@@ -590,27 +591,29 @@ function goScoreBatch() {
             flat
             :total="recentAiTasks.length"
           >
-            <template #bodyCell="{ column, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'taskType'">
-                {{ aiTypeLabel(text) }}
+                {{ aiTypeLabel(record.taskType) }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="aiStatusColor(text)">
-                  {{ aiStatusLabel(text) }}
+                <a-tag :color="aiStatusColor(record.status)">
+                  {{ aiStatusLabel(record.status) }}
                 </a-tag>
               </template>
-              <template
-                v-else-if="
-                  column.key === 'modelName'
-                    || column.key === 'startedAt'
-                    || column.key === 'finishedAt'
-                "
-              >
-                {{ text || '-' }}
+              <template v-else-if="column.key === 'startedAt'">
+                {{ record.startedAt }}
+              </template>
+              <template v-else-if="column.key === 'finishedAt'">
+                {{ record.finishedAt }}
               </template>
               <template v-else-if="column.key === 'failurePhase'">
-                <span v-if="text" class="quality-dashboard__value--error">{{ text }}</span>
-                <span v-else>-</span>
+                <span
+                  :class="{
+                    'quality-dashboard__value--error': record.status === 'FAILED',
+                  }"
+                >
+                  {{ record.status === 'FAILED' ? record.failurePhase : '不适用' }}
+                </span>
               </template>
             </template>
           </UiDataTable>

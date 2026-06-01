@@ -51,7 +51,7 @@
       v-if="error"
       :error="error"
       title="实时事件订阅失败"
-      helper="扫描事件流中断，请检查网关、登录状态或 SSE 连接。"
+      helper="扫描事件连接中断，请检查登录状态或稍后重试。"
       compact
       @retry="handleRefresh"
     />
@@ -64,20 +64,20 @@
         </h3>
       </header>
       <a-form layout="inline" :model="filterForm">
-        <a-form-item label="工位机 ID">
+        <a-form-item label="工位机编号">
           <a-input
             v-model:value="filterForm.scannerStationId"
-            placeholder="按工位机 ID 精确过滤"
+            placeholder="按工位机编号过滤"
             allow-clear
             class="scan-live__filter-input"
             @change="handleFilterChange"
             @press-enter="handleFilterChange"
           />
         </a-form-item>
-        <a-form-item label="扫描设备 ID">
+        <a-form-item label="扫描设备编号">
           <a-input
             v-model:value="filterForm.scannerDeviceId"
-            placeholder="按扫描设备 ID 精确过滤"
+            placeholder="按扫描设备编号过滤"
             allow-clear
             class="scan-live__filter-input"
             @change="handleFilterChange"
@@ -155,23 +155,24 @@
 
     <UiDrawer
       :open="drawerOpen"
-      :title="`扫描事件 #${currentEvent?.eventId ?? ''}`"
+      title="扫描事件详情"
       :width="520"
       hide-footer
       @update:open="(v: boolean) => (drawerOpen = v)"
       @close="drawerOpen = false"
     >
       <a-descriptions v-if="currentEvent" :column="1" size="small" bordered>
-        <a-descriptions-item label="事件ID">{{ currentEvent.eventId }}</a-descriptions-item>
-        <a-descriptions-item label="考试ID">{{ currentEvent.examId }}</a-descriptions-item>
+        <a-descriptions-item label="当前考试">
+          {{ currentEvent.examName }} · {{ currentEvent.examNo }}
+        </a-descriptions-item>
         <a-descriptions-item label="工位机">
           {{ currentEvent.scannerStationId }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描设备">
           {{ currentEvent.scannerDeviceId }}
         </a-descriptions-item>
-        <a-descriptions-item label="设备IP">
-          {{ currentEvent.scannerIp || '-' }}
+        <a-descriptions-item label="设备地址">
+          {{ currentEvent.scannerIp || '扫描端未上报设备地址' }}
         </a-descriptions-item>
         <a-descriptions-item label="页数">{{ currentEvent.pageCount }}</a-descriptions-item>
         <a-descriptions-item label="状态">
@@ -179,20 +180,21 @@
             {{ scanEventStatusLabel(currentEvent.status) }}
           </UiTag>
         </a-descriptions-item>
-        <a-descriptions-item label="扫描批次ID">
-          {{ currentEvent.scanBatchId || '-' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描端报告ID">
-          {{ currentEvent.reportId || '-' }}
-        </a-descriptions-item>
         <a-descriptions-item label="扫描端批次号">
-          {{ currentEvent.batchExternalNo || '-' }}
+          {{ currentEvent.batchExternalNo || '扫描端未绑定外部批次号' }}
         </a-descriptions-item>
-        <a-descriptions-item label="来源文件">
-          <span v-if="!currentEvent.sourceFileIds?.length" class="scan-live__hint">-</span>
+        <a-descriptions-item label="扫描文件">
+          <span v-if="!currentEvent.sourceFiles.length" class="scan-live__hint">
+            本事件未携带源文件清单
+          </span>
           <a-space v-else wrap>
-            <UiTag v-for="fileId in currentEvent.sourceFileIds" :key="fileId" tone="blue" size="sm">
-              {{ fileId }}
+            <UiTag
+              v-for="file in currentEvent.sourceFiles"
+              :key="file.fileId"
+              tone="blue"
+              size="sm"
+            >
+              {{ file.fileName }}
             </UiTag>
           </a-space>
         </a-descriptions-item>
@@ -218,6 +220,7 @@
  * - useScanLiveStream：SSE 实时事件流，过滤条件 examId / scannerStationId / scannerDeviceId
  * - useMarkExamSelector：考试选择器（不同步 URL）
  */
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ScanEventStatusCode, ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
@@ -238,6 +241,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { formatTimeOfDay } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
 
@@ -311,10 +315,7 @@ function scanEventStatusLabel(status: ScanEventStatusCode): string {
     BATCHED: '已聚合',
     INVALID: '已失效',
   }
-  if (!(status in labels)) {
-    throw new Error(`扫描事件状态不符合前后端契约：${String(status)}`)
-  }
-  return labels[status]
+  return strictEnumLabel(labels, status, '扫描事件状态')
 }
 
 function scanEventStatusTone(status: ScanEventStatusCode): BadgeTone {
@@ -323,10 +324,7 @@ function scanEventStatusTone(status: ScanEventStatusCode): BadgeTone {
     BATCHED: 'green',
     INVALID: 'red',
   }
-  if (!(status in tones)) {
-    throw new Error(`扫描事件状态不符合前后端契约：${String(status)}`)
-  }
-  return tones[status]
+  return strictEnumTone(tones, status, '扫描事件状态')
 }
 
 const statMetrics = computed(() => [
@@ -382,9 +380,12 @@ function openDetail(event: ScanLiveEventVO): void {
   drawerOpen.value = true
 }
 
-async function onExamChange(value: unknown, option: unknown): Promise<void> {
+async function onExamChange(
+  value: SelectValue,
+  option: DefaultOptionType | DefaultOptionType[],
+): Promise<void> {
   // 按 useMarkExamSelector 的同步参数传递选中考试，保持内部 URL 同步逻辑
-  onExamSelectorChange(value as never, option as never)
+  onExamSelectorChange(value, option)
   await refresh()
 }
 

@@ -56,7 +56,7 @@ export interface PublicSurveyItemVO {
   sortOrder?: number
 }
 
-export interface PublicSurveySubmitPayload {
+export interface PublicSurveySubmitRequest {
   respondentIdentity?: SurveyRespondentIdentityVO
   answers: PublicSurveyAnswerItem[]
 }
@@ -79,6 +79,6 @@ const PUBLIC_SURVEY = '/api/public/survey'
 export const publicSurveyApi = {
   getSurvey: (token: string) =>
     http.get<PublicSurveyVO>(`${PUBLIC_SURVEY}/${token}`),
-  submit: (token: string, data: PublicSurveySubmitPayload) =>
+  submit: (token: string, data: PublicSurveySubmitRequest) =>
     http.post<PublicSurveySubmitResultVO>(`${PUBLIC_SURVEY}/${token}/submit`, data),
 }

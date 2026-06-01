@@ -43,7 +43,7 @@
       v-else-if="packageListLoadError"
       :error="packageListLoadError"
       title="印刷包列表加载失败"
-      :helper="`考试 ID：${selectedExamId}`"
+      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
       @retry="loadPackageList"
     />
 
@@ -69,14 +69,10 @@
             <a-descriptions-item label="编号">{{ pkg.packageNo }}</a-descriptions-item>
             <a-descriptions-item label="生成人数">{{ pkg.itemCount }}</a-descriptions-item>
             <a-descriptions-item label="生成时间">
-              {{
-                pkg.generatedTime ?? '-'
-              }}
+              {{ pkg.generatedTime }}
             </a-descriptions-item>
             <a-descriptions-item label="备注" :span="3">
-              {{
-                pkg.sealRemark || '-'
-              }}
+              {{ pkg.sealRemark || '未填写封装备注' }}
             </a-descriptions-item>
           </a-descriptions>
 
@@ -181,14 +177,22 @@
 </template>
 
 <script lang="ts" setup>
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/paper-master'
+import {
+  generatePrintPackage,
+  getPrintPackage,
+  pagePrintPackages,
+  PRINT_PACKAGE_STATUS_LABEL,
+  PRINT_PACKAGE_STATUS_TONE,
+} from '@/apis/mark/paper-master'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
-import { generatePrintPackage, getPrintPackage, pagePrintPackages } from '@/apis/mark/paper-master'
 import {
   UiButton,
   UiCard,
@@ -199,6 +203,8 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { showUserError, toUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPrintPackage' })
 
@@ -208,6 +214,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -216,7 +223,7 @@ const {
 
 const loading = ref(false)
 // D-9 错误态：印刷包列表加载失败时 UiErrorRetryPanel 重试 + 上报
-const packageListLoadError = ref<unknown>(null)
+const packageListLoadError = ref<Error | null>(null)
 const packageList = ref<PrintPackageVO[]>([])
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 
@@ -231,9 +238,9 @@ async function loadPackageList() {
       pageSize: pagination.pageSize,
     })
     packageList.value = res.list
-    pagination.total = res.total
+    pagination.total = Number(res.total)
   } catch (e) {
-    packageListLoadError.value = e
+    packageListLoadError.value = toUserError(e, '印刷包列表加载失败')
     packageList.value = []
     pagination.total = 0
   } finally {
@@ -241,8 +248,8 @@ async function loadPackageList() {
   }
 }
 
-function handleExamChange(value: unknown): void {
-  onExamChange(value as string | number | undefined)
+function handleExamChange(value: SelectValue): void {
+  onExamChange(value)
   pagination.pageNum = 1
   if (selectedExamId.value) {
     loadPackageList()
@@ -254,17 +261,12 @@ function handleExamChange(value: unknown): void {
 
 // ─── 状态展示 ───────────────────────────────────────────────────────
 
-function statusTone(status: string): 'green' | 'blue' | 'orange' | 'gray' {
-  if (status === 'GENERATED' || status === 'READY') return 'green'
-  if (status === 'SEALED') return 'blue'
-  return 'orange'
+function statusTone(status: PrintPackageVO['status']): BadgeTone {
+  return strictEnumTone(PRINT_PACKAGE_STATUS_TONE, status, '印刷包状态')
 }
 
-function statusLabel(status: string): string {
-  if (status === 'GENERATED') return '已生成'
-  if (status === 'READY') return '已就绪'
-  if (status === 'SEALED') return '已封装'
-  return '待处理'
+function statusLabel(status: PrintPackageVO['status']): string {
+  return strictEnumLabel(PRINT_PACKAGE_STATUS_LABEL, status, '印刷包状态')
 }
 
 // ─── 一键生成印刷包 ──────────────────────────────────────────────────
@@ -308,8 +310,8 @@ async function handleGenerate() {
     generateModalVisible.value = false
     pagination.pageNum = 1
     await loadPackageList()
-  } catch {
-    message.error('生成失败，请确认已上传母版 PDF 且考生名册不为空')
+  } catch (error) {
+    showUserError(error, '印刷包生成失败，请确认已上传母版 PDF 且考生名册不为空')
   } finally {
     generating.value = false
   }
@@ -320,8 +322,8 @@ async function handleGenerate() {
 async function downloadPackagePdf(pkg: PrintPackageVO) {
   try {
     await downloadFile({ nodeId: pkg.packageFileId })
-  } catch {
-    message.error('下载失败')
+  } catch (error) {
+    showUserError(error, '印刷包文件下载失败，请稍后重试')
   }
 }
 
@@ -343,8 +345,8 @@ async function viewDetail(pkg: PrintPackageVO) {
       printPackageId: pkg.printPackageId,
     })
     detailItems.value = res.items
-  } catch {
-    message.error('加载明细失败')
+  } catch (error) {
+    showUserError(error, '印刷包明细加载失败，请稍后重试')
   } finally {
     detailLoading.value = false
   }

@@ -19,10 +19,10 @@
  * - 终态任务（SUCCEEDED / FAILED / CANCELLED）轮询自动 stop；调用方通过 watch(getTaskStatus(id)) 感知
  */
 import type { AiTaskVO } from '@/apis/quality/ai-task'
+import { aiTaskApi } from '@/apis/quality/ai-task'
 import type { AiTaskStatus } from '@/apis/quality/types'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { aiTaskApi } from '@/apis/quality/ai-task'
 
 const TERMINAL_STATUSES: ReadonlySet<AiTaskStatus> = new Set<AiTaskStatus>([
   'SUCCEEDED',
@@ -60,8 +60,8 @@ export const useAiTaskStore = defineStore('aiTask', () => {
     pollingIds.value = new Set(pollingHandles.keys())
   }
 
-  function isTerminal(status?: AiTaskStatus): boolean {
-    return !!status && TERMINAL_STATUSES.has(status)
+  function isTerminal(status: AiTaskStatus): boolean {
+    return TERMINAL_STATUSES.has(status)
   }
 
   /* ---------- Actions ---------- */

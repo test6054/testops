@@ -30,7 +30,7 @@ export interface ScaleConversionRuleVO {
   updateTime?: string
 }
 
-export interface ScaleConversionRuleSavePayload {
+export interface ScaleConversionRuleSaveRequest {
   id?: string
   ruleCode: string
   ruleName: string
@@ -40,16 +40,16 @@ export interface ScaleConversionRuleSavePayload {
   enabled?: boolean
 }
 
-export interface ScaleConversionRuleQueryPayload extends QueryDto {
+export interface ScaleConversionRuleQueryRequest extends QueryDto {
   scaleType?: ScaleType
   enabled?: boolean
 }
 
 export const scaleConversionRuleApi = {
-  page: (data: ScaleConversionRuleQueryPayload) =>
+  page: (data: ScaleConversionRuleQueryRequest) =>
     http.post<PageResult<ScaleConversionRuleVO>>(`${BASE}/page`, data),
   detail: (id: string) => http.post<ScaleConversionRuleVO>(`${BASE}/detail`, { id }),
-  create: (data: ScaleConversionRuleSavePayload) => http.post<string>(`${BASE}/create`, data),
-  update: (data: ScaleConversionRuleSavePayload) => http.post<void>(`${BASE}/update`, data),
+  create: (data: ScaleConversionRuleSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: ScaleConversionRuleSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
 }

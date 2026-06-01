@@ -15,7 +15,7 @@
  * 所有API接口都应该使用这个类型
  */
 declare global {
-    interface ResultInfo<T = unknown> {
+    interface ResultInfo<T> {
         /** 请求是否成功 */
         success: boolean
         /** 响应状态码 */
@@ -31,11 +31,11 @@ declare global {
 /**
  * 分页查询结果（与后端PageResult完全匹配）
  */
-interface PageResult<T = unknown> {
+interface PageResult<T> {
     /** 数据列表 */
     list: T[]
-    /** 总记录数 */
-    total: number
+    /** 总记录数（后端Long -> 前端string） */
+    total: string
     /** 当前页码 */
     pageNum: number
     /** 页大小 */

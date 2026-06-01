@@ -133,7 +133,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   add: [item: T, index: number]
   remove: [item: T, index: number]
-  reorder: [payload: { from: number, to: number }]
+  reorder: [moveEvent: { from: number; to: number }]
 }>()
 
 const list = computed(() => modelValue.value || [])
@@ -179,16 +179,16 @@ const buildItem = (): T => {
   return {} as T
 }
 
-const updateItem = (index: number, payload: Partial<T> | ((origin: T) => T)) => {
+const updateItem = (index: number, patch: Partial<T> | ((origin: T) => T)) => {
   const next = list.value.slice()
   const current = next[index] ?? ({} as T)
-  next[index] = typeof payload === 'function' ? payload(current) : ({ ...current, ...payload } as T)
+  next[index] = typeof patch === 'function' ? patch(current) : ({ ...current, ...patch } as T)
   modelValue.value = next
 }
 
 /** 为模板 slot 提供类型安全的更新回调 */
-const slotUpdate = (index: number) => (payload: Partial<T> | ((origin: T) => T)) =>
-  updateItem(index, payload)
+const slotUpdate = (index: number) => (patch: Partial<T> | ((origin: T) => T)) =>
+  updateItem(index, patch)
 
 const addItem = () => {
   if (!canAdd.value) return

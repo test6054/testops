@@ -57,6 +57,22 @@ export const PAPER_ARCHIVE_SET_STATUS_TONE: Record<
   DESTRUCTION_FAILED: 'red',
 }
 
+/** 纸质试卷档案集状态下拉选项，值必须与后端 PaperArchiveSetStatus 完全一致 */
+export const PAPER_ARCHIVE_SET_STATUS_OPTIONS: Array<{
+  label: string
+  value: PaperArchiveSetStatusCode
+}> = [
+  { value: 'DRAFT', label: PAPER_ARCHIVE_SET_STATUS_LABEL.DRAFT },
+  { value: 'ACTIVE', label: PAPER_ARCHIVE_SET_STATUS_LABEL.ACTIVE },
+  { value: 'APPRAISAL_PENDING', label: PAPER_ARCHIVE_SET_STATUS_LABEL.APPRAISAL_PENDING },
+  { value: 'APPRAISAL_DECIDED', label: PAPER_ARCHIVE_SET_STATUS_LABEL.APPRAISAL_DECIDED },
+  { value: 'DESTRUCTION_PENDING', label: PAPER_ARCHIVE_SET_STATUS_LABEL.DESTRUCTION_PENDING },
+  { value: 'DESTRUCTION_APPROVED', label: PAPER_ARCHIVE_SET_STATUS_LABEL.DESTRUCTION_APPROVED },
+  { value: 'DESTRUCTION_EXECUTING', label: PAPER_ARCHIVE_SET_STATUS_LABEL.DESTRUCTION_EXECUTING },
+  { value: 'DESTROYED', label: PAPER_ARCHIVE_SET_STATUS_LABEL.DESTROYED },
+  { value: 'DESTRUCTION_FAILED', label: PAPER_ARCHIVE_SET_STATUS_LABEL.DESTRUCTION_FAILED },
+]
+
 /** 档案项 OCR 状态编码 - 对应后端 PaperArchiveOcrStatus */
 export type PaperArchiveOcrStatusCode
   = | 'NONE'
@@ -84,10 +100,22 @@ export const PAPER_ARCHIVE_OCR_STATUS_TONE: Record<
   FAILED: 'red',
 }
 
-// ─── 请求 / 响应载荷 ───────────────────────────────────────────
+/** 纸质试卷档案项 OCR 状态下拉选项，值必须与后端 PaperArchiveOcrStatus 完全一致 */
+export const PAPER_ARCHIVE_OCR_STATUS_OPTIONS: Array<{
+  label: string
+  value: PaperArchiveOcrStatusCode
+}> = [
+  { value: 'NONE', label: PAPER_ARCHIVE_OCR_STATUS_LABEL.NONE },
+  { value: 'PENDING', label: PAPER_ARCHIVE_OCR_STATUS_LABEL.PENDING },
+  { value: 'RUNNING', label: PAPER_ARCHIVE_OCR_STATUS_LABEL.RUNNING },
+  { value: 'COMPLETED', label: PAPER_ARCHIVE_OCR_STATUS_LABEL.COMPLETED },
+  { value: 'FAILED', label: PAPER_ARCHIVE_OCR_STATUS_LABEL.FAILED },
+]
+
+// ─── 请求 / 响应模型 ───────────────────────────────────────────
 
 /** 创建档案集请求 - 对应 PaperArchiveSetCreateRequest */
-export interface PaperArchiveSetCreatePayload {
+export interface PaperArchiveSetCreateRequest {
   /** 业务编号（租户内唯一），不传由后端按规则生成 PAR-{tenantId}-{yyyymmdd}-{rand} */
   archiveNo?: string
   archiveTitle: string
@@ -104,7 +132,7 @@ export interface PaperArchiveSetCreatePayload {
 }
 
 /** 档案集分页查询请求 - 对应 PaperArchiveSetQueryRequest */
-export interface PaperArchiveSetQueryPayload extends QueryDto {
+export interface PaperArchiveSetQueryRequest extends QueryDto {
   archiveNoKeyword?: string
   titleKeyword?: string
   courseId?: string | null
@@ -114,7 +142,7 @@ export interface PaperArchiveSetQueryPayload extends QueryDto {
 }
 
 /** tag 更新请求 - 对应 PaperArchiveTagUpdateRequest */
-export interface PaperArchiveTagUpdatePayload {
+export interface PaperArchiveTagUpdateRequest {
   /** 档案集 ID 或档案项 ID，由调用接口决定语义 */
   targetId: string
   /** tag 列表，传 null 或空数组表示清空 */
@@ -122,7 +150,7 @@ export interface PaperArchiveTagUpdatePayload {
 }
 
 /** 档案项检索请求 - 对应 PaperArchiveItemSearchRequest */
-export interface PaperArchiveItemSearchPayload extends QueryDto {
+export interface PaperArchiveItemSearchRequest extends QueryDto {
   /** 档案集 ID 过滤；为空表示跨档案集搜索 */
   archiveSetId?: string | null
   /** tag 任一匹配 */
@@ -150,7 +178,7 @@ export interface PaperArchiveSetVO {
   examYear?: string
   examTerm?: string
   examRound?: string
-  paperCount?: number
+  paperCount: number
   archiveStatus: PaperArchiveSetStatusCode
   archiveStatusMessage: string
   tags?: string[]
@@ -175,7 +203,7 @@ export interface PaperArchiveItemVO {
   fileName?: string
   pageCount?: number
   ocrStatus: PaperArchiveOcrStatusCode
-  ocrStatusMessage?: string
+  ocrStatusMessage: string
   ocrText?: string
   ocrFinishedTime?: string
   ocrFailureReason?: string
@@ -193,7 +221,7 @@ export interface PaperArchiveItemVO {
  * 拿到 FileSystemNodeResponseDTO.id 作为 fileId 后再调本接口。
  * 业务服务会反查 storage 节点 + 元数据，然后把文件 TEMP→CONFIRMED。
  */
-export interface PaperArchiveItemRegisterPayload {
+export interface PaperArchiveItemRegisterRequest {
   archiveSetId: string
   /** edu-storage 上传后返回的 FileSystemNode.id（即 fileId） */
   fileId: string
@@ -215,8 +243,8 @@ export interface PaperArchiveItemRegisterPayload {
  * 创建档案集草稿
  * POST /api/mark/paper-archive/sets/create
  */
-export function createPaperArchiveSet(payload: PaperArchiveSetCreatePayload): Promise<string> {
-  return http.post<string>('/api/mark/paper-archive/sets/create', payload)
+export function createPaperArchiveSet(request: PaperArchiveSetCreateRequest): Promise<string> {
+  return http.post<string>('/api/mark/paper-archive/sets/create', request)
 }
 
 /**
@@ -236,9 +264,9 @@ export function activatePaperArchiveSet(archiveSetId: string): Promise<PaperArch
  * POST /api/mark/paper-archive/sets/page
  */
 export function pagePaperArchiveSets(
-  payload: PaperArchiveSetQueryPayload,
+  request: PaperArchiveSetQueryRequest,
 ): Promise<PageResult<PaperArchiveSetVO>> {
-  return http.post<PageResult<PaperArchiveSetVO>>('/api/mark/paper-archive/sets/page', payload)
+  return http.post<PageResult<PaperArchiveSetVO>>('/api/mark/paper-archive/sets/page', request)
 }
 
 /**
@@ -258,9 +286,9 @@ export function getPaperArchiveSetDetail(archiveSetId: string): Promise<PaperArc
  * POST /api/mark/paper-archive/sets/tags/update
  */
 export function updatePaperArchiveSetTags(
-  payload: PaperArchiveTagUpdatePayload,
+  request: PaperArchiveTagUpdateRequest,
 ): Promise<PaperArchiveSetVO> {
-  return http.post<PaperArchiveSetVO>('/api/mark/paper-archive/sets/tags/update', payload)
+  return http.post<PaperArchiveSetVO>('/api/mark/paper-archive/sets/tags/update', request)
 }
 
 /**
@@ -279,9 +307,9 @@ export function updatePaperArchiveSetTags(
  * POST /api/mark/paper-archive/items/register
  */
 export function registerPaperArchiveItem(
-  payload: PaperArchiveItemRegisterPayload,
+  request: PaperArchiveItemRegisterRequest,
 ): Promise<PaperArchiveItemVO> {
-  return http.post<PaperArchiveItemVO>('/api/mark/paper-archive/items/register', payload)
+  return http.post<PaperArchiveItemVO>('/api/mark/paper-archive/items/register', request)
 }
 
 /**
@@ -289,9 +317,9 @@ export function registerPaperArchiveItem(
  * POST /api/mark/paper-archive/items/tags/update
  */
 export function updatePaperArchiveItemTags(
-  payload: PaperArchiveTagUpdatePayload,
+  request: PaperArchiveTagUpdateRequest,
 ): Promise<PaperArchiveItemVO> {
-  return http.post<PaperArchiveItemVO>('/api/mark/paper-archive/items/tags/update', payload)
+  return http.post<PaperArchiveItemVO>('/api/mark/paper-archive/items/tags/update', request)
 }
 
 /**
@@ -299,11 +327,11 @@ export function updatePaperArchiveItemTags(
  * POST /api/mark/paper-archive/items/search
  */
 export function searchPaperArchiveItems(
-  payload: PaperArchiveItemSearchPayload,
+  request: PaperArchiveItemSearchRequest,
 ): Promise<PageResult<PaperArchiveItemVO>> {
   return http.post<PageResult<PaperArchiveItemVO>>(
     '/api/mark/paper-archive/items/search',
-    payload,
+    request,
   )
 }
 

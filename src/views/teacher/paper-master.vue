@@ -42,7 +42,7 @@
       v-else-if="masterLoadError"
       :error="masterLoadError"
       title="试卷母版加载失败"
-      :helper="`考试 ID：${selectedExamId}`"
+      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
       @retry="loadMasterData"
     />
 
@@ -196,10 +196,14 @@
         >
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'questionTemplateId'">
-              <a-input
+              <a-select
                 v-model:value="record.questionTemplateId"
-                placeholder="题目模板ID"
-                style="width: 140px"
+                placeholder="选择题目"
+                :options="questionOptions"
+                :loading="questionsLoading"
+                show-search
+                option-filter-prop="label"
+                style="width: 220px"
               />
             </template>
             <template v-else-if="column.key === 'pageNo'">
@@ -210,12 +214,33 @@
                 style="width: 80px"
               />
             </template>
-            <template v-else-if="column.key === 'optionLabels'">
-              <a-input
-                v-model:value="record.optionLabels"
-                placeholder="A,B,C,D"
-                style="width: 120px"
-              />
+            <template v-else-if="column.key === 'options'">
+              <div class="objective-options">
+                <div
+                  v-for="option in record.options"
+                  :key="option.sortNo"
+                  class="objective-options__item"
+                >
+                  <a-input
+                    v-model:value="option.optionLabel"
+                    :maxlength="8"
+                    size="small"
+                    class="objective-options__input"
+                  />
+                  <a-button
+                    type="link"
+                    danger
+                    size="small"
+                    class="objective-options__remove"
+                    @click="removeObjectiveOption(record, option.sortNo)"
+                  >
+                    删除
+                  </a-button>
+                </div>
+                <a-button size="small" type="link" @click="addObjectiveOption(record)">
+                  添加选项
+                </a-button>
+              </div>
             </template>
             <template v-else-if="column.key === 'x'">
               <a-input-number v-model:value="record.x" :min="0" style="width: 80px" />
@@ -229,13 +254,8 @@
             <template v-else-if="column.key === 'boxHeight'">
               <a-input-number v-model:value="record.boxHeight" :min="1" style="width: 80px" />
             </template>
-            <template v-else-if="column.key === 'optionCount'">
-              <a-input-number
-                v-model:value="record.optionCount"
-                :min="2"
-                :max="26"
-                style="width: 80px"
-              />
+            <template v-else-if="column.key === 'optionsSummary'">
+              <UiTag size="sm" tone="blue"> {{ record.options.length }} 项 </UiTag>
             </template>
             <template v-else-if="column.key === 'action'">
               <a-button type="link" danger size="small" @click="removeObjectiveArea(index)">
@@ -250,11 +270,19 @@
 </template>
 
 <script lang="ts" setup>
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import { getExamTemplate } from '@/apis/mark/exam'
 import type {
-  PaperMasterIdentityAreaPayload,
-  PaperMasterObjectiveAreaPayload,
+  PaperMasterIdentityAreaRequest,
+  PaperMasterObjectiveAreaRequest,
   PaperMasterVO,
+} from '@/apis/mark/paper-master'
+import {
+  getPaperMaster,
+  isPaperMasterNotConfiguredError,
+  savePaperMaster,
 } from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -263,13 +291,8 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
-import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
-import {
-  getPaperMaster,
-  isPaperMasterNotConfiguredError,
-  savePaperMaster,
-} from '@/apis/mark/paper-master'
 import {
   UiButton,
   UiCard,
@@ -280,6 +303,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { showUserError, toUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'TeacherPaperMaster' })
 
@@ -288,6 +312,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -297,7 +322,7 @@ const {
 const loading = ref(false)
 const saving = ref(false)
 // D-9 错误态：仅当后端返回非“未配置”类错误时才上报
-const masterLoadError = ref<unknown>(null)
+const masterLoadError = ref<Error | null>(null)
 const uploading = ref(false)
 const uploadedFileName = ref('')
 const masterData = ref<PaperMasterVO | null>(null)
@@ -310,7 +335,7 @@ const form = reactive({
 
 // ─── 身份填涂区 ──────────────────────────────────────────────────────
 
-interface IdentityAreaRow extends PaperMasterIdentityAreaPayload {
+interface IdentityAreaRow extends PaperMasterIdentityAreaRequest {
   rowKey: string
 }
 
@@ -356,12 +381,34 @@ const identityColumns: ColumnType[] = [
 
 // ─── 客观题填涂区 ────────────────────────────────────────────────────
 
-interface ObjectiveAreaRow extends PaperMasterObjectiveAreaPayload {
+interface ObjectiveAreaRow extends PaperMasterObjectiveAreaRequest {
   rowKey: string
 }
 
 const objectiveAreas = ref<ObjectiveAreaRow[]>([])
+const questionsLoading = ref(false)
+const questions = ref<ExamQuestionTemplateVO[]>([])
+const questionOptions = computed(() =>
+  questions.value.map((item) => {
+    const parts = [`第 ${item.questionNo} 题`, item.questionType, `${item.fullScore} 分`]
+    if (item.questionStem) {
+      parts.push(item.questionStem)
+    }
+    return {
+      label: parts.join(' · '),
+      value: item.questionTemplateId,
+    }
+  }),
+)
 let objectiveSeq = 0
+const DEFAULT_OBJECTIVE_OPTIONS = ['A', 'B', 'C', 'D']
+
+function createObjectiveOptions(labels: string[] = DEFAULT_OBJECTIVE_OPTIONS) {
+  return labels.map((optionLabel, index) => ({
+    optionLabel,
+    sortNo: index + 1,
+  }))
+}
 
 function addObjectiveArea() {
   objectiveSeq++
@@ -369,12 +416,11 @@ function addObjectiveArea() {
     rowKey: `obj-${objectiveSeq}`,
     questionTemplateId: '',
     pageNo: 1,
-    optionLabels: 'A,B,C,D',
+    options: createObjectiveOptions(),
     x: 0,
     y: 0,
     boxWidth: 20,
     boxHeight: 10,
-    optionCount: 4,
   })
 }
 
@@ -382,32 +428,64 @@ function removeObjectiveArea(index: number) {
   objectiveAreas.value.splice(index, 1)
 }
 
+function addObjectiveOption(row: ObjectiveAreaRow) {
+  row.options.push({
+    optionLabel: String.fromCharCode(65 + row.options.length),
+    sortNo: row.options.length + 1,
+  })
+}
+
+function removeObjectiveOption(row: ObjectiveAreaRow, sortNo: number) {
+  row.options = row.options
+    .filter((option) => option.sortNo !== sortNo)
+    .map((option, index) => ({
+      optionLabel: option.optionLabel,
+      sortNo: index + 1,
+    }))
+}
+
 const objectiveColumns: ColumnType[] = [
-  { title: '题目模板ID', key: 'questionTemplateId', width: 160 },
+  { title: '题目', key: 'questionTemplateId', width: 240 },
   { title: '页号', key: 'pageNo', width: 90 },
-  { title: '选项标签', key: 'optionLabels', width: 140 },
+  { title: '选项', key: 'options', width: 180 },
   { title: 'X', key: 'x', width: 90 },
   { title: 'Y', key: 'y', width: 90 },
   { title: '框宽', key: 'boxWidth', width: 90 },
   { title: '框高', key: 'boxHeight', width: 90 },
-  { title: '选项数', key: 'optionCount', width: 100 },
+  { title: '选项数', key: 'optionsSummary', width: 100 },
   { title: '操作', key: 'action', width: 80 },
 ]
 
 // ─── 数据加载 ────────────────────────────────────────────────────────
+
+async function loadQuestions() {
+  if (!selectedExamId.value) return
+  questionsLoading.value = true
+  try {
+    const template = await getExamTemplate(selectedExamId.value)
+    questions.value = template.questions
+  } catch (error) {
+    questions.value = []
+    showUserError(error, '题目列表加载失败')
+    throw error
+  } finally {
+    questionsLoading.value = false
+  }
+}
 
 async function loadMasterData() {
   if (!selectedExamId.value) return
   loading.value = true
   masterLoadError.value = null
   try {
+    await loadQuestions()
     const res = await getPaperMaster(selectedExamId.value)
     masterData.value = res
     if (res) {
       form.masterName = res.masterName ?? ''
       form.masterFileId = res.masterFileId ?? ''
       form.watermarkText = res.watermarkText ?? ''
-      uploadedFileName.value = res.masterFileId ? `文件ID: ${res.masterFileId}` : ''
+      uploadedFileName.value = ''
 
       identityAreas.value = res.identityAreas.map((a, i) => ({
         rowKey: `id-loaded-${i}`,
@@ -421,24 +499,41 @@ async function loadMasterData() {
       }))
       identitySeq = identityAreas.value.length
 
+      const invalidObjectiveArea = res.objectiveAreas.find(
+        (a) =>
+          !questions.value.some((question) => question.questionTemplateId === a.questionTemplateId),
+      )
+      if (invalidObjectiveArea) {
+        objectiveAreas.value = []
+        masterLoadError.value = new Error(
+          '试卷母版引用的题目已不在当前考试模板中，请先完成数据治理',
+        )
+        return
+      }
+
       objectiveAreas.value = res.objectiveAreas.map((a, i) => ({
         rowKey: `obj-loaded-${i}`,
         questionTemplateId: a.questionTemplateId,
         pageNo: a.pageNo,
-        optionLabels: a.optionLabels,
+        options: a.options.map((option) => ({
+          optionLabel: option.optionLabel,
+          sortNo: option.sortNo,
+        })),
         x: a.x,
         y: a.y,
         boxWidth: a.boxWidth,
         boxHeight: a.boxHeight,
-        optionCount: a.optionCount,
       }))
       objectiveSeq = objectiveAreas.value.length
     }
   } catch (error) {
     masterData.value = null
+    if (!(error instanceof Error)) {
+      throw error
+    }
     if (!isPaperMasterNotConfiguredError(error)) {
       // 真实加载失败：D-9 错误态 + 警告提示
-      masterLoadError.value = error
+      masterLoadError.value = toUserError(error, '试卷主数据加载失败')
     }
   } finally {
     loading.value = false
@@ -452,14 +547,15 @@ function clearForm() {
   uploadedFileName.value = ''
   identityAreas.value = []
   objectiveAreas.value = []
+  questions.value = []
   identitySeq = 0
   objectiveSeq = 0
   masterData.value = null
 }
 
-function handleExamChange(value: unknown): void {
+function handleExamChange(value: SelectValue): void {
   // 委托给 useMarkExamSelector 完成 URL/Store 同步，再驱动业务侧加载/清空
-  onExamChange(value as string | number | undefined)
+  onExamChange(value)
   if (selectedExamId.value) {
     void loadMasterData()
   } else {
@@ -480,8 +576,8 @@ async function handleBeforeUpload(file: File) {
     form.masterFileId = res.id
     uploadedFileName.value = file.name
     message.success('上传成功')
-  } catch {
-    message.error('上传失败')
+  } catch (error) {
+    showUserError(error, '母版 PDF 上传失败，请稍后重试')
   } finally {
     uploading.value = false
   }
@@ -499,6 +595,30 @@ async function handleSave() {
   if (!form.masterFileId) {
     message.warning('请上传母版 PDF 文件')
     return
+  }
+  for (let i = 0; i < objectiveAreas.value.length; i += 1) {
+    const row = objectiveAreas.value[i]
+    if (!row.questionTemplateId) {
+      message.warning(`客观题填涂区第 ${i + 1} 行：请选择题目`)
+      return
+    }
+    if (row.options.length < 2) {
+      message.warning(`客观题填涂区第 ${i + 1} 行：至少需要 2 个选项`)
+      return
+    }
+    const labels = new Set<string>()
+    for (let j = 0; j < row.options.length; j += 1) {
+      const label = row.options[j].optionLabel.trim()
+      if (!label) {
+        message.warning(`客观题填涂区第 ${i + 1} 行：第 ${j + 1} 个选项不能为空`)
+        return
+      }
+      if (labels.has(label)) {
+        message.warning(`客观题填涂区第 ${i + 1} 行：选项「${label}」重复`)
+        return
+      }
+      labels.add(label)
+    }
   }
 
   saving.value = true
@@ -520,18 +640,20 @@ async function handleSave() {
       objectiveAreas: objectiveAreas.value.map((a) => ({
         questionTemplateId: a.questionTemplateId,
         pageNo: a.pageNo,
-        optionLabels: a.optionLabels,
+        options: a.options.map((option) => ({
+          optionLabel: option.optionLabel.trim(),
+          sortNo: option.sortNo,
+        })),
         x: a.x,
         y: a.y,
         boxWidth: a.boxWidth,
         boxHeight: a.boxHeight,
-        optionCount: a.optionCount,
       })),
     })
     message.success('母版保存成功')
     await loadMasterData()
-  } catch {
-    message.error('保存失败')
+  } catch (error) {
+    showUserError(error, '试卷母版保存失败，请稍后重试')
   } finally {
     saving.value = false
   }
@@ -553,8 +675,8 @@ async function previewPdf() {
     const buffer = await getFileArrayBuffer({ nodeId: form.masterFileId })
     const blob = new Blob([buffer], { type: 'application/pdf' })
     pdfPreviewUrl.value = URL.createObjectURL(blob)
-  } catch {
-    message.error('加载 PDF 预览失败')
+  } catch (error) {
+    showUserError(error, '母版 PDF 预览加载失败，请稍后重试')
   } finally {
     pdfPreviewLoading.value = false
   }
@@ -660,6 +782,28 @@ watch(
     margin-left: 8px;
     color: var(--color-text-3);
     font-size: 13px;
+  }
+
+  .objective-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 148px;
+  }
+
+  .objective-options__item {
+    display: grid;
+    grid-template-columns: minmax(56px, 1fr) 42px;
+    align-items: center;
+    column-gap: 6px;
+  }
+
+  .objective-options__input {
+    width: 100%;
+  }
+
+  .objective-options__remove {
+    padding: 0;
   }
 }
 </style>

@@ -1,11 +1,11 @@
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { Options } from '@/hooks'
+import { useBreakpoint, usePagination } from '@/hooks'
 import type { PageResult, QueryDto } from '@/types'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
-import { computed, ref } from 'vue'
-import { useBreakpoint, usePagination } from '@/hooks'
-import { isErrorHandled } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 
 interface UseTableOptions<T, U> {
   formatResult?: (data: T[]) => U[]
@@ -66,7 +66,7 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
         // 后端PageResult保证list非null，使用??防御性处理
         const data = pageResult.list ?? []
         tableData.value = formatResult ? formatResult(data) : data
-        setTotal(pageResult.total ?? 0)
+        setTotal(Number(pageResult.total))
       }
 
       onSuccess && onSuccess()
@@ -74,9 +74,7 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
       tableError.value = err as Error
       tableData.value = []
       setTotal(0)
-      if (!isErrorHandled(err)) {
-        message.error('数据加载失败，请重试')
-      }
+      showUserError(err, '数据加载失败，请稍后重试')
     } finally {
       loading.value = false
     }

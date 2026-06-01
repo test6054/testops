@@ -12,10 +12,12 @@ const BASE = '/api/quality/archives'
 export interface ArchiveVO {
   id: string
   archiveCode: string
-  businessType: ArchiveBusinessType | string
+  businessType: ArchiveBusinessType
   businessId: string
+  businessLabel: string
   fileId: string
-  fileName?: string
+  fileName: string
+  expertPackageType?: ExpertPackageType
   archiveCategory?: string
   retentionPolicyCode?: string
   retentionYears?: number
@@ -27,18 +29,18 @@ export interface ArchiveVO {
   createTime?: string
 }
 
-export interface ArchiveQueryPayload extends QueryDto {
-  businessType?: string
+export interface ArchiveQueryRequest extends QueryDto {
+  businessType?: ArchiveBusinessType
   businessId?: string
   archiveCategory?: string
   archiveOfficeConfirmed?: boolean
   keyword?: string
 }
 
-export interface ArchiveSavePayload {
+export interface ArchiveSaveRequest {
   id?: string
   archiveCode: string
-  businessType: string
+  businessType: ArchiveBusinessType
   businessId: string
   fileId: string
   archiveCategory?: string
@@ -48,7 +50,7 @@ export interface ArchiveSavePayload {
   notes?: string
 }
 
-export interface ExpertPackageExportPayload {
+export interface ExpertPackageExportRequest {
   packageType: ExpertPackageType
   targetId: string
   archiveCode?: string
@@ -59,17 +61,12 @@ export interface ExpertPackageExportPayload {
 }
 
 export const archiveApi = {
-  page: (data: ArchiveQueryPayload) =>
-    http.post<PageResult<ArchiveVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<ArchiveVO>(`${BASE}/detail`, { id }),
-  create: (data: ArchiveSavePayload) =>
-    http.post<string>(`${BASE}/create`, data),
-  update: (data: ArchiveSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
+  page: (data: ArchiveQueryRequest) => http.post<PageResult<ArchiveVO>>(`${BASE}/page`, data),
+  detail: (id: string) => http.post<ArchiveVO>(`${BASE}/detail`, { id }),
+  create: (data: ArchiveSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: ArchiveSaveRequest) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   /** 专家材料包导出（按毕业要求 / 按专业认证整包） */
-  exportExpertPackage: (data: ExpertPackageExportPayload) =>
+  exportExpertPackage: (data: ExpertPackageExportRequest) =>
     http.post<string>(`${BASE}/export-expert-package`, data),
 }

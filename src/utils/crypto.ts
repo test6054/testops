@@ -8,7 +8,7 @@ import CryptoJS from 'crypto-js'
  * AES加密（用于验证码坐标加密）
  * AJ-Captcha使用AES/CBC/PKCS7Padding模式
  *
- * @param data 待加密的数据（JSON字符串）
+ * @param data 待加密文本
  * @param secretKey 密钥（从后端获取）
  * @returns Base64编码的加密结果
  */

@@ -52,7 +52,7 @@
         v-if="syncTasksLoadError"
         :error="syncTasksLoadError"
         title="同步任务加载失败"
-        :helper="`考试 ID：${selectedExamId}`"
+        :helper="`当前考试：${selectedExamLabel}`"
         compact
         @retry="loadSyncTasks"
       />
@@ -111,7 +111,7 @@
                 :title="syncTasks[index].lastErrorMessage"
               >
                 <span class="error-text">{{
-                  requireLastErrorCode(syncTasks[index].lastErrorCode)
+                  ellipsis(syncTasks[index].lastErrorMessage, 40)
                 }}</span>
               </a-tooltip>
               <span v-else class="hint-text">-</span>
@@ -158,7 +158,7 @@
         v-if="passbackLoadError"
         :error="passbackLoadError"
         title="回写记录加载失败"
-        :helper="`考试 ID：${selectedExamId}`"
+        :helper="`当前考试：${selectedExamLabel}`"
         compact
         @retry="loadPassbackRecords"
       />
@@ -172,7 +172,7 @@
           <a-space>
             <a-input
               v-model:value="passbackTaskFilter"
-              placeholder="任务ID过滤"
+              placeholder="按同步任务编号过滤"
               style="width: 160px"
               allow-clear
               @press-enter="reloadPassbackRecordsFromFirstPage"
@@ -219,22 +219,13 @@
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'passbackStatus'">
               <UiTag :tone="passbackStatusTone(passbackRecords[index].passbackStatus)" size="sm">
-                {{
-                  passbackRecords[index].passbackStatus
-                    ? passbackStatusLabel(passbackRecords[index].passbackStatus!)
-                    : '-'
-                }}
+                {{ passbackStatusLabel(passbackRecords[index].passbackStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'reconcileStatus'">
-              <UiTag
-                v-if="passbackRecords[index].reconcileStatus"
-                :tone="reconcileStatusTone(passbackRecords[index].reconcileStatus)"
-                size="sm"
-              >
-                {{ reconcileStatusLabel(passbackRecords[index].reconcileStatus!) }}
+              <UiTag :tone="reconcileStatusTone(passbackRecords[index].reconcileStatus)" size="sm">
+                {{ reconcileStatusLabel(passbackRecords[index].reconcileStatus) }}
               </UiTag>
-              <span v-else class="hint-text">-</span>
             </template>
             <template v-else-if="column.key === 'errorMessage'">
               <a-tooltip
@@ -283,16 +274,16 @@
           </a-radio-button>
         </a-radio-group>
         <div class="hint-text" style="margin-top: 4px">
-          后端当前仅闭合 GRADE_EXPORT 路径；其他类型为预留映射。
+          当前支持成绩回写流程；其他同步类型将在配置开放后使用。
         </div>
       </a-form-item>
-      <a-form-item label="外部课程ID">
+      <a-form-item label="外部课程编号">
         <a-input v-model:value="createForm.externalCourseId" placeholder="如教务系统中的课程编号" />
       </a-form-item>
-      <a-form-item label="外部成绩项ID">
+      <a-form-item label="外部成绩项编号">
         <a-input
           v-model:value="createForm.externalLineItemId"
-          placeholder="如成绩册中的成绩项 GUID"
+          placeholder="如成绩册中的成绩项编号"
         />
       </a-form-item>
     </a-form>
@@ -349,15 +340,15 @@
           </UiTag>
         </div>
         <div v-if="detailProgress.totalCount === 0" class="hint-text" style="margin-top: 8px">
-          该任务尚未生成回写记录，可能仍在 PENDING 状态等待执行回写。
+          该任务尚未生成回写记录，可能仍在等待执行。
         </div>
       </template>
       <a-skeleton v-else active :paragraph="{ rows: 1 }" />
     </UiCard>
 
     <a-descriptions v-if="detailTask" :column="1" bordered size="small">
-      <a-descriptions-item label="任务ID">{{ detailTask.id }}</a-descriptions-item>
-      <a-descriptions-item label="考试ID">{{ detailTask.examId }}</a-descriptions-item>
+      <a-descriptions-item label="同步任务编号">{{ detailTask.id }}</a-descriptions-item>
+      <a-descriptions-item label="当前考试">{{ selectedExamLabel }}</a-descriptions-item>
       <a-descriptions-item label="外部系统">
         {{ externalSystemTypeLabel(detailTask.externalSystemType) }}
       </a-descriptions-item>
@@ -372,21 +363,20 @@
       <a-descriptions-item label="重试">
         {{ detailTask.retryCount }} / {{ detailTask.maxRetryCount }}
       </a-descriptions-item>
-      <a-descriptions-item label="外部课程ID">
-        {{ detailTask.externalCourseId ?? '-' }}
+      <a-descriptions-item label="外部课程编号">
+        {{ detailTask.externalCourseId ?? '未绑定外部课程编号' }}
       </a-descriptions-item>
-      <a-descriptions-item label="外部成绩项ID">
-        {{ detailTask.externalLineItemId ?? '-' }}
+      <a-descriptions-item label="外部成绩项编号">
+        {{ detailTask.externalLineItemId ?? '未绑定外部成绩项编号' }}
       </a-descriptions-item>
       <a-descriptions-item label="同步目标">
         {{ buildSyncTargetSummary(detailTask) }}
       </a-descriptions-item>
       <a-descriptions-item label="最后同步时间">
-        {{ detailTask.lastSyncTime ?? '-' }}
+        {{ detailTask.lastSyncTime ?? '尚未执行同步' }}
       </a-descriptions-item>
-      <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最后错误">
-        <span class="error-text">[{{ requireLastErrorCode(detailTask.lastErrorCode) }}]
-          {{ detailTask.lastErrorMessage }}</span>
+      <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最近处理说明">
+        <span class="error-text">{{ detailTask.lastErrorMessage }}</span>
       </a-descriptions-item>
       <a-descriptions-item label="操作" :span="1">
         <a-space>
@@ -407,6 +397,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExternalSystemTypeCode,
@@ -418,14 +409,6 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   cancelSyncTask,
   createSyncTask,
@@ -444,6 +427,14 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -455,6 +446,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminTeachingAffairsSync' })
@@ -464,6 +456,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -477,20 +470,20 @@ const syncStatusFilter = ref<SyncTaskStatusCode | undefined>(undefined)
 const actionLoadingId = ref<string | undefined>(undefined)
 
 const syncColumns: ColumnType<SyncTaskVO>[] = [
-  { title: '任务ID', key: 'id', dataIndex: 'id', width: 120 },
+  { title: '同步任务编号', key: 'id', dataIndex: 'id', width: 120 },
   { title: '外部系统', key: 'externalSystemType', width: 140 },
   { title: '同步类型', key: 'syncType', width: 120 },
   { title: '状态', key: 'taskStatus', width: 110 },
   { title: '重试', key: 'retry', width: 80 },
   { title: '外部课程', key: 'externalCourseId', dataIndex: 'externalCourseId', width: 140 },
   { title: '最后同步', key: 'lastSyncTime', dataIndex: 'lastSyncTime', width: 160 },
-  { title: '错误', key: 'lastError', width: 120 },
+  { title: '处理说明', key: 'lastError', width: 120 },
   { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
 // D-9 错误态：同步任务 / 回写记录加载失败时 UiErrorRetryPanel 重试 + 上报
-const syncTasksLoadError = ref<unknown>(null)
-const passbackLoadError = ref<unknown>(null)
+const syncTasksLoadError = ref<Error | null>(null)
+const passbackLoadError = ref<Error | null>(null)
 
 async function loadSyncTasks(): Promise<void> {
   if (!selectedExamId.value) return
@@ -499,30 +492,23 @@ async function loadSyncTasks(): Promise<void> {
   try {
     syncTasks.value = await listSyncTasks(selectedExamId.value, syncStatusFilter.value)
   } catch (error) {
-    syncTasksLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载同步任务失败')
+    syncTasksLoadError.value = toUserError(error, '教务同步任务加载失败')
+    showUserError(error, '教务同步任务加载失败')
   } finally {
     syncLoading.value = false
   }
 }
 
-function canExecute(status?: SyncTaskStatusCode): boolean {
+function canExecute(status: SyncTaskStatusCode): boolean {
   return status === 'PENDING'
 }
 
-function canRetry(status?: SyncTaskStatusCode): boolean {
+function canRetry(status: SyncTaskStatusCode): boolean {
   return status === 'FAILED' || status === 'PARTIAL_SUCCESS'
 }
 
-function canCancel(status?: SyncTaskStatusCode): boolean {
+function canCancel(status: SyncTaskStatusCode): boolean {
   return status === 'PENDING' || status === 'SYNCING'
-}
-
-function requireLastErrorCode(code?: string): string {
-  if (!code) {
-    throw new Error('教务同步错误编码不符合前后端契约')
-  }
-  return code
 }
 
 async function withTaskAction(
@@ -537,7 +523,7 @@ async function withTaskAction(
     message.success(hint)
     await loadAll()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : `${hint}失败`)
+    showUserError(error, `${hint}失败`)
   } finally {
     actionLoadingId.value = undefined
   }
@@ -598,7 +584,7 @@ async function handleCreate(): Promise<void> {
     createModalOpen.value = false
     await loadSyncTasks()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '创建同步任务失败')
+    showUserError(error, '教务同步任务创建失败')
   } finally {
     creating.value = false
   }
@@ -614,7 +600,7 @@ const reconciling = ref(false)
 // PENDING / SENT / SUCCESS / FAILED / WITHDRAWN 各状态的回写记录计数。
 const detailProgress = ref<PassbackProgressVO | null>(null)
 const progressLoading = ref(false)
-const progressLoadError = ref<unknown>(null)
+const progressLoadError = ref<Error | null>(null)
 
 const detailProgressPercent = computed<number>(() => {
   const p = detailProgress.value
@@ -639,7 +625,7 @@ async function loadProgress(syncTaskId: string): Promise<void> {
   try {
     detailProgress.value = await getPassbackProgress(syncTaskId)
   } catch (error) {
-    progressLoadError.value = error
+    progressLoadError.value = toUserError(error, '教务回写进度加载失败')
     detailProgress.value = null
   } finally {
     progressLoading.value = false
@@ -680,7 +666,7 @@ async function handleReconcile(record: SyncTaskVO): Promise<void> {
     message.success('已执行对账')
     await loadAll()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '对账失败')
+    showUserError(error, '教务回写对账失败')
   } finally {
     reconciling.value = false
   }
@@ -699,15 +685,16 @@ const passbackPagination = reactive({
 })
 
 const passbackColumns: ColumnType<PassbackRecordVO>[] = [
-  { title: '记录ID', key: 'id', dataIndex: 'id', width: 110 },
+  { title: '回写记录编号', key: 'id', dataIndex: 'id', width: 110 },
   { title: '同步任务', key: 'syncTaskId', dataIndex: 'syncTaskId', width: 100 },
-  { title: '学生用户', key: 'studentUserId', dataIndex: 'studentUserId', width: 110 },
+  { title: '学生', key: 'studentName', dataIndex: 'studentName', width: 140 },
+  { title: '学号', key: 'studentNo', dataIndex: 'studentNo', width: 120 },
   { title: '本地分', key: 'localScore', dataIndex: 'localScore', width: 80 },
   { title: '外部分', key: 'externalScore', dataIndex: 'externalScore', width: 80 },
   { title: '回写状态', key: 'passbackStatus', width: 110 },
   { title: '对账状态', key: 'reconcileStatus', width: 100 },
   { title: '回写时间', key: 'passbackTime', dataIndex: 'passbackTime', width: 160 },
-  { title: '错误', key: 'errorMessage', width: 220 },
+  { title: '处理说明', key: 'errorMessage', width: 220 },
 ]
 
 async function loadPassbackRecords(): Promise<void> {
@@ -725,10 +712,10 @@ async function loadPassbackRecords(): Promise<void> {
     passbackRecords.value = page.list
     passbackPagination.pageNum = page.pageNum
     passbackPagination.pageSize = page.pageSize
-    passbackPagination.total = page.total
+    passbackPagination.total = Number(page.total)
   } catch (error) {
-    passbackLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载回写记录失败')
+    passbackLoadError.value = toUserError(error, '教务回写记录加载失败')
+    showUserError(error, '教务回写记录加载失败')
   } finally {
     passbackLoading.value = false
   }
@@ -739,9 +726,9 @@ function reloadPassbackRecordsFromFirstPage(): void {
   void loadPassbackRecords()
 }
 
-function handlePassbackPageChange(payload: { current: number, pageSize: number }): void {
-  passbackPagination.pageNum = payload.current
-  passbackPagination.pageSize = payload.pageSize
+function handlePassbackPageChange(pageInfo: { current: number; pageSize: number }): void {
+  passbackPagination.pageNum = pageInfo.current
+  passbackPagination.pageSize = pageInfo.pageSize
   void loadPassbackRecords()
 }
 
@@ -767,8 +754,7 @@ function passbackStatusLabel(status: PassbackStatusCode): string {
   return strictEnumLabel(PASSBACK_STATUS_LABEL, status, '回写状态')
 }
 
-function passbackStatusTone(status?: PassbackStatusCode): BadgeTone {
-  if (!status) return 'gray'
+function passbackStatusTone(status: PassbackStatusCode): BadgeTone {
   return strictEnumTone(PASSBACK_STATUS_COLOR, status, '回写状态')
 }
 
@@ -776,8 +762,7 @@ function reconcileStatusLabel(status: ReconcileStatusCode): string {
   return strictEnumLabel(RECONCILE_STATUS_LABEL, status, '对账状态')
 }
 
-function reconcileStatusTone(status?: ReconcileStatusCode): BadgeTone {
-  if (!status) return 'gray'
+function reconcileStatusTone(status: ReconcileStatusCode): BadgeTone {
   return strictEnumTone(RECONCILE_STATUS_COLOR, status, '对账状态')
 }
 
@@ -796,8 +781,8 @@ async function loadAll(): Promise<void> {
   }
 }
 
-function handleExamChange(value: unknown): void {
-  onExamChange(value as string | number | undefined, [])
+function handleExamChange(value: SelectValue): void {
+  onExamChange(value)
   syncTasks.value = []
   passbackRecords.value = []
   passbackPagination.pageNum = 1

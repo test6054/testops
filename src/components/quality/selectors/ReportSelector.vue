@@ -6,9 +6,10 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ReportStatus, ReportType, ReportVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
+import { REPORT_TYPE_LABEL, reportApi } from '@/apis/quality'
 import { onMounted, ref, watch } from 'vue'
-import { isReportType, REPORT_TYPE_LABEL, reportApi } from '@/apis/quality'
+import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
 
 interface Props {
@@ -35,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: ReportVO]
+  change: [value: string | null, option?: ReportVO]
 }>()
 
 const options = ref<ReportVO[]>([])
@@ -79,7 +80,7 @@ async function loadOptions() {
     options.value = requirePageList(res, '教学质量评价报告')
   } catch (e) {
     console.error('[ReportSelector] 加载报告列表失败', e)
-    message.error('加载报告列表失败')
+    showUserError(e, '教学质量评价报告列表加载失败')
   } finally {
     loading.value = false
   }
@@ -93,11 +94,8 @@ function handleChange(val: SelectValue) {
   emit('change', next, option)
 }
 
-function reportTypeLabel(value: unknown) {
-  if (!isReportType(value)) {
-    throw new Error('报告类型不符合前后端契约')
-  }
-  return REPORT_TYPE_LABEL[value]
+function reportTypeLabel(value: ReportType) {
+  return strictEnumLabel(REPORT_TYPE_LABEL, value, '教学质量评价报告类型')
 }
 
 onMounted(() => {
@@ -121,9 +119,12 @@ defineExpose({ reload: loadOptions })
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.title">
       {{ opt.title }}
-      <span v-if="opt.reportType" class="text-gray-400 ml-1">· {{ reportTypeLabel(opt.reportType) }}</span>
+      <span v-if="opt.reportType" class="text-gray-400 ml-1"
+        >· {{ reportTypeLabel(opt.reportType) }}</span
+      >
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
+        >)
       </span>
     </a-select-option>
   </a-select>

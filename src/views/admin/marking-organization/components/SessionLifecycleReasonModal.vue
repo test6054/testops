@@ -3,6 +3,7 @@
     :open="open"
     :title="modalTitle"
     :confirm-loading="submitting"
+    :ok-button-props="{ disabled: !canManage }"
     ok-text="提交"
     cancel-text="取消"
     :width="520"
@@ -32,6 +33,7 @@ import {
   closeTrialSession,
   pauseFormalSession,
 } from '@/apis/mark/marking-organization'
+import { showUserError } from '@/utils/error-handler'
 
 export type LifecycleAction = 'pauseFormal' | 'closeFormal' | 'closeTrial'
 
@@ -41,11 +43,12 @@ const props = defineProps<{
   open: boolean
   action: LifecycleAction | null
   sessionId: string
+  canManage: boolean
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'success': []
+  success: []
 }>()
 
 const reason = ref('')
@@ -61,15 +64,21 @@ watch(
 )
 
 const modalTitle = computed(() => {
+  if (!props.open && props.action === null) return ''
   switch (props.action) {
-    case 'pauseFormal': return '暂停正评会话'
-    case 'closeFormal': return '关闭归档正评会话'
-    case 'closeTrial': return '关闭试评会话'
-    default: throw new Error('不支持的会话生命周期动作')
+    case 'pauseFormal':
+      return '暂停正评会话'
+    case 'closeFormal':
+      return '关闭归档正评会话'
+    case 'closeTrial':
+      return '关闭试评会话'
+    default:
+      return ''
   }
 })
 
 const modalAlert = computed(() => {
+  if (!props.open && props.action === null) return ''
   switch (props.action) {
     case 'pauseFormal':
       return '暂停后教师不能领取新任务，超时回收暂停倒计时；恢复后教师可继续领取。'
@@ -78,7 +87,7 @@ const modalAlert = computed(() => {
     case 'closeTrial':
       return '关闭试评会话为终态操作，关闭后该试评不可再修改，请谨慎执行。'
     default:
-      throw new Error('不支持的会话生命周期动作')
+      return ''
   }
 })
 
@@ -87,6 +96,14 @@ function handleOpenChange(value: boolean): void {
 }
 
 async function confirm(): Promise<void> {
+  if (!props.action) {
+    showUserError(new Error('不支持的会话生命周期动作'), '会话状态调整失败')
+    return
+  }
+  if (!props.canManage) {
+    message.warning('仅考试创建人可分配批阅任务')
+    return
+  }
   const trimmed = reason.value.trim()
   if (!trimmed) {
     message.warning('请填写操作原因')
@@ -113,8 +130,7 @@ async function confirm(): Promise<void> {
     emit('success')
     emit('update:open', false)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '操作失败'
-    message.error(errMsg)
+    showUserError(error, '会话状态调整失败')
   } finally {
     submitting.value = false
   }

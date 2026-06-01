@@ -57,7 +57,7 @@
             </div>
             <div class="info-grid__row">
               <span class="info-grid__label">所属租户</span>
-              <span class="info-grid__value">{{ tenantName || '-' }}</span>
+              <span class="info-grid__value">{{ tenantName }}</span>
             </div>
             <div class="info-grid__row">
               <span class="info-grid__label">系统角色</span>
@@ -65,13 +65,11 @@
             </div>
             <div v-if="userInfo.studentDetails" class="info-grid__row">
               <span class="info-grid__label">学号</span>
-              <span class="info-grid__value">{{
-                userInfo.studentDetails.studentNumber || '-'
-              }}</span>
+              <span class="info-grid__value">{{ userInfo.studentDetails.studentNumber }}</span>
             </div>
             <div v-if="userInfo.studentDetails" class="info-grid__row">
               <span class="info-grid__label">班级</span>
-              <span class="info-grid__value">{{ userInfo.studentDetails.className || '-' }}</span>
+              <span class="info-grid__value">{{ userInfo.studentDetails.className }}</span>
             </div>
             <div v-if="userInfo.studentDetails?.enrollmentYear" class="info-grid__row">
               <span class="info-grid__label">入学年级</span>
@@ -79,16 +77,12 @@
             </div>
             <div v-if="userInfo.teacherDetails" class="info-grid__row">
               <span class="info-grid__label">工号</span>
-              <span class="info-grid__value">{{
-                userInfo.teacherDetails.teacherNumber || '-'
-              }}</span>
+              <span class="info-grid__value">{{ userInfo.teacherDetails.teacherNumber }}</span>
             </div>
             <div class="info-grid__row">
               <span class="info-grid__label">账户状态</span>
               <span class="info-grid__value">
-                <UiTag :tone="userInfo.status === 'active' ? 'green' : 'red'" size="sm">
-                  {{ userInfo.status === 'active' ? '正常' : userInfo.status || '-' }}
-                </UiTag>
+                <UiTag :tone="userStatusTone" size="sm">{{ userStatusLabel }}</UiTag>
               </span>
             </div>
             <div class="info-grid__row">
@@ -182,6 +176,8 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
+import { getUserStatusLabel, getUserStatusTone } from '@/types/enums/user-status'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'UserProfile' })
@@ -197,6 +193,8 @@ const refreshing = ref(false)
 const userInfo = computed(() => userStore.userInfo)
 const tenantName = computed(() => userInfo.value.tenantName || userInfo.value.schoolName || '')
 const displayName = computed(() => userInfo.value.nickName)
+const userStatusLabel = computed(() => getUserStatusLabel(userInfo.value.status))
+const userStatusTone = computed(() => getUserStatusTone(userInfo.value.status))
 
 const roleLabel = computed(() => userInfo.value.roleDisplayName || userInfo.value.roleKey || '用户')
 
@@ -213,8 +211,7 @@ async function refresh() {
     await notificationStore.loadUnreadCount()
     message.success('已刷新最新信息')
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '刷新失败'
-    message.error(msg)
+    showUserError(error, '个人信息刷新失败')
   } finally {
     refreshing.value = false
   }

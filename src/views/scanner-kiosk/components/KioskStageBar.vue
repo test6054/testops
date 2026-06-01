@@ -80,7 +80,7 @@ const currentIndex = computed(() =>
   border-radius: 50%;
   background: var(--kiosk-neutral-soft);
   color: var(--kiosk-ink-tertiary);
-  font-family: var(--kiosk-font-mono);
+  font-variant-numeric: tabular-nums;
   font-weight: var(--kiosk-fw-semibold);
   font-size: var(--kiosk-fz-h3);
   flex: 0 0 auto;

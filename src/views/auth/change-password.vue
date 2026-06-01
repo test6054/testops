@@ -128,18 +128,14 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
               <a-tag :color="record.success ? 'green' : 'red'">
-                {{
-                  record.success ? '成功' : '失败'
-                }}
+                {{ record.success ? '成功' : '失败' }}
               </a-tag>
             </template>
             <template v-else-if="column.key === 'ipAddress'">
               <span class="ip-address">{{ record.ipAddress }}</span>
             </template>
             <template v-else-if="column.key === 'time'">
-              {{
-                formatChangeTime(record.changeTime)
-              }}
+              {{ formatChangeTime(record.changeTime) }}
             </template>
           </template>
         </UiDataTable>
@@ -150,6 +146,7 @@
 
 <script lang="ts" setup>
 import type { PasswordHistoryDto } from '@/apis/edu/user-management'
+import { getPasswordHistory } from '@/apis/edu/user-management'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import MinusCircleOutlined from '@ant-design/icons-vue/MinusCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -159,10 +156,10 @@ import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { changePassword } from '@/apis/auth'
-import { getPasswordHistory } from '@/apis/edu/user-management'
 import { UiCard, UiDataTable, UiFormSection, UiPageHeader } from '@/components/ui-guide/ui'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'
+import { showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { evaluatePasswordStrength, getPasswordStrengthText } from '@/utils/password-policy'
 
@@ -248,8 +245,8 @@ const fetchPasswordHistory = async () => {
     historyLoading.value = true
 
     passwordHistory.value = await getPasswordHistory()
-  } catch {
-    message.error('加载密码修改记录失败')
+  } catch (error) {
+    showUserError(error, '密码修改记录加载失败，请稍后重试')
   } finally {
     historyLoading.value = false
   }

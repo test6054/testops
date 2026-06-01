@@ -243,8 +243,7 @@
       <div v-if="messageDetail" class="msg-detail">
         <div class="msg-detail__meta">
           <UiTag tone="blue" size="sm">{{ formatMessageType(messageDetail.messageType) }}</UiTag>
-          <span>发自
-            {{ messageSenderName(messageDetail.senderInfo) }}</span>
+          <span>发自 {{ messageSenderName(messageDetail.senderInfo) }}</span>
           <span>{{ formatDateTime(messageDetail.sendTime) }}</span>
         </div>
         <a-divider />
@@ -299,13 +298,6 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import type { UserDto } from '@/types/api-types.d'
-import BellOutlined from '@ant-design/icons-vue/BellOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -318,10 +310,18 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import type { UserDto } from '@/types/api-types.d'
+import BellOutlined from '@ant-design/icons-vue/BellOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'UserMessage' })
@@ -343,7 +343,7 @@ const activeTab = ref<'inbox' | 'announcement'>('inbox')
 // ─── 站内信 ──────────────────────────────────
 const messages = ref<InboxMessageListItemDTO[]>([])
 const loadingMessages = ref(false)
-const inboxFilter = reactive<{ keyword?: string, isRead?: string }>({})
+const inboxFilter = reactive<{ keyword?: string; isRead?: string }>({})
 const messagePageState = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const messagePagination = computed(() => ({
   current: messagePageState.pageNum,
@@ -376,10 +376,9 @@ async function loadMessages(page = messagePageState.pageNum) {
     messages.value = result.list
     messagePageState.pageNum = result.pageNum
     messagePageState.pageSize = result.pageSize
-    messagePageState.total = result.total
+    messagePageState.total = Number(result.total)
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '加载站内信失败'
-    message.error(msg)
+    showUserError(error, '站内信加载失败')
   } finally {
     loadingMessages.value = false
   }
@@ -426,10 +425,9 @@ async function loadAnnouncements(page = announcementPageState.pageNum) {
     announcements.value = result.list
     announcementPageState.pageNum = result.pageNum
     announcementPageState.pageSize = result.pageSize
-    announcementPageState.total = result.total
+    announcementPageState.total = Number(result.total)
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '加载系统公告失败'
-    message.error(msg)
+    showUserError(error, '系统公告加载失败')
   } finally {
     loadingAnnouncements.value = false
   }
@@ -453,8 +451,7 @@ async function openMessageDetail(item: InboxMessageListItemDTO) {
       await markMessageReadInternal([item.id])
     }
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '加载消息详情失败'
-    message.error(msg)
+    showUserError(error, '消息详情加载失败')
   } finally {
     messageDetailLoading.value = false
   }
@@ -469,8 +466,7 @@ async function markMessageReadInternal(ids: string[]) {
     })
     await notificationStore.loadUnreadCount()
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '标记已读失败'
-    message.error(msg)
+    showUserError(error, '消息已读状态更新失败')
   }
 }
 
@@ -489,8 +485,7 @@ async function markAllInbox() {
     await notificationStore.loadUnreadCount()
     await loadMessages()
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '操作失败'
-    message.error(msg)
+    showUserError(error, '站内信批量标记已读失败')
   } finally {
     markingAllInbox.value = false
   }
@@ -510,8 +505,7 @@ async function openAnnouncementDetail(item: PublishedSystemAnnouncementResponse)
   try {
     announcementDetail.value = await getPublishedAnnouncementDetail(item.id)
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '加载公告详情失败'
-    message.error(msg)
+    showUserError(error, '公告详情加载失败')
   } finally {
     announcementDetailLoading.value = false
   }
@@ -529,8 +523,7 @@ async function confirmAnnouncementRead(item: PublishedSystemAnnouncementResponse
     message.success('已确认阅读')
     await notificationStore.loadUnreadCount()
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '确认阅读失败'
-    message.error(msg)
+    showUserError(error, '公告阅读确认失败')
   } finally {
     confirmingRead.value = false
   }
@@ -545,8 +538,7 @@ async function markAllAnnouncements() {
     await notificationStore.loadUnreadCount()
     await loadAnnouncements()
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '操作失败'
-    message.error(msg)
+    showUserError(error, '公告批量标记已读失败')
   } finally {
     markingAllAnnouncement.value = false
   }
@@ -567,8 +559,7 @@ async function markAllReadAcrossTabs() {
     await notificationStore.loadUnreadCount()
     await Promise.all([loadMessages(), loadAnnouncements()])
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '操作失败'
-    message.error(msg)
+    showUserError(error, '未读消息批量标记已读失败')
   } finally {
     markingAll.value = false
   }
@@ -606,7 +597,8 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.QUALITY_COURSE_REPORT_REMINDER]: '教学质量评价课程报告提交提醒',
     [NotificationTypeEnum.QUALITY_PROGRAM_REPORT_COMPLETED]: '教学质量评价专业质量报告完成',
     [NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_ASSIGNED]: '教学质量评价持续改进任务分配',
-    [NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_REVIEW_REMINDER]: '教学质量评价持续改进任务复评提醒',
+    [NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_REVIEW_REMINDER]:
+      '教学质量评价持续改进任务复评提醒',
     [NotificationTypeEnum.QUALITY_EXPERT_PACKAGE_EXPORTED]: '教学质量评价专家材料包导出完成',
     [NotificationTypeEnum.QUALITY_ACHIEVEMENT_AUDIT_TRANSITED]: '教学质量评价达成度审核流转',
     [NotificationTypeEnum.RESUBMIT_REQUESTED]: '重新提交申请',

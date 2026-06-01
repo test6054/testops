@@ -61,7 +61,7 @@
       <UiAlertStrip
         tone="info"
         title="批量审核说明"
-        description="自动判分客观题、AI 评分客观题、AI 评分主观题统一在此批量审核确认。可逐行调整最终分；默认沿用建议得分。任意单题失败不阻塞其余条目，提交后查看响应汇总。"
+        description="自动判分客观题、AI 评分客观题、AI 评分主观题统一在此批量审核确认。可逐行调整教师复核评分；默认沿用 AI 评分。任意单题失败不阻塞其余条目，提交后查看提交结果汇总。"
         dense
       />
 
@@ -83,25 +83,36 @@
           :data-source="tasks"
           :row-key="(record: ReviewTaskItemVO) => record.reviewTaskId"
           :row-selection="rowSelection"
-          :pagination="{ pageSize: 20, showSizeChanger: true }"
+          :pagination="false"
           size="middle"
           bordered
         >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'reviewType'">
+          <template #bodyCell="{ column, index }">
+            <template v-if="column.key === 'paperDisplay'">
+              <div class="review-batch-confirm__paper-cell">
+                <a-typography-text strong :content="tasks[index].paperDisplay.primaryText" />
+                <span
+                  v-if="tasks[index].paperDisplay.secondaryText"
+                  class="review-batch-confirm__hint"
+                >
+                  {{ tasks[index].paperDisplay.secondaryText }}
+                </span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'reviewType'">
               <a-tag
-                v-if="toReviewTask(record).reviewType"
-                :color="REVIEW_TASK_TYPE_META[toReviewTask(record).reviewType!].color"
+                v-if="tasks[index].reviewType"
+                :color="REVIEW_TASK_TYPE_META[tasks[index].reviewType].color"
               >
-                {{ REVIEW_TASK_TYPE_META[toReviewTask(record).reviewType!].label }}
+                {{ REVIEW_TASK_TYPE_META[tasks[index].reviewType].label }}
               </a-tag>
               <span v-else style="color: #94a3b8">未派生</span>
             </template>
-            <template v-else-if="column.key === 'finalScore'">
+            <template v-else-if="column.key === 'teacherReviewScore'">
               <a-input-number
-                v-model:value="finalScoreMap[toReviewTask(record).reviewTaskId]"
+                v-model:value="confirmDrafts[index].teacherReviewScore"
                 :min="0"
-                :max="toReviewTask(record).fullScore"
+                :max="tasks[index].fullScore"
                 :step="0.5"
                 :precision="1"
                 style="width: 96px"
@@ -109,13 +120,13 @@
             </template>
             <template v-else-if="column.key === 'commentText'">
               <a-input
-                v-model:value="commentTextMap[toReviewTask(record).reviewTaskId]"
+                v-model:value="confirmDrafts[index].commentText"
                 placeholder="评语，可空"
                 allow-clear
               />
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-button type="link" size="small" @click="openSingleReview(toReviewTask(record))">
+              <a-button type="link" size="small" @click="openSingleReview(tasks[index])">
                 查看单题
               </a-button>
             </template>
@@ -134,30 +145,29 @@ import type {
   ReviewTaskItemVO,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam'
-import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   batchConfirmQuestionGrades,
   listReviewTasks,
   pageExams,
   REVIEW_TASK_TYPE_META,
 } from '@/apis/mark/exam'
+import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { UiAlertStrip, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { formatSemester } from '@/types/enums/semester-enum'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 const router = useRouter()
 const examLoading = ref(false)
-const examOptions = ref<{ label: string, value: string }[]>([])
+const examOptions = ref<{ label: string; value: string }[]>([])
 const selectedExamId = ref<string | undefined>(undefined)
 const loading = ref(false)
 const submitting = ref(false)
 const tasks = ref<ReviewTaskItemVO[]>([])
 const selectedTaskIds = ref<string[]>([])
-const finalScoreMap = ref<Record<string, number | undefined>>({})
-const commentTextMap = ref<Record<string, string>>({})
 const channelFilter = ref<ReviewTaskTypeCode | undefined>(undefined)
 
 interface BatchSummary {
@@ -167,15 +177,22 @@ interface BatchSummary {
   failureMessage: string
 }
 
+interface ReviewBatchConfirmDraft {
+  reviewTaskId: string
+  teacherReviewScore: number | undefined
+  commentText: string
+}
+
 const batchSummary = ref<BatchSummary | null>(null)
+const confirmDrafts = ref<ReviewBatchConfirmDraft[]>([])
 
 const columns = [
-  { title: '匿名号', dataIndex: 'anonymousNo', key: 'anonymousNo', width: 110 },
+  { title: '答卷', key: 'paperDisplay', width: 160 },
   { title: '题号', dataIndex: 'questionNo', key: 'questionNo', width: 80 },
   { title: '任务通道', key: 'reviewType', width: 160 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 70 },
-  { title: '建议分', dataIndex: 'suggestedScore', key: 'suggestedScore', width: 80 },
-  { title: '最终分', key: 'finalScore', width: 130 },
+  { title: 'AI 评分', dataIndex: 'aiScore', key: 'aiScore', width: 90 },
+  { title: '教师复核评分', key: 'teacherReviewScore', width: 140 },
   { title: '评语', key: 'commentText' },
   { title: '操作', key: 'actions', width: 100, fixed: 'right' as const },
 ]
@@ -201,31 +218,32 @@ async function loadExamOptions() {
   examLoading.value = true
   try {
     const result = await pageExams({ pageNum: 1, pageSize: 200 })
+    validateExamOptionContracts(result.list)
     examOptions.value = result.list.map((exam: ExamSummaryVO) => ({
       label: [formatExamOptionLabel(exam), formatAcademicTerm(exam)].filter(Boolean).join(' · '),
       value: exam.examId,
     }))
   } catch (error) {
-    message.error('加载考试列表失败：' + ((error as Error)?.message ?? ''))
+    showUserError(error, '考试列表加载失败')
   } finally {
     examLoading.value = false
   }
 }
 
-function toReviewTask(record: unknown): ReviewTaskItemVO {
-  return record as ReviewTaskItemVO
+/** 校验考试下拉所需编号字段，缺失时中断选项渲染。 */
+function validateExamOptionContracts(list: ExamSummaryVO[]): void {
+  for (const exam of list) {
+    if (!exam.examNo) {
+      throw new Error(`考试列表缺少考试编号：examId=${exam.examId}`)
+    }
+  }
 }
 
 function formatAcademicTerm(exam: ExamSummaryVO): string {
-  return [exam.academicYear, formatSemester(exam.semester) || exam.semester]
-    .filter(Boolean)
-    .join(' · ')
+  return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
 
 function formatExamOptionLabel(exam: ExamSummaryVO): string {
-  if (!exam.examNo) {
-    throw new Error(`考试列表缺少考试编号：examId=${exam.examId}`)
-  }
   return `${exam.examName}（${exam.examNo}）`
 }
 
@@ -249,15 +267,14 @@ async function loadTasks() {
       if (!channelCode) return true
       return task.reviewType === channelCode
     })
-    finalScoreMap.value = {}
-    commentTextMap.value = {}
-    for (const task of tasks.value) {
-      finalScoreMap.value[task.reviewTaskId] = task.suggestedScore ?? undefined
-      commentTextMap.value[task.reviewTaskId] = ''
-    }
+    confirmDrafts.value = tasks.value.map((task) => ({
+      reviewTaskId: task.reviewTaskId,
+      teacherReviewScore: task.aiScore ?? undefined,
+      commentText: '',
+    }))
     selectedTaskIds.value = []
   } catch (error) {
-    message.error('加载待审核题目失败：' + ((error as Error)?.message ?? ''))
+    showUserError(error, '待审核题目加载失败')
   } finally {
     loading.value = false
   }
@@ -266,6 +283,7 @@ async function loadTasks() {
 function onExamChange() {
   batchSummary.value = null
   tasks.value = []
+  confirmDrafts.value = []
   selectedTaskIds.value = []
   if (selectedExamId.value) {
     void loadTasks()
@@ -289,23 +307,28 @@ async function submitBatch() {
     if (!task) {
       continue
     }
-    const finalScore = finalScoreMap.value[taskId]
-    if (finalScore === undefined || finalScore === null || Number.isNaN(finalScore)) {
-      message.warning(`匿名号 ${task.anonymousNo} 的最终分不能为空，请先填写`)
+    const draft = confirmDrafts.value.find((row) => row.reviewTaskId === taskId)
+    const teacherReviewScore = draft?.teacherReviewScore
+    if (
+      teacherReviewScore === undefined ||
+      teacherReviewScore === null ||
+      Number.isNaN(teacherReviewScore)
+    ) {
+      message.warning(`${task.paperDisplay.primaryText} 的教师复核评分不能为空，请先填写`)
       return
     }
-    if (finalScore > task.fullScore) {
-      message.warning(`匿名号 ${task.anonymousNo} 的最终分超过满分 ${task.fullScore}`)
+    if (teacherReviewScore > task.fullScore) {
+      message.warning(`${task.paperDisplay.primaryText} 的教师复核评分超过满分 ${task.fullScore}`)
       return
     }
-    if (finalScore < 0) {
-      message.warning(`匿名号 ${task.anonymousNo} 的最终分不能为负`)
+    if (teacherReviewScore < 0) {
+      message.warning(`${task.paperDisplay.primaryText} 的教师复核评分不能为负`)
       return
     }
     items.push({
       gradeResultId: task.gradeResultId,
-      finalScore,
-      commentText: commentTextMap.value[taskId] || undefined,
+      teacherReviewScore,
+      commentText: draft?.commentText || undefined,
     })
   }
   if (items.length === 0) {
@@ -324,7 +347,12 @@ async function submitBatch() {
       failureCount: response.failureCount,
       failureMessage:
         response.failures.length > 0
-          ? response.failures.map((f) => `${f.gradeResultId}: ${f.message}`).join('；')
+          ? response.failures
+              .map(
+                (f, index) =>
+                  `第 ${index + 1} 项：${getUserErrorMessage({ message: f.message }, '该题目得分确认失败')}`,
+              )
+              .join('；')
           : '',
     }
     if (response.failureCount === 0) {
@@ -336,7 +364,7 @@ async function submitBatch() {
     }
     await loadTasks()
   } catch (error) {
-    message.error('批量确认失败：' + ((error as Error)?.message ?? ''))
+    showUserError(error, '题目得分批量确认失败')
   } finally {
     submitting.value = false
   }

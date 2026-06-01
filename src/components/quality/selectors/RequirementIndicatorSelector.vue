@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { RequirementIndicatorVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import { requirementIndicatorApi } from '@/apis/quality'
+import { computed, onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
 interface Props {
@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: RequirementIndicatorVO]
+  change: [value: string | null, option?: RequirementIndicatorVO]
 }>()
 
 const options = ref<RequirementIndicatorVO[]>([])
@@ -72,7 +72,7 @@ async function loadOptions() {
     )
   } catch (e) {
     console.error('[RequirementIndicatorSelector] 加载观测点列表失败', e)
-    message.error('加载观测点列表失败')
+    showUserError(e, '观测点列表加载失败')
   } finally {
     loading.value = false
   }
@@ -111,7 +111,7 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.indicatorCode} · ${opt.indicatorName}`"
     >
-      <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.indicatorCode }}</span>
+      <span class="text-xs text-gray-500 mr-1">{{ opt.indicatorCode }}</span>
       {{ opt.indicatorName }}
       <span v-if="opt.requirementWeight != null" class="text-gray-400 ml-1">
         (权重 {{ (opt.requirementWeight * 100).toFixed(0) }}%)

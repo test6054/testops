@@ -39,7 +39,7 @@ export interface KioskBlockedReasons {
   cancelJob: string
   /** 重试上传 */
   retryUpload: string
-  /** 重试 commit */
+  /** 重试提交 */
   retryCommit: string
   /** 删除 / 废弃当前任务 */
   removeJob: string
@@ -100,11 +100,11 @@ export function useKioskMutex(workflow: KioskWorkflow) {
             ? '当前没有可取消的任务'
             : '当前任务已进入上传链路，不能取消',
       retryUpload: workflow.canRetryUpload.value ? '' : '当前任务不允许重试上传',
-      retryCommit: workflow.canRetryCommit.value ? '' : '当前任务不允许重试 commit',
+      retryCommit: workflow.canRetryCommit.value ? '' : '当前任务不允许重试提交',
       removeJob: workflow.canRemoveCurrentJob.value
         ? ''
         : workflow.currentJobAllPagesUploadedButUnconfirmed.value
-            ? '页面已上传完成但批次未确认，请先点击重试 commit'
+            ? '页面已上传完成但批次未确认，请先重试提交'
             : workflow.removeCurrentJobTitle.value,
       sealLatestBatch: workflow.latestBatchSealBlockedReason.value,
       discardLedgerPage: workflow.canDiscardLedgerPage.value ? '' : jobInflightBlocked.value,

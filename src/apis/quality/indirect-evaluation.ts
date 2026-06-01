@@ -1,5 +1,5 @@
 import type { AiTaskSubmitResponseVO } from './ai-task'
-import type { AchievementTargetType, RespondentType } from './types'
+import type { AchievementTargetType, IndirectFormType, RespondentType } from './types'
 import type {
   SurveyChoiceOptionVO,
   SurveyIdentityFieldVO,
@@ -30,7 +30,7 @@ export interface IndirectEvaluationFormVO {
   id: string
   formCode: string
   formName: string
-  formType: string
+  formType: IndirectFormType
   targetType: AchievementTargetType
   targetId: string
   programId?: string
@@ -51,11 +51,11 @@ export interface IndirectEvaluationFormVO {
   updateTime?: string
 }
 
-export interface IndirectEvaluationFormSavePayload {
+export interface IndirectEvaluationFormSaveRequest {
   id?: string
   formCode: string
   formName: string
-  formType: string
+  formType: IndirectFormType
   targetType: AchievementTargetType
   targetId: string
   programId?: string
@@ -64,8 +64,8 @@ export interface IndirectEvaluationFormSavePayload {
   enabled?: boolean
 }
 
-export interface IndirectEvaluationFormQueryPayload extends QueryDto {
-  formType?: string
+export interface IndirectEvaluationFormQueryRequest extends QueryDto {
+  formType?: IndirectFormType
   targetType?: AchievementTargetType
   targetId?: string
   programId?: string
@@ -92,7 +92,7 @@ export interface IndirectEvaluationItemVO {
   updateTime?: string
 }
 
-export interface IndirectEvaluationItemSavePayload {
+export interface IndirectEvaluationItemSaveRequest {
   id?: string
   formId: string
   itemCode: string
@@ -134,7 +134,7 @@ export interface IndirectEvaluationResponseVO {
   updateTime?: string
 }
 
-export interface IndirectEvaluationResponseSavePayload {
+export interface IndirectEvaluationResponseSaveRequest {
   id?: string
   formId: string
   itemId: string
@@ -152,7 +152,7 @@ export interface IndirectEvaluationResponseSavePayload {
   receivedAt?: string
 }
 
-export interface IndirectEvaluationFormPublishPayload {
+export interface IndirectEvaluationFormPublishRequest {
   id: string
   startTime: string
   endTime: string
@@ -216,13 +216,13 @@ export interface OpenTextSummaryVO {
 }
 
 export const indirectFormApi = {
-  page: (data: IndirectEvaluationFormQueryPayload) =>
+  page: (data: IndirectEvaluationFormQueryRequest) =>
     http.post<PageResult<IndirectEvaluationFormVO>>(`${FORM}/page`, data),
   detail: (id: string) => http.post<IndirectEvaluationFormVO>(`${FORM}/detail`, { id }),
-  create: (data: IndirectEvaluationFormSavePayload) => http.post<string>(`${FORM}/create`, data),
-  update: (data: IndirectEvaluationFormSavePayload) => http.post<void>(`${FORM}/update`, data),
+  create: (data: IndirectEvaluationFormSaveRequest) => http.post<string>(`${FORM}/create`, data),
+  update: (data: IndirectEvaluationFormSaveRequest) => http.post<void>(`${FORM}/update`, data),
   delete: (id: string) => http.post<void>(`${FORM}/delete`, { id }),
-  publish: (data: IndirectEvaluationFormPublishPayload) =>
+  publish: (data: IndirectEvaluationFormPublishRequest) =>
     http.post<IndirectEvaluationPublishResultVO>(`${FORM}/publish`, data),
   close: (id: string) => http.post<void>(`${FORM}/close`, { id }),
   progress: (id: string) => http.post<IndirectEvaluationProgressVO>(`${FORM}/progress`, { id }),
@@ -236,8 +236,8 @@ export const indirectItemApi = {
   listByTarget: (targetType: AchievementTargetType, targetId: string) =>
     http.post<IndirectEvaluationItemVO[]>(`${ITEM}/list-by-target`, { targetType, targetId }),
   detail: (id: string) => http.post<IndirectEvaluationItemVO>(`${ITEM}/detail`, { id }),
-  create: (data: IndirectEvaluationItemSavePayload) => http.post<string>(`${ITEM}/create`, data),
-  update: (data: IndirectEvaluationItemSavePayload) => http.post<void>(`${ITEM}/update`, data),
+  create: (data: IndirectEvaluationItemSaveRequest) => http.post<string>(`${ITEM}/create`, data),
+  update: (data: IndirectEvaluationItemSaveRequest) => http.post<void>(`${ITEM}/update`, data),
   delete: (id: string) => http.post<void>(`${ITEM}/delete`, { id }),
 }
 
@@ -247,9 +247,9 @@ export const indirectResponseApi = {
   listByItem: (itemId: string) =>
     http.post<IndirectEvaluationResponseVO[]>(`${RESPONSE}/list-by-item`, { id: itemId }),
   detail: (id: string) => http.post<IndirectEvaluationResponseVO>(`${RESPONSE}/detail`, { id }),
-  create: (data: IndirectEvaluationResponseSavePayload) =>
+  create: (data: IndirectEvaluationResponseSaveRequest) =>
     http.post<string>(`${RESPONSE}/create`, data),
-  update: (data: IndirectEvaluationResponseSavePayload) =>
+  update: (data: IndirectEvaluationResponseSaveRequest) =>
     http.post<void>(`${RESPONSE}/update`, data),
   delete: (id: string) => http.post<void>(`${RESPONSE}/delete`, { id }),
   /** 统计某题项的有效样本数（用于覆盖率计算） */
@@ -263,9 +263,9 @@ export const indirectResponseApi = {
     return http.post<IndirectResponseImportResult>(`${RESPONSE}/import-excel`, formData)
   },
   /**
-   * 从 PDF / DOCX / 图片中抽取答卷原文（同步）。
+   * 从 PDF / DOCX / 图片中抽取答卷文本（同步）。
    * 后端走 edu-mark 统一文档抽取服务（图片 OCR + PDF 文本 + 扫描页 OCR）。
-   * 返回结构化文本，由前端展示给教师对照原文档手工录入答卷。
+   * 返回结构化文本，由前端展示给教师对照上传文档手工录入答卷。
    */
   importDocument: (formId: string, file: File) => {
     const formData = new FormData()

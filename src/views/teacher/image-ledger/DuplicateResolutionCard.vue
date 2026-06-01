@@ -53,15 +53,17 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   DUPLICATE_RESOLUTION_STATUS_COLOR,
   DUPLICATE_RESOLUTION_STATUS_LABEL,
   listPendingDuplicates,
 } from '@/apis/mark/image-ledger'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { showUserError, toUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'DuplicateResolutionCard' })
 
@@ -72,20 +74,20 @@ defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()
 const rows = ref<ExamPaperDuplicateResolutionVO[]>([])
 const loading = ref(false)
 // D-9 错误态：重复列表加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 
 const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
   { title: '页面哈希', dataIndex: 'pageHash', key: 'pageHash', width: 220, ellipsis: true },
   { title: '基准扫描页', dataIndex: 'firstPageId', key: 'firstPageId', width: 120 },
   { title: '重复扫描页', dataIndex: 'secondPageId', key: 'secondPageId', width: 120 },
   {
-    title: '基准试卷实例',
+    title: '基准试卷',
     dataIndex: 'firstPaperInstanceId',
     key: 'firstPaperInstanceId',
     width: 140,
   },
   {
-    title: '重复试卷实例',
+    title: '重复试卷',
     dataIndex: 'secondPaperInstanceId',
     key: 'secondPaperInstanceId',
     width: 140,
@@ -95,12 +97,16 @@ const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [
 ]
 
 // helper 严格 typed 接收后端 API 对象 ExamPaperDuplicateResolutionVO。
-function duplicateStatusColor(row: ExamPaperDuplicateResolutionVO): string {
-  return DUPLICATE_RESOLUTION_STATUS_COLOR[row.resolutionStatus]
+function duplicateStatusColor(row: ExamPaperDuplicateResolutionVO): BadgeTone {
+  return strictEnumTone(DUPLICATE_RESOLUTION_STATUS_COLOR, row.resolutionStatus, '重复影像处置状态')
 }
 
 function duplicateStatusLabel(row: ExamPaperDuplicateResolutionVO): string {
-  return DUPLICATE_RESOLUTION_STATUS_LABEL[row.resolutionStatus]
+  return strictEnumLabel(
+    DUPLICATE_RESOLUTION_STATUS_LABEL,
+    row.resolutionStatus,
+    '重复影像处置状态',
+  )
 }
 
 const pendingCount = computed(
@@ -114,8 +120,8 @@ async function reload(): Promise<void> {
   try {
     rows.value = await listPendingDuplicates({ examId: props.examId })
   } catch (e) {
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '重复列表加载失败')
+    loadError.value = toUserError(e, '重复扫描记录加载失败')
+    showUserError(e, '重复扫描记录加载失败')
   } finally {
     loading.value = false
   }

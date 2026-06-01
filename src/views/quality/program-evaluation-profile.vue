@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 专业评价口径配置
@@ -10,27 +9,27 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AccreditationStandardVO,
   AccreditationType,
+  EvaluationCycle,
   EvaluationMethod,
-  ProgramEvaluationProfileQueryPayload,
-  ProgramEvaluationProfileSavePayload,
+  ProgramEvaluationProfileQueryRequest,
+  ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
-import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
+  EVALUATION_CYCLE_LABEL,
   EVALUATION_METHOD_LABEL,
-  isAccreditationType,
-  isEvaluationMethod,
   programEvaluationProfileApi,
 } from '@/apis/quality'
-import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ProgramSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const columns: ColumnsType = [
   { title: '专业', dataIndex: 'programName', key: 'programName' },
@@ -46,9 +45,8 @@ const list = ref<ProgramEvaluationProfileVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 const standards = ref<AccreditationStandardVO[]>([])
-const programs = ref<MajorCategoryVO[]>([])
 
-const query = reactive<ProgramEvaluationProfileQueryPayload>({
+const query = reactive<ProgramEvaluationProfileQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   accreditationType: undefined,
@@ -75,35 +73,25 @@ const evaluationMethods: EvaluationMethod[] = [
 
 const accreditationOptions = accreditationTypes.map((value) => ({
   value,
-  label: ACCREDITATION_TYPE_LABEL[value],
+  label: strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型'),
 }))
 const evaluationMethodOptions = evaluationMethods.map((value) => ({
   value,
-  label: EVALUATION_METHOD_LABEL[value],
+  label: strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法'),
 }))
-type EvaluationCycle = 'SEMESTER' | 'YEAR' | 'BIENNIAL' | 'TRIENNIAL' | 'PROGRAM_CYCLE'
 
-const evaluationCycleOptions: Array<{ value: EvaluationCycle, label: string }> = [
-  { value: 'SEMESTER', label: '按学期' },
-  { value: 'YEAR', label: '按学年' },
-  { value: 'BIENNIAL', label: '每两年' },
-  { value: 'TRIENNIAL', label: '每三年' },
-  { value: 'PROGRAM_CYCLE', label: '按培养周期' },
+const evaluationCycleOptions: Array<{ value: EvaluationCycle; label: string }> = [
+  { value: 'SEMESTER', label: EVALUATION_CYCLE_LABEL.SEMESTER },
+  { value: 'YEAR', label: EVALUATION_CYCLE_LABEL.YEAR },
+  { value: 'BIENNIAL', label: EVALUATION_CYCLE_LABEL.BIENNIAL },
+  { value: 'TRIENNIAL', label: EVALUATION_CYCLE_LABEL.TRIENNIAL },
+  { value: 'PROGRAM_CYCLE', label: EVALUATION_CYCLE_LABEL.PROGRAM_CYCLE },
 ]
-
-const EVALUATION_CYCLE_LABEL: Record<EvaluationCycle, string> = evaluationCycleOptions.reduce(
-  (labels, option) => {
-    labels[option.value] = option.label
-    return labels
-  },
-  {} as Record<EvaluationCycle, string>,
-)
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
-const editor = reactive<ProgramEvaluationProfileSavePayload>({
+const editor = reactive<ProgramEvaluationProfileSaveRequest>({
   programId: '',
-  programName: '',
   schoolId: '',
   departmentId: '',
   accreditationType: 'ENGINEERING_ACCREDITATION',
@@ -112,9 +100,19 @@ const editor = reactive<ProgramEvaluationProfileSavePayload>({
   accreditationLevel: '',
   evaluationMethod: 'DIRECT_INDIRECT_WEIGHTED',
   evaluationCycle: 'YEAR',
-  sampleScope: '',
-  reviewChain: '',
-  archivePolicy: '',
+  includeGraduateSamples: true,
+  includeEmployerSamples: true,
+  includeAlumniSamples: true,
+  includeCurrentStudentSamples: false,
+  sampleScopeRemark: '',
+  collegeReviewOwner: '',
+  departmentReviewOwner: '',
+  programReviewOwner: '',
+  reviewChainRemark: '',
+  archiveRetentionYears: 5,
+  archiveLocation: '',
+  archiveResponsibleUnit: '',
+  archivePolicyRemark: '',
   enabled: true,
 })
 const submitting = ref(false)
@@ -127,31 +125,22 @@ async function loadList() {
       keyword: query.keyword?.trim() || undefined,
     })
     list.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
-// 枚举守卫 helper：禁止 as 类型断言
-function accreditationLabel(value: unknown): string {
-  if (value == null || value === '') return '-'
-  if (isAccreditationType(value)) return ACCREDITATION_TYPE_LABEL[value]
-  throw new Error('专业评价口径认证类型不符合前后端契约')
+function accreditationLabel(value: AccreditationType): string {
+  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
 }
 
-function evaluationMethodLabel(value: unknown): string {
-  if (value == null || value === '') return '-'
-  if (isEvaluationMethod(value)) return EVALUATION_METHOD_LABEL[value]
-  throw new Error('专业评价口径评价方法不符合前后端契约')
+function evaluationMethodLabel(value: EvaluationMethod): string {
+  return strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法')
 }
 
-function evaluationCycleLabel(value: unknown): string {
-  if (value == null || value === '') return '-'
-  if (typeof value !== 'string' || !(value in EVALUATION_CYCLE_LABEL)) {
-    throw new Error('专业评价口径评价周期不符合前后端契约')
-  }
-  return EVALUATION_CYCLE_LABEL[value as EvaluationCycle]
+function evaluationCycleLabel(value: EvaluationCycle): string {
+  return strictEnumLabel(EVALUATION_CYCLE_LABEL, value, '评价周期')
 }
 
 const enabledCount = computed(() => list.value.filter((item) => item.enabled).length)
@@ -159,9 +148,7 @@ const disabledCount = computed(() => list.value.filter((item) => !item.enabled).
 
 const signals = computed<SignalMetric[]>(() => {
   const engineering = list.value.filter(
-    (item) =>
-      isAccreditationType(item.accreditationType)
-      && item.accreditationType === 'ENGINEERING_ACCREDITATION',
+    (item) => item.accreditationType === 'ENGINEERING_ACCREDITATION',
   ).length
   return [
     { key: 'overall', label: '总口径', value: total.value, tone: 'gray' },
@@ -188,17 +175,13 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 async function loadDicts() {
-  const [std, majors] = await Promise.all([
-    accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
-    majorCategoryCatalogApi.listAll(),
-  ])
+  const std = await accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true })
   standards.value = std.list
-  programs.value = majors
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
@@ -215,7 +198,6 @@ function openCreate() {
   Object.assign(editor, {
     id: undefined,
     programId: '',
-    programName: '',
     schoolId: '',
     departmentId: '',
     accreditationType: 'ENGINEERING_ACCREDITATION',
@@ -224,9 +206,19 @@ function openCreate() {
     accreditationLevel: '',
     evaluationMethod: 'DIRECT_INDIRECT_WEIGHTED',
     evaluationCycle: 'YEAR',
-    sampleScope: '',
-    reviewChain: '',
-    archivePolicy: '',
+    includeGraduateSamples: true,
+    includeEmployerSamples: true,
+    includeAlumniSamples: true,
+    includeCurrentStudentSamples: false,
+    sampleScopeRemark: '',
+    collegeReviewOwner: '',
+    departmentReviewOwner: '',
+    programReviewOwner: '',
+    reviewChainRemark: '',
+    archiveRetentionYears: 5,
+    archiveLocation: '',
+    archiveResponsibleUnit: '',
+    archivePolicyRemark: '',
     enabled: true,
   })
   editorVisible.value = true
@@ -238,17 +230,13 @@ function openEdit(record: ProgramEvaluationProfileVO) {
   editorVisible.value = true
 }
 
-// a-select v-model:value 是 SelectValue（string|number|undefined|array），
-// 这里业务模板 ID 是字符串，select 清空时为 undefined，需要在 handler 中显式 narrow。
-function onProgramChange(value: SelectValue) {
-  if (typeof value !== 'string') return
-  const major = programs.value.find((p) => p.id === value)
-  if (major) editor.programName = major.majorCategoryName
+function handleProgramChange(value: string | null) {
+  editor.programId = value ?? ''
 }
 
 async function submitEditor() {
-  if (!editor.programId || !editor.programName.trim() || !editor.accreditationType) {
-    message.error('请选择专业并填写认证类型')
+  if (!editor.programId || !editor.accreditationType) {
+    message.error('请选择专业和认证类型')
     return
   }
   submitting.value = true
@@ -328,22 +316,25 @@ onMounted(async () => {
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'accreditationType'">
-            {{ accreditationLabel(text) }}
+            {{ accreditationLabel(record.accreditationType) }}
+          </template>
+          <template v-else-if="column.key === 'programName'">
+            {{ record.programName }}
           </template>
           <template v-else-if="column.key === 'accreditationLevel'">
-            {{ text || '-' }}
+            {{ record.accreditationLevel || '未配置认证级别' }}
           </template>
           <template v-else-if="column.key === 'evaluationMethod'">
-            {{ evaluationMethodLabel(text) }}
+            {{ evaluationMethodLabel(record.evaluationMethod) }}
           </template>
           <template v-else-if="column.key === 'evaluationCycle'">
-            {{ evaluationCycleLabel(text) }}
+            {{ evaluationCycleLabel(record.evaluationCycle) }}
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="text ? 'green' : 'default'">
-              {{ text ? '启用' : '停用' }}
+            <a-tag :color="record.enabled ? 'green' : 'default'">
+              {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -369,29 +360,9 @@ onMounted(async () => {
     >
       <a-form layout="vertical" :model="editor">
         <a-row :gutter="12">
-          <a-col :span="12">
+          <a-col :span="24">
             <a-form-item label="专业" required>
-              <a-select
-                v-model:value="editor.programId"
-                placeholder="选择专业"
-                show-search
-                option-filter-prop="label"
-                @change="onProgramChange"
-              >
-                <a-select-option
-                  v-for="p in programs"
-                  :key="p.id"
-                  :value="p.id"
-                  :label="p.majorCategoryName"
-                >
-                  {{ p.majorCategoryName }}
-                </a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="专业名称（用于归档）" required>
-              <a-input v-model:value="editor.programName" />
+              <ProgramSelector :value="editor.programId || null" @change="handleProgramChange" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -403,10 +374,7 @@ onMounted(async () => {
           </a-col>
           <a-col :span="8">
             <a-form-item label="认证级别">
-              <a-input
-                v-model:value="editor.accreditationLevel"
-                placeholder="如 LEVEL_2 / LEVEL_3"
-              />
+              <a-input v-model:value="editor.accreditationLevel" placeholder="如 二级 / 三级" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -447,22 +415,77 @@ onMounted(async () => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="样本范围">
-          <a-textarea
-            v-model:value="editor.sampleScope"
-            :rows="2"
-            placeholder="如：全体毕业生 + 用人单位 + 校友"
+        <a-divider orientation="left">样本范围</a-divider>
+        <a-form-item>
+          <a-space wrap>
+            <a-checkbox v-model:checked="editor.includeGraduateSamples">毕业生</a-checkbox>
+            <a-checkbox v-model:checked="editor.includeEmployerSamples">用人单位</a-checkbox>
+            <a-checkbox v-model:checked="editor.includeAlumniSamples">校友</a-checkbox>
+            <a-checkbox v-model:checked="editor.includeCurrentStudentSamples">在校生</a-checkbox>
+          </a-space>
+        </a-form-item>
+        <a-form-item label="样本范围补充说明">
+          <a-input
+            v-model:value="editor.sampleScopeRemark"
+            placeholder="如覆盖年级、抽样口径或排除条件"
           />
         </a-form-item>
-        <a-form-item label="责任链">
-          <a-textarea
-            v-model:value="editor.reviewChain"
-            :rows="2"
-            placeholder="校院两级审核责任链描述"
+
+        <a-divider orientation="left">责任链</a-divider>
+        <a-row :gutter="12">
+          <a-col :span="8">
+            <a-form-item label="校级责任">
+              <a-input v-model:value="editor.collegeReviewOwner" placeholder="责任单位或负责人" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="院系责任">
+              <a-input
+                v-model:value="editor.departmentReviewOwner"
+                placeholder="责任单位或负责人"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="专业责任">
+              <a-input v-model:value="editor.programReviewOwner" placeholder="责任单位或负责人" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-form-item label="责任链补充说明">
+          <a-input
+            v-model:value="editor.reviewChainRemark"
+            placeholder="如复核顺序、签字节点或归口要求"
           />
         </a-form-item>
-        <a-form-item label="归档策略">
-          <a-textarea v-model:value="editor.archivePolicy" :rows="2" />
+
+        <a-divider orientation="left">归档策略</a-divider>
+        <a-row :gutter="12">
+          <a-col :span="8">
+            <a-form-item label="保存年限">
+              <a-input-number
+                v-model:value="editor.archiveRetentionYears"
+                :min="0"
+                style="width: 100%"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="归档位置">
+              <a-input v-model:value="editor.archiveLocation" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="责任单位">
+              <a-input v-model:value="editor.archiveResponsibleUnit" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-form-item label="归档策略补充说明">
+          <a-input
+            v-model:value="editor.archivePolicyRemark"
+            placeholder="如电子/纸质材料同步要求"
+          />
         </a-form-item>
         <a-checkbox v-model:checked="editor.enabled"> 启用 </a-checkbox>
       </a-form>

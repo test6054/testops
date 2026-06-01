@@ -23,7 +23,7 @@ export interface TrainingObjectiveVO {
   updateTime?: string
 }
 
-export interface TrainingObjectiveSavePayload {
+export interface TrainingObjectiveSaveRequest {
   id?: string
   trainingPlanId: string
   objectiveCode: string
@@ -44,7 +44,7 @@ export interface TrainingObjectiveRequirementVO {
   updateTime?: string
 }
 
-export interface TrainingObjectiveRequirementSavePayload {
+export interface TrainingObjectiveRequirementSaveRequest {
   id?: string
   trainingObjectiveId: string
   graduationRequirementId: string
@@ -58,9 +58,9 @@ export const trainingObjectiveApi = {
     http.post<TrainingObjectiveVO[]>(`${OBJECTIVE}/list-by-plan`, { id: trainingPlanId }),
   detail: (id: string) =>
     http.post<TrainingObjectiveVO>(`${OBJECTIVE}/detail`, { id }),
-  create: (data: TrainingObjectiveSavePayload) =>
+  create: (data: TrainingObjectiveSaveRequest) =>
     http.post<string>(`${OBJECTIVE}/create`, data),
-  update: (data: TrainingObjectiveSavePayload) =>
+  update: (data: TrainingObjectiveSaveRequest) =>
     http.post<void>(`${OBJECTIVE}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${OBJECTIVE}/delete`, { id }),
@@ -73,9 +73,9 @@ export const trainingObjectiveRequirementApi = {
     http.post<TrainingObjectiveRequirementVO[]>(`${MAPPING}/list-by-plan`, { id: trainingPlanId }),
   detail: (id: string) =>
     http.post<TrainingObjectiveRequirementVO>(`${MAPPING}/detail`, { id }),
-  create: (data: TrainingObjectiveRequirementSavePayload) =>
+  create: (data: TrainingObjectiveRequirementSaveRequest) =>
     http.post<string>(`${MAPPING}/create`, data),
-  update: (data: TrainingObjectiveRequirementSavePayload) =>
+  update: (data: TrainingObjectiveRequirementSaveRequest) =>
     http.post<void>(`${MAPPING}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${MAPPING}/delete`, { id }),

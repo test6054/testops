@@ -1,47 +1,55 @@
 <script setup lang="ts">
-import type {ColumnsType} from 'ant-design-vue/es/table'
+import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ScaleConversionRuleItem,
-  ScaleConversionRuleQueryPayload,
-  ScaleConversionRuleSavePayload,
+  ScaleConversionRuleQueryRequest,
+  ScaleConversionRuleSaveRequest,
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
-import {isScaleType, SCALE_TYPE_LABEL, scaleConversionRuleApi} from '@/apis/quality'
-import type {FilterField} from '@/components/ui-guide/ui/types'
-import type {SignalMetric} from '@/types/workbench'
-import {message} from 'ant-design-vue'
-import {computed, onMounted, reactive, ref} from 'vue'
-import {UiButton, UiDataTable, UiSearchForm} from '@/components/ui-guide/ui'
-import {ContextBar, SignalBand, StageWorkbenchShell} from '@/components/workbench'
-import {confirmAsync} from '@/composables/useConfirmDialog'
+import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { confirmAsync } from '@/composables/useConfirmDialog'
+import { getUserErrorMessage } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<ScaleConversionRuleVO[]>([])
 const total = ref(0)
 const loading = ref(false)
-const query = reactive<ScaleConversionRuleQueryPayload>({
+const query = reactive<ScaleConversionRuleQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   scaleType: undefined,
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType, label: string }[] = [
-  { value: 'FIVE_LEVEL', label: SCALE_TYPE_LABEL.FIVE_LEVEL },
-  { value: 'FOUR_LEVEL', label: SCALE_TYPE_LABEL.FOUR_LEVEL },
-  { value: 'TEN_POINT', label: SCALE_TYPE_LABEL.TEN_POINT },
-  { value: 'PERCENTAGE', label: SCALE_TYPE_LABEL.PERCENTAGE },
-  { value: 'CUSTOM', label: SCALE_TYPE_LABEL.CUSTOM },
+const scaleTypeOptions: { value: ScaleType; label: string }[] = [
+  { value: 'FIVE_LEVEL', label: strictEnumLabel(SCALE_TYPE_LABEL, 'FIVE_LEVEL', '量表类型') },
+  { value: 'FOUR_LEVEL', label: strictEnumLabel(SCALE_TYPE_LABEL, 'FOUR_LEVEL', '量表类型') },
+  { value: 'TEN_POINT', label: strictEnumLabel(SCALE_TYPE_LABEL, 'TEN_POINT', '量表类型') },
+  { value: 'PERCENTAGE', label: strictEnumLabel(SCALE_TYPE_LABEL, 'PERCENTAGE', '量表类型') },
+  { value: 'CUSTOM', label: strictEnumLabel(SCALE_TYPE_LABEL, 'CUSTOM', '量表类型') },
 ]
 
-const filterModel = ref<Record<string, unknown>>({
+interface ScaleConversionRuleFilterModel {
+  scaleType?: ScaleType
+  enabled?: 'true' | 'false'
+}
+
+const filterModel = ref<ScaleConversionRuleFilterModel>({
   scaleType: undefined,
   enabled: undefined,
 })
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
-const editor = reactive<ScaleConversionRuleSavePayload>({
+const editor = reactive<ScaleConversionRuleSaveRequest>({
   ruleCode: '',
   ruleName: '',
   scaleType: 'FIVE_LEVEL',
@@ -85,49 +93,41 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
 
-function createRuleItem(
-  sourceValue = '',
-  normalizedScore = 0,
-  sortOrder?: number,
-): ScaleConversionRuleItem {
-  return { sourceValue, normalizedScore, sortOrder }
-}
-
 function defaultItemsByScaleType(scaleType: ScaleType): ScaleConversionRuleItem[] {
   if (scaleType === 'FIVE_LEVEL') {
     return [
-      createRuleItem('非常符合', 1, 1),
-      createRuleItem('比较符合', 0.75, 2),
-      createRuleItem('一般', 0.5, 3),
-      createRuleItem('比较不符合', 0.25, 4),
-      createRuleItem('非常不符合', 0, 5),
+      { sourceValue: '非常符合', normalizedScore: 1, sortOrder: 1 },
+      { sourceValue: '比较符合', normalizedScore: 0.75, sortOrder: 2 },
+      { sourceValue: '一般', normalizedScore: 0.5, sortOrder: 3 },
+      { sourceValue: '比较不符合', normalizedScore: 0.25, sortOrder: 4 },
+      { sourceValue: '非常不符合', normalizedScore: 0, sortOrder: 5 },
     ]
   }
   if (scaleType === 'FOUR_LEVEL') {
     return [
-      createRuleItem('优秀', 1, 1),
-      createRuleItem('良好', 0.75, 2),
-      createRuleItem('中等', 0.5, 3),
-      createRuleItem('较差', 0.25, 4),
+      { sourceValue: '优秀', normalizedScore: 1, sortOrder: 1 },
+      { sourceValue: '良好', normalizedScore: 0.75, sortOrder: 2 },
+      { sourceValue: '中等', normalizedScore: 0.5, sortOrder: 3 },
+      { sourceValue: '较差', normalizedScore: 0.25, sortOrder: 4 },
     ]
   }
   if (scaleType === 'TEN_POINT') {
     return [
-      createRuleItem('10', 1, 1),
-      createRuleItem('8', 0.8, 2),
-      createRuleItem('6', 0.6, 3),
-      createRuleItem('4', 0.4, 4),
+      { sourceValue: '10', normalizedScore: 1, sortOrder: 1 },
+      { sourceValue: '8', normalizedScore: 0.8, sortOrder: 2 },
+      { sourceValue: '6', normalizedScore: 0.6, sortOrder: 3 },
+      { sourceValue: '4', normalizedScore: 0.4, sortOrder: 4 },
     ]
   }
   if (scaleType === 'PERCENTAGE') {
     return [
-      createRuleItem('100', 1, 1),
-      createRuleItem('90', 0.9, 2),
-      createRuleItem('80', 0.8, 3),
-      createRuleItem('60', 0.6, 4),
+      { sourceValue: '100', normalizedScore: 1, sortOrder: 1 },
+      { sourceValue: '90', normalizedScore: 0.9, sortOrder: 2 },
+      { sourceValue: '80', normalizedScore: 0.8, sortOrder: 3 },
+      { sourceValue: '60', normalizedScore: 0.6, sortOrder: 4 },
     ]
   }
-  return [createRuleItem('', 1, 1)]
+  return [{ sourceValue: '', normalizedScore: 1, sortOrder: 1 }]
 }
 
 function cloneItems(items: ScaleConversionRuleItem[]): ScaleConversionRuleItem[] {
@@ -143,24 +143,22 @@ async function loadList() {
   try {
     const page = await scaleConversionRuleApi.page({ ...query })
     list.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
 function syncFilterToQuery() {
-  const scaleTypeRaw = filterModel.value.scaleType
-  query.scaleType = isScaleType(scaleTypeRaw) ? scaleTypeRaw : undefined
-  const enabledRaw = filterModel.value.enabled
-  if (enabledRaw === 'true') query.enabled = true
-  else if (enabledRaw === 'false') query.enabled = false
+  query.scaleType = filterModel.value.scaleType
+  if (filterModel.value.enabled === 'true') query.enabled = true
+  else if (filterModel.value.enabled === 'false') query.enabled = false
   else query.enabled = undefined
 }
 
@@ -208,18 +206,19 @@ function openEdit(record: ScaleConversionRuleVO) {
   editorVisible.value = true
 }
 
-function handleScaleTypeChange(value: unknown) {
-  if (!isScaleType(value)) {
-    throw new Error(`量表类型不符合前后端契约：${String(value)}`)
+function handleScaleTypeChange(value: SelectValue) {
+  if (typeof value !== 'string' || !scaleTypeOptions.some((item) => item.value === value)) {
+    throw new TypeError(`量表类型选择值异常：${String(value)}`)
   }
-  editor.scaleType = value
+  const scaleType = value as ScaleType
+  editor.scaleType = scaleType
   if (editorMode.value === 'create') {
-    editor.items = defaultItemsByScaleType(value)
+    editor.items = defaultItemsByScaleType(scaleType)
   }
 }
 
 function addItem() {
-  editor.items.push(createRuleItem('', 0, editor.items.length + 1))
+  editor.items.push({ sourceValue: '', normalizedScore: 0, sortOrder: editor.items.length + 1 })
 }
 
 function removeItem(index: number) {
@@ -244,9 +243,8 @@ function formatItems(items: ScaleConversionRuleItem[]): string {
     .join(' · ')
 }
 
-function scaleTypeLabel(value: unknown): string {
-  if (isScaleType(value)) return SCALE_TYPE_LABEL[value]
-  throw new Error(`量表类型不符合前后端契约：${String(value)}`)
+function scaleTypeLabel(value: ScaleType): string {
+  return strictEnumLabel(SCALE_TYPE_LABEL, value, '量表类型')
 }
 
 function validateEditor(): ScaleConversionRuleItem[] | null {
@@ -287,7 +285,7 @@ async function submitEditor() {
   try {
     items = validateEditor()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '换算条目校验失败')
+    message.error(getUserErrorMessage(error, '换算规则校验失败'))
     return
   }
   if (!items) {
@@ -295,15 +293,15 @@ async function submitEditor() {
   }
   submitting.value = true
   try {
-    const payload: ScaleConversionRuleSavePayload = {
+    const request: ScaleConversionRuleSaveRequest = {
       ...editor,
       ruleCode: editor.ruleCode.trim(),
       ruleName: editor.ruleName.trim(),
       description: editor.description?.trim() ?? '',
       items,
     }
-    if (editorMode.value === 'create') await scaleConversionRuleApi.create(payload)
-    else await scaleConversionRuleApi.update(payload)
+    if (editorMode.value === 'create') await scaleConversionRuleApi.create(request)
+    else await scaleConversionRuleApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadList()
@@ -327,16 +325,27 @@ async function handleDelete(record: ScaleConversionRuleVO) {
 const signals = computed<SignalMetric[]>(() => {
   const enabled = list.value.filter((r) => r.enabled).length
   const disabled = list.value.filter((r) => !r.enabled).length
-  const byScale: Record<string, number> = {}
+  const byScale: Record<ScaleType, number> = {
+    FIVE_LEVEL: 0,
+    FOUR_LEVEL: 0,
+    TEN_POINT: 0,
+    PERCENTAGE: 0,
+    CUSTOM: 0,
+  }
   for (const r of list.value) {
-    byScale[r.scaleType] = (byScale[r.scaleType] || 0) + 1
+    byScale[r.scaleType] += 1
   }
   return [
     { key: 'page', label: '当前页记录', value: list.value.length, tone: 'blue' },
     { key: 'all-total', label: '规则总数', value: total.value, tone: 'blue' },
     { key: 'enabled', label: '启用', value: enabled, tone: enabled > 0 ? 'green' : 'gray' },
     { key: 'disabled', label: '停用', value: disabled, tone: disabled > 0 ? 'orange' : 'gray' },
-    { key: 'scale-types', label: '覆盖量表类型', value: Object.keys(byScale).length, tone: 'blue' },
+    {
+      key: 'scale-types',
+      label: '覆盖量表类型',
+      value: scaleTypeOptions.filter((item) => byScale[item.value] > 0).length,
+      tone: 'blue',
+    },
   ]
 })
 
@@ -380,9 +389,9 @@ onMounted(() => loadList())
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'scaleType'">
-            {{ scaleTypeLabel(text) }}
+            {{ scaleTypeLabel(record.scaleType) }}
           </template>
           <template v-else-if="column.key === 'items'">
             <div class="scr__item-summary">
@@ -390,8 +399,8 @@ onMounted(() => loadList())
             </div>
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="text ? 'green' : 'default'">
-              {{ text ? '启用' : '停用' }}
+            <a-tag :color="record.enabled ? 'green' : 'default'">
+              {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">

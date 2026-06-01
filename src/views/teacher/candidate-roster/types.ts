@@ -6,16 +6,16 @@ export interface CandidateRow {
   candidateRosterId?: string
   /** 租户学生用户 ID（主键） */
   studentUserId: string
-  studentNo: string
-  studentName: string
+  studentNo?: string
+  studentName?: string
   classId: string
   className?: string
 }
 
 export interface CandidateDraft {
   studentUserId: string
-  studentNo: string
-  studentName: string
+  studentNo?: string
+  studentName?: string
   classId: string
   className?: string
 }

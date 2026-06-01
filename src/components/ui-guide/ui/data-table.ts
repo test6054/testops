@@ -4,7 +4,7 @@ export type UiDataTableOnChange<RecordType = Record<string, unknown>> = NonNulla
   TableProps<RecordType>['onChange']
 >
 
-export interface UiDataTableChangePayload<RecordType = Record<string, unknown>> {
+export interface UiDataTableChangeEvent<RecordType = Record<string, unknown>> {
   pagination: Parameters<UiDataTableOnChange<RecordType>>[0]
   filters: Parameters<UiDataTableOnChange<RecordType>>[1]
   sorter: Parameters<UiDataTableOnChange<RecordType>>[2]

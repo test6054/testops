@@ -1,6 +1,6 @@
 <template>
   <div class="ui-notice-list">
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div
         v-if="props.items.length"
         class="ui-notice-list__items"
@@ -39,11 +39,7 @@
             >
               {{ item.typeLabel }}
             </UiTag>
-            <UiTag
-              v-if="item.priorityLabel"
-              :tone="item.priorityTone || 'orange'"
-              size="sm"
-            >
+            <UiTag v-if="item.priorityLabel" :tone="item.priorityTone || 'orange'" size="sm">
               {{ item.priorityLabel }}
             </UiTag>
           </div>
@@ -58,10 +54,7 @@
           >
             <div v-if="item.sender || item.helper" class="ui-notice-list__meta">
               <span v-if="item.sender" class="ui-notice-list__meta-item">{{ item.sender }}</span>
-              <span
-                v-if="item.sender && item.helper"
-                class="ui-notice-list__meta-divider"
-              >·</span>
+              <span v-if="item.sender && item.helper" class="ui-notice-list__meta-divider">·</span>
               <span v-if="item.helper" class="ui-notice-list__meta-item">{{ item.helper }}</span>
             </div>
 
@@ -86,8 +79,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiNoticeAction, UiNoticeItem } from './types'
 import { computed } from 'vue'
+import type { UiNoticeAction, UiNoticeItem } from './types'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
@@ -97,37 +90,38 @@ defineOptions({
   name: 'UiNoticeList',
 })
 
-const props = withDefaults(defineProps<{
-  items?: UiNoticeItem[]
-  loading?: boolean
-  emptyText?: string
-  compact?: boolean
-  itemClickable?: boolean
-  maxHeight?: string | number
-}>(), {
-  items: () => [],
-  loading: false,
-  emptyText: '暂无通知',
-  compact: false,
-  itemClickable: true,
-  maxHeight: '',
-})
+const props = withDefaults(
+  defineProps<{
+    items?: UiNoticeItem[]
+    loading?: boolean
+    emptyText?: string
+    compact?: boolean
+    itemClickable?: boolean
+    maxHeight?: string | number
+  }>(),
+  {
+    items: () => [],
+    loading: false,
+    emptyText: '暂无通知',
+    compact: false,
+    itemClickable: true,
+    maxHeight: '',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiNoticeItem): void
-  (e: 'action-click', payload: { item: UiNoticeItem, action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiNoticeItem; action: UiNoticeAction }): void
 }>()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
 const listStyle = computed<CSSProperties | undefined>(() => {
   const maxHeight = normalizeCssSize(props.maxHeight)
-  if (!maxHeight)
-    return undefined
+  if (!maxHeight) return undefined
 
   return {
     maxHeight,
@@ -137,15 +131,13 @@ const listStyle = computed<CSSProperties | undefined>(() => {
 })
 
 const handleItemClick = (item: UiNoticeItem) => {
-  if (!props.itemClickable)
-    return
+  if (!props.itemClickable) return
 
   emit('item-click', item)
 }
 
 const handleActionClick = (item: UiNoticeItem, action: UiNoticeAction) => {
-  if (action.disabled)
-    return
+  if (action.disabled) return
 
   emit('action-click', { item, action })
 }

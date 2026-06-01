@@ -1,7 +1,6 @@
 export * from './modules/useBreakpoint'
 export * from './modules/useChartOption'
 export * from './modules/useDevice'
-export * from './modules/useDownload'
 export * from './modules/useInfiniteScroll'
 export * from './modules/usePagination'
 export * from './modules/useResetReactive'

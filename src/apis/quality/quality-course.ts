@@ -31,7 +31,7 @@ export interface QualityCourseVO {
   updateTime?: string
 }
 
-export interface QualityCourseQueryPayload extends QueryDto {
+export interface QualityCourseQueryRequest extends QueryDto {
   trainingPlanId?: string
   programId?: string
   schoolYear?: string
@@ -43,7 +43,7 @@ export interface QualityCourseQueryPayload extends QueryDto {
 }
 
 /** 保存请求 - 严格对齐后端 QualityCourseSaveRequest */
-export interface QualityCourseSavePayload {
+export interface QualityCourseSaveRequest {
   id?: string
   trainingPlanId: string
   programId: string
@@ -64,13 +64,13 @@ export interface QualityCourseSavePayload {
 }
 
 export const qualityCourseApi = {
-  page: (data: QualityCourseQueryPayload) =>
+  page: (data: QualityCourseQueryRequest) =>
     http.post<PageResult<QualityCourseVO>>(`${BASE}/page`, data),
   detail: (id: string) =>
     http.post<QualityCourseVO>(`${BASE}/detail`, { id }),
-  create: (data: QualityCourseSavePayload) =>
+  create: (data: QualityCourseSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),
-  update: (data: QualityCourseSavePayload) =>
+  update: (data: QualityCourseSaveRequest) =>
     http.post<void>(`${BASE}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${BASE}/delete`, { id }),

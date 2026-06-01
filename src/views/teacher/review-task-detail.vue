@@ -6,7 +6,7 @@
           <UiTag v-if="detail" :tone="reviewStatusTone(detail.status)" size="sm">
             {{ reviewStatusLabel(detail.status) }}
           </UiTag>
-          <UiTag v-if="detail" tone="gray" size="sm">{{ detail.anonymousNo }}</UiTag>
+          <UiTag v-if="detail" tone="gray" size="sm">{{ detail.paperDisplay.primaryText }}</UiTag>
           <UiTag v-if="detail" tone="blue" size="sm">
             题{{ detail.questionNo }} · 满分{{ detail.fullScore }}
           </UiTag>
@@ -32,7 +32,7 @@
 
     <UiEmpty
       v-if="!hasParams"
-      description="缺少必要参数：examId / taskId"
+      description="未找到本次批阅任务，请从任务列表重新进入"
       class="task-detail-page__empty"
     />
 
@@ -41,26 +41,31 @@
       v-else-if="taskLoadError"
       :error="taskLoadError"
       title="复核任务详情加载失败"
-      :helper="`任务 ID：${taskId} · 考试 ID：${examId}`"
+      helper="请从批阅任务列表重新进入后重试"
       @retry="loadTask"
     />
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
-      <!-- 关联 ID 摘要 -->
       <UiCard v-if="detail" class="info-card">
         <template #title>
           <ProfileOutlined />
-          <span>关联 ID 与评语</span>
+          <span>题目与评分摘要</span>
         </template>
         <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" :label-style="labelStyle" size="small">
-          <a-descriptions-item label="题目模板ID">
-            {{ detail.questionTemplateId }}
+          <a-descriptions-item label="答卷">
+            {{ detail.paperDisplay.primaryText }}
           </a-descriptions-item>
-          <a-descriptions-item label="试卷实例ID">
-            {{ detail.paperInstanceId }}
+          <a-descriptions-item label="题目">
+            题{{ detail.questionNo }} · {{ detail.questionType }}
           </a-descriptions-item>
-          <a-descriptions-item label="批改结果ID">
-            {{ detail.gradeResultId }}
+          <a-descriptions-item label="满分">
+            {{ detail.fullScore }}
+          </a-descriptions-item>
+          <a-descriptions-item label="AI 评分">
+            <span v-if="detail.aiScore !== undefined && detail.aiScore !== null">
+              {{ detail.aiScore }}
+            </span>
+            <span v-else class="muted">-</span>
           </a-descriptions-item>
           <a-descriptions-item label="评语" :span="3">
             <a-typography-text v-if="detail.commentText" :content="detail.commentText" />
@@ -104,10 +109,10 @@
           <UiCard class="info-card">
             <template #title>
               <RobotOutlined />
-              <span>AI 诊断</span>
+              <span>AI 复评说明</span>
             </template>
-            <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 诊断信息" />
-            <div v-else class="text-block">{{ detail.aiDiagnostic }}</div>
+            <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 复评说明" />
+            <div v-else class="text-block">{{ aiReviewDiagnosticText(detail.aiDiagnostic) }}</div>
           </UiCard>
         </a-col>
 
@@ -127,10 +132,7 @@
                       <a-typography-text :content="item.annotationText || '（无批注正文）'" />
                     </template>
                     <template #description>
-                      <div class="annotation-meta">
-                        <span v-if="item.anchorText" class="muted">锚点：{{ item.anchorText }}</span>
-                        <span class="muted">{{ formatDateTime(item.createTime) }}</span>
-                      </div>
+                      <span class="muted">{{ formatDateTime(item.createTime) }}</span>
                     </template>
                   </a-list-item-meta>
                 </a-list-item>
@@ -145,7 +147,14 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AnnotationVO, ReviewTaskDetailVO, ReviewTaskStatusCode } from '@/apis/mark/exam'
+import {
+  getReviewTaskDetail,
+  listAnnotations,
+  REVIEW_TASK_STATUS_LABEL,
+  REVIEW_TASK_STATUS_TONE,
+} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -154,16 +163,8 @@ import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import {
-  getReviewTaskDetail,
-  listAnnotations,
-  REVIEW_TASK_STATUS_LABEL,
-  REVIEW_TASK_STATUS_TONE,
-} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -173,16 +174,26 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewTaskDetail' })
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
-  return REVIEW_TASK_STATUS_TONE[value]
+  return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
 }
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
-  return REVIEW_TASK_STATUS_LABEL[value]
+  return strictEnumLabel(REVIEW_TASK_STATUS_LABEL, value, '复核任务状态')
+}
+
+/** 将 AI 复评诊断转为教师可处理的评分提示，避免展示模型或接口调试信息。 */
+function aiReviewDiagnosticText(diagnostic?: string): string {
+  return getUserErrorMessage(
+    { message: diagnostic },
+    'AI 复评暂未形成可展示说明，请按题目评分细则继续人工复核',
+  )
 }
 
 const route = useRoute()
@@ -195,7 +206,7 @@ const hasParams = computed(() => !!examId.value && !!taskId.value)
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
 // D-9 错误态：任务详情加载失败时 UiErrorRetryPanel 重试 + 上报
-const taskLoadError = ref<unknown>(null)
+const taskLoadError = ref<Error | null>(null)
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '100px' }
 
@@ -215,8 +226,7 @@ async function loadSliceImage(fileId: string): Promise<void> {
   try {
     sliceImageUrl.value = await getImageBlobUrl(fileId)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '切片图像加载失败'
-    message.error(errMsg)
+    showUserError(error, '答题切片加载失败')
   } finally {
     sliceLoading.value = false
   }
@@ -245,8 +255,7 @@ async function loadAnnotations(): Promise<void> {
     })
     annotations.value = page.list
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '批注记录加载失败'
-    message.error(errMsg)
+    showUserError(error, '批注记录加载失败')
   }
 }
 
@@ -264,9 +273,8 @@ async function loadTask(): Promise<void> {
     }
     await loadAnnotations()
   } catch (error) {
-    taskLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '任务详情加载失败'
-    message.error(errMsg)
+    taskLoadError.value = toUserError(error, '复核任务详情加载失败')
+    showUserError(error, '复核任务详情加载失败')
   } finally {
     loading.value = false
   }

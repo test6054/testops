@@ -252,14 +252,13 @@ onBeforeUnmount(() => {
   border: 1px solid var(--kiosk-divider);
   border-bottom-width: 2px;
   border-radius: var(--kiosk-radius-sm);
-  font-family: var(--kiosk-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-caption);
   font-weight: var(--kiosk-fw-semibold);
   color: var(--kiosk-ink-primary);
 }
 .plus {
   color: var(--kiosk-ink-tertiary);
-  font-family: var(--kiosk-font-mono);
   font-size: var(--kiosk-fz-caption);
 }
 

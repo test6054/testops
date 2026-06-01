@@ -24,13 +24,23 @@ export interface AchievementAuditVO {
   auditStatusTo: AchievementAuditStatus
   auditOpinion?: string
   returnReason?: string
-  evidenceAnchors?: string
+  evidenceItems?: AchievementAuditEvidenceItem[]
   auditedAt: string
   createTime?: string
   updateTime?: string
 }
 
-export interface AchievementAuditCreatePayload {
+export interface AchievementAuditEvidenceItem {
+  evidenceType?: string
+  evidenceTitle?: string
+  evidenceCode?: string
+  archiveId?: string
+  fileNodeId?: string
+  reportId?: string
+  remark?: string
+}
+
+export interface AchievementAuditCreateRequest {
   achievementResultId: string
   auditorRole?: string
   auditEvent: AchievementAuditStatus
@@ -38,7 +48,7 @@ export interface AchievementAuditCreatePayload {
   auditStatusTo: AchievementAuditStatus
   auditOpinion?: string
   returnReason?: string
-  evidenceAnchors?: string
+  evidenceItems?: AchievementAuditEvidenceItem[]
 }
 
 export interface AchievementManualReviewVO {
@@ -54,7 +64,7 @@ export interface AchievementManualReviewVO {
   updateTime?: string
 }
 
-export interface AchievementManualReviewCreatePayload {
+export interface AchievementManualReviewCreateRequest {
   achievementResultId: string
   reviewerRole?: string
   decision: ManualReviewDecision
@@ -64,13 +74,12 @@ export interface AchievementManualReviewCreatePayload {
 export const achievementAuditApi = {
   listByResult: (achievementResultId: string) =>
     http.post<AchievementAuditVO[]>(`${AUDIT}/list-by-result`, { id: achievementResultId }),
-  create: (data: AchievementAuditCreatePayload) =>
-    http.post<string>(`${AUDIT}/create`, data),
+  create: (data: AchievementAuditCreateRequest) => http.post<string>(`${AUDIT}/create`, data),
 }
 
 export const achievementManualReviewApi = {
   listByResult: (achievementResultId: string) =>
     http.post<AchievementManualReviewVO[]>(`${REVIEW}/list-by-result`, { id: achievementResultId }),
-  create: (data: AchievementManualReviewCreatePayload) =>
+  create: (data: AchievementManualReviewCreateRequest) =>
     http.post<string>(`${REVIEW}/create`, data),
 }

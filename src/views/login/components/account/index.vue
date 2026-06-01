@@ -87,7 +87,7 @@ import {
 import { STORAGE_REMEMBERED_USERNAME } from '@/constants/storage-keys'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useTenantStore, useUserStore } from '@/stores'
-import { ErrorType, standardizeError } from '@/utils/error-handler'
+import { ErrorType, getUserErrorMessage, standardizeError } from '@/utils/error-handler'
 import { getSafeRedirect } from '@/utils/redirect-validator'
 
 const emit = defineEmits(['switch-to-student'])
@@ -254,7 +254,7 @@ const doLogin = async () => {
     if (stdError.type === ErrorType.NETWORK) {
       errorMessage.value = '登录失败，请检查账户和密码后重试'
     } else {
-      errorMessage.value = stdError.message || '登录失败，请检查账户和密码'
+      errorMessage.value = getUserErrorMessage(error, '登录失败，请检查账户和密码')
     }
     captchaVerification.value = ''
   } finally {

@@ -2,8 +2,8 @@
   <a-card title="复核窗口策略" :bordered="false" size="small">
     <template #extra>
       <a-space>
-        <a-tag v-if="policy?.policyStatus" :color="REVIEW_WINDOW_STATUS_COLOR[policy.policyStatus]">
-          {{ REVIEW_WINDOW_STATUS_LABEL[policy.policyStatus] }}
+        <a-tag v-if="policy?.policyStatus" :color="reviewWindowStatusColor(policy.policyStatus)">
+          {{ reviewWindowStatusLabel(policy.policyStatus) }}
         </a-tag>
         <a-button :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新
@@ -100,11 +100,9 @@
 import type {
   ExamReviewWindowPolicyVO,
   GradeReviewReasonTypeCode,
+  ReviewWindowPolicyStatusCode,
   VisibleMaterialScopeCode,
 } from '@/apis/mark/grade-review'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -114,16 +112,30 @@ import {
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
+
+function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTone {
+  return strictEnumTone(REVIEW_WINDOW_STATUS_COLOR, status, '复核窗口状态')
+}
+
+function reviewWindowStatusLabel(status: ReviewWindowPolicyStatusCode): string {
+  return strictEnumLabel(REVIEW_WINDOW_STATUS_LABEL, status, '复核窗口状态')
+}
 
 const policy = ref<ExamReviewWindowPolicyVO | null>(null)
 const loading = ref(false)
 // D-9 错误态：复核窗口加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 const saving = ref(false)
 const activating = ref(false)
 const closing = ref(false)
@@ -142,22 +154,18 @@ const form = reactive<{
   allowedReasonTypes: [],
 })
 
-const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
   { label: '仅分数', value: 'SCORE_ONLY' },
   { label: '分数+批注', value: 'SCORE_AND_ANNOTATION' },
   { label: '完整材料', value: 'FULL' },
 ]
 
-const reasonTypeOptions: { label: string, value: GradeReviewReasonTypeCode }[] = [
+const reasonTypeOptions: { label: string; value: GradeReviewReasonTypeCode }[] = [
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.SCORE_ERROR, value: 'SCORE_ERROR' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.RUBRIC, value: 'RUBRIC' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.OBJECTIVE, value: 'OBJECTIVE' },
   { label: GRADE_REVIEW_REASON_TYPE_LABEL.OTHER, value: 'OTHER' },
 ]
-
-function isVisibleMaterialScopeCode(value: unknown): value is VisibleMaterialScopeCode {
-  return value === 'SCORE_ONLY' || value === 'SCORE_AND_ANNOTATION' || value === 'FULL'
-}
 
 async function reload(): Promise<void> {
   if (!props.examId) return
@@ -167,19 +175,17 @@ async function reload(): Promise<void> {
     const data = await getReviewWindowPolicy(props.examId)
     policy.value = data
     if (data) {
-      if (!isVisibleMaterialScopeCode(data.visibleMaterialScope)) {
-        throw new Error('复核窗口可见材料范围不符合前后端契约')
-      }
-      form.openTime = data.openTime || ''
-      form.closeTime = data.closeTime || ''
-      form.maxRequestCount = data.maxRequestCount ?? 1
+      form.openTime = data.openTime
+      form.closeTime = data.closeTime
+      form.maxRequestCount = data.maxRequestCount
       form.visibleMaterialScope = data.visibleMaterialScope
       form.allowedReasonTypes = data.allowedReasonTypes || []
     }
   } catch (e) {
     policy.value = null
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '复核窗口加载失败')
+    loadError.value =
+      e instanceof Error ? e : new Error(getUserErrorMessage(e, '成绩复核窗口加载失败'))
+    showUserError(e, '成绩复核窗口加载失败')
   } finally {
     loading.value = false
   }
@@ -206,7 +212,7 @@ async function handleSave(): Promise<void> {
     })
     message.success('复核窗口策略已保存')
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '保存失败')
+    showUserError(e, '成绩复核窗口保存失败')
   } finally {
     saving.value = false
   }
@@ -219,7 +225,7 @@ async function handleActivate(): Promise<void> {
     message.success('已激活')
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '激活失败')
+    showUserError(e, '成绩复核窗口开启失败')
   } finally {
     activating.value = false
   }
@@ -232,7 +238,7 @@ async function handleClose(): Promise<void> {
     message.success('已关闭')
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '关闭失败')
+    showUserError(e, '成绩复核窗口关闭失败')
   } finally {
     closing.value = false
   }

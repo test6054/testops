@@ -1,8 +1,7 @@
 import type { Ref } from 'vue'
-import type { PageResult, QueryDto } from '@/types'
-import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
-import { isErrorHandled } from '@/utils/error-handler'
+import type { PageResult, QueryDto } from '@/types'
+import { showUserError } from '@/utils/error-handler'
 
 interface InfiniteScrollOptions<T, U> {
   formatResult?: (data: T[]) => U[]
@@ -77,7 +76,7 @@ export function useInfiniteScroll<T extends U, U = T>(
         const pageResult = res as PageResult<T>
         // 后端PageResult保证list非null，使用??防御性处理
         newData = pageResult.list ?? []
-        totalCount = pageResult.total ?? 0
+        totalCount = Number(pageResult.total)
 
         // 计算是否还有更多数据
         const currentTotal = isLoadMore ? dataList.value.length + newData.length : newData.length
@@ -101,9 +100,7 @@ export function useInfiniteScroll<T extends U, U = T>(
       onSuccess?.()
     } catch (err) {
       error.value = err as Error
-      if (!isErrorHandled(err)) {
-        message.error('数据加载失败，请重试')
-      }
+      showUserError(err, '数据加载失败，请稍后重试')
       if (!isLoadMore) {
         dataList.value = []
         hasMore.value = false

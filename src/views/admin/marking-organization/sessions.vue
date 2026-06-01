@@ -45,7 +45,7 @@
       v-if="sessionsLoadError"
       :error="sessionsLoadError"
       title="阅卷会话加载失败"
-      :helper="`组织 ID：${organizationId}`"
+      :helper="organizationExamLabel"
       @retry="reloadAll"
     />
     <UiEmpty
@@ -57,12 +57,22 @@
     <a-spin v-else :spinning="loading">
       <SignalBand :metrics="signalMetrics" compact class="org-sessions__signals" />
 
+      <UiAlertStrip
+        v-if="organization && !canManageOrganization"
+        class="org-sessions__owner-alert"
+        tone="info"
+        title="只读查看"
+        description="你可查看试评 / 正评会话；会话创建和生命周期调整由考试创建人执行。"
+        dense
+      />
+
       <a-row :gutter="16">
         <a-col :xs="24" :lg="12">
           <TrialSessionPanel
             :organization-id="organizationId"
             :group-options="groupOptions"
             :sessions="trialSessions"
+            :can-manage="canManageOrganization"
             @refresh="loadTrialSessions"
             @open-lifecycle="openLifecycleModal"
           />
@@ -72,6 +82,7 @@
             :organization-id="organizationId"
             :group-options="groupOptions"
             :sessions="formalSessions"
+            :can-manage="canManageOrganization"
             @refresh="loadFormalSessions"
             @open-lifecycle="openLifecycleModal"
           />
@@ -83,6 +94,7 @@
       v-model:open="lifecycleModalOpen"
       :action="lifecycleAction"
       :session-id="lifecycleSessionId"
+      :can-manage="canManageOrganization"
       @success="onLifecycleSuccess"
     />
   </StageWorkbenchShell>
@@ -90,59 +102,90 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
+import type { ExamDetailVO } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type {
   FormalSessionVO,
   MarkingOrganizationVO,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   getOrganizationById,
   listFormalSessions,
   listTrialSessions,
   MARKING_ORGANIZATION_STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE,
+  validateFormalSessionContract,
+  validateMarkingOrganizationContract,
+  validateTrialSessionContract,
 } from '@/apis/mark/marking-organization'
-import { UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { useUserStore } from '@/stores/modules/user'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionPanel from './components/FormalSessionPanel.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })
 
 const route = useRoute()
+const userStore = useUserStore()
 
 const organizationId = computed(() => String(route.params.organizationId || ''))
 
 const organization = ref<MarkingOrganizationVO | null>(null)
+const examDetail = ref<ExamDetailVO | null>(null)
 const trialSessions = ref<TrialSessionVO[]>([])
 const formalSessions = ref<FormalSessionVO[]>([])
 const loading = ref(false)
 // D-9 错误态：任一加载失败时 UiErrorRetryPanel 重试 + 上报
-const sessionsLoadError = ref<unknown>(null)
+const sessionsLoadError = ref<Error | null>(null)
 const filterGroupId = ref<string | undefined>(undefined)
 
 const groupOptions = computed(() =>
   (organization.value?.groups ?? []).map((g) => ({
     value: g.id,
-    label: g.groupName || `题组 #${g.id}`,
+    label: g.groupName,
   })),
 )
+
+const organizationExamLabel = computed(() => {
+  if (organization.value?.examName) {
+    return organization.value.examNo
+      ? `${organization.value.examName} (${organization.value.examNo})`
+      : organization.value.examName
+  }
+  return '阅卷组织'
+})
+
+const canManageOrganization = computed(
+  () => !!examDetail.value?.createUser && examDetail.value.createUser === userStore.userInfo.userId,
+)
+
+function guardOrganizationOwnerAction(): boolean {
+  if (canManageOrganization.value) return true
+  message.warning('仅考试创建人可分配批阅任务')
+  return false
+}
 
 async function loadOrganization(): Promise<void> {
   if (!organizationId.value) return
   try {
-    organization.value = await getOrganizationById({ organizationId: organizationId.value })
+    const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
+    validateMarkingOrganizationContract(nextOrganization)
+    organization.value = nextOrganization
+    examDetail.value = await getExamDetail(nextOrganization.examId)
   } catch (error) {
     organization.value = null
-    sessionsLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '阅卷组织加载失败'
-    message.error(errMsg)
+    examDetail.value = null
+    sessionsLoadError.value = toUserError(error, '阅卷组织加载失败')
+    showUserError(error, '阅卷组织加载失败')
   }
 }
 
@@ -150,15 +193,16 @@ async function loadTrialSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
     sessionsLoadError.value = null
-    trialSessions.value = await listTrialSessions({
+    const records = await listTrialSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
+    records.forEach(validateTrialSessionContract)
+    trialSessions.value = records
   } catch (error) {
     trialSessions.value = []
-    sessionsLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '试评会话列表加载失败'
-    message.error(errMsg)
+    sessionsLoadError.value = toUserError(error, '试评会话列表加载失败')
+    showUserError(error, '试评会话列表加载失败')
   }
 }
 
@@ -166,15 +210,16 @@ async function loadFormalSessions(): Promise<void> {
   if (!organizationId.value) return
   try {
     sessionsLoadError.value = null
-    formalSessions.value = await listFormalSessions({
+    const records = await listFormalSessions({
       organizationId: organizationId.value,
       groupId: filterGroupId.value,
     })
+    records.forEach(validateFormalSessionContract)
+    formalSessions.value = records
   } catch (error) {
     formalSessions.value = []
-    sessionsLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '正评会话列表加载失败'
-    message.error(errMsg)
+    sessionsLoadError.value = toUserError(error, '正评会话列表加载失败')
+    showUserError(error, '正评会话列表加载失败')
   }
 }
 
@@ -228,6 +273,7 @@ const lifecycleAction = ref<LifecycleAction | null>(null)
 const lifecycleSessionId = ref('')
 
 function openLifecycleModal(action: LifecycleAction, sessionId: string): void {
+  if (!guardOrganizationOwnerAction()) return
   lifecycleAction.value = action
   lifecycleSessionId.value = sessionId
   lifecycleModalOpen.value = true

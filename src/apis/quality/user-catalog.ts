@@ -58,7 +58,7 @@ export interface CourseListVO {
   updateTime?: string
 }
 
-export interface CourseQueryPayload extends QueryDto {
+export interface CourseQueryRequest extends QueryDto {
   courseName?: string
   courseCode?: string
   majorCategoryId?: string
@@ -91,7 +91,7 @@ export interface TeacherUserInfoDto {
   status?: string
 }
 
-export interface TeacherQueryPayload extends QueryDto {
+export interface TeacherQueryRequest extends QueryDto {
   searchText?: string
   departmentId?: string
   status?: string
@@ -111,7 +111,7 @@ export const majorCategoryCatalogApi = {
 
 export const courseCatalogApi = {
   /** super_admin 全局课程分页查询 */
-  page: (data: CourseQueryPayload) =>
+  page: (data: CourseQueryRequest) =>
     http.post<PageResult<CourseListVO>>('/api/course-catalog/courses/list', data),
   detail: (id: string) =>
     http.post<CourseListVO>('/api/course-catalog/courses/detail', { id }),
@@ -136,6 +136,6 @@ export const departmentCatalogApi = {
 
 export const teacherCatalogApi = {
   /** 教师用户下拉分页（SCH_TECH 角色） */
-  userList: (data: TeacherQueryPayload) =>
+  userList: (data: TeacherQueryRequest) =>
     http.post<PageResult<TeacherUserInfoDto>>('/api/admin/teachers/user-list', data),
 }

@@ -53,7 +53,7 @@ export interface InboxMessageCreateRequest {
   subject: string
   /** 站内信正文，存储为HTML格式，支持富文本 */
   contentHtml?: string
-  /** 站内信元数据，JSON格式，包含跳转链接等信息 */
+  /** 站内信关联业务信息，包含跳转链接等结构化字段 */
   metadata?: MessageMetadata
   /** 是否为系统保护消息，不允许普通用户删除，仅管理员可设置 */
   isSystemProtected?: boolean
@@ -71,8 +71,6 @@ export interface MessageMetadata {
   entityId?: string
   /** 前端跳转的相对路径 */
   jumpUrl?: string
-  /** 关联的项目ID */
-  projectId?: string
   /** 关联的任务ID */
   taskId?: string
   /** 关联的课程ID */
@@ -81,6 +79,38 @@ export interface MessageMetadata {
   sourceId?: string
   /** 消息来源类型（如 PRACTICE） */
   sourceType?: string
+  /** 阅卷考试ID */
+  examId?: string
+  /** 阅卷扫描批次ID */
+  scanBatchId?: string
+  /** 阅卷试卷实例ID */
+  paperInstanceId?: string
+  /** 阅卷题目ID */
+  questionId?: string
+  /** 阅卷学生ID */
+  studentId?: string
+  /** 阅卷复核申请ID */
+  reviewRequestId?: string
+  /** 阅卷导出任务ID */
+  exportTaskId?: string
+  /** 教学质量评价培养方案ID */
+  trainingPlanId?: string
+  /** 教学质量评价专业ID */
+  programId?: string
+  /** 教学质量评价课程ID */
+  qualityCourseId?: string
+  /** 教学质量评价成绩导入批次ID */
+  scoreBatchId?: string
+  /** 教学质量评价达成度结果ID */
+  achievementResultId?: string
+  /** 教学质量评价AI任务ID */
+  aiTaskId?: string
+  /** 教学质量评价报告ID */
+  reportId?: string
+  /** 教学质量评价持续改进任务ID */
+  improvementTaskId?: string
+  /** 教学质量评价材料归档ID */
+  archiveId?: string
 }
 
 /** 站内信列表查询 */
@@ -343,28 +373,28 @@ export interface SystemAnnouncementReadStatsResponse {
  * 发送站内信 - 对应后端 POST /api/inbox/send
  */
 export function sendMessage(data: InboxMessageCreateRequest): Promise<void> {
-  return http.post('/api/inbox/send', data)
+  return http.post<void>('/api/inbox/send', data)
 }
 
 /**
  * 获取站内信列表 - 对应后端 POST /api/inbox/list
  */
 export function getInboxMessages(data: InboxMessageListQuery): Promise<PageResult<InboxMessageListItemDTO>> {
-  return http.post('/api/inbox/list', data)
+  return http.post<PageResult<InboxMessageListItemDTO>>('/api/inbox/list', data)
 }
 
 /**
  * 获取站内信详情 - 对应后端 POST /api/inbox/detail
  */
 export function getMessageDetail(data: { id: string }): Promise<InboxMessageDetailResponse> {
-  return http.post('/api/inbox/detail', data)
+  return http.post<InboxMessageDetailResponse>('/api/inbox/detail', data)
 }
 
 /**
  * 更新站内信状态 - 对应后端 POST /api/inbox/update-status
  */
 export function updateMessageStatus(data: InboxMessageMarkRequest): Promise<void> {
-  return http.post('/api/inbox/update-status', data)
+  return http.post<void>('/api/inbox/update-status', data)
 }
 
 /**
@@ -378,14 +408,14 @@ export function getUnreadCount(): Promise<InboxUnreadCountResponse> {
  * 标记所有站内信为已读 - 对应后端 POST /api/inbox/mark-all-as-read
  */
 export function markAllAsRead(): Promise<void> {
-  return http.post('/api/inbox/mark-all-as-read', {})
+  return http.post<void>('/api/inbox/mark-all-as-read', {})
 }
 
 /**
  * 获取用户消息统计信息 - 对应后端 GET /api/inbox/stats
  */
 export function getMessageStats(): Promise<InboxMessageStatsResponse> {
-  return http.get('/api/inbox/stats')
+  return http.get<InboxMessageStatsResponse>('/api/inbox/stats')
 }
 
 
@@ -393,7 +423,7 @@ export function getMessageStats(): Promise<InboxMessageStatsResponse> {
  * 创建系统公告 - 对应后端 POST /api/admin/announcements/create
  */
 export function createAnnouncement(data: SystemAnnouncementCreateRequest): Promise<string> {
-  return http.post('/api/admin/announcements/create', data)
+  return http.post<string>('/api/admin/announcements/create', data)
 }
 
 /**
@@ -401,70 +431,70 @@ export function createAnnouncement(data: SystemAnnouncementCreateRequest): Promi
  */
 export function updateAnnouncement(data: SystemAnnouncementUpdateRequest): Promise<void> {
   // 数据已经是正确的类型，直接发送
-  return http.post('/api/admin/announcements/update', data)
+  return http.post<void>('/api/admin/announcements/update', data)
 }
 
 /**
  * 删除系统公告 - 对应后端 POST /api/admin/announcements/delete
  */
 export function deleteAnnouncement(id: string): Promise<void> {
-  return http.post('/api/admin/announcements/delete', { id })
+  return http.post<void>('/api/admin/announcements/delete', { id })
 }
 
 /**
  * 获取公告详情（管理员）- 对应后端 POST /api/admin/announcements/detail
  */
 export function getAnnouncementDetail(id: string): Promise<SystemAnnouncementResponse> {
-  return http.post('/api/admin/announcements/detail', { id })
+  return http.post<SystemAnnouncementResponse>('/api/admin/announcements/detail', { id })
 }
 
 /**
  * 分页查询公告列表（管理员）- 对应后端 POST /api/admin/announcements/list
  */
 export function getAnnouncementList(data: SystemAnnouncementQueryRequest): Promise<PageResult<SystemAnnouncementResponse>> {
-  return http.post('/api/admin/announcements/list', data)
+  return http.post<PageResult<SystemAnnouncementResponse>>('/api/admin/announcements/list', data)
 }
 
 /**
  * 发布公告 - 对应后端 POST /api/admin/announcements/publish
  */
 export function publishAnnouncement(id: string): Promise<void> {
-  return http.post('/api/admin/announcements/publish', {id})
+  return http.post<void>('/api/admin/announcements/publish', {id})
 }
 
 /**
  * 归档公告 - 对应后端 POST /api/admin/announcements/archive
  */
 export function archiveAnnouncement(id: string): Promise<void> {
-  return http.post('/api/admin/announcements/archive', {id})
+  return http.post<void>('/api/admin/announcements/archive', {id})
 }
 
 /**
  * 批量更新公告状态 - 对应后端 POST /api/admin/announcements/batch-update-status
  */
 export function batchUpdateAnnouncementStatus(data: SystemAnnouncementBatchUpdateRequest): Promise<void> {
-  return http.post('/api/admin/announcements/batch-update-status', data)
+  return http.post<void>('/api/admin/announcements/batch-update-status', data)
 }
 
 /**
  * 撤回公告 - 对应后端 POST /api/admin/announcements/withdraw
  */
 export function withdrawAnnouncement(id: string): Promise<void> {
-  return http.post('/api/admin/announcements/withdraw', { id })
+  return http.post<void>('/api/admin/announcements/withdraw', { id })
 }
 
 /**
  * 获取公告阅读统计 - 对应后端 POST /api/admin/announcements/read-stats
  */
 export function getAnnouncementReadStats(id: string): Promise<SystemAnnouncementReadStatsResponse> {
-  return http.post('/api/admin/announcements/read-stats', { id })
+  return http.post<SystemAnnouncementReadStatsResponse>('/api/admin/announcements/read-stats', { id })
 }
 
 /**
  * 获取公告统计信息（管理员）- 对应后端 GET /api/admin/announcements/stats
  */
 export function getAnnouncementStats(): Promise<SystemAnnouncementStatsResponse> {
-  return http.get('/api/admin/announcements/stats')
+  return http.get<SystemAnnouncementStatsResponse>('/api/admin/announcements/stats')
 }
 
 
@@ -472,21 +502,21 @@ export function getAnnouncementStats(): Promise<SystemAnnouncementStatsResponse>
  * 分页查询已发布公告列表（用户查看）- 对应后端 POST /api/announcements/list
  */
 export function getPublishedAnnouncementList(data: SystemAnnouncementQueryRequest): Promise<PageResult<PublishedSystemAnnouncementResponse>> {
-  return http.post('/api/announcements/list', data)
+  return http.post<PageResult<PublishedSystemAnnouncementResponse>>('/api/announcements/list', data)
 }
 
 /**
  * 获取已发布公告详情（用户查看）- 对应后端 POST /api/announcements/detail
  */
 export function getPublishedAnnouncementDetail(id: string): Promise<PublishedSystemAnnouncementResponse> {
-  return http.post('/api/announcements/detail', { id })
+  return http.post<PublishedSystemAnnouncementResponse>('/api/announcements/detail', { id })
 }
 
 /**
  * 获取已发布公告统计信息（用户查看）- 对应后端 GET /api/announcements/stats
  */
 export function getPublishedAnnouncementStats(): Promise<SystemAnnouncementStatsResponse> {
-  return http.get('/api/announcements/stats')
+  return http.get<SystemAnnouncementStatsResponse>('/api/announcements/stats')
 }
 
 /**
@@ -501,14 +531,14 @@ export function getUserUnreadAnnouncementCount(): Promise<string> {
  * 确认阅读公告 - 对应后端 POST /api/announcements/confirm-read
  */
 export function confirmReadAnnouncement(id: string): Promise<void> {
-  return http.post('/api/announcements/confirm-read', {id})
+  return http.post<void>('/api/announcements/confirm-read', {id})
 }
 
 /**
  * 标记所有公告为已读 - 对应后端 POST /api/announcements/mark-all-as-read
  */
 export function markAllAnnouncementsAsRead(): Promise<void> {
-  return http.post('/api/announcements/mark-all-as-read', {})
+  return http.post<void>('/api/announcements/mark-all-as-read', {})
 }
 
 
@@ -525,5 +555,5 @@ export function markAllAnnouncementsAsRead(): Promise<void> {
  * @returns Promise<void>
  */
 export function sendTeacherToStudentMessage(data: InboxMessageCreateRequest): Promise<void> {
-  return http.post('/api/inbox/publish', data)
+  return http.post<void>('/api/inbox/publish', data)
 }

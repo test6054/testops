@@ -27,8 +27,8 @@ const railDeviceLed = computed(() => {
 
 const railAgentText = computed(() => {
   const h = workflow.health.value
-  if (!h) return '—'
-  return `${workflow.agentHealthStatusLabel(h.status)} · ${h.agentVersion || '-'}`
+  if (!h) return '一体机未连接'
+  return `${workflow.agentHealthStatusLabel(h.status)} · ${h.agentVersion}`
 })
 
 const railScannerText = computed(() => workflow.selectedScanner.value?.displayName || '未检测到')
@@ -39,15 +39,15 @@ const railDeviceStatusText = computed(() => {
   return workflow.endpointOnlineStatusLabel(d.onlineStatus)
 })
 
-const railPolicyDpi = computed(() => (policy.value ? String(policy.value.dpi) : '—'))
+const railPolicyDpi = computed(() => (policy.value ? String(policy.value.dpi) : '未加载'))
 const railPolicyColor = computed(() =>
-  policy.value ? workflow.scannerColorModeLabel(policy.value.colorMode) : '—',
+  policy.value ? workflow.scannerColorModeLabel(policy.value.colorMode) : '未加载',
 )
 const railPolicyDuplex = computed(() =>
-  policy.value ? workflow.scannerDuplexModeLabel(policy.value.duplexMode) : '—',
+  policy.value ? workflow.scannerDuplexModeLabel(policy.value.duplexMode) : '未加载',
 )
 const railPolicyBlankPage = computed(() => {
-  if (!policy.value) return '—'
+  if (!policy.value) return '未加载'
   return policy.value.blankPageDetectionEnabled ? '启用' : '关闭'
 })
 
@@ -66,7 +66,7 @@ function handleOpenSettings() {
       </header>
       <dl class="rail-kv">
         <div>
-          <dt>Agent</dt>
+          <dt>扫描组件</dt>
           <dd>{{ railAgentText }}</dd>
         </div>
         <div>
@@ -85,10 +85,10 @@ function handleOpenSettings() {
       <button type="button" class="rail-link" @click="handleOpenSettings">打开设备设置 →</button>
     </article>
 
-    <!-- 服务端扫描策略 -->
+    <!-- 考试扫描策略 -->
     <article class="rail-card">
       <header class="rail-card-head">
-        <h4>服务端扫描策略</h4>
+        <h4>考试扫描策略</h4>
       </header>
       <dl class="rail-kv">
         <div>
@@ -113,14 +113,14 @@ function handleOpenSettings() {
     <!-- 当前考试 KPI -->
     <article class="rail-card">
       <header class="rail-card-head">
-        <h4>当前考试 KPI</h4>
+        <h4>当前考试概览</h4>
       </header>
       <ul class="rail-kpi">
         <li>
           <span>已扫页</span><strong>{{ workflow.kioskMetrics.value.scannedPages }}</strong>
         </li>
         <li>
-          <span>试卷实例</span><strong>{{ workflow.kioskMetrics.value.paperInstances }}</strong>
+          <span>试卷份数</span><strong>{{ workflow.kioskMetrics.value.paperInstances }}</strong>
         </li>
         <li>
           <span>已绑定</span><strong>{{ workflow.kioskMetrics.value.boundPaperInstances }}</strong>
@@ -220,7 +220,6 @@ function handleOpenSettings() {
 }
 .rail-kv dd {
   margin: 0;
-  font-family: var(--kiosk-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-primary);
@@ -264,7 +263,6 @@ function handleOpenSettings() {
   color: var(--kiosk-ink-tertiary);
 }
 .rail-kpi strong {
-  font-family: var(--kiosk-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 22px;
   font-weight: var(--kiosk-fw-bold);
@@ -289,7 +287,7 @@ function handleOpenSettings() {
 
 .rail-batch-period {
   margin: 0;
-  font-family: var(--kiosk-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
 }

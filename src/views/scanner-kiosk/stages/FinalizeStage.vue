@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type {Component} from 'vue';
+import type { Component } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
 /**
  * Stage 4 - 封存与历史
@@ -24,7 +25,6 @@ import {
   ReloadOutlined,
   SafetyCertificateFilled,
 } from '@ant-design/icons-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, ui } = useKioskCtx()
@@ -73,15 +73,15 @@ const checklist = computed<ChecklistItem[]>(() => {
       label: '当前扫描任务已结束',
       detail:
         workflow.currentJob.value && workflow.currentJob.value.status !== 'REPORTED'
-          ? `Job 状态 ${workflow.currentJob.value.status}`
-          : 'Agent 无活跃任务',
+          ? `任务状态 ${workflow.localScanJobStatusText(workflow.currentJob.value.status)}`
+          : '本机扫描组件无活跃任务',
     },
     {
       key: 'not-sealed',
       ok: !b.sealedAt,
       label: '批次未封存',
       detail: b.sealedAt
-        ? `已于 ${workflow.formatTime(b.sealedAt)} 封存${b.sealedBy ? ` · #${b.sealedBy}` : ''}`
+        ? `已于 ${workflow.formatTime(b.sealedAt)} 封存${b.sealedBy ? ` · 操作人 ${b.sealedBy}` : ''}`
         : '可执行封存',
     },
     {
@@ -95,7 +95,7 @@ const checklist = computed<ChecklistItem[]>(() => {
   ]
 })
 
-/** 时间线（综合 lifecycle + 扫描起止 + commit 状态） */
+/** 时间线（综合 lifecycle、扫描起止与批次提交状态） */
 interface TimelineEvent {
   key: string
   icon: Component
@@ -133,7 +133,7 @@ const timeline = computed<TimelineEvent[]>(() => {
     key: 'commit',
     icon: CheckCircleFilled,
     tone: b.receivedPageCount === b.pageCount && b.pendingUploadCount === 0 ? 'success' : 'warning',
-    label: '服务端落库',
+    label: '扫描页入库',
     detail: `${b.receivedPageCount} / ${b.pageCount} 页已落库${b.pendingUploadCount > 0 ? `, 待上传 ${b.pendingUploadCount}` : ''}`,
   })
   if (b.attentionItemCount > 0) {
@@ -198,7 +198,7 @@ function historyBadgeTone(
 function historyBadgeText(item: ExamScannerKioskBatchHistoryItem): string {
   if (item.discardedAt || item.status === 'DISCARDED') return '已废弃'
   if (item.sealedAt) return '已封存'
-  return item.statusMessage || item.status
+  return item.statusMessage
 }
 
 function historyModeText(item: ExamScannerKioskBatchHistoryItem): string {
@@ -257,7 +257,7 @@ watch(
     <div v-else class="batch-empty">
       <SafetyCertificateFilled class="batch-empty-icon" />
       <p>当前考试暂无已落库扫描批次</p>
-      <small>请先返回「准备扫描」完成一次扫描并等待服务端落库</small>
+      <small>请先返回「准备扫描」完成一次扫描并等待扫描页入库</small>
     </div>
 
     <div v-if="batch" class="finalize-body">
@@ -302,15 +302,15 @@ watch(
             </div>
             <div>
               <dt>状态</dt>
-              <dd>{{ batch.status }}</dd>
+              <dd>{{ batch.statusMessage }}</dd>
             </div>
             <div>
               <dt>批次外部号</dt>
-              <dd class="mono">{{ batch.batchExternalNo }}</dd>
+              <dd>{{ batch.batchExternalNo }}</dd>
             </div>
             <div v-if="batch.diagnostic">
-              <dt>诊断</dt>
-              <dd class="danger">{{ batch.diagnostic }}</dd>
+              <dt>处理说明</dt>
+              <dd class="danger">{{ workflow.scannerDiagnosticText(batch.diagnostic) }}</dd>
             </div>
           </dl>
         </article>
@@ -431,9 +431,9 @@ watch(
           type="button"
           class="time-clear"
           :disabled="
-            workflow.batchHistoryLoading.value
-              || (!workflow.batchHistoryFilter.scanStartTimeFrom
-                && !workflow.batchHistoryFilter.scanStartTimeTo)
+            workflow.batchHistoryLoading.value ||
+            (!workflow.batchHistoryFilter.scanStartTimeFrom &&
+              !workflow.batchHistoryFilter.scanStartTimeTo)
           "
           @click="workflow.clearBatchHistoryTimeRange"
         >
@@ -462,7 +462,7 @@ watch(
           <button type="button" class="history-row" @click="toggleHistoryDetail(item.scanBatchId)">
             <div class="history-cell history-cell--main">
               <strong>{{ item.batchNo || item.batchExternalNo }}</strong>
-              <span class="mono">{{ item.batchExternalNo }}</span>
+              <span>{{ item.batchExternalNo }}</span>
             </div>
             <div class="history-cell">
               <small>模式</small>
@@ -470,11 +470,11 @@ watch(
             </div>
             <div class="history-cell">
               <small>页数</small>
-              <span class="mono">{{ item.pageCount }}</span>
+              <span>{{ item.pageCount }}</span>
             </div>
             <div class="history-cell">
               <small>扫描时间</small>
-              <span class="mono">{{ workflow.formatTime(item.scanStartTime) }}</span>
+              <span>{{ workflow.formatTime(item.scanStartTime) }}</span>
             </div>
             <div class="history-cell history-cell--badge">
               <span class="history-badge" :class="`tone-${historyBadgeTone(item)}`">
@@ -487,46 +487,46 @@ watch(
             <dl class="detail-kv detail-kv--inline">
               <div>
                 <dt>状态</dt>
-                <dd>{{ item.status }} · {{ item.statusMessage }}</dd>
+                <dd>{{ historyBadgeText(item) }}</dd>
               </div>
               <div>
                 <dt>扫描结束</dt>
-                <dd class="mono">{{ workflow.formatTime(item.scanEndTime) }}</dd>
+                <dd>{{ workflow.formatTime(item.scanEndTime) }}</dd>
               </div>
               <div v-if="item.receivedPageCount !== undefined">
                 <dt>已落库页</dt>
-                <dd class="mono">{{ item.receivedPageCount }} / {{ item.pageCount }}</dd>
+                <dd>{{ item.receivedPageCount }} / {{ item.pageCount }}</dd>
               </div>
               <div
                 v-if="item.pendingUploadCount !== undefined && item.pendingUploadCount > 0"
                 class="warn"
               >
                 <dt>待上传</dt>
-                <dd class="mono">{{ item.pendingUploadCount }}</dd>
+                <dd>{{ item.pendingUploadCount }}</dd>
               </div>
               <div
                 v-if="item.attentionItemCount !== undefined && item.attentionItemCount > 0"
                 class="warn"
               >
                 <dt>异常项</dt>
-                <dd class="mono">{{ item.attentionItemCount }}</dd>
+                <dd>{{ item.attentionItemCount }}</dd>
               </div>
               <div v-if="item.eventCount !== undefined">
                 <dt>事件数</dt>
-                <dd class="mono">{{ item.eventCount }}</dd>
+                <dd>{{ item.eventCount }}</dd>
               </div>
               <div v-if="item.sealedAt">
                 <dt>封存时间</dt>
-                <dd class="mono">
+                <dd>
                   {{ workflow.formatTime(item.sealedAt) }}
-                  <template v-if="item.sealedBy"> · #{{ item.sealedBy }}</template>
+                  <template v-if="item.sealedBy"> · 操作人 {{ item.sealedBy }}</template>
                 </dd>
               </div>
               <div v-if="item.discardedAt">
                 <dt>废弃时间</dt>
-                <dd class="mono danger">
+                <dd class="danger">
                   {{ workflow.formatTime(item.discardedAt) }}
-                  <template v-if="item.discardedBy"> · #{{ item.discardedBy }}</template>
+                  <template v-if="item.discardedBy"> · 操作人 {{ item.discardedBy }}</template>
                 </dd>
               </div>
               <div v-if="item.discardReason" class="detail-kv-full">
@@ -534,8 +534,8 @@ watch(
                 <dd class="danger">{{ item.discardReason }}</dd>
               </div>
               <div v-if="item.diagnostic" class="detail-kv-full">
-                <dt>诊断</dt>
-                <dd class="danger">{{ item.diagnostic }}</dd>
+                <dt>处理说明</dt>
+                <dd class="danger">{{ workflow.scannerDiagnosticText(item.diagnostic) }}</dd>
               </div>
               <div v-if="item.supplementReason" class="detail-kv-full">
                 <dt>补扫原因</dt>
@@ -572,8 +572,8 @@ watch(
           type="button"
           class="pager-btn"
           :disabled="
-            workflow.batchHistoryFilter.pageNum >= historyTotalPages
-              || workflow.batchHistoryLoading.value
+            workflow.batchHistoryFilter.pageNum >= historyTotalPages ||
+            workflow.batchHistoryLoading.value
           "
           @click="workflow.changeBatchHistoryPage(workflow.batchHistoryFilter.pageNum + 1)"
         >
@@ -819,7 +819,6 @@ watch(
   color: var(--kiosk-ink-primary);
 }
 .event-time {
-  font-family: var(--kiosk-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-secondary);
@@ -855,7 +854,6 @@ watch(
 }
 .detail-kv dd {
   margin: 0;
-  font-family: var(--kiosk-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-semibold);
@@ -869,10 +867,6 @@ watch(
 .detail-kv .warn dd {
   color: var(--kiosk-warning);
 }
-.detail-kv .mono {
-  font-family: var(--kiosk-font-mono);
-}
-
 /* ============ 检查清单 ============ */
 
 .checklist {
@@ -1035,7 +1029,6 @@ watch(
   color: var(--kiosk-ink-tertiary);
 }
 .history-total strong {
-  font-family: var(--kiosk-font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: var(--kiosk-fw-bold);
   color: var(--kiosk-ink-primary);
@@ -1114,7 +1107,7 @@ watch(
   background: var(--kiosk-surface);
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-sm);
-  font-family: var(--kiosk-font-mono);
+  font-family: inherit;
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-primary);
   outline: none;
@@ -1285,8 +1278,7 @@ watch(
 .history-cell--main {
   gap: 4px;
 }
-.history-cell--main span.mono {
-  font-family: var(--kiosk-font-mono);
+.history-cell--main span {
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
 }
@@ -1362,7 +1354,6 @@ watch(
   opacity: 0.45;
 }
 .pager-info {
-  font-family: var(--kiosk-font-mono);
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-tertiary);
 }

@@ -1,4 +1,5 @@
-import type { IncidentLevelCode, IncidentRecordVO, IncidentTypeCode } from '@/apis/mark/admin-dashboard'
+import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import type { PageResult, QueryDto } from '@/types'
 
 /**
  * 阅卷管理员批改审计 API - 对接 edu-mark 模块 ExamAuditController。
@@ -13,60 +14,59 @@ import http from '@/config/axios'
 
 // ─── 操作类型 / 目标类型枚举 ─────────────────────────
 
-/** 审计目标类型（与后端 AuditTargetType 对齐，仅列出阅卷链常见目标） */
-export type AuditTargetTypeCode
-  = | 'EXAM'
-    | 'PAPER_INSTANCE'
-    | 'CANDIDATE_ROSTER'
-    | 'QUESTION_TEMPLATE'
-    | 'GRADE_RESULT'
-    | 'FINAL_SCORE'
-    | 'REVIEW_TASK'
-    | 'PROCESSING_TASK'
-    | 'IMAGE_LEDGER'
-    | 'IMAGE_PAGE'
-    | 'IMAGE_QUALITY_DECISION'
-    | 'REPAIR_ACTION'
-    | 'PAPER_DUPLICATE_RESOLUTION'
-    | 'INCIDENT_RECORD'
+/** 审计目标类型（与后端 AuditTargetType JSON 编码完全对齐） */
+export type AuditTargetTypeCode =
+  | 'EXAM'
+  | 'EXAM_QUESTION_GRADE_RESULT'
+  | 'EXAM_FINAL_SCORE'
+  | 'ABSENCE_RECORD'
+  | 'GRADE_REVIEW_REQUEST'
+  | 'GRADE_CORRECTION'
+  | 'MARKING_TASK'
+  | 'EXAM_PAPER_INSTANCE'
+  | 'SCAN_BATCH'
+  | 'SYNC_TASK'
+  | 'PASSBACK_RECORD'
+  | 'EXAM_EXPORT_TASK'
+  | 'EXAM_ARCHIVE_PACKAGE'
 
 /** 审计操作类型（与后端 OperationType 对齐） */
-export type OperationTypeCode
-  = | 'SCORE_CHANGE'
-    | 'SCORE_CONFIRM'
-    | 'SCORE_PUBLISH'
-    | 'SCORE_WITHDRAW'
-    | 'REVIEW_REQUEST_HANDLE'
-    | 'GRADE_CORRECTION_CREATE'
-    | 'QUALITY_OVERRIDE'
-    | 'ABSENCE_CONFIRM'
-    | 'ABSENCE_REVOKE'
-    | 'ABSENCE_RECONCILE'
-    | 'DUPLICATE_RESOLVE'
-    | 'BINDING_CONFIRM'
-    | 'DEANONYMIZE'
-    | 'REPAIR_SUBMIT'
-    | 'SPOT_CHECK_ABNORMAL'
-    | 'BATCH_REPROCESS'
-    | 'GRADE_PASSBACK_EXECUTE'
-    | 'GRADE_PASSBACK_RECONCILE'
-    | 'GRADE_PASSBACK_CALLBACK'
-    | 'SYNC_TASK_RETRY'
-    | 'SYNC_TASK_CANCEL'
-    | 'EXPORT_CREATE'
-    | 'EXPORT_START'
-    | 'EXPORT_COMPLETE'
-    | 'EXPORT_FAIL'
-    | 'ARCHIVE_CREATE'
-    | 'ARCHIVE_PACKAGE_START'
-    | 'ARCHIVE_PACKAGE_COMPLETE'
-    | 'ARCHIVE_PACKAGE_FAIL'
-    | 'ARCHIVE_APPRAISAL_REQUEST'
-    | 'ARCHIVE_APPRAISAL_DECIDE'
-    | 'ARCHIVE_RETENTION_EXTEND'
-    | 'ARCHIVE_DESTRUCTION_REQUEST'
-    | 'ARCHIVE_DESTRUCTION_APPROVE'
-    | 'ARCHIVE_DESTROY'
+export type OperationTypeCode =
+  | 'SCORE_CHANGE'
+  | 'SCORE_CONFIRM'
+  | 'SCORE_PUBLISH'
+  | 'SCORE_WITHDRAW'
+  | 'REVIEW_REQUEST_HANDLE'
+  | 'GRADE_CORRECTION_CREATE'
+  | 'QUALITY_OVERRIDE'
+  | 'ABSENCE_CONFIRM'
+  | 'ABSENCE_REVOKE'
+  | 'ABSENCE_RECONCILE'
+  | 'DUPLICATE_RESOLVE'
+  | 'BINDING_CONFIRM'
+  | 'DEANONYMIZE'
+  | 'REPAIR_SUBMIT'
+  | 'SPOT_CHECK_ABNORMAL'
+  | 'BATCH_REPROCESS'
+  | 'GRADE_PASSBACK_EXECUTE'
+  | 'GRADE_PASSBACK_RECONCILE'
+  | 'GRADE_PASSBACK_CALLBACK'
+  | 'SYNC_TASK_RETRY'
+  | 'SYNC_TASK_CANCEL'
+  | 'EXPORT_CREATE'
+  | 'EXPORT_START'
+  | 'EXPORT_COMPLETE'
+  | 'EXPORT_FAIL'
+  | 'ARCHIVE_CREATE'
+  | 'ARCHIVE_PACKAGE_START'
+  | 'ARCHIVE_PACKAGE_COMPLETE'
+  | 'ARCHIVE_PACKAGE_FAIL'
+  | 'ARCHIVE_APPRAISAL_REQUEST'
+  | 'ARCHIVE_APPRAISAL_DECIDE'
+  | 'ARCHIVE_RETENTION_EXTEND'
+  | 'ARCHIVE_DESTRUCTION_REQUEST'
+  | 'ARCHIVE_DESTRUCTION_APPROVE'
+  | 'ARCHIVE_DESTROY'
 
 /** 审计操作类型中文文案 */
 export const OPERATION_TYPE_LABEL: Record<OperationTypeCode, string> = {
@@ -107,105 +107,156 @@ export const OPERATION_TYPE_LABEL: Record<OperationTypeCode, string> = {
   ARCHIVE_DESTROY: '考后归档销毁执行',
 }
 
-/** 常见目标类型文案映射 */
-export const AUDIT_TARGET_TYPE_LABEL: Record<string, string> = {
+/** 审计操作类型下拉选项，值来源必须与 OperationTypeCode 完全一致 */
+export const OPERATION_TYPE_OPTIONS: Array<{ label: string; value: OperationTypeCode }> = [
+  { value: 'SCORE_CHANGE', label: OPERATION_TYPE_LABEL.SCORE_CHANGE },
+  { value: 'SCORE_CONFIRM', label: OPERATION_TYPE_LABEL.SCORE_CONFIRM },
+  { value: 'SCORE_PUBLISH', label: OPERATION_TYPE_LABEL.SCORE_PUBLISH },
+  { value: 'SCORE_WITHDRAW', label: OPERATION_TYPE_LABEL.SCORE_WITHDRAW },
+  { value: 'REVIEW_REQUEST_HANDLE', label: OPERATION_TYPE_LABEL.REVIEW_REQUEST_HANDLE },
+  { value: 'GRADE_CORRECTION_CREATE', label: OPERATION_TYPE_LABEL.GRADE_CORRECTION_CREATE },
+  { value: 'QUALITY_OVERRIDE', label: OPERATION_TYPE_LABEL.QUALITY_OVERRIDE },
+  { value: 'ABSENCE_CONFIRM', label: OPERATION_TYPE_LABEL.ABSENCE_CONFIRM },
+  { value: 'ABSENCE_REVOKE', label: OPERATION_TYPE_LABEL.ABSENCE_REVOKE },
+  { value: 'ABSENCE_RECONCILE', label: OPERATION_TYPE_LABEL.ABSENCE_RECONCILE },
+  { value: 'DUPLICATE_RESOLVE', label: OPERATION_TYPE_LABEL.DUPLICATE_RESOLVE },
+  { value: 'BINDING_CONFIRM', label: OPERATION_TYPE_LABEL.BINDING_CONFIRM },
+  { value: 'DEANONYMIZE', label: OPERATION_TYPE_LABEL.DEANONYMIZE },
+  { value: 'REPAIR_SUBMIT', label: OPERATION_TYPE_LABEL.REPAIR_SUBMIT },
+  { value: 'SPOT_CHECK_ABNORMAL', label: OPERATION_TYPE_LABEL.SPOT_CHECK_ABNORMAL },
+  { value: 'BATCH_REPROCESS', label: OPERATION_TYPE_LABEL.BATCH_REPROCESS },
+  { value: 'GRADE_PASSBACK_EXECUTE', label: OPERATION_TYPE_LABEL.GRADE_PASSBACK_EXECUTE },
+  { value: 'GRADE_PASSBACK_RECONCILE', label: OPERATION_TYPE_LABEL.GRADE_PASSBACK_RECONCILE },
+  { value: 'GRADE_PASSBACK_CALLBACK', label: OPERATION_TYPE_LABEL.GRADE_PASSBACK_CALLBACK },
+  { value: 'SYNC_TASK_RETRY', label: OPERATION_TYPE_LABEL.SYNC_TASK_RETRY },
+  { value: 'SYNC_TASK_CANCEL', label: OPERATION_TYPE_LABEL.SYNC_TASK_CANCEL },
+  { value: 'EXPORT_CREATE', label: OPERATION_TYPE_LABEL.EXPORT_CREATE },
+  { value: 'EXPORT_START', label: OPERATION_TYPE_LABEL.EXPORT_START },
+  { value: 'EXPORT_COMPLETE', label: OPERATION_TYPE_LABEL.EXPORT_COMPLETE },
+  { value: 'EXPORT_FAIL', label: OPERATION_TYPE_LABEL.EXPORT_FAIL },
+  { value: 'ARCHIVE_CREATE', label: OPERATION_TYPE_LABEL.ARCHIVE_CREATE },
+  { value: 'ARCHIVE_PACKAGE_START', label: OPERATION_TYPE_LABEL.ARCHIVE_PACKAGE_START },
+  { value: 'ARCHIVE_PACKAGE_COMPLETE', label: OPERATION_TYPE_LABEL.ARCHIVE_PACKAGE_COMPLETE },
+  { value: 'ARCHIVE_PACKAGE_FAIL', label: OPERATION_TYPE_LABEL.ARCHIVE_PACKAGE_FAIL },
+  { value: 'ARCHIVE_APPRAISAL_REQUEST', label: OPERATION_TYPE_LABEL.ARCHIVE_APPRAISAL_REQUEST },
+  { value: 'ARCHIVE_APPRAISAL_DECIDE', label: OPERATION_TYPE_LABEL.ARCHIVE_APPRAISAL_DECIDE },
+  { value: 'ARCHIVE_RETENTION_EXTEND', label: OPERATION_TYPE_LABEL.ARCHIVE_RETENTION_EXTEND },
+  { value: 'ARCHIVE_DESTRUCTION_REQUEST', label: OPERATION_TYPE_LABEL.ARCHIVE_DESTRUCTION_REQUEST },
+  { value: 'ARCHIVE_DESTRUCTION_APPROVE', label: OPERATION_TYPE_LABEL.ARCHIVE_DESTRUCTION_APPROVE },
+  { value: 'ARCHIVE_DESTROY', label: OPERATION_TYPE_LABEL.ARCHIVE_DESTROY },
+]
+
+/** 审计目标类型文案映射，与后端 AuditTargetType JSON 编码完全一致 */
+export const AUDIT_TARGET_TYPE_LABEL: Record<AuditTargetTypeCode, string> = {
   EXAM: '考试',
-  PAPER_INSTANCE: '试卷实例',
-  CANDIDATE_ROSTER: '考生名册',
-  QUESTION_TEMPLATE: '题目模板',
-  GRADE_RESULT: '题目得分',
-  FINAL_SCORE: '最终成绩',
-  REVIEW_TASK: '复核任务',
-  PROCESSING_TASK: '处理任务',
-  IMAGE_LEDGER: '影像账本',
-  IMAGE_PAGE: '影像页',
-  IMAGE_QUALITY_DECISION: '影像质量决策',
-  REPAIR_ACTION: '修复动作',
-  PAPER_DUPLICATE_RESOLUTION: '重复试卷处置',
-  INCIDENT_RECORD: '重大事件',
+  EXAM_QUESTION_GRADE_RESULT: '题目批改结果',
+  EXAM_FINAL_SCORE: '最终成绩',
+  ABSENCE_RECORD: '缺考记录',
+  GRADE_REVIEW_REQUEST: '复核申请',
+  GRADE_CORRECTION: '成绩更正',
+  MARKING_TASK: '阅卷任务',
+  EXAM_PAPER_INSTANCE: '试卷实例',
+  SCAN_BATCH: '扫描批次',
+  SYNC_TASK: '教务同步任务',
+  PASSBACK_RECORD: '成绩回写记录',
+  EXAM_EXPORT_TASK: '导出任务',
+  EXAM_ARCHIVE_PACKAGE: '考后归档包',
 }
 
 // ─── 请求 / 响应类型 ────────────────────────────────
 
 /** 审计日志查询请求 - 对应 OperationLogQueryRequest */
-export interface OperationLogQueryPayload {
+export interface OperationLogQueryRequest extends QueryDto {
   examId?: string
   operationType?: OperationTypeCode
   targetType?: AuditTargetTypeCode
   targetId?: string
 }
 
-/** 审计日志记录 - 对应 ExamOperationLog */
+/** 审计日志记录 - 对应 OperationLogResponse */
 export interface OperationLogVO {
   id: string
-  tenantId?: string
-  examId?: string
-  operationType?: OperationTypeCode
-  targetType?: AuditTargetTypeCode
-  targetId?: string
-  operatorId?: string
-  operatorRole?: string
-  beforeValue?: string
-  afterValue?: string
-  reason?: string
+  examId: string
+  operationType: OperationTypeCode
+  targetType: AuditTargetTypeCode
+  targetId: string
+  targetLabel: string
+  operatorId: string
+  operatorName: string
+  operatorRole: string
+  reason: string
   traceId?: string
-  createTime?: string
+  createTime: string
 }
 
 /** 重大事件查询请求 - 对应 IncidentQueryRequest */
-export interface IncidentQueryPayload {
+export interface IncidentQueryRequest {
   examId: string
   unresolvedOnly?: boolean
 }
 
 /** 重大事件解决请求 - 对应 IncidentResolveRequest */
-export interface IncidentResolvePayload {
+export interface IncidentResolveRequest {
   incidentId: string
   resolveNote: string
 }
 
 /** 诊断样本查询请求 - 对应 DiagnosticSampleQueryRequest */
-export interface DiagnosticSampleQueryPayload {
+export interface DiagnosticSampleQueryRequest {
   examId: string
   sampleType?: DiagnosticSampleTypeCode
 }
 
 /** 诊断样本类型 */
-export type DiagnosticSampleTypeCode
-  = | 'OCR_FAILURE'
-    | 'GRADING_AMBIGUOUS'
-    | 'IMAGE_QUALITY'
-    | 'OBJECTIVE_MISMATCH'
-    | 'OTHER'
+export type DiagnosticSampleTypeCode =
+  | 'OCR_CONFLICT'
+  | 'IQA_EDGE'
+  | 'AI_DRIFT'
+  | 'BINDING_AMBIGUOUS'
+
+/** 诊断样本来源类型 */
+export type DiagnosticSourceTypeCode =
+  | 'SCANNED_PAGE'
+  | 'RESPONSE_SLICE'
+  | 'GRADE_RESULT'
+  | 'RECOGNITION_RESULT'
 
 /** 诊断样本文案 */
 export const DIAGNOSTIC_SAMPLE_TYPE_LABEL: Record<DiagnosticSampleTypeCode, string> = {
-  OCR_FAILURE: 'OCR 识别失败',
-  GRADING_AMBIGUOUS: '批改歧义',
-  IMAGE_QUALITY: '影像质量',
-  OBJECTIVE_MISMATCH: '客观题判定不一致',
-  OTHER: '其他',
+  OCR_CONFLICT: 'OCR 冲突',
+  IQA_EDGE: 'IQA 边界',
+  AI_DRIFT: 'AI 漂移',
+  BINDING_AMBIGUOUS: '绑定歧义',
 }
 
-/** 诊断样本记录 - 对应 ExamDiagnosticSample */
+/** 诊断样本类型下拉选项，值来源必须与 DiagnosticSampleTypeCode 完全一致 */
+export const DIAGNOSTIC_SAMPLE_TYPE_OPTIONS: Array<{
+  label: string
+  value: DiagnosticSampleTypeCode
+}> = [
+  { value: 'OCR_CONFLICT', label: DIAGNOSTIC_SAMPLE_TYPE_LABEL.OCR_CONFLICT },
+  { value: 'IQA_EDGE', label: DIAGNOSTIC_SAMPLE_TYPE_LABEL.IQA_EDGE },
+  { value: 'AI_DRIFT', label: DIAGNOSTIC_SAMPLE_TYPE_LABEL.AI_DRIFT },
+  { value: 'BINDING_AMBIGUOUS', label: DIAGNOSTIC_SAMPLE_TYPE_LABEL.BINDING_AMBIGUOUS },
+]
+
+/** 诊断样本记录 - 对应 DiagnosticSampleResponse */
 export interface DiagnosticSampleVO {
   id: string
-  tenantId?: string
-  examId?: string
-  sampleType?: DiagnosticSampleTypeCode
-  sourceType?: string
-  sourceId?: string
+  examId: string
+  sampleType: DiagnosticSampleTypeCode
+  sourceType: DiagnosticSourceTypeCode
+  sourceId: string
   fileId?: string
-  snapshotPayload?: string
-  diagnostic?: string
+  diagnostic: string
   createUser?: string
   updateUser?: string
-  createTime?: string
+  createTime: string
   updateTime?: string
 }
 
 /** 重大事件级别选项（与 admin-dashboard 中映射对齐） */
-export const INCIDENT_LEVEL_OPTIONS: Array<{ label: string, value: IncidentLevelCode }> = [
+export const INCIDENT_LEVEL_OPTIONS: Array<{ label: string; value: IncidentLevelCode }> = [
   { value: 'BLOCKING', label: '阻断' },
   { value: 'REVIEW_REQUIRED', label: '需复核' },
   { value: 'WARNING', label: '警告' },
@@ -218,119 +269,34 @@ export const INCIDENT_LEVEL_OPTIONS: Array<{ label: string, value: IncidentLevel
  * 查询审计日志列表。
  * POST /api/mark/exams/audit/operation-logs
  */
-export function listOperationLogs(payload: OperationLogQueryPayload): Promise<OperationLogVO[]> {
-  return http.post<OperationLogVO[]>('/api/mark/exams/audit/operation-logs', payload)
+export function listOperationLogs(
+  request: OperationLogQueryRequest,
+): Promise<PageResult<OperationLogVO>> {
+  return http.post<PageResult<OperationLogVO>>('/api/mark/exams/audit/operation-logs', request)
 }
 
 /**
  * 查询重大事件列表。
  * POST /api/mark/exams/audit/incidents
  */
-export function listIncidents(payload: IncidentQueryPayload): Promise<IncidentRecordVO[]> {
-  return http
-    .post<unknown>('/api/mark/exams/audit/incidents', payload)
-    .then(validateIncidentList)
+export function listIncidents(request: IncidentQueryRequest): Promise<IncidentRecordVO[]> {
+  return http.post<IncidentRecordVO[]>('/api/mark/exams/audit/incidents', request)
 }
 
 /**
  * 解决重大事件。
  * POST /api/mark/exams/audit/incidents/resolve
  */
-export function resolveIncident(payload: IncidentResolvePayload): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/audit/incidents/resolve', payload)
+export function resolveIncident(request: IncidentResolveRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/audit/incidents/resolve', request)
 }
 
 /**
  * 查询诊断样本列表。
  * POST /api/mark/exams/audit/diagnostic-samples
  */
-export function listDiagnosticSamples(payload: DiagnosticSampleQueryPayload): Promise<DiagnosticSampleVO[]> {
-  return http.post<DiagnosticSampleVO[]>('/api/mark/exams/audit/diagnostic-samples', payload)
-}
-
-function requireString(value: unknown, fieldName: string): string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError(`审计接口缺少 ${fieldName}`)
-  }
-  return value
-}
-
-function optionalString(value: unknown, fieldName: string): string | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string') {
-    throw new TypeError(`审计接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireIncidentType(value: unknown): IncidentTypeCode {
-  if (
-    value !== 'DUPLICATE_DETECTED'
-    && value !== 'BINDING_CONFLICT'
-    && value !== 'SCAN_BATCH_REPROCESS'
-    && value !== 'SCORE_ANOMALY'
-  ) {
-    throw new TypeError('审计接口 incidentType 格式错误')
-  }
-  return value
-}
-
-function optionalIncidentLevel(value: unknown): IncidentLevelCode | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (
-    value !== 'BLOCKING'
-    && value !== 'REVIEW_REQUIRED'
-    && value !== 'WARNING'
-    && value !== 'INFO'
-  ) {
-    throw new TypeError('审计接口 incidentLevel 格式错误')
-  }
-  return value
-}
-
-function optionalBoolean(value: unknown, fieldName: string): boolean | undefined {
-  if (value === undefined || value === null) {
-    return undefined
-  }
-  if (typeof value !== 'boolean') {
-    throw new TypeError(`审计接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function validateIncident(value: unknown): IncidentRecordVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('审计接口重大事件返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    id: requireString(record.id, 'id'),
-    tenantId: optionalString(record.tenantId, 'tenantId'),
-    examId: requireString(record.examId, 'examId'),
-    incidentLevel: optionalIncidentLevel(record.incidentLevel),
-    incidentType: requireIncidentType(record.incidentType),
-    sourceType: optionalString(record.sourceType, 'sourceType'),
-    sourceId: optionalString(record.sourceId, 'sourceId'),
-    summary: requireString(record.summary, 'summary'),
-    detail: optionalString(record.detail, 'detail'),
-    resolved: optionalBoolean(record.resolved, 'resolved'),
-    resolvedBy: optionalString(record.resolvedBy, 'resolvedBy'),
-    resolvedTime: optionalString(record.resolvedTime, 'resolvedTime'),
-    resolveNote: optionalString(record.resolveNote, 'resolveNote'),
-    createUser: optionalString(record.createUser, 'createUser'),
-    updateUser: optionalString(record.updateUser, 'updateUser'),
-    createTime: optionalString(record.createTime, 'createTime'),
-    updateTime: optionalString(record.updateTime, 'updateTime'),
-  }
-}
-
-function validateIncidentList(value: unknown): IncidentRecordVO[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError('审计接口重大事件列表格式错误')
-  }
-  return value.map(validateIncident)
+export function listDiagnosticSamples(
+  request: DiagnosticSampleQueryRequest,
+): Promise<DiagnosticSampleVO[]> {
+  return http.post<DiagnosticSampleVO[]>('/api/mark/exams/audit/diagnostic-samples', request)
 }

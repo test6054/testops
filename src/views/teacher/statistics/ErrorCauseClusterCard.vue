@@ -26,19 +26,25 @@
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="聚类数">{{ record.clusterCount ?? '-' }}</a-descriptions-item>
+          <a-descriptions-item label="聚类数">{{ clusterCountText(record) }}</a-descriptions-item>
           <a-descriptions-item label="生成时间">
-            {{
-              formatDateTime(record.createTime)
-            }}
+            {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
-          <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="trace ID" :span="2">
-            <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
-            <span v-else class="text-muted">-</span>
+          <a-descriptions-item label="生成耗时">{{
+            analysisLatencyText(record)
+          }}</a-descriptions-item>
+          <a-descriptions-item label="处理追踪编号" :span="2">
+            <a-typography-text
+              v-if="analysisTraceId(record)"
+              :content="analysisTraceId(record)"
+              copyable
+            />
+            <span v-else class="text-muted">{{ analysisTraceText(record) }}</span>
           </a-descriptions-item>
-          <a-descriptions-item v-if="record.errorMessage" label="错误信息" :span="3">
-            <a-typography-text type="danger">{{ record.errorMessage }}</a-typography-text>
+          <a-descriptions-item v-if="record.errorMessage" label="分析处理说明" :span="3">
+            <a-typography-text type="danger">
+              {{ analysisFailureMessage(record.errorMessage) }}
+            </a-typography-text>
           </a-descriptions-item>
         </a-descriptions>
 
@@ -53,25 +59,31 @@
               <a-list-item>
                 <div class="analysis-item">
                   <div class="analysis-item__header">
-                    <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
+                    <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span class="analysis-item__title">
-                      {{ item.clusterName || item.questionType || '错因聚类' }}
+                      {{ item.causeName || item.questionType || '错因聚类' }}
                     </span>
-                    <span v-if="item.studentCount != null" class="analysis-item__metric">
-                      涉及学生 {{ item.studentCount }} 人
+                    <span v-if="item.affectedCount != null" class="analysis-item__metric">
+                      涉及学生 {{ item.affectedCount }} 人
                     </span>
                   </div>
-                  <a-typography-paragraph v-if="item.causeAnalysis" class="analysis-item__text">
-                    <strong>原因分析：</strong>{{ item.causeAnalysis }}
+                  <a-typography-paragraph v-if="item.causeDescription" class="analysis-item__text">
+                    <strong>原因描述：</strong>{{ item.causeDescription }}
                   </a-typography-paragraph>
-                  <a-typography-paragraph v-if="item.suggestion" class="analysis-item__text">
-                    <strong>改进建议：</strong>{{ item.suggestion }}
-                  </a-typography-paragraph>
-                  <div
-                    v-if="item.affectedQuestionNos && item.affectedQuestionNos.length > 0"
+                  <a-typography-paragraph
+                    v-if="item.proportion != null"
                     class="analysis-item__text"
                   >
-                    <strong>关联题号：</strong>{{ item.affectedQuestionNos.join(', ') }}
+                    <strong>占比：</strong>{{ formatPercent(item.proportion) }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.suggestion" class="analysis-item__text">
+                    <strong>改进内容：</strong>{{ item.suggestion }}
+                  </a-typography-paragraph>
+                  <div
+                    v-if="item.typicalExamples && item.typicalExamples.length > 0"
+                    class="analysis-item__text"
+                  >
+                    <strong>典型样例：</strong>{{ item.typicalExamples.join('；') }}
                   </div>
                 </div>
               </a-list-item>
@@ -85,39 +97,100 @@
 
 <script lang="ts" setup>
 import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)
 const generating = ref(false)
 // D-9 错误态：AI 错因聚类加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 
 const clusterItems = computed(() => record.value?.clusterItems ?? [])
+
+function analysisFailureMessage(errorMessage?: string): string {
+  return getUserProcessFailureMessage(errorMessage, 'AI 错因聚类分析未完成，请稍后重新生成')
+}
+
+function acceptErrorCauseClusterRecord(
+  value: ExamErrorCauseClusterVO | null,
+): ExamErrorCauseClusterVO | null {
+  if (!value) return null
+  if (value.examId !== props.examId) throw new Error('AI 错因聚类考试 ID 与当前考试不一致')
+  if (!value.createTime?.trim()) throw new Error('AI 错因聚类缺失生成时间')
+  if (value.analysisStatus === 'SUCCESS') {
+    if (!value.aiTraceId?.trim()) throw new Error('AI 错因聚类成功但缺失追踪编号')
+    if (typeof value.latencyMs !== 'number') throw new Error('AI 错因聚类成功但缺失生成耗时')
+    if (typeof value.clusterCount !== 'number') throw new Error('AI 错因聚类成功但缺失聚类数')
+    if (!value.overallSummary?.trim()) throw new Error('AI 错因聚类成功但缺失总体摘要')
+    if (!value.clusterItems?.length) throw new Error('AI 错因聚类成功但缺失聚类明细')
+  }
+  if (
+    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') &&
+    !value.errorMessage?.trim()
+  ) {
+    throw new Error('AI 错因聚类失败但缺失处理说明')
+  }
+  return value
+}
+
+function clusterCountText(value: ExamErrorCauseClusterVO): string {
+  if (typeof value.clusterCount === 'number') return String(value.clusterCount)
+  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成聚类'
+  if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
+  throw new Error('AI 错因聚类成功但缺失聚类数')
+}
+
+function analysisCreateTimeText(value: ExamErrorCauseClusterVO): string {
+  if (!value.createTime?.trim()) throw new Error('AI 错因聚类缺失生成时间')
+  return formatDateTime(value.createTime)
+}
+
+function analysisLatencyText(value: ExamErrorCauseClusterVO): string {
+  if (typeof value.latencyMs === 'number') return `${value.latencyMs} ms`
+  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
+  throw new Error('AI 错因聚类成功但缺失生成耗时')
+}
+
+function analysisTraceId(value: ExamErrorCauseClusterVO): string | undefined {
+  return value.aiTraceId?.trim() || undefined
+}
+
+function analysisTraceText(value: ExamErrorCauseClusterVO): string {
+  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
+  throw new Error('AI 错因聚类成功但缺失追踪编号')
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`
+}
 
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   loadError.value = null
   try {
-    record.value = await getLatestErrorCauseCluster(props.examId)
+    const latest = await getLatestErrorCauseCluster(props.examId)
+    record.value = acceptErrorCauseClusterRecord(latest)
   } catch (e) {
     record.value = null
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '加载失败')
+    loadError.value = toUserError(e, '错因聚类分析加载失败')
+    showUserError(e, '错因聚类分析加载失败')
   } finally {
     loading.value = false
   }
@@ -125,11 +198,15 @@ async function reload(): Promise<void> {
 
 async function handleGenerate(): Promise<void> {
   generating.value = true
+  loadError.value = null
   try {
-    record.value = await generateErrorCauseCluster(props.examId)
+    const generated = await generateErrorCauseCluster(props.examId)
+    record.value = acceptErrorCauseClusterRecord(generated)
     message.success('已生成最新错因聚类')
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '生成失败')
+    record.value = null
+    loadError.value = toUserError(e, '错因聚类分析生成失败')
+    showUserError(e, '错因聚类分析生成失败')
   } finally {
     generating.value = false
   }

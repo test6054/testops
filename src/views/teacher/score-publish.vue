@@ -64,8 +64,8 @@
       <UiErrorRetryPanel
         v-if="candidatesLoadError"
         :error="candidatesLoadError"
-        title="成绩汇总加载失败"
-        :helper="`考试 ID：${selectedExamId}`"
+        title="成绩发布名单加载失败"
+        :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
         compact
         @retry="loadCandidates"
       />
@@ -121,8 +121,16 @@
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'studentName'">
-              <a-typography-text strong :content="candidates[index].studentName" />
+            <template v-if="column.key === 'paperDisplay'">
+              <div class="score-publish__identity-cell">
+                <a-typography-text strong :content="candidates[index].paperDisplay.primaryText" />
+                <span
+                  v-if="candidates[index].paperDisplay.secondaryText"
+                  class="score-publish__hint"
+                >
+                  {{ candidates[index].paperDisplay.secondaryText }}
+                </span>
+              </div>
             </template>
             <template v-else-if="column.key === 'finalScore'">
               <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
@@ -163,17 +171,6 @@
                 >
                   撤回
                 </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :disabled="
-                    !candidates[index].paperInstanceId
-                      || candidates[index].finalScoreStatus !== 'PUBLISHED'
-                  "
-                  @click="handleDeanonymize(candidates[index])"
-                >
-                  解匿名
-                </UiButton>
               </a-space>
             </template>
           </template>
@@ -194,14 +191,11 @@
         <UiEmpty v-if="!paperScore" description="暂无成绩明细" />
         <div v-else>
           <a-descriptions :column="2" size="small" bordered class="score-publish__detail-summary">
-            <a-descriptions-item label="考生">
-              {{ detailCandidate?.studentName }}（{{ detailCandidate?.studentNo }}）
+            <a-descriptions-item label="答卷">
+              {{ detailCandidate?.paperDisplay.primaryText }}
             </a-descriptions-item>
             <a-descriptions-item label="班级">
               {{ detailCandidate?.studentClassName }}
-            </a-descriptions-item>
-            <a-descriptions-item label="试卷实例">
-              <a-typography-text :content="paperScore.paperInstanceId" copyable />
             </a-descriptions-item>
             <a-descriptions-item label="总分">
               <a-typography-text strong type="success">
@@ -229,9 +223,9 @@
               <template v-if="column.key === 'questionNo'">
                 <UiTag tone="blue" size="sm">{{ paperQuestions[index].questionNo }}</UiTag>
               </template>
-              <template v-else-if="column.key === 'finalScore'">
-                <a-typography-text v-if="paperQuestions[index].finalScore != null" strong>
-                  {{ paperQuestions[index].finalScore }}
+              <template v-else-if="column.key === 'teacherReviewScore'">
+                <a-typography-text v-if="paperQuestions[index].teacherReviewScore != null" strong>
+                  {{ paperQuestions[index].teacherReviewScore }}
                 </a-typography-text>
                 <span v-else class="score-publish__hint">-</span>
               </template>
@@ -261,7 +255,7 @@
         />
         <a-form-item label="考生">
           <a-input
-            :value="withdrawCandidate ? `${withdrawCandidate.studentName}（${withdrawCandidate.studentNo}）` : ''"
+            :value="withdrawCandidate ? withdrawCandidate.paperDisplay.primaryText : ''"
             disabled
           />
         </a-form-item>
@@ -317,8 +311,7 @@
           <a-list-item>
             <a-list-item-meta>
               <template #title>
-                {{ item.studentName }}
-                <span class="score-publish__hint">（{{ item.studentNo }}）</span>
+                {{ item.paperDisplay.primaryText }}
               </template>
               <template #description>
                 <span>当前 {{ finalScoreStatusLabel(item.finalScoreStatus) }}</span>
@@ -349,6 +342,15 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
+import {
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_OPTIONS,
+  FINAL_SCORE_STATUS_TONE,
+  getPaperScore,
+  pageExamScoreSummary,
+  publishFinalScore,
+  withdrawFinalScore,
+} from '@/apis/mark/exam'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -356,15 +358,6 @@ import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  deanonymizePaper,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  getPaperScore,
-  pageExamScoreSummary,
-  publishFinalScore,
-  withdrawFinalScore,
-} from '@/apis/mark/exam'
 import {
   UiAlertStrip,
   UiBadge,
@@ -380,6 +373,7 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -393,11 +387,7 @@ function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
   return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, value, '最终成绩状态')
 }
 
-// 从后端枚举 LABEL 对象直接派生 select options。
-const statusOptions = Object.entries(FINAL_SCORE_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const statusOptions = FINAL_SCORE_STATUS_OPTIONS
 
 const router = useRouter()
 
@@ -405,6 +395,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -414,8 +405,8 @@ const markStageStore = useMarkStageStore()
 // ─── 数据加载（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemVO[]>([])
 const loading = ref(false)
-// D-9 错误态：捕获 loadCandidates 失败原因，给 UiErrorRetryPanel 渲染重试 + 上报入口
-const candidatesLoadError = ref<unknown>(null)
+// D-9 错误态：捕获 loadCandidates 加载失败，给 UiErrorRetryPanel 渲染重试 + 上报入口
+const candidatesLoadError = ref<Error | null>(null)
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
@@ -428,15 +419,13 @@ const pagination = reactive<TablePaginationConfig>({
 })
 
 const columns: ColumnType<ExamScoreSummaryItemVO>[] = [
-  { title: '学号', dataIndex: 'studentNo', key: 'studentNo', width: 140 },
-  { title: '姓名', key: 'studentName', width: 120 },
+  { title: '答卷', key: 'paperDisplay', width: 220 },
   { title: '班级', dataIndex: 'studentClassName', key: 'studentClassName', width: 160 },
-  { title: '最终分', key: 'finalScore', width: 110 },
-  { title: '最终状态', key: 'finalScoreStatus', width: 110 },
+  { title: '教师复核评分', key: 'finalScore', width: 120 },
+  { title: '成绩状态', key: 'finalScoreStatus', width: 110 },
   { title: '确认时间', key: 'confirmedTime', width: 170 },
   { title: '操作', key: 'actions', width: 320, fixed: 'right' },
 ]
-
 
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
@@ -455,11 +444,13 @@ async function loadCandidates(): Promise<void> {
       throw new TypeError('成绩发布候选列表响应缺少 list 数组')
     }
     candidates.value = result.list
-    pagination.total = result.total
+    pagination.total = Number(result.total)
   } catch (error) {
-    candidatesLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '成绩汇总加载失败'
-    message.error(errMsg)
+    candidatesLoadError.value =
+      error instanceof Error
+        ? error
+        : new Error(getUserErrorMessage(error, '成绩发布名单加载失败，请稍后重试'))
+    showUserError(error, '成绩发布名单加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -477,9 +468,9 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }): void {
-  pagination.current = payload.current
-  pagination.pageSize = payload.pageSize
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
 }
 function goFinalize(): void {
@@ -540,7 +531,7 @@ async function runBulkPublish(): Promise<void> {
   for (let i = 0; i < targets.length; i += 1) {
     const item = targets[i]
     if (!item.paperInstanceId) {
-      bulkErrors.value[i] = '缺少 paperInstanceId'
+      bulkErrors.value[i] = '该考生暂未关联可发布的试卷'
       bulkProgress.failed += 1
       continue
     }
@@ -552,7 +543,7 @@ async function runBulkPublish(): Promise<void> {
       bulkSuccess.value[i] = true
       bulkProgress.completed += 1
     } catch (err) {
-      bulkErrors.value[i] = err instanceof Error ? err.message : '发布失败'
+      bulkErrors.value[i] = getUserErrorMessage(err, '成绩发布失败')
       bulkProgress.failed += 1
     }
   }
@@ -685,8 +676,7 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
     message.success('成绩已发布，学生通知已下发')
     await loadCandidates()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '成绩发布失败'
-    message.error(errMsg)
+    showUserError(error, '成绩发布失败')
   }
 }
 
@@ -720,27 +710,9 @@ async function handleWithdraw(): Promise<void> {
     withdrawOpen.value = false
     await loadCandidates()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '成绩撤回失败'
-    message.error(errMsg)
+    showUserError(error, '成绩撤回失败')
   } finally {
     withdrawing.value = false
-  }
-}
-
-// ─── 解匿名 ─────────────────────────────
-async function handleDeanonymize(record: ExamScoreSummaryItemVO): Promise<void> {
-  if (!selectedExamId.value || !record.paperInstanceId) return
-  try {
-    const result = await deanonymizePaper({
-      examId: selectedExamId.value,
-      paperInstanceId: record.paperInstanceId,
-      revealScenario: 'SCORE_PUBLISH_REVIEW',
-      reason: '成绩发布列表查看考生身份',
-    })
-    message.success(`解匿名成功：${result.studentName}（${result.studentNo}）`)
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '解匿名失败'
-    message.error(errMsg)
   }
 }
 
@@ -750,14 +722,14 @@ const detailLoading = ref(false)
 const detailCandidate = ref<ExamScoreSummaryItemVO | null>(null)
 const paperScore = ref<ExamPaperScoreVO | null>(null)
 
-// computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record:any。
+// computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record 类型丢失。
 const paperQuestions = computed<ExamQuestionScoreVO[]>(() => paperScore.value?.questions ?? [])
 
 const paperItemColumns: ColumnType<ExamQuestionScoreVO>[] = [
   { title: '题号', key: 'questionNo', width: 80 },
   { title: '题型', dataIndex: 'questionType', key: 'questionType', width: 100 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
-  { title: '最终得分', key: 'finalScore', width: 100 },
+  { title: '题目得分', key: 'teacherReviewScore', width: 100 },
   { title: '状态', dataIndex: 'gradeStatus', key: 'gradeStatus', width: 110 },
 ]
 
@@ -770,8 +742,7 @@ async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
   try {
     paperScore.value = await getPaperScore(selectedExamId.value, record.paperInstanceId)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '成绩明细加载失败'
-    message.error(errMsg)
+    showUserError(error, '成绩明细加载失败')
   } finally {
     detailLoading.value = false
   }

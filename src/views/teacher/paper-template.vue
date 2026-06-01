@@ -14,12 +14,8 @@
             allow-clear
             @change="handleExamChange"
           />
-          <UiTag
-            v-if="selectedExamId"
-            :tone="pages.length === (form.totalPages ?? -1) ? 'green' : 'orange'"
-            size="sm"
-          >
-            {{ pages.length }} / {{ form.totalPages ?? '-' }} 页
+          <UiTag v-if="selectedExamId" :tone="pageCountMatched ? 'green' : 'orange'" size="sm">
+            {{ pages.length }} / {{ totalPagesLabel }} 页
           </UiTag>
           <UiTag v-if="selectedExamId" tone="blue" size="sm">
             {{ questions.length }} 题 · 总分 {{ totalScore }}
@@ -45,7 +41,7 @@
       v-else-if="templateLoadError"
       :error="templateLoadError"
       title="题目模板加载失败"
-      :helper="`考试 ID：${selectedExamId}`"
+      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
       @retry="loadTemplate"
     />
 
@@ -79,8 +75,8 @@
         <template #title>
           <FileImageOutlined />
           <span>页面文件配置</span>
-          <UiBadge :tone="pages.length === (form.totalPages ?? -1) ? 'green' : 'orange'">
-            {{ pages.length }} / {{ form.totalPages ?? '-' }}
+          <UiBadge :tone="pageCountMatched ? 'green' : 'orange'">
+            {{ pages.length }} / {{ totalPagesLabel }}
           </UiBadge>
         </template>
         <template #extra>
@@ -288,116 +284,149 @@
   <a-modal
     v-model:open="answerModalOpen"
     title="录入标准答案"
-    :confirm-loading="answerSaving"
+    :confirm-loading="answerSaving || answerLoading"
     :destroy-on-close="true"
     :mask-closable="false"
     width="640px"
     @ok="handleSaveAnswer"
   >
-    <a-form ref="answerFormRef" :model="answerForm" layout="vertical" :rules="answerFormRules">
-      <a-form-item label="题号">
-        <a-input :value="answerContext.questionNo" disabled />
-      </a-form-item>
-      <a-form-item label="题型">
-        <a-input :value="answerContextQuestionTypeLabel" disabled />
-      </a-form-item>
-      <a-form-item label="标准答案" name="standardAnswer">
-        <a-textarea
-          v-model:value="answerForm.standardAnswer"
-          :rows="3"
-          :maxlength="2000"
-          :placeholder="standardAnswerPlaceholder"
-          show-count
-        />
-      </a-form-item>
-      <a-form-item
-        v-if="answerContext.questionType === 'OBJECTIVE'"
-        label="比较策略"
-        name="comparePolicy"
-      >
-        <a-select
-          v-model:value="answerForm.comparePolicy"
-          :options="OBJECTIVE_COMPARE_POLICY_OPTIONS"
-          placeholder="选择客观题评分策略（必选）"
-          allow-clear
-        />
-      </a-form-item>
-      <a-form-item label="答案解析">
-        <a-textarea
-          v-model:value="answerForm.answerExplain"
-          :rows="3"
-          :maxlength="1000"
-          placeholder="供学生查看的解析说明（可选）"
-        />
-      </a-form-item>
-      <a-form-item label="AI 评分提示">
-        <a-textarea
-          v-model:value="answerForm.aiHint"
-          :rows="2"
-          :maxlength="1000"
-          placeholder="主观题给 AI 的额外评分提示（可选）"
-        />
-      </a-form-item>
-      <a-form-item
-        v-if="
-          answerContext.questionType === 'OBJECTIVE'
-            && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
-        "
-        label="标准值"
-        name="numericExpectedValue"
-      >
-        <a-input
-          v-model:value="answerForm.numericExpectedValue"
-          :maxlength="100"
-          placeholder="请输入数值题标准值"
-        />
-      </a-form-item>
-      <a-form-item
-        v-if="
-          answerContext.questionType === 'OBJECTIVE'
-            && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
-        "
-        label="容差"
-        name="numericTolerance"
-      >
-        <a-input
-          v-model:value="answerForm.numericTolerance"
-          :maxlength="100"
-          placeholder="请输入允许误差范围"
-        />
-      </a-form-item>
-      <a-form-item
-        v-if="
-          answerContext.questionType === 'OBJECTIVE'
-            && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
-        "
-        label="单位"
-      >
-        <a-input
-          v-model:value="answerForm.numericUnit"
-          :maxlength="100"
-          placeholder="请输入单位，可留空"
-        />
-      </a-form-item>
-      <a-form-item
-        v-if="answerContext.questionType === 'OBJECTIVE' && answerForm.comparePolicy === 'AI_GRADE'"
-        label="AI 评分细则"
-        name="gradingRubric"
-      >
-        <a-textarea
-          v-model:value="answerForm.gradingRubric"
-          :rows="4"
-          :maxlength="2000"
-          placeholder="请录入 AI 评分细则，明确给分点、扣分点和判分边界"
-          show-count
-        />
-      </a-form-item>
-      <a-form-item>
-        <a-checkbox v-model:checked="answerForm.effectiveNow">
-          立即生效（取消勾选则保存为草稿状态）
-        </a-checkbox>
-      </a-form-item>
-    </a-form>
+    <a-spin :spinning="answerLoading">
+      <a-form ref="answerFormRef" :model="answerForm" layout="vertical" :rules="answerFormRules">
+        <a-form-item label="题号">
+          <a-input :value="answerContext.questionNo" disabled />
+        </a-form-item>
+        <a-form-item label="题型">
+          <a-input :value="answerContextQuestionTypeLabel" disabled />
+        </a-form-item>
+        <a-form-item
+          v-if="answerContext.questionType === 'OBJECTIVE'"
+          label="比较策略"
+          name="comparePolicy"
+        >
+          <a-select
+            v-model:value="answerForm.comparePolicy"
+            :options="OBJECTIVE_COMPARE_POLICY_OPTIONS"
+            placeholder="选择客观题评分策略（必选）"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item
+          v-if="
+            answerContext.questionType === 'OBJECTIVE' && answerForm.comparePolicy === 'CHOICE_SET'
+          "
+          label="正确选项"
+          name="choiceAnswers"
+        >
+          <a-alert
+            v-if="answerChoiceOptions.length === 0"
+            type="warning"
+            show-icon
+            message="当前题目尚未配置客观题填涂区，不能录入选择题集合答案"
+            style="margin-bottom: 12px"
+          />
+          <a-checkbox-group
+            v-else
+            v-model:value="answerForm.choiceAnswers"
+            :options="answerChoiceOptions"
+            class="answer-choice-grid"
+          />
+        </a-form-item>
+        <a-form-item
+          v-if="
+            answerContext.questionType === 'SUBJECTIVE' ||
+            answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
+            answerForm.comparePolicy === 'REGEX'
+          "
+          :label="answerTextLabel"
+          name="standardAnswer"
+        >
+          <a-textarea
+            v-model:value="answerForm.standardAnswer"
+            :rows="3"
+            :maxlength="2000"
+            :placeholder="answerTextPlaceholder"
+            show-count
+          />
+        </a-form-item>
+        <a-form-item label="答案解析">
+          <a-textarea
+            v-model:value="answerForm.answerExplain"
+            :rows="3"
+            :maxlength="1000"
+            placeholder="供学生查看的解析说明（可选）"
+          />
+        </a-form-item>
+        <a-form-item label="AI 评分提示">
+          <a-textarea
+            v-model:value="answerForm.aiHint"
+            :rows="2"
+            :maxlength="1000"
+            placeholder="主观题给 AI 的额外评分提示（可选）"
+          />
+        </a-form-item>
+        <a-form-item
+          v-if="
+            answerContext.questionType === 'OBJECTIVE' &&
+            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          "
+          label="标准值"
+          name="numericExpectedValue"
+        >
+          <a-input
+            v-model:value="answerForm.numericExpectedValue"
+            :maxlength="100"
+            placeholder="请输入数值题标准值"
+          />
+        </a-form-item>
+        <a-form-item
+          v-if="
+            answerContext.questionType === 'OBJECTIVE' &&
+            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          "
+          label="容差"
+          name="numericTolerance"
+        >
+          <a-input
+            v-model:value="answerForm.numericTolerance"
+            :maxlength="100"
+            placeholder="请输入允许误差范围"
+          />
+        </a-form-item>
+        <a-form-item
+          v-if="
+            answerContext.questionType === 'OBJECTIVE' &&
+            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          "
+          label="单位"
+        >
+          <a-input
+            v-model:value="answerForm.numericUnit"
+            :maxlength="100"
+            placeholder="请输入单位，可留空"
+          />
+        </a-form-item>
+        <a-form-item
+          v-if="
+            answerContext.questionType === 'OBJECTIVE' && answerForm.comparePolicy === 'AI_GRADE'
+          "
+          label="AI 评分细则"
+          name="gradingRubric"
+        >
+          <a-textarea
+            v-model:value="answerForm.gradingRubric"
+            :rows="4"
+            :maxlength="2000"
+            placeholder="请录入 AI 评分细则，明确给分点、扣分点和判分边界"
+            show-count
+          />
+        </a-form-item>
+        <a-form-item>
+          <a-checkbox v-model:checked="answerForm.effectiveNow">
+            立即生效（取消勾选则保存为草稿状态）
+          </a-checkbox>
+        </a-form-item>
+      </a-form>
+    </a-spin>
   </a-modal>
 
   <a-modal
@@ -427,15 +456,29 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExamPageTemplatePayload,
+  ExamPageTemplateRequest,
   ExamPaperPageTemplateVO,
-  ExamQuestionTemplatePayload,
+  ExamQuestionStandardAnswerOptionRequest,
+  ExamQuestionTemplateRequest,
   ExamQuestionTemplateVO,
+  ExamStandardAnswerVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
+import {
+  getExamTemplate,
+  getStandardAnswer,
+  isPaperTemplateNotConfiguredError,
+  OBJECTIVE_COMPARE_POLICY_OPTIONS,
+  saveExamTemplate,
+  saveStandardAnswer,
+} from '@/apis/mark/exam'
 import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import type { PaperMasterObjectiveOptionVO } from '@/apis/mark/paper-master'
+import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -445,14 +488,6 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
-import {
-  getExamTemplate,
-  isPaperTemplateNotConfiguredError,
-  OBJECTIVE_COMPARE_POLICY_OPTIONS,
-  saveExamTemplate,
-  saveStandardAnswer,
-} from '@/apis/mark/exam'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   UiBadge,
   UiButton,
@@ -464,6 +499,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperTemplate' })
@@ -473,6 +509,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -503,6 +540,11 @@ interface QuestionRow {
   questionStem?: string
 }
 
+interface ObjectiveOptionRow {
+  questionTemplateId: string
+  options: PaperMasterObjectiveOptionVO[]
+}
+
 const questionTypeOptions = [
   { label: '客观题', value: 'OBJECTIVE' as const },
   { label: '主观题', value: 'SUBJECTIVE' as const },
@@ -521,20 +563,27 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
 const pages = reactive<PageRow[]>([])
 const questions = reactive<QuestionRow[]>([])
+const objectiveOptions = reactive<ObjectiveOptionRow[]>([])
 
 const loading = ref(false)
 const saving = ref(false)
 // D-9 错误态：仅当后端返回非“未配置”类错误时才上报（“未配置模板”是合法空态）
-const templateLoadError = ref<unknown>(null)
+const templateLoadError = ref<Error | null>(null)
 
 const totalScore = computed(() =>
   questions.reduce((sum, row) => sum + (Number(row.fullScore) || 0), 0).toFixed(2),
+)
+const totalPagesLabel = computed(() =>
+  typeof form.totalPages === 'number' ? String(form.totalPages) : '未填写总页数',
+)
+const pageCountMatched = computed(
+  () => typeof form.totalPages === 'number' && pages.length === form.totalPages,
 )
 
 const pageColumns: ColumnType<PageRow>[] = [
@@ -564,6 +613,7 @@ function clearTemplate(): void {
   form.totalPages = undefined
   pages.splice(0, pages.length)
   questions.splice(0, questions.length)
+  objectiveOptions.splice(0, objectiveOptions.length)
 }
 
 function applyTemplate(
@@ -610,21 +660,46 @@ async function loadTemplate(): Promise<void> {
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
     applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
+    objectiveOptions.splice(0, objectiveOptions.length)
+    try {
+      const master = await getPaperMaster(selectedExamId.value)
+      master.objectiveAreas.forEach((area) => {
+        objectiveOptions.push({
+          questionTemplateId: area.questionTemplateId,
+          options: area.options.map((option) => ({
+            optionId: option.optionId,
+            optionLabel: option.optionLabel,
+            sortNo: option.sortNo,
+          })),
+        })
+      })
+    } catch (error) {
+      if (!(error instanceof Error)) {
+        throw error
+      }
+      if (!isPaperMasterNotConfiguredError(error)) {
+        message.warning(
+          getUserErrorMessage(error, '客观题选项空间读取失败，选择题集合答案暂不可录入'),
+        )
+      }
+    }
   } catch (error) {
     clearTemplate()
+    if (!(error instanceof Error)) {
+      throw error
+    }
     if (!isPaperTemplateNotConfiguredError(error)) {
       // 真实加载失败：D-9 错误态 + 警告提示
-      templateLoadError.value = error
-      const errMsg = error instanceof Error ? error.message : '未知错误'
-      message.warning(`当前考试尚未配置完整模板：${errMsg}`)
+      templateLoadError.value = toUserError(error, '试卷模板加载失败')
+      message.warning(getUserErrorMessage(error, '题目模板加载失败，请稍后重试'))
     }
   } finally {
     loading.value = false
   }
 }
 
-function handleExamChange(value: unknown): void {
-  onExamChange(value as string | number | undefined)
+function handleExamChange(value: SelectValue): void {
+  onExamChange(value)
   if (selectedExamId.value) {
     void loadTemplate()
   } else {
@@ -653,8 +728,7 @@ async function handleUploadPage(file: File, index: number): Promise<boolean> {
     row.templateFileName = result.nodeName || file.name
     message.success(`第 ${row.pageNo ?? index + 1} 页文件已上传`)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '上传失败'
-    message.error(errMsg)
+    showUserError(error, '模板文件上传失败')
   } finally {
     row.uploading = false
   }
@@ -677,9 +751,9 @@ function removeQuestion(index: number): void {
   questions.splice(index, 1)
 }
 
-function buildPagesPayload(): ExamPageTemplatePayload[] | null {
-  const total = form.totalPages ?? 0
-  if (total <= 0) {
+function buildPagesRequest(): ExamPageTemplateRequest[] | null {
+  const total = form.totalPages
+  if (typeof total !== 'number' || total <= 0) {
     message.error('请填写总页数')
     return null
   }
@@ -689,7 +763,7 @@ function buildPagesPayload(): ExamPageTemplatePayload[] | null {
   }
   const seenPageNo = new Set<number>()
   const seenFileId = new Set<string>()
-  const payload: ExamPageTemplatePayload[] = []
+  const request: ExamPageTemplateRequest[] = []
   for (let i = 0; i < pages.length; i += 1) {
     const row = pages[i]
     if (!row.pageNo || row.pageNo <= 0) {
@@ -722,24 +796,24 @@ function buildPagesPayload(): ExamPageTemplatePayload[] | null {
       message.error(`第 ${i + 1} 行：高度像素必填且大于 0`)
       return null
     }
-    payload.push({
+    request.push({
       pageNo: row.pageNo,
       templateFileId: row.templateFileId,
       widthPx: row.widthPx,
       heightPx: row.heightPx,
     })
   }
-  return payload
+  return request
 }
 
-function buildQuestionsPayload(): ExamQuestionTemplatePayload[] | null {
+function buildQuestionsRequest(): ExamQuestionTemplateRequest[] | null {
   if (questions.length === 0) {
     message.error('题目列表不能为空')
     return null
   }
   const seenNo = new Set<string>()
   const seenSort = new Set<number>()
-  const payload: ExamQuestionTemplatePayload[] = []
+  const request: ExamQuestionTemplateRequest[] = []
   for (let i = 0; i < questions.length; i += 1) {
     const row = questions[i]
     const no = row.questionNo.trim()
@@ -769,7 +843,7 @@ function buildQuestionsPayload(): ExamQuestionTemplatePayload[] | null {
       return null
     }
     seenSort.add(row.sortNo)
-    payload.push({
+    request.push({
       questionNo: no,
       questionType: row.questionType,
       fullScore: row.fullScore,
@@ -782,7 +856,7 @@ function buildQuestionsPayload(): ExamQuestionTemplatePayload[] | null {
       questionStem: row.questionStem?.trim() || undefined,
     })
   }
-  return payload
+  return request
 }
 
 async function handleSave(): Promise<void> {
@@ -796,10 +870,10 @@ async function handleSave(): Promise<void> {
     message.error('总页数必填且大于 0')
     return
   }
-  const pagesPayload = buildPagesPayload()
-  if (pagesPayload === null) return
-  const questionsPayload = buildQuestionsPayload()
-  if (questionsPayload === null) return
+  const pagesRequest = buildPagesRequest()
+  if (pagesRequest === null) return
+  const questionsRequest = buildQuestionsRequest()
+  if (questionsRequest === null) return
 
   saving.value = true
   try {
@@ -807,14 +881,14 @@ async function handleSave(): Promise<void> {
       examId: selectedExamId.value,
       templateName: name,
       totalPages: form.totalPages,
-      pages: pagesPayload,
-      questions: questionsPayload,
+      pages: pagesRequest,
+      questions: questionsRequest,
+      subjectiveAnonymityMode: 'ANONYMOUS',
     })
     message.success('试卷模板已保存')
     await loadTemplate()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '保存模板失败'
-    message.error(errMsg)
+    showUserError(error, '试卷模板保存失败')
   } finally {
     saving.value = false
   }
@@ -828,6 +902,7 @@ interface AnswerContext {
 
 const answerModalOpen = ref(false)
 const answerSaving = ref(false)
+const answerLoading = ref(false)
 const answerFormRef = ref<FormInstance>()
 const answerContext = reactive<AnswerContext>({
   questionTemplateId: undefined,
@@ -840,6 +915,7 @@ const answerContextQuestionTypeLabel = computed(() => {
 })
 const answerForm = reactive<{
   standardAnswer: string
+  choiceAnswers: string[]
   comparePolicy?: ObjectiveComparePolicyCode
   answerExplain?: string
   numericExpectedValue?: string
@@ -850,6 +926,7 @@ const answerForm = reactive<{
   effectiveNow: boolean
 }>({
   standardAnswer: '',
+  choiceAnswers: [],
   comparePolicy: undefined,
   answerExplain: '',
   numericExpectedValue: '',
@@ -861,13 +938,37 @@ const answerForm = reactive<{
 })
 
 /**
- * 标答输入框的占位提示。客观题 AI_GRADE 策略下允许不填标答，由 AI 评分给出建议得分后老师审核。
+ * 当前题目的母版选项空间，选择题集合策略必须从这里点选，避免老师手工拼接技术格式。
  */
-const standardAnswerPlaceholder = computed(() => {
-  if (answerContext.questionType === 'OBJECTIVE' && answerForm.comparePolicy === 'AI_GRADE') {
-    return '客观题 AI 评分策略下可不填标答；AI 会依据考试上下文给出建议得分，老师审核后生效'
+const answerChoiceOptions = computed(() => {
+  if (!answerContext.questionTemplateId) return []
+  const optionRow = objectiveOptions.find(
+    (item) => item.questionTemplateId === answerContext.questionTemplateId,
+  )
+  if (!optionRow) return []
+  return optionRow.options
+    .slice()
+    .sort((left, right) => left.sortNo - right.sortNo)
+    .map((option) => ({
+      label: option.optionLabel,
+      value: option.optionLabel,
+    }))
+})
+
+const answerTextLabel = computed(() => {
+  if (answerContext.questionType === 'SUBJECTIVE') return '参考答案要点'
+  if (answerForm.comparePolicy === 'REGEX') return '答案匹配规则'
+  return '规范答案文本'
+})
+
+const answerTextPlaceholder = computed(() => {
+  if (answerContext.questionType === 'SUBJECTIVE') {
+    return '录入老师给学生查看的参考答案要点，可按自然语言分行说明'
   }
-  return '客观题填写选项（如 A / AB / 1 / 0），主观题填写参考答案要点'
+  if (answerForm.comparePolicy === 'REGEX') {
+    return '录入正则表达式，仅用于需要模式匹配的客观题'
+  }
+  return '录入可直接规范化比较的答案文本，例如填空题的标准词句'
 })
 
 const answerFormRules: Record<string, Rule[]> = {
@@ -876,11 +977,12 @@ const answerFormRules: Record<string, Rule[]> = {
       validator: async (_rule: Rule, value: string) => {
         const trimmed = (value ?? '').trim()
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy !== 'AI_GRADE'
-          && !trimmed
+          answerContext.questionType === 'OBJECTIVE' &&
+          (answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
+            answerForm.comparePolicy === 'REGEX') &&
+          !trimmed
         ) {
-          return Promise.reject(new Error('客观题需填写标准答案（选 AI 评分策略可留空）'))
+          return Promise.reject(new Error('当前评分策略必须填写答案文本'))
         }
         if (trimmed.length > 2000) {
           return Promise.reject(new Error('标准答案最多 2000 个字符'))
@@ -888,6 +990,21 @@ const answerFormRules: Record<string, Rule[]> = {
         return Promise.resolve()
       },
       trigger: 'blur',
+    },
+  ],
+  choiceAnswers: [
+    {
+      validator: async (_rule: Rule, value: string[]) => {
+        if (
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'CHOICE_SET' &&
+          (!Array.isArray(value) || value.length === 0)
+        ) {
+          return Promise.reject(new Error('请选择至少一个正确选项'))
+        }
+        return Promise.resolve()
+      },
+      trigger: 'change',
     },
   ],
   comparePolicy: [
@@ -905,9 +1022,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
-          && !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
+          !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写标准值'))
         }
@@ -920,9 +1037,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
-          && !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
+          !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写容差'))
         }
@@ -935,9 +1052,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy === 'AI_GRADE'
-          && !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'AI_GRADE' &&
+          !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('AI 评分策略必须填写评分细则'))
         }
@@ -981,15 +1098,16 @@ function handleSaveStem(): void {
 }
 
 // 入参就是表格 data-source（QuestionRow[]）中的真实视图模型，不是后端 ExamQuestionTemplateVO。
-function openAnswerModal(row: QuestionRow): void {
+async function openAnswerModal(row: QuestionRow): Promise<void> {
   if (!row.questionTemplateId) {
-    message.warning('请先保存模板，待题目获得 ID 后再录入标准答案')
+    message.warning('请先保存模板，题目编号生成后再录入标准答案')
     return
   }
   answerContext.questionTemplateId = row.questionTemplateId
   answerContext.questionNo = row.questionNo
   answerContext.questionType = row.questionType
   answerForm.standardAnswer = ''
+  answerForm.choiceAnswers = []
   answerForm.comparePolicy = undefined
   answerForm.answerExplain = ''
   answerForm.numericExpectedValue = ''
@@ -999,6 +1117,44 @@ function openAnswerModal(row: QuestionRow): void {
   answerForm.aiHint = ''
   answerForm.effectiveNow = true
   answerModalOpen.value = true
+  if (!selectedExamId.value) return
+  answerLoading.value = true
+  try {
+    const currentAnswer: ExamStandardAnswerVO | null = await getStandardAnswer({
+      examId: selectedExamId.value,
+      questionTemplateId: row.questionTemplateId,
+    })
+    if (currentAnswer == null) {
+      return
+    }
+    answerForm.standardAnswer = currentAnswer.standardAnswer ?? ''
+    answerForm.comparePolicy = currentAnswer.comparePolicy
+    answerForm.answerExplain = currentAnswer.answerExplain ?? ''
+    answerForm.numericExpectedValue = String(currentAnswer.numericExpectedValue ?? '')
+    answerForm.numericTolerance = String(currentAnswer.numericTolerance ?? '')
+    answerForm.numericUnit = currentAnswer.numericUnit ?? ''
+    answerForm.gradingRubric = currentAnswer.gradingRubric ?? ''
+    answerForm.aiHint = currentAnswer.aiHint ?? ''
+    answerForm.effectiveNow = currentAnswer.effectiveStatus === 'ACTIVE'
+    if (currentAnswer.comparePolicy === 'CHOICE_SET') {
+      answerForm.standardAnswer = ''
+      const optionRow = objectiveOptions.find(
+        (item) => item.questionTemplateId === row.questionTemplateId,
+      )
+      const declaredLabels = new Set((optionRow?.options ?? []).map((option) => option.optionLabel))
+      const answerLabels = currentAnswer.choiceOptions.map((option) => option.optionLabel)
+      const invalidLabel = answerLabels.find((optionLabel) => !declaredLabels.has(optionLabel))
+      if (invalidLabel) {
+        throw new Error(`标准答案选项 ${invalidLabel} 不在当前母版选项空间中，请先治理数据`)
+      }
+      answerForm.choiceAnswers = answerLabels
+    }
+  } catch (error) {
+    answerModalOpen.value = false
+    showUserError(error, '标准答案加载失败')
+  } finally {
+    answerLoading.value = false
+  }
 }
 
 async function handleSaveAnswer(): Promise<void> {
@@ -1011,25 +1167,60 @@ async function handleSaveAnswer(): Promise<void> {
   }
   answerSaving.value = true
   try {
-    const trimmedAnswer = answerForm.standardAnswer.trim()
+    let standardAnswer: string | undefined
+    let choiceOptions: ExamQuestionStandardAnswerOptionRequest[] | undefined
+    if (answerContext.questionType === 'OBJECTIVE' && answerForm.comparePolicy === 'CHOICE_SET') {
+      const optionRow = objectiveOptions.find(
+        (item) => item.questionTemplateId === answerContext.questionTemplateId,
+      )
+      const selectedLabels = new Set(answerForm.choiceAnswers)
+      choiceOptions = optionRow?.options
+        .filter((option) => selectedLabels.has(option.optionLabel))
+        .sort((left, right) => left.sortNo - right.sortNo)
+        .map((option, index) => ({
+          optionLabel: option.optionLabel,
+          sortNo: index + 1,
+        }))
+      if (!choiceOptions || choiceOptions.length !== answerForm.choiceAnswers.length) {
+        throw new Error('正确选项不在当前母版选项空间中，请重新选择')
+      }
+    } else if (
+      answerContext.questionType === 'SUBJECTIVE' ||
+      answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
+      answerForm.comparePolicy === 'REGEX'
+    ) {
+      standardAnswer = answerForm.standardAnswer.trim() || undefined
+    }
     await saveStandardAnswer({
       examId: selectedExamId.value,
       questionTemplateId: answerContext.questionTemplateId,
-      standardAnswer: trimmedAnswer || undefined,
+      standardAnswer,
+      choiceOptions,
       comparePolicy: answerForm.comparePolicy,
       answerExplain: answerForm.answerExplain?.trim() || undefined,
-      numericExpectedValue: answerForm.numericExpectedValue?.trim() || undefined,
-      numericTolerance: answerForm.numericTolerance?.trim() || undefined,
-      numericUnit: answerForm.numericUnit?.trim() || undefined,
-      gradingRubric: answerForm.gradingRubric?.trim() || undefined,
+      numericExpectedValue:
+        answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          ? answerForm.numericExpectedValue?.trim() || undefined
+          : undefined,
+      numericTolerance:
+        answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          ? answerForm.numericTolerance?.trim() || undefined
+          : undefined,
+      numericUnit:
+        answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          ? answerForm.numericUnit?.trim() || undefined
+          : undefined,
+      gradingRubric:
+        answerForm.comparePolicy === 'AI_GRADE'
+          ? answerForm.gradingRubric?.trim() || undefined
+          : undefined,
       aiHint: answerForm.aiHint?.trim() || undefined,
       effectiveNow: answerForm.effectiveNow,
     })
     message.success('标准答案已保存')
     answerModalOpen.value = false
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '保存标准答案失败'
-    message.error(errMsg)
+    showUserError(error, '标准答案保存失败')
   } finally {
     answerSaving.value = false
   }

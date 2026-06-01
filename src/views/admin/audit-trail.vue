@@ -47,7 +47,11 @@
         <span>审计内容</span>
         <UiBadge tone="blue">
           {{
-            activeTab === 'logs' ? '审计日志' : activeTab === 'incidents' ? '重大事件' : '诊断样本'
+            activeTab === 'logs'
+              ? '审计日志'
+              : activeTab === 'incidents'
+                ? '重大事件'
+                : '异常留痕样本'
           }}
         </UiBadge>
       </template>
@@ -106,22 +110,17 @@
                   {{ targetTypeText(operationLogs[index].targetType) }}
                 </span>
               </template>
+              <template v-else-if="column.key === 'targetLabel'">
+                <a-tooltip :title="operationLogs[index].targetLabel">
+                  <span>{{ operationLogs[index].targetLabel }}</span>
+                </a-tooltip>
+              </template>
               <template v-else-if="column.key === 'createTime'">
                 {{ formatDateTimeWithSeconds(operationLogs[index].createTime) }}
               </template>
-              <template v-else-if="column.key === 'beforeAfter'">
-                <a-typography-paragraph
-                  v-if="operationLogs[index].beforeValue || operationLogs[index].afterValue"
-                  :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
-                  copyable
-                >
-                  {{ formatBeforeAfter(operationLogs[index]) }}
-                </a-typography-paragraph>
-                <span v-else class="muted">-</span>
-              </template>
               <template v-else-if="column.key === 'reason'">
                 <a-tooltip :title="operationLogs[index].reason">
-                  <span>{{ operationLogs[index].reason || '-' }}</span>
+                  <span>{{ operationLogs[index].reason }}</span>
                 </a-tooltip>
               </template>
             </template>
@@ -210,8 +209,8 @@
           </UiDataTable>
         </a-tab-pane>
 
-        <!-- 诊断样本 -->
-        <a-tab-pane key="diagnostic-samples" tab="诊断样本">
+        <!-- 异常留痕样本 -->
+        <a-tab-pane key="diagnostic-samples" tab="异常留痕样本">
           <div class="filter-bar">
             <a-space wrap>
               <a-select
@@ -230,17 +229,17 @@
             </a-space>
           </div>
 
-          <!-- D-9 错误态：诊断样本加载失败时提供重试 + 上报入口 -->
+          <!-- D-9 错误态：异常留痕样本加载失败时提供重试 + 上报入口 -->
           <UiErrorRetryPanel
             v-if="samplesLoadError"
             :error="samplesLoadError"
-            title="诊断样本加载失败"
+            title="异常留痕样本加载失败"
             compact
             @retry="loadDiagnosticSamples"
           />
           <UiEmpty
             v-else-if="!sampleLoading && diagnosticSamples.length === 0"
-            description="暂无诊断样本"
+            description="暂无异常留痕样本"
           />
           <UiDataTable
             v-else
@@ -257,21 +256,17 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'sampleType'">
                 <UiTag tone="purple" size="sm">
-                  {{ strictEnumLabel(DIAGNOSTIC_SAMPLE_TYPE_LABEL, record.sampleType, '诊断样本类型') }}
+                  {{
+                    strictEnumLabel(
+                      DIAGNOSTIC_SAMPLE_TYPE_LABEL,
+                      record.sampleType,
+                      '异常留痕样本类型',
+                    )
+                  }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'createTime'">
                 {{ formatDateTimeWithSeconds(record.createTime) }}
-              </template>
-              <template v-else-if="column.key === 'snapshotPayload'">
-                <a-typography-paragraph
-                  v-if="record.snapshotPayload"
-                  :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
-                  copyable
-                >
-                  {{ record.snapshotPayload }}
-                </a-typography-paragraph>
-                <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'diagnostic'">
                 <a-typography-paragraph
@@ -317,23 +312,32 @@
 </template>
 
 <script lang="ts" setup>
-import type { AuditTargetTypeCode, DiagnosticSampleTypeCode, DiagnosticSampleVO, OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
+import type {
+  AuditTargetTypeCode,
+  DiagnosticSampleTypeCode,
+  DiagnosticSampleVO,
+  OperationLogVO,
+  OperationTypeCode,
+} from '@/apis/mark/admin-audit'
+import {
+  AUDIT_TARGET_TYPE_LABEL,
+  DIAGNOSTIC_SAMPLE_TYPE_LABEL,
+  DIAGNOSTIC_SAMPLE_TYPE_OPTIONS,
+  listDiagnosticSamples,
+  listIncidents,
+  listOperationLogs,
+  OPERATION_TYPE_LABEL,
+  OPERATION_TYPE_OPTIONS,
+  resolveIncident,
+} from '@/apis/mark/admin-audit'
 import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
+import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import {
-  AUDIT_TARGET_TYPE_LABEL,
-  DIAGNOSTIC_SAMPLE_TYPE_LABEL,
-  listDiagnosticSamples,
-  listIncidents,
-  listOperationLogs,
-  OPERATION_TYPE_LABEL,
-  resolveIncident,
-} from '@/apis/mark/admin-audit'
-import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
 import {
   UiBadge,
   UiButton,
@@ -345,6 +349,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -362,21 +367,17 @@ const activeTab = ref<'logs' | 'incidents' | 'diagnostic-samples'>('logs')
 
 // ─── 审计日志 ──────────────────────────────────
 const logLoading = ref(false)
-const logsLoadError = ref<unknown>(null)
+const logsLoadError = ref<Error | null>(null)
 const operationLogs = ref<OperationLogVO[]>([])
 const logFilter = reactive<{ operationType?: OperationTypeCode }>({})
-const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(() =>
-  Object.entries(OPERATION_TYPE_LABEL).map(([value, label]) => ({
-    value: value as OperationTypeCode,
-    label,
-  })),
+const operationTypeOptions = computed<Array<{ value: OperationTypeCode; label: string }>>(
+  () => OPERATION_TYPE_OPTIONS,
 )
 const logColumns = [
   { title: '操作类型', key: 'operationType', dataIndex: 'operationType', width: 160 },
   { title: '目标类型', key: 'targetType', dataIndex: 'targetType', width: 130 },
-  { title: '目标ID', key: 'targetId', dataIndex: 'targetId', width: 110 },
-  { title: '操作人ID', key: 'operatorId', dataIndex: 'operatorId', width: 110 },
-  { title: '前后值', key: 'beforeAfter', ellipsis: true },
+  { title: '目标对象', key: 'targetLabel', dataIndex: 'targetLabel', width: 220, ellipsis: true },
+  { title: '操作人', key: 'operatorName', dataIndex: 'operatorName', width: 120 },
   { title: '原因', key: 'reason', dataIndex: 'reason', width: 200, ellipsis: true },
   { title: '时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
 ]
@@ -386,14 +387,17 @@ async function loadLogs() {
   logLoading.value = true
   logsLoadError.value = null
   try {
-    operationLogs.value = await listOperationLogs({
+    const page = await listOperationLogs({
       examId: selectedExamId.value,
       operationType: logFilter.operationType,
+      pageNum: 1,
+      pageSize: 200,
     })
+    operationLogs.value = page.list
   } catch (error) {
+    if (!(error instanceof Error)) throw error
     logsLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载审计日志失败'
-    message.error(msg)
+    showUserError(error, '审计日志加载失败')
   } finally {
     logLoading.value = false
   }
@@ -401,7 +405,7 @@ async function loadLogs() {
 
 // ─── 重大事件 ──────────────────────────────────
 const incidentLoading = ref(false)
-const incidentsLoadError = ref<unknown>(null)
+const incidentsLoadError = ref<Error | null>(null)
 const incidents = ref<IncidentRecordVO[]>([])
 const incidentFilter = reactive({ unresolvedOnly: false })
 const incidentColumns = [
@@ -425,9 +429,9 @@ async function loadIncidents() {
       unresolvedOnly: incidentFilter.unresolvedOnly,
     })
   } catch (error) {
+    if (!(error instanceof Error)) throw error
     incidentsLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载重大事件失败'
-    message.error(msg)
+    showUserError(error, '重大事件加载失败')
   } finally {
     incidentLoading.value = false
   }
@@ -462,31 +466,25 @@ async function submitResolve() {
     resolveModalOpen.value = false
     await loadIncidents()
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '解决事件失败'
-    message.error(msg)
+    if (!(error instanceof Error)) throw error
+    showUserError(error, '重大事件处置失败')
   } finally {
     resolving.value = false
   }
 }
 
-// ─── 诊断样本 ──────────────────────────────────
+// ─── 异常留痕样本 ──────────────────────────────────
 const sampleLoading = ref(false)
-const samplesLoadError = ref<unknown>(null)
+const samplesLoadError = ref<Error | null>(null)
 const diagnosticSamples = ref<DiagnosticSampleVO[]>([])
 const sampleFilter = reactive<{ sampleType?: DiagnosticSampleTypeCode }>({})
-const diagnosticSampleTypeOptions = computed<Array<{ value: DiagnosticSampleTypeCode, label: string }>>(() =>
-  Object.entries(DIAGNOSTIC_SAMPLE_TYPE_LABEL).map(([value, label]) => ({
-    value: value as DiagnosticSampleTypeCode,
-    label,
-  })),
-)
+const diagnosticSampleTypeOptions = computed<
+  Array<{ value: DiagnosticSampleTypeCode; label: string }>
+>(() => DIAGNOSTIC_SAMPLE_TYPE_OPTIONS)
 const sampleColumns = [
   { title: '样本类型', key: 'sampleType', dataIndex: 'sampleType', width: 160 },
   { title: '来源类型', key: 'sourceType', dataIndex: 'sourceType', width: 140 },
-  { title: '来源ID', key: 'sourceId', dataIndex: 'sourceId', width: 110 },
-  { title: '文件ID', key: 'fileId', dataIndex: 'fileId', width: 110 },
-  { title: '快照', key: 'snapshotPayload', ellipsis: true },
-  { title: '诊断信息', key: 'diagnostic', ellipsis: true },
+  { title: '处理说明', key: 'diagnostic', ellipsis: true },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
 ]
 
@@ -500,9 +498,9 @@ async function loadDiagnosticSamples() {
       sampleType: sampleFilter.sampleType,
     })
   } catch (error) {
+    if (!(error instanceof Error)) throw error
     samplesLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载诊断样本失败'
-    message.error(msg)
+    showUserError(error, '异常留痕样本加载失败')
   } finally {
     sampleLoading.value = false
   }
@@ -528,8 +526,8 @@ function onTabChange(_key: string | number) {
   }
 }
 
-function onExamChange(value: unknown, option: unknown) {
-  onSelectorChange(value as never, option as never)
+function onExamChange(value: SelectValue, option: DefaultOptionType | DefaultOptionType[]) {
+  onSelectorChange(value, option)
   operationLogs.value = []
   incidents.value = []
   diagnosticSamples.value = []
@@ -538,30 +536,22 @@ function onExamChange(value: unknown, option: unknown) {
   }
 }
 
-
 // 严格 typed helper：模板侧用 operationLogs[index] / incidents[index] 取后端 VO，
 // helper 把 OperationTypeCode/IncidentLevelCode 映射成 a-table 单元格需要的字符串/BadgeTone。
-function operationTypeText(code?: OperationTypeCode): string {
+function operationTypeText(code: OperationTypeCode): string {
   return strictEnumLabel(OPERATION_TYPE_LABEL, code, '审计操作类型')
 }
 
-function targetTypeText(code?: AuditTargetTypeCode): string {
+function targetTypeText(code: AuditTargetTypeCode): string {
   return strictEnumLabel(AUDIT_TARGET_TYPE_LABEL, code, '审计目标类型')
 }
 
-function incidentLevelTone(level?: IncidentLevelCode): BadgeTone {
-  if (!level) return 'gray'
+function incidentLevelTone(level: IncidentLevelCode): BadgeTone {
   return strictEnumTone(INCIDENT_LEVEL_TONE, level, '重大事件级别')
 }
 
-function incidentLevelLabel(level?: IncidentLevelCode): string {
+function incidentLevelLabel(level: IncidentLevelCode): string {
   return strictEnumLabel(INCIDENT_LEVEL_LABEL, level, '重大事件级别')
-}
-
-function formatBeforeAfter(record: OperationLogVO): string {
-  const before = record.beforeValue || '∅'
-  const after = record.afterValue || '∅'
-  return `before: ${before}\nafter:  ${after}`
 }
 
 onMounted(async () => {

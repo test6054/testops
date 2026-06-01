@@ -37,7 +37,7 @@
       v-if="detailLoadError"
       :error="detailLoadError"
       title="成绩详情加载失败"
-      :helper="`考试 ID：${examId}`"
+      :helper="detail?.examName ? `当前考试：${detail.examName}` : undefined"
       :show-report="false"
       @retry="loadDetail"
     />
@@ -97,54 +97,54 @@
           size="middle"
           class="questions-table"
         >
-          <template #bodyCell="{ column, record }">
+          <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'questionNo'">
               <div class="question-no-cell">
                 <UiTag tone="blue" size="sm">
-                  {{ toQuestionScore(record).questionNo }}
+                  {{ filteredQuestions[index].questionNo }}
                 </UiTag>
                 <UiTag
-                  v-if="toQuestionScore(record).mistakeClusterLabel"
+                  v-if="filteredQuestions[index].mistakeClusterLabel"
                   tone="orange"
                   size="sm"
                   class="question-no-cell__cluster"
-                  @click.stop="setClusterFilter(toQuestionScore(record).mistakeClusterLabel)"
+                  @click.stop="setClusterFilter(filteredQuestions[index].mistakeClusterLabel)"
                 >
-                  {{ toQuestionScore(record).mistakeClusterLabel }}
+                  {{ filteredQuestions[index].mistakeClusterLabel }}
                 </UiTag>
               </div>
             </template>
             <template v-else-if="column.key === 'questionType'">
-              <span>{{ toQuestionScore(record).questionType }}</span>
+              <span>{{ filteredQuestions[index].questionType }}</span>
             </template>
             <template v-else-if="column.key === 'fullScore'">
               <span class="score-cell">
-                {{ toQuestionScore(record).fullScore.toFixed(2) }}
+                {{ filteredQuestions[index].fullScore.toFixed(2) }}
               </span>
             </template>
-            <template v-else-if="column.key === 'finalScore'">
+            <template v-else-if="column.key === 'teacherReviewScore'">
               <span
-                v-if="toQuestionScore(record).finalScore != null"
+                v-if="filteredQuestions[index].teacherReviewScore != null"
                 class="score-cell score-cell--strong"
-                :class="getScoreToneClass(toQuestionScore(record))"
+                :class="getScoreToneClass(filteredQuestions[index])"
               >
-                {{ formatQuestionFinalScore(toQuestionScore(record)) }}
+                {{ formatQuestionFinalScore(filteredQuestions[index]) }}
               </span>
               <span v-else class="score-detail__hint">-</span>
             </template>
             <template v-else-if="column.key === 'objectiveResult'">
               <UiTag
-                v-if="toQuestionScore(record).objectiveResult"
-                :tone="objectiveResultTone(toQuestionScore(record))"
+                v-if="filteredQuestions[index].objectiveResult"
+                :tone="objectiveResultTone(filteredQuestions[index])"
                 size="sm"
               >
-                {{ objectiveResultLabel(toQuestionScore(record)) }}
+                {{ objectiveResultLabel(filteredQuestions[index]) }}
               </UiTag>
               <span v-else class="score-detail__hint">-</span>
             </template>
             <template v-else-if="column.key === 'gradeStatus'">
-              <UiTag :tone="getGradeStatusTone(toQuestionScore(record).gradeStatus)" size="sm">
-                {{ formatGradeStatus(toQuestionScore(record).gradeStatus) }}
+              <UiTag :tone="getGradeStatusTone(filteredQuestions[index].gradeStatus)" size="sm">
+                {{ formatGradeStatus(filteredQuestions[index].gradeStatus) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -152,30 +152,30 @@
                 <UiButton
                   size="sm"
                   variant="ghost"
-                  @click="openAnswerDrawer(toQuestionScore(record))"
+                  @click="openAnswerDrawer(filteredQuestions[index])"
                 >
                   <template #icon><ProfileOutlined /></template>
                   查看答题
                 </UiButton>
                 <UiButton
-                  v-if="canApplyReviewOnQuestion(toQuestionScore(record))"
+                  v-if="canApplyReviewOnQuestion(filteredQuestions[index])"
                   size="sm"
                   variant="ghost"
-                  @click="goAppealForQuestion(toQuestionScore(record))"
+                  @click="goAppealForQuestion(filteredQuestions[index])"
                 >
                   申请复核
                 </UiButton>
               </a-space>
             </template>
           </template>
-          <template #expandedRowRender="{ record }">
-            <div v-if="toQuestionScore(record).improvementSuggestion" class="question-ai-tip">
-              <UiTag tone="purple" size="sm">AI 学习建议</UiTag>
+          <template #expandedRowRender="{ index }">
+            <div v-if="filteredQuestions[index].improvementSuggestion" class="question-ai-tip">
+              <UiTag tone="purple" size="sm">AI 学习内容</UiTag>
               <p class="question-ai-tip__text">
-                {{ toQuestionScore(record).improvementSuggestion }}
+                {{ filteredQuestions[index].improvementSuggestion }}
               </p>
             </div>
-            <UiEmpty v-else description="本题暂无 AI 学习建议" />
+            <UiEmpty v-else description="本题暂无 AI 学习内容" />
           </template>
         </a-table>
       </UiCard>
@@ -203,7 +203,7 @@
               <UiTag tone="gray" size="sm">{{ currentDetail.questionType }}</UiTag>
               <UiTag tone="gray" size="sm">满分 {{ currentDetail.fullScore.toFixed(2) }}</UiTag>
               <UiTag :tone="getScoreTagTone(currentDetail)" size="sm">
-                得分 {{ currentDetail.finalScore.toFixed(2) }}
+                得分 {{ currentDetail.teacherReviewScore.toFixed(2) }}
               </UiTag>
               <UiTag
                 v-if="currentDetail.objectiveResult"
@@ -265,26 +265,27 @@
 
             <section
               v-if="
-                currentDetail.improvementSuggestion
-                  || currentDetail.mistakeClusterLabel
-                  || currentDetail.aiDiagnostic
+                currentDetail.improvementSuggestion ||
+                currentDetail.mistakeClusterLabel ||
+                currentDetail.aiDiagnostic
               "
               class="answer-drawer__section"
             >
               <header class="answer-drawer__section-title">
                 <BulbOutlined />
-                <span>AI 学习建议</span>
+                <span>AI 学习内容</span>
               </header>
               <div class="answer-drawer__ai">
                 <p v-if="currentDetail.improvementSuggestion" class="answer-drawer__ai-line">
-                  <strong>改进建议：</strong>{{ currentDetail.improvementSuggestion }}
+                  <strong>改进内容：</strong>{{ currentDetail.improvementSuggestion }}
                 </p>
                 <p v-if="currentDetail.mistakeClusterLabel" class="answer-drawer__ai-line">
                   <strong>错题聚类：</strong>
                   <UiTag tone="orange" size="sm">{{ currentDetail.mistakeClusterLabel }}</UiTag>
                 </p>
                 <p v-if="currentDetail.aiDiagnostic" class="answer-drawer__ai-line">
-                  <strong>AI 诊断：</strong>{{ currentDetail.aiDiagnostic }}
+                  <strong>AI 处理说明：</strong
+                  >{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
                 </p>
               </div>
             </section>
@@ -341,7 +342,7 @@
             v-else-if="!reportLoading && !learningReport"
             tone="info"
             title="尚未生成 AI 学习报告"
-            description="教师生成后，此处会显示知识掌握诊断、改进建议和错题聚类。"
+            description="教师生成后，此处会显示知识掌握分析、改进内容和错题聚类。"
             dense
           />
           <UiAlertStrip
@@ -355,7 +356,7 @@
             <UiAlertStrip
               v-if="learningReport.profileMessage"
               tone="warning"
-              title="个体学习建议提示"
+              title="个体学习内容提示"
               :description="learningReport.profileMessage"
               dense
             />
@@ -371,7 +372,7 @@
             </p>
 
             <div v-if="profileDiagnosisItems.length > 0" class="profile-section">
-              <strong>知识掌握诊断：</strong>
+              <strong>知识掌握分析：</strong>
               <a-list size="small" :data-source="profileDiagnosisItems" bordered>
                 <template #renderItem="{ item }">
                   <a-list-item>
@@ -389,7 +390,7 @@
                         <strong>原因分析：</strong>{{ item.causeAnalysis }}
                       </div>
                       <div v-if="item.suggestion" class="diagnosis-text">
-                        <strong>改进建议：</strong>{{ item.suggestion }}
+                        <strong>改进内容：</strong>{{ item.suggestion }}
                       </div>
                       <div
                         v-if="item.lostQuestionNos && item.lostQuestionNos.length"
@@ -404,7 +405,7 @@
             </div>
 
             <div v-if="profileSuggestions.length > 0" class="profile-section">
-              <strong>个性化学习建议：</strong>
+              <strong>个性化学习内容：</strong>
               <ol class="suggestion-list">
                 <li v-for="(s, i) in profileSuggestions" :key="i">{{ s }}</li>
               </ol>
@@ -430,7 +431,7 @@
                         <strong>错因说明：</strong>{{ item.causeDescription }}
                       </div>
                       <div class="diagnosis-text">
-                        <strong>订正建议：</strong>{{ item.suggestion }}
+                        <strong>订正内容：</strong>{{ item.suggestion }}
                       </div>
                       <div v-if="item.typicalExamples.length" class="diagnosis-text">
                         <strong>典型表现：</strong>{{ item.typicalExamples.join('；') }}
@@ -448,6 +449,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   StudentAiDiagnosisItemVO,
   StudentAiErrorClusterVO,
@@ -456,17 +458,6 @@ import type {
   StudentQuestionScoreVO,
   StudentScoreDetailVO,
 } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -483,6 +474,17 @@ import {
   OBJECTIVE_RESULT_LABEL,
   OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   UiAlertStrip,
   UiBadge,
@@ -493,6 +495,7 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentScoreDetail' })
@@ -500,7 +503,7 @@ defineOptions({ name: 'StudentScoreDetail' })
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const detailLoadError = ref<unknown>(null)
+const detailLoadError = ref<Error | null>(null)
 const detail = ref<StudentScoreDetailVO | null>(null)
 
 const detailQuestions = computed<StudentQuestionScoreVO[]>(() => detail.value?.questions ?? [])
@@ -512,7 +515,7 @@ const selectedClusterLabel = ref<string | undefined>(undefined)
  * 从题目明细中提取所有出现过的 mistakeClusterLabel，供顶部下拉选择。
  * 学生可以按错题聚类快速查看同一类型的错题。
  */
-const clusterLabelOptions = computed<Array<{ value: string, label: string }>>(() => {
+const clusterLabelOptions = computed<Array<{ value: string; label: string }>>(() => {
   const labels = new Set<string>()
   for (const question of detailQuestions.value) {
     if (question.mistakeClusterLabel) {
@@ -530,15 +533,6 @@ const filteredQuestions = computed<StudentQuestionScoreVO[]>(() => {
   )
 })
 
-/**
- * 从 a-table 泛型 record（Record<string, any>）转为 StudentQuestionScoreVO。
- * Ant Design Vue 的 bodyCell 插槽 record 类型在源码中被推断为宽类型，
- * 这里加一个在 callsite 的窄化 helper，避免在每个使用点写 as 断言。
- */
-function toQuestionScore(record: unknown): StudentQuestionScoreVO {
-  return record as StudentQuestionScoreVO
-}
-
 /** 从题号单元格点击标签时完成筛选下钻，重复点击取消筛选 */
 function setClusterFilter(label?: string): void {
   if (!label) return
@@ -553,7 +547,7 @@ const examId = computed<string | null>(() => {
 })
 
 const questionColumns = computed(() => {
-  const cols: Array<Record<string, unknown>> = [
+  const cols: ColumnType<StudentQuestionScoreVO>[] = [
     { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 100 },
     { title: '题型', key: 'questionType', dataIndex: 'questionType', width: 140 },
     {
@@ -565,8 +559,8 @@ const questionColumns = computed(() => {
     },
     {
       title: '得分',
-      key: 'finalScore',
-      dataIndex: 'finalScore',
+      key: 'teacherReviewScore',
+      dataIndex: 'teacherReviewScore',
       width: 110,
       align: 'right' as const,
     },
@@ -591,13 +585,13 @@ const partialCount = computed(
 const zeroCount = computed(() => detailQuestions.value.filter(isZero).length)
 
 function isFullMark(q: StudentQuestionScoreVO) {
-  return q.finalScore != null && q.finalScore >= q.fullScore
+  return q.teacherReviewScore != null && q.teacherReviewScore >= q.fullScore
 }
 function isZero(q: StudentQuestionScoreVO) {
-  return q.finalScore != null && q.finalScore <= 0
+  return q.teacherReviewScore != null && q.teacherReviewScore <= 0
 }
 function isPartial(q: StudentQuestionScoreVO) {
-  return q.finalScore != null
+  return q.teacherReviewScore != null
 }
 
 function getScoreToneClass(record: StudentQuestionScoreVO): string {
@@ -623,24 +617,23 @@ function getGradeStatusTone(status: StudentQuestionScoreVO['gradeStatus']): Badg
 }
 
 function formatQuestionFinalScore(question: StudentQuestionScoreVO): string {
-  if (question.finalScore == null) {
-    throw new Error(`题目得分明细缺少最终得分：questionTemplateId=${question.questionTemplateId}`)
-  }
-  return question.finalScore.toFixed(2)
+  return question.teacherReviewScore.toFixed(2)
 }
 
 function objectiveResultLabel(question: StudentQuestionScoreVO): string {
-  if (!question.objectiveResult) {
-    throw new Error(`题目得分明细缺少客观判定：questionTemplateId=${question.questionTemplateId}`)
-  }
-  return strictEnumLabel(OBJECTIVE_RESULT_LABEL, question.objectiveResult, '客观判定')
+  return strictEnumLabel(
+    OBJECTIVE_RESULT_LABEL,
+    question.objectiveResult as NonNullable<StudentQuestionScoreVO['objectiveResult']>,
+    '客观判定',
+  )
 }
 
 function objectiveResultTone(question: StudentQuestionScoreVO): BadgeTone {
-  if (!question.objectiveResult) {
-    throw new Error(`题目得分明细缺少客观判定：questionTemplateId=${question.questionTemplateId}`)
-  }
-  return strictEnumTone(OBJECTIVE_RESULT_TONE, question.objectiveResult, '客观判定')
+  return strictEnumTone(
+    OBJECTIVE_RESULT_TONE,
+    question.objectiveResult as NonNullable<StudentQuestionScoreVO['objectiveResult']>,
+    '客观判定',
+  )
 }
 
 function aiAnalysisStatusLabel(
@@ -656,41 +649,48 @@ function aiAnalysisStatusTone(
 }
 
 function formatPublishedTotalScore(item: StudentScoreDetailVO): string {
-  if (item.finalScoreStatus !== 'PUBLISHED') {
-    throw new Error(`未发布成绩不能读取总分：examId=${item.examId}`)
-  }
-  if (item.totalScore == null) {
-    throw new Error(`已发布成绩缺少总分：examId=${item.examId}`)
-  }
-  return item.totalScore.toFixed(2)
+  return (item.totalScore as number).toFixed(2)
 }
 
 function formatPublishedFullScore(item: StudentScoreDetailVO): string {
-  if (item.finalScoreStatus !== 'PUBLISHED') {
-    throw new Error(`未发布成绩不能读取满分：examId=${item.examId}`)
-  }
-  if (item.fullScore == null) {
-    throw new Error(`已发布成绩缺少满分：examId=${item.examId}`)
-  }
-  return item.fullScore.toFixed(2)
+  return (item.fullScore as number).toFixed(2)
 }
 
 async function loadDetail() {
   if (!examId.value) {
-    message.warning('考试ID缺失')
+    message.warning('考试信息缺失，无法加载成绩详情')
     return
   }
   loading.value = true
   detailLoadError.value = null
   try {
-    detail.value = await getMyScoreDetail(examId.value)
+    const loadedDetail = await getMyScoreDetail(examId.value)
+    validateScoreDetailContract(loadedDetail)
+    detail.value = loadedDetail
   } catch (error) {
-    detailLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载成绩详情失败'
-    message.error(msg)
+    detailLoadError.value = toUserError(error, '成绩详情加载失败')
+    showUserError(error, '成绩详情加载失败')
     detail.value = null
   } finally {
     loading.value = false
+  }
+}
+
+/** 校验已发布成绩详情的必需字段，避免题目表格渲染时整页崩溃。 */
+function validateScoreDetailContract(item: StudentScoreDetailVO): void {
+  if (item.finalScoreStatus !== 'PUBLISHED') return
+  if (item.totalScore == null) {
+    throw new Error(`已发布成绩详情缺少总分：examId=${item.examId}`)
+  }
+  if (item.fullScore == null) {
+    throw new Error(`已发布成绩详情缺少满分：examId=${item.examId}`)
+  }
+  for (const question of item.questions) {
+    if (question.teacherReviewScore == null) {
+      throw new Error(
+        `已发布题目缺少题目得分：examId=${item.examId}, questionTemplateId=${question.questionTemplateId}`,
+      )
+    }
   }
 }
 
@@ -700,10 +700,7 @@ function goAppeal(id: string) {
 
 function canApplyReviewOnQuestion(q: StudentQuestionScoreVO): boolean {
   if (!detail.value || !canSubmitReview(detail.value)) return false
-  if (q.finalScore == null) {
-    throw new Error(`已发布题目缺少最终得分：questionTemplateId=${q.questionTemplateId}`)
-  }
-  return q.finalScore < q.fullScore
+  return q.teacherReviewScore < q.fullScore
 }
 
 function goAppealForQuestion(q: StudentQuestionScoreVO): void {
@@ -739,25 +736,40 @@ async function loadLearningReport(): Promise<void> {
   }
   if (!detail.value.examId) {
     learningReport.value = null
-    reportLoadError.value = '成绩详情缺少 examId，无法读取 AI 学习报告。'
+    reportLoadError.value = '成绩信息不完整，暂无法加载学习报告。'
     return
   }
   reportLoading.value = true
   reportLoadError.value = ''
   try {
-    learningReport.value = await getMyAiLearningReport(detail.value.examId)
+    const report = await getMyAiLearningReport(detail.value.examId)
+    validateLearningReportContract(report)
+    learningReport.value = report
   } catch (error) {
-    reportLoadError.value = error instanceof Error ? error.message : 'AI 学习报告加载失败'
+    reportLoadError.value = getUserErrorMessage(error, 'AI 学习报告加载失败')
     learningReport.value = null
   } finally {
     reportLoading.value = false
   }
 }
 
+/** 校验 AI 学习报告不可用态必须返回原因，合同缺失进入报告错误态。 */
+function validateLearningReportContract(report: StudentAiLearningReportVO): void {
+  if (!report.available && !report.profileMessage && !report.clusterMessage) {
+    throw new Error(`AI 学习报告不可用但缺少提示信息：examId=${report.examId}`)
+  }
+}
+
 function unavailableLearningReportMessage(report: StudentAiLearningReportVO): string {
-  if (report.profileMessage) return report.profileMessage
-  if (report.clusterMessage) return report.clusterMessage
-  throw new Error(`AI 学习报告不可用但缺少提示信息：examId=${report.examId}`)
+  return (report.profileMessage || report.clusterMessage) as string
+}
+
+/** 将 AI 明细诊断转为学生侧学习提示，不暴露模型或接口调试信息。 */
+function aiLearningDiagnosticText(diagnostic?: string): string {
+  return getUserErrorMessage(
+    { message: diagnostic },
+    'AI 学习内容暂未形成可展示说明，请以教师评语和题目得分为准',
+  )
 }
 
 function formatRate(rate: string): string {
@@ -803,7 +815,8 @@ async function openAnswerDrawer(question: StudentQuestionScoreVO): Promise<void>
     return
   }
   if (!detail.value.examId) {
-    throw new Error(`已发布成绩详情缺少 examId：questionTemplateId=${question.questionTemplateId}`)
+    drawerError.value = '已发布成绩详情缺少考试信息。'
+    return
   }
   drawerOpen.value = true
   drawerLoading.value = true
@@ -819,7 +832,7 @@ async function openAnswerDrawer(question: StudentQuestionScoreVO): Promise<void>
       void loadSliceImage(result.sliceFileId)
     }
   } catch (error) {
-    drawerError.value = error instanceof Error ? error.message : '加载答题明细失败'
+    drawerError.value = getUserErrorMessage(error, '答题明细加载失败')
   } finally {
     drawerLoading.value = false
   }
@@ -840,8 +853,7 @@ async function loadSliceImage(fileId: string): Promise<void> {
   try {
     sliceImageUrl.value = await getImageBlobUrl(fileId)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '切片图像加载失败'
-    message.error(errMsg)
+    showUserError(error, '答题切片加载失败')
   } finally {
     sliceLoading.value = false
   }
@@ -862,8 +874,8 @@ function goAppealForCurrentDetail(): void {
 
 /** 抽屉内得分标签的着色：满分绿，零分红，部分得分橙 */
 function getScoreTagTone(answer: StudentQuestionAnswerDetailVO): BadgeTone {
-  if (answer.finalScore >= answer.fullScore) return 'green'
-  if (answer.finalScore <= 0) return 'red'
+  if (answer.teacherReviewScore >= answer.fullScore) return 'green'
+  if (answer.teacherReviewScore <= 0) return 'red'
   return 'orange'
 }
 

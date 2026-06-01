@@ -7,7 +7,7 @@ import type { AxiosProgressEvent } from 'axios'
 import type { BlobDownloadResponse, ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import message from 'ant-design-vue/es/message'
 import { downloadFile } from '@/apis/edu/file-management'
-import { isErrorHandled } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 
 /** 文件项接口 - 统一下载接口 */
 export interface FileItem {
@@ -60,20 +60,15 @@ function parseFileNameFromHeaders(headers: Record<string, unknown>, fallback: st
  */
 async function validateBlobResponse(response: BlobDownloadResponse): Promise<string | null> {
   if (response.status !== 200) {
-    return '文件下载失败'
+    return '文件暂不能下载，请稍后重试'
   }
   if (!response.data || response.data.size === 0) {
-    return '文件为空，下载失败'
+    return '文件内容为空，暂不能下载'
   }
   // 服务端可能返回 JSON 错误信息而非真正的文件
   if (response.data.type === 'text/plain' || response.data.type === 'application/json') {
-    const text = await response.data.text()
-    try {
-      const errorObj = JSON.parse(text)
-      return `文件下载失败: ${errorObj.message || errorObj.msg || text}`
-    } catch {
-      return `文件下载失败: ${text}`
-    }
+    await response.data.text()
+    return '文件暂不能下载，请稍后重试'
   }
   return null
 }
@@ -145,9 +140,7 @@ export async function handleBlobDownload(
 
     if (showSuccessMessage) message.success(successMessage)
   } catch (error) {
-    if (!isErrorHandled(error)) {
-      if (showErrorMessage) message.error(errorMessage)
-    }
+    if (showErrorMessage) showUserError(error, errorMessage)
   }
 }
 
@@ -167,7 +160,7 @@ export async function handleDownloadFile(file: FileItem, options: DownloadOption
 
   if (file.fileId === undefined || file.fileId === null || file.fileId === '') {
     if (showErrorMessage) {
-      message.error('文件ID不存在，无法下载')
+      message.error('未找到可下载的文件')
     }
     return
   }
@@ -214,9 +207,7 @@ export async function handleDownloadFile(file: FileItem, options: DownloadOption
   } catch (error) {
     onError?.(error)
     if (showErrorMessage) {
-      if (!isErrorHandled(error)) {
-        message.error(errorMessage)
-      }
+      showUserError(error, errorMessage)
     }
   }
 }

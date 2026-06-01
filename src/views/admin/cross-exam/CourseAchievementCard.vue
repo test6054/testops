@@ -2,27 +2,14 @@
   <a-card title="AI 课程目标达成度分析" :bordered="false" size="small">
     <div class="ai-form">
       <a-form layout="inline" :model="form" size="small">
-        <a-form-item label="课程ID">
-          <a-input
-            v-model:value="form.courseId"
-            placeholder="请输入课程ID"
-            allow-clear
-            style="width: 160px"
-          />
+        <a-form-item label="学年学期">
+          <AnalysisSemesterSelect v-model="form.semesterCode" placeholder="请选择学年学期" />
         </a-form-item>
-        <a-form-item label="学期编码">
-          <a-input
-            v-model:value="form.semesterCode"
-            placeholder="可选，例如 2026-S1"
-            allow-clear
-            style="width: 160px"
-          />
-        </a-form-item>
-        <a-form-item label="考试ID列表" style="flex: 1; min-width: 320px">
-          <a-input
-            v-model:value="form.examIdsText"
-            placeholder="多个考试ID用英文逗号分隔，至少 1 个"
-            allow-clear
+        <a-form-item label="参与考试列表" style="flex: 1; min-width: 320px">
+          <AnalysisExamMultiSelect
+            v-model="form.examIds"
+            placeholder="请选择至少 1 场考试"
+            @selected-exams-change="selectedExams = $event"
           />
         </a-form-item>
         <a-form-item>
@@ -64,8 +51,8 @@
           </a-col>
           <a-col :span="8">
             <div class="metric-text">
-              <span class="metric-title">耗时(ms)</span>
-              <span class="metric-value">{{ record.latencyMs ?? '-' }}</span>
+              <span class="metric-title">生成耗时</span>
+              <span class="metric-value">{{ latencyText(record) }}</span>
             </div>
           </a-col>
         </a-row>
@@ -76,17 +63,32 @@
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="课程ID">{{ record.courseId ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="学期">{{ record.semesterCode ?? '-' }}</a-descriptions-item>
+          <a-descriptions-item label="课程">{{
+            requiredRecordText(record.courseName, '课程名称')
+          }}</a-descriptions-item>
+          <a-descriptions-item label="学年学期">
+            {{
+              record.semesterCode ? formatAcademicTermCode(record.semesterCode) : '未限定学年学期'
+            }}
+          </a-descriptions-item>
           <a-descriptions-item label="生成时间" :span="2">
             {{ formatDateTime(record.createTime) }}
           </a-descriptions-item>
-          <a-descriptions-item label="trace ID">
-            <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
-            <span v-else class="text-muted">-</span>
+          <a-descriptions-item label="处理追踪编号">
+            <a-typography-text :content="record.aiTraceId" copyable />
           </a-descriptions-item>
-          <a-descriptions-item v-if="record.errorMessage" label="错误信息" :span="3">
-            <a-typography-text type="danger">{{ record.errorMessage }}</a-typography-text>
+          <a-descriptions-item label="考试范围" :span="3">
+            <a-space v-if="record.exams.length" wrap>
+              <a-tag v-for="exam in record.exams" :key="exam.examId">
+                {{ exam.examName }}{{ exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : '' }}
+              </a-tag>
+            </a-space>
+            <span v-else class="text-muted">无考试范围</span>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="record.errorMessage" label="分析处理说明" :span="3">
+            <a-typography-text type="danger">
+              {{ analysisFailureMessage(record.errorMessage) }}
+            </a-typography-text>
           </a-descriptions-item>
         </a-descriptions>
 
@@ -101,22 +103,28 @@
               <a-list-item>
                 <div class="analysis-item">
                   <div class="analysis-item__header">
-                    <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
+                    <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span class="analysis-item__title">
-                      {{ item.objectiveName || '课程目标' }}
+                      {{ item.objectiveDimension || '课程目标' }}
                     </span>
+                    <a-tag v-if="item.status" :color="achievementStatusColor(item.status)">
+                      {{ achievementStatusLabel(item.status) }}
+                    </a-tag>
                     <span v-if="item.achievementRate != null" class="analysis-item__metric">
                       达成率 {{ formatPercent(item.achievementRate) }}
                     </span>
                   </div>
-                  <a-typography-paragraph v-if="item.summary" class="analysis-item__text">
-                    {{ item.summary }}
+                  <a-typography-paragraph
+                    v-if="item.objectiveDescription"
+                    class="analysis-item__text"
+                  >
+                    {{ item.objectiveDescription }}
                   </a-typography-paragraph>
-                  <a-typography-paragraph v-if="item.weakPoint" class="analysis-item__text">
-                    <strong>薄弱点：</strong>{{ item.weakPoint }}
+                  <a-typography-paragraph v-if="item.evidenceNote" class="analysis-item__text">
+                    <strong>依据：</strong>{{ item.evidenceNote }}
                   </a-typography-paragraph>
                   <a-typography-paragraph v-if="item.suggestion" class="analysis-item__text">
-                    <strong>建议：</strong>{{ item.suggestion }}
+                    <strong>改进内容：</strong>{{ item.suggestion }}
                   </a-typography-paragraph>
                 </div>
               </a-list-item>
@@ -129,79 +137,105 @@
 </template>
 
 <script lang="ts" setup>
-import type { CourseObjectiveAchievementVO } from '@/apis/mark/cross-exam-analysis'
+import type {
+  CourseAchievementStatusCode,
+  CourseObjectiveAchievementVO,
+} from '@/apis/mark/cross-exam-analysis'
+import {
+  COURSE_ACHIEVEMENT_STATUS_COLOR,
+  COURSE_ACHIEVEMENT_STATUS_LABEL,
+  generateAchievement,
+  listAchievements,
+} from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
-import { generateAchievement, listAchievements } from '@/apis/mark/cross-exam-analysis'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
+import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
+import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { formatAcademicTermCode } from '@/types/enums/semester-enum'
+import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CourseAchievementCard' })
 
 const form = reactive({
-  courseId: '',
   semesterCode: '',
-  examIdsText: '',
+  examIds: [] as string[],
 })
 
 const record = ref<CourseObjectiveAchievementVO | null>(null)
+const selectedExams = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
 // D-9 错误态：AI 课程达成度加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const achievementItems = computed(() => record.value?.achievementItems ?? [])
+const selectedCourseIds = computed(() =>
+  Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
+)
 
-function parseExamIds(): string[] {
-  return form.examIdsText
-    .split(/[,，\s]+/)
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0)
+function analysisFailureMessage(errorMessage?: string): string {
+  return getUserProcessFailureMessage(
+    errorMessage,
+    'AI 课程目标达成度分析未完成，请核对考试范围后重新生成',
+  )
 }
 
 async function reload(): Promise<void> {
-  const courseId = form.courseId.trim()
+  if (selectedCourseIds.value.length > 1) {
+    message.warning('请选择同一课程下的考试')
+    return
+  }
+  const courseId = selectedCourseIds.value[0] ?? ''
   if (!courseId) {
-    message.warning('请输入课程ID')
+    message.warning('请选择考试')
     return
   }
   loadError.value = null
   loading.value = true
   try {
     const list = await listAchievements({ courseId })
-    record.value = list[0] ?? null
+    acceptCourseAchievementRecord(list[0] ?? null)
     if (list.length === 0) message.info('暂无历史记录')
   } catch (e) {
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '加载失败')
+    loadError.value = toUserError(e, '课程达成度分析加载失败')
+    showUserError(e, '课程达成度分析加载失败')
   } finally {
     loading.value = false
   }
 }
 
 async function handleGenerate(): Promise<void> {
-  const courseId = form.courseId.trim()
-  const examIds = parseExamIds()
+  if (selectedCourseIds.value.length > 1) {
+    message.warning('请选择同一课程下的考试')
+    return
+  }
+  const courseId = selectedCourseIds.value[0] ?? ''
+  const examIds = form.examIds
   if (!courseId) {
-    message.warning('请输入课程ID')
+    message.warning('请选择同一课程下的考试')
     return
   }
   if (examIds.length === 0) {
-    message.warning('至少需要 1 个考试ID')
+    message.warning('至少需要选择 1 场考试')
     return
   }
   generating.value = true
   try {
-    record.value = await generateAchievement({
+    const generated = await generateAchievement({
       courseId,
-      semesterCode: form.semesterCode.trim() || undefined,
+      semesterCode: form.semesterCode || undefined,
       examIds,
     })
+    acceptCourseAchievementRecord(generated)
     message.success('已生成达成度分析')
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '生成失败')
+    showUserError(e, '课程达成度分析生成失败')
   } finally {
     generating.value = false
   }
@@ -217,6 +251,41 @@ function achievementStyle(rate?: number): Record<string, string> {
 
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
+}
+
+function requiredRecordText(value: string | undefined, fieldName: string): string {
+  if (!value?.trim()) {
+    throw new TypeError(`课程目标达成度分析缺少${fieldName}`)
+  }
+  return value
+}
+
+function latencyText(value: CourseObjectiveAchievementVO): string {
+  if (value.latencyMs != null) return `${value.latencyMs} ms`
+  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  return '分析未完成，暂无耗时'
+}
+
+function assertCourseAchievementContract(value: CourseObjectiveAchievementVO): void {
+  if (!value.courseName) throw new TypeError('课程目标达成度分析缺少课程名称')
+  if (!value.aiTraceId) throw new TypeError('课程目标达成度分析缺少处理追踪编号')
+  if (!value.exams.length) throw new TypeError('课程目标达成度分析缺少考试范围')
+  if (value.analysisStatus === 'SUCCESS' && value.latencyMs == null) {
+    throw new TypeError('课程目标达成度分析成功记录缺少生成耗时')
+  }
+}
+
+function acceptCourseAchievementRecord(value: CourseObjectiveAchievementVO | null): void {
+  if (value) assertCourseAchievementContract(value)
+  record.value = value
+}
+
+function achievementStatusLabel(status: CourseAchievementStatusCode): string {
+  return strictEnumLabel(COURSE_ACHIEVEMENT_STATUS_LABEL, status, '课程目标达成状态')
+}
+
+function achievementStatusColor(status: CourseAchievementStatusCode): string {
+  return strictEnumTone(COURSE_ACHIEVEMENT_STATUS_COLOR, status, '课程目标达成状态')
 }
 </script>
 

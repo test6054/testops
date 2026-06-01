@@ -2,11 +2,23 @@ import type { ExamScannerKioskContextVO, ScannerKioskScanMode } from './scanner-
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 
-export interface LocalApiResult<T> {
+type LocalAgentJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | LocalAgentJsonObject
+  | LocalAgentJsonValue[]
+
+interface LocalAgentJsonObject {
+  [key: string]: LocalAgentJsonValue | undefined
+}
+
+export interface LocalApiResult {
   success: boolean
   code: string
   message: string
-  data?: T
+  data?: LocalAgentJsonValue
   traceId: string
 }
 
@@ -41,24 +53,24 @@ export type AgentHealthStatus = 'RUNNING'
 
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
 
-export type LocalScanJobStatus
-  = | 'CREATED'
-    | 'SCANNING'
-    | 'PAUSED'
-    | 'READYTOUPLOAD'
-    | 'UPLOADING'
-    | 'REPORTED'
-    | 'FAILED'
-    | 'RETRYING'
-    | 'CANCELLED'
+export type LocalScanJobStatus =
+  | 'CREATED'
+  | 'SCANNING'
+  | 'PAUSED'
+  | 'READYTOUPLOAD'
+  | 'UPLOADING'
+  | 'REPORTED'
+  | 'FAILED'
+  | 'RETRYING'
+  | 'CANCELLED'
 
-export type LocalScanPageStatus
-  = | 'CAPTURED'
-    | 'PREPROCESSED'
-    | 'UPLOADING'
-    | 'UPLOADED'
-    | 'FAILED'
-    | 'DELETED'
+export type LocalScanPageStatus =
+  | 'CAPTURED'
+  | 'PREPROCESSED'
+  | 'UPLOADING'
+  | 'UPLOADED'
+  | 'FAILED'
+  | 'DELETED'
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -86,9 +98,7 @@ export interface ScannerAgentActivateResponse {
   tenantId?: string
   deviceName: string
   gatewayBaseUrl: string
-  /** edu-mark 整批推送相对路径（multipart 网络扫描仪入口） */
-  pushUrl: string
-  /** edu-mark 逐页 JSON 上报相对路径（断点续传主链） */
+  /** edu-mark 逐页上报相对路径（断点续传主链） */
   pushPageUrl: string
   /** edu-mark 批次提交相对路径 */
   pushCommitUrl: string
@@ -221,21 +231,17 @@ export async function listLocalScanners(): Promise<ScannerListResponse> {
 }
 
 export async function activateLocalAgent(
-  payload: ActivateLocalAgentRequest,
+  request: ActivateLocalAgentRequest,
 ): Promise<ScannerAgentActivateResponse> {
-  return validateScannerAgentActivateResponse(
-    await localAgentPost<ActivateLocalAgentRequest>('/api/agent/activate', payload),
-  )
+  return validateScannerAgentActivateResponse(await localAgentPost('/api/agent/activate', request))
 }
 
 export async function unbindLocalAgent(): Promise<{ success: boolean }> {
-  return validateSuccessObject(await localAgentPost<Record<string, never>>('/api/agent/unbind', {}))
+  return validateSuccessObject(await localAgentPost('/api/agent/unbind', {}))
 }
 
-export async function startScanJob(payload: StartScanJobRequest): Promise<ScanJobResponse> {
-  return validateScanJobResponse(
-    await localAgentPost<StartScanJobRequest>('/api/scan-jobs/start', payload),
-  )
+export async function startScanJob(request: StartScanJobRequest): Promise<ScanJobResponse> {
+  return validateScanJobResponse(await localAgentPost('/api/scan-jobs/start', request))
 }
 
 export async function getScanJob(scanJobId: string): Promise<ScanJobResponse> {
@@ -264,19 +270,13 @@ export async function listScanJobs(params: ListScanJobsParams = {}): Promise<Sca
 
 export async function cancelScanJob(scanJobId: string): Promise<ScanJobResponse> {
   return validateScanJobResponse(
-    await localAgentPost<Record<string, never>>(
-      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`,
-      {},
-    ),
+    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`, {}),
   )
 }
 
 export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
   return validateScanJobResponse(
-    await localAgentPost<Record<string, never>>(
-      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`,
-      {},
-    ),
+    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`, {}),
   )
 }
 
@@ -286,10 +286,7 @@ export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
  */
 export async function pauseScanJob(scanJobId: string): Promise<ScanJobResponse> {
   return validateScanJobResponse(
-    await localAgentPost<Record<string, never>>(
-      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/pause`,
-      {},
-    ),
+    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/pause`, {}),
   )
 }
 
@@ -298,10 +295,7 @@ export async function pauseScanJob(scanJobId: string): Promise<ScanJobResponse> 
  */
 export async function resumeScanJob(scanJobId: string): Promise<ScanJobResponse> {
   return validateScanJobResponse(
-    await localAgentPost<Record<string, never>>(
-      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`,
-      {},
-    ),
+    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`, {}),
   )
 }
 
@@ -311,10 +305,7 @@ export async function resumeScanJob(scanJobId: string): Promise<ScanJobResponse>
  */
 export async function endBatch(scanJobId: string): Promise<ScanJobResponse> {
   return validateScanJobResponse(
-    await localAgentPost<Record<string, never>>(
-      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/end-batch`,
-      {},
-    ),
+    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/end-batch`, {}),
   )
 }
 
@@ -324,10 +315,7 @@ export async function endBatch(scanJobId: string): Promise<ScanJobResponse> {
  */
 export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
   return validateScanJobResponse(
-    await localAgentPost<Record<string, never>>(
-      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-commit`,
-      {},
-    ),
+    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-commit`, {}),
   )
 }
 
@@ -337,10 +325,7 @@ export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
  */
 export async function deleteScanJob(scanJobId: string): Promise<boolean> {
   return validateBooleanResult(
-    await localAgentPost<Record<string, never>>(
-      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`,
-      {},
-    ),
+    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {}),
   )
 }
 
@@ -353,10 +338,9 @@ export async function deleteScanJob(scanJobId: string): Promise<boolean> {
  */
 export async function discardScanJob(scanJobId: string, discardReason: string): Promise<boolean> {
   return validateBooleanResult(
-    await localAgentPost<{ discardReason: string }>(
-      `/api/scan-jobs/${encodeURIComponent(scanJobId)}/discard`,
-      { discardReason },
-    ),
+    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/discard`, {
+      discardReason,
+    }),
   )
 }
 
@@ -368,36 +352,35 @@ export function openDiagnosticsExport() {
   window.open(`${getLocalAgentBaseUrl()}/api/diagnostics/export`, '_blank', 'noopener,noreferrer')
 }
 
-async function localAgentGet(path: string): Promise<unknown> {
+async function localAgentGet(path: string): Promise<LocalAgentJsonValue> {
   const response = await fetch(`${getLocalAgentBaseUrl()}${path}`, {
     method: 'GET',
   })
   return await parseLocalAgentResponse(response)
 }
 
-async function localAgentPost<TPayload>(path: string, payload: TPayload): Promise<unknown> {
+async function localAgentPost(path: string, requestBody: object): Promise<LocalAgentJsonValue> {
   const response = await fetch(`${getLocalAgentBaseUrl()}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(requestBody),
   })
   return await parseLocalAgentResponse(response)
 }
 
-async function parseLocalAgentResponse(response: Response): Promise<unknown> {
+async function parseLocalAgentResponse(response: Response): Promise<LocalAgentJsonValue> {
   const text = await response.text()
-  let result: unknown
+  let parsed: LocalAgentJsonValue
   try {
-    result = JSON.parse(text)
+    parsed = JSON.parse(text) as LocalAgentJsonValue
   } catch {
     throw new Error(text || '本地 Scanner Agent 响应格式错误')
   }
-  const envelope = validateLocalApiResult(result, response)
+  const envelope = validateLocalApiResult(parsed, response)
   if (!response.ok || !envelope.success) {
-    const message
-      = envelope.message || '本地 Scanner Agent 请求失败'
+    const message = envelope.message || '本地 Scanner Agent 请求失败'
     const busyError = tryParseBusyError(message)
     if (busyError) {
       throw busyError
@@ -407,21 +390,21 @@ async function parseLocalAgentResponse(response: Response): Promise<unknown> {
   if (!Object.hasOwn(envelope, 'data')) {
     throw new TypeError('本地 Scanner Agent 成功响应缺少 data 字段')
   }
-  return envelope.data
+  const data = envelope.data
+  if (data === undefined) {
+    throw new TypeError('本地 Scanner Agent 成功响应 data 字段不能为空')
+  }
+  return data
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function requireRecord(value: unknown, field: string): Record<string, unknown> {
-  if (!isRecord(value)) {
+function requireObject(value: LocalAgentJsonValue, field: string): LocalAgentJsonObject {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是对象`)
   }
   return value
 }
 
-function requireString(value: Record<string, unknown>, field: string): string {
+function requireString(value: LocalAgentJsonObject, field: string): string {
   const fieldValue = value[field]
   if (typeof fieldValue !== 'string') {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串`)
@@ -429,7 +412,7 @@ function requireString(value: Record<string, unknown>, field: string): string {
   return fieldValue
 }
 
-function requireBoolean(value: Record<string, unknown>, field: string): boolean {
+function requireBoolean(value: LocalAgentJsonObject, field: string): boolean {
   const fieldValue = value[field]
   if (typeof fieldValue !== 'boolean') {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是布尔值`)
@@ -437,7 +420,7 @@ function requireBoolean(value: Record<string, unknown>, field: string): boolean 
   return fieldValue
 }
 
-function requireNumber(value: Record<string, unknown>, field: string): number {
+function requireNumber(value: LocalAgentJsonObject, field: string): number {
   const fieldValue = value[field]
   if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue)) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是有效数字`)
@@ -445,15 +428,15 @@ function requireNumber(value: Record<string, unknown>, field: string): number {
   return fieldValue
 }
 
-function requireStringArray(value: Record<string, unknown>, field: string): string[] {
+function requireStringArray(value: LocalAgentJsonObject, field: string): string[] {
   const fieldValue = value[field]
   if (!Array.isArray(fieldValue) || fieldValue.some((item) => typeof item !== 'string')) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串数组`)
   }
-  return fieldValue
+  return fieldValue as string[]
 }
 
-function requireOptionalString(value: Record<string, unknown>, field: string): string | undefined {
+function requireOptionalString(value: LocalAgentJsonObject, field: string): string | undefined {
   const fieldValue = value[field]
   if (fieldValue === undefined) {
     return undefined
@@ -464,7 +447,7 @@ function requireOptionalString(value: Record<string, unknown>, field: string): s
   return fieldValue
 }
 
-function requireOptionalNumber(value: Record<string, unknown>, field: string): number | undefined {
+function requireOptionalNumber(value: LocalAgentJsonObject, field: string): number | undefined {
   const fieldValue = value[field]
   if (fieldValue === undefined) {
     return undefined
@@ -475,7 +458,7 @@ function requireOptionalNumber(value: Record<string, unknown>, field: string): n
   return fieldValue
 }
 
-function requireNullableString(value: Record<string, unknown>, field: string): string | null {
+function requireNullableString(value: LocalAgentJsonObject, field: string): string | null {
   const fieldValue = value[field]
   if (fieldValue === undefined || fieldValue === null) {
     return null
@@ -486,7 +469,7 @@ function requireNullableString(value: Record<string, unknown>, field: string): s
   return fieldValue
 }
 
-function requireScanMode(value: Record<string, unknown>, field: string): ScannerKioskScanMode {
+function requireScanMode(value: LocalAgentJsonObject, field: string): ScannerKioskScanMode {
   const fieldValue = value[field]
   if (fieldValue !== 'DIRECT' && fieldValue !== 'SUPPLEMENT' && fieldValue !== 'ARCHIVE') {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 扫描模式不合法`)
@@ -494,10 +477,7 @@ function requireScanMode(value: Record<string, unknown>, field: string): Scanner
   return fieldValue
 }
 
-function requireAgentHealthStatus(
-  value: Record<string, unknown>,
-  field: string,
-): AgentHealthStatus {
+function requireAgentHealthStatus(value: LocalAgentJsonObject, field: string): AgentHealthStatus {
   const fieldValue = value[field]
   if (fieldValue !== 'RUNNING') {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 运行状态不合法`)
@@ -506,7 +486,7 @@ function requireAgentHealthStatus(
 }
 
 function requireAgentDiagnosticStatus(
-  value: Record<string, unknown>,
+  value: LocalAgentJsonObject,
   field: string,
 ): AgentDiagnosticStatus {
   const fieldValue = value[field]
@@ -516,42 +496,42 @@ function requireAgentDiagnosticStatus(
   return fieldValue
 }
 
-function requireScanJobStatus(value: Record<string, unknown>, field: string): LocalScanJobStatus {
+function requireScanJobStatus(value: LocalAgentJsonObject, field: string): LocalScanJobStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CREATED'
-    && fieldValue !== 'SCANNING'
-    && fieldValue !== 'PAUSED'
-    && fieldValue !== 'READYTOUPLOAD'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'REPORTED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'RETRYING'
-    && fieldValue !== 'CANCELLED'
+    fieldValue !== 'CREATED' &&
+    fieldValue !== 'SCANNING' &&
+    fieldValue !== 'PAUSED' &&
+    fieldValue !== 'READYTOUPLOAD' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'REPORTED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'RETRYING' &&
+    fieldValue !== 'CANCELLED'
   ) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描任务状态`)
   }
   return fieldValue
 }
 
-function requireScanPageStatus(value: Record<string, unknown>, field: string): LocalScanPageStatus {
+function requireScanPageStatus(value: LocalAgentJsonObject, field: string): LocalScanPageStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CAPTURED'
-    && fieldValue !== 'PREPROCESSED'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'UPLOADED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'DELETED'
+    fieldValue !== 'CAPTURED' &&
+    fieldValue !== 'PREPROCESSED' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'UPLOADED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'DELETED'
   ) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描页状态`)
   }
   return fieldValue
 }
 
-function validateLocalApiResult(value: unknown, response: Response): LocalApiResult<unknown> {
-  const result = requireRecord(value, 'response')
-  const envelope: LocalApiResult<unknown> = {
+function validateLocalApiResult(value: LocalAgentJsonValue, response: Response): LocalApiResult {
+  const result = requireObject(value, 'response')
+  const envelope: LocalApiResult = {
     success: requireBoolean(result, 'success'),
     code: requireString(result, 'code'),
     message: requireString(result, 'message'),
@@ -566,8 +546,8 @@ function validateLocalApiResult(value: unknown, response: Response): LocalApiRes
   return envelope
 }
 
-function validateAgentHealthResponse(value: unknown): AgentHealthResponse {
-  const result = requireRecord(value, 'agentHealth')
+function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthResponse {
+  const result = requireObject(value, 'agentHealth')
   return {
     status: requireAgentHealthStatus(result, 'status'),
     agentVersion: requireString(result, 'agentVersion'),
@@ -588,8 +568,8 @@ function validateAgentHealthResponse(value: unknown): AgentHealthResponse {
   }
 }
 
-function validateScannerListResponse(value: unknown): ScannerListResponse {
-  const result = requireRecord(value, 'scannerList')
+function validateScannerListResponse(value: LocalAgentJsonValue): ScannerListResponse {
+  const result = requireObject(value, 'scannerList')
   const devices = result.devices
   if (!Array.isArray(devices)) {
     throw new TypeError('本地 Scanner Agent 响应字段 devices 必须是数组')
@@ -599,8 +579,8 @@ function validateScannerListResponse(value: unknown): ScannerListResponse {
   }
 }
 
-function validateScannerDeviceInfo(value: unknown, field: string): ScannerDeviceInfo {
-  const result = requireRecord(value, field)
+function validateScannerDeviceInfo(value: LocalAgentJsonValue, field: string): ScannerDeviceInfo {
+  const result = requireObject(value, field)
   const scanner: ScannerDeviceInfo = {
     localScannerId: requireString(result, 'localScannerId'),
     displayName: requireString(result, 'displayName'),
@@ -616,14 +596,15 @@ function validateScannerDeviceInfo(value: unknown, field: string): ScannerDevice
   return scanner
 }
 
-function validateScannerAgentActivateResponse(value: unknown): ScannerAgentActivateResponse {
-  const result = requireRecord(value, 'agentActivation')
+function validateScannerAgentActivateResponse(
+  value: LocalAgentJsonValue,
+): ScannerAgentActivateResponse {
+  const result = requireObject(value, 'agentActivation')
   const payload: ScannerAgentActivateResponse = {
     scannerDeviceId: requireString(result, 'scannerDeviceId'),
     scannerStationId: requireString(result, 'scannerStationId'),
     deviceName: requireString(result, 'deviceName'),
     gatewayBaseUrl: requireString(result, 'gatewayBaseUrl'),
-    pushUrl: requireString(result, 'pushUrl'),
     pushPageUrl: requireString(result, 'pushPageUrl'),
     pushCommitUrl: requireString(result, 'pushCommitUrl'),
     pushToken: requireString(result, 'pushToken'),
@@ -648,19 +629,19 @@ function validateScannerAgentActivateResponse(value: unknown): ScannerAgentActiv
   return payload
 }
 
-function validateSuccessObject(value: unknown): { success: boolean } {
-  const result = requireRecord(value, 'successResult')
+function validateSuccessObject(value: LocalAgentJsonValue): { success: boolean } {
+  const result = requireObject(value, 'successResult')
   return {
     success: requireBoolean(result, 'success'),
   }
 }
 
-function validateScanJobResponse(value: unknown): ScanJobResponse {
+function validateScanJobResponse(value: LocalAgentJsonValue): ScanJobResponse {
   return validateScanJobResponsePayload(value, 'scanJob')
 }
 
-function validateScanJobListResponse(value: unknown): ScanJobListResponse {
-  const result = requireRecord(value, 'scanJobList')
+function validateScanJobListResponse(value: LocalAgentJsonValue): ScanJobListResponse {
+  const result = requireObject(value, 'scanJobList')
   const jobs = result.jobs
   if (!Array.isArray(jobs)) {
     throw new TypeError('本地 Scanner Agent 响应字段 jobs 必须是数组')
@@ -670,8 +651,11 @@ function validateScanJobListResponse(value: unknown): ScanJobListResponse {
   }
 }
 
-function validateScanJobResponsePayload(value: unknown, field: string): ScanJobResponse {
-  const result = requireRecord(value, field)
+function validateScanJobResponsePayload(
+  value: LocalAgentJsonValue,
+  field: string,
+): ScanJobResponse {
+  const result = requireObject(value, field)
   const pages = result.pages
   if (!Array.isArray(pages)) {
     throw new TypeError(`本地 Scanner Agent 响应字段 ${field}.pages 必须是数组`)
@@ -707,8 +691,8 @@ function validateScanJobResponsePayload(value: unknown, field: string): ScanJobR
   return payload
 }
 
-function validateScanPageInfo(value: unknown, field: string): ScanPageInfo {
-  const result = requireRecord(value, field)
+function validateScanPageInfo(value: LocalAgentJsonValue, field: string): ScanPageInfo {
+  const result = requireObject(value, field)
   const page: ScanPageInfo = {
     pageNo: requireNumber(result, 'pageNo'),
     status: requireScanPageStatus(result, 'status'),
@@ -730,7 +714,7 @@ function validateScanPageInfo(value: unknown, field: string): ScanPageInfo {
   return page
 }
 
-function validateBooleanResult(value: unknown): boolean {
+function validateBooleanResult(value: LocalAgentJsonValue): boolean {
   if (typeof value !== 'boolean') {
     throw new TypeError('本地 Scanner Agent 响应 data 必须是布尔值')
   }

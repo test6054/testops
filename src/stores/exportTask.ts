@@ -1,8 +1,8 @@
-import type {ExportJobQueryRequest, ExportJobStatusVO} from '@/apis/edu/export'
-import message from 'ant-design-vue/es/message'
-import {defineStore} from 'pinia'
-import {computed, ref, watch} from 'vue'
-import {deleteExportJob, queryExportJobs} from '@/apis/edu/export'
+import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
+import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
+import { defineStore } from 'pinia'
+import { computed, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 
 /**
  * 导出任务中心 Store
@@ -12,8 +12,8 @@ export const useExportTaskStore = defineStore('export-task', () => {
   const tasks = ref<ExportJobStatusVO[]>([])
   const loading = ref(false)
   const visible = ref(false)
-  const lastFetchParams = ref<ExportJobQueryRequest>({pageNum: 1, pageSize: 20})
-  const pagination = ref<{ total: number, pages: number }>({total: 0, pages: 0})
+  const lastFetchParams = ref<ExportJobQueryRequest>({ pageNum: 1, pageSize: 20 })
+  const pagination = ref<{ total: number, pages: number }>({ total: 0, pages: 0 })
 
   // 轮询定时器ID
   let pollingTimer: ReturnType<typeof setInterval> | null = null
@@ -34,7 +34,7 @@ export const useExportTaskStore = defineStore('export-task', () => {
         stopPolling()
       }
     },
-    {immediate: true},
+    { immediate: true },
   )
 
   // 启动轮询
@@ -45,10 +45,10 @@ export const useExportTaskStore = defineStore('export-task', () => {
       try {
         const result = await queryExportJobs(lastFetchParams.value)
         tasks.value = result.list
-        pagination.value = {total: result.total, pages: result.pages}
+        pagination.value = { total: Number(result.total), pages: result.pages }
       } catch (error) {
         stopPolling()
-        message.error('导出任务刷新失败')
+        showUserError(error, '导出任务状态刷新失败，请稍后重试')
         throw error
       }
     }, POLLING_INTERVAL)
@@ -72,7 +72,7 @@ export const useExportTaskStore = defineStore('export-task', () => {
       lastFetchParams.value = query
       const result = await queryExportJobs(query)
       tasks.value = result.list
-      pagination.value = {total: result.total, pages: result.pages}
+      pagination.value = { total: Number(result.total), pages: result.pages }
     } finally {
       loading.value = false
     }

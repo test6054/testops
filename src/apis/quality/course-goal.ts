@@ -33,7 +33,7 @@ export interface CourseGoalVO {
   updateTime?: string
 }
 
-export interface CourseGoalSavePayload {
+export interface CourseGoalSaveRequest {
   id?: string
   qualityCourseId: string
   goalCode: string
@@ -52,15 +52,21 @@ export interface CourseGoalSavePayload {
 export interface CourseGoalRequirementVO {
   id: string
   courseGoalId: string
+  courseGoalCode: string
+  courseGoalName: string
   requirementId?: string
+  requirementCode?: string
+  requirementName?: string
   indicatorId?: string
+  indicatorCode?: string
+  indicatorName?: string
   supportLevel: SupportLevel
   supportWeight: number
   createTime?: string
   updateTime?: string
 }
 
-export interface CourseGoalRequirementSavePayload {
+export interface CourseGoalRequirementSaveRequest {
   id?: string
   courseGoalId: string
   requirementId?: string
@@ -84,7 +90,7 @@ export interface CourseGoalAssessmentRuleVO {
   updateTime?: string
 }
 
-export interface CourseGoalAssessmentRuleSavePayload {
+export interface CourseGoalAssessmentRuleSaveRequest {
   id?: string
   courseGoalId: string
   aggregation: AggregationFunction
@@ -100,14 +106,10 @@ export interface CourseGoalAssessmentRuleSavePayload {
 export const courseGoalApi = {
   listByCourse: (qualityCourseId: string) =>
     http.post<CourseGoalVO[]>(`${GOAL}/list-by-course`, { id: qualityCourseId }),
-  detail: (id: string) =>
-    http.post<CourseGoalVO>(`${GOAL}/detail`, { id }),
-  create: (data: CourseGoalSavePayload) =>
-    http.post<string>(`${GOAL}/create`, data),
-  update: (data: CourseGoalSavePayload) =>
-    http.post<void>(`${GOAL}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${GOAL}/delete`, { id }),
+  detail: (id: string) => http.post<CourseGoalVO>(`${GOAL}/detail`, { id }),
+  create: (data: CourseGoalSaveRequest) => http.post<string>(`${GOAL}/create`, data),
+  update: (data: CourseGoalSaveRequest) => http.post<void>(`${GOAL}/update`, data),
+  delete: (id: string) => http.post<void>(`${GOAL}/delete`, { id }),
 }
 
 export const courseGoalRequirementApi = {
@@ -115,25 +117,19 @@ export const courseGoalRequirementApi = {
     http.post<CourseGoalRequirementVO[]>(`${SUPPORT}/list-by-course-goal`, { id: courseGoalId }),
   listByIndicator: (indicatorId: string) =>
     http.post<CourseGoalRequirementVO[]>(`${SUPPORT}/list-by-indicator`, { id: indicatorId }),
-  detail: (id: string) =>
-    http.post<CourseGoalRequirementVO>(`${SUPPORT}/detail`, { id }),
-  create: (data: CourseGoalRequirementSavePayload) =>
-    http.post<string>(`${SUPPORT}/create`, data),
-  update: (data: CourseGoalRequirementSavePayload) =>
-    http.post<void>(`${SUPPORT}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${SUPPORT}/delete`, { id }),
+  detail: (id: string) => http.post<CourseGoalRequirementVO>(`${SUPPORT}/detail`, { id }),
+  create: (data: CourseGoalRequirementSaveRequest) => http.post<string>(`${SUPPORT}/create`, data),
+  update: (data: CourseGoalRequirementSaveRequest) => http.post<void>(`${SUPPORT}/update`, data),
+  delete: (id: string) => http.post<void>(`${SUPPORT}/delete`, { id }),
 }
 
 export const courseGoalAssessmentRuleApi = {
   findByCourseGoal: (courseGoalId: string) =>
-    http.post<CourseGoalAssessmentRuleVO | null>(`${RULE}/find-by-course-goal`, { id: courseGoalId }),
-  detail: (id: string) =>
-    http.post<CourseGoalAssessmentRuleVO>(`${RULE}/detail`, { id }),
-  create: (data: CourseGoalAssessmentRuleSavePayload) =>
-    http.post<string>(`${RULE}/create`, data),
-  update: (data: CourseGoalAssessmentRuleSavePayload) =>
-    http.post<void>(`${RULE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${RULE}/delete`, { id }),
+    http.post<CourseGoalAssessmentRuleVO | null>(`${RULE}/find-by-course-goal`, {
+      id: courseGoalId,
+    }),
+  detail: (id: string) => http.post<CourseGoalAssessmentRuleVO>(`${RULE}/detail`, { id }),
+  create: (data: CourseGoalAssessmentRuleSaveRequest) => http.post<string>(`${RULE}/create`, data),
+  update: (data: CourseGoalAssessmentRuleSaveRequest) => http.post<void>(`${RULE}/update`, data),
+  delete: (id: string) => http.post<void>(`${RULE}/delete`, { id }),
 }

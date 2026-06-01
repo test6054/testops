@@ -105,7 +105,7 @@ export const RECONCILE_STATUS_COLOR: Record<ReconcileStatusCode, BadgeTone> = {
 // ─── DTO ─────────────────────────────────
 
 /** 同步任务创建请求 - 对应 SyncTaskCreateRequest */
-export interface SyncTaskCreatePayload {
+export interface SyncTaskCreateRequest {
   examId: string
   externalSystemType: ExternalSystemTypeCode
   /** 后端目前仅闭合 GRADE_EXPORT 路径 */
@@ -115,7 +115,7 @@ export interface SyncTaskCreatePayload {
 }
 
 /** 回写记录查询请求 - 对应 PassbackRecordQueryRequest（2026-05-14 GET→POST 整改） */
-export interface PassbackRecordQueryPayload extends QueryDto {
+export interface PassbackRecordQueryRequest extends QueryDto {
   examId: string
   syncTaskId?: string
   passbackStatus?: PassbackStatusCode
@@ -158,11 +158,13 @@ export interface PassbackRecordVO {
   examId: string
   syncTaskId?: string
   studentUserId?: string
+  studentNo?: string
+  studentName?: string
   finalScoreId?: string
   localScore?: number
   externalResultId?: string
-  passbackStatus?: PassbackStatusCode
-  reconcileStatus?: ReconcileStatusCode
+  passbackStatus: PassbackStatusCode
+  reconcileStatus: ReconcileStatusCode
   externalScore?: number
   errorCode?: string
   errorMessage?: string
@@ -176,8 +178,8 @@ export interface PassbackRecordVO {
  * 创建同步任务
  * POST /api/exam/teaching-affairs/sync-task/create
  */
-export function createSyncTask(payload: SyncTaskCreatePayload): Promise<SyncTaskVO> {
-  return http.post<SyncTaskVO>('/api/exam/teaching-affairs/sync-task/create', payload)
+export function createSyncTask(request: SyncTaskCreateRequest): Promise<SyncTaskVO> {
+  return http.post<SyncTaskVO>('/api/exam/teaching-affairs/sync-task/create', request)
 }
 
 /**
@@ -224,8 +226,8 @@ export function cancelSyncTask(syncTaskId: string): Promise<void> {
  * 查询回写记录列表（2026-05-14 已 GET→POST 整改）
  * POST /api/exam/teaching-affairs/passback/list
  */
-export function listPassbackRecords(payload: PassbackRecordQueryPayload): Promise<PageResult<PassbackRecordVO>> {
-  return http.post<PageResult<PassbackRecordVO>>('/api/exam/teaching-affairs/passback/list', payload)
+export function listPassbackRecords(request: PassbackRecordQueryRequest): Promise<PageResult<PassbackRecordVO>> {
+  return http.post<PageResult<PassbackRecordVO>>('/api/exam/teaching-affairs/passback/list', request)
 }
 
 /**

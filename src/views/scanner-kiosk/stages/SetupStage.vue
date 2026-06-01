@@ -193,7 +193,9 @@ watch(
                   getSemesterDescription(workflow.selectedExamOption.value.semester)
                 }}</span>
               </template>
-              <span class="dot" /><span>已扫批次 {{ workflow.selectedExamOption.value.scanBatchCount }}</span>
+              <span class="dot" /><span
+                >已扫批次 {{ workflow.selectedExamOption.value.scanBatchCount }}</span
+              >
             </span>
           </div>
         </div>
@@ -231,7 +233,7 @@ watch(
             <span v-if="workflow.examId.value === opt.examId" class="exam-card-tag">已选</span>
           </div>
           <div class="exam-card-meta">
-            <span class="mono">{{ opt.examNo }}</span>
+            <span>{{ opt.examNo }}</span>
             <template v-if="opt.courseName">
               <span class="dot" /><span>{{ opt.courseName }}</span>
             </template>
@@ -333,7 +335,7 @@ watch(
           :disabled="!workflow.canEditScanSetup.value"
           placeholder="留空由扫描仪决定"
         />
-        <span class="hint">用于扫描中显示进度百分比，不参与服务端校验</span>
+        <span class="hint">仅用于展示扫描进度</span>
       </div>
     </article>
 
@@ -356,7 +358,8 @@ watch(
             class="class-chip"
             :class="{ missing: chip.missing }"
             :title="chip.label"
-          >{{ chip.label }}</span>
+            >{{ chip.label }}</span
+          >
         </div>
         <span v-else class="empty-inline">请先选择考试</span>
       </div>
@@ -452,7 +455,6 @@ watch(
   border-radius: 50%;
   background: var(--kiosk-primary-soft);
   color: var(--kiosk-primary);
-  font-family: var(--kiosk-font-mono);
   font-size: 18px;
   font-weight: var(--kiosk-fw-bold);
   flex: 0 0 auto;
@@ -720,10 +722,6 @@ watch(
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-secondary);
 }
-.mono {
-  font-family: var(--kiosk-font-mono);
-  color: var(--kiosk-ink-tertiary);
-}
 .exam-card-foot {
   display: flex;
   flex-wrap: wrap;
@@ -835,7 +833,6 @@ watch(
 }
 .form-input--num {
   flex: 0 0 200px;
-  font-family: var(--kiosk-font-mono);
 }
 
 .expected-row {

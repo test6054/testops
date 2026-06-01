@@ -16,6 +16,22 @@ const ISSUE = '/api/quality/audit-evaluation/issues'
 const RECT = '/api/quality/audit-evaluation/rectifications'
 const SUPER = '/api/quality/audit-evaluation/supervisions'
 
+/** 审核评估问题来源 - 对应后端 AuditIssueSourceEnum */
+export type AuditIssueSource =
+  | 'SELF_AUDIT'
+  | 'EXPERT_AUDIT'
+  | 'ACCREDITATION_AUDIT'
+  | 'EXTERNAL_INSPECTION'
+
+/** 审核评估问题严重度 - 对应后端 AuditIssueSeverityEnum */
+export type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
+
+/** 督导复查范围 - 对应后端 AuditSupervisionScopeEnum */
+export type AuditSupervisionScope = 'COURSE' | 'PROGRAM' | 'TRAINING_PLAN' | 'COMPREHENSIVE'
+
+/** 督导复查结论 - 对应后端 AuditSupervisionConclusionEnum */
+export type AuditSupervisionConclusion = 'PASS' | 'NEEDS_IMPROVEMENT' | 'FAIL'
+
 /* ========== 审核评估问题 ========== */
 
 export interface AuditIssueVO {
@@ -30,10 +46,8 @@ export interface AuditIssueVO {
   issueCode: string
   issueTitle: string
   issueDescription?: string
-  /** SELF_AUDIT / EXPERT_AUDIT / ACCREDITATION_AUDIT / EXTERNAL_INSPECTION */
-  issueSource: string
-  /** MINOR / MAJOR / CRITICAL */
-  severity: string
+  issueSource: AuditIssueSource
+  severity: AuditIssueSeverity
   auditRound?: string
   auditYear?: string
   status: AuditIssueStatus
@@ -46,7 +60,7 @@ export interface AuditIssueVO {
   updateTime?: string
 }
 
-export interface AuditIssueSavePayload {
+export interface AuditIssueSaveRequest {
   id?: string
   programId?: string
   trainingPlanId?: string
@@ -57,31 +71,31 @@ export interface AuditIssueSavePayload {
   issueCode: string
   issueTitle: string
   issueDescription?: string
-  issueSource: string
-  severity: string
+  issueSource: AuditIssueSource
+  severity: AuditIssueSeverity
   auditRound?: string
   auditYear?: string
   raisedBy?: string
   raisedAt?: string
 }
 
-export interface AuditIssueQueryPayload extends QueryDto {
+export interface AuditIssueQueryRequest extends QueryDto {
   programId?: string
   trainingPlanId?: string
   qualityCourseId?: string
-  issueSource?: string
-  severity?: string
+  issueSource?: AuditIssueSource
+  severity?: AuditIssueSeverity
   status?: AuditIssueStatus
   auditYear?: string
   keyword?: string
 }
 
 export const auditIssueApi = {
-  page: (data: AuditIssueQueryPayload) =>
+  page: (data: AuditIssueQueryRequest) =>
     http.post<PageResult<AuditIssueVO>>(`${ISSUE}/page`, data),
   detail: (id: string) => http.post<AuditIssueVO>(`${ISSUE}/detail`, { id }),
-  create: (data: AuditIssueSavePayload) => http.post<string>(`${ISSUE}/create`, data),
-  update: (data: AuditIssueSavePayload) => http.post<void>(`${ISSUE}/update`, data),
+  create: (data: AuditIssueSaveRequest) => http.post<string>(`${ISSUE}/create`, data),
+  update: (data: AuditIssueSaveRequest) => http.post<void>(`${ISSUE}/update`, data),
   delete: (id: string) => http.post<void>(`${ISSUE}/delete`, { id }),
   transitStatus: (id: string, targetStatus: AuditIssueStatus) =>
     http.post<void>(`${ISSUE}/transit-status`, { id, targetStatus }),
@@ -93,16 +107,22 @@ export interface AuditRectificationVO {
   id: string
   tenantId?: string
   auditIssueId: string
+  auditIssueCode: string
+  auditIssueTitle: string
+  auditIssueSeverity: AuditIssueSeverity
+  auditIssueStatus: AuditIssueStatus
   rectificationCode: string
   rectificationTitle: string
   rectificationAction: string
   ownerUserId: string
+  /** 责任人用户名称，ownerUserId 非空时后端必填 */
+  ownerUserName: string
   ownerRole?: string
   /** yyyy-MM-dd */
   dueDate: string
   status: AuditRectificationStatus
   progressRemark?: string
-  evidenceAnchors?: string
+  evidenceItems?: QualityAuditEvidenceItem[]
   submittedAt?: string
   verifiedAt?: string
   verifiedBy?: string
@@ -115,7 +135,7 @@ export interface AuditRectificationVO {
   updateTime?: string
 }
 
-export interface AuditRectificationSavePayload {
+export interface AuditRectificationSaveRequest {
   id?: string
   auditIssueId: string
   rectificationCode: string
@@ -126,38 +146,38 @@ export interface AuditRectificationSavePayload {
   dueDate: string
 }
 
-export interface AuditRectificationQueryPayload extends QueryDto {
+export interface AuditRectificationQueryRequest extends QueryDto {
   auditIssueId?: string
   ownerUserId?: string
   status?: AuditRectificationStatus
   keyword?: string
 }
 
-export interface AuditRectificationProgressPayload {
+export interface AuditRectificationProgressRequest {
   id: string
   targetStatus: 'IN_PROGRESS' | 'SUBMITTED'
   progressRemark?: string
-  evidenceAnchors?: string
+  evidenceItems?: QualityAuditEvidenceItem[]
 }
 
-export interface AuditRectificationVerifyPayload {
+export interface AuditRectificationVerifyRequest {
   id: string
   decision: 'APPROVED' | 'REJECTED'
   remark?: string
 }
 
 export const auditRectificationApi = {
-  page: (data: AuditRectificationQueryPayload) =>
+  page: (data: AuditRectificationQueryRequest) =>
     http.post<PageResult<AuditRectificationVO>>(`${RECT}/page`, data),
   detail: (id: string) => http.post<AuditRectificationVO>(`${RECT}/detail`, { id }),
-  create: (data: AuditRectificationSavePayload) => http.post<string>(`${RECT}/create`, data),
-  update: (data: AuditRectificationSavePayload) => http.post<void>(`${RECT}/update`, data),
+  create: (data: AuditRectificationSaveRequest) => http.post<string>(`${RECT}/create`, data),
+  update: (data: AuditRectificationSaveRequest) => http.post<void>(`${RECT}/update`, data),
   delete: (id: string) => http.post<void>(`${RECT}/delete`, { id }),
   /** PLANNED→IN_PROGRESS / IN_PROGRESS→SUBMITTED / RETURNED→IN_PROGRESS */
-  updateProgress: (data: AuditRectificationProgressPayload) =>
+  updateProgress: (data: AuditRectificationProgressRequest) =>
     http.post<void>(`${RECT}/update-progress`, data),
   /** 复核：APPROVED → VERIFIED / REJECTED → RETURNED */
-  verify: (data: AuditRectificationVerifyPayload) => http.post<void>(`${RECT}/verify`, data),
+  verify: (data: AuditRectificationVerifyRequest) => http.post<void>(`${RECT}/verify`, data),
   /** 闭环：VERIFIED → CLOSED */
   close: (id: string) => http.post<void>(`${RECT}/close`, { id }),
 }
@@ -175,23 +195,21 @@ export interface AuditSupervisionVO {
   supervisionCode: string
   supervisionTitle: string
   supervisionType: AuditSupervisionType
-  /** COURSE / PROGRAM / TRAINING_PLAN / COMPREHENSIVE */
-  supervisionScope?: string
+  supervisionScope?: AuditSupervisionScope
   supervisorUserId?: string
   supervisedAt?: string
   summary?: string
-  findings?: string
-  /** PASS / NEEDS_IMPROVEMENT / FAIL */
-  conclusion?: string
+  findingItems?: AuditSupervisionFindingItem[]
+  conclusion?: AuditSupervisionConclusion
   archiveId?: string
-  evidenceAnchors?: string
+  evidenceItems?: QualityAuditEvidenceItem[]
   createUser?: string
   updateUser?: string
   createTime?: string
   updateTime?: string
 }
 
-export interface AuditSupervisionSavePayload {
+export interface AuditSupervisionSaveRequest {
   id?: string
   auditIssueId?: string
   rectificationId?: string
@@ -201,17 +219,36 @@ export interface AuditSupervisionSavePayload {
   supervisionCode: string
   supervisionTitle: string
   supervisionType: AuditSupervisionType
-  supervisionScope?: string
+  supervisionScope?: AuditSupervisionScope
   supervisorUserId?: string
   supervisedAt?: string
   summary?: string
-  findings?: string
-  conclusion?: string
+  findingItems?: AuditSupervisionFindingItem[]
+  conclusion?: AuditSupervisionConclusion
   archiveId?: string
-  evidenceAnchors?: string
+  evidenceItems?: QualityAuditEvidenceItem[]
 }
 
-export interface AuditSupervisionQueryPayload extends QueryDto {
+export interface QualityAuditEvidenceItem {
+  evidenceType?: string
+  evidenceTitle?: string
+  evidenceCode?: string
+  archiveId?: string
+  fileNodeId?: string
+  reportId?: string
+  remark?: string
+}
+
+export interface AuditSupervisionFindingItem {
+  findingType?: string
+  findingTitle?: string
+  findingDescription?: string
+  severity?: string
+  responsibleUnit?: string
+  improvementSuggestion?: string
+}
+
+export interface AuditSupervisionQueryRequest extends QueryDto {
   auditIssueId?: string
   programId?: string
   trainingPlanId?: string
@@ -222,10 +259,10 @@ export interface AuditSupervisionQueryPayload extends QueryDto {
 }
 
 export const auditSupervisionApi = {
-  page: (data: AuditSupervisionQueryPayload) =>
+  page: (data: AuditSupervisionQueryRequest) =>
     http.post<PageResult<AuditSupervisionVO>>(`${SUPER}/page`, data),
   detail: (id: string) => http.post<AuditSupervisionVO>(`${SUPER}/detail`, { id }),
-  create: (data: AuditSupervisionSavePayload) => http.post<string>(`${SUPER}/create`, data),
-  update: (data: AuditSupervisionSavePayload) => http.post<void>(`${SUPER}/update`, data),
+  create: (data: AuditSupervisionSaveRequest) => http.post<string>(`${SUPER}/create`, data),
+  update: (data: AuditSupervisionSaveRequest) => http.post<void>(`${SUPER}/update`, data),
   delete: (id: string) => http.post<void>(`${SUPER}/delete`, { id }),
 }

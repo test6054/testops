@@ -6,10 +6,10 @@
  * 所有文件操作统一使用FileSystemNodeController
  */
 
-import type {BlobDownloadResponse, ExtendedAxiosRequestConfig} from '@/config/axios/types'
+import type { BlobDownloadResponse, ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import http from '@/config/axios'
-import {STORAGE_TOKEN} from '@/constants/storage-keys'
-import {getTraceHeaders} from '@/utils/trace'
+import { STORAGE_TOKEN } from '@/constants/storage-keys'
+import { getTraceHeaders } from '@/utils/trace'
 
 
 /** 文件信息 - 通用文件类型 */
@@ -137,7 +137,7 @@ export interface GetDirectoryTreeRequestDTO {
  * 创建文件夹 - 对应后端 POST /api/storage/filesystem/folder
  */
 export function createFolder(data: CreateFolderRequestDTO): Promise<FileSystemNodeResponseDTO> {
-  return http.post('/api/storage/filesystem/folder', data)
+  return http.post<FileSystemNodeResponseDTO>('/api/storage/filesystem/folder', data)
 }
 
 /**
@@ -168,7 +168,7 @@ export function uploadFile(file: File, options: UploadFileOptions): Promise<File
   }
   // tenantId 和 userId 由后端从用户上下文(UserHold)自动获取，无需前端传递
 
-  return http.post('/api/storage/filesystem/file', formData, {
+  return http.post<FileSystemNodeResponseDTO>('/api/storage/filesystem/file', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     },
@@ -190,21 +190,21 @@ export function uploadFile(file: File, options: UploadFileOptions): Promise<File
  * 获取子节点列表 - 对应后端 POST /api/storage/filesystem/children
  */
 export function getChildNodes(data: GetChildNodesRequestDTO): Promise<FileSystemNodeResponseDTO[]> {
-  return http.post('/api/storage/filesystem/children', data)
+  return http.post<FileSystemNodeResponseDTO[]>('/api/storage/filesystem/children', data)
 }
 
 /**
  * 删除节点 - 对应后端 POST /api/storage/filesystem/delete
  */
 export function deleteNode(data: DeleteNodeRequestDTO): Promise<void> {
-  return http.post('/api/storage/filesystem/delete', data)
+  return http.post<void>('/api/storage/filesystem/delete', data)
 }
 
 /**
  * 重命名节点 - 对应后端 POST /api/storage/filesystem/rename
  */
 export function renameNode(data: RenameNodeRequestDTO): Promise<FileSystemNodeResponseDTO> {
-  return http.post('/api/storage/filesystem/rename', data)
+  return http.post<FileSystemNodeResponseDTO>('/api/storage/filesystem/rename', data)
 }
 
 /**
@@ -221,7 +221,7 @@ export function batchUploadFiles(files: File[], data: UploadFileRequestDTO): Pro
   if (data.businessType) {
     formData.append('businessType', data.businessType)
   }
-  return http.post('/api/storage/filesystem/batch-upload', formData, {
+  return http.post<BatchUploadResponseDTO>('/api/storage/filesystem/batch-upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     },
@@ -248,7 +248,7 @@ export function uploadFolder(files: File[], data: {
   formData.append('businessType', data.businessType)
   // tenantId 和 userId 由后端从用户上下文(UserHold)自动获取，无需前端传递
 
-  return http.post('/api/storage/filesystem/upload-folder', formData, {
+  return http.post<BatchUploadResponseDTO>('/api/storage/filesystem/upload-folder', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     },
@@ -258,7 +258,7 @@ export function uploadFolder(files: File[], data: {
 
 /**
  * 下载文件 - 对应后端 GET /api/storage/filesystem/download
- * 使用GET请求避免JSON序列化问题，返回完整响应对象用于浏览器下载
+ * 使用 GET 请求返回完整响应对象，用于浏览器下载
  */
 export function downloadFile(
   data: DownloadFileRequestDTO,
@@ -302,11 +302,11 @@ export async function getFileArrayBuffer(data: DownloadFileRequestDTO): Promise<
     throw new Error(`文件下载失败: HTTP ${response.status}`)
   }
 
-  // 检查响应类型，确保不是JSON错误响应
+  // 检查响应类型，确保不是接口错误响应
   const contentType = response.headers.get('content-type')
   if (contentType?.includes('application/json')) {
     const errorData = await response.json()
-    throw new Error(errorData.msg || '文件下载失败：服务器返回JSON错误')
+    throw new Error(errorData.msg || '文件下载失败：服务器返回接口错误')
   }
 
   return await response.arrayBuffer()
@@ -358,24 +358,24 @@ export interface FilePreviewResponseDTO {
 
 /**
  * 预览文件 - 对应后端 POST /api/storage/filesystem/preview
- * 后端返回ResultInfo<FilePreviewResponseDTO>（JSON数据），包含预览内容和元信息
+ * 后端返回ResultInfo<FilePreviewResponseDTO>，包含预览内容和元信息
  */
 export function previewFile(data: PreviewFileRequestDTO): Promise<FilePreviewResponseDTO> {
-  return http.post('/api/storage/filesystem/preview', data)
+  return http.post<FilePreviewResponseDTO>('/api/storage/filesystem/preview', data)
 }
 
 /**
  * 获取目录树 - 对应后端 POST /api/storage/filesystem/directory-tree
  */
 export function getDirectoryTree(data: GetDirectoryTreeRequestDTO): Promise<DirectoryTreeNodeDTO[]> {
-  return http.post('/api/storage/filesystem/directory-tree', data)
+  return http.post<DirectoryTreeNodeDTO[]>('/api/storage/filesystem/directory-tree', data)
 }
 
 /**
  * 获取节点信息 - 对应后端 POST /api/storage/filesystem/node-info
  */
 export function getNodeInfo(data: DeleteNodeRequestDTO): Promise<FileSystemNodeResponseDTO> {
-  return http.post('/api/storage/filesystem/node-info', data)
+  return http.post<FileSystemNodeResponseDTO>('/api/storage/filesystem/node-info', data)
 }
 
 
@@ -387,7 +387,7 @@ export function renameFile(data: {
   nodeId: string
   newName: string
 }): Promise<FileInfo> {
-  return http.post(`/api/storage/filesystem/rename`, data)
+  return http.post<FileInfo>(`/api/storage/filesystem/rename`, data)
 }
 
 
@@ -425,14 +425,14 @@ export interface ExtractArchiveResponseDTO {
  * 解压压缩文件 - 对应后端 POST /api/storage/filesystem/extract-archive
  */
 export function extractArchive(data: ExtractArchiveRequestDTO): Promise<ExtractArchiveResponseDTO> {
-  return http.post('/api/storage/filesystem/extract-archive', data)
+  return http.post<ExtractArchiveResponseDTO>('/api/storage/filesystem/extract-archive', data)
 }
 
 /**
  * 异步解压 - 返回任务ID
  */
 export function startExtractArchiveAsync(data: ExtractArchiveRequestDTO): Promise<string> {
-  return http.post('/api/storage/filesystem/extract-archive/async', data)
+  return http.post<string>('/api/storage/filesystem/extract-archive/async', data)
 }
 
 /**
@@ -443,5 +443,5 @@ export function getExtractArchiveStatus(data: {
   tenantId: string
   userId: string
 }): Promise<ExtractArchiveTaskStatusDTO> {
-  return http.post('/api/storage/filesystem/extract-archive/status', data)
+  return http.post<ExtractArchiveTaskStatusDTO>('/api/storage/filesystem/extract-archive/status', data)
 }

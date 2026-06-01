@@ -79,7 +79,7 @@
         v-else-if="progressLoadError"
         :error="progressLoadError"
         title="扫描进度加载失败"
-        :helper="`考试 ID：${selectedExamId}`"
+        :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
         compact
         @retry="loadProgress"
       />
@@ -205,7 +205,7 @@
         v-if="batchesLoadError"
         :error="batchesLoadError"
         title="扫描批次加载失败"
-        :helper="`考试 ID：${selectedExamId}`"
+        :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
         compact
         @retry="() => loadBatches(1)"
       />
@@ -239,11 +239,11 @@
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'batchNo'">
-              <a-typography-text strong :content="batches[index].batchNo || '-'" />
+              <a-typography-text strong :content="batches[index].batchNo" />
               <div
                 v-if="
-                  batches[index].batchExternalNo
-                    && batches[index].batchExternalNo !== batches[index].batchNo
+                  batches[index].batchExternalNo &&
+                  batches[index].batchExternalNo !== batches[index].batchNo
                 "
                 class="muted"
               >
@@ -262,13 +262,13 @@
               </div>
             </template>
             <template v-else-if="column.key === 'eventCount'">
-              {{ batches[index].eventCount ?? '-' }} 条
+              {{ batches[index].eventCount }} 条
             </template>
             <template v-else-if="column.key === 'fileCount'">
-              <template v-if="batches[index].sourceFileIds">
-                {{ batches[index].sourceFileIds.length }} 份
+              <template v-if="batches[index].sourceFileCount">
+                {{ batches[index].sourceFileCount }} 份
               </template>
-              <template v-else>未返回文件明细</template>
+              <template v-else>0 份</template>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
@@ -373,17 +373,27 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExamScannerBatchCreatePayload,
+  ExamScannerBatchCreateRequest,
+  ExamScannerBatchDeviceBreakdownVO,
   ExamScannerBatchPreviewVO,
-  ExamScannerBatchQueryPayload,
+  ExamScannerBatchQueryRequest,
   ExamScannerBatchVO,
   MarkingProgressVO,
-  ScanBatchStatusCode,
+} from '@/apis/mark/exam'
+import {
+  createScanBatchByCondition,
+  getMarkingProgress,
+  pageScannerBatches,
+  previewScanBatchAggregation,
+  SCAN_BATCH_STATUS_LABEL,
+  SCAN_BATCH_STATUS_TONE,
 } from '@/apis/mark/exam'
 import type {
-  ExamScannerDeviceQueryPayload,
+  ExamScannerDeviceQueryRequest,
   ExamScannerDeviceVO,
 } from '@/apis/mark/exam-mark-scanner'
+import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -396,13 +406,6 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createScanBatchByCondition,
-  getMarkingProgress,
-  pageScannerBatches,
-  previewScanBatchAggregation,
-} from '@/apis/mark/exam'
-import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import {
   UiAlertStrip,
@@ -418,27 +421,18 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanUpload' })
 
-type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
-
-const BATCH_STATUS_TONE: Record<ScanBatchStatusCode, ToneCode> = {
-  RECEIVED: 'blue',
-  BLOCKED: 'red',
-  BOUND: 'green',
-  COMPLETED: 'green',
-  DISCARDED: 'gray',
-}
-
-// helper 严格 typed 接收后端 API 对象 ExamScannerBatchVO。
-function batchStatusTone(batch: ExamScannerBatchVO): ToneCode {
-  return BATCH_STATUS_TONE[batch.status]
+function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
+  return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
 }
 
 function batchStatusLabel(batch: ExamScannerBatchVO): string {
-  return batch.statusMessage
+  return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
 }
 
 const router = useRouter()
@@ -447,6 +441,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -454,7 +449,7 @@ const {
 // ─── 概览统计 ─────────────────────────────
 const progress = ref<MarkingProgressVO | null>(null)
 const progressLoading = ref(false)
-const progressLoadError = ref<unknown>(null)
+const progressLoadError = ref<Error | null>(null)
 const hasOpenTasks = computed(() => {
   const current = progress.value
   return current ? current.openProcessingTaskCount > 0 : false
@@ -471,9 +466,8 @@ async function loadProgress(): Promise<void> {
   try {
     progress.value = await getMarkingProgress(selectedExamId.value)
   } catch (error) {
-    progressLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '阅卷进度加载失败'
-    message.error(errMsg)
+    progressLoadError.value = toUserError(error, '阅卷进度加载失败')
+    showUserError(error, '阅卷进度加载失败')
   } finally {
     progressLoading.value = false
   }
@@ -577,12 +571,12 @@ async function loadDevices(): Promise<void> {
   devicesLoading.value = true
   devicesLoadError.value = ''
   try {
-    const query: ExamScannerDeviceQueryPayload = {}
+    const query: ExamScannerDeviceQueryRequest = {}
     devices.value = await listScannerDevices(query)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '扫描设备列表加载失败'
+    const errMsg = getUserErrorMessage(error, '扫描设备列表加载失败')
     devicesLoadError.value = errMsg
-    message.error(errMsg)
+    showUserError(error, '扫描设备列表加载失败')
   } finally {
     devicesLoading.value = false
   }
@@ -609,11 +603,11 @@ const batchFormRules: Record<string, Rule[]> = {
 
 const canPreview = computed(
   () =>
-    !!selectedExamId.value
-    && !devicesLoadError.value
-    && batchForm.scannerDeviceIds.length > 0
-    && !!batchForm.scanWindow
-    && batchForm.scanWindow.length === 2,
+    !!selectedExamId.value &&
+    !devicesLoadError.value &&
+    batchForm.scannerDeviceIds.length > 0 &&
+    !!batchForm.scanWindow &&
+    batchForm.scanWindow.length === 2,
 )
 
 const canCreate = computed(() => canPreview.value)
@@ -623,47 +617,18 @@ const previewData = ref<ExamScannerBatchPreviewVO | null>(null)
 const pendingEventTotal = ref(0)
 const previewLoaded = ref(false)
 const previewLoading = ref(false)
-const previewLoadError = ref<unknown>(null)
-const previewTimeSpan = ref('-')
+const previewLoadError = ref<Error | null>(null)
+const previewTimeSpan = ref('未执行预览')
 
-function requireFiniteNumber(value: unknown, fieldName: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`${fieldName} 接口返回格式错误`)
-  }
-  return value
-}
-
-function validateBatchPreview(result: ExamScannerBatchPreviewVO): ExamScannerBatchPreviewVO {
-  requireFiniteNumber(result.eventCount, '待聚合事件数')
-  requireFiniteNumber(result.fileCount, '覆盖文件数')
-  requireFiniteNumber(result.pageCount, '累计页数')
-  if (!Array.isArray(result.deviceBreakdown)) {
-    throw new TypeError('设备聚合明细接口返回格式错误')
-  }
-  return result
-}
-
-function validateBatchCreateResult(result: {
-  eventCount?: number
-  fileCount?: number
-  pageCount?: number
-}): { eventCount: number, fileCount: number, pageCount: number } {
-  return {
-    eventCount: requireFiniteNumber(result.eventCount, '批次聚合事件数'),
-    fileCount: requireFiniteNumber(result.fileCount, '批次聚合文件数'),
-    pageCount: requireFiniteNumber(result.pageCount, '批次聚合页数'),
-  }
-}
-
-const deviceBreakdownColumns: ColumnType[] = [
+const deviceBreakdownColumns: ColumnType<ExamScannerBatchDeviceBreakdownVO>[] = [
   {
-    title: '设备ID',
+    title: '扫描设备',
     dataIndex: 'scannerDeviceId',
     key: 'scannerDeviceId',
     width: 200,
     ellipsis: true,
   },
-  { title: 'IP', dataIndex: 'scannerIp', key: 'scannerIp', width: 160 },
+  { title: '设备地址', dataIndex: 'scannerIp', key: 'scannerIp', width: 160 },
   { title: '事件数', dataIndex: 'eventCount', key: 'eventCount', width: 100 },
   { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 100 },
 ]
@@ -679,26 +644,23 @@ async function previewPendingEvents(): Promise<void> {
   previewLoaded.value = false
   previewLoadError.value = null
   try {
-    const payload: ExamScannerBatchCreatePayload = {
+    const request: ExamScannerBatchCreateRequest = {
       examId: selectedExamId.value,
       scannerDeviceIds: batchForm.scannerDeviceIds,
       scanStartTime: batchForm.scanWindow[0],
       scanEndTime: batchForm.scanWindow[1],
     }
-    const result = validateBatchPreview(await previewScanBatchAggregation(payload))
+    const result = await previewScanBatchAggregation(request)
     previewData.value = result
     pendingEventTotal.value = result.eventCount
-    // 时间跨度
-    if (result.scanStartTime && result.scanEndTime) {
-      previewTimeSpan.value = `${formatDateTime(result.scanStartTime)} ~ ${formatDateTime(result.scanEndTime)}`
-    } else {
-      previewTimeSpan.value = '-'
-    }
+    previewTimeSpan.value =
+      result.eventCount > 0
+        ? `${formatDateTime(result.scanStartTime)} ~ ${formatDateTime(result.scanEndTime)}`
+        : '无待聚合事件'
     previewLoaded.value = true
   } catch (error) {
-    previewLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '聚合预览查询失败'
-    message.error(errMsg)
+    previewLoadError.value = toUserError(error, '扫描事件预览加载失败')
+    showUserError(error, '扫描事件预览加载失败')
   } finally {
     previewLoading.value = false
   }
@@ -719,19 +681,17 @@ async function handleCreateBatch(): Promise<void> {
   creating.value = true
   batchCreateError.value = ''
   try {
-    const payload: ExamScannerBatchCreatePayload = {
+    const request: ExamScannerBatchCreateRequest = {
       examId: selectedExamId.value,
       scannerDeviceIds: batchForm.scannerDeviceIds,
       scanStartTime: batchForm.scanWindow[0],
       scanEndTime: batchForm.scanWindow[1],
       batchExternalNo: batchForm.batchExternalNo?.trim() || undefined,
     }
-    const result = await createScanBatchByCondition(payload)
-    const createStats = validateBatchCreateResult(result)
+    const result = await createScanBatchByCondition(request)
     message.success(
-      `批次创建成功：聚合 ${createStats.eventCount} 条事件 / ${createStats.fileCount} 份文件 / ${createStats.pageCount} 页`,
+      `批次创建成功：聚合 ${result.eventCount} 条事件 / ${result.fileCount} 份文件 / ${result.pageCount} 页`,
     )
-    // 重置表单 + 重新加载批次
     previewLoaded.value = false
     previewData.value = null
     pendingEventTotal.value = 0
@@ -739,9 +699,9 @@ async function handleCreateBatch(): Promise<void> {
     await loadBatches(1)
     await loadProgress()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '扫描批次创建失败'
+    const errMsg = getUserErrorMessage(error, '扫描批次创建失败')
     batchCreateError.value = errMsg
-    message.error(errMsg)
+    showUserError(error, '扫描批次创建失败')
   } finally {
     creating.value = false
   }
@@ -751,8 +711,8 @@ async function handleCreateBatch(): Promise<void> {
 const batches = ref<ExamScannerBatchVO[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchesLoadError = ref<unknown>(null)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchesLoadError = ref<Error | null>(null)
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -830,16 +790,16 @@ async function confirmDiscardBatch(): Promise<void> {
   batchDiscarding.value = batch.scanBatchId
   try {
     await discardScannerKioskBatch({ scanBatchId: batch.scanBatchId, discardReason: trimmed })
-    message.success(`批次 ${batch.batchNo || batch.scanBatchId} 已废弃`)
+    message.success(`扫描批次已废弃，批次编号：${batch.batchNo}`)
     batchDiscardModalOpen.value = false
     batchDiscardTarget.value = null
     batchDiscardReason.value = ''
     await loadBatches()
     await loadProgress()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '扫描批次废弃失败'
+    const errMsg = getUserErrorMessage(error, '扫描批次废弃失败')
     batchDiscardError.value = errMsg
-    message.error(errMsg)
+    showUserError(error, '扫描批次废弃失败')
   } finally {
     batchDiscarding.value = null
   }
@@ -851,38 +811,25 @@ async function loadBatches(pageNum?: number): Promise<void> {
   batchLoading.value = true
   batchesLoadError.value = null
   try {
-    const payload: ExamScannerBatchQueryPayload = {
+    const request: ExamScannerBatchQueryRequest = {
       examId: selectedExamId.value,
       pageNum: batchQuery.pageNum,
       pageSize: batchQuery.pageSize,
     }
-    const result = await pageScannerBatches(payload)
-    if (
-      !Array.isArray(result.list)
-      || !Number.isFinite(result.total)
-      || !Number.isFinite(result.pageNum)
-      || !Number.isFinite(result.pageSize)
-      || !Number.isFinite(result.pages)
-    ) {
-      const error = new TypeError('扫描批次列表接口返回格式错误')
-      batchesLoadError.value = error
-      message.error(error.message)
-      return
-    }
+    const result = await pageScannerBatches(request)
     batches.value = result.list
-    batchTotal.value = result.total
+    batchTotal.value = Number(result.total)
   } catch (error) {
-    batchesLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '扫描批次列表加载失败'
-    message.error(errMsg)
+    batchesLoadError.value = toUserError(error, '扫描批次列表加载失败')
+    showUserError(error, '扫描批次列表加载失败')
   } finally {
     batchLoading.value = false
   }
 }
 
-function onBatchPageChange(payload: { current: number, pageSize: number }): void {
-  batchQuery.pageNum = payload.current
-  batchQuery.pageSize = payload.pageSize
+function onBatchPageChange(page: { current: number; pageSize: number }): void {
+  batchQuery.pageNum = page.current
+  batchQuery.pageSize = page.pageSize
   void loadBatches()
 }
 

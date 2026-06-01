@@ -179,28 +179,28 @@ export interface LoginResponse {
  * 密码登录 - 对接后端 POST /api/login
  */
 export function passwordLogin(data: LoginRequest): Promise<LoginResponse['data']> {
-  return http.post('/api/login', data)
+  return http.post<LoginResponse['data']>('/api/login', data)
 }
 
 /**
  * 手机号登录 - 对接后端 POST /api/login
  */
 export function phoneLogin(data: PhoneLoginRequest): Promise<LoginResponse['data']> {
-  return http.post('/api/login', data)
+  return http.post<LoginResponse['data']>('/api/login', data)
 }
 
 /**
  * 学号登录 - 对接后端 POST /api/login
  */
 export function studentLogin(data: StudentLoginRequest): Promise<LoginResponse['data']> {
-  return http.post('/api/login', data)
+  return http.post<LoginResponse['data']>('/api/login', data)
 }
 
 /**
  * 获取可登录的租户列表（学校选择器用）
  */
 export function getTenantList(): Promise<TenantPublicInfo[]> {
-  return http.get('/api/auth/tenant-list')
+  return http.get<TenantPublicInfo[]>('/api/auth/tenant-list')
 }
 
 /**
@@ -208,21 +208,21 @@ export function getTenantList(): Promise<TenantPublicInfo[]> {
  * 用于学号登录场景：先输入学号，再根据学号查询该学号存在的学校，选择后登录
  */
 export function getTenantsByStudentNo(studentNo: string): Promise<TenantPublicInfo[]> {
-  return http.get('/api/auth/tenants-by-student-no', {params: {studentNo}})
+  return http.get<TenantPublicInfo[]>('/api/auth/tenants-by-student-no', {params: {studentNo}})
 }
 
 /**
  * 根据租户编码查询租户信息（子域名解析用）
  */
 export function getTenantByCode(tenantCode: string): Promise<TenantPublicInfo> {
-  return http.get(`/api/auth/tenant-by-code/${tenantCode}`)
+  return http.get<TenantPublicInfo>(`/api/auth/tenant-by-code/${tenantCode}`)
 }
 
 /**
  * 用户登出 - 对接后端 POST /api/logout
  */
 export function logout(): Promise<void> {
-  return http.post('/api/logout')
+  return http.post<void>('/api/logout')
 }
 
 
@@ -230,7 +230,7 @@ export function logout(): Promise<void> {
  * 获取用户详细信息 - 对接后端 GET /api/user/detailed/me
  */
 export function getUserDetailedInfo(): Promise<UserDetailedInfoVO> {
-  return http.get('/api/user/detailed/me')
+  return http.get<UserDetailedInfoVO>('/api/user/detailed/me')
 }
 
 
@@ -239,8 +239,8 @@ export function getUserDetailedInfo(): Promise<UserDetailedInfoVO> {
  * 注意：http.post已经解包了ResultInfo.data，直接返回RefreshTokenResponse
  */
 export function refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
-  const payload = data.deviceId ? data : { ...data, deviceId: getDeviceId() }
-  return http.post('/api/oauth2/refresh', payload)
+  const requestData = data.deviceId ? data : { ...data, deviceId: getDeviceId() }
+  return http.post<RefreshTokenResponse>('/api/oauth2/refresh', requestData)
 }
 
 
@@ -248,7 +248,7 @@ export function refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenRes
  * 用户注册 - 对接后端 POST /api/auth/register
  */
 export function register(data: RegisterRequest): Promise<void> {
-  return http.post('/api/auth/register', data)
+  return http.post<void>('/api/auth/register', data)
 }
 
 
@@ -256,21 +256,21 @@ export function register(data: RegisterRequest): Promise<void> {
  * 发送密码重置验证码 - 对接后端 POST /api/auth/send-reset-code
  */
 export function sendResetCode(email: string): Promise<void> {
-  return http.post('/api/auth/send-reset-code', {email})
+  return http.post<void>('/api/auth/send-reset-code', {email})
 }
 
 /**
  * 重置密码 - 对接后端 POST /api/auth/reset-password
  */
 export function resetPassword(data: ResetPasswordRequest): Promise<void> {
-  return http.post('/api/auth/reset-password', data)
+  return http.post<void>('/api/auth/reset-password', data)
 }
 
 /**
  * 验证重置验证码 - 对接后端 POST /api/auth/verify-reset-code
  */
 export function verifyResetCode(email: string, code: string): Promise<boolean> {
-  return http.post('/api/auth/verify-reset-code', { email, code })
+  return http.post<boolean>('/api/auth/verify-reset-code', { email, code })
 }
 
 
@@ -284,7 +284,7 @@ export interface CaptchaGetRequest {
 export interface CaptchaCheckRequest {
   /** 验证码类型 */
   captchaType: 'blockPuzzle' | 'clickWord'
-  /** 加密后的坐标JSON */
+  /** 加密后的验证坐标信息 */
   pointJson: string
   /** 验证码token */
   token: string
@@ -302,7 +302,7 @@ export interface CaptchaResponseModel {
 
 /** AJ-Captcha响应数据 */
 export interface CaptchaRepData {
-  /** 原始图片Base64 */
+  /** 验证码底图 Base64 */
   originalImageBase64?: string
   /** 滑块图片Base64 */
   jigsawImageBase64?: string
@@ -324,12 +324,12 @@ export interface CaptchaRepData {
 
 /** 获取行为验证码（AJ-Captcha） */
 export function getCaptcha(data: CaptchaGetRequest): Promise<CaptchaResponseModel> {
-  return http.post('/api/auth/captcha/get', data)
+  return http.post<CaptchaResponseModel>('/api/auth/captcha/get', data)
 }
 
 /** 校验行为验证码（AJ-Captcha） */
 export function checkCaptcha(data: CaptchaCheckRequest): Promise<CaptchaResponseModel> {
-  return http.post('/api/auth/captcha/check', data)
+  return http.post<CaptchaResponseModel>('/api/auth/captcha/check', data)
 }
 
 /** 获取验证码配置（是否启用） */
@@ -340,7 +340,7 @@ export interface CaptchaConfigResponse {
 
 /** 获取验证码配置 */
 export function getCaptchaConfig(): Promise<CaptchaConfigResponse> {
-  return http.get('/api/auth/captcha/config')
+  return http.get<CaptchaConfigResponse>('/api/auth/captcha/config')
 }
 
 /** 获取邮箱验证码 - 对接后端 POST /api/auth/send-verification-code */
@@ -353,7 +353,7 @@ export function getEmailCaptcha(email: string) {
  * 注意：当前后端尚未集成 SMS 服务提供商，调用会返回明确错误
  */
 export function getSmsCaptcha(mobile: string): Promise<void> {
-  return http.post('/api/auth/send-sms-code', { mobile })
+  return http.post<void>('/api/auth/send-sms-code', { mobile })
 }
 
 
@@ -361,7 +361,7 @@ export function getSmsCaptcha(mobile: string): Promise<void> {
  * 获取微信登录URL - 对接后端 GET /api/auth/wechat/login-url
  */
 export function getWechatLoginUrl(): Promise<string> {
-  return http.get('/api/auth/wechat/login-url')
+  return http.get<string>('/api/auth/wechat/login-url')
 }
 
 /**
@@ -375,7 +375,7 @@ export function wechatBindExisting(data: {
   wechatOpenId?: string
   wechatUnionId?: string
 }): Promise<WechatBindingResultDTO> {
-  return http.post('/api/auth/wechat/bind-existing', data)
+  return http.post<WechatBindingResultDTO>('/api/auth/wechat/bind-existing', data)
 }
 
 /**
@@ -444,7 +444,7 @@ export function wechatCallback(data: {
   code: string
   state: string
 }): Promise<WechatLoginResultDTO> {
-  return http.post('/api/auth/wechat/callback', data)
+  return http.post<WechatLoginResultDTO>('/api/auth/wechat/callback', data)
 }
 
 
@@ -457,5 +457,5 @@ export function changePassword(data: {
   confirmNewPassword: string
   force?: boolean
 }): Promise<void> {
-  return http.post('/api/user/management/changePassword', data)
+  return http.post<void>('/api/user/management/changePassword', data)
 }

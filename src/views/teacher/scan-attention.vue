@@ -81,22 +81,30 @@
               @change="onAttentionTypeChange"
             />
           </a-form-item>
-          <a-form-item label="扫描批次ID">
-            <a-input
+          <a-form-item label="扫描批次">
+            <a-select
               v-model:value="filterForm.scanBatchId"
-              placeholder="scanBatchId"
+              placeholder="选择扫描批次"
+              :options="scanBatchOptions"
+              :loading="scanBatchesLoading"
+              show-search
+              option-filter-prop="label"
               allow-clear
-              class="scan-attention__filter-input"
-              @press-enter="loadAttentions"
+              class="scan-attention__filter-select"
+              @change="loadAttentions"
             />
           </a-form-item>
-          <a-form-item label="试卷实例ID">
-            <a-input
+          <a-form-item label="答题卡">
+            <a-select
               v-model:value="filterForm.paperInstanceId"
-              placeholder="paperInstanceId"
+              placeholder="选择答题卡"
+              :options="paperCandidateOptions"
+              :loading="paperCandidatesLoading"
+              show-search
+              option-filter-prop="label"
               allow-clear
-              class="scan-attention__filter-input"
-              @press-enter="loadAttentions"
+              class="scan-attention__filter-select"
+              @change="loadAttentions"
             />
           </a-form-item>
           <a-form-item>
@@ -118,7 +126,7 @@
           v-if="attentionsLoadError"
           :error="attentionsLoadError"
           title="扫描异常列表加载失败"
-          :helper="`考试 ID：${selectedExamId}`"
+          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
           compact
           @retry="loadAttentions"
         />
@@ -158,24 +166,30 @@
                 <span>
                   <b>{{ sourceTypeLabel(record.sourceType) }}</b>
                 </span>
-                <span class="scan-attention__hint"> #{{ record.sourceId }} </span>
+                <span class="scan-attention__hint">{{ record.sourceDisplayName }}</span>
               </div>
             </template>
-            <template v-else-if="column.key === 'paperInstanceId'">
-              <a-typography-text
-                v-if="record.paperInstanceId"
-                copyable
-                :content="record.paperInstanceId"
-              />
-              <span v-else class="scan-attention__hint">-</span>
+            <template v-else-if="column.key === 'scanBatch'">
+              <span>{{ record.scanBatchDisplayName }}</span>
+            </template>
+            <template v-else-if="column.key === 'paperDisplay'">
+              <div class="scan-attention__paper-cell">
+                <span>{{ record.paperDisplay.primaryText }}</span>
+                <span v-if="record.paperDisplay.secondaryText" class="scan-attention__hint">
+                  {{ record.paperDisplay.secondaryText }}
+                </span>
+              </div>
             </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag :tone="scanAttentionStatusTone(record.status)" size="sm">
-                {{ scanAttentionStatusLabel(record.status) }}
+              <UiTag :tone="scanAttentionStatusTone(record)" size="sm">
+                {{ scanAttentionStatusLabel(record) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'diagnostic'">
-              <a-typography-text :content="record.diagnostic" :ellipsis="{ tooltip: true }" />
+              <a-typography-text
+                :content="scanAttentionDiagnosticText(record.diagnostic)"
+                :ellipsis="{ tooltip: true }"
+              />
             </template>
             <template v-else-if="column.key === 'updateTime'">
               {{ formatDateTimeWithSeconds(record.updateTime) }}
@@ -197,7 +211,7 @@
                   tone="danger"
                   variant="outline"
                   :loading="pageDiscarding === record.pageId"
-                  title="把该扫描页 effective_status 置 DISCARDED；不影响所属批次"
+                  title="将该扫描页标记为废弃，不影响所属批次"
                   @click="onDiscardPage(record)"
                 >
                   废弃此页
@@ -224,7 +238,7 @@
         <UiAlertStrip
           tone="warning"
           title="操作提示"
-          description="请从考生名册中选择正确的考生并提交绑定。绑定后将自动完成该试卷实例与考生的身份关联。"
+          description="请从考生名册中选择正确的考生并提交绑定。绑定后将自动完成该试卷与考生的身份关联。"
           dense
           class="scan-attention__bind-alert"
         />
@@ -244,16 +258,16 @@
           dense
           class="scan-attention__bind-alert"
         />
-        <a-form-item label="扫描批次ID">
-          <a-input :value="bindForm.scanBatchId" disabled />
+        <a-form-item label="扫描批次">
+          <a-input :value="bindForm.scanBatchDisplayName" disabled />
         </a-form-item>
-        <a-form-item label="试卷实例ID">
-          <a-input :value="bindForm.paperInstanceId" disabled />
+        <a-form-item label="答卷">
+          <a-input :value="bindForm.paperDisplayName" disabled />
         </a-form-item>
         <a-form-item label="识别学号（可选，留空表示未能识别）" name="recognizedStudentNo">
           <a-input
             v-model:value="bindForm.recognizedStudentNo"
-            placeholder="OCR / 二维码识别到的原始学号，供后续审计使用"
+            placeholder="OCR / 二维码识别到的学号线索，供后续审计使用"
             :maxlength="64"
           />
         </a-form-item>
@@ -304,7 +318,7 @@
       <UiAlertStrip
         tone="warning"
         title="逐卷确认"
-        description="批量绑定会直接写入试卷实例与考生名册关系，请逐张卷面选择正确考生后提交。"
+        description="批量绑定会直接写入试卷与考生名册关系，请逐张卷面选择正确考生后提交。"
         dense
         class="scan-attention__bind-alert"
       />
@@ -337,7 +351,10 @@
             :key="item.paperInstanceId"
             class="scan-attention__batch-failure"
           >
-            <a-typography-text strong :content="item.paperInstanceId" />
+            <a-typography-text
+              strong
+              :content="batchBindRowDisplayNameMap.get(item.paperInstanceId)"
+            />
             <span>{{ item.errorMessage }}</span>
           </div>
         </div>
@@ -345,10 +362,10 @@
       <div class="scan-attention__batch-list">
         <div v-for="row in batchBindRows" :key="row.attentionId" class="scan-attention__batch-row">
           <div class="scan-attention__batch-main">
-            <a-typography-text strong :content="row.paperInstanceId" />
-            <span class="scan-attention__hint">批次 {{ row.scanBatchId }}</span>
+            <a-typography-text strong :content="row.paperDisplayName" />
+            <span class="scan-attention__hint">{{ row.scanBatchDisplayName }}</span>
             <span v-if="row.diagnostic" class="scan-attention__batch-diagnostic">
-              {{ row.diagnostic }}
+              {{ scanAttentionDiagnosticText(row.diagnostic) }}
             </span>
           </div>
           <div class="scan-attention__batch-form">
@@ -399,25 +416,29 @@
           {{ attentionTypeLabel(detailRecord.attentionType) }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">
-          {{ scanAttentionStatusLabel(detailRecord.status) }}
+          {{ scanAttentionStatusLabel(detailRecord) }}
         </a-descriptions-item>
-        <a-descriptions-item label="来源类型">
+        <a-descriptions-item label="来源">
           {{ sourceTypeLabel(detailRecord.sourceType) }}
         </a-descriptions-item>
-        <a-descriptions-item label="来源ID">{{ detailRecord.sourceId }}</a-descriptions-item>
-        <a-descriptions-item label="考试ID">{{ detailRecord.examId }}</a-descriptions-item>
-        <a-descriptions-item label="扫描批次ID">
-          {{ detailRecord.scanBatchId || '-' }}
+        <a-descriptions-item label="来源说明">{{
+          detailRecord.sourceDisplayName
+        }}</a-descriptions-item>
+        <a-descriptions-item label="当前考试">{{ selectedExamLabel }}</a-descriptions-item>
+        <a-descriptions-item label="扫描批次">
+          {{ detailRecord.scanBatchDisplayName }}
         </a-descriptions-item>
-        <a-descriptions-item label="试卷实例ID">
-          {{ detailRecord.paperInstanceId || '-' }}
+        <a-descriptions-item label="答题卡">
+          {{ detailRecord.paperDisplay.primaryText }}
         </a-descriptions-item>
-        <a-descriptions-item label="页ID">{{ detailRecord.pageId || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="题目模板ID">
-          {{ detailRecord.questionTemplateId || '-' }}
+        <a-descriptions-item label="扫描页">{{ detailRecord.pageDisplayName }}</a-descriptions-item>
+        <a-descriptions-item label="题目">
+          {{ detailRecord.questionDisplayName }}
         </a-descriptions-item>
-        <a-descriptions-item label="诊断">
-          <div class="scan-attention__diagnostic-text">{{ detailRecord.diagnostic || '-' }}</div>
+        <a-descriptions-item label="处理说明">
+          <div class="scan-attention__diagnostic-text">
+            {{ scanAttentionDiagnosticText(detailRecord.diagnostic) }}
+          </div>
         </a-descriptions-item>
         <a-descriptions-item label="更新时间">
           {{ formatDateTimeWithSeconds(detailRecord.updateTime) }}
@@ -476,19 +497,32 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
+  DuplicateResolutionStatusCode,
   ExamCandidateVO,
+  ExamScannerBatchVO,
+  ExamScoreSummaryItemVO,
+  QualityDecisionCode,
   ScanAttentionItemVO,
   ScanAttentionSourceTypeCode,
-  ScanAttentionStatusCode,
   ScanAttentionTypeCode,
+  TaskStatusCode,
+} from '@/apis/mark/exam'
+import {
+  bindPaper,
+  FINAL_SCORE_STATUS_LABEL,
+  listExamCandidates,
+  listScanAttentions,
+  pageExamScoreSummary,
+  pageScannerBatches,
+  SCAN_BATCH_STATUS_LABEL,
 } from '@/apis/mark/exam'
 import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
-import type { UiChartSliceItem } from '@/components/ui-guide/ui/types'
+import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
+import type { GradeStatusCode } from '@/apis/mark/student-exam'
+import type { BadgeTone, UiChartSliceItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { bindPaper, listExamCandidates, listScanAttentions } from '@/apis/mark/exam'
-import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
 import {
   UiAlertStrip,
@@ -503,6 +537,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -514,6 +549,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -532,22 +568,59 @@ const filterForm = reactive<{
 const attentions = ref<ScanAttentionItemVO[]>([])
 const loading = ref(false)
 // D-9 错误态：扫描异常列表加载失败时 UiErrorRetryPanel 重试 + 上报
-const attentionsLoadError = ref<unknown>(null)
+const attentionsLoadError = ref<Error | null>(null)
+const scanBatches = ref<ExamScannerBatchVO[]>([])
+const scanBatchesLoading = ref(false)
+const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
+const paperCandidatesLoading = ref(false)
+const scanBatchOptions = computed(() =>
+  scanBatches.value.map((item) => ({
+    value: item.scanBatchId,
+    label: [
+      item.batchNo || item.batchExternalNo || item.statusMessage,
+      scanBatchStatusLabel(item),
+      `${item.pageCount ?? 0} 页`,
+    ].join(' · '),
+  })),
+)
+const paperCandidateOptions = computed(() =>
+  paperCandidates.value
+    .filter((item) => item.paperInstanceId)
+    .map((item) => ({
+      value: item.paperInstanceId,
+      label: [
+        `${item.studentName}（${item.studentNo}）`,
+        item.studentClassName,
+        item.bindingStatus,
+        finalScoreStatusLabel(item.finalScoreStatus),
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    })),
+)
 
-const attentionTypeOptions: { label: string, value: ScanAttentionTypeCode }[] = [
+const attentionTypeOptions: { label: string; value: ScanAttentionTypeCode }[] = [
   { label: '质量阻断', value: 'QUALITY_BLOCK' },
   { label: '处理阻断', value: 'PROCESSING_BLOCK' },
   { label: '重复影像', value: 'DUPLICATE_PENDING' },
   { label: '识别复核', value: 'RECOGNITION_REVIEW' },
 ]
 
+function scanBatchStatusLabel(batch: ExamScannerBatchVO): string {
+  return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
+}
+
+function finalScoreStatusLabel(status: ExamScoreSummaryItemVO['finalScoreStatus']): string {
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
+}
+
 const columns: ColumnType<ScanAttentionItemVO>[] = [
   { title: '异常类型', key: 'attentionType', width: 160 },
   { title: '来源', key: 'sourceInfo', width: 180 },
-  { title: '扫描批次', dataIndex: 'scanBatchId', key: 'scanBatchId', width: 160, ellipsis: true },
-  { title: '试卷实例', key: 'paperInstanceId', width: 180 },
+  { title: '扫描批次', key: 'scanBatch', width: 220, ellipsis: true },
+  { title: '答卷', key: 'paperDisplay', width: 220 },
   { title: '状态', key: 'status', width: 120 },
-  { title: '诊断', key: 'diagnostic', ellipsis: true },
+  { title: '处理说明', key: 'diagnostic', ellipsis: true },
   { title: '更新时间', key: 'updateTime', width: 170 },
   { title: '操作', key: 'actions', width: 200, fixed: 'right' },
 ]
@@ -565,15 +638,14 @@ async function loadAttentions(): Promise<void> {
     })
     if (!Array.isArray(result)) {
       const error = new TypeError('扫描异常列表接口返回格式错误')
-      attentionsLoadError.value = error
-      message.error(error.message)
+      attentionsLoadError.value = toUserError(error, '扫描异常列表加载失败')
+      showUserError(error, '扫描异常列表加载失败')
       return
     }
     attentions.value = result
   } catch (error) {
-    attentionsLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '异常列表加载失败'
-    message.error(errMsg)
+    attentionsLoadError.value = toUserError(error, '扫描异常列表加载失败')
+    showUserError(error, '扫描异常列表加载失败')
   } finally {
     loading.value = false
   }
@@ -581,6 +653,49 @@ async function loadAttentions(): Promise<void> {
 
 function onAttentionTypeChange(): void {
   void loadAttentions()
+}
+
+async function loadScanBatches(): Promise<void> {
+  if (!selectedExamId.value) {
+    scanBatches.value = []
+    return
+  }
+  scanBatchesLoading.value = true
+  try {
+    const result = await pageScannerBatches({
+      examId: selectedExamId.value,
+      pageNum: 1,
+      pageSize: 200,
+      includeDiscarded: false,
+    })
+    scanBatches.value = result.list
+  } catch (error) {
+    scanBatches.value = []
+    showUserError(error, '扫描批次加载失败')
+  } finally {
+    scanBatchesLoading.value = false
+  }
+}
+
+async function loadPaperCandidates(): Promise<void> {
+  if (!selectedExamId.value) {
+    paperCandidates.value = []
+    return
+  }
+  paperCandidatesLoading.value = true
+  try {
+    const result = await pageExamScoreSummary({
+      examId: selectedExamId.value,
+      pageNum: 1,
+      pageSize: 500,
+    })
+    paperCandidates.value = result.list.filter((item) => item.paperInstanceId)
+  } catch (error) {
+    paperCandidates.value = []
+    showUserError(error, '答题卡列表加载失败')
+  } finally {
+    paperCandidatesLoading.value = false
+  }
 }
 
 // ─── 类型色彩编码 ─────────────────────────────────
@@ -617,26 +732,94 @@ function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {
   return strictEnumLabel(SCAN_ATTENTION_SOURCE_TYPE_LABEL, type, '扫描异常来源类型')
 }
 
-const SCAN_ATTENTION_STATUS_LABEL: Record<ScanAttentionStatusCode, string> = {
+function assertNeverScanAttentionType(type: never): never {
+  throw new Error(`扫描异常类型前后端合同不一致：${type}`)
+}
+
+const QUALITY_DECISION_LABEL: Record<QualityDecisionCode, string> = {
+  PASS: '质量通过',
+  BLOCKED: '已阻断',
+}
+
+const QUALITY_DECISION_TONE: Record<QualityDecisionCode, BadgeTone> = {
+  PASS: 'green',
+  BLOCKED: 'red',
+}
+
+const TASK_STATUS_LABEL: Record<TaskStatusCode, string> = {
+  PENDING: '待处理',
+  PROCESSING: '处理中',
+  COMPLETED: '已完成',
   BLOCKED: '已阻断',
   FAILED: '处理失败',
-  PENDING: '待处置',
-  NEED_REVIEW: '待复核',
 }
 
-const SCAN_ATTENTION_STATUS_TONE: Record<ScanAttentionStatusCode, 'red' | 'orange' | 'blue'> = {
+const TASK_STATUS_TONE: Record<TaskStatusCode, BadgeTone> = {
+  PENDING: 'orange',
+  PROCESSING: 'blue',
+  COMPLETED: 'green',
   BLOCKED: 'red',
   FAILED: 'red',
+}
+
+const DUPLICATE_RESOLUTION_STATUS_LABEL: Record<DuplicateResolutionStatusCode, string> = {
+  PENDING: '待处置',
+  RESOLVED: '已处置',
+}
+
+const DUPLICATE_RESOLUTION_STATUS_TONE: Record<DuplicateResolutionStatusCode, BadgeTone> = {
+  PENDING: 'orange',
+  RESOLVED: 'green',
+}
+
+const GRADE_STATUS_LABEL: Record<GradeStatusCode, string> = {
+  PENDING: '待批改',
+  NEED_REVIEW: '待复核',
+  CONFIRMED: '已确认',
+}
+
+const GRADE_STATUS_TONE: Record<GradeStatusCode, BadgeTone> = {
   PENDING: 'orange',
   NEED_REVIEW: 'blue',
+  CONFIRMED: 'green',
 }
 
-function scanAttentionStatusLabel(status: ScanAttentionStatusCode): string {
-  return strictEnumLabel(SCAN_ATTENTION_STATUS_LABEL, status, '扫描异常状态')
+function scanAttentionStatusLabel(record: ScanAttentionItemVO): string {
+  switch (record.attentionType) {
+    case 'QUALITY_BLOCK':
+      return strictEnumLabel(QUALITY_DECISION_LABEL, record.qualityDecision, '扫描页质量判定')
+    case 'PROCESSING_BLOCK':
+      return strictEnumLabel(TASK_STATUS_LABEL, record.processingStatus, '处理任务状态')
+    case 'DUPLICATE_PENDING':
+      return strictEnumLabel(
+        DUPLICATE_RESOLUTION_STATUS_LABEL,
+        record.duplicateResolutionStatus,
+        '重复影像处置状态',
+      )
+    case 'RECOGNITION_REVIEW':
+      return strictEnumLabel(GRADE_STATUS_LABEL, record.gradeStatus, '题目批改状态')
+    default:
+      return assertNeverScanAttentionType(record.attentionType)
+  }
 }
 
-function scanAttentionStatusTone(status: ScanAttentionStatusCode): 'red' | 'orange' | 'blue' {
-  return strictEnumTone(SCAN_ATTENTION_STATUS_TONE, status, '扫描异常状态')
+function scanAttentionStatusTone(record: ScanAttentionItemVO): BadgeTone {
+  switch (record.attentionType) {
+    case 'QUALITY_BLOCK':
+      return strictEnumTone(QUALITY_DECISION_TONE, record.qualityDecision, '扫描页质量判定')
+    case 'PROCESSING_BLOCK':
+      return strictEnumTone(TASK_STATUS_TONE, record.processingStatus, '处理任务状态')
+    case 'DUPLICATE_PENDING':
+      return strictEnumTone(
+        DUPLICATE_RESOLUTION_STATUS_TONE,
+        record.duplicateResolutionStatus,
+        '重复影像处置状态',
+      )
+    case 'RECOGNITION_REVIEW':
+      return strictEnumTone(GRADE_STATUS_TONE, record.gradeStatus, '题目批改状态')
+    default:
+      return assertNeverScanAttentionType(record.attentionType)
+  }
 }
 
 const typeCounts = computed(() => {
@@ -763,15 +946,15 @@ async function confirmDiscardPage(): Promise<void> {
   pageDiscarding.value = record.pageId
   try {
     await discardScannedPage({ scannedPageId: record.pageId, discardReason: trimmed })
-    message.success(`扫描页 ${record.pageId} 已废弃`)
+    message.success('扫描页已废弃')
     pageDiscardModalOpen.value = false
     pageDiscardTarget.value = null
     pageDiscardReason.value = ''
     await loadAttentions()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '扫描页废弃失败'
+    const errMsg = getUserErrorMessage(error, '扫描页废弃失败')
     pageDiscardError.value = errMsg
-    message.error(errMsg)
+    showUserError(error, '扫描页废弃失败')
   } finally {
     pageDiscarding.value = null
   }
@@ -783,14 +966,18 @@ const binding = ref(false)
 const bindFormRef = ref<FormInstance>()
 const bindForm = reactive<{
   scanBatchId: string
+  scanBatchDisplayName: string
   paperInstanceId: string
+  paperDisplayName: string
   recognizedStudentNo?: string
   confirmedCandidateRosterId?: string
   attemptStatus: string
   attemptNo?: string
 }>({
   scanBatchId: '',
+  scanBatchDisplayName: '',
   paperInstanceId: '',
+  paperDisplayName: '',
   recognizedStudentNo: '',
   confirmedCandidateRosterId: undefined,
   attemptStatus: '',
@@ -808,24 +995,24 @@ const bindFormRules: Record<string, Rule[]> = {
 // 考生名册缓存
 const candidates = ref<ExamCandidateVO[]>([])
 const candidatesLoading = ref(false)
-const candidatesLoadError = ref<unknown>(null)
+const candidatesLoadError = ref<Error | null>(null)
 const bindSubmitError = ref('')
 
 const candidateOptions = computed(() =>
   candidates.value.map((item) => ({
     value: item.candidateRosterId,
     label: `${item.studentName}（${item.studentNo}）`,
-    raw: item,
   })),
 )
 
 function filterCandidate(input: string, option?: DefaultOptionType): boolean {
   const kw = input.trim().toLowerCase()
   if (!kw || !option) return true
-  const raw = option.raw as ExamCandidateVO
+  const candidate = candidates.value.find((item) => item.candidateRosterId === option.value)
+  if (!candidate) return false
   return (
-    (raw.studentName ?? '').toLowerCase().includes(kw)
-    || (raw.studentNo ?? '').toLowerCase().includes(kw)
+    (candidate.studentName ?? '').toLowerCase().includes(kw) ||
+    (candidate.studentNo ?? '').toLowerCase().includes(kw)
   )
 }
 
@@ -841,16 +1028,15 @@ async function ensureCandidatesLoaded(): Promise<boolean> {
     const result = await listExamCandidates(selectedExamId.value)
     if (!Array.isArray(result)) {
       const error = new TypeError('考生名册接口返回格式错误')
-      candidatesLoadError.value = error
-      message.error(error.message)
+      candidatesLoadError.value = toUserError(error, '考生名册加载失败')
+      showUserError(error, '考生名册加载失败')
       return false
     }
     candidates.value = result
     return true
   } catch (error) {
-    candidatesLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '考生名册加载失败'
-    message.error(errMsg)
+    candidatesLoadError.value = toUserError(error, '考生名册加载失败')
+    showUserError(error, '考生名册加载失败')
     return false
   } finally {
     candidatesLoading.value = false
@@ -863,11 +1049,13 @@ async function retryLoadCandidates(): Promise<void> {
 
 function openBindDrawer(record: ScanAttentionItemVO): void {
   if (!record.paperInstanceId || !record.scanBatchId) {
-    message.warning('该异常缺少试卷实例或扫描批次信息，无法进行身份绑定')
+    message.warning('该异常缺少答题卡或扫描批次信息，无法进行身份绑定')
     return
   }
   bindForm.scanBatchId = record.scanBatchId
+  bindForm.scanBatchDisplayName = record.scanBatchDisplayName
   bindForm.paperInstanceId = record.paperInstanceId
+  bindForm.paperDisplayName = record.paperDisplay.primaryText
   bindForm.recognizedStudentNo = ''
   bindForm.confirmedCandidateRosterId = undefined
   bindForm.attemptStatus = 'NORMAL'
@@ -883,12 +1071,6 @@ function openLedger(record: ScanAttentionItemVO): void {
     path: '/teacher/image-ledger',
     query: {
       examId: selectedExamId.value,
-      attentionType: record.attentionType,
-      sourceType: record.sourceType,
-      sourceId: record.sourceId,
-      paperInstanceId: record.paperInstanceId,
-      pageId: record.pageId,
-      scanBatchId: record.scanBatchId,
     },
   })
 }
@@ -923,9 +1105,9 @@ async function handleBind(): Promise<void> {
     bindDrawerOpen.value = false
     await loadAttentions()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '试卷身份绑定失败'
+    const errMsg = getUserErrorMessage(error, '试卷身份绑定失败')
     bindSubmitError.value = errMsg
-    message.error(errMsg)
+    showUserError(error, '试卷身份绑定失败')
   } finally {
     binding.value = false
   }
@@ -948,7 +1130,7 @@ const batchBindError = ref('')
 const batchBindResult = ref<ExamPaperBatchBindResultVO | null>(null)
 type BatchBindAttemptStatus = 'NORMAL' | 'MAKEUP' | 'RETAKE'
 
-const batchAttemptStatusOptions: Array<{ label: string, value: BatchBindAttemptStatus }> = [
+const batchAttemptStatusOptions: Array<{ label: string; value: BatchBindAttemptStatus }> = [
   { label: '普通答卷', value: 'NORMAL' },
   { label: '补考答卷', value: 'MAKEUP' },
   { label: '重考答卷', value: 'RETAKE' },
@@ -961,11 +1143,21 @@ function parseBindAttemptStatus(value: string): BatchBindAttemptStatus | null {
   return null
 }
 
+/** 将扫描异常诊断转为教师可执行的处置提示，避免展示接口、字段或识别链路调试信息。 */
+function scanAttentionDiagnosticText(diagnostic?: string): string {
+  return getUserErrorMessage(
+    { message: diagnostic },
+    '扫描异常需要人工核对，请根据异常类型补充绑定或重新扫描',
+  )
+}
+
 const batchBindRows = ref<
   Array<{
     attentionId: string
     scanBatchId: string
+    scanBatchDisplayName: string
     paperInstanceId: string
+    paperDisplayName: string
     recognizedStudentNo?: string
     confirmedCandidateRosterId?: string
     attemptStatus: BatchBindAttemptStatus
@@ -978,6 +1170,10 @@ const batchBindFailedItems = computed(() =>
   batchBindResult.value ? batchBindResult.value.items.filter((item) => !item.success) : [],
 )
 
+const batchBindRowDisplayNameMap = computed(
+  () => new Map(batchBindRows.value.map((item) => [item.paperInstanceId, item.paperDisplayName])),
+)
+
 const rowSelection = computed(() => ({
   selectedRowKeys: selectedRowKeys.value,
   onChange: (keys: (string | number)[]) => {
@@ -985,9 +1181,9 @@ const rowSelection = computed(() => ({
   },
   getCheckboxProps: (record: ScanAttentionItemVO) => ({
     disabled:
-      record.attentionType !== 'RECOGNITION_REVIEW'
-      || !record.paperInstanceId
-      || !record.scanBatchId,
+      record.attentionType !== 'RECOGNITION_REVIEW' ||
+      !record.paperInstanceId ||
+      !record.scanBatchId,
   }),
 }))
 
@@ -998,10 +1194,10 @@ async function handleBatchBind(): Promise<void> {
   }
   const selected = attentions.value.filter(
     (item) =>
-      selectedRowKeys.value.includes(item.id)
-      && item.attentionType === 'RECOGNITION_REVIEW'
-      && item.paperInstanceId
-      && item.scanBatchId,
+      selectedRowKeys.value.includes(item.id) &&
+      item.attentionType === 'RECOGNITION_REVIEW' &&
+      item.paperInstanceId &&
+      item.scanBatchId,
   )
   if (selected.length === 0) {
     message.error('请选择可身份绑定的识别复核异常项')
@@ -1025,7 +1221,9 @@ async function handleBatchBind(): Promise<void> {
   batchBindRows.value = selected.map((item) => ({
     attentionId: item.id,
     scanBatchId: item.scanBatchId!,
+    scanBatchDisplayName: item.scanBatchDisplayName,
     paperInstanceId: item.paperInstanceId!,
+    paperDisplayName: item.paperDisplay.primaryText,
     recognizedStudentNo: '',
     confirmedCandidateRosterId: undefined,
     attemptStatus: 'NORMAL',
@@ -1054,14 +1252,14 @@ async function submitBatchBind(): Promise<void> {
   }
   const missing = batchBindRows.value.find((item) => !item.confirmedCandidateRosterId)
   if (missing) {
-    message.error(`试卷 ${missing.paperInstanceId} 尚未选择考生`)
+    message.error(`${missing.paperDisplayName} 尚未选择考生`)
     return
   }
   const invalidAttemptStatus = batchBindRows.value.find(
     (item) => !parseBindAttemptStatus(item.attemptStatus),
   )
   if (invalidAttemptStatus) {
-    message.error(`试卷 ${invalidAttemptStatus.paperInstanceId} 的作答状态无效`)
+    message.error(`${invalidAttemptStatus.paperDisplayName} 的作答状态无效`)
     return
   }
   const scanBatchIds = new Set(batchBindRows.value.map((item) => item.scanBatchId))
@@ -1093,9 +1291,9 @@ async function submitBatchBind(): Promise<void> {
       batchBindDrawerOpen.value = false
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '批量绑定失败'
+    const errMsg = getUserErrorMessage(error, '批量绑定失败')
     batchBindError.value = errMsg
-    message.error(errMsg)
+    showUserError(error, '批量绑定失败')
   } finally {
     batchBinding.value = false
   }
@@ -1105,11 +1303,17 @@ async function submitBatchBind(): Promise<void> {
 watch(selectedExamId, (value) => {
   // 切换考试需要重置名册缓存
   candidates.value = []
+  scanBatches.value = []
+  paperCandidates.value = []
+  filterForm.scanBatchId = ''
+  filterForm.paperInstanceId = ''
   candidatesLoadError.value = null
   bindSubmitError.value = ''
   batchBindError.value = ''
   batchBindResult.value = null
   if (value) {
+    void loadScanBatches()
+    void loadPaperCandidates()
     void loadAttentions()
   } else {
     attentions.value = []
@@ -1119,6 +1323,8 @@ watch(selectedExamId, (value) => {
 onMounted(async () => {
   await initExamSelector()
   if (selectedExamId.value) {
+    await loadScanBatches()
+    await loadPaperCandidates()
     await loadAttentions()
   }
 })

@@ -13,6 +13,5 @@ import http from '@/config/axios'
  * 注意：后端只返回字节数（Long类型），前端接收为number类型
  */
 export function getTenantStorageUsage(): Promise<number> {
-  return http.post('/api/storage/statistics/tenant-usage')
+  return http.post<number>('/api/storage/statistics/tenant-usage')
 }
-

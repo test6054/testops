@@ -42,9 +42,7 @@
         class="stats-page__linkage"
       >
         <template #actions>
-          <UiButton variant="ghost" size="sm" @click="clearLinkage">
-            清空联动
-          </UiButton>
+          <UiButton variant="ghost" size="sm" @click="clearLinkage"> 清空联动 </UiButton>
         </template>
       </UiAlertStrip>
 
@@ -125,8 +123,8 @@ const hasLinkageContext = computed(() => !!activeClassId.value || !!activeStuden
 
 const linkageDescription = computed(() => {
   const parts: string[] = []
-  if (activeClassId.value) parts.push(`班级 ID = ${activeClassId.value}`)
-  if (activeStudentUserId.value) parts.push(`学生用户 ID = ${activeStudentUserId.value}`)
+  if (activeClassId.value) parts.push(`所选班级：${activeClassId.value}`)
+  if (activeStudentUserId.value) parts.push(`所选学生：${activeStudentUserId.value}`)
   return `当前联动范围：${parts.join('，')}。其他卡片会在相应位置显示一致的上下文提示。`
 })
 

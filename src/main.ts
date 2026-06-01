@@ -1,16 +1,15 @@
 import Antd from 'ant-design-vue'
-import {createApp} from 'vue'
+import { createApp } from 'vue'
 // ECharts全局配置
-import {setupECharts} from '@/config/echarts'
+import { setupECharts } from '@/config/echarts'
 // 错误处理
-import {DEV_ERROR_CONFIG, initGlobalErrorHandler, PROD_ERROR_CONFIG} from '@/config/error-config'
+import { DEV_ERROR_CONFIG, initGlobalErrorHandler, PROD_ERROR_CONFIG } from '@/config/error-config'
 // 状态管理
-import pinia, {useAuthStore} from '@/stores'
-import {getToken} from '@/utils/auth'
+import pinia, { useAuthStore } from '@/stores'
+import { getToken } from '@/utils/auth'
 
 // 版本信息
-import {printVersionInfo} from '@/utils/version'
-
+import { printVersionInfo } from '@/utils/version'
 
 import App from './App.vue'
 import router from './router'
@@ -20,7 +19,7 @@ import 'ant-design-vue/dist/reset.css'
 // 关键 CSS 优先加载，提升 LCP 性能
 import '@/styles/index.scss'
 
-// Polyfill: Array.prototype.at (ES2022) — 解决 Monaco Editor 兼容性问题
+// Polyfill: Array.prototype.at (ES2022) — 解决旧版浏览器兼容性问题
 /* eslint-disable no-extend-native */
 if (!Array.prototype.at) {
   Array.prototype.at = function (index: number) {
@@ -31,7 +30,6 @@ if (!Array.prototype.at) {
   }
 }
 /* eslint-enable no-extend-native */
-
 
 // 延迟加载非关键 CSS，避免阻塞首屏渲染
 const loadNonCriticalCSS = () => {
@@ -93,12 +91,11 @@ const initializeApp = async () => {
   app.use(Antd)
   app.use(router)
 
-
   app.mount('#app')
 }
 
 // 启动应用
-initializeApp().catch(err => {
+initializeApp().catch((err) => {
   console.error('Failed to initialize app:', err)
 })
 

@@ -52,7 +52,7 @@
             <span class="info-value">{{ latestPublished.examName }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">考试编号</span>
+            <span class="info-label">考务编号</span>
             <span class="info-value">{{ latestPublished.examNo }}</span>
           </div>
           <div class="info-row">
@@ -150,7 +150,7 @@
                 </p>
               </div>
               <div class="score-item">
-                <p class="score-item__label">考试编号</p>
+                <p class="score-item__label">考务编号</p>
                 <p class="score-item__value">
                   {{ item.examNo }}
                 </p>
@@ -207,15 +207,6 @@
 
 <script lang="ts" setup>
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   canSubmitReview,
   FINAL_SCORE_STATUS_LABEL,
@@ -224,6 +215,14 @@ import {
   STUDENT_REVIEW_WINDOW_STATUS_LABEL,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   UiBadge,
   UiButton,
@@ -234,6 +233,7 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -242,7 +242,7 @@ defineOptions({ name: 'StudentScore' })
 const router = useRouter()
 const loading = ref(false)
 // D-9 错误态：学生考试列表加载失败时 UiErrorRetryPanel 重试（学生侧不提供上报入口）
-const examsLoadError = ref<unknown>(null)
+const examsLoadError = ref<Error | null>(null)
 const exams = ref<StudentExamItemVO[]>([])
 
 function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -258,7 +258,11 @@ function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
 }
 
 function reviewWindowStatusLabel(item: StudentExamItemVO): string {
-  return strictEnumLabel(STUDENT_REVIEW_WINDOW_STATUS_LABEL, item.reviewWindowStatus, '复核窗口状态')
+  return strictEnumLabel(
+    STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+    item.reviewWindowStatus,
+    '复核窗口状态',
+  )
 }
 
 const latestPublished = computed<StudentExamItemVO | null>(() => {
@@ -296,7 +300,7 @@ const unpublishedCount = computed<number>(() => {
 })
 
 /** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
   const latest = requirePublishedScore(list[0])
@@ -396,25 +400,31 @@ async function loadExams() {
   loading.value = true
   examsLoadError.value = null
   try {
-    exams.value = await listMyExams()
+    const loadedExams = await listMyExams()
+    validatePublishedExamContracts(loadedExams)
+    exams.value = loadedExams
   } catch (error) {
-    examsLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载考试失败'
-    message.error(msg)
+    examsLoadError.value = toUserError(error, '考试列表加载失败')
+    showUserError(error, '考试成绩列表加载失败')
   } finally {
     loading.value = false
   }
 }
 
+/** 校验学生成绩列表的发布态合同，避免模板渲染阶段才暴露缺失字段。 */
+function validatePublishedExamContracts(list: StudentExamItemVO[]): void {
+  for (const item of list) {
+    if (item.finalScoreStatus === 'PUBLISHED' && item.finalScore == null) {
+      throw new Error(`已发布成绩缺少发布成绩：examId=${item.examId}`)
+    }
+    if (item.finalScoreStatus === 'PUBLISHED' && !item.publishedTime) {
+      throw new Error(`已发布成绩缺少发布时间：examId=${item.examId}`)
+    }
+  }
+}
 
 function requirePublishedScore(item: StudentExamItemVO): number {
-  if (item.finalScoreStatus !== 'PUBLISHED') {
-    throw new Error(`未发布成绩不能读取最终分数：examId=${item.examId}`)
-  }
-  if (item.finalScore == null) {
-    throw new Error(`已发布成绩缺少最终分数：examId=${item.examId}`)
-  }
-  return item.finalScore
+  return item.finalScore as number
 }
 
 function formatPublishedScore(item: StudentExamItemVO): string {
@@ -426,13 +436,7 @@ function requirePublishedTime(item: StudentExamItemVO): string {
 }
 
 function requirePublishedTimestamp(item: StudentExamItemVO): number {
-  if (item.finalScoreStatus !== 'PUBLISHED') {
-    throw new Error(`未发布成绩不能读取发布时间：examId=${item.examId}`)
-  }
-  if (!item.publishedTime) {
-    throw new Error(`已发布成绩缺少发布时间：examId=${item.examId}`)
-  }
-  return new Date(item.publishedTime).getTime()
+  return new Date(item.publishedTime as string).getTime()
 }
 
 function goDetail(examId: string) {

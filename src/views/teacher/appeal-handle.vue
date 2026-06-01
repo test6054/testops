@@ -46,7 +46,7 @@
         v-if="summaryLoadError"
         :error="summaryLoadError"
         title="复核汇总加载失败"
-        :helper="`考试 ID：${selectedExamId}`"
+        :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
         compact
         @retry="loadSummary"
       />
@@ -55,7 +55,7 @@
         v-if="pendingCount > 0"
         tone="warning"
         :title="`有 ${pendingCount} 件复核申请待处理`"
-        description="处理逾期会触发学生再次申诉，建议优先认领并完成。"
+        description="处理逾期会触发学生再次申诉，请优先认领并完成。"
         dense
         class="appeal-page__alert"
       />
@@ -81,7 +81,6 @@
 <script lang="ts" setup>
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { getReviewSummary } from '@/apis/mark/grade-review'
 import {
@@ -94,6 +93,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import BatchCorrectionPlansCard from './appeal-handle/BatchCorrectionPlansCard.vue'
 import CorrectionsCard from './appeal-handle/CorrectionsCard.vue'
 import ReviewRequestsCard from './appeal-handle/ReviewRequestsCard.vue'
@@ -105,6 +105,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -115,7 +116,7 @@ const correctionReloadToken = ref(0)
 const batchReloadToken = ref(0)
 
 // ─── P2 顶部汇总：复核 + 更正聚合统计 ─────────────────────────────
-const summaryLoadError = ref<unknown>(null)
+const summaryLoadError = ref<Error | null>(null)
 const pendingCount = ref(0)
 const inReviewCount = ref(0)
 const approvedCount = ref(0)
@@ -150,9 +151,8 @@ async function loadSummary(): Promise<void> {
     correctedCount.value = summary.correctedRequestCount
     correctionRecordCount.value = summary.correctionRecordCount
   } catch (error) {
-    summaryLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '复核汇总加载失败'
-    message.warning(errMsg)
+    summaryLoadError.value = toUserError(error, '复核处理汇总加载失败')
+    showUserError(error, '复核处理汇总加载失败')
   }
 }
 

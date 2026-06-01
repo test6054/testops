@@ -57,7 +57,7 @@ export interface ExternalSourceFieldScope {
   fieldOrder: number
 }
 
-export interface ExternalDataSourceSavePayload {
+export interface ExternalDataSourceSaveRequest {
   id?: string
   sourceCode: string
   sourceName: string
@@ -75,7 +75,7 @@ export interface ExternalDataSourceSavePayload {
   enabled: boolean
 }
 
-export interface ExternalDataSourceQueryPayload extends QueryDto {
+export interface ExternalDataSourceQueryRequest extends QueryDto {
   sourceType?: ExternalSourceType
   enabled?: boolean
   keyword?: string
@@ -89,10 +89,12 @@ export interface ExternalPullTaskVO {
   id: string
   tenantId?: string
   sourceId: string
+  sourceName: string
   taskCode: string
   taskName: string
   businessAnchor: string
   businessId: string
+  businessLabel: string
   sourceObjectName: string
   fields: ExternalPullTaskField[]
   filters?: ExternalPullTaskFilter[]
@@ -110,7 +112,7 @@ export interface ExternalPullTaskVO {
   updateTime?: string
 }
 
-export interface ExternalPullTaskQueryPayload extends QueryDto {
+export interface ExternalPullTaskQueryRequest extends QueryDto {
   sourceId?: string
   status?: ExternalPullTaskStatus
   businessAnchor?: string
@@ -131,6 +133,7 @@ export interface ExternalPullTaskFilter {
   fieldName: string
   filterOperator: ExternalPullFilterOperator
   filterValue: string
+  conditionOrder: number
   valueOrder: number
 }
 
@@ -141,7 +144,7 @@ export interface ExternalPullTaskSort {
   sortOrder: number
 }
 
-export interface ExternalPullTaskSavePayload {
+export interface ExternalPullTaskSaveRequest {
   id?: string
   sourceId: string
   taskCode: string
@@ -166,24 +169,25 @@ export interface ExternalPullResultVO {
   pullTaskId: string
   businessAnchor: string
   businessId: string
+  businessLabel: string
   previewRows?: number
   confirmedRows?: number
   confirmationStatus: ExternalPullConfirmationStatus
   confirmedBy?: string
   confirmedAt?: string
-  payloadAnchor?: string
+  resultFileNodeId?: string
   notes?: string
   createTime?: string
   updateTime?: string
 }
 
-export interface ExternalPullResultConfirmPayload {
+export interface ExternalPullResultConfirmRequest {
   id: string
   confirmedRows: number
   notes?: string
 }
 
-export interface ExternalPullResultRejectPayload {
+export interface ExternalPullResultRejectRequest {
   id: string
   notes: string
 }
@@ -210,22 +214,22 @@ export interface ExternalPullAuditVO {
 }
 
 export const externalDataSourceApi = {
-  page: (data: ExternalDataSourceQueryPayload) =>
+  page: (data: ExternalDataSourceQueryRequest) =>
     http.post<PageResult<ExternalDataSourceVO>>(`${SOURCE}/page`, data),
   detail: (id: string) => http.post<ExternalDataSourceVO>(`${SOURCE}/detail`, { id }),
-  create: (data: ExternalDataSourceSavePayload) => http.post<string>(`${SOURCE}/create`, data),
-  update: (data: ExternalDataSourceSavePayload) => http.post<void>(`${SOURCE}/update`, data),
+  create: (data: ExternalDataSourceSaveRequest) => http.post<string>(`${SOURCE}/create`, data),
+  update: (data: ExternalDataSourceSaveRequest) => http.post<void>(`${SOURCE}/update`, data),
   delete: (id: string) => http.post<void>(`${SOURCE}/delete`, { id }),
   toggleEnabled: (id: string, enabled: boolean) =>
     http.post<void>(`${SOURCE}/toggle-enabled`, { id, enabled }),
 }
 
 export const externalPullTaskApi = {
-  page: (data: ExternalPullTaskQueryPayload) =>
+  page: (data: ExternalPullTaskQueryRequest) =>
     http.post<PageResult<ExternalPullTaskVO>>(`${TASK}/page`, data),
   detail: (id: string) => http.post<ExternalPullTaskVO>(`${TASK}/detail`, { id }),
-  create: (data: ExternalPullTaskSavePayload) => http.post<string>(`${TASK}/create`, data),
-  update: (data: ExternalPullTaskSavePayload) => http.post<void>(`${TASK}/update`, data),
+  create: (data: ExternalPullTaskSaveRequest) => http.post<string>(`${TASK}/create`, data),
+  update: (data: ExternalPullTaskSaveRequest) => http.post<void>(`${TASK}/update`, data),
   delete: (id: string) => http.post<void>(`${TASK}/delete`, { id }),
   /** 取消未启动 / 进行中的任务 */
   cancel: (id: string, reason?: string) => http.post<void>(`${TASK}/cancel`, { id, reason }),
@@ -236,9 +240,9 @@ export const externalPullResultApi = {
     http.post<ExternalPullResultVO[]>(`${RESULT}/list-by-task`, { id: pullTaskId }),
   detail: (id: string) => http.post<ExternalPullResultVO>(`${RESULT}/detail`, { id }),
   /** 确认结果批次：PREVIEW → CONFIRMED */
-  confirm: (data: ExternalPullResultConfirmPayload) => http.post<void>(`${RESULT}/confirm`, data),
+  confirm: (data: ExternalPullResultConfirmRequest) => http.post<void>(`${RESULT}/confirm`, data),
   /** 驳回结果批次：PREVIEW → REJECTED */
-  reject: (data: ExternalPullResultRejectPayload) => http.post<void>(`${RESULT}/reject`, data),
+  reject: (data: ExternalPullResultRejectRequest) => http.post<void>(`${RESULT}/reject`, data),
 }
 
 export const externalPullAuditApi = {

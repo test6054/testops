@@ -27,7 +27,7 @@
             />
             <div v-if="ledger.diagnostic" class="ledger-summary__diagnostic">
               <ExclamationCircleOutlined style="color: var(--ant-color-warning)" />
-              <span>{{ ledger.diagnostic }}</span>
+              <span>{{ ledgerDiagnosticText(ledger.diagnostic) }}</span>
             </div>
           </div>
         </div>
@@ -70,9 +70,9 @@
 
 <script lang="ts" setup>
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import { LEDGER_STATUS_COLOR, LEDGER_STATUS_LABEL } from '@/apis/mark/image-ledger'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
-import { LEDGER_STATUS_COLOR, LEDGER_STATUS_LABEL } from '@/apis/mark/image-ledger'
 import {
   UiButton,
   UiEmpty,
@@ -81,6 +81,7 @@ import {
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
+import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -114,6 +115,14 @@ const scanRingColor = computed(() => {
   if (scanPercent.value >= 60) return '#3b82f6'
   return '#f59e0b'
 })
+
+/** 将影像账本诊断转为扫描交付处置提示，避免展示底层对账细节。 */
+function ledgerDiagnosticText(diagnostic?: string): string {
+  return getUserErrorMessage(
+    { message: diagnostic },
+    '影像账本对账发现异常，请进入扫描异常队列处理',
+  )
+}
 
 const scanMetrics = computed(() => {
   const ledger = props.ledger
@@ -187,7 +196,7 @@ const deviationMetrics = computed(() => {
       unit: '条',
       tone: ledger.pendingDuplicateCount > 0 ? ('red' as const) : ('green' as const),
     },
-    { label: '账本 ID', value: ledger.ledgerId, tone: 'gray' as const },
+    { label: '账本编号', value: ledger.ledgerId, tone: 'gray' as const },
   ]
 })
 </script>

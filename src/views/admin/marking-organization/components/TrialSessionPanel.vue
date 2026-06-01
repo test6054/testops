@@ -6,7 +6,7 @@
       <UiBadge tone="orange">校准评分尺度</UiBadge>
     </template>
 
-    <a-form layout="vertical" class="session-form">
+    <a-form v-if="canManage" layout="vertical" class="session-form">
       <a-form-item label="选择题组" required>
         <a-select
           v-model:value="trialGroupId"
@@ -20,10 +20,10 @@
       </UiButton>
     </a-form>
 
-    <a-divider class="section-divider" />
+    <a-divider v-if="canManage" class="section-divider" />
 
-    <h4 class="subsection-title">校准结论</h4>
-    <a-form layout="vertical" class="session-form">
+    <h4 v-if="canManage" class="subsection-title">校准结论</h4>
+    <a-form v-if="canManage" layout="vertical" class="session-form">
       <a-form-item label="试评会话" required>
         <a-select
           v-model:value="calibrateSessionId"
@@ -32,6 +32,15 @@
           show-search
           option-filter-prop="label"
           allow-clear
+        />
+      </a-form-item>
+      <a-form-item label="校准结论" required>
+        <a-textarea
+          v-model:value="calibrateForm.calibrationSummary"
+          :rows="3"
+          :maxlength="1000"
+          placeholder="填写本次试评形成的评分尺度、扣分边界和执行口径"
+          show-count
         />
       </a-form-item>
       <a-form-item label="讨论笔记">
@@ -43,7 +52,11 @@
           show-count
         />
       </a-form-item>
-      <UiButton :disabled="!calibrateSessionId" :loading="calibrating" @click="submitCalibrate">
+      <UiButton
+        :disabled="!calibrateSessionId || !calibrateForm.calibrationSummary.trim()"
+        :loading="calibrating"
+        @click="submitCalibrate"
+      >
         <template #icon><CheckCircleOutlined /></template>
         提交校准结论
       </UiButton>
@@ -53,82 +66,68 @@
 
     <h4 class="subsection-title">试评会话列表</h4>
     <UiEmpty v-if="!sessions.length" description="尚未创建试评会话" />
-    <a-list v-else :data-source="sessions" size="small" class="session-history">
-      <template #renderItem="{ item }">
-        <a-list-item>
-          <a-list-item-meta>
-            <template #title>
-              <a-typography-text copyable>
-                会话 #{{ (item as TrialSessionVO).id }}
-              </a-typography-text>
-              <UiTag
-                :tone="
-                  strictEnumTone(
-                    TRIAL_STATUS_TONE,
-                    (item as TrialSessionVO).sessionStatus,
-                    '试评会话状态',
-                  )
-                "
-                size="sm"
-                class="status-tag"
-              >
-                {{
-                  strictEnumLabel(
-                    TRIAL_STATUS_LABEL,
-                    (item as TrialSessionVO).sessionStatus,
-                    '试评会话状态',
-                  )
-                }}
-              </UiTag>
-            </template>
-            <template #description>
-              <span>
-                题组 #{{ (item as TrialSessionVO).groupId }} ·
-                {{ formatDateTime((item as TrialSessionVO).createTime) }}
-                <template v-if="(item as TrialSessionVO).closeReason">
-                  · 关闭原因：{{ (item as TrialSessionVO).closeReason }}
-                </template>
-              </span>
-            </template>
-          </a-list-item-meta>
-          <template #actions>
-            <UiButton
-              v-if="canCloseTrial((item as TrialSessionVO).sessionStatus)"
-              variant="outline"
+    <a-list v-else size="small" class="session-history">
+      <a-list-item v-for="item in sessions" :key="item.id">
+        <a-list-item-meta>
+          <template #title>
+            <a-typography-text strong>
+              {{ item.groupName }}
+            </a-typography-text>
+            <UiTag
+              :tone="strictEnumTone(TRIAL_STATUS_TONE, item.sessionStatus, '试评会话状态')"
               size="sm"
-              @click="emit('open-lifecycle', 'closeTrial', (item as TrialSessionVO).id)"
+              class="status-tag"
             >
-              <template #icon><StopOutlined /></template>
-              关闭试评
-            </UiButton>
-            <a-popconfirm
-              v-if="canDeleteTrial((item as TrialSessionVO).sessionStatus)"
-              title="确认删除该试评会话？试评草稿将被软删除，不可恢复。"
-              ok-text="删除"
-              cancel-text="取消"
-              @confirm="submitDelete((item as TrialSessionVO).id)"
-            >
-              <UiButton
-                variant="outline"
-                size="sm"
-                :loading="deletingId === (item as TrialSessionVO).id"
-              >
-                <template #icon><DeleteOutlined /></template>
-                删除草稿
-              </UiButton>
-            </a-popconfirm>
+              {{ strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态') }}
+            </UiTag>
           </template>
-        </a-list-item>
-      </template>
+          <template #description>
+            <span>
+              试评会话 · 创建于 {{ formatDateTime(item.createTime) }}
+              <template v-if="item.closeReason"> · 关闭原因：{{ item.closeReason }} </template>
+            </span>
+          </template>
+        </a-list-item-meta>
+        <template #actions>
+          <UiButton
+            v-if="canCloseTrial(item.sessionStatus)"
+            variant="outline"
+            size="sm"
+            @click="emit('open-lifecycle', 'closeTrial', item.id)"
+          >
+            <template #icon><StopOutlined /></template>
+            关闭试评
+          </UiButton>
+          <a-popconfirm
+            v-if="canDeleteTrial(item.sessionStatus)"
+            title="确认删除该试评会话？试评草稿将被软删除，不可恢复。"
+            ok-text="删除"
+            cancel-text="取消"
+            @confirm="submitDelete(item.id)"
+          >
+            <UiButton variant="outline" size="sm" :loading="deletingId === item.id">
+              <template #icon><DeleteOutlined /></template>
+              删除草稿
+            </UiButton>
+          </a-popconfirm>
+        </template>
+      </a-list-item>
     </a-list>
   </UiCard>
 </template>
 
 <script lang="ts" setup>
 import type {
-  TrialSessionCalibratePayload,
+  TrialSessionCalibrateRequest,
   TrialSessionStatusCode,
   TrialSessionVO,
+} from '@/apis/mark/marking-organization'
+import {
+  calibrateTrialSession,
+  createTrialSession,
+  deleteTrialSession,
+  TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
+  TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
@@ -137,14 +136,8 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import {
-  calibrateTrialSession,
-  createTrialSession,
-  deleteTrialSession,
-  TRIAL_SESSION_STATUS_LABEL as TRIAL_STATUS_LABEL,
-  TRIAL_SESSION_STATUS_TONE as TRIAL_STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import { UiBadge, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -159,17 +152,21 @@ const props = defineProps<{
   organizationId: string
   groupOptions: GroupOption[]
   sessions: TrialSessionVO[]
+  canManage: boolean
 }>()
 
 const emit = defineEmits<{
-  "refresh": []
+  refresh: []
   'open-lifecycle': [action: 'closeTrial', sessionId: string]
 }>()
 
 const trialGroupId = ref<string | undefined>(undefined)
 const creating = ref(false)
 const calibrateSessionId = ref<string | undefined>(undefined)
-const calibrateForm = reactive<Pick<TrialSessionCalibratePayload, 'discussionNotes'>>({
+const calibrateForm = reactive<
+  Pick<TrialSessionCalibrateRequest, 'calibrationSummary' | 'discussionNotes'>
+>({
+  calibrationSummary: '',
   discussionNotes: '',
 })
 const calibrating = ref(false)
@@ -178,7 +175,7 @@ const deletingId = ref<string | null>(null)
 const trialSessionOptions = computed(() =>
   props.sessions.map((item) => ({
     value: item.id,
-    label: `会话 #${item.id}（题组 #${item.groupId}） · ${strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态')}`,
+    label: `${item.groupName} · ${strictEnumLabel(TRIAL_STATUS_LABEL, item.sessionStatus, '试评会话状态')} · ${formatDateTime(item.createTime)}`,
   })),
 )
 
@@ -192,14 +189,24 @@ watch(
 )
 
 function canCloseTrial(status: TrialSessionStatusCode): boolean {
-  return status === 'TRIAL_ASSIGNED' || status === 'TRIAL_SUBMITTED' || status === 'CALIBRATED'
+  return (
+    props.canManage &&
+    (status === 'TRIAL_ASSIGNED' || status === 'TRIAL_SUBMITTED' || status === 'CALIBRATED')
+  )
 }
 
 function canDeleteTrial(status: TrialSessionStatusCode): boolean {
-  return status === 'TRIAL_CREATED'
+  return props.canManage && status === 'TRIAL_CREATED'
+}
+
+function guardManageAction(): boolean {
+  if (props.canManage) return true
+  message.warning('仅考试创建人可分配批阅任务')
+  return false
 }
 
 async function submitCreate(): Promise<void> {
+  if (!guardManageAction()) return
   if (!props.organizationId || !trialGroupId.value) return
   creating.value = true
   try {
@@ -207,45 +214,46 @@ async function submitCreate(): Promise<void> {
       organizationId: props.organizationId,
       groupId: trialGroupId.value,
     })
-    message.success(`试评会话 #${sessionId} 已创建`)
+    message.success('试评会话已创建')
     calibrateSessionId.value = sessionId
     emit('refresh')
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '创建试评会话失败'
-    message.error(errMsg)
+    showUserError(error, '创建试评会话失败')
   } finally {
     creating.value = false
   }
 }
 
 async function submitCalibrate(): Promise<void> {
-  if (!calibrateSessionId.value) return
+  if (!guardManageAction()) return
+  if (!calibrateSessionId.value || !calibrateForm.calibrationSummary.trim()) return
   calibrating.value = true
   try {
     await calibrateTrialSession({
       sessionId: calibrateSessionId.value,
+      calibrationSummary: calibrateForm.calibrationSummary.trim(),
       discussionNotes: calibrateForm.discussionNotes?.trim() || undefined,
     })
     message.success('试评校准结论已提交')
+    calibrateForm.calibrationSummary = ''
     calibrateForm.discussionNotes = ''
     emit('refresh')
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '校准提交失败'
-    message.error(errMsg)
+    showUserError(error, '提交试评校准结论失败')
   } finally {
     calibrating.value = false
   }
 }
 
 async function submitDelete(sessionId: string): Promise<void> {
+  if (!guardManageAction()) return
   deletingId.value = sessionId
   try {
     await deleteTrialSession(sessionId)
     message.success('试评草稿会话已删除')
     emit('refresh')
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '删除试评会话失败'
-    message.error(errMsg)
+    showUserError(error, '删除试评会话失败')
   } finally {
     deletingId.value = null
   }

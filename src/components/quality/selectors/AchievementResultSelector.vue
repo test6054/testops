@@ -10,16 +10,16 @@ import type {
   AchievementResultVO,
   AchievementTargetType,
 } from '@/apis/quality'
-import { message, Tag } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   achievementApi,
-  isAchievementAuditStatus,
-  isAchievementTargetType,
 } from '@/apis/quality'
+import { Tag } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
 
 const props = withDefaults(defineProps<Props>(), {
@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AchievementResultVO]
+  change: [value: string | null, option?: AchievementResultVO]
 }>()
 
 const AuditStatusTag = Tag
@@ -97,15 +97,15 @@ async function loadOptions() {
     options.value = requirePageList(res, '达成度结果')
   } catch (e) {
     console.error('[AchievementResultSelector] 加载达成度结果列表失败', e)
-    message.error('加载达成度结果列表失败')
+    showUserError(e, '达成度结果列表加载失败')
   } finally {
     loading.value = false
   }
 }
 
 /**
- * 后端 AchievementResultQueryRequest 不接受关键字参数，这里采用客户端过滤：
- * 对 targetId / qualityCourseId / programId / trainingPlanId / schoolYear / semester / id 进行子串匹配。
+ * 后端 AchievementResultQueryRequest 不接受关键字参数，这里采用客户端过滤。
+ * 过滤仅使用后端返回的展示字段，避免把 ID 当作业务文案。
  */
 const filteredOptions = computed(() => {
   const kw = searchText.value?.trim()
@@ -114,11 +114,12 @@ const filteredOptions = computed(() => {
   return options.value.filter((opt) => {
     const targetTypeLabel = achievementTargetTypeLabel(opt.targetType)
     return [
-      opt.id,
-      opt.targetId,
-      opt.programId,
-      opt.trainingPlanId,
-      opt.qualityCourseId,
+      opt.targetLabel,
+      opt.programName,
+      opt.trainingPlanName,
+      opt.qualityCourseCode,
+      opt.qualityCourseName,
+      opt.className,
       opt.schoolYear,
       opt.semester,
       targetTypeLabel,
@@ -140,29 +141,28 @@ function handleChange(val: SelectValue) {
 
 function labelOf(opt: AchievementResultVO) {
   const typeLabel = achievementTargetTypeLabel(opt.targetType)
-  const statusLabel = opt.auditStatus ? auditStatusLabel(opt.auditStatus) : '未进入审核'
-  return `${typeLabel} · ${statusLabel}`
+  const statusLabel = auditStatusLabel(opt.auditStatus)
+  return `${typeLabel} · ${opt.targetLabel} · ${statusLabel}`
 }
 
-function achievementTargetTypeLabel(value: unknown) {
-  if (!isAchievementTargetType(value)) {
-    throw new Error('达成度目标类型不符合前后端契约')
+function qualityCourseText(opt: AchievementResultVO) {
+  if (!opt.qualityCourseId) return ''
+  if (!opt.qualityCourseCode?.trim() || !opt.qualityCourseName?.trim()) {
+    throw new Error('达成度结果质量课程展示字段不符合前后端契约')
   }
-  return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
+  return `${opt.qualityCourseCode} ${opt.qualityCourseName}`
 }
 
-function auditStatusLabel(value: unknown) {
-  if (!isAchievementAuditStatus(value)) {
-    throw new Error('达成度审核状态不符合前后端契约')
-  }
-  return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
+function achievementTargetTypeLabel(value: AchievementTargetType) {
+  return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成度目标类型')
 }
 
-function auditStatusColor(value: unknown) {
-  if (!isAchievementAuditStatus(value)) {
-    throw new Error('达成度审核状态不符合前后端契约')
-  }
-  return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
+function auditStatusLabel(value: AchievementAuditStatus) {
+  return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成度审核状态')
+}
+
+function auditStatusColor(value: AchievementAuditStatus) {
+  return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成度审核状态')
 }
 
 onMounted(() => {
@@ -193,10 +193,11 @@ defineExpose({ reload: loadOptions })
     >
       {{ labelOf(opt) }}
       <span v-if="opt.qualityCourseId" class="text-gray-400 ml-1">
-        · 已关联课程
+        · {{ qualityCourseText(opt) }}
       </span>
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
+        >)
       </span>
       <AuditStatusTag
         v-if="opt.auditStatus"

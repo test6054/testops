@@ -48,7 +48,7 @@ export type BlobDownloadResponse = AxiosResponse<Blob>
  */
 export interface InterceptorError extends Error {
   code?: number | string
-  response?: AxiosResponse<ResultInfo>
+  response?: AxiosResponse<ResultInfo<unknown>>
   _handledByInterceptor?: boolean
 }
 

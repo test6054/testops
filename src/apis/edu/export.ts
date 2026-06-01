@@ -26,8 +26,16 @@ export interface ExportJobCreateRequest {
   exportFormat: ExportFormatEnum
   /** 租户导出配置ID（可选） */
   configId?: string
-  /** 业务查询参数（JSON格式） */
-  queryParams?: string
+  /** 实践ID */
+  practiceId?: string
+  /** 班级ID */
+  classId?: string
+  /** 班级ID列表 */
+  classIds?: string[]
+  /** 能力图谱ID */
+  mapId?: string
+  /** 学生ID */
+  studentId?: string
   /** 组织名称（用于文件命名） */
   orgName?: string
   /** 业务名称（用于文件命名） */
@@ -75,7 +83,7 @@ export interface ExportJobQueryRequest {
  * @returns 任务ID
  */
 export function createExportJob(request: ExportJobCreateRequest): Promise<string> {
-  return http.post('/api/storage/export/jobs/create', request)
+  return http.post<string>('/api/storage/export/jobs/create', request)
 }
 
 /**
@@ -84,26 +92,26 @@ export function createExportJob(request: ExportJobCreateRequest): Promise<string
 export function queryExportJobs(
   data: ExportJobQueryRequest,
 ): Promise<PageResult<ExportJobStatusVO>> {
-  return http.post('/api/storage/export/jobs/list', data)
+  return http.post<PageResult<ExportJobStatusVO>>('/api/storage/export/jobs/list', data)
 }
 
 /**
  * 查询导出任务状态
  */
 export function getExportJobStatus(jobId: string): Promise<ExportJobStatusVO> {
-  return http.get('/api/storage/export/jobs/status', { params: { jobId } })
+  return http.get<ExportJobStatusVO>('/api/storage/export/jobs/status', { params: { jobId } })
 }
 
 /**
  * 删除导出任务
  */
 export function deleteExportJob(jobId: string): Promise<void> {
-  return http.post('/api/storage/export/jobs/delete', null, { params: { jobId } })
+  return http.post<void>('/api/storage/export/jobs/delete', null, { params: { jobId } })
 }
 
 /**
  * 获取支持的业务类型列表
  */
 export function getBusinessTypes(): Promise<ExportBusinessType[]> {
-  return http.get('/api/storage/export/jobs/business-types')
+  return http.get<ExportBusinessType[]>('/api/storage/export/jobs/business-types')
 }

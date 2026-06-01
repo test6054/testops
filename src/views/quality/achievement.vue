@@ -15,10 +15,19 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AchievementAuditStatus,
-  AchievementResultQueryPayload,
+  AchievementResultQueryRequest,
   AchievementResultVO,
   AchievementStatus,
   AchievementTargetType,
+} from '@/apis/quality'
+import {
+  ACHIEVEMENT_AUDIT_STATUS_COLOR,
+  ACHIEVEMENT_AUDIT_STATUS_LABEL,
+  ACHIEVEMENT_STATUS_COLOR,
+  ACHIEVEMENT_STATUS_LABEL,
+  ACHIEVEMENT_TARGET_TYPE_LABEL,
+  achievementApi,
+  achievementAuditApi,
 } from '@/apis/quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type {
@@ -32,18 +41,12 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ACHIEVEMENT_AUDIT_STATUS_COLOR,
-  ACHIEVEMENT_AUDIT_STATUS_LABEL,
-  ACHIEVEMENT_STATUS_COLOR,
-  ACHIEVEMENT_STATUS_LABEL,
-  ACHIEVEMENT_TARGET_TYPE_LABEL,
-  achievementApi,
-  achievementAuditApi,
-  isAchievementAuditStatus,
-  isAchievementStatus,
-  isAchievementTargetType,
-} from '@/apis/quality'
-import { CourseSelector, ProgramSelector } from '@/components/quality/selectors'
+  ClassSelector,
+  CourseGoalSelector,
+  CourseSelector,
+  ProgramSelector,
+  TrainingObjectiveSelector,
+} from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -53,40 +56,27 @@ import {
   TaskResultPanel,
 } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatOptionalNumber, promptModal } from './_helpers'
+import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
+import { promptModal } from './_helpers'
 
-function targetTypeLabel(value: unknown): string {
-  if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('达成度目标类型不符合前后端契约')
+function targetTypeLabel(value: AchievementTargetType): string {
+  return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成目标类型')
 }
 
-function auditStatusLabel(value: unknown): string {
-  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('达成度审核状态不符合前后端契约')
+function auditStatusLabel(value: AchievementAuditStatus): string {
+  return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
 }
 
-function auditStatusColor(value: unknown): string {
-  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
-  throw new Error('达成度审核状态不符合前后端契约')
+function auditStatusColor(value: AchievementAuditStatus): string {
+  return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
 }
 
-function achievementStatusLabel(value: unknown): string {
-  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('达成度结论不符合前后端契约')
+function achievementStatusLabel(value: AchievementStatus): string {
+  return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
 }
 
-function achievementStatusColor(value: unknown): string {
-  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '')
-    return ACHIEVEMENT_STATUS_COLOR.INSUFFICIENT_EVIDENCE
-  throw new Error('达成度结论不符合前后端契约')
-}
-
-function achievementResultTitle(record: AchievementResultVO): string {
-  return `${targetTypeLabel(record.targetType)} · ${record.achievementStatus ? achievementStatusLabel(record.achievementStatus) : '未生成结论'}`
+function achievementStatusColor(value: AchievementStatus): string {
+  return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
 const router = useRouter()
@@ -97,7 +87,7 @@ const total = ref(0)
 const loading = ref(false)
 const triggerLoading = ref<string>('')
 
-const query = reactive<AchievementResultQueryPayload>({
+const query = reactive<AchievementResultQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   trainingPlanId: qualityStore.currentTrainingPlanId,
@@ -113,6 +103,8 @@ const query = reactive<AchievementResultQueryPayload>({
 const triggerForm = reactive({
   trainingPlanId: qualityStore.currentTrainingPlanId,
   qualityCourseId: '',
+  courseGoalId: '',
+  trainingObjectiveId: '',
   schoolYear: qualityStore.currentSchoolYear || '',
   semester: qualityStore.currentSemester || '',
   programId: qualityStore.currentProgramId,
@@ -120,13 +112,30 @@ const triggerForm = reactive({
 
 function handleQualityCourseChange(value: string | null) {
   triggerForm.qualityCourseId = value ?? ''
+  triggerForm.courseGoalId = ''
 }
 
 function handleProgramChange(value: string | null) {
   triggerForm.programId = value ?? ''
 }
 
-const targetTypeOptions: Array<{ value: AchievementTargetType, label: string }> = [
+function handleQueryQualityCourseChange(value: string | null) {
+  query.qualityCourseId = value ?? ''
+}
+
+function handleQueryClassChange(value: string | null) {
+  query.classId = value ?? ''
+}
+
+function handleCourseGoalChange(value: string | null) {
+  triggerForm.courseGoalId = value ?? ''
+}
+
+function handleTrainingObjectiveChange(value: string | null) {
+  triggerForm.trainingObjectiveId = value ?? ''
+}
+
+const targetTypeOptions: Array<{ value: AchievementTargetType; label: string }> = [
   { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
   { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
   { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
@@ -138,7 +147,7 @@ const targetTypeOptions: Array<{ value: AchievementTargetType, label: string }> 
     label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
   },
 ]
-const auditStatusOptions: Array<{ value: AchievementAuditStatus, label: string }> = [
+const auditStatusOptions: Array<{ value: AchievementAuditStatus; label: string }> = [
   { value: 'DRAFT', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.DRAFT },
   { value: 'CALCULATED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.CALCULATED },
   { value: 'SUBMITTED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.SUBMITTED },
@@ -146,7 +155,7 @@ const auditStatusOptions: Array<{ value: AchievementAuditStatus, label: string }
   { value: 'RETURNED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.RETURNED },
   { value: 'ARCHIVED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.ARCHIVED },
 ]
-const achievementStatusOptions: Array<{ value: AchievementStatus, label: string }> = [
+const achievementStatusOptions: Array<{ value: AchievementStatus; label: string }> = [
   { value: 'ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.ACHIEVED },
   { value: 'PARTIALLY_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.PARTIALLY_ACHIEVED },
   { value: 'NOT_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.NOT_ACHIEVED },
@@ -174,24 +183,23 @@ async function loadList() {
       achievementStatus: query.achievementStatus || undefined,
     })
     list.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
 const columns: ColumnsType = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 100 },
   { title: '目标类型', dataIndex: 'targetType', key: 'targetType', width: 160 },
-  { title: '目标 ID', dataIndex: 'targetId', key: 'targetId', width: 120 },
-  { title: '课程 ID', dataIndex: 'qualityCourseId', key: 'qualityCourseId', width: 120 },
-  { title: '班级 ID', dataIndex: 'classId', key: 'classId', width: 120 },
+  { title: '目标对象', dataIndex: 'targetLabel', key: 'targetLabel', width: 220 },
+  { title: '关联课程', key: 'qualityCourse', width: 180 },
+  { title: '关联班级', key: 'className', width: 140 },
   { title: '学年 / 学期', key: 'period', width: 120 },
   { title: '达成值 / 阈值', key: 'achievementValue', width: 160 },
   { title: '样本（有效 / 总量）', key: 'sample', width: 120 },
@@ -221,29 +229,34 @@ function resetQuery() {
  *  - compute-civic-goal-aggregate     课程思政独立汇总
  *  - compute-complex-engineering-aggregate  复杂工程问题专项
  */
-const triggerButtons: Array<{ key: string, label: string, handler: () => Promise<unknown> }> = [
+type AchievementComputeResult =
+  | Awaited<ReturnType<typeof achievementApi.computeCourseGoal>>
+  | Awaited<ReturnType<typeof achievementApi.computeRequirement>>
+  | Awaited<ReturnType<typeof achievementApi.computeProgram>>
+  | Awaited<ReturnType<typeof achievementApi.computeTrainingObjective>>
+  | Awaited<ReturnType<typeof achievementApi.computeCivicGoalAggregate>>
+  | Awaited<ReturnType<typeof achievementApi.computeComplexEngineeringAggregate>>
+
+const triggerButtons: Array<{
+  key: string
+  label: string
+  handler: () => Promise<AchievementComputeResult>
+}> = [
   {
     key: 'COURSE_GOAL',
     label: '课程目标',
-    handler: async () => {
+    handler: () => {
       if (!triggerForm.qualityCourseId?.trim()) {
-        message.warning(
-          '课程目标计算必须填写 qualityCourseId 与 courseGoalId（在备注栏临时输入：格式 courseGoalId=...）',
-        )
+        message.warning('课程目标计算必须先选择质量评价课程')
         return Promise.reject(new Error('missing courseGoalId'))
       }
-
-      const courseGoalId = await promptModal({
-        title: '请输入课程目标 ID',
-        placeholder: 'courseGoalId',
-        required: true,
-        rows: 1,
-        emptyErrorMessage: '课程目标 ID 不能为空',
-      })
-      if (!courseGoalId) return Promise.reject(new Error('cancelled'))
+      if (!triggerForm.courseGoalId?.trim()) {
+        message.warning('课程目标计算必须先选择课程目标')
+        return Promise.reject(new Error('missing courseGoalId'))
+      }
       return achievementApi.computeCourseGoal({
         qualityCourseId: triggerForm.qualityCourseId!,
-        courseGoalId,
+        courseGoalId: triggerForm.courseGoalId,
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester,
       })
@@ -263,19 +276,15 @@ const triggerButtons: Array<{ key: string, label: string, handler: () => Promise
   {
     key: 'TRAINING_OBJECTIVE',
     label: '培养目标',
-    handler: async () => {
-      const trainingObjectiveId = await promptModal({
-        title: '请输入培养目标 ID',
-        placeholder: 'trainingObjectiveId',
-        required: true,
-        rows: 1,
-        emptyErrorMessage: '培养目标 ID 不能为空',
-      })
-      if (!trainingObjectiveId) return Promise.reject(new Error('cancelled'))
+    handler: () => {
+      if (!triggerForm.trainingObjectiveId?.trim()) {
+        message.warning('培养目标计算必须先选择培养目标')
+        return Promise.reject(new Error('missing trainingObjectiveId'))
+      }
       return achievementApi.computeTrainingObjective({
         programId: triggerForm.programId || qualityStore.currentProgramId,
         trainingPlanId: qualityStore.currentTrainingPlanId,
-        trainingObjectiveId,
+        trainingObjectiveId: triggerForm.trainingObjectiveId,
         schoolYear: triggerForm.schoolYear,
         semester: triggerForm.semester,
       })
@@ -316,13 +325,13 @@ const triggerButtons: Array<{ key: string, label: string, handler: () => Promise
   },
 ]
 
-async function handleTrigger(key: string, handler: () => Promise<unknown>) {
+async function handleTrigger(key: string, handler: () => Promise<AchievementComputeResult>) {
   if (!qualityStore.currentTrainingPlanId) {
     message.warning('请先在顶部选择培养方案')
     return
   }
   if (programRequired.value) {
-    message.warning('请先在顶部选择专业或填写专业 ID')
+    message.warning('请先在顶部选择专业')
     return
   }
   triggerLoading.value = key
@@ -338,8 +347,10 @@ async function handleTrigger(key: string, handler: () => Promise<unknown>) {
   } catch (err) {
     // 计算被用户取消（如未填 courseGoalId）静默忽略
     if (
-      err instanceof Error
-      && (err.message === 'cancelled' || err.message === 'missing courseGoalId')
+      err instanceof Error &&
+      (err.message === 'cancelled' ||
+        err.message === 'missing courseGoalId' ||
+        err.message === 'missing trainingObjectiveId')
     ) {
       return
     }
@@ -360,10 +371,7 @@ const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> 
 
 function nextStatuses(current: AchievementAuditStatus | undefined): AchievementAuditStatus[] {
   if (!current) return []
-  if (!isAchievementAuditStatus(current)) {
-    throw new Error('达成度审核状态不符合前后端契约')
-  }
-  return auditTransitMap[current]
+  return strictEnumValue(auditTransitMap, current, '达成审核状态')
 }
 
 async function handleTransit(record: AchievementResultVO, to: AchievementAuditStatus) {
@@ -396,14 +404,14 @@ const auditBuckets = computed(() => {
     ARCHIVED: 0,
   }
   for (const r of list.value) {
-    if (isAchievementAuditStatus(r.auditStatus)) buckets[r.auditStatus] += 1
+    buckets[r.auditStatus] += 1
   }
   return buckets
 })
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = auditBuckets.value
-  const order: Array<{ key: AchievementAuditStatus, title: string }> = [
+  const order: Array<{ key: AchievementAuditStatus; title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'CALCULATED', title: '已计算' },
     { key: 'SUBMITTED', title: '已提交' },
@@ -426,15 +434,9 @@ const stages = computed<WorkbenchStage[]>(() => {
 
 const signals = computed<SignalMetric[]>(() => {
   const b = auditBuckets.value
-  const notAchieved = list.value.filter(
-    (r) => isAchievementStatus(r.achievementStatus) && r.achievementStatus === 'NOT_ACHIEVED',
-  ).length
-  const partial = list.value.filter(
-    (r) => isAchievementStatus(r.achievementStatus) && r.achievementStatus === 'PARTIALLY_ACHIEVED',
-  ).length
-  const achieved = list.value.filter(
-    (r) => isAchievementStatus(r.achievementStatus) && r.achievementStatus === 'ACHIEVED',
-  ).length
+  const notAchieved = list.value.filter((r) => r.achievementStatus === 'NOT_ACHIEVED').length
+  const partial = list.value.filter((r) => r.achievementStatus === 'PARTIALLY_ACHIEVED').length
+  const achieved = list.value.filter((r) => r.achievementStatus === 'ACHIEVED').length
   return [
     { key: 'total', label: '本页结果', value: list.value.length, tone: 'blue' },
     { key: 'achieved', label: '已达成', value: achieved, tone: achieved > 0 ? 'green' : 'gray' },
@@ -468,7 +470,7 @@ function openTriggerDrawer() {
 }
 
 function formatValue(value?: number) {
-  return formatOptionalNumber(value, '达成度数值')
+  return value == null ? '-' : value.toFixed(3)
 }
 
 function goDetail(record: AchievementResultVO) {
@@ -496,7 +498,6 @@ async function openAuditDrawer(record: AchievementResultVO) {
       time: a.auditedAt,
       detail: a.auditOpinion || a.returnReason || undefined,
       targetType: '达成度结果',
-      targetId: a.achievementResultId,
     }))
   } finally {
     auditLoading.value = false
@@ -506,28 +507,24 @@ async function openAuditDrawer(record: AchievementResultVO) {
 const achievementResultItems = computed<TaskResultItem[]>(() => {
   const abnormalTone: BadgeTone = 'red'
   return list.value
-    .filter(
-      (r) =>
-        r.auditStatus === 'RETURNED'
-        || (isAchievementStatus(r.achievementStatus) && r.achievementStatus === 'NOT_ACHIEVED'),
-    )
+    .filter((r) => r.auditStatus === 'RETURNED' || r.achievementStatus === 'NOT_ACHIEVED')
     .slice(0, 5)
     .map((r) => ({
       id: r.id,
-      title: achievementResultTitle(r),
+      title: `${targetTypeLabel(r.targetType)} · ${r.targetLabel}`,
       statusLabel: r.auditStatus === 'RETURNED' ? '已驳回' : '未达成',
       statusTone: abnormalTone,
       description:
         r.auditStatus === 'RETURNED'
           ? `审核驳回，需修正后重新提交`
-          : `达成值 ${formatOptionalNumber(r.finalValue, '达成值')} < 阈值 ${formatOptionalNumber(r.thresholdValue, '阈值')}`,
+          : `达成值 ${formatValue(r.finalValue)} < 阈值 ${formatValue(r.thresholdValue)}`,
       actions: [{ key: 'detail', label: '查看详情' }],
     }))
 })
 
-function handleResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
-  const record = list.value.find((r) => r.id === payload.item.id)
-  if (record && payload.action.key === 'detail') goDetail(record)
+function handleResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+  const record = list.value.find((r) => r.id === actionEvent.item.id)
+  if (record && actionEvent.action.key === 'detail') goDetail(record)
 }
 
 watch(
@@ -536,6 +533,10 @@ watch(
     triggerForm.trainingPlanId = value
     query.trainingPlanId = value
     triggerForm.programId = qualityStore.currentProgramId
+    triggerForm.qualityCourseId = ''
+    triggerForm.courseGoalId = ''
+    triggerForm.trainingObjectiveId = ''
+    query.qualityCourseId = ''
     loadList()
   },
 )
@@ -620,15 +621,18 @@ onMounted(async () => {
               allow-clear
               :options="achievementStatusOptions"
             />
-            <a-input
-              v-model:value="query.qualityCourseId"
-              placeholder="课程 ID"
-              class="achievement__filter achievement__filter--xs"
+            <CourseSelector
+              :value="query.qualityCourseId || null"
+              :training-plan-id="qualityStore.currentTrainingPlanId || null"
+              placeholder="关联课程"
+              class="achievement__filter achievement__filter--course"
+              @change="handleQueryQualityCourseChange"
             />
-            <a-input
-              v-model:value="query.classId"
-              placeholder="班级 ID"
-              class="achievement__filter achievement__filter--xs"
+            <ClassSelector
+              :value="query.classId || null"
+              placeholder="关联班级"
+              class="achievement__filter achievement__filter--class"
+              @change="handleQueryClassChange"
             />
             <a-input
               v-model:value="query.schoolYear"
@@ -659,48 +663,53 @@ onMounted(async () => {
           flat
           @page-change="handlePageChange"
         >
-          <template #bodyCell="{ column, record, text }">
+          <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'targetType'">
-              {{ targetTypeLabel(text) }}
+              {{ targetTypeLabel(record.targetType) }}
             </template>
-            <template
-              v-else-if="
-                column.key === 'targetId'
-                  || column.key === 'qualityCourseId'
-                  || column.key === 'classId'
-              "
-            >
-              {{ text || '-' }}
+            <template v-else-if="column.key === 'targetLabel'">
+              {{ record.targetLabel }}
+            </template>
+            <template v-else-if="column.key === 'qualityCourse'">
+              <span v-if="record.qualityCourseId">
+                {{ record.qualityCourseCode }} {{ record.qualityCourseName }}
+              </span>
+            </template>
+            <template v-else-if="column.key === 'className'">
+              <span v-if="record.classId">
+                {{ record.className }}
+              </span>
             </template>
             <template v-else-if="column.key === 'period'">
-              {{ record.schoolYear || '-' }} / {{ record.semester || '-' }}
+              {{ record.schoolYear }} / {{ record.semester }}
             </template>
             <template v-else-if="column.key === 'achievementValue'">
               <span
                 class="achievement__value"
                 :class="[
-                  record.finalValue !== null
-                    && record.thresholdValue !== null
-                    && record.finalValue >= record.thresholdValue
+                  record.finalValue !== null &&
+                  record.thresholdValue !== null &&
+                  record.finalValue >= record.thresholdValue
                     ? 'achievement__value--ok'
                     : 'achievement__value--bad',
                 ]"
-              >{{ formatValue(record.finalValue) }}</span>
+                >{{ formatValue(record.finalValue) }}</span
+              >
               <span class="achievement__threshold">
-                / {{ formatValue(record.thresholdValue) }}</span>
+                / {{ formatValue(record.thresholdValue) }}</span
+              >
             </template>
             <template v-else-if="column.key === 'sample'">
-              {{ record.sampleValid ?? '-' }} / {{ record.sampleTotal ?? '-' }}
+              {{ record.sampleValid }} / {{ record.sampleTotal }}
             </template>
             <template v-else-if="column.key === 'achievementStatus'">
-              <a-tag v-if="text" :color="achievementStatusColor(text)">
-                {{ achievementStatusLabel(text) }}
+              <a-tag :color="achievementStatusColor(record.achievementStatus)">
+                {{ achievementStatusLabel(record.achievementStatus) }}
               </a-tag>
-              <span v-else>-</span>
             </template>
             <template v-else-if="column.key === 'auditStatus'">
-              <a-tag :color="auditStatusColor(text)">
-                {{ auditStatusLabel(text) }}
+              <a-tag :color="auditStatusColor(record.auditStatus)">
+                {{ auditStatusLabel(record.auditStatus) }}
               </a-tag>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -768,6 +777,28 @@ onMounted(async () => {
                 <a-select-option value="1"> 1 </a-select-option>
                 <a-select-option value="2"> 2 </a-select-option>
               </a-select>
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="12">
+          <a-col :span="12">
+            <a-form-item label="课程目标">
+              <CourseGoalSelector
+                :value="triggerForm.courseGoalId || null"
+                :quality-course-id="triggerForm.qualityCourseId || null"
+                placeholder="选择课程目标"
+                @change="handleCourseGoalChange"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="培养目标">
+              <TrainingObjectiveSelector
+                :value="triggerForm.trainingObjectiveId || null"
+                :training-plan-id="qualityStore.currentTrainingPlanId || null"
+                placeholder="选择培养目标"
+                @change="handleTrainingObjectiveChange"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -884,6 +915,14 @@ onMounted(async () => {
 
     &--xs {
       width: 110px;
+    }
+
+    &--course {
+      width: 220px;
+    }
+
+    &--class {
+      width: 180px;
     }
 
     &--xxs {

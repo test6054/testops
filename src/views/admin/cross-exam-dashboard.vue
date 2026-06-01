@@ -9,7 +9,7 @@
     <UiAlertStrip
       tone="info"
       title="跨考试纵向分析说明"
-      description="跨考试纵向分析适用于同一课程或同一班级的多次考试，建议至少选择 2 次考试以体现趋势。"
+      description="跨考试纵向分析适用于同一课程或同一班级的多次考试，至少选择 2 次考试才能体现趋势。"
       dense
       class="cross-exam-dashboard__alert"
     />

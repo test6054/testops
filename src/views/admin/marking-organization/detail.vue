@@ -32,11 +32,16 @@
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadOrganization">
             刷新
           </UiButton>
-          <UiButton v-if="organization" variant="outline" size="sm" @click="openEditDrawer">
+          <UiButton
+            v-if="organization && canManageOrganization"
+            variant="outline"
+            size="sm"
+            @click="openEditDrawer"
+          >
             编辑组织
           </UiButton>
           <a-popconfirm
-            v-if="organization"
+            v-if="organization && canManageOrganization"
             title="确认删除该阅卷组织？"
             ok-text="删除"
             cancel-text="取消"
@@ -57,7 +62,7 @@
       v-if="organizationLoadError"
       :error="organizationLoadError"
       title="阅卷组织加载失败"
-      :helper="`组织 ID：${organizationId}`"
+      :helper="organizationExamLabel"
       @retry="loadOrganization"
     />
     <UiEmpty
@@ -68,6 +73,15 @@
 
     <a-spin v-else :spinning="loading">
       <section v-if="organization" class="org-detail__panel">
+        <UiAlertStrip
+          v-if="!canManageOrganization"
+          class="org-detail__owner-alert"
+          tone="info"
+          title="只读查看"
+          description="你可查看该阅卷组织、题组和策略；批阅任务分配由考试创建人执行。"
+          dense
+        />
+
         <a-tabs v-model:active-key="activeTab" class="detail-tabs">
           <a-tab-pane key="info" tab="基本信息 + 题组">
             <a-descriptions
@@ -76,14 +90,11 @@
               bordered
               class="info-descriptions"
             >
-              <a-descriptions-item label="组织ID">
-                <a-typography-text copyable>{{ organization.id }}</a-typography-text>
+              <a-descriptions-item label="当前考试">
+                {{ organizationExamLabel }}
               </a-descriptions-item>
-              <a-descriptions-item label="考试ID">
-                <a-typography-text copyable>{{ organization.examId }}</a-typography-text>
-              </a-descriptions-item>
-              <a-descriptions-item label="组长用户ID">
-                {{ organization.leaderUserId }}
+              <a-descriptions-item label="阅卷组长">
+                {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
               </a-descriptions-item>
               <a-descriptions-item label="组织状态">
                 <UiTag
@@ -114,13 +125,13 @@
                 {{ organization.groups.length }} 组
               </a-descriptions-item>
               <a-descriptions-item label="备注" :span="3">
-                {{ organization.remark || '-' }}
+                {{ organization.remark || '未填写组织备注' }}
               </a-descriptions-item>
             </a-descriptions>
 
             <div class="section-header">
               <h3>题组列表</h3>
-              <UiButton size="sm" @click="openGroupModal">
+              <UiButton v-if="canManageOrganization" size="sm" @click="openGroupModal">
                 <template #icon><PlusOutlined /></template>
                 新建题组
               </UiButton>
@@ -144,11 +155,39 @@
                     {{ record.groupName }}
                   </a-typography-text>
                 </template>
-                <template v-else-if="column.key === 'questionTemplateIds'">
-                  <UiTag tone="blue" size="sm"> {{ record.questionTemplateIds.length }} 题 </UiTag>
+                <template v-else-if="column.key === 'questions'">
+                  <div class="group-table__stack">
+                    <UiTag tone="blue" size="sm"> {{ record.questions.length }} 题 </UiTag>
+                    <span
+                      v-for="question in record.questions.slice(0, 3)"
+                      :key="question.questionTemplateId"
+                      class="group-table__item"
+                    >
+                      第 {{ question.questionNo }} 题 · {{ question.questionTypeMessage }} ·
+                      {{ question.fullScore }} 分
+                    </span>
+                    <span v-if="record.questions.length > 3" class="group-table__more">
+                      另 {{ record.questions.length - 3 }} 题
+                    </span>
+                  </div>
                 </template>
-                <template v-else-if="column.key === 'reviewerUserIds'">
-                  <UiTag tone="purple" size="sm"> {{ record.reviewerUserIds.length }} 人 </UiTag>
+                <template v-else-if="column.key === 'reviewers'">
+                  <div class="group-table__stack">
+                    <UiTag tone="purple" size="sm"> {{ record.reviewers.length }} 人 </UiTag>
+                    <span
+                      v-for="reviewer in record.reviewers.slice(0, 3)"
+                      :key="reviewer.reviewerUserId"
+                      class="group-table__item"
+                    >
+                      {{ reviewer.reviewerUserName }}（{{ reviewer.reviewerTeacherNo }}）
+                    </span>
+                    <span v-if="record.reviewers.length > 3" class="group-table__more">
+                      另 {{ record.reviewers.length - 3 }} 人
+                    </span>
+                  </div>
+                </template>
+                <template v-else-if="column.key === 'leaderUser'">
+                  {{ record.leaderUserName }}（{{ record.leaderTeacherNo }}）
                 </template>
                 <template v-else-if="column.key === 'groupStatus'">
                   <UiTag :tone="groupStatusTone(record.groupStatus)" size="sm">
@@ -221,12 +260,41 @@
                       placeholder="选择题组（留空表示组织级默认）"
                       :options="groupSelectOptions"
                       allow-clear
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
                   <a-form-item label="分配模式" required>
                     <a-select
                       v-model:value="policyForm.allocationMode"
                       :options="ALLOCATION_MODE_OPTIONS"
+                      :disabled="!canManageOrganization"
+                    />
+                  </a-form-item>
+                  <a-form-item label="批阅任务单元" required>
+                    <a-select
+                      v-model:value="policyForm.allocationUnit"
+                      :options="ALLOCATION_UNIT_OPTIONS"
+                      :disabled="!canManageOrganization"
+                    />
+                  </a-form-item>
+                  <a-form-item label="匿名模式" required>
+                    <a-select
+                      v-model:value="policyForm.anonymityMode"
+                      :options="ANONYMITY_MODE_OPTIONS"
+                      :disabled="!canManageOrganization"
+                    />
+                  </a-form-item>
+                  <a-form-item
+                    v-if="policyForm.allocationUnit === 'RANDOM_QUESTIONS'"
+                    label="随机题目抽样数量"
+                    required
+                  >
+                    <a-input-number
+                      v-model:value="policyForm.randomQuestionSampleSize"
+                      :min="1"
+                      :max="100"
+                      style="width: 100%"
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
                   <a-form-item label="每批分配任务数">
@@ -235,6 +303,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
                   <a-form-item label="教师最大待处理任务数">
@@ -243,6 +312,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
                   <a-form-item label="匿名令牌策略">
@@ -250,9 +320,14 @@
                       v-model:value="policyForm.anonymousTokenPolicy"
                       :options="ANONYMOUS_TOKEN_OPTIONS"
                       allow-clear
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
-                  <UiButton :loading="savingAllocation" @click="submitAllocation">
+                  <UiButton
+                    v-if="canManageOrganization"
+                    :loading="savingAllocation"
+                    @click="submitAllocation"
+                  >
                     <template #icon><SaveOutlined /></template>
                     保存分配策略
                   </UiButton>
@@ -266,6 +341,7 @@
                       placeholder="选择题组（留空表示组织级默认）"
                       :options="groupSelectOptions"
                       allow-clear
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
                   <a-form-item label="超时时间（分钟）">
@@ -274,6 +350,7 @@
                       :min="1"
                       :max="1440"
                       style="width: 100%"
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
                   <a-form-item label="教师最大待处理任务数">
@@ -282,6 +359,7 @@
                       :min="1"
                       :max="500"
                       style="width: 100%"
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
                   <a-form-item label="再分配模式">
@@ -289,9 +367,14 @@
                       v-model:value="policyForm.reassignMode"
                       :options="REASSIGN_MODE_OPTIONS"
                       allow-clear
+                      :disabled="!canManageOrganization"
                     />
                   </a-form-item>
-                  <UiButton :loading="savingRecycle" @click="submitRecycle">
+                  <UiButton
+                    v-if="canManageOrganization"
+                    :loading="savingRecycle"
+                    @click="submitRecycle"
+                  >
                     <template #icon><SaveOutlined /></template>
                     保存回收策略
                   </UiButton>
@@ -334,9 +417,11 @@
                   placeholder="选择目标状态"
                   style="width: 320px"
                   :options="statusTransitionOptions"
+                  :disabled="!canManageOrganization"
                 />
               </a-form-item>
               <UiButton
+                v-if="canManageOrganization"
                 :disabled="!targetStatus"
                 :loading="updatingStatus"
                 @click="submitStatusUpdate"
@@ -377,7 +462,7 @@
             placeholder="从教师中选择"
           />
         </a-form-item>
-        <a-form-item label="关联题目" name="questionTemplateIds" required>
+        <a-form-item label="负责题目" name="questionTemplateIds" required>
           <a-select
             v-model:value="groupForm.questionTemplateIds"
             mode="multiple"
@@ -412,8 +497,8 @@
       @ok="submitUpdate"
     >
       <a-form ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
-        <a-form-item label="组织ID">
-          <a-input :value="organization?.id" disabled />
+        <a-form-item label="关联考试">
+          <a-input :value="organizationExamLabel" disabled />
         </a-form-item>
         <a-form-item label="阅卷组长" name="leaderUserId" required>
           <a-select
@@ -448,29 +533,27 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
+import type { ExamDetailVO } from '@/apis/mark/exam'
+import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
 import type {
-  AllocationPolicySavePayload,
+  AllocationPolicySaveRequest,
+  AllocationUnitCode,
+  AnonymityModeCode,
   AnonymousTokenPolicyCode,
   MarkingAllocationModeCode,
   MarkingOrganizationStatusCode,
   MarkingOrganizationVO,
   MarkingReassignModeCode,
-  OrganizationUpdatePayload,
-  QuestionGroupSavePayload,
+  OrganizationUpdateRequest,
+  QuestionGroupSaveRequest,
   QuestionMarkingGroupStatusCode,
   QuestionMarkingGroupVO,
-  RecyclePolicySavePayload,
+  RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { getExamTemplate } from '@/apis/mark/exam'
 import {
+  ALLOCATION_UNIT_LABEL,
+  ANONYMITY_MODE_LABEL,
   ANONYMOUS_TOKEN_POLICY_LABEL,
   closeQuestionGroup,
   deleteOrganization,
@@ -488,8 +571,18 @@ import {
   saveRecyclePolicy,
   updateOrganization,
   updateOrganizationStatus,
+  validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
+  UiAlertStrip,
   UiButton,
   UiDataTable,
   UiDrawer,
@@ -498,6 +591,8 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { useUserStore } from '@/stores/modules/user'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -505,17 +600,34 @@ defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
 const organizationId = computed(() => String(route.params.organizationId || ''))
 
 const organization = ref<MarkingOrganizationVO | null>(null)
+const examDetail = ref<ExamDetailVO | null>(null)
 const examId = computed(() => String(organization.value?.examId || ''))
 const loading = ref(false)
 // D-9 错误态：仅当后端返回非“未创建组织”业务码时才上报
-const organizationLoadError = ref<unknown>(null)
+const organizationLoadError = ref<Error | null>(null)
 const activeTab = ref<'info' | 'policy' | 'status'>('info')
 
 const groups = computed<QuestionMarkingGroupVO[]>(() => organization.value?.groups ?? [])
+const organizationExamLabel = computed(() => {
+  if (!organization.value) return '请重新进入阅卷组织详情'
+  return organization.value.examNo
+    ? `${organization.value.examName}（${organization.value.examNo}）`
+    : organization.value.examName
+})
+const canManageOrganization = computed(
+  () => !!examDetail.value?.createUser && examDetail.value.createUser === userStore.userInfo.userId,
+)
+
+function guardOrganizationOwnerAction(): boolean {
+  if (canManageOrganization.value) return true
+  message.warning('仅考试创建人可分配批阅任务')
+  return false
+}
 
 const editDrawerOpen = ref(false)
 const updating = ref(false)
@@ -547,11 +659,18 @@ async function loadOrganization(): Promise<void> {
   loading.value = true
   organizationLoadError.value = null
   try {
-    organization.value = await getOrganizationById({ organizationId: organizationId.value })
+    const nextOrganization = await getOrganizationById({ organizationId: organizationId.value })
+    validateMarkingOrganizationContract(nextOrganization)
+    organization.value = nextOrganization
+    examDetail.value = await getExamDetail(nextOrganization.examId)
   } catch (error) {
     organization.value = null
+    examDetail.value = null
+    if (!(error instanceof Error)) {
+      throw error
+    }
     if (!isMarkingOrgNotCreatedError(error)) {
-      organizationLoadError.value = error
+      organizationLoadError.value = toUserError(error, '阅卷组织详情加载失败')
     }
   } finally {
     loading.value = false
@@ -560,9 +679,9 @@ async function loadOrganization(): Promise<void> {
 
 const groupColumns: ColumnType<QuestionMarkingGroupVO>[] = [
   { title: '题组名称', key: 'groupName', dataIndex: 'groupName', width: 220 },
-  { title: '题目数', key: 'questionTemplateIds', width: 100 },
-  { title: '阅卷教师', key: 'reviewerUserIds', width: 100 },
-  { title: '组长ID', key: 'leaderUserId', dataIndex: 'leaderUserId', width: 140 },
+  { title: '负责题目', key: 'questions', width: 280 },
+  { title: '阅卷教师', key: 'reviewers', width: 240 },
+  { title: '题组组长', key: 'leaderUser', width: 160 },
   { title: '状态', key: 'groupStatus', width: 100 },
   { title: '创建时间', key: 'createTime', width: 170 },
   { title: '操作', key: 'action', width: 220 },
@@ -585,8 +704,7 @@ async function loadTeachers(): Promise<void> {
     const result = await adminGetUserPage({ pageNum: 1, pageSize: 200, roleKey: 'SCH_TECH' })
     teacherList.value = result.list
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '教师列表加载失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷教师列表加载失败')
   } finally {
     teacherLoading.value = false
   }
@@ -611,12 +729,11 @@ async function loadQuestionTemplates(): Promise<void> {
     const tpl = await getExamTemplate(currentExamId)
     questionOptions.value = (tpl.questions ?? []).map((q) => ({
       value: q.questionTemplateId,
-      label: `第 ${q.questionNo} 题（${q.questionType}，满分 ${q.fullScore}）`,
+      label: `第 ${q.questionNo} 题（${strictEnumLabel(QUESTION_TYPE_LABEL, q.questionType, '题型')}，满分 ${q.fullScore}）`,
     }))
     loadedQuestionTemplateExamId.value = currentExamId
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '题目模板加载失败'
-    message.error(errMsg)
+    showUserError(error, '考试题目模板加载失败')
   } finally {
     templateLoading.value = false
   }
@@ -665,6 +782,7 @@ const groupRules: Record<string, Rule[]> = {
 }
 
 function openGroupModal(): void {
+  if (!guardOrganizationOwnerAction()) return
   groupForm.groupId = undefined
   groupForm.groupName = ''
   groupForm.leaderUserId = undefined
@@ -676,17 +794,19 @@ function openGroupModal(): void {
 }
 
 function openGroupEdit(record: QuestionMarkingGroupVO): void {
+  if (!guardOrganizationOwnerAction()) return
   groupForm.groupId = record.id
   groupForm.groupName = record.groupName
   groupForm.leaderUserId = record.leaderUserId
-  groupForm.questionTemplateIds = [...record.questionTemplateIds]
-  groupForm.reviewerUserIds = [...record.reviewerUserIds]
+  groupForm.questionTemplateIds = record.questions.map((question) => question.questionTemplateId)
+  groupForm.reviewerUserIds = record.reviewers.map((reviewer) => reviewer.reviewerUserId)
   groupModalOpen.value = true
   void loadTeachers()
   void loadQuestionTemplates()
 }
 
 async function submitGroup(): Promise<void> {
+  if (!guardOrganizationOwnerAction()) return
   if (!organizationId.value || !groupFormRef.value) return
   try {
     await groupFormRef.value.validate()
@@ -695,7 +815,7 @@ async function submitGroup(): Promise<void> {
   }
   savingGroup.value = true
   try {
-    const payload: QuestionGroupSavePayload = {
+    const request: QuestionGroupSaveRequest = {
       organizationId: organizationId.value,
       groupId: groupForm.groupId,
       groupName: groupForm.groupName,
@@ -703,60 +823,63 @@ async function submitGroup(): Promise<void> {
       questionTemplateIds: groupForm.questionTemplateIds,
       reviewerUserIds: groupForm.reviewerUserIds,
     }
-    await saveQuestionGroup(payload)
+    await saveQuestionGroup(request)
     message.success(groupForm.groupId ? '题组已更新' : '题组已创建')
     groupModalOpen.value = false
     await loadOrganization()
   } catch (error) {
     const fallback = groupForm.groupId ? '更新题组失败' : '创建题组失败'
-    const errMsg = error instanceof Error ? error.message : fallback
-    message.error(errMsg)
+    showUserError(error, fallback)
   } finally {
     savingGroup.value = false
   }
 }
 
 function canEditGroup(record: QuestionMarkingGroupVO): boolean {
-  return record.groupStatus !== 'GROUP_CLOSED'
+  return canManageOrganization.value && record.groupStatus !== 'GROUP_CLOSED'
 }
 
 function canDeleteGroup(record: QuestionMarkingGroupVO): boolean {
-  return record.groupStatus === 'GROUP_DRAFT'
+  return canManageOrganization.value && record.groupStatus === 'GROUP_DRAFT'
 }
 
 function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
-  return record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED'
+  return (
+    canManageOrganization.value &&
+    (record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED')
+  )
 }
 
 async function submitGroupDelete(record: QuestionMarkingGroupVO): Promise<void> {
+  if (!guardOrganizationOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
     await deleteQuestionGroup({ groupId: record.id })
     message.success('题组已删除')
     await loadOrganization()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '删除题组失败'
-    message.error(errMsg)
+    showUserError(error, '题组删除失败')
   } finally {
     groupActionLoadingId.value = undefined
   }
 }
 
 async function submitGroupClose(record: QuestionMarkingGroupVO): Promise<void> {
+  if (!guardOrganizationOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
     await closeQuestionGroup({ groupId: record.id })
     message.success('题组已关闭')
     await loadOrganization()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '关闭题组失败'
-    message.error(errMsg)
+    showUserError(error, '题组关闭失败')
   } finally {
     groupActionLoadingId.value = undefined
   }
 }
 
 function openEditDrawer(): void {
+  if (!guardOrganizationOwnerAction()) return
   if (!organization.value) return
   editForm.leaderUserId = organization.value.leaderUserId
   editForm.anonymousMode = Boolean(organization.value.anonymousMode)
@@ -766,6 +889,7 @@ function openEditDrawer(): void {
 }
 
 async function submitUpdate(): Promise<void> {
+  if (!guardOrganizationOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   try {
     await editFormRef.value.validate()
@@ -774,33 +898,38 @@ async function submitUpdate(): Promise<void> {
   }
   updating.value = true
   try {
-    const payload: OrganizationUpdatePayload = {
+    const request: OrganizationUpdateRequest = {
       organizationId: organization.value.id,
       leaderUserId: editForm.leaderUserId!,
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
-    organization.value = await updateOrganization(payload)
+    const nextOrganization = await updateOrganization(request)
+    validateMarkingOrganizationContract(nextOrganization)
+    organization.value = nextOrganization
     message.success('阅卷组织已更新')
     editDrawerOpen.value = false
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '更新阅卷组织失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷组织更新失败')
   } finally {
     updating.value = false
   }
 }
 
 async function submitDelete(): Promise<void> {
+  if (!guardOrganizationOwnerAction()) return
   if (!organization.value) return
   deleting.value = true
   try {
     await deleteOrganization({ organizationId: organization.value.id })
     message.success('阅卷组织已删除')
-    await router.push({ name: 'AdminMarkingOrganizationIndex' })
+    await router.push({
+      name: route.path.startsWith('/teacher')
+        ? 'TeacherMarkingOrganizationIndex'
+        : 'AdminMarkingOrganizationIndex',
+    })
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '删除阅卷组织失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷组织删除失败')
   } finally {
     deleting.value = false
   }
@@ -809,9 +938,12 @@ async function submitDelete(): Promise<void> {
 interface PolicyForm {
   allocationGroupId?: string
   allocationMode: MarkingAllocationModeCode
-  batchSize?: number
-  loadLimit?: number
-  anonymousTokenPolicy?: AnonymousTokenPolicyCode
+  allocationUnit: AllocationUnitCode
+  anonymityMode: AnonymityModeCode
+  randomQuestionSampleSize?: number
+  batchSize: number
+  loadLimit: number
+  anonymousTokenPolicy: AnonymousTokenPolicyCode
   recycleGroupId?: string
   timeoutMinutes?: number
   maxPendingCount?: number
@@ -821,6 +953,9 @@ interface PolicyForm {
 const policyForm = reactive<PolicyForm>({
   allocationGroupId: undefined,
   allocationMode: 'BY_QUESTION',
+  allocationUnit: 'SELECTED_QUESTIONS',
+  anonymityMode: 'ANONYMOUS',
+  randomQuestionSampleSize: undefined,
   batchSize: 20,
   loadLimit: 50,
   anonymousTokenPolicy: 'PER_EXAM',
@@ -839,6 +974,16 @@ const ALLOCATION_MODE_OPTIONS = Object.entries(MARKING_ALLOCATION_MODE_LABEL).ma
   ([value, label]) => ({ value, label }),
 )
 
+const ALLOCATION_UNIT_OPTIONS = Object.entries(ALLOCATION_UNIT_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+
+const ANONYMITY_MODE_OPTIONS = Object.entries(ANONYMITY_MODE_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
+
 const REASSIGN_MODE_OPTIONS = Object.entries(MARKING_REASSIGN_MODE_LABEL).map(([value, label]) => ({
   value,
   label,
@@ -850,22 +995,26 @@ const ANONYMOUS_TOKEN_OPTIONS = Object.entries(ANONYMOUS_TOKEN_POLICY_LABEL).map
 
 const savingAllocation = ref(false)
 async function submitAllocation(): Promise<void> {
+  if (!guardOrganizationOwnerAction()) return
   if (!organizationId.value) return
   savingAllocation.value = true
   try {
-    const payload: AllocationPolicySavePayload = {
+    const request: AllocationPolicySaveRequest = {
       organizationId: organizationId.value,
       groupId: policyForm.allocationGroupId,
       allocationMode: policyForm.allocationMode,
+      allocationUnit: policyForm.allocationUnit,
+      anonymityMode: policyForm.anonymityMode,
+      randomQuestionSampleSize: policyForm.randomQuestionSampleSize,
       batchSize: policyForm.batchSize,
       loadLimit: policyForm.loadLimit,
       anonymousTokenPolicy: policyForm.anonymousTokenPolicy,
+      dualReviewEnabled: false,
     }
-    await saveAllocationPolicy(payload)
+    await saveAllocationPolicy(request)
     message.success('分配策略已保存')
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '分配策略保存失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷任务分配策略保存失败')
   } finally {
     savingAllocation.value = false
   }
@@ -873,21 +1022,21 @@ async function submitAllocation(): Promise<void> {
 
 const savingRecycle = ref(false)
 async function submitRecycle(): Promise<void> {
+  if (!guardOrganizationOwnerAction()) return
   if (!organizationId.value) return
   savingRecycle.value = true
   try {
-    const payload: RecyclePolicySavePayload = {
+    const request: RecyclePolicySaveRequest = {
       organizationId: organizationId.value,
       groupId: policyForm.recycleGroupId,
       timeoutMinutes: policyForm.timeoutMinutes,
       maxPendingCount: policyForm.maxPendingCount,
       reassignMode: policyForm.reassignMode,
     }
-    await saveRecyclePolicy(payload)
+    await saveRecyclePolicy(request)
     message.success('回收策略已保存')
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '回收策略保存失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷任务回收策略保存失败')
   } finally {
     savingRecycle.value = false
   }
@@ -918,6 +1067,7 @@ const statusTransitionOptions = computed(() => {
 })
 
 async function submitStatusUpdate(): Promise<void> {
+  if (!guardOrganizationOwnerAction()) return
   if (!organizationId.value || !targetStatus.value) return
   updatingStatus.value = true
   try {
@@ -929,8 +1079,7 @@ async function submitStatusUpdate(): Promise<void> {
     targetStatus.value = undefined
     await loadOrganization()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '状态推进失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷组织状态推进失败')
   } finally {
     updatingStatus.value = false
   }
@@ -938,7 +1087,9 @@ async function submitStatusUpdate(): Promise<void> {
 
 function goSessions(): void {
   void router.push({
-    name: 'AdminMarkingOrganizationSessions',
+    name: route.path.startsWith('/teacher')
+      ? 'TeacherMarkingOrganizationSessions'
+      : 'AdminMarkingOrganizationSessions',
     params: { organizationId: organizationId.value },
   })
 }

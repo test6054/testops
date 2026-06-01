@@ -39,6 +39,9 @@
         <template v-if="column.key === 'triggerType'">
           {{ triggerTypeLabel(rows[index].triggerType) }}
         </template>
+        <template v-else-if="column.key === 'affectedQuestionRefs'">
+          {{ affectedQuestionSummary(rows[index]) }}
+        </template>
         <template v-else-if="column.key === 'planStatus'">
           <a-tag :color="planStatusColor(rows[index].planStatus)">
             {{ planStatusLabel(rows[index].planStatus) }}
@@ -140,30 +143,32 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
   listRejudgePlans,
   REJUDGE_PLAN_STATUS_COLOR,
   REJUDGE_PLAN_STATUS_LABEL,
+  REJUDGE_PLAN_STATUS_OPTIONS,
   REJUDGE_TRIGGER_TYPE_LABEL,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'RejudgePlanCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const rows = ref<ExamRejudgePlanVO[]>([])
 const loading = ref(false)
 // D-9 错误态：重判计划加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 const statusFilter = ref<RejudgePlanStatusCode | undefined>(undefined)
 const operatingId = ref<string>('')
 const operatingAction = ref<'approve' | 'reject' | 'execute' | ''>('')
@@ -175,16 +180,11 @@ const executeModalOpen = ref(false)
 const executePlanId = ref<string>('')
 const executeReason = ref('')
 
-// 从后端枚举 LABEL 对象直接派生 select options。
-const statusOptions = Object.entries(REJUDGE_PLAN_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const statusOptions = REJUDGE_PLAN_STATUS_OPTIONS
 
 const columns: ColumnType<ExamRejudgePlanVO>[] = [
-  { title: '计划ID', dataIndex: 'id', key: 'id', width: 140 },
   { title: '触发类型', key: 'triggerType', width: 110 },
-  { title: '触发源', dataIndex: 'triggerSourceId', key: 'triggerSourceId', width: 120 },
+  { title: '受影响题目', key: 'affectedQuestionRefs', width: 180 },
   {
     title: '受影响学生',
     dataIndex: 'affectedStudentCount',
@@ -210,8 +210,8 @@ async function reload(): Promise<void> {
     })
   } catch (e) {
     rows.value = []
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '重判计划加载失败')
+    loadError.value = toUserError(e, '重判计划加载失败')
+    showUserError(e, '重判计划加载失败')
   } finally {
     loading.value = false
   }
@@ -225,7 +225,7 @@ async function handleApprove(planId: string): Promise<void> {
     message.success('已审批')
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '审批失败')
+    showUserError(e, '重判计划审批失败')
   } finally {
     operatingId.value = ''
     operatingAction.value = ''
@@ -252,7 +252,7 @@ async function handleReject(): Promise<void> {
     rejectModalOpen.value = false
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '驳回失败')
+    showUserError(e, '重判计划驳回失败')
   } finally {
     operatingId.value = ''
     operatingAction.value = ''
@@ -282,7 +282,7 @@ async function handleExecute(): Promise<void> {
     executeModalOpen.value = false
     await reload()
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '执行失败')
+    showUserError(e, '重判计划执行失败')
   } finally {
     operatingId.value = ''
     operatingAction.value = ''
@@ -290,17 +290,26 @@ async function handleExecute(): Promise<void> {
   }
 }
 
-
 // 严格 typed helper：rows[index] 是 ExamRejudgePlanVO，model 映射需以合法 union 类型索引。
-function triggerTypeLabel(code?: RejudgeTriggerTypeCode): string {
+function triggerTypeLabel(code: RejudgeTriggerTypeCode): string {
   return strictEnumLabel(REJUDGE_TRIGGER_TYPE_LABEL, code, '重判触发类型')
 }
 
-function planStatusColor(code?: RejudgePlanStatusCode): BadgeTone {
+function affectedQuestionSummary(row: ExamRejudgePlanVO): string {
+  const questionRefs = row.affectedQuestionRefs ?? []
+  if (questionRefs.length === 0) {
+    return triggerTypeLabel(row.triggerType)
+  }
+  return questionRefs
+    .map((questionRef) => `${questionRef.questionNo}（${questionRef.fullScore} 分）`)
+    .join('、')
+}
+
+function planStatusColor(code: RejudgePlanStatusCode): BadgeTone {
   return strictEnumTone(REJUDGE_PLAN_STATUS_COLOR, code, '重判计划状态')
 }
 
-function planStatusLabel(code?: RejudgePlanStatusCode): string {
+function planStatusLabel(code: RejudgePlanStatusCode): string {
   return strictEnumLabel(REJUDGE_PLAN_STATUS_LABEL, code, '重判计划状态')
 }
 

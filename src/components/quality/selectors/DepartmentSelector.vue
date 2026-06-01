@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TenantSchoolDepartmentDto } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import { onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
 interface Props {
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: TenantSchoolDepartmentDto]
+  change: [value: string | null, option?: TenantSchoolDepartmentDto]
 }>()
 
 const options = ref<TenantSchoolDepartmentDto[]>([])
@@ -49,7 +49,7 @@ async function loadOptions() {
     options.value = requireArrayResult(await departmentCatalogApi.list(), '院系')
   } catch (e) {
     console.error('[DepartmentSelector] 加载院系列表失败', e)
-    message.error('加载院系列表失败')
+    showUserError(e, '院系列表加载失败')
   } finally {
     loading.value = false
   }

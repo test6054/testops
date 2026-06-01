@@ -48,9 +48,7 @@
       >
         <template #extra>
           <p>总行数：{{ importResult.totalRows }}</p>
-          <p v-if="importResult.errorSummary" class="qip__error-summary">
-            错误摘要：{{ importResult.errorSummary }}
-          </p>
+          <p v-if="safeErrorSummary" class="qip__error-summary">错误摘要：{{ safeErrorSummary }}</p>
 
           <template v-if="failedRows.length > 0">
             <a-divider>失败行详情</a-divider>
@@ -73,11 +71,14 @@
 </template>
 
 <script setup lang="ts">
+import type { AxiosResponseHeaders, RawAxiosResponseHeaders } from 'axios'
 import type { ImportDiagnostic, ImportResult } from '@/apis/quality'
+import type { BlobDownloadResponse } from '@/config/axios/types'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { UiButton } from '@/components/ui-guide/ui'
+import { getUserProcessFailureMessage } from '@/utils/error-handler'
 
 /**
  * 通用 Excel 导入面板：模板下载 + 文件选择 + 上传 + 行级诊断展示。
@@ -107,10 +108,7 @@ const props = defineProps<{
   /** 模板下载默认文件名（浏览器无法解析 Content-Disposition 时兜底） */
   templateFileName: string
   /** 模板下载 API：返回 Blob 响应 */
-  templateApi: () => Promise<{
-    data: Blob
-    headers?: Record<string, string> | Record<string, unknown>
-  }>
+  templateApi: () => Promise<BlobDownloadResponse>
   /** 上传 API：返回标准 ImportResult */
   uploadApi: (file: File) => Promise<ImportResult>
 }>()
@@ -132,11 +130,28 @@ const importResult = ref<ImportResult | null>(null)
 
 const errorColumns = [
   { title: '行号', dataIndex: 'rowIndex', key: 'rowIndex', width: 70 },
-  { title: '错误码', dataIndex: 'errorCode', key: 'errorCode', width: 180 },
-  { title: '错误原因', dataIndex: 'invalidReason', key: 'invalidReason' },
+  { title: '处理说明', dataIndex: 'invalidReason', key: 'invalidReason' },
 ]
 
-const failedRows = computed(() => (importResult.value?.diagnostics || []).filter((d) => !d.valid))
+const safeErrorSummary = computed(() => {
+  if (!importResult.value || importResult.value.errorRows <= 0) return undefined
+  return getUserProcessFailureMessage(
+    importResult.value?.errorSummary,
+    '导入完成，但部分数据未通过校验，请查看失败行详情',
+  )
+})
+
+const failedRows = computed<ImportDiagnostic[]>(() =>
+  (importResult.value?.diagnostics || [])
+    .filter((d) => !d.valid)
+    .map((diagnostic) => ({
+      ...diagnostic,
+      invalidReason: getUserProcessFailureMessage(
+        diagnostic.invalidReason,
+        '该行数据未通过校验，请检查必填项和字段格式',
+      ),
+    })),
+)
 
 watch(
   () => props.open,
@@ -191,7 +206,10 @@ function handleClose() {
 /**
  * 解析 Content-Disposition 中的 filename，否则使用兜底值。
  */
-function resolveFileName(headers: Record<string, unknown> | undefined, fallback: string): string {
+function resolveFileName(
+  headers: RawAxiosResponseHeaders | AxiosResponseHeaders | undefined,
+  fallback: string,
+): string {
   if (!headers) return fallback
   const cd = String(headers['content-disposition'] || headers['Content-Disposition'] || '')
   if (!cd) return fallback
@@ -221,7 +239,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string): void {
   URL.revokeObjectURL(url)
 }
 
-defineExpose({ failedRows: failedRows as unknown as ImportDiagnostic[] })
+defineExpose({ failedRows })
 </script>
 
 <style scoped lang="scss">

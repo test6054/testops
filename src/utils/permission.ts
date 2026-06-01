@@ -1,7 +1,8 @@
 // 从统一枚举导入角色枚举
 import { ROLE_CONFIG, RoleEnum } from '@/types/enums'
+import { strictEnumValue } from '@/utils/strict-enum'
 
-// 重新导出，保持向后兼容
+// 路由配置统一从该入口导入角色枚举。
 export {RoleEnum}
 
 // 角色显示名称 - 使用统一配置
@@ -38,9 +39,8 @@ export function isValidRole(role: string): role is RoleEnum {
 /**
  * 获取角色显示名称
  */
-export function getRoleName(role: string): string {
-    if (!isValidRole(role)) return '未知角色'
-    return ROLE_NAMES[role]
+export function getRoleName(role: RoleEnum): string {
+    return strictEnumValue(ROLE_NAMES, role, '角色')
 }
 /**
  * 检查是否为管理员角色

@@ -1,3 +1,5 @@
+import type { AnalysisExamScopeVO } from './cross-exam-analysis'
+import type { QuestionTypeCode } from './grading-experience'
 import type { AiAnalysisStatusCode } from './teaching-analysis'
 
 /**
@@ -11,72 +13,72 @@ import type { AiAnalysisStatusCode } from './teaching-analysis'
 import http from '@/config/axios'
 
 /** 校级质量分析维度 */
-export type SchoolQualityDimensionCode = 'COURSE' | 'TEACHER' | 'CLASS' | 'COLLEGE' | 'SEMESTER'
+export type SchoolQualityDimensionCode = 'COURSE' | 'CLASS' | 'SEMESTER'
+
+/** 校级质量评价编码 */
+export type SchoolQualityRatingCode = 'EXCELLENT' | 'GOOD' | 'ACCEPTABLE' | 'POOR'
 
 /** 校级质量分析维度文案映射 */
 export const SCHOOL_QUALITY_DIMENSION_LABEL: Record<SchoolQualityDimensionCode, string> = {
   COURSE: '课程维度',
-  TEACHER: '教师维度',
   CLASS: '班级维度',
-  COLLEGE: '学院维度',
   SEMESTER: '学期维度',
 }
 
 /** 校级质量分析条目 */
 export interface SchoolQualityItemVO {
-  dimensionName?: string
+  qualityDimension?: string
   metricName?: string
-  score?: number
-  summary?: string
-  risk?: string
+  metricValue?: number
+  rating?: SchoolQualityRatingCode
+  description?: string
+  baselineComparison?: string
   suggestion?: string
 }
 
 /** 校级质量分析记录 - 对应 SchoolQualityAnalysis */
 export interface SchoolQualityAnalysisVO {
   id: string
-  tenantId?: string
-  analysisDimension?: SchoolQualityDimensionCode
+  analysisDimension: SchoolQualityDimensionCode
   dimensionId?: string
   dimensionName?: string
   semesterCode?: string
-  examIds?: string
+  exams?: AnalysisExamScopeVO[]
   examCount?: number
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   qualitySummary?: string
   qualityItems?: SchoolQualityItemVO[]
   teachingQualityScore?: number
   questionQualityScore?: number
   markingQualityScore?: number
-  analysisStatus?: AiAnalysisStatusCode
+  analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
+  latencyMs?: number
   createTime?: string
-  updateTime?: string
 }
 
 /** 经验有效性评估记录 - 对应 ExperienceEffectivenessEval */
 export interface ExperienceEffectivenessEvalVO {
   id: string
-  tenantId?: string
   experienceCaseId?: string
   evalExamId?: string
+  sourceExamName?: string
+  sourceExamNo?: string
+  evalExamName?: string
+  evalExamNo?: string
+  experienceSummary?: string
+  questionType: QuestionTypeCode
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   evalSummary?: string
   consistencyRate?: number
   reuseCount?: number
   driftDetected?: boolean
   driftDescription?: string
   recommendation?: string
-  analysisStatus?: AiAnalysisStatusCode
+  analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
+  latencyMs?: number
   createTime?: string
-  updateTime?: string
 }
 
 /**
@@ -86,7 +88,6 @@ export interface ExperienceEffectivenessEvalVO {
 export function generateQualityAnalysis(params: {
   analysisDimension: SchoolQualityDimensionCode
   dimensionId?: string
-  dimensionName?: string
   semesterCode?: string
   examIds: string[]
 }): Promise<SchoolQualityAnalysisVO> {

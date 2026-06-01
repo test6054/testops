@@ -16,11 +16,19 @@ import type {
   AssessmentItemVO,
   DataSourceMode,
   QualityCourseVO,
-  ScoreBatchQueryPayload,
-  ScoreBatchSavePayload,
+  ScoreBatchQueryRequest,
+  ScoreBatchSaveRequest,
   ScoreBatchStatus,
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
+} from '@/apis/quality'
+import {
+  assessmentItemApi,
+  DATA_SOURCE_MODE_LABEL,
+  qualityCourseApi,
+  SCORE_BATCH_STATUS_COLOR,
+  SCORE_BATCH_STATUS_LABEL,
+  scoreBatchApi,
 } from '@/apis/quality'
 import type {
   AuditTimelineEvent,
@@ -32,16 +40,6 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import {
-  assessmentItemApi,
-  DATA_SOURCE_MODE_LABEL,
-  isDataSourceMode,
-  isScoreBatchStatus,
-  qualityCourseApi,
-  SCORE_BATCH_STATUS_COLOR,
-  SCORE_BATCH_STATUS_LABEL,
-  scoreBatchApi,
-} from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -52,7 +50,8 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { strictAuditChangeDetails } from '@/utils/strict-enum'
+import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
 
@@ -87,7 +86,7 @@ const uploadAssessmentLoading = ref(false)
 const queryAssessmentItems = ref<AssessmentItemVO[]>([])
 const queryAssessmentLoading = ref(false)
 
-const query = reactive<ScoreBatchQueryPayload>({
+const query = reactive<ScoreBatchQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   qualityCourseId: '',
@@ -106,10 +105,10 @@ const DATA_SOURCE_MODES: DataSourceMode[] = [
 
 const SOURCE_MODE_OPTIONS = DATA_SOURCE_MODES.map((value) => ({
   value,
-  label: DATA_SOURCE_MODE_LABEL[value],
+  label: strictEnumLabel(DATA_SOURCE_MODE_LABEL, value, '数据来源模式'),
 }))
 
-const uploadForm = reactive<ScoreBatchSavePayload & { fileName?: string }>({
+const uploadForm = reactive<ScoreBatchSaveRequest & { fileName?: string }>({
   qualityCourseId: '',
   assessmentItemId: '',
   batchCode: '',
@@ -132,49 +131,29 @@ const SCORE_BATCH_STATUSES: ScoreBatchStatus[] = [
 
 const statusOptions = SCORE_BATCH_STATUSES.map((value) => ({
   value,
-  label: SCORE_BATCH_STATUS_LABEL[value],
+  label: strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态'),
 }))
 
-function statusLabel(value: unknown): string {
-  if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_LABEL[value]
-  throw new Error(`成绩批次状态不在后端枚举内：${String(value)}`)
+function statusLabel(value: ScoreBatchStatus): string {
+  return strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态')
 }
 
-function statusColor(value: unknown): string {
-  if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_COLOR[value]
-  throw new Error(`成绩批次状态不在后端枚举内：${String(value)}`)
+function statusColor(value: ScoreBatchStatus): string {
+  return strictEnumTone(SCORE_BATCH_STATUS_COLOR, value, '成绩批次状态')
 }
 
-function sourceModeLabel(value: unknown): string {
-  if (isDataSourceMode(value)) return DATA_SOURCE_MODE_LABEL[value]
-  throw new Error(`数据接入模式不在后端枚举内：${String(value)}`)
-}
-
-interface GeneratedRowStatistics {
-  totalRows: number
-  successRows: number
-  errorRows: number
+function sourceModeLabel(value: DataSourceMode): string {
+  return strictEnumLabel(DATA_SOURCE_MODE_LABEL, value, '数据来源模式')
 }
 
 function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
-): record is GeneratedRowStatistics {
+): boolean {
   return (
-    record.totalRows !== undefined
-    && record.successRows !== undefined
-    && record.errorRows !== undefined
+    record.totalRows !== undefined &&
+    record.successRows !== undefined &&
+    record.errorRows !== undefined
   )
-}
-
-function requireGeneratedRowStatistics(record: ScoreBatchVO): GeneratedRowStatistics {
-  if (!hasGeneratedRowStatistics(record)) {
-    throw new Error(`成绩批次 ${record.id} 已进入 ${record.status}，但后端未返回行统计`)
-  }
-  return {
-    totalRows: record.totalRows,
-    successRows: record.successRows,
-    errorRows: record.errorRows,
-  }
 }
 
 function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
@@ -184,8 +163,10 @@ function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
   if (record.status === 'FAILED' && !hasGeneratedRowStatistics(record)) {
     return '解析失败，未生成行统计'
   }
-  const statistics = requireGeneratedRowStatistics(record)
-  return `${statistics.successRows} / ${statistics.errorRows} / ${statistics.totalRows}`
+  if (!hasGeneratedRowStatistics(record)) {
+    return `当前成绩批次已进入 ${statusLabel(record.status)}，但后端未返回行统计`
+  }
+  return `${record.successRows} / ${record.errorRows} / ${record.totalRows}`
 }
 
 // ─── 阶段状态分布（用于 StageRail） ─────────────────────────────
@@ -200,14 +181,14 @@ const statusBuckets = computed(() => {
     CANCELLED: 0,
   }
   for (const b of batches.value) {
-    if (isScoreBatchStatus(b.status)) buckets[b.status] += 1
+    buckets[b.status] += 1
   }
   return buckets
 })
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatus, title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatus; title: string }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PARSING', title: '解析中' },
     { key: 'PREVIEW_READY', title: '预览就绪' },
@@ -313,20 +294,19 @@ async function loadBatches() {
       keyword: query.keyword?.trim() || undefined,
     })
     batches.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadBatches()
 }
 
 const batchListColumns: ColumnsType = [
-  { title: '批次 ID', dataIndex: 'id', key: 'id', width: 120 },
   { title: '编码', dataIndex: 'batchCode', key: 'batchCode', width: 140 },
   { title: '名称', dataIndex: 'batchName', key: 'batchName' },
   { title: '课程', key: 'course', width: 220 },
@@ -345,9 +325,9 @@ const diagnosticsColumns: ColumnsType = [
   { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber' },
   { title: '姓名', dataIndex: 'studentName', key: 'studentName' },
   { title: '班级', dataIndex: 'className', key: 'className' },
-  { title: '原始得分', dataIndex: 'rawScore', key: 'rawScore' },
+  { title: '得分', dataIndex: 'score', key: 'score' },
   { title: '是否通过', dataIndex: 'valid', key: 'valid', width: 90 },
-  { title: '错误码 / 说明', key: 'errorInfo' },
+  { title: '处理说明', key: 'errorInfo' },
 ]
 
 function resetQuery() {
@@ -367,7 +347,7 @@ async function handleUpload(options: UploadRequestOption) {
     return
   }
   if (!uploadForm.assessmentItemId) {
-    message.warning('请填写考核环节 ID（后端必填）')
+    message.warning('请选择或填写考核环节')
     options.onError?.(new Error('考核环节未填写'))
     return
   }
@@ -400,7 +380,7 @@ async function handleUpload(options: UploadRequestOption) {
     })
     // 步骤 3：触发解析
     await scoreBatchApi.enqueueParse(batchId)
-    message.success(`已提交导入 batchId=${batchId}，解析完成后可预览并确认`)
+    message.success('已提交导入任务，解析完成后可预览并确认')
     // ant-design-vue customRequest 的 onSuccess 第二参为 XMLHttpRequest，可选；本地文件 IO 流程不传 xhr。
     options.onSuccess?.({})
     await loadBatches()
@@ -421,14 +401,28 @@ async function openPreview(record: ScoreBatchVO) {
   previewLoading.value = true
   try {
     const preview = await scoreBatchApi.preview(record.id)
+    for (const diagnostic of preview.diagnostics) {
+      if (
+        diagnostic.valid === false &&
+        diagnostic.errorMessages.length === 0 &&
+        diagnostic.errorCodes.length === 0
+      ) {
+        throw new Error(`成绩导入第 ${diagnostic.rowIndex} 行校验失败但后端未返回错误说明`)
+      }
+    }
     diagnostics.value = preview.diagnostics
     if (preview.status !== 'FAILED' && !hasGeneratedRowStatistics(preview)) {
-      throw new Error(`成绩批次 ${preview.batchId} 预览结果缺少行统计`)
+      throw new Error('当前成绩批次预览结果缺少行统计')
     }
     previewSummary.totalRows = preview.totalRows
     previewSummary.successRows = preview.successRows
     previewSummary.errorRows = preview.errorRows
     previewSummary.errorSummary = preview.errorSummary
+      ? getUserProcessFailureMessage(
+          preview.errorSummary,
+          '成绩批次解析未完成，请检查导入文件后重新提交',
+        )
+      : undefined
   } finally {
     previewLoading.value = false
   }
@@ -437,7 +431,7 @@ async function openPreview(record: ScoreBatchVO) {
 async function handleValidate(record: ScoreBatchVO) {
   void confirmAsync({
     title: '校验该批次？',
-    content: `批次 ${record.id} 校验通过后将进入 VALIDATED 状态，是否继续？`,
+    content: '当前批次校验通过后将进入“已校验”状态，是否继续？',
     type: 'info',
     onOk: async () => {
       await scoreBatchApi.validate(record.id)
@@ -450,7 +444,7 @@ async function handleValidate(record: ScoreBatchVO) {
 async function handleConfirm(record: ScoreBatchVO) {
   void confirmAsync({
     title: '确认该批次？',
-    content: `批次 ${record.id} 确认后将参与达成度计算，是否继续？`,
+    content: '当前批次确认后将参与达成度计算，是否继续？',
     type: 'info',
     onOk: async () => {
       await scoreBatchApi.confirm(record.id)
@@ -463,7 +457,7 @@ async function handleConfirm(record: ScoreBatchVO) {
 async function handleCancel(record: ScoreBatchVO) {
   void confirmAsync({
     title: '取消该批次？',
-    content: `批次 ${record.id} 取消后不再参与达成度计算`,
+    content: '当前批次取消后不再参与达成度计算',
     type: 'error',
     onOk: async () => {
       await scoreBatchApi.updateStatus({
@@ -493,7 +487,7 @@ async function handleReParse(record: ScoreBatchVO) {
 
 const editorVisible = ref(false)
 const editorSubmitting = ref(false)
-const editor = reactive<ScoreBatchSavePayload>({
+const editor = reactive<ScoreBatchSaveRequest>({
   id: undefined,
   qualityCourseId: '',
   assessmentItemId: '',
@@ -517,7 +511,7 @@ const editorAssessmentItemOptions = computed(() =>
 async function openEdit(record: ScoreBatchVO) {
   editor.id = record.id
   editor.qualityCourseId = record.qualityCourseId
-  editor.assessmentItemId = record.assessmentItemId || ''
+  editor.assessmentItemId = record.assessmentItemId
   editor.batchCode = record.batchCode
   editor.batchName = record.batchName
   editor.sourceMode = record.sourceMode
@@ -576,7 +570,6 @@ async function openAuditDrawer(record: ScoreBatchVO) {
       description: record.id,
     })
     auditEvents.value = page.list.map((log) => {
-      const changeDetails = strictAuditChangeDetails(log.changeDetails, '成绩批次审计变更详情')
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -585,8 +578,7 @@ async function openAuditDrawer(record: ScoreBatchVO) {
         time: log.createTime,
         targetType: log.module,
         targetId: log.bizId || undefined,
-        beforeValue: changeDetails.beforeValue,
-        afterValue: changeDetails.afterValue,
+        reason: log.changeDetails || log.errorStack || undefined,
       }
     })
   } finally {
@@ -609,9 +601,9 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
-  const record = batches.value.find((b) => b.id === payload.item.id)
-  if (record && payload.action.key === 'preview') openPreview(record)
+function handleBatchResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+  const record = batches.value.find((b) => b.id === actionEvent.item.id)
+  if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
 
 function canDelete(status: ScoreBatchStatus) {
@@ -762,9 +754,8 @@ onMounted(async () => {
         <header class="score-batch__upload-header">
           <h3 class="score-batch__upload-title">Excel 成绩导入</h3>
           <p class="score-batch__upload-hint">
-            表头按后端 ScoreImportExcelParser 约定：学号 / 姓名 / 班级 / 最终成绩。 上传后进入
-            <code>PENDING → PARSING → PREVIEW_READY</code> 状态机，由
-            <strong>预览 → 校验 → 确认</strong> 完成闭环。
+            表头需包含：学号 / 姓名 / 班级 / 最终成绩。上传后进入成绩批次校验，由
+            <strong>预览、校验、确认</strong> 完成闭环。
           </p>
         </header>
         <a-form layout="inline" :model="uploadForm" class="score-batch__upload-form">
@@ -790,14 +781,14 @@ onMounted(async () => {
           <a-form-item label="批次编码" required>
             <a-input
               v-model:value="uploadForm.batchCode"
-              placeholder="batch_code"
+              placeholder="输入批次编码"
               class="score-batch__filter"
             />
           </a-form-item>
           <a-form-item label="批次名称" required>
             <a-input
               v-model:value="uploadForm.batchName"
-              placeholder="batch_name"
+              placeholder="输入批次名称"
               class="score-batch__filter score-batch__filter--lg"
             />
           </a-form-item>
@@ -851,30 +842,38 @@ onMounted(async () => {
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'course'">
-            <div>{{ record.qualityCourseName || '-' }}</div>
+            <div>{{ record.qualityCourseName }}</div>
             <div class="score-batch__sub-text">
-              {{ record.qualityCourseCode || '' }}
+              {{ record.qualityCourseCode }}
             </div>
           </template>
           <template v-else-if="column.key === 'assessmentItem'">
-            <div>{{ record.assessmentItemName || '-' }}</div>
+            <div>{{ record.assessmentItemName }}</div>
             <div class="score-batch__sub-text">
-              {{ record.assessmentItemCode || '' }}
+              {{ record.assessmentItemCode }}
             </div>
           </template>
           <template
             v-else-if="
-              column.key === 'schoolYear'
-                || column.key === 'semester'
-                || column.key === 'createTime'
+              column.key === 'schoolYear' ||
+              column.key === 'semester' ||
+              column.key === 'createTime'
             "
           >
-            {{ text || '-' }}
+            <template v-if="column.key === 'schoolYear'">
+              {{ record.schoolYear }}
+            </template>
+            <template v-else-if="column.key === 'semester'">
+              {{ record.semester }}
+            </template>
+            <template v-else>
+              {{ record.createTime }}
+            </template>
           </template>
           <template v-else-if="column.key === 'sourceMode'">
-            {{ sourceModeLabel(text) }}
+            {{ sourceModeLabel(record.sourceMode) }}
           </template>
           <template v-else-if="column.key === 'rowsBreakdown'">
             <template v-if="hasGeneratedRowStatistics(record)">
@@ -889,8 +888,8 @@ onMounted(async () => {
             </span>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="statusColor(text)">
-              {{ statusLabel(text) }}
+            <a-tag :color="statusColor(record.status)">
+              {{ statusLabel(record.status) }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -968,8 +967,8 @@ onMounted(async () => {
         bordered
         class="score-batch__preview-descriptions"
       >
-        <a-descriptions-item label="批次 ID">
-          {{ previewBatch.id }}
+        <a-descriptions-item label="导入批次">
+          {{ previewBatch.batchCode }} · {{ previewBatch.batchName }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">
           <a-tag :color="statusColor(previewBatch.status)">
@@ -1007,35 +1006,40 @@ onMounted(async () => {
         :total="diagnostics.length"
         :scroll="{ y: 420 }"
       >
-        <template #bodyCell="{ column, record, text }">
-          <template v-if="column.key === 'rawScore'">
-            {{ text ?? '-' }}
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'score'">
+            {{
+              record.score === null || record.score === undefined || record.score === ''
+                ? '未解析得分'
+                : record.score
+            }}
           </template>
           <template v-else-if="column.key === 'valid'">
-            <a-tag :color="text ? 'green' : 'red'">
-              {{ text ? '通过' : '失败' }}
+            <a-tag :color="record.valid ? 'green' : 'red'">
+              {{ record.valid ? '通过' : '失败' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'errorInfo'">
             <a-space direction="vertical" size="small" style="width: 100%">
-              <a-space v-if="record.errorCodes.length" wrap size="small">
-                <a-tag v-for="code in record.errorCodes" :key="code" color="orange">
-                  {{ code }}
-                </a-tag>
-              </a-space>
               <div
-                v-for="(msg, idx) in record.errorMessages"
-                :key="`${record.rowIndex}-${idx}`"
+                v-for="(errorMessage, idx) in record.errorMessages"
+                :key="`${record.rowIndex}-message-${idx}`"
                 class="score-batch__error-msg"
               >
-                {{ msg }}
+                {{
+                  getUserProcessFailureMessage(
+                    errorMessage,
+                    '该行成绩无法确认，请检查学号、班级、成绩格式和考核环节配置',
+                  )
+                }}
               </div>
-              <span
-                v-if="!record.errorCodes.length && !record.errorMessages.length"
-                class="score-batch__sub-text"
+              <div
+                v-if="record.errorMessages.length === 0 && record.errorCodes.length > 0"
+                class="score-batch__error-msg"
               >
-                -
-              </span>
+                该行成绩无法确认，请检查学号、班级、成绩格式和考核环节配置
+              </div>
+              <span v-if="record.valid" class="score-batch__sub-text"> 无错误 </span>
             </a-space>
           </template>
         </template>

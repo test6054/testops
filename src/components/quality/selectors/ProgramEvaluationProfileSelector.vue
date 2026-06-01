@@ -6,16 +6,19 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ProgramEvaluationProfileVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
+import type {
+  AccreditationType,
+  EvaluationMethod,
+  ProgramEvaluationProfileVO,
+} from '@/apis/quality'
 import {
   ACCREDITATION_TYPE_LABEL,
   EVALUATION_METHOD_LABEL,
-  isAccreditationType,
-  isEvaluationMethod,
   programEvaluationProfileApi,
 } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
 
 interface Props {
@@ -40,7 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: ProgramEvaluationProfileVO]
+  change: [value: string | null, option?: ProgramEvaluationProfileVO]
 }>()
 
 const options = ref<ProgramEvaluationProfileVO[]>([])
@@ -71,7 +74,7 @@ async function loadOptions() {
     options.value = props.programId ? all.filter((p) => p.programId === props.programId) : all
   } catch (e) {
     console.error('[ProgramEvaluationProfileSelector] 加载评价口径列表失败', e)
-    message.error('加载评价口径列表失败')
+    showUserError(e, '评价口径列表加载失败')
   } finally {
     loading.value = false
   }
@@ -85,18 +88,12 @@ function handleChange(val: SelectValue) {
   emit('change', next, option)
 }
 
-function accreditationTypeLabel(value: unknown) {
-  if (!isAccreditationType(value)) {
-    throw new Error('认证类型不符合前后端契约')
-  }
-  return ACCREDITATION_TYPE_LABEL[value]
+function accreditationTypeLabel(value: AccreditationType) {
+  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
 }
 
-function evaluationMethodLabel(value: unknown) {
-  if (!isEvaluationMethod(value)) {
-    throw new Error('评价方法不符合前后端契约')
-  }
-  return EVALUATION_METHOD_LABEL[value]
+function evaluationMethodLabel(value: EvaluationMethod) {
+  return strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法')
 }
 
 onMounted(() => {
@@ -127,15 +124,11 @@ defineExpose({ reload: loadOptions })
       <span>{{ opt.programName }}</span>
       <span class="text-gray-400 ml-1">
         ·
-        {{
-          accreditationTypeLabel(opt.accreditationType)
-        }}
+        {{ accreditationTypeLabel(opt.accreditationType) }}
       </span>
       <span class="text-gray-400 ml-1">
         ·
-        {{
-          evaluationMethodLabel(opt.evaluationMethod)
-        }}
+        {{ evaluationMethodLabel(opt.evaluationMethod) }}
       </span>
     </a-select-option>
   </a-select>

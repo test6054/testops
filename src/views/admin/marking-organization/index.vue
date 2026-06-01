@@ -34,7 +34,7 @@
             刷新
           </UiButton>
           <UiButton
-            v-if="selectedExamId && !organization && !loading"
+            v-if="selectedExamId && !organization && !loading && canManageSelectedExam"
             variant="primary"
             size="sm"
             @click="openCreateDrawer"
@@ -44,11 +44,16 @@
           <UiButton v-if="organization" variant="primary" size="sm" @click="goDetail">
             进入详情
           </UiButton>
-          <UiButton v-if="organization" variant="outline" size="sm" @click="openEditDrawer">
+          <UiButton
+            v-if="organization && canManageSelectedExam"
+            variant="outline"
+            size="sm"
+            @click="openEditDrawer"
+          >
             编辑组织
           </UiButton>
           <a-popconfirm
-            v-if="organization"
+            v-if="organization && canManageSelectedExam"
             title="确认删除该阅卷组织？"
             ok-text="删除"
             cancel-text="取消"
@@ -68,7 +73,7 @@
       v-if="selectedExamId && organizationLoadError"
       :error="organizationLoadError"
       title="阅卷组织加载失败"
-      :helper="`考试 ID：${selectedExamId}`"
+      :helper="`当前考试：${organizationExamLabel}`"
       @retry="loadOrganization"
     />
     <UiEmpty
@@ -78,6 +83,15 @@
     />
 
     <a-spin v-else :spinning="loading" tip="加载组织中...">
+      <UiAlertStrip
+        v-if="selectedExamId && !canManageSelectedExam"
+        class="org-index__owner-alert"
+        tone="info"
+        title="只读查看"
+        description="你可查看该考试阅卷组织；批阅任务分配由考试创建人执行。"
+        dense
+      />
+
       <SignalBand v-if="organization" :metrics="signalMetrics" compact class="org-index__signals" />
 
       <section v-if="organization" class="org-index__panel">
@@ -86,7 +100,7 @@
             <ProfileOutlined />
             组织全貌
           </h3>
-          <UiBadge tone="blue"> EXAM #{{ organization.examId }} </UiBadge>
+          <UiBadge tone="blue">{{ organizationExamLabel }}</UiBadge>
         </header>
 
         <a-descriptions
@@ -95,10 +109,8 @@
           bordered
           class="org-index__descriptions"
         >
-          <a-descriptions-item label="组长用户 ID">
-            <a-typography-text copyable>
-              {{ organization.leaderUserId }}
-            </a-typography-text>
+          <a-descriptions-item label="阅卷组长">
+            {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
           </a-descriptions-item>
           <a-descriptions-item label="组织状态">
             <UiTag
@@ -131,10 +143,20 @@
         </a-descriptions>
 
         <div class="org-index__actions">
-          <UiButton size="sm" @click="goDetail"> 管理题组与策略 </UiButton>
-          <UiButton size="sm" variant="outline" @click="openEditDrawer"> 编辑组织 </UiButton>
+          <UiButton size="sm" @click="goDetail">
+            {{ canManageSelectedExam ? '管理题组与策略' : '查看题组与策略' }}
+          </UiButton>
+          <UiButton
+            v-if="canManageSelectedExam"
+            size="sm"
+            variant="outline"
+            @click="openEditDrawer"
+          >
+            编辑组织
+          </UiButton>
           <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
           <a-popconfirm
+            v-if="canManageSelectedExam"
             title="确认删除该阅卷组织？"
             ok-text="删除"
             cancel-text="取消"
@@ -157,9 +179,15 @@
           阅卷组织是组织教师批改试卷的核心实体；创建后可继续编排题组、配置分配策略并启动试评 /
           正评。
         </p>
-        <UiButton variant="primary" size="md" @click="openCreateDrawer">
+        <UiButton
+          v-if="canManageSelectedExam"
+          variant="primary"
+          size="md"
+          @click="openCreateDrawer"
+        >
           立即创建阅卷组织
         </UiButton>
+        <p v-else class="org-index__empty-desc">该考试的阅卷组织由考试创建人创建和分配。</p>
       </section>
     </a-spin>
 
@@ -252,22 +280,16 @@
  *
  * 后端契约（MarkingOrganizationController）：
  * - getOrganization({ examId })  查询当前考试的阅卷组织
- * - createOrganization(payload)  创建阅卷组织
+ * - createOrganization(request)  创建阅卷组织
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
-  OrganizationCreatePayload,
-  OrganizationUpdatePayload,
+  OrganizationCreateRequest,
+  OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import {
   createOrganization,
   deleteOrganization,
@@ -276,8 +298,16 @@ import {
   MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
   MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
   updateOrganization,
+  validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
+  UiAlertStrip,
   UiBadge,
   UiButton,
   UiDrawer,
@@ -287,32 +317,52 @@ import {
 } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useUserStore } from '@/stores/modules/user'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
 
 const {
   exams,
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExam,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
 
-const selectedExamLabel = computed(() => {
-  const exam = exams.value.find((item) => item.examId === selectedExamId.value)
-  if (!exam) return ''
-  return exam.examNo ? `${exam.examName} (${exam.examNo})` : exam.examName
-})
+const canManageSelectedExam = computed(
+  () =>
+    !!selectedExam.value?.createUser && selectedExam.value.createUser === userStore.userInfo.userId,
+)
+
+function guardExamOwnerAction(): boolean {
+  if (canManageSelectedExam.value) return true
+  message.warning('仅考试创建人可分配批阅任务')
+  return false
+}
 
 const organization = ref<MarkingOrganizationVO | null>(null)
 const loading = ref(false)
 // D-9 错误态：仅当后端返回非“未创建组织”业务码时才上报
-const organizationLoadError = ref<unknown>(null)
+const organizationLoadError = ref<Error | null>(null)
+
+const organizationExamLabel = computed(() => {
+  if (organization.value?.examName) {
+    return organization.value.examNo
+      ? `${organization.value.examName} (${organization.value.examNo})`
+      : organization.value.examName
+  }
+  return selectedExamLabel.value || '未选择考试'
+})
 
 async function loadOrganization(): Promise<void> {
   if (!selectedExamId.value) {
@@ -322,11 +372,16 @@ async function loadOrganization(): Promise<void> {
   loading.value = true
   organizationLoadError.value = null
   try {
-    organization.value = await getOrganization({ examId: selectedExamId.value })
+    const nextOrganization = await getOrganization({ examId: selectedExamId.value })
+    validateMarkingOrganizationContract(nextOrganization)
+    organization.value = nextOrganization
   } catch (error) {
     organization.value = null
+    if (!(error instanceof Error)) {
+      throw error
+    }
     if (!isMarkingOrgNotCreatedError(error)) {
-      organizationLoadError.value = error
+      organizationLoadError.value = toUserError(error, '阅卷组织加载失败')
     }
   } finally {
     loading.value = false
@@ -374,8 +429,7 @@ async function loadTeachers(): Promise<void> {
     })
     teacherList.value = result.list
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '教师列表加载失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷教师列表加载失败')
   } finally {
     teacherLoading.value = false
   }
@@ -425,6 +479,7 @@ const editRules: Record<string, Rule[]> = {
 }
 
 function openCreateDrawer(): void {
+  if (!guardExamOwnerAction()) return
   if (!selectedExamId.value) {
     message.warning('请先选择考试')
     return
@@ -439,6 +494,7 @@ function openCreateDrawer(): void {
 }
 
 async function submitCreate(): Promise<void> {
+  if (!guardExamOwnerAction()) return
   if (!selectedExamId.value || !createFormRef.value) return
   try {
     await createFormRef.value.validate()
@@ -447,24 +503,26 @@ async function submitCreate(): Promise<void> {
   }
   creating.value = true
   try {
-    const payload: OrganizationCreatePayload = {
+    const request: OrganizationCreateRequest = {
       examId: selectedExamId.value,
       leaderUserId: createForm.leaderUserId!,
       anonymousMode: createForm.anonymousMode,
       remark: createForm.remark?.trim() || undefined,
     }
-    organization.value = await createOrganization(payload)
+    const nextOrganization = await createOrganization(request)
+    validateMarkingOrganizationContract(nextOrganization)
+    organization.value = nextOrganization
     message.success('阅卷组织已创建')
     createDrawerOpen.value = false
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '创建阅卷组织失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷组织创建失败')
   } finally {
     creating.value = false
   }
 }
 
 function openEditDrawer(): void {
+  if (!guardExamOwnerAction()) return
   if (!organization.value) return
   editForm.leaderUserId = organization.value.leaderUserId
   editForm.anonymousMode = Boolean(organization.value.anonymousMode)
@@ -476,6 +534,7 @@ function openEditDrawer(): void {
 }
 
 async function submitUpdate(): Promise<void> {
+  if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   try {
     await editFormRef.value.validate()
@@ -484,24 +543,26 @@ async function submitUpdate(): Promise<void> {
   }
   updating.value = true
   try {
-    const payload: OrganizationUpdatePayload = {
+    const request: OrganizationUpdateRequest = {
       organizationId: organization.value.id,
       leaderUserId: editForm.leaderUserId!,
       anonymousMode: editForm.anonymousMode,
       remark: editForm.remark?.trim() || undefined,
     }
-    organization.value = await updateOrganization(payload)
+    const nextOrganization = await updateOrganization(request)
+    validateMarkingOrganizationContract(nextOrganization)
+    organization.value = nextOrganization
     message.success('阅卷组织已更新')
     editDrawerOpen.value = false
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '更新阅卷组织失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷组织更新失败')
   } finally {
     updating.value = false
   }
 }
 
 async function submitDelete(): Promise<void> {
+  if (!guardExamOwnerAction()) return
   if (!organization.value) return
   deleting.value = true
   try {
@@ -509,8 +570,7 @@ async function submitDelete(): Promise<void> {
     organization.value = null
     message.success('阅卷组织已删除')
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '删除阅卷组织失败'
-    message.error(errMsg)
+    showUserError(error, '阅卷组织删除失败')
   } finally {
     deleting.value = false
   }
@@ -519,7 +579,9 @@ async function submitDelete(): Promise<void> {
 function goDetail(): void {
   if (!organization.value) return
   void router.push({
-    name: 'AdminMarkingOrganizationDetail',
+    name: route.path.startsWith('/teacher')
+      ? 'TeacherMarkingOrganizationDetail'
+      : 'AdminMarkingOrganizationDetail',
     params: { organizationId: organization.value.id },
   })
 }
@@ -527,7 +589,9 @@ function goDetail(): void {
 function goSessions(): void {
   if (!organization.value) return
   void router.push({
-    name: 'AdminMarkingOrganizationSessions',
+    name: route.path.startsWith('/teacher')
+      ? 'TeacherMarkingOrganizationSessions'
+      : 'AdminMarkingOrganizationSessions',
     params: { organizationId: organization.value.id },
   })
 }

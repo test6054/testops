@@ -112,12 +112,12 @@ export interface CasFirstLoginSubmitRequest {
 export type CasCallbackResponse = LoginResponse['data'] | CasProfileCompletionResponse
 
 interface CasProfileCompletionStatusCarrier {
-  status?: unknown
+  status?: CasProfileCompletionResponse['status'] | string
 }
 
 function hasProfileCompletionStatus(
-  response: unknown,
-): response is { status: 'PROFILE_COMPLETION_REQUIRED' } {
+  response: CasCallbackResponse,
+): response is CasProfileCompletionResponse {
   if (typeof response !== 'object' || response === null) {
     return false
   }
@@ -132,8 +132,8 @@ export function isCasProfileCompletionResponse(
 ): response is CasProfileCompletionResponse {
   return hasProfileCompletionStatus(response)
 }
-/** 后端SSO配置原始响应 */
-interface SsoConfigRawResponse {
+/** 后端 SSO 配置响应承载 */
+interface SsoConfigResponseCarrier {
   enabled?: boolean
   type?: string
   casDisplayName?: string
@@ -148,7 +148,7 @@ interface SsoConfigRawResponse {
  * @param tenantId 租户ID（后端必填）
  */
 export function getSsoConfig(tenantId: string): Promise<SsoConfigResponse> {
-  return http.get<SsoConfigRawResponse>('/api/auth/sso-config', { params: { tenantId } }).then((res) => {
+  return http.get<SsoConfigResponseCarrier>('/api/auth/sso-config', { params: { tenantId } }).then((res) => {
     // 后端返回 { enabled, type, casLoginEndpoint }，转换为前端期望格式
     return {
       casEnabled: res.enabled ?? false,
@@ -185,7 +185,7 @@ export function getCasLoginUrl(tenantId: string): Promise<string> {
  * @returns 登录响应，包含 accessToken、userInfo 等
  */
 export function casCallback(ticket: string, tenantId: string): Promise<CasCallbackResponse> {
-  return http.post('/api/sso/cas/callback', { ticket, tenantId })
+  return http.post<CasCallbackResponse>('/api/sso/cas/callback', { ticket, tenantId })
 }
 
 /**
@@ -196,7 +196,7 @@ export function casCallback(ticket: string, tenantId: string): Promise<CasCallba
 export function getCasFirstLoginContext(
   completionToken: string,
 ): Promise<CasProfileCompletionResponse> {
-  return http.get('/api/sso/cas/first-login/context', {
+  return http.get<CasProfileCompletionResponse>('/api/sso/cas/first-login/context', {
     params: { completionToken },
   })
 }
@@ -209,7 +209,7 @@ export function getCasFirstLoginContext(
 export function getCasAvailableClasses(
   completionToken: string,
 ): Promise<CasAvailableClassResponse[]> {
-  return http.get('/api/sso/cas/first-login/classes', {
+  return http.get<CasAvailableClassResponse[]>('/api/sso/cas/first-login/classes', {
     params: { completionToken },
   })
 }
@@ -222,5 +222,5 @@ export function getCasAvailableClasses(
 export function completeCasFirstLogin(
   data: CasFirstLoginSubmitRequest,
 ): Promise<LoginResponse['data']> {
-  return http.post('/api/sso/cas/complete-first-login', data)
+  return http.post<LoginResponse['data']>('/api/sso/cas/complete-first-login', data)
 }

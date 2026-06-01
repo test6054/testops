@@ -20,24 +20,24 @@ export interface ProfessionAlgorithmTemplateVO {
   standardId?: string
   standardYear?: string
   description?: string
-  courseGoalAggregation?: AggregationFunction
-  indicatorAggregation?: AggregationFunction
-  requirementAggregation?: AggregationFunction
-  directWeightDefault?: number
-  indirectWeightDefault?: number
-  indirectMinValidSampleCount?: number
-  indirectCoverageThreshold?: number
-  courseGoalThresholdDefault?: number
-  indicatorThresholdDefault?: number
-  requirementThresholdDefault?: number
-  aiLiteracySupported?: boolean
-  civicDimensionsSupported?: boolean
+  courseGoalAggregation: AggregationFunction
+  indicatorAggregation: AggregationFunction
+  requirementAggregation: AggregationFunction
+  directWeightDefault: number
+  indirectWeightDefault: number
+  indirectMinValidSampleCount: number
+  indirectCoverageThreshold: number
+  courseGoalThresholdDefault: number
+  indicatorThresholdDefault: number
+  requirementThresholdDefault: number
+  aiLiteracySupported: boolean
+  civicDimensionsSupported: boolean
   enabled: boolean
   createTime?: string
   updateTime?: string
 }
 
-export interface ProfessionAlgorithmTemplateSavePayload {
+export interface ProfessionAlgorithmTemplateSaveRequest {
   id?: string
   templateCode: string
   templateName: string
@@ -46,34 +46,34 @@ export interface ProfessionAlgorithmTemplateSavePayload {
   standardId?: string
   standardYear?: string
   description?: string
-  courseGoalAggregation?: AggregationFunction
-  indicatorAggregation?: AggregationFunction
-  requirementAggregation?: AggregationFunction
-  directWeightDefault?: number
-  indirectWeightDefault?: number
-  indirectMinValidSampleCount?: number
-  indirectCoverageThreshold?: number
-  courseGoalThresholdDefault?: number
-  indicatorThresholdDefault?: number
-  requirementThresholdDefault?: number
-  aiLiteracySupported?: boolean
-  civicDimensionsSupported?: boolean
-  enabled?: boolean
+  courseGoalAggregation: AggregationFunction
+  indicatorAggregation: AggregationFunction
+  requirementAggregation: AggregationFunction
+  directWeightDefault: number
+  indirectWeightDefault: number
+  indirectMinValidSampleCount: number
+  indirectCoverageThreshold: number
+  courseGoalThresholdDefault: number
+  indicatorThresholdDefault: number
+  requirementThresholdDefault: number
+  aiLiteracySupported: boolean
+  civicDimensionsSupported: boolean
+  enabled: boolean
 }
 
-export interface ProfessionAlgorithmTemplateQueryPayload extends QueryDto {
+export interface ProfessionAlgorithmTemplateQueryRequest extends QueryDto {
   accreditationType?: AccreditationType
   enabled?: boolean
   keyword?: string
 }
 
 export const professionAlgorithmTemplateApi = {
-  page: (data: ProfessionAlgorithmTemplateQueryPayload) =>
+  page: (data: ProfessionAlgorithmTemplateQueryRequest) =>
     http.post<PageResult<ProfessionAlgorithmTemplateVO>>(`${BASE}/page`, data),
   detail: (id: string) => http.post<ProfessionAlgorithmTemplateVO>(`${BASE}/detail`, { id }),
-  create: (data: ProfessionAlgorithmTemplateSavePayload) =>
+  create: (data: ProfessionAlgorithmTemplateSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),
   copyToTenant: (id: string) => http.post<string>(`${BASE}/copy-to-tenant`, { id }),
-  update: (data: ProfessionAlgorithmTemplateSavePayload) => http.post<void>(`${BASE}/update`, data),
+  update: (data: ProfessionAlgorithmTemplateSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
 }

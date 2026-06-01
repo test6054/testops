@@ -169,13 +169,14 @@
 import type { DataNode } from 'ant-design-vue/es/vc-tree/interface'
 import type { CheckInfo } from 'ant-design-vue/es/vc-tree/props'
 import type { ClassStudentTreeNode } from '@/apis/edu/class'
+import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
-import { isErrorHandled } from '@/utils/error-handler'
+import { listExamStudentTree } from '@/apis/mark/exam'
+import { showUserError } from '@/utils/error-handler'
 
 // Props
 interface Props {
@@ -184,6 +185,8 @@ interface Props {
   title?: string
   /** 实践ID（用于过滤已添加的学生） */
   practiceId?: string
+  /** 考试ID：设置后走 mark 名册 BFF 学生树 */
+  examId?: string
   /** 仅展示这些班级 ID 下的学生；为空表示不按班级裁剪 */
   allowedClassIds?: string[]
   /** 初始选中的学生ID列表（用于编辑模式） */
@@ -336,18 +339,16 @@ const filteredTreeData = computed(() => {
 })
 
 // 为 Antd Tree 添加 disabled 属性，配合 field-names 映射 id→key, name→title, children→children
-// field-names 是运行时映射，TS 无法感知，需要 as DataNode 断言
 const processedTreeData = computed(() => {
   const addDisabled = (nodes: ClassStudentTreeNode[]): DataNode[] => {
     return nodes.map(
-      (node) =>
-        ({
-          ...node,
-          key: node.id,
-          title: node.name,
-          disabled: disabledKeys.value.includes(node.id),
-          children: node.children ? addDisabled(node.children) : undefined,
-        }) as unknown as DataNode,
+      (node): DataNode => ({
+        ...node,
+        key: node.id,
+        title: node.name,
+        disabled: disabledKeys.value.includes(node.id),
+        children: node.children ? addDisabled(node.children) : undefined,
+      }),
     )
   }
   return addDisabled(filteredTreeData.value)
@@ -448,12 +449,17 @@ const loadTreeData = async () => {
   loading.value = true
   try {
     let raw: ClassStudentTreeNode[]
-    if (props.practiceId) {
+    if (props.examId) {
+      raw = await listExamStudentTree({
+        examId: props.examId,
+        classIds: props.allowedClassIds.length ? [...props.allowedClassIds] : undefined,
+      })
+    } else if (props.practiceId) {
       raw = await getAvailableStudentTree(props.practiceId)
     } else {
       raw = await getClassStudentTree()
     }
-    treeData.value = filterTreeByClassScope(raw)
+    treeData.value = props.examId ? raw : filterTreeByClassScope(raw)
 
     // 设置默认展开到第一层（院系层级，展开后显示班级）
     defaultExpandedKeys.value = treeData.value
@@ -468,9 +474,7 @@ const loadTreeData = async () => {
     // 计算禁用的节点（已被其他规则选中的学生）
     calculateDisabledKeys()
   } catch (error) {
-    if (!isErrorHandled(error)) {
-      message.error('加载班级学生数据失败')
-    }
+    showUserError(error, '班级学生名单加载失败，请稍后重试')
   } finally {
     loading.value = false
   }

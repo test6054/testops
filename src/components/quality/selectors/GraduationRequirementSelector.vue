@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { GraduationRequirementVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import { graduationRequirementApi } from '@/apis/quality'
+import { computed, onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
 interface Props {
@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: GraduationRequirementVO]
+  change: [value: string | null, option?: GraduationRequirementVO]
 }>()
 
 const options = ref<GraduationRequirementVO[]>([])
@@ -75,7 +75,7 @@ async function loadOptions() {
     )
   } catch (e) {
     console.error('[GraduationRequirementSelector] 加载毕业要求列表失败', e)
-    message.error('加载毕业要求列表失败')
+    showUserError(e, '毕业要求列表加载失败')
   } finally {
     loading.value = false
   }
@@ -116,7 +116,7 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.requirementCode} · ${opt.requirementName}`"
     >
-      <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.requirementCode }}</span>
+      <span class="text-xs text-gray-500 mr-1">{{ opt.requirementCode }}</span>
       {{ opt.requirementName }}
     </a-select-option>
   </a-select>

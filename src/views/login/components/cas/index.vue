@@ -1,13 +1,29 @@
 <template>
   <div class="cas-login-container">
     <!-- 回调处理中 -->
-    <UiStateBlock v-if="isProcessingCallback" state="loading" title="正在验证统一认证登录..." compact />
+    <UiStateBlock
+      v-if="isProcessingCallback"
+      state="loading"
+      title="正在验证统一认证登录..."
+      compact
+    />
 
     <!-- 正常显示登录入口 -->
     <div v-else class="cas-login-content">
       <div class="cas-description">
         <div class="cas-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="56" height="56"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            width="56"
+            height="56"
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
         </div>
         <h3>{{ displayName }}</h3>
         <p>使用学校统一身份认证系统登录</p>
@@ -24,9 +40,15 @@
       </div>
     </div>
 
-    <!-- 错误信息 -->
+    <!-- 登录失败提示 -->
     <div v-if="errorMessage" class="cas-error">
-      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+      <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+        <path
+          fill-rule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+          clip-rule="evenodd"
+        />
+      </svg>
       <span>{{ errorMessage }}</span>
       <button class="cas-error__close" @click="errorMessage = ''">×</button>
     </div>
@@ -41,7 +63,7 @@ import { casCallback, getCasLoginUrl, isCasProfileCompletionResponse } from '@/a
 import { UiButton, UiStateBlock } from '@/components/ui-guide/ui'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
-import { isErrorHandled } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 
 defineOptions({ name: 'CasLogin' })
@@ -91,11 +113,9 @@ const handleCasLogin = async () => {
     // 获取CAS登录URL并跳转
     window.location.href = await getCasLoginUrl(props.tenantId)
   } catch (error: unknown) {
-    const msg = (error instanceof Error ? error.message : null) || '获取登录地址失败，请稍后重试'
+    const msg = getUserErrorMessage(error, '获取统一认证登录地址失败，请稍后重试')
     errorMessage.value = msg
-    if (!isErrorHandled(error)) {
-      message.error(msg)
-    }
+    showUserError(error, '获取统一认证登录地址失败，请稍后重试')
     emit('login-error', msg)
   } finally {
     loading.value = false
@@ -157,11 +177,9 @@ const handleCasCallback = async (ticket: string, tenantId: string) => {
     message.success('统一认证登录成功')
     emit('login-success')
   } catch (error: unknown) {
-    const msg = (error instanceof Error ? error.message : null) || '统一认证登录失败，请重试'
+    const msg = getUserErrorMessage(error, '统一认证登录失败，请重试')
     errorMessage.value = msg
-    if (!isErrorHandled(error)) {
-      message.error(msg)
-    }
+    showUserError(error, '统一认证登录失败，请重试')
     emit('login-error', msg)
   } finally {
     isProcessingCallback.value = false

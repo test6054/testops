@@ -105,10 +105,6 @@ export interface AuditTimelineEvent {
   targetId?: string
   /** 操作时间 */
   time?: string
-  /** 操作前值（JSON 文本） */
-  beforeValue?: string
-  /** 操作后值（JSON 文本） */
-  afterValue?: string
   /** 操作原因 */
   reason?: string
   /** 追踪ID */

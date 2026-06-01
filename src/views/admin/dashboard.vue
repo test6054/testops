@@ -193,7 +193,7 @@
                 <h4 class="incident-item__title">{{ incident.summary }}</h4>
                 <div class="incident-item__meta">
                   <span>{{ incidentTypeLabel(incident.incidentType) }}</span>
-                  <span>考试 #{{ incident.examId }}</span>
+                  <span>{{ incident.examName }} · {{ incident.examNo }}</span>
                   <span>{{ formatDateTime(incident.createTime) }}</span>
                 </div>
               </div>
@@ -209,13 +209,20 @@
 import type {
   DashboardGradingMetricsVO,
   DashboardIncidentMetricsVO,
+  DashboardIncidentRecordVO,
   DashboardRecentExamItemVO,
   IncidentLevelCode,
-  IncidentRecordVO,
   IncidentTypeCode,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
+import {
+  INCIDENT_LEVEL_LABEL,
+  INCIDENT_LEVEL_TONE,
+  INCIDENT_TYPE_LABEL,
+  loadDashboardOverview,
+} from '@/apis/mark/admin-dashboard'
 import type { ExamStatusCode } from '@/apis/mark/exam'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
@@ -223,16 +230,8 @@ import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOu
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  INCIDENT_LEVEL_LABEL,
-  INCIDENT_LEVEL_TONE,
-  INCIDENT_TYPE_LABEL,
-  loadDashboardOverview,
-} from '@/apis/mark/admin-dashboard'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -242,6 +241,7 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -250,7 +250,7 @@ defineOptions({ name: 'AdminDashboard' })
 const router = useRouter()
 const loading = ref(false)
 // D-9 错误态：阅卷概览加载失败时 UiErrorRetryPanel 重试 + 上报
-const overviewLoadError = ref<unknown>(null)
+const overviewLoadError = ref<Error | null>(null)
 const recentLimit = ref(5)
 const overview = ref<MarkDashboardOverviewVO | null>(null)
 
@@ -270,10 +270,8 @@ const gradingMetrics = computed<DashboardGradingMetricsVO | null>(
 const incidentMetrics = computed<DashboardIncidentMetricsVO | null>(
   () => overview.value?.incidentMetrics ?? null,
 )
-const recentExams = computed<DashboardRecentExamItemVO[]>(
-  () => overview.value?.recentExams ?? [],
-)
-const recentIncidents = computed<IncidentRecordVO[]>(
+const recentExams = computed<DashboardRecentExamItemVO[]>(() => overview.value?.recentExams ?? [])
+const recentIncidents = computed<DashboardIncidentRecordVO[]>(
   () => overview.value?.recentIncidents ?? [],
 )
 
@@ -303,14 +301,12 @@ async function loadOverview() {
   try {
     overview.value = await loadDashboardOverview(recentLimit.value)
   } catch (error) {
-    overviewLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载阅卷概览失败'
-    message.error(msg)
+    overviewLoadError.value = toUserError(error, '阅卷运营概览加载失败')
+    showUserError(error, '阅卷运营概览加载失败')
   } finally {
     loading.value = false
   }
 }
-
 
 function goAuditTrail() {
   router.push({ name: 'AdminAuditTrail' })

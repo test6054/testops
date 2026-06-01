@@ -71,19 +71,21 @@ export const USER_STATUS_TONE_MAP: Record<UserStatusEnum, UserStatusBadgeTone> =
  * 获取用户状态标签
  */
 export function getUserStatusLabel(status: UserStatusEnum): string {
-  return USER_STATUS_CONFIG[status].label
+  return strictEnumValue(USER_STATUS_CONFIG, status, '用户状态').label
 }
 
 /**
  * 获取用户状态颜色
  */
 export function getUserStatusColor(status: UserStatusEnum): string {
-  return USER_STATUS_CONFIG[status].color
+  return strictEnumValue(USER_STATUS_CONFIG, status, '用户状态').color
 }
 
 /**
  * 获取状态对应的 Badge tone（遵循 /style-guide 状态色板）
  */
 export function getUserStatusTone(status: UserStatusEnum): UserStatusBadgeTone {
-  return USER_STATUS_TONE_MAP[status]
+  return strictEnumTone(USER_STATUS_TONE_MAP, status, '用户状态')
 }
+
+import { strictEnumTone, strictEnumValue } from '@/utils/strict-enum'

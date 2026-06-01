@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 成绩明细管理
@@ -9,22 +10,27 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   AssessmentItemVO,
+  RubricItemVO,
+  ScoreBatchStatus,
   ScoreBatchVO,
-  ScoreRecordSavePayload,
+  ScoreRecordRubricScoreRequest,
+  ScoreRecordSaveRequest,
   ScoreRecordVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
-  isScoreBatchStatus,
+  rubricItemApi,
   SCORE_BATCH_STATUS_COLOR,
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
+import type { UserDto } from '@/types/api-types.d'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
+  ClassSelector,
   CourseSelector,
   StudentSelector,
   TrainingPlanSelector,
@@ -33,6 +39,8 @@ import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const batchColumns: ColumnsType = [
   { title: '编码', dataIndex: 'batchCode', key: 'batchCode', width: 120 },
@@ -43,54 +51,32 @@ const batchColumns: ColumnsType = [
 const recordColumns: ColumnsType = [
   { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
   { title: '姓名', dataIndex: 'studentName', key: 'studentName', width: 100 },
-  { title: '考核环节', dataIndex: 'assessmentItemId', key: 'assessmentItemId' },
+  { title: '考核环节', key: 'assessmentItemRef' },
   { title: '得分 / 满分', key: 'score', width: 140 },
   { title: '状态', key: 'recordStatus', width: 140 },
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
 
 const validByItemColumns: ColumnsType = [
-  { title: '批次 ID', dataIndex: 'batchId', key: 'batchId', width: 140 },
+  { title: '成绩批次', key: 'batchRef', width: 180 },
   { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
   { title: '姓名', dataIndex: 'studentName', key: 'studentName', width: 100 },
   { title: '得分 / 满分', key: 'score', width: 140 },
 ]
 
-/* ========== 状态守卫 helper：禁止 as 类型断言 ========== */
-function batchStatusLabel(value: unknown): string {
-  if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_LABEL[value]
-  throw new Error(`成绩批次状态不符合前后端契约：${String(value)}`)
+function batchStatusLabel(value: ScoreBatchStatus): string {
+  return strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态')
 }
 
-function batchStatusColor(value: unknown): string {
-  if (isScoreBatchStatus(value)) return SCORE_BATCH_STATUS_COLOR[value]
-  throw new Error(`成绩批次状态不符合前后端契约：${String(value)}`)
+function batchStatusColor(value: ScoreBatchStatus): string {
+  return strictEnumTone(SCORE_BATCH_STATUS_COLOR, value, '成绩批次状态')
 }
 
-function requireFiniteScore(value: unknown, fieldName: string): number {
-  const score = Number(value)
-  if (!Number.isFinite(score)) {
-    throw new TypeError(`成绩明细${fieldName}字段异常：${String(value)}`)
-  }
-  return score
-}
-
-function formatScore(value: unknown, fieldName: string, digits: number): string {
-  return requireFiniteScore(value, fieldName).toFixed(digits)
-}
-
-function assessmentItemCode(value: unknown): string {
-  if (typeof value !== 'string') {
-    throw new TypeError(`成绩明细考核环节 ID 不符合前后端契约：${String(value)}`)
-  }
-  return assessmentItemMap.value.get(value)?.itemCode ?? '-'
-}
-
-function assessmentItemName(value: unknown): string {
-  if (typeof value !== 'string') {
-    throw new TypeError(`成绩明细考核环节 ID 不符合前后端契约：${String(value)}`)
-  }
-  return assessmentItemMap.value.get(value)?.itemName ?? '未匹配考核环节'
+function scoreRecordInvalidReason(record: ScoreRecordVO): string {
+  return getUserProcessFailureMessage(
+    record.invalidReason,
+    '该成绩明细未通过校验，请检查学生、考核环节和分值',
+  )
 }
 
 const qualityStore = useQualityStore()
@@ -130,7 +116,6 @@ const recordsLoading = ref(false)
 const validFilter = ref<boolean | undefined>(undefined)
 const assessmentItems = ref<AssessmentItemVO[]>([])
 
-const assessmentItemMap = computed(() => new Map(assessmentItems.value.map((a) => [a.id, a])))
 const validFilterSelect = computed({
   get(): string | undefined {
     return validFilter.value === undefined ? undefined : String(validFilter.value)
@@ -173,8 +158,18 @@ const signals = computed<SignalMetric[]>(() => {
   const valid = list.filter((r) => r.validFlag).length
   const invalid = list.length - valid
   const errored = list.filter((r) => r.errorCodes && r.errorCodes.length > 0).length
-  const totalScore = list.reduce((sum, r) => sum + requireFiniteScore(r.rawScore, '原始分'), 0)
-  const totalFull = list.reduce((sum, r) => sum + requireFiniteScore(r.fullScore, '满分'), 0)
+  const totalScore = list.reduce((sum, r) => {
+    if (!Number.isFinite(r.score)) {
+      throw new TypeError(`成绩明细得分字段异常：${String(r.score)}`)
+    }
+    return sum + r.score
+  }, 0)
+  const totalFull = list.reduce((sum, r) => {
+    if (!Number.isFinite(r.fullScore)) {
+      throw new TypeError(`成绩明细满分字段异常：${String(r.fullScore)}`)
+    }
+    return sum + r.fullScore
+  }, 0)
   const ratio = totalFull > 0 ? Math.round((totalScore / totalFull) * 100) : 0
   return [
     { key: 'total', label: '当前明细', value: list.length, tone: 'blue' },
@@ -191,7 +186,10 @@ const signals = computed<SignalMetric[]>(() => {
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
 const editorSubmitting = ref(false)
-const editor = ref<ScoreRecordSavePayload>({
+const editorRubrics = ref<RubricItemVO[]>([])
+const editorRubricsLoading = ref(false)
+const editorRubricScores = ref<ScoreRecordRubricScoreRequest[]>([])
+const editor = ref<ScoreRecordSaveRequest>({
   batchId: '',
   assessmentItemId: '',
   qualityCourseId: '',
@@ -199,18 +197,74 @@ const editor = ref<ScoreRecordSavePayload>({
   studentNumber: '',
   studentName: '',
   classId: '',
-  rawScore: 0,
+  score: 0,
   fullScore: 100,
   validFlag: true,
   invalidReason: '',
   errorCodes: '',
 })
 
-function handleEditorStudentChange(value: string | null): void {
-  editor.value.studentUserId = value ?? ''
+const editorRubricTotal = computed(() =>
+  editorRubricScores.value.reduce((sum, item) => {
+    if (!Number.isFinite(item.score)) {
+      throw new TypeError(`成绩明细评分项得分字段异常：${String(item.score)}`)
+    }
+    return sum + item.score
+  }, 0),
+)
+
+async function loadEditorRubrics(assessmentItemId: string, record?: ScoreRecordVO): Promise<void> {
+  if (!assessmentItemId) {
+    editorRubrics.value = []
+    editorRubricScores.value = []
+    return
+  }
+  editorRubricsLoading.value = true
+  try {
+    const rubrics = await rubricItemApi.listByItem(assessmentItemId)
+    const existingScores = new Map<string, number>()
+    for (const item of record?.rubricScores ?? []) {
+      if (!Number.isFinite(item.score)) {
+        throw new TypeError(`成绩明细评分项得分字段异常：${String(item.score)}`)
+      }
+      existingScores.set(item.rubricItemId, item.score)
+    }
+    editorRubrics.value = rubrics
+    editorRubricScores.value = rubrics.map((rubric) => ({
+      rubricItemId: rubric.id,
+      score: existingScores.get(rubric.id) ?? 0,
+    }))
+  } finally {
+    editorRubricsLoading.value = false
+  }
 }
 
-function openCreate() {
+async function handleEditorAssessmentChange(value: SelectValue): Promise<void> {
+  if (typeof value !== 'string') {
+    throw new TypeError(`考核环节选择值必须是字符串：${String(value)}`)
+  }
+  const selected = assessmentItems.value.find((item) => item.id === value)
+  if (!selected) {
+    throw new Error(`考核环节不存在：${value}`)
+  }
+  editor.value.fullScore = selected.fullScore
+  await loadEditorRubrics(value)
+}
+
+function handleEditorClassChange(value: string | null): void {
+  editor.value.classId = value ?? ''
+  editor.value.studentUserId = ''
+  editor.value.studentNumber = ''
+  editor.value.studentName = ''
+}
+
+function handleEditorStudentChange(value: string | null, option?: UserDto): void {
+  editor.value.studentUserId = value ?? ''
+  editor.value.studentNumber = option?.studentNumber ?? ''
+  editor.value.studentName = option?.nickName ?? ''
+}
+
+async function openCreate() {
   if (!selectedBatch.value) return
   editorMode.value = 'create'
   editor.value = {
@@ -221,30 +275,43 @@ function openCreate() {
     studentNumber: '',
     studentName: '',
     classId: '',
-    rawScore: 0,
+    score: 0,
     fullScore: 100,
     validFlag: true,
     invalidReason: '',
     errorCodes: '',
   }
+  editorRubrics.value = []
+  editorRubricScores.value = []
+  if (selectedBatch.value.assessmentItemId) {
+    editor.value.assessmentItemId = selectedBatch.value.assessmentItemId
+    const selected = assessmentItems.value.find(
+      (item) => item.id === selectedBatch.value?.assessmentItemId,
+    )
+    if (selected) {
+      editor.value.fullScore = selected.fullScore
+    }
+    await loadEditorRubrics(selectedBatch.value.assessmentItemId)
+  }
   editorVisible.value = true
 }
 
-function openEdit(record: ScoreRecordVO) {
+async function openEdit(record: ScoreRecordVO) {
   editorMode.value = 'edit'
   editor.value = { ...record }
+  await loadEditorRubrics(record.assessmentItemId, record)
   editorVisible.value = true
 }
 
 async function submitEditor() {
   const v = editor.value
-  if (!v.assessmentItemId || v.rawScore == null || v.fullScore == null) {
-    message.error('请填写考核环节、原始分、满分')
+  if (!v.assessmentItemId || v.score == null || v.fullScore == null) {
+    message.error('请填写考核环节、得分、满分')
     return
   }
   editorSubmitting.value = true
   try {
-    const payload: ScoreRecordSavePayload = {
+    const request: ScoreRecordSaveRequest = {
       id: v.id,
       batchId: v.batchId,
       assessmentItemId: v.assessmentItemId,
@@ -253,14 +320,15 @@ async function submitEditor() {
       studentNumber: v.studentNumber,
       studentName: v.studentName,
       classId: v.classId,
-      rawScore: v.rawScore,
+      score: v.score,
       fullScore: v.fullScore,
       validFlag: v.validFlag,
       invalidReason: v.invalidReason,
-      errorCodes: v.errorCodes,
+      rubricScores: editorRubricScores.value,
+      errorCodes: '',
     }
-    if (editorMode.value === 'create') await scoreRecordApi.create(payload)
-    else await scoreRecordApi.update(payload)
+    if (editorMode.value === 'create') await scoreRecordApi.create(request)
+    else await scoreRecordApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadRecords()
@@ -272,7 +340,7 @@ async function submitEditor() {
 async function handleDelete(record: ScoreRecordVO) {
   void confirmAsync({
     title: `删除该明细？`,
-    content: `学号 ${record.studentNumber || '-'} 姓名 ${record.studentName || '-'}`,
+    content: `学号 ${record.studentNumber} 姓名 ${record.studentName}`,
     type: 'error',
     onOk: async () => {
       await scoreRecordApi.delete(record.id)
@@ -421,10 +489,10 @@ function handleCourseChange(courseId: string | null) {
               })
             "
           >
-            <template #bodyCell="{ column, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
-                <a-tag :color="batchStatusColor(text)">
-                  {{ batchStatusLabel(text) }}
+                <a-tag :color="batchStatusColor(record.status)">
+                  {{ batchStatusLabel(record.status) }}
                 </a-tag>
               </template>
             </template>
@@ -480,26 +548,29 @@ function handleCourseChange(courseId: string | null) {
               :total="filteredRecords.length"
               flat
             >
-              <template #bodyCell="{ column, record, text }">
-                <template v-if="column.key === 'studentNumber' || column.key === 'studentName'">
-                  {{ text || '-' }}
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'studentNumber'">
+                  {{ record.studentNumber }}
                 </template>
-                <template v-else-if="column.key === 'assessmentItemId'">
+                <template v-else-if="column.key === 'studentName'">
+                  {{ record.studentName }}
+                </template>
+                <template v-else-if="column.key === 'assessmentItemRef'">
                   <span class="score-record__item-code">
-                    {{ assessmentItemCode(text) }}
+                    {{ record.assessmentItemCode }}
                   </span>
-                  {{ assessmentItemName(text) }}
+                  {{ record.assessmentItemName }}
                 </template>
                 <template v-else-if="column.key === 'score'">
-                  {{ formatScore(record.rawScore, '原始分', 1) }} /
-                  {{ formatScore(record.fullScore, '满分', 0) }}
+                  {{ record.score.toFixed(1) }} /
+                  {{ record.fullScore.toFixed(0) }}
                 </template>
                 <template v-else-if="column.key === 'recordStatus'">
                   <a-space size="small">
                     <a-tag :color="record.validFlag ? 'green' : 'red'">
                       {{ record.validFlag ? '有效' : '无效' }}
                     </a-tag>
-                    <a-tooltip v-if="record.errorCodes" :title="record.errorCodes">
+                    <a-tooltip v-if="record.errorCodes" :title="scoreRecordInvalidReason(record)">
                       <a-tag color="orange"> 异常 </a-tag>
                     </a-tooltip>
                   </a-space>
@@ -535,7 +606,11 @@ function handleCourseChange(courseId: string | null) {
     >
       <a-form layout="vertical" :model="editor">
         <a-form-item label="考核环节" required>
-          <a-select v-model:value="editor.assessmentItemId" placeholder="选择考核环节">
+          <a-select
+            v-model:value="editor.assessmentItemId"
+            placeholder="选择考核环节"
+            @change="handleEditorAssessmentChange"
+          >
             <a-select-option v-for="a in assessmentItems" :key="a.id" :value="a.id">
               <span class="score-record__item-code">{{ a.itemCode }}</span>
               {{ a.itemName }}（满分 {{ a.fullScore }}）
@@ -544,29 +619,39 @@ function handleCourseChange(courseId: string | null) {
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="8">
-            <a-form-item label="学号">
-              <a-input v-model:value="editor.studentNumber" />
+            <a-form-item label="所属班级">
+              <ClassSelector
+                :value="editor.classId || null"
+                placeholder="选择班级"
+                @change="handleEditorClassChange"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="姓名">
-              <a-input v-model:value="editor.studentName" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="学生">
+            <a-form-item label="学生" required>
               <StudentSelector
                 :value="editor.studentUserId || null"
+                :class-id="editor.classId || null"
                 placeholder="选择学生"
                 @change="handleEditorStudentChange"
               />
             </a-form-item>
           </a-col>
+          <a-col :span="8">
+            <a-form-item label="学生信息">
+              <div class="score-record__student-info">
+                <span>{{ editor.studentName || '未选择学生' }}</span>
+                <span v-if="editor.studentNumber" class="score-record__student-number">
+                  {{ editor.studentNumber }}
+                </span>
+              </div>
+            </a-form-item>
+          </a-col>
         </a-row>
         <a-row :gutter="12">
           <a-col :span="8">
-            <a-form-item label="原始分" required>
-              <a-input-number v-model:value="editor.rawScore" :min="0" style="width: 100%" />
+            <a-form-item label="得分" required>
+              <a-input-number v-model:value="editor.score" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -574,18 +659,41 @@ function handleCourseChange(courseId: string | null) {
               <a-input-number v-model:value="editor.fullScore" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
-          <a-col :span="8">
-            <a-form-item label="班级 ID">
-              <a-input v-model:value="editor.classId" />
-            </a-form-item>
-          </a-col>
         </a-row>
         <a-form-item label="评分项拆分">
-          <a-alert
-            type="info"
-            show-icon
-            message="评分项拆分由结构化评分功能维护，当前页面仅维护总分与有效性。"
-          />
+          <a-spin :spinning="editorRubricsLoading">
+            <div v-if="editorRubrics.length" class="score-record__rubrics">
+              <div class="score-record__rubrics-head">
+                <span>评分项</span>
+                <strong>合计 {{ editorRubricTotal.toFixed(1) }}</strong>
+              </div>
+              <div
+                v-for="(rubric, index) in editorRubrics"
+                :key="rubric.id"
+                class="score-record__rubric-row"
+              >
+                <div class="score-record__rubric-main">
+                  <span v-if="rubric.rubricCode" class="score-record__item-code">
+                    {{ rubric.rubricCode }}
+                  </span>
+                  <span class="score-record__rubric-name">{{ rubric.rubricName }}</span>
+                  <span class="score-record__rubric-full">满分 {{ rubric.fullScore }}</span>
+                </div>
+                <a-input-number
+                  v-model:value="editorRubricScores[index].score"
+                  :min="0"
+                  :max="rubric.fullScore"
+                  :precision="2"
+                  class="score-record__rubric-score"
+                />
+              </div>
+            </div>
+            <UiEmpty
+              v-else
+              description="当前考核环节尚未配置评分项，可直接维护总分"
+              class="score-record__rubric-empty"
+            />
+          </a-spin>
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="8">
@@ -599,9 +707,6 @@ function handleCourseChange(courseId: string | null) {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="异常码（逗号分隔）">
-          <a-input v-model:value="editor.errorCodes" placeholder="如 SCORE_OVERFLOW, DUP_STUDENT" />
-        </a-form-item>
       </a-form>
     </UiDrawer>
 
@@ -650,9 +755,13 @@ function handleCourseChange(courseId: string | null) {
         flat
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'score'">
-            {{ formatScore(record.rawScore, '原始分', 1) }} /
-            {{ formatScore(record.fullScore, '满分', 0) }}
+          <template v-if="column.key === 'batchRef'">
+            <span class="score-record__item-code">{{ record.batchCode }}</span>
+            {{ record.batchName }}
+          </template>
+          <template v-else-if="column.key === 'score'">
+            {{ record.score.toFixed(1) }} /
+            {{ record.fullScore.toFixed(0) }}
           </template>
         </template>
       </UiDataTable>
@@ -779,14 +888,76 @@ function handleCourseChange(courseId: string | null) {
   &__item-code {
     color: var(--dp-text-muted, #64748b);
     font-size: 12px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     margin-right: 4px;
   }
 
-  &__mono {
-    :deep(textarea) {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
+  &__student-info {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__student-number {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+
+  &__rubrics {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface-elevated, #f8fafc);
+  }
+
+  &__rubrics-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--dp-text-secondary, #475569);
+    font-size: 13px;
+  }
+
+  &__rubric-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 140px;
+    align-items: center;
+    gap: 12px;
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 6px;
+    background: var(--dp-surface, #fff);
+  }
+
+  &__rubric-main {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  &__rubric-name {
+    color: var(--dp-text-primary, #0f172a);
+    font-weight: 500;
+  }
+
+  &__rubric-full {
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+  }
+
+  &__rubric-score {
+    width: 100%;
+  }
+
+  &__rubric-empty {
+    margin: 0;
+    padding: 12px 0;
   }
 
   &__import-link {

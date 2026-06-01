@@ -6,14 +6,14 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditRectificationStatus, AuditRectificationVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
   auditRectificationApi,
-  isAuditRectificationStatus,
 } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
 
 interface Props {
@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AuditRectificationVO]
+  change: [value: string | null, option?: AuditRectificationVO]
 }>()
 
 const options = ref<AuditRectificationVO[]>([])
@@ -68,20 +68,18 @@ async function loadOptions() {
     options.value = requirePageList(res, '审核评估整改任务')
   } catch (e) {
     console.error('[AuditRectificationSelector] 加载整改任务列表失败', e)
-    message.error('加载整改任务列表失败')
+    showUserError(e, '整改任务列表加载失败')
   } finally {
     loading.value = false
   }
 }
 
-function auditRectificationStatusLabel(value: unknown): string {
-  if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_LABEL[value]
-  throw new Error(`审核评估整改任务状态不符合前后端契约：${String(value)}`)
+function auditRectificationStatusLabel(value: AuditRectificationStatus): string {
+  return strictEnumLabel(AUDIT_RECTIFICATION_STATUS_LABEL, value, '审核评估整改状态')
 }
 
-function auditRectificationStatusColor(value: unknown): string {
-  if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_COLOR[value]
-  throw new Error(`审核评估整改任务状态不符合前后端契约：${String(value)}`)
+function auditRectificationStatusColor(value: AuditRectificationStatus): string {
+  return strictEnumTone(AUDIT_RECTIFICATION_STATUS_COLOR, value, '审核评估整改状态')
 }
 
 function handleChange(val: SelectValue) {
@@ -117,7 +115,7 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.rectificationCode} · ${opt.rectificationTitle}`"
     >
-      <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.rectificationCode }}</span>
+      <span class="text-xs text-gray-500 mr-1">{{ opt.rectificationCode }}</span>
       {{ opt.rectificationTitle }}
       <a-tag :color="auditRectificationStatusColor(opt.status)" class="ml-1">
         {{ auditRectificationStatusLabel(opt.status) }}
@@ -127,10 +125,6 @@ defineExpose({ reload: loadOptions })
 </template>
 
 <style scoped>
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
 .text-xs {
   font-size: 12px;
 }

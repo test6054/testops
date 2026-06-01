@@ -18,8 +18,11 @@
  *
  * 不引入 AI 装饰能力；所有状态来自后端真实数据，不构造默认通过状态。
  */
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import { computed, onMounted, ref, watch } from 'vue'
+import type { ExamDetailVO, ExamStatusCode } from '@/apis/mark/exam'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
@@ -27,10 +30,7 @@ import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -43,6 +43,8 @@ import {
 import { ContextBar, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { showUserError, toUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
 
@@ -67,7 +69,15 @@ const TONE_MAP: Record<WorkbenchStageStatus, BadgeTone> = {
 }
 
 function resolveTone(status: WorkbenchStageStatus): BadgeTone {
-  return TONE_MAP[status]
+  return strictEnumTone(TONE_MAP, status, '考试准备阶段状态')
+}
+
+function examStatusTone(status: ExamStatusCode): BadgeTone {
+  return strictEnumTone(EXAM_STATUS_TONE, status, '考试状态')
+}
+
+function examStatusLabel(status: ExamStatusCode): string {
+  return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
 }
 
 const markStageStore = useMarkStageStore()
@@ -90,6 +100,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   selectedExam: currentExam,
   onExamChange,
   loadExams,
@@ -99,7 +110,7 @@ const {
 const detail = ref<ExamDetailVO | null>(null)
 const detailLoading = ref(false)
 // D-9 错误态：考试详情加载失败时 UiErrorRetryPanel 重试 + 上报
-const detailLoadError = ref<unknown>(null)
+const detailLoadError = ref<Error | null>(null)
 
 async function loadDetail(examId: string | undefined) {
   if (!examId) {
@@ -113,16 +124,15 @@ async function loadDetail(examId: string | undefined) {
     detail.value = await getExamDetail(examId)
   } catch (error) {
     detail.value = null
-    detailLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '考试详情加载失败'
-    message.error(errMsg)
+    detailLoadError.value = toUserError(error, '考试准备信息加载失败')
+    showUserError(error, '考试准备信息加载失败')
   } finally {
     detailLoading.value = false
   }
 }
 
-function handleExamChange(value: unknown): void {
-  onExamChange(value as string | number | undefined, [])
+function handleExamChange(value: SelectValue): void {
+  onExamChange(value)
   if (selectedExamId.value) {
     markStageStore.observeExam(selectedExamId.value)
   }
@@ -147,9 +157,9 @@ function syncStageProgressToStore(): void {
     : blockedCount > 0
       ? 'blocked'
       : 'active'
-  const examPrepHint
-    = blockedReasons.value[0]
-      ?? (allCompleted
+  const examPrepHint =
+    blockedReasons.value[0] ??
+    (allCompleted
       ? `准备全部就绪（${completedCount}/${steps.length}）`
       : `准备进度 ${completedCount}/${steps.length}`)
   // 答题卡模板 → PAPER_TEMPLATE 阶段
@@ -323,8 +333,8 @@ watch([() => selectedExamId.value, () => detail.value], () => {
             :loading="examLoading"
             @update:value="handleExamChange"
           />
-          <UiTag v-if="currentExam" :tone="EXAM_STATUS_TONE[currentExam.status]" size="sm">
-            {{ EXAM_STATUS_LABEL[currentExam.status] }}
+          <UiTag v-if="currentExam" :tone="examStatusTone(currentExam.status)" size="sm">
+            {{ examStatusLabel(currentExam.status) }}
           </UiTag>
         </template>
         <template #actions>
@@ -348,7 +358,7 @@ watch([() => selectedExamId.value, () => detail.value], () => {
       v-else-if="detailLoadError"
       :error="detailLoadError"
       title="考试详情加载失败"
-      :helper="`考试 ID：${selectedExamId}`"
+      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
       @retry="() => loadDetail(selectedExamId)"
     />
 

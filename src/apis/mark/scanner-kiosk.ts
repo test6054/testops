@@ -1,26 +1,42 @@
 import type {
+  DuplicateResolutionStatusCode,
+  ExamFileRefVO,
+  ExamStatusCode,
+  QualityDecisionCode,
   ScanAttentionSourceTypeCode,
-  ScanAttentionStatusCode,
   ScanAttentionTypeCode,
+  TaskStatusCode,
 } from '@/apis/mark/exam'
-import type { ScannerEndpointOnlineStatusCode } from '@/apis/mark/exam-mark-scanner'
+import type {
+  ScannerAgentDiagnosticStatusCode,
+  ScannerDeviceStatusCode,
+  ScannerEndpointOnlineStatusCode,
+} from '@/apis/mark/exam-mark-scanner'
+import type { GradeStatusCode } from '@/apis/mark/student-exam'
 import type { PageResult, QueryDto } from '@/types'
-import { validateScanAttentionSourceType, validateScanAttentionStatus } from '@/apis/mark/exam'
 import http from '@/config/axios'
 
-export type { ScanAttentionSourceTypeCode, ScanAttentionStatusCode, ScanAttentionTypeCode }
-export type { ScannerEndpointOnlineStatusCode }
+export type {
+  DuplicateResolutionStatusCode,
+  GradeStatusCode,
+  QualityDecisionCode,
+  ScanAttentionSourceTypeCode,
+  ScanAttentionTypeCode,
+  TaskStatusCode,
+}
+export type { ScannerAgentDiagnosticStatusCode, ScannerEndpointOnlineStatusCode }
 
 export type ScannerKioskScanMode = 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE'
+export type ScanBatchStatusCode = 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED' | 'DISCARDED'
 export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
 export type ExamScannerPageServerReceiveStatus = 'RECEIVED'
-export type ExamScannerPageRegistrationStatus
-  = | 'REGISTERED'
-    | 'PENDING'
-    | 'DISCARDED'
-    | 'SUPERSEDED'
+export type ExamScannerPageRegistrationStatus =
+  | 'REGISTERED'
+  | 'PENDING'
+  | 'DISCARDED'
+  | 'SUPERSEDED'
 
 export interface ExamScannerKioskContextRequest {
   examId: string
@@ -38,7 +54,7 @@ export interface ExamScannerKioskExamVO {
   /** 学期，'1'=秋季学期, '2'=春季学期 */
   semester?: string
   examNo: string
-  status: string
+  status: ExamStatusCode
   statusMessage: string
   examStartTime?: string
   examEndTime?: string
@@ -49,12 +65,12 @@ export interface ExamScannerKioskDeviceVO {
   scannerStationId: string
   scannerStationName?: string
   deviceName: string
-  status: string
+  status: ScannerDeviceStatusCode
   onlineStatus: ScannerEndpointOnlineStatusCode
   scannerConnected: boolean
   pendingJobCount: number
   pendingUploadPageCount: number
-  diagnosticStatus: string
+  diagnosticStatus: ScannerAgentDiagnosticStatusCode
   diagnosticMessage: string
   lastHeartbeatAt?: string
 }
@@ -97,7 +113,7 @@ export interface ExamScannerKioskBatchVO {
   pendingUploadCount: number
   /** 批次级异常处置项数量 */
   attentionItemCount: number
-  status: string
+  status: ScanBatchStatusCode
   statusMessage: string
   diagnostic?: string
   scanStartTime?: string
@@ -124,9 +140,10 @@ export interface ExamScannerKioskContextVO {
   supplementBlockReason?: string
 }
 
-export async function getScannerKioskContext(payload: ExamScannerKioskContextRequest) {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/context', payload)
-  return validateScannerKioskContext(data)
+export function getScannerKioskContext(
+  request: ExamScannerKioskContextRequest,
+): Promise<ExamScannerKioskContextVO> {
+  return http.post<ExamScannerKioskContextVO>('/api/mark/scanner/kiosk/context', request)
 }
 
 // ============================================================================
@@ -174,9 +191,13 @@ export interface ExamScannerKioskExamOptionVO {
   scanBatchCount: number
 }
 
-export async function pageScannerKioskExamOptions(payload: ExamScannerKioskExamOptionRequest) {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/exam-options', payload)
-  return validateScannerKioskExamOptionPage(data)
+export function pageScannerKioskExamOptions(
+  request: ExamScannerKioskExamOptionRequest,
+): Promise<PageResult<ExamScannerKioskExamOptionVO>> {
+  return http.post<PageResult<ExamScannerKioskExamOptionVO>>(
+    '/api/mark/scanner/kiosk/exam-options',
+    request,
+  )
 }
 
 // ============================================================================
@@ -287,24 +308,26 @@ export interface ExamScannerBatchLifecycleVO {
   sealedBy?: string
 }
 
-export async function startScannerKioskBatch(payload: ExamScannerBatchStartRequest) {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/start', payload)
-  return validateScannerBatchLifecycle(data)
+export function startScannerKioskBatch(
+  request: ExamScannerBatchStartRequest,
+): Promise<ExamScannerBatchLifecycleVO> {
+  return http.post<ExamScannerBatchLifecycleVO>('/api/mark/scanner/kiosk/batch/start', request)
 }
 
-export async function closeScannerKioskBatch(payload: ExamScannerBatchCloseRequest) {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/close', payload)
-  return validateScannerBatchLifecycle(data)
+export function closeScannerKioskBatch(
+  request: ExamScannerBatchCloseRequest,
+): Promise<ExamScannerBatchLifecycleVO> {
+  return http.post<ExamScannerBatchLifecycleVO>('/api/mark/scanner/kiosk/batch/close', request)
 }
 
-export async function sealScannerKioskBatch(payload: ExamScannerBatchSealRequest) {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/seal', payload)
-  return validateScannerBatchLifecycle(data)
+export function sealScannerKioskBatch(
+  request: ExamScannerBatchSealRequest,
+): Promise<ExamScannerBatchLifecycleVO> {
+  return http.post<ExamScannerBatchLifecycleVO>('/api/mark/scanner/kiosk/batch/seal', request)
 }
 
-export async function discardScannerKioskBatch(payload: ExamScanBatchDiscardRequest) {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/discard', payload)
-  return validateBooleanResult(data)
+export function discardScannerKioskBatch(request: ExamScanBatchDiscardRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/scanner/kiosk/batch/discard', request)
 }
 
 /**
@@ -317,9 +340,8 @@ export interface ExamScannedPageDiscardRequest {
   discardReason: string
 }
 
-export async function discardScannedPage(payload: ExamScannedPageDiscardRequest) {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/page/discard', payload)
-  return validateBooleanResult(data)
+export function discardScannedPage(request: ExamScannedPageDiscardRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/scanner/kiosk/page/discard', request)
 }
 
 /**
@@ -369,7 +391,10 @@ export interface ExamScannerAttentionItemVO {
   sourceId?: string
   paperInstanceId?: string
   pageId?: string
-  status: ScanAttentionStatusCode
+  qualityDecision?: QualityDecisionCode
+  processingStatus?: TaskStatusCode
+  duplicateResolutionStatus?: DuplicateResolutionStatusCode
+  gradeStatus?: GradeStatusCode
   diagnostic?: string
   updateTime?: string
 }
@@ -393,9 +418,10 @@ export interface ExamScannerPageLedgerVO {
   attentionCount: number
 }
 
-export async function fetchScannerPageLedger(payload: ExamScannerPageLedgerRequest) {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/page-ledger', payload)
-  return validateScannerPageLedger(data)
+export function fetchScannerPageLedger(
+  request: ExamScannerPageLedgerRequest,
+): Promise<ExamScannerPageLedgerVO> {
+  return http.post<ExamScannerPageLedgerVO>('/api/mark/scanner/kiosk/page-ledger', request)
 }
 
 // ============================================================================
@@ -415,7 +441,7 @@ export interface ExamScannerKioskBatchHistoryRequest extends QueryDto {
   scannerDeviceId: string
   scannerStationId: string
   /** 可选状态过滤：RECEIVED / BLOCKED / BOUND / COMPLETED / DISCARDED */
-  status?: string
+  status?: ScanBatchStatusCode
   /** 缺省 true，明确传 false 时排除已废弃批次 */
   includeDiscarded?: boolean
   /** 扫描开始时间下界（ISO 字符串） */
@@ -428,7 +454,7 @@ export interface ExamScannerKioskBatchHistoryRequest extends QueryDto {
  * 扫描工作台历史批次列表项。
  *
  * <p>对应后端 {@code ExamScannerBatchResponse}，字段集合是 latestBatch 的超集：
- * 增加了 createTime / updateTime / eventCount / sourceFileIds，但不包含
+ * 增加了 createTime / updateTime / eventCount / sourceFiles，但不包含
  * receivedPageCount / pendingUploadCount / attentionItemCount（后端聚合视图层差异，
  * 历史浏览场景已通过 statusMessage / diagnostic 表达）。</p>
  */
@@ -438,7 +464,8 @@ export interface ExamScannerKioskBatchHistoryItem {
   batchExternalNo: string
   scannerDeviceId: string
   scannerStationId?: string
-  sourceFileIds?: string[]
+  sourceFiles: ExamFileRefVO[]
+  sourceFileCount: number
   pageCount: number
   /** 服务端实际已落库页数（一体机端实时统计；后端 latestBatch 与 history list 现已对齐字段） */
   receivedPageCount?: number
@@ -455,7 +482,7 @@ export interface ExamScannerKioskBatchHistoryItem {
   discardedAt?: string
   discardedBy?: string
   discardReason?: string
-  status: string
+  status: ScanBatchStatusCode
   statusMessage: string
   diagnostic?: string
   scanStartTime?: string
@@ -466,536 +493,10 @@ export interface ExamScannerKioskBatchHistoryItem {
 }
 
 export async function pageScannerKioskBatchHistory(
-  payload: ExamScannerKioskBatchHistoryRequest,
+  request: ExamScannerKioskBatchHistoryRequest,
 ): Promise<PageResult<ExamScannerKioskBatchHistoryItem>> {
-  const data = await http.post<unknown>('/api/mark/scanner/kiosk/batch/list', payload)
-  return validateScannerKioskBatchHistoryPage(data)
-}
-
-function requireString(value: unknown, fieldName: string): string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError(`扫描工作台接口缺少 ${fieldName}`)
-  }
-  return value
-}
-
-function optionalString(value: unknown, fieldName: string): string | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string') {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireFiniteNumber(value: unknown, fieldName: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requirePageNumber(value: unknown, fieldName: string): number {
-  if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0) {
-    return value
-  }
-  if (typeof value === 'string' && /^\d+$/.test(value)) {
-    const parsed = Number(value)
-    if (Number.isSafeInteger(parsed)) {
-      return parsed
-    }
-  }
-  throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-}
-
-function optionalFiniteNumber(value: unknown, fieldName: string): number | undefined {
-  if (value === undefined || value === null) {
-    return undefined
-  }
-  return requireFiniteNumber(value, fieldName)
-}
-
-function requireBoolean(value: unknown, fieldName: string): boolean {
-  if (typeof value !== 'boolean') {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireStringList(value: unknown, fieldName: string): string[] {
-  if (
-    !Array.isArray(value)
-    || value.some((item) => typeof item !== 'string' || item.length === 0)
-  ) {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function optionalStringList(value: unknown, fieldName: string): string[] | undefined {
-  if (value === undefined || value === null) {
-    return undefined
-  }
-  return requireStringList(value, fieldName)
-}
-
-function requireNullableStringList(value: unknown, fieldName: string): (string | null)[] {
-  if (
-    !Array.isArray(value)
-    || value.some((item) => item !== null && (typeof item !== 'string' || item.length === 0))
-  ) {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireColorMode(value: unknown, fieldName: string): 'COLOR' | 'GRAY' | 'LINEART' {
-  if (value !== 'COLOR' && value !== 'GRAY' && value !== 'LINEART') {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireDuplexMode(value: unknown, fieldName: string): 'SIMPLEX' | 'DUPLEX' {
-  if (value !== 'SIMPLEX' && value !== 'DUPLEX') {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireScanMode(value: unknown, fieldName: string): ScannerKioskScanMode {
-  if (value !== 'DIRECT' && value !== 'SUPPLEMENT' && value !== 'ARCHIVE') {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireEndpointOnlineStatus(
-  value: unknown,
-  fieldName: string,
-): ScannerEndpointOnlineStatusCode {
-  if (value !== 'ONLINE' && value !== 'OFFLINE') {
-    throw new TypeError(`扫描工作台接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireLedgerDataSource(value: unknown): ExamScannerLedgerDataSource {
-  if (value !== 'DATABASE' && value !== 'REDIS_PENDING' && value !== 'NONE') {
-    throw new TypeError('扫描工作台接口 dataSource 格式错误')
-  }
-  return value
-}
-
-function requireLedgerScanStatus(value: unknown): ExamScannerPageScanStatus {
-  if (value !== 'SCANNED') {
-    throw new TypeError('扫描工作台接口 items.scanStatus 格式错误')
-  }
-  return value
-}
-
-function requireLedgerUploadStatus(value: unknown): ExamScannerPageUploadStatus {
-  if (value !== 'UPLOADED') {
-    throw new TypeError('扫描工作台接口 items.uploadStatus 格式错误')
-  }
-  return value
-}
-
-function requireLedgerServerReceiveStatus(value: unknown): ExamScannerPageServerReceiveStatus {
-  if (value !== 'RECEIVED') {
-    throw new TypeError('扫描工作台接口 items.serverReceiveStatus 格式错误')
-  }
-  return value
-}
-
-function requireLedgerRegistrationStatus(value: unknown): ExamScannerPageRegistrationStatus {
-  if (
-    value !== 'REGISTERED'
-    && value !== 'PENDING'
-    && value !== 'DISCARDED'
-    && value !== 'SUPERSEDED'
-  ) {
-    throw new TypeError('扫描工作台接口 items.registrationStatus 格式错误')
-  }
-  return value
-}
-
-function optionalScanMode(value: unknown, fieldName: string): ScannerKioskScanMode | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  return requireScanMode(value, fieldName)
-}
-
-function validateScannerKioskExam(value: unknown): ExamScannerKioskExamVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台考试返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    examId: requireString(record.examId, 'exam.examId'),
-    examName: requireString(record.examName, 'exam.examName'),
-    courseName: optionalString(record.courseName, 'exam.courseName'),
-    academicYear: optionalString(record.academicYear, 'exam.academicYear'),
-    semester: optionalString(record.semester, 'exam.semester'),
-    examNo: requireString(record.examNo, 'exam.examNo'),
-    status: requireString(record.status, 'exam.status'),
-    statusMessage: requireString(record.statusMessage, 'exam.statusMessage'),
-    examStartTime: optionalString(record.examStartTime, 'exam.examStartTime'),
-    examEndTime: optionalString(record.examEndTime, 'exam.examEndTime'),
-  }
-}
-
-function validateScannerKioskDevice(value: unknown): ExamScannerKioskDeviceVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台设备返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    scannerDeviceId: requireString(record.scannerDeviceId, 'device.scannerDeviceId'),
-    scannerStationId: requireString(record.scannerStationId, 'device.scannerStationId'),
-    scannerStationName: optionalString(record.scannerStationName, 'device.scannerStationName'),
-    deviceName: requireString(record.deviceName, 'device.deviceName'),
-    status: requireString(record.status, 'device.status'),
-    onlineStatus: requireEndpointOnlineStatus(record.onlineStatus, 'device.onlineStatus'),
-    scannerConnected: requireBoolean(record.scannerConnected, 'device.scannerConnected'),
-    pendingJobCount: requireFiniteNumber(record.pendingJobCount, 'device.pendingJobCount'),
-    pendingUploadPageCount: requireFiniteNumber(
-      record.pendingUploadPageCount,
-      'device.pendingUploadPageCount',
-    ),
-    diagnosticStatus: requireString(record.diagnosticStatus, 'device.diagnosticStatus'),
-    diagnosticMessage: requireString(record.diagnosticMessage, 'device.diagnosticMessage'),
-    lastHeartbeatAt: optionalString(record.lastHeartbeatAt, 'device.lastHeartbeatAt'),
-  }
-}
-
-function validateScannerKioskPolicy(value: unknown): ExamScannerKioskPolicyVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台策略返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    dpi: requireFiniteNumber(record.dpi, 'policy.dpi'),
-    colorMode: requireColorMode(record.colorMode, 'policy.colorMode'),
-    duplexMode: requireDuplexMode(record.duplexMode, 'policy.duplexMode'),
-    blankPageDetectionEnabled: requireBoolean(
-      record.blankPageDetectionEnabled,
-      'policy.blankPageDetectionEnabled',
-    ),
-    kioskLockEnabled: requireBoolean(record.kioskLockEnabled, 'policy.kioskLockEnabled'),
-  }
-}
-
-function validateScannerKioskBatch(value: unknown): ExamScannerKioskBatchVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台批次返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    scanBatchId: requireString(record.scanBatchId, 'latestBatch.scanBatchId'),
-    batchNo: requireString(record.batchNo, 'latestBatch.batchNo'),
-    batchExternalNo: requireString(record.batchExternalNo, 'latestBatch.batchExternalNo'),
-    scannerDeviceId: requireString(record.scannerDeviceId, 'latestBatch.scannerDeviceId'),
-    scannerStationId: optionalString(record.scannerStationId, 'latestBatch.scannerStationId'),
-    scanMode: requireScanMode(record.scanMode, 'latestBatch.scanMode'),
-    targetPageNo: optionalFiniteNumber(record.targetPageNo, 'latestBatch.targetPageNo'),
-    supplementReason: optionalString(record.supplementReason, 'latestBatch.supplementReason'),
-    replaceTargetPage: requireBoolean(record.replaceTargetPage, 'latestBatch.replaceTargetPage'),
-    sealedAt: optionalString(record.sealedAt, 'latestBatch.sealedAt'),
-    sealedBy: optionalString(record.sealedBy, 'latestBatch.sealedBy'),
-    discardedAt: optionalString(record.discardedAt, 'latestBatch.discardedAt'),
-    discardedBy: optionalString(record.discardedBy, 'latestBatch.discardedBy'),
-    discardReason: optionalString(record.discardReason, 'latestBatch.discardReason'),
-    pageCount: requireFiniteNumber(record.pageCount, 'latestBatch.pageCount'),
-    receivedPageCount: requireFiniteNumber(
-      record.receivedPageCount,
-      'latestBatch.receivedPageCount',
-    ),
-    pendingUploadCount: requireFiniteNumber(
-      record.pendingUploadCount,
-      'latestBatch.pendingUploadCount',
-    ),
-    attentionItemCount: requireFiniteNumber(
-      record.attentionItemCount,
-      'latestBatch.attentionItemCount',
-    ),
-    status: requireString(record.status, 'latestBatch.status'),
-    statusMessage: requireString(record.statusMessage, 'latestBatch.statusMessage'),
-    diagnostic: optionalString(record.diagnostic, 'latestBatch.diagnostic'),
-    scanStartTime: optionalString(record.scanStartTime, 'latestBatch.scanStartTime'),
-    scanEndTime: optionalString(record.scanEndTime, 'latestBatch.scanEndTime'),
-  }
-}
-
-function validateScannerKioskContext(value: unknown): ExamScannerKioskContextVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台上下文返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  const canStartScan = requireBoolean(record.canStartScan, 'canStartScan')
-  const canStartSupplementScan = requireBoolean(
-    record.canStartSupplementScan,
-    'canStartSupplementScan',
+  return http.post<PageResult<ExamScannerKioskBatchHistoryItem>>(
+    '/api/mark/scanner/kiosk/batch/list',
+    request,
   )
-  return {
-    exam: validateScannerKioskExam(record.exam),
-    classIds: requireStringList(record.classIds, 'classIds'),
-    declaredClassNames: requireNullableStringList(record.declaredClassNames, 'declaredClassNames'),
-    device:
-      record.device === undefined || record.device === null
-        ? undefined
-        : validateScannerKioskDevice(record.device),
-    policy:
-      record.policy === undefined || record.policy === null
-        ? undefined
-        : validateScannerKioskPolicy(record.policy),
-    latestBatch:
-      record.latestBatch === undefined || record.latestBatch === null
-        ? undefined
-        : validateScannerKioskBatch(record.latestBatch),
-    scannedPages: requireFiniteNumber(record.scannedPages, 'scannedPages'),
-    paperInstances: requireFiniteNumber(record.paperInstances, 'paperInstances'),
-    boundPaperInstances: requireFiniteNumber(record.boundPaperInstances, 'boundPaperInstances'),
-    scanBatchCount: requireFiniteNumber(record.scanBatchCount, 'scanBatchCount'),
-    attentionCount: requireFiniteNumber(record.attentionCount, 'attentionCount'),
-    scanMode: requireScanMode(record.scanMode, 'scanMode'),
-    canStartScan,
-    canStartSupplementScan,
-    blockReason: canStartScan
-      ? optionalString(record.blockReason, 'blockReason')
-      : requireString(record.blockReason, 'blockReason'),
-    supplementBlockReason: canStartSupplementScan
-      ? optionalString(record.supplementBlockReason, 'supplementBlockReason')
-      : requireString(record.supplementBlockReason, 'supplementBlockReason'),
-  }
-}
-
-function validateScannerKioskExamOption(value: unknown): ExamScannerKioskExamOptionVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台考试选项返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    examId: requireString(record.examId, 'list.examId'),
-    examNo: requireString(record.examNo, 'list.examNo'),
-    examName: requireString(record.examName, 'list.examName'),
-    courseName: optionalString(record.courseName, 'list.courseName'),
-    academicYear: optionalString(record.academicYear, 'list.academicYear'),
-    semester: optionalString(record.semester, 'list.semester'),
-    examStartTime: optionalString(record.examStartTime, 'list.examStartTime'),
-    examEndTime: optionalString(record.examEndTime, 'list.examEndTime'),
-    classIds: requireStringList(record.classIds, 'list.classIds'),
-    declaredClassNames: requireNullableStringList(
-      record.declaredClassNames,
-      'list.declaredClassNames',
-    ),
-    scanBatchCount: requireFiniteNumber(record.scanBatchCount, 'list.scanBatchCount'),
-  }
-}
-
-function validateScannerKioskExamOptionPage(
-  value: unknown,
-): PageResult<ExamScannerKioskExamOptionVO> {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台考试分页返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  if (!Array.isArray(record.list)) {
-    throw new TypeError('扫描工作台接口 list 格式错误')
-  }
-  return {
-    list: record.list.map(validateScannerKioskExamOption),
-    total: requirePageNumber(record.total, 'total'),
-    pageNum: requirePageNumber(record.pageNum, 'pageNum'),
-    pageSize: requirePageNumber(record.pageSize, 'pageSize'),
-    pages: requirePageNumber(record.pages, 'pages'),
-  }
-}
-
-function validateScannerBatchLifecycle(value: unknown): ExamScannerBatchLifecycleVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台批次锚点返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  const pendingPageCount = optionalFiniteNumber(record.pendingPageCount, 'pendingPageCount')
-  return {
-    anchorExists: requireBoolean(record.anchorExists, 'anchorExists'),
-    anchorMutated: requireBoolean(record.anchorMutated, 'anchorMutated'),
-    batchExternalNo: optionalString(record.batchExternalNo, 'batchExternalNo'),
-    examId: optionalString(record.examId, 'examId'),
-    scannerDeviceId: optionalString(record.scannerDeviceId, 'scannerDeviceId'),
-    scannerStationId: optionalString(record.scannerStationId, 'scannerStationId'),
-    scanMode: optionalScanMode(record.scanMode, 'scanMode'),
-    targetPageNo: optionalFiniteNumber(record.targetPageNo, 'targetPageNo'),
-    supplementReason: optionalString(record.supplementReason, 'supplementReason'),
-    replaceTargetPage: requireBoolean(record.replaceTargetPage, 'replaceTargetPage'),
-    declaredClassIds: optionalStringList(record.declaredClassIds, 'declaredClassIds'),
-    startedAt: optionalString(record.startedAt, 'startedAt'),
-    startedBy: optionalString(record.startedBy, 'startedBy'),
-    pendingPagesDiagnostic:
-      pendingPageCount !== undefined && pendingPageCount > 0
-        ? requireString(record.pendingPagesDiagnostic, 'pendingPagesDiagnostic')
-        : optionalString(record.pendingPagesDiagnostic, 'pendingPagesDiagnostic'),
-    pendingPageCount,
-    sealedAt: optionalString(record.sealedAt, 'sealedAt'),
-    sealedBy: optionalString(record.sealedBy, 'sealedBy'),
-  }
-}
-
-function validateBooleanResult(value: unknown): boolean {
-  return requireBoolean(value, '操作结果')
-}
-
-function validateScannerPageLedgerItem(value: unknown): ExamScannerPageLedgerItemVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('页级账本明细返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    pageNo: requireFiniteNumber(record.pageNo, 'items.pageNo'),
-    sha256: optionalString(record.sha256, 'items.sha256'),
-    localPageId: optionalString(record.localPageId, 'items.localPageId'),
-    sourceFileId: optionalString(record.sourceFileId, 'items.sourceFileId'),
-    scanStatus: requireLedgerScanStatus(record.scanStatus),
-    uploadStatus: requireLedgerUploadStatus(record.uploadStatus),
-    serverReceiveStatus: requireLedgerServerReceiveStatus(record.serverReceiveStatus),
-    registrationStatus: requireLedgerRegistrationStatus(record.registrationStatus),
-    attentionType: optionalScanAttentionType(record.attentionType, 'items.attentionType'),
-    attentionMessage: optionalString(record.attentionMessage, 'items.attentionMessage'),
-    operatorName:
-      record.operatorName === undefined || record.operatorName === null
-        ? undefined
-        : requireString(record.operatorName, 'items.operatorName'),
-    occurredAt: optionalString(record.occurredAt, 'items.occurredAt'),
-  }
-}
-
-function validateScannerAttentionItem(value: unknown): ExamScannerAttentionItemVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('页级账本异常项返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    id: requireString(record.id, 'attentionItems.id'),
-    attentionType: requireScanAttentionType(record.attentionType, 'attentionItems.attentionType'),
-    sourceType: validateScanAttentionSourceType(record.sourceType, 'attentionItems.sourceType'),
-    sourceId: optionalString(record.sourceId, 'attentionItems.sourceId'),
-    paperInstanceId: optionalString(record.paperInstanceId, 'attentionItems.paperInstanceId'),
-    pageId: optionalString(record.pageId, 'attentionItems.pageId'),
-    status: validateScanAttentionStatus(record.status, 'attentionItems.status'),
-    diagnostic: optionalString(record.diagnostic, 'attentionItems.diagnostic'),
-    updateTime: optionalString(record.updateTime, 'attentionItems.updateTime'),
-  }
-}
-
-function optionalScanAttentionType(
-  value: unknown,
-  fieldName: string,
-): ScanAttentionTypeCode | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  return requireScanAttentionType(value, fieldName)
-}
-
-function requireScanAttentionType(value: unknown, fieldName: string): ScanAttentionTypeCode {
-  if (
-    value !== 'QUALITY_BLOCK'
-    && value !== 'PROCESSING_BLOCK'
-    && value !== 'DUPLICATE_PENDING'
-    && value !== 'RECOGNITION_REVIEW'
-  ) {
-    throw new TypeError(`${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function validateScannerPageLedger(value: unknown): ExamScannerPageLedgerVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('页级账本返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  if (!Array.isArray(record.items)) {
-    throw new TypeError('页级账本接口 items 格式错误')
-  }
-  if (!Array.isArray(record.attentionItems)) {
-    throw new TypeError('页级账本接口 attentionItems 格式错误')
-  }
-  return {
-    examId: requireString(record.examId, 'examId'),
-    batchExternalNo: requireString(record.batchExternalNo, 'batchExternalNo'),
-    scanBatchId: optionalString(record.scanBatchId, 'scanBatchId'),
-    scannerDeviceId: requireString(record.scannerDeviceId, 'scannerDeviceId'),
-    scannerStationId: requireString(record.scannerStationId, 'scannerStationId'),
-    scanMode: optionalScanMode(record.scanMode, 'scanMode'),
-    dataSource: requireLedgerDataSource(record.dataSource),
-    items: record.items.map(validateScannerPageLedgerItem),
-    attentionItems: record.attentionItems.map(validateScannerAttentionItem),
-    pendingCount: requireFiniteNumber(record.pendingCount, 'pendingCount'),
-    registeredCount: requireFiniteNumber(record.registeredCount, 'registeredCount'),
-    attentionCount: requireFiniteNumber(record.attentionCount, 'attentionCount'),
-  }
-}
-
-function validateScannerKioskBatchHistoryItem(value: unknown): ExamScannerKioskBatchHistoryItem {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台历史批次项返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    scanBatchId: requireString(record.scanBatchId, 'history.scanBatchId'),
-    batchNo: requireString(record.batchNo, 'history.batchNo'),
-    batchExternalNo: requireString(record.batchExternalNo, 'history.batchExternalNo'),
-    scannerDeviceId: requireString(record.scannerDeviceId, 'history.scannerDeviceId'),
-    scannerStationId: optionalString(record.scannerStationId, 'history.scannerStationId'),
-    sourceFileIds: optionalStringList(record.sourceFileIds, 'history.sourceFileIds'),
-    pageCount: requireFiniteNumber(record.pageCount, 'history.pageCount'),
-    receivedPageCount: optionalFiniteNumber(record.receivedPageCount, 'history.receivedPageCount'),
-    pendingUploadCount: optionalFiniteNumber(
-      record.pendingUploadCount,
-      'history.pendingUploadCount',
-    ),
-    attentionItemCount: optionalFiniteNumber(
-      record.attentionItemCount,
-      'history.attentionItemCount',
-    ),
-    scanMode: requireString(record.scanMode, 'history.scanMode') as ScannerKioskScanMode,
-    targetPageNo: optionalFiniteNumber(record.targetPageNo, 'history.targetPageNo'),
-    supplementReason: optionalString(record.supplementReason, 'history.supplementReason'),
-    replaceTargetPage: requireBoolean(record.replaceTargetPage, 'history.replaceTargetPage'),
-    sealedAt: optionalString(record.sealedAt, 'history.sealedAt'),
-    sealedBy: optionalString(record.sealedBy, 'history.sealedBy'),
-    discardedAt: optionalString(record.discardedAt, 'history.discardedAt'),
-    discardedBy: optionalString(record.discardedBy, 'history.discardedBy'),
-    discardReason: optionalString(record.discardReason, 'history.discardReason'),
-    status: requireString(record.status, 'history.status'),
-    statusMessage: requireString(record.statusMessage, 'history.statusMessage'),
-    diagnostic: optionalString(record.diagnostic, 'history.diagnostic'),
-    scanStartTime: optionalString(record.scanStartTime, 'history.scanStartTime'),
-    scanEndTime: optionalString(record.scanEndTime, 'history.scanEndTime'),
-    createTime: optionalString(record.createTime, 'history.createTime'),
-    updateTime: optionalString(record.updateTime, 'history.updateTime'),
-    eventCount: optionalFiniteNumber(record.eventCount, 'history.eventCount'),
-  }
-}
-
-function validateScannerKioskBatchHistoryPage(
-  value: unknown,
-): PageResult<ExamScannerKioskBatchHistoryItem> {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描工作台历史批次分页返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  if (!Array.isArray(record.list)) {
-    throw new TypeError('扫描工作台历史批次接口 list 格式错误')
-  }
-  return {
-    list: record.list.map(validateScannerKioskBatchHistoryItem),
-    total: requirePageNumber(record.total, 'total'),
-    pageNum: requirePageNumber(record.pageNum, 'pageNum'),
-    pageSize: requirePageNumber(record.pageSize, 'pageSize'),
-    pages: requirePageNumber(record.pages, 'pages'),
-  }
 }

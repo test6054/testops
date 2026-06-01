@@ -52,9 +52,9 @@ const emit = defineEmits<{
   (e: 'clear'): void
 }>()
 
-// Data initialization（JSON 中 id 为 number，统一转为 string）
+// Data initialization（静态学校数据中的 id 统一转为 string）
 const schools = ref<SchoolItem[]>(
-  (schoolsData as Array<{ id: number, name: string, province: string, letter: string }>).map(
+  (schoolsData as Array<{ id: number; name: string; province: string; letter: string }>).map(
     (s) => ({ ...s, id: String(s.id) }),
   ),
 )
@@ -74,7 +74,7 @@ watch(
 const filteredSchools = computed(() => {
   const keyword = searchKeyword.value.trim().toLowerCase()
 
-  const results: { value: string, label: string }[] = []
+  const results: { value: string; label: string }[] = []
 
   for (const school of schools.value) {
     if (!keyword || (school.name && school.name.toLowerCase().includes(keyword))) {

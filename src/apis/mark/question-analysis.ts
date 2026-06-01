@@ -1,3 +1,4 @@
+import type { QuestionTypeCode } from './grading-experience'
 /**
  * 题目质量分析与重判 API - 对接 edu-mark 模块 QuestionAnalysisController
  *
@@ -11,12 +12,15 @@ import http from '@/config/axios'
 
 // ─── 题目质量分析 ─────────────────────────────────
 
-/** 题目质量分析记录 - 对应 ExamQuestionAnalysisRecord */
+/** 题目质量分析记录 - 对应 ExamQuestionAnalysisRecordResponse */
 export interface ExamQuestionAnalysisRecordVO {
   id: string
   tenantId?: string
   examId: string
   questionTemplateId: string
+  questionNo: string
+  questionType: QuestionTypeCode
+  questionStem?: string
   totalCount: number
   correctCount: number
   wrongCount: number
@@ -47,8 +51,7 @@ export function generateQuestionAnalysis(params: {
     examId: params.examId,
     questionTemplateId: params.questionTemplateId,
   }).toString()
-  return http.post<unknown>(`/api/exam/question-analysis/generate?${search}`)
-    .then(validateQuestionAnalysisRecord)
+  return http.post<ExamQuestionAnalysisRecordVO>(`/api/exam/question-analysis/generate?${search}`)
 }
 
 /**
@@ -58,9 +61,9 @@ export function generateQuestionAnalysis(params: {
 export function generateAllQuestionAnalysis(
   examId: string,
 ): Promise<ExamQuestionAnalysisRecordVO[]> {
-  return http.post<unknown>(
+  return http.post<ExamQuestionAnalysisRecordVO[]>(
     `/api/exam/question-analysis/generate-all?examId=${encodeURIComponent(examId)}`,
-  ).then(validateQuestionAnalysisRecordList)
+  )
 }
 
 /**
@@ -71,8 +74,7 @@ export function listQuestionAnalysis(params: {
   examId: string
   questionTemplateId?: string
 }): Promise<ExamQuestionAnalysisRecordVO[]> {
-  return http.get<unknown>('/api/exam/question-analysis/list', { params })
-    .then(validateQuestionAnalysisRecordList)
+  return http.get<ExamQuestionAnalysisRecordVO[]>('/api/exam/question-analysis/list', { params })
 }
 
 // ─── 学生错题本 ─────────────────────────────────
@@ -90,7 +92,7 @@ export interface StudentWrongBookItemVO {
   paperInstanceId?: string
   questionTemplateId?: string
   fullScore?: number
-  finalScore?: number
+  teacherReviewScore?: number
   objectiveResult?: ObjectiveResultCode
   gradeStatus?: GradeStatusCode
   commentText?: string
@@ -115,12 +117,12 @@ export function getStudentWrongBook(params: {
  * 客观题比较策略编码 - 与后端 com.nybc.edu.common.enums.ObjectiveComparePolicy 一一对齐。
  * 历史 EXACT / TRIM_EQUAL 已废弃，统一使用 EXACT_NORMALIZED / CHOICE_SET / REGEX / NUMERIC_TOLERANCE / AI_GRADE。
  */
-export type ObjectiveComparePolicyCode
-  = | 'EXACT_NORMALIZED'
-    | 'CHOICE_SET'
-    | 'REGEX'
-    | 'NUMERIC_TOLERANCE'
-    | 'AI_GRADE'
+export type ObjectiveComparePolicyCode =
+  | 'EXACT_NORMALIZED'
+  | 'CHOICE_SET'
+  | 'REGEX'
+  | 'NUMERIC_TOLERANCE'
+  | 'AI_GRADE'
 
 /** 生效状态 */
 export type EffectiveStatusCode = 'DRAFT' | 'ACTIVE'
@@ -138,13 +140,13 @@ export const EFFECTIVE_STATUS_COLOR: Record<EffectiveStatusCode, BadgeTone> = {
 }
 
 /** 答案确认生效请求 - 对应 AnswerEffectiveConfirmRequest */
-export interface AnswerEffectiveConfirmPayload {
+export interface AnswerEffectiveConfirmRequest {
   examId: string
   questionTemplateId: string
   standardAnswerId?: string
-  comparePolicy?: string
+  comparePolicy?: ObjectiveComparePolicyCode
   aiReviewHintId?: string
-  knowledgePointIds?: string
+  knowledgePointIds?: string[]
 }
 
 /** 答案确认生效配置 - 对应 ExamAnswerEffectiveConfig */
@@ -156,7 +158,7 @@ export interface ExamAnswerEffectiveConfigVO {
   standardAnswerId?: string
   comparePolicy?: ObjectiveComparePolicyCode
   aiReviewHintId?: string
-  knowledgePointIds?: string
+  knowledgePointIds?: string[]
   effectiveStatus?: EffectiveStatusCode
   confirmedBy?: string
   confirmedTime?: string
@@ -169,11 +171,11 @@ export interface ExamAnswerEffectiveConfigVO {
  * POST /api/exam/question-analysis/answer-effective/confirm
  */
 export function confirmAnswerEffective(
-  payload: AnswerEffectiveConfirmPayload,
+  request: AnswerEffectiveConfirmRequest,
 ): Promise<ExamAnswerEffectiveConfigVO> {
   return http.post<ExamAnswerEffectiveConfigVO>(
     '/api/exam/question-analysis/answer-effective/confirm',
-    payload,
+    request,
   )
 }
 
@@ -194,13 +196,13 @@ export function getEffectiveConfig(params: {
 // ─── 重判计划 ─────────────────────────────────
 
 /** 重判计划状态 */
-export type RejudgePlanStatusCode
-  = | 'DRAFT'
-    | 'PENDING_APPROVAL'
-    | 'APPROVED'
-    | 'EXECUTING'
-    | 'COMPLETED'
-    | 'REJECTED'
+export type RejudgePlanStatusCode =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'EXECUTING'
+  | 'COMPLETED'
+  | 'REJECTED'
 
 /** 重判触发类型 */
 export type RejudgeTriggerTypeCode = 'ANSWER_CHANGE' | 'POLICY_CHANGE' | 'SYSTEM_ERROR'
@@ -225,6 +227,19 @@ export const REJUDGE_PLAN_STATUS_COLOR: Record<RejudgePlanStatusCode, BadgeTone>
   REJECTED: 'red',
 }
 
+/** 重判计划状态下拉选项，值必须与后端 RejudgePlanStatus 完全一致 */
+export const REJUDGE_PLAN_STATUS_OPTIONS: Array<{
+  label: string
+  value: RejudgePlanStatusCode
+}> = [
+  { value: 'DRAFT', label: REJUDGE_PLAN_STATUS_LABEL.DRAFT },
+  { value: 'PENDING_APPROVAL', label: REJUDGE_PLAN_STATUS_LABEL.PENDING_APPROVAL },
+  { value: 'APPROVED', label: REJUDGE_PLAN_STATUS_LABEL.APPROVED },
+  { value: 'EXECUTING', label: REJUDGE_PLAN_STATUS_LABEL.EXECUTING },
+  { value: 'COMPLETED', label: REJUDGE_PLAN_STATUS_LABEL.COMPLETED },
+  { value: 'REJECTED', label: REJUDGE_PLAN_STATUS_LABEL.REJECTED },
+]
+
 /** 重判触发类型文案映射 */
 export const REJUDGE_TRIGGER_TYPE_LABEL: Record<RejudgeTriggerTypeCode, string> = {
   ANSWER_CHANGE: '答案变更',
@@ -232,17 +247,24 @@ export const REJUDGE_TRIGGER_TYPE_LABEL: Record<RejudgeTriggerTypeCode, string> 
   SYSTEM_ERROR: '系统错误',
 }
 
+/** 重判计划题目业务引用 */
+export interface RejudgePlanQuestionRefVO {
+  /** 题目模板 ID 仅作为提交值使用，普通 UI 不直接展示 */
+  questionTemplateId: string
+  questionNo: string
+  questionType: QuestionTypeCode
+  fullScore: number
+}
+
 /** 重判计划 - 对应 ExamRejudgePlan */
 export interface ExamRejudgePlanVO {
   id: string
   tenantId?: string
   examId: string
-  triggerType?: RejudgeTriggerTypeCode
-  triggerSourceId?: string
-  affectedQuestionIds?: string[]
+  triggerType: RejudgeTriggerTypeCode
+  affectedQuestionRefs?: RejudgePlanQuestionRefVO[]
   affectedStudentCount?: number
-  planStatus?: RejudgePlanStatusCode
-  beforeAfterDiff?: string
+  planStatus: RejudgePlanStatusCode
   approvedBy?: string
   approvedTime?: string
   executedTime?: string
@@ -252,14 +274,14 @@ export interface ExamRejudgePlanVO {
 }
 
 /** 重判计划审批请求 - 对应 RejudgePlanDecisionRequest */
-export interface RejudgePlanDecisionPayload {
+export interface RejudgePlanDecisionRequest {
   planId: string
   approved: boolean
   reason?: string
 }
 
 /** 重判计划执行请求 - 对应 RejudgePlanExecuteRequest */
-export interface RejudgePlanExecutePayload {
+export interface RejudgePlanExecuteRequest {
   planId: string
   executeReason?: string
 }
@@ -279,81 +301,14 @@ export function listRejudgePlans(params: {
  * 审批重判计划
  * POST /api/exam/question-analysis/rejudge-plan/approve
  */
-export function approveRejudgePlan(payload: RejudgePlanDecisionPayload): Promise<void> {
-  return http.post<void>('/api/exam/question-analysis/rejudge-plan/approve', payload)
+export function approveRejudgePlan(request: RejudgePlanDecisionRequest): Promise<void> {
+  return http.post<void>('/api/exam/question-analysis/rejudge-plan/approve', request)
 }
 
 /**
  * 执行重判计划
  * POST /api/exam/question-analysis/rejudge-plan/execute
  */
-export function executeRejudgePlan(payload: RejudgePlanExecutePayload): Promise<void> {
-  return http.post<void>('/api/exam/question-analysis/rejudge-plan/execute', payload)
-}
-
-function requireString(value: unknown, fieldName: string): string {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw new TypeError(`题目质量分析接口缺少 ${fieldName}`)
-  }
-  return value
-}
-
-function optionalString(value: unknown, fieldName: string): string | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string') {
-    throw new TypeError(`题目质量分析接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireFiniteNumber(value: unknown, fieldName: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`题目质量分析接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function optionalFiniteNumber(value: unknown, fieldName: string): number | undefined {
-  if (value === undefined || value === null) {
-    return undefined
-  }
-  return requireFiniteNumber(value, fieldName)
-}
-
-function validateQuestionAnalysisRecord(value: unknown): ExamQuestionAnalysisRecordVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('题目质量分析接口返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    id: requireString(record.id, 'id'),
-    tenantId: optionalString(record.tenantId, 'tenantId'),
-    examId: requireString(record.examId, 'examId'),
-    questionTemplateId: requireString(record.questionTemplateId, 'questionTemplateId'),
-    totalCount: requireFiniteNumber(record.totalCount, 'totalCount'),
-    correctCount: requireFiniteNumber(record.correctCount, 'correctCount'),
-    wrongCount: requireFiniteNumber(record.wrongCount, 'wrongCount'),
-    needReviewCount: requireFiniteNumber(record.needReviewCount, 'needReviewCount'),
-    avgScore: optionalFiniteNumber(record.avgScore, 'avgScore'),
-    maxScore: optionalFiniteNumber(record.maxScore, 'maxScore'),
-    minScore: optionalFiniteNumber(record.minScore, 'minScore'),
-    scoreStddev: optionalFiniteNumber(record.scoreStddev, 'scoreStddev'),
-    difficultyIndex: optionalFiniteNumber(record.difficultyIndex, 'difficultyIndex'),
-    discriminationIndex: optionalFiniteNumber(record.discriminationIndex, 'discriminationIndex'),
-    fullScore: requireFiniteNumber(record.fullScore, 'fullScore'),
-    zeroScoreCount: requireFiniteNumber(record.zeroScoreCount, 'zeroScoreCount'),
-    fullScoreCount: requireFiniteNumber(record.fullScoreCount, 'fullScoreCount'),
-    snapshotTime: requireString(record.snapshotTime, 'snapshotTime'),
-    createTime: optionalString(record.createTime, 'createTime'),
-    updateTime: optionalString(record.updateTime, 'updateTime'),
-  }
-}
-
-function validateQuestionAnalysisRecordList(value: unknown): ExamQuestionAnalysisRecordVO[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError('题目质量分析列表接口返回格式错误')
-  }
-  return value.map(validateQuestionAnalysisRecord)
+export function executeRejudgePlan(request: RejudgePlanExecuteRequest): Promise<void> {
+  return http.post<void>('/api/exam/question-analysis/rejudge-plan/execute', request)
 }

@@ -29,7 +29,7 @@ export interface TrainingPlanVO {
 }
 
 /** 分页查询请求 */
-export interface TrainingPlanQueryPayload extends QueryDto {
+export interface TrainingPlanQueryRequest extends QueryDto {
   programId?: string
   schoolYear?: string
   gradeLevel?: string
@@ -39,7 +39,7 @@ export interface TrainingPlanQueryPayload extends QueryDto {
 }
 
 /** 保存请求 - 严格对齐后端 TrainingPlanSaveRequest */
-export interface TrainingPlanSavePayload {
+export interface TrainingPlanSaveRequest {
   id?: string
   programId: string
   planCode: string
@@ -53,18 +53,12 @@ export interface TrainingPlanSavePayload {
 }
 
 export const trainingPlanApi = {
-  page: (data: TrainingPlanQueryPayload) =>
+  page: (data: TrainingPlanQueryRequest) =>
     http.post<PageResult<TrainingPlanVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<TrainingPlanVO>(`${BASE}/detail`, { id }),
-  create: (data: TrainingPlanSavePayload) =>
-    http.post<string>(`${BASE}/create`, data),
-  update: (data: TrainingPlanSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
-  confirm: (id: string) =>
-    http.post<void>(`${BASE}/confirm`, { id }),
-  revoke: (id: string) =>
-    http.post<void>(`${BASE}/revoke`, { id }),
+  detail: (id: string) => http.post<TrainingPlanVO>(`${BASE}/detail`, { id }),
+  create: (data: TrainingPlanSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: TrainingPlanSaveRequest) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
+  confirm: (id: string) => http.post<void>(`${BASE}/confirm`, { id }),
+  revoke: (id: string) => http.post<void>(`${BASE}/revoke`, { id }),
 }

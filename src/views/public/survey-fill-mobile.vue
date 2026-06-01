@@ -281,6 +281,7 @@ import type { PublicSurveyItemVO } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { useSurveyFill } from '@/composables/useSurveyFill'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const PUBLIC_SURVEY_ITEM_TYPE_LABEL: Record<PublicSurveyItemVO['itemType'], string> = {
   SCALE: '量表题',
@@ -364,11 +365,7 @@ function toggleMulti(itemId: string, opt: string) {
 }
 
 function itemTypeLabel(type: PublicSurveyItemVO['itemType']): string {
-  const label = PUBLIC_SURVEY_ITEM_TYPE_LABEL[type]
-  if (!label) {
-    throw new Error(`问卷题型不符合前后端契约：${String(type)}`)
-  }
-  return label
+  return strictEnumLabel(PUBLIC_SURVEY_ITEM_TYPE_LABEL, type, '公开问卷题型')
 }
 
 async function handleSubmit() {

@@ -107,12 +107,16 @@
           </template>
           <template #extra>
             <a-space>
-              <a-input-search
-                v-model:value="experienceQuestionFilter"
-                placeholder="按题目模板ID 过滤"
-                style="width: 220px"
+              <a-select
+                v-model:value="experienceQuestionTemplateId"
+                class="experience-page__question-select"
+                placeholder="选择题目"
+                :options="questionOptions"
                 allow-clear
-                @search="loadExperiences"
+                show-search
+                option-filter-prop="label"
+                style="width: 220px"
+                @change="loadExperiences"
               />
               <UiButton
                 size="sm"
@@ -125,7 +129,7 @@
               </UiButton>
               <UiButton
                 size="sm"
-                :disabled="!experienceQuestionFilter.trim()"
+                :disabled="!experienceQuestionTemplateId"
                 :loading="extracting"
                 @click="handleExtract"
               >
@@ -202,15 +206,20 @@
           </template>
           <template #extra>
             <a-space>
-              <a-input
-                v-model:value="clusterQuestionId"
-                placeholder="题目模板ID"
+              <a-select
+                v-model:value="clusterQuestionTemplateId"
+                class="experience-page__question-select"
+                placeholder="选择题目"
+                :options="questionOptions"
+                allow-clear
+                show-search
+                option-filter-prop="label"
                 style="width: 200px"
               />
               <UiButton
                 size="sm"
                 variant="outline"
-                :disabled="!clusterQuestionId.trim()"
+                :disabled="!clusterQuestionTemplateId"
                 :loading="clusterLoading"
                 @click="loadLatestCluster"
               >
@@ -219,7 +228,7 @@
               </UiButton>
               <UiButton
                 size="sm"
-                :disabled="!clusterQuestionId.trim()"
+                :disabled="!clusterQuestionTemplateId"
                 :loading="clustering"
                 @click="handleGenerateCluster"
               >
@@ -239,13 +248,13 @@
           />
           <a-empty
             v-else-if="!latestCluster"
-            description="尚无聚类结果，请先指定题目模板ID 并点击「AI 聚类」"
+            description="尚无聚类结果，请先选择题目并点击「AI 聚类」"
           />
 
           <template v-else>
             <a-descriptions :column="3" bordered size="small" style="margin-bottom: 12px">
               <a-descriptions-item label="分组数">
-                <b>{{ latestCluster.groupCount ?? 0 }}</b>
+                <b>{{ clusterGroupCountText(latestCluster) }}</b>
               </a-descriptions-item>
               <a-descriptions-item label="分析状态">
                 <UiTag :tone="aiStatusTone(latestCluster.analysisStatus)" size="sm">
@@ -253,18 +262,63 @@
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="耗时">
-                {{ latestCluster.latencyMs ? `${latestCluster.latencyMs} ms` : '-' }}
+                {{ clusterLatencyText(latestCluster) }}
               </a-descriptions-item>
-              <a-descriptions-item label="AI Trace ID" :span="3">
-                {{ latestCluster.aiTraceId ?? '-' }}
+              <a-descriptions-item label="AI 处理追踪编号" :span="3">
+                {{ clusterTraceText(latestCluster) }}
               </a-descriptions-item>
-              <a-descriptions-item v-if="latestCluster.errorMessage" label="错误" :span="3">
-                <span class="error-text">{{ latestCluster.errorMessage }}</span>
+              <a-descriptions-item v-if="latestCluster.errorMessage" label="AI 处理说明" :span="3">
+                <span class="error-text">
+                  {{ aiClusterFailureMessage(latestCluster.errorMessage) }}
+                </span>
               </a-descriptions-item>
               <a-descriptions-item label="聚类总结" :span="3">
-                <span>{{ latestCluster.clusterSummary || '（无）' }}</span>
+                <span>{{ clusterSummaryText(latestCluster) }}</span>
               </a-descriptions-item>
             </a-descriptions>
+            <a-list
+              v-if="latestCluster.answerGroups?.length"
+              class="answer-groups"
+              :data-source="latestCluster.answerGroups"
+              item-layout="vertical"
+              bordered
+            >
+              <template #renderItem="{ item }">
+                <a-list-item>
+                  <div class="analysis-item__header">
+                    <div>
+                      <b>{{ item.groupLabel }}</b>
+                      <span v-if="item.groupDescription" class="analysis-item__muted">
+                        {{ item.groupDescription }}
+                      </span>
+                    </div>
+                    <a-space size="small">
+                      <UiTag v-if="item.answerCount != null" tone="blue" size="sm">
+                        {{ item.answerCount }} 份
+                      </UiTag>
+                      <UiTag v-if="item.avgScore != null" tone="green" size="sm">
+                        均分 {{ item.avgScore }}
+                      </UiTag>
+                    </a-space>
+                  </div>
+                  <div v-if="item.representativeAnswers?.length" class="answer-samples">
+                    <div
+                      v-for="(answer, answerIndex) in item.representativeAnswers"
+                      :key="`${item.groupNo}-${answerIndex}`"
+                      class="answer-sample"
+                    >
+                      {{ answer }}
+                    </div>
+                  </div>
+                  <a-typography-paragraph v-if="item.suggestedAction" class="analysis-item__text">
+                    <strong>处理措施：</strong>{{ item.suggestedAction }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph v-if="item.controversyNote" class="analysis-item__text">
+                    <strong>争议说明：</strong>{{ item.controversyNote }}
+                  </a-typography-paragraph>
+                </a-list-item>
+              </template>
+            </a-list>
           </template>
         </UiCard>
       </a-tab-pane>
@@ -274,7 +328,7 @@
   <!-- 相似题抽屉 -->
   <a-drawer
     v-model:open="similarDrawerOpen"
-    :title="`相似题检索 - 题目 #${similarSourceQuestionId ?? ''}`"
+    :title="`相似题检索 - ${similarSourceQuestionNo ? `题号 ${similarSourceQuestionNo}` : ''}`"
     width="640"
     :destroy-on-close="true"
   >
@@ -284,13 +338,13 @@
         <template #renderItem="{ item }: { item: QuestionSignatureVO }">
           <a-list-item>
             <a-space size="small">
-              <UiTag tone="blue" size="sm">考试 #{{ item.examId }}</UiTag>
+              <UiTag tone="blue" size="sm">{{ item.examName }} · {{ item.examNo }}</UiTag>
               <UiTag tone="blue" size="sm">
                 {{ questionTypeLabel(item.questionType) }}
               </UiTag>
               <UiTag tone="gray" size="sm">题号 {{ item.questionNo }}</UiTag>
             </a-space>
-            <p class="similar-digest">{{ item.questionDigest ?? '（无摘要）' }}</p>
+            <p v-if="item.questionDigest" class="similar-digest">{{ item.questionDigest }}</p>
           </a-list-item>
         </template>
       </a-list>
@@ -305,12 +359,11 @@
     :destroy-on-close="true"
   >
     <a-descriptions v-if="detailExperience" :column="1" bordered size="small">
-      <a-descriptions-item label="ID">{{ detailExperience.id }}</a-descriptions-item>
       <a-descriptions-item label="来源考试">
-        {{ detailExperience.sourceExamId }}
+        {{ detailExperience.sourceExamName }} · {{ detailExperience.sourceExamNo }}
       </a-descriptions-item>
-      <a-descriptions-item label="题目模板">
-        {{ detailExperience.questionTemplateId }}
+      <a-descriptions-item label="题目">
+        题号 {{ detailExperience.questionNo }}
       </a-descriptions-item>
       <a-descriptions-item label="状态">
         <UiTag :tone="caseStatusTone(detailExperience.caseStatus)" size="sm">
@@ -322,26 +375,67 @@
           {{ aiStatusLabel(detailExperience.analysisStatus) }}
         </UiTag>
       </a-descriptions-item>
-      <a-descriptions-item label="AI Trace">
-        {{ detailExperience.aiTraceId ?? '-' }}
+      <a-descriptions-item label="AI 处理追踪编号">
+        {{ experienceTraceText(detailExperience) }}
       </a-descriptions-item>
       <a-descriptions-item label="耗时">
-        {{ detailExperience.latencyMs ? `${detailExperience.latencyMs} ms` : '-' }}
+        {{ experienceLatencyText(detailExperience) }}
       </a-descriptions-item>
       <a-descriptions-item label="经验总结">
-        <span>{{ detailExperience.experienceSummary || '（无）' }}</span>
+        <span>{{ experienceSummaryText(detailExperience) }}</span>
       </a-descriptions-item>
       <a-descriptions-item label="适用边界">
-        {{ detailExperience.applicableScope ?? '-' }}
+        {{ experienceApplicableScopeText(detailExperience) }}
       </a-descriptions-item>
-      <a-descriptions-item v-if="detailExperience.errorMessage" label="错误信息">
-        <span class="error-text">{{ detailExperience.errorMessage }}</span>
+      <a-descriptions-item v-if="detailExperience.riskTags?.length" label="风险标签">
+        <a-space wrap>
+          <UiTag v-for="tag in detailExperience.riskTags" :key="tag" tone="orange" size="sm">
+            {{ tag }}
+          </UiTag>
+        </a-space>
+      </a-descriptions-item>
+      <a-descriptions-item v-if="detailExperience.errorMessage" label="分析处理说明">
+        <span class="error-text">
+          {{ gradingExperienceFailureMessage(detailExperience.errorMessage) }}
+        </span>
       </a-descriptions-item>
     </a-descriptions>
+
+    <a-list
+      v-if="detailExperience?.experienceItems?.length"
+      class="experience-items"
+      :data-source="detailExperience.experienceItems"
+      item-layout="vertical"
+      bordered
+    >
+      <template #renderItem="{ item }">
+        <a-list-item>
+          <div class="analysis-item__header">
+            <b>{{ item.experienceType || '经验条目' }}</b>
+            <UiTag v-if="item.frequency != null" tone="blue" size="sm">
+              出现 {{ item.frequency }} 次
+            </UiTag>
+          </div>
+          <a-typography-paragraph v-if="item.description" class="analysis-item__text">
+            {{ item.description }}
+          </a-typography-paragraph>
+          <a-typography-paragraph v-if="item.scoringPattern" class="analysis-item__text">
+            <strong>评分模式：</strong>{{ item.scoringPattern }}
+          </a-typography-paragraph>
+          <a-typography-paragraph v-if="item.applicableScenario" class="analysis-item__text">
+            <strong>适用场景：</strong>{{ item.applicableScenario }}
+          </a-typography-paragraph>
+          <a-typography-paragraph v-if="item.riskNote" class="analysis-item__text">
+            <strong>注意事项：</strong>{{ item.riskNote }}
+          </a-typography-paragraph>
+        </a-list-item>
+      </template>
+    </a-list>
   </a-drawer>
 </template>
 
 <script lang="ts" setup>
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AiAnalysisStatusCode,
@@ -351,14 +445,6 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -374,6 +460,14 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -385,6 +479,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherGradingExperienceHub' })
@@ -409,25 +504,30 @@ const generatingSignatures = ref(false)
 const signatureColumns: ColumnType<QuestionSignatureVO>[] = [
   { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 80 },
   { title: '题型', key: 'questionType', width: 100 },
-  { title: '题目模板ID', key: 'questionTemplateId', dataIndex: 'questionTemplateId', width: 120 },
   { title: '题干摘要', key: 'questionDigest', width: 320 },
-  { title: 'SimHash', key: 'signatureSimhash', dataIndex: 'signatureSimhash', width: 200 },
   { title: '操作', key: 'actions', width: 120, fixed: 'right' },
 ]
 
+const questionOptions = computed(() =>
+  signatures.value.map((item) => ({
+    label: `题号 ${item.questionNo} · ${questionTypeLabel(item.questionType)}`,
+    value: item.questionTemplateId,
+  })),
+)
+
 // D-9 错误态：三个标签页各自加载失败时由 UiErrorRetryPanel 重试 + 上报
-const signaturesLoadError = ref<unknown>(null)
-const experiencesLoadError = ref<unknown>(null)
+const signaturesLoadError = ref<Error | null>(null)
+const experiencesLoadError = ref<Error | null>(null)
 
 async function loadSignatures(): Promise<void> {
   if (!selectedExamId.value) return
   signaturesLoading.value = true
   signaturesLoadError.value = null
   try {
-    signatures.value = await listSignatures(selectedExamId.value)
+    signatures.value = (await listSignatures(selectedExamId.value)).map(acceptQuestionSignature)
   } catch (error) {
-    signaturesLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载题目签名失败')
+    signaturesLoadError.value = toUserError(error, '题目特征加载失败')
+    showUserError(error, '题目签名加载失败')
   } finally {
     signaturesLoading.value = false
   }
@@ -438,10 +538,10 @@ async function handleGenerateSignatures(): Promise<void> {
   generatingSignatures.value = true
   try {
     const result = await generateSignatures(selectedExamId.value)
-    signatures.value = result
+    signatures.value = result.map(acceptQuestionSignature)
     message.success(`已生成 ${result.length} 条题目签名`)
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '生成签名失败')
+    showUserError(error, '题目签名生成失败')
   } finally {
     generatingSignatures.value = false
   }
@@ -452,22 +552,24 @@ async function handleGenerateSignatures(): Promise<void> {
 const similarDrawerOpen = ref(false)
 const similarLoading = ref(false)
 const similarResults = ref<QuestionSignatureVO[]>([])
-const similarSourceQuestionId = ref<string | undefined>(undefined)
+const similarSourceQuestionNo = ref<string | undefined>(undefined)
 
 async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
   if (!selectedExamId.value) return
-  similarSourceQuestionId.value = record.questionTemplateId
+  similarSourceQuestionNo.value = record.questionNo
   similarDrawerOpen.value = true
   similarLoading.value = true
   similarResults.value = []
   try {
-    similarResults.value = await searchSimilar({
-      examId: selectedExamId.value,
-      questionTemplateId: record.questionTemplateId,
-      limit: 20,
-    })
+    similarResults.value = (
+      await searchSimilar({
+        examId: selectedExamId.value,
+        questionTemplateId: record.questionTemplateId,
+        limit: 20,
+      })
+    ).map(acceptQuestionSignature)
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '检索相似题失败')
+    showUserError(error, '题目相似关系检索失败')
   } finally {
     similarLoading.value = false
   }
@@ -478,11 +580,10 @@ async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
 const experiences = ref<GradingExperienceCaseVO[]>([])
 const experienceLoading = ref(false)
 const extracting = ref(false)
-const experienceQuestionFilter = ref('')
+const experienceQuestionTemplateId = ref<string | undefined>(undefined)
 
 const experienceColumns: ColumnType<GradingExperienceCaseVO>[] = [
-  { title: 'ID', key: 'id', dataIndex: 'id', width: 100 },
-  { title: '题目模板', key: 'questionTemplateId', dataIndex: 'questionTemplateId', width: 120 },
+  { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 100 },
   { title: '题型', key: 'questionType', width: 100 },
   { title: 'AI 状态', key: 'analysisStatus', width: 100 },
   { title: '案例状态', key: 'caseStatus', width: 100 },
@@ -496,31 +597,30 @@ async function loadExperiences(): Promise<void> {
   experienceLoading.value = true
   experiencesLoadError.value = null
   try {
-    if (experienceQuestionFilter.value.trim()) {
-      experiences.value = await listExperiencesByQuestion(
-        selectedExamId.value,
-        experienceQuestionFilter.value.trim(),
-      )
+    if (experienceQuestionTemplateId.value) {
+      experiences.value = (
+        await listExperiencesByQuestion(selectedExamId.value, experienceQuestionTemplateId.value)
+      ).map(acceptExperienceCase)
     } else {
-      experiences.value = await listExperiences(selectedExamId.value)
+      experiences.value = (await listExperiences(selectedExamId.value)).map(acceptExperienceCase)
     }
   } catch (error) {
-    experiencesLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载经验案例失败')
+    experiencesLoadError.value = toUserError(error, '评分经验加载失败')
+    showUserError(error, '阅卷经验案例加载失败')
   } finally {
     experienceLoading.value = false
   }
 }
 
 async function handleExtract(): Promise<void> {
-  if (!selectedExamId.value || !experienceQuestionFilter.value.trim()) return
+  if (!selectedExamId.value || !experienceQuestionTemplateId.value) return
   extracting.value = true
   try {
-    await extractExperience(selectedExamId.value, experienceQuestionFilter.value.trim())
+    await extractExperience(selectedExamId.value, experienceQuestionTemplateId.value)
     message.success('AI 经验已提取')
     await loadExperiences()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : 'AI 提取经验失败')
+    showUserError(error, '阅卷经验提取失败')
   } finally {
     extracting.value = false
   }
@@ -538,41 +638,44 @@ function openExperienceDrawer(record: GradingExperienceCaseVO): void {
 
 // ─── AI 答案聚类 ─────────────────────────────────
 
-const clusterQuestionId = ref('')
+const clusterQuestionTemplateId = ref<string | undefined>(undefined)
 const latestCluster = ref<AnswerClusterRecordVO | null>(null)
 const clusterLoading = ref(false)
 const clustering = ref(false)
 // D-9 错误态：AI 答案聚类加载失败时 UiErrorRetryPanel 重试 + 上报
-const clusterLoadError = ref<unknown>(null)
+const clusterLoadError = ref<Error | null>(null)
 
 async function loadLatestCluster(): Promise<void> {
-  if (!selectedExamId.value || !clusterQuestionId.value.trim()) return
+  if (!selectedExamId.value || !clusterQuestionTemplateId.value) return
   clusterLoading.value = true
   clusterLoadError.value = null
   try {
-    latestCluster.value = await getLatestAnswerCluster(
+    const cluster = await getLatestAnswerCluster(
       selectedExamId.value,
-      clusterQuestionId.value.trim(),
+      clusterQuestionTemplateId.value,
     )
+    if (!cluster) {
+      throw new TypeError('答案聚类接口未返回当前题目的最新聚类结果')
+    }
+    latestCluster.value = acceptAnswerClusterRecord(cluster)
   } catch (error) {
-    clusterLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载聚类结果失败')
+    clusterLoadError.value = toUserError(error, '错误簇加载失败')
+    showUserError(error, '答案聚类结果加载失败')
   } finally {
     clusterLoading.value = false
   }
 }
 
 async function handleGenerateCluster(): Promise<void> {
-  if (!selectedExamId.value || !clusterQuestionId.value.trim()) return
+  if (!selectedExamId.value || !clusterQuestionTemplateId.value) return
   clustering.value = true
   try {
-    latestCluster.value = await generateAnswerCluster(
-      selectedExamId.value,
-      clusterQuestionId.value.trim(),
+    latestCluster.value = acceptAnswerClusterRecord(
+      await generateAnswerCluster(selectedExamId.value, clusterQuestionTemplateId.value),
     )
     message.success('AI 答案聚类已完成')
   } catch (error) {
-    message.error(error instanceof Error ? error.message : 'AI 答案聚类失败')
+    showUserError(error, '答案聚类分析生成失败')
   } finally {
     clustering.value = false
   }
@@ -597,20 +700,150 @@ function caseStatusLabel(status: ExperienceCaseStatusCode): string {
   return strictEnumLabel(EXPERIENCE_CASE_STATUS_LABEL, status, '经验案例状态')
 }
 
-function questionTypeLabel(value?: QuestionTypeCode): string {
+function questionTypeLabel(value: QuestionTypeCode): string {
   return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题型')
 }
 
-function ellipsis(text: string | undefined, len = 60): string {
-  if (!text) return '-'
+function requireText(value: string | undefined, fieldName: string): string {
+  const normalized = value?.trim()
+  if (!normalized) {
+    throw new TypeError(`后端批改经验合同缺失：${fieldName}`)
+  }
+  return normalized
+}
+
+function requireNumber(value: number | undefined, fieldName: string): number {
+  if (value == null || !Number.isFinite(value)) {
+    throw new TypeError(`后端批改经验合同缺失：${fieldName}`)
+  }
+  return value
+}
+
+function requireArray<T>(value: T[] | undefined, fieldName: string): T[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`后端批改经验合同缺失：${fieldName}`)
+  }
+  return value
+}
+
+function ellipsis(text: string, len = 60): string {
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 
-function handleExamChange(value: unknown, option: unknown): void {
-  onExamChange(value as never, option as never)
+function acceptQuestionSignature(item: QuestionSignatureVO): QuestionSignatureVO {
+  requireText(item.examName, 'examName')
+  requireText(item.examNo, 'examNo')
+  requireText(item.questionTemplateId, 'questionTemplateId')
+  requireText(item.questionNo, 'questionNo')
+  questionTypeLabel(item.questionType)
+  return item
+}
+
+function acceptExperienceCase(item: GradingExperienceCaseVO): GradingExperienceCaseVO {
+  requireText(item.sourceExamName, 'sourceExamName')
+  requireText(item.sourceExamNo, 'sourceExamNo')
+  requireText(item.questionTemplateId, 'questionTemplateId')
+  requireText(item.questionNo, 'questionNo')
+  questionTypeLabel(item.questionType)
+  aiStatusLabel(item.analysisStatus)
+  caseStatusLabel(item.caseStatus)
+  if (item.analysisStatus === 'SUCCESS') {
+    requireText(item.aiTraceId, 'aiTraceId')
+    requireText(item.experienceSummary, 'experienceSummary')
+    requireArray(item.experienceItems, 'experienceItems')
+    requireText(item.applicableScope, 'applicableScope')
+    requireNumber(item.latencyMs, 'latencyMs')
+  } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
+    requireText(item.errorMessage, 'errorMessage')
+  }
+  return item
+}
+
+function acceptAnswerClusterRecord(item: AnswerClusterRecordVO): AnswerClusterRecordVO {
+  aiStatusLabel(item.analysisStatus)
+  if (item.analysisStatus === 'SUCCESS') {
+    requireText(item.aiTraceId, 'aiTraceId')
+    requireText(item.clusterSummary, 'clusterSummary')
+    requireNumber(item.groupCount, 'groupCount')
+    requireNumber(item.latencyMs, 'latencyMs')
+    for (const group of requireArray(item.answerGroups, 'answerGroups')) {
+      requireNumber(group.groupNo, 'answerGroups.groupNo')
+      requireText(group.groupLabel, 'answerGroups.groupLabel')
+      requireNumber(group.answerCount, 'answerGroups.answerCount')
+    }
+  } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
+    requireText(item.errorMessage, 'errorMessage')
+  }
+  return item
+}
+
+function clusterLatencyText(item: AnswerClusterRecordVO): string {
+  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (item.analysisStatus === 'SUCCESS') return `${requireNumber(item.latencyMs, 'latencyMs')} ms`
+  return '处理失败，未生成耗时'
+}
+
+function clusterTraceText(item: AnswerClusterRecordVO): string {
+  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (item.analysisStatus === 'SUCCESS') return requireText(item.aiTraceId, 'aiTraceId')
+  return '处理失败，未生成追踪编号'
+}
+
+function clusterSummaryText(item: AnswerClusterRecordVO): string {
+  if (item.analysisStatus === 'PENDING') return 'AI 答案聚类处理中，完成后展示聚类总结'
+  if (item.analysisStatus === 'SUCCESS') return requireText(item.clusterSummary, 'clusterSummary')
+  return aiClusterFailureMessage(item.errorMessage)
+}
+
+function clusterGroupCountText(item: AnswerClusterRecordVO): string {
+  if (item.analysisStatus === 'PENDING') return '处理中'
+  if (item.analysisStatus === 'SUCCESS') return String(requireNumber(item.groupCount, 'groupCount'))
+  return '处理失败'
+}
+
+function experienceTraceText(item: GradingExperienceCaseVO): string {
+  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (item.analysisStatus === 'SUCCESS') return requireText(item.aiTraceId, 'aiTraceId')
+  return '处理失败，未生成追踪编号'
+}
+
+function experienceLatencyText(item: GradingExperienceCaseVO): string {
+  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (item.analysisStatus === 'SUCCESS') return `${requireNumber(item.latencyMs, 'latencyMs')} ms`
+  return '处理失败，未生成耗时'
+}
+
+function experienceSummaryText(item: GradingExperienceCaseVO): string {
+  if (item.analysisStatus === 'PENDING') return 'AI 批改经验提取处理中，完成后展示经验总结'
+  if (item.analysisStatus === 'SUCCESS')
+    return requireText(item.experienceSummary, 'experienceSummary')
+  return gradingExperienceFailureMessage(item.errorMessage)
+}
+
+function experienceApplicableScopeText(item: GradingExperienceCaseVO): string {
+  if (item.analysisStatus === 'PENDING') return '处理中，尚未生成适用边界'
+  if (item.analysisStatus === 'SUCCESS') return requireText(item.applicableScope, 'applicableScope')
+  return '处理失败，未生成适用边界'
+}
+
+function aiClusterFailureMessage(errorMessage?: string): string {
+  return getUserProcessFailureMessage(errorMessage, 'AI 答案聚类未完成，请稍后重新生成')
+}
+
+function gradingExperienceFailureMessage(errorMessage?: string): string {
+  return getUserProcessFailureMessage(errorMessage, '阅卷经验提取未完成，请稍后重新提取')
+}
+
+function handleExamChange(
+  value: SelectValue,
+  option: DefaultOptionType | DefaultOptionType[],
+): void {
+  onExamChange(value, option)
   signatures.value = []
   experiences.value = []
   latestCluster.value = null
+  experienceQuestionTemplateId.value = undefined
+  clusterQuestionTemplateId.value = undefined
   if (selectedExamId.value) {
     void reloadActiveTab()
   }
@@ -618,8 +851,16 @@ function handleExamChange(value: unknown, option: unknown): void {
 
 async function reloadActiveTab(): Promise<void> {
   if (!selectedExamId.value) return
-  if (activeTab.value === 'signature') await loadSignatures()
-  else if (activeTab.value === 'experience') await loadExperiences()
+  if (activeTab.value === 'signature') {
+    await loadSignatures()
+  } else if (activeTab.value === 'experience') {
+    if (signatures.value.length === 0) {
+      await loadSignatures()
+    }
+    await loadExperiences()
+  } else if (activeTab.value === 'cluster' && signatures.value.length === 0) {
+    await loadSignatures()
+  }
 }
 
 watch(activeTab, () => {
@@ -631,6 +872,8 @@ watch(selectedExamId, (value) => {
   signatures.value = []
   experiences.value = []
   latestCluster.value = null
+  experienceQuestionTemplateId.value = undefined
+  clusterQuestionTemplateId.value = undefined
   if (value) {
     void reloadActiveTab()
   }
@@ -695,5 +938,45 @@ onMounted(async () => {
   margin: 6px 0 0;
   color: rgba(0, 0, 0, 0.65);
   font-size: 13px;
+}
+
+.experience-items,
+.answer-groups {
+  margin-top: 12px;
+}
+
+.analysis-item {
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  &__muted {
+    margin-left: 8px;
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 12px;
+  }
+
+  &__text {
+    margin-bottom: 6px;
+  }
+}
+
+.answer-samples {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.answer-sample {
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.6;
 }
 </style>

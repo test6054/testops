@@ -11,11 +11,19 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   ReportExportStatus,
-  ReportQueryPayload,
-  ReportSavePayload,
+  ReportQueryRequest,
+  ReportSaveRequest,
   ReportStatus,
   ReportType,
   ReportVO,
+} from '@/apis/quality'
+import {
+  REPORT_EXPORT_STATUS_COLOR,
+  REPORT_EXPORT_STATUS_LABEL,
+  REPORT_STATUS_COLOR,
+  REPORT_STATUS_LABEL,
+  REPORT_TYPE_LABEL,
+  reportApi,
 } from '@/apis/quality'
 import type {
   AuditTimelineEvent,
@@ -30,17 +38,7 @@ import Modal from 'ant-design-vue/es/modal'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
-  isReportExportStatus,
-  isReportStatus,
-  isReportType,
-  REPORT_EXPORT_STATUS_COLOR,
-  REPORT_EXPORT_STATUS_LABEL,
-  REPORT_STATUS_COLOR,
-  REPORT_STATUS_LABEL,
-  REPORT_TYPE_LABEL,
-  reportApi,
-} from '@/apis/quality'
-import {
+  AchievementResultSelector,
   CourseSelector,
   ProgramSelector,
   TrainingPlanSelector,
@@ -55,44 +53,34 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { strictAuditChangeDetails } from '@/utils/strict-enum'
+import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
-function reportTypeLabel(value: unknown): string {
-  if (isReportType(value)) return REPORT_TYPE_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('报告类型不符合前后端契约')
+function reportTypeLabel(value: ReportType): string {
+  return strictEnumLabel(REPORT_TYPE_LABEL, value, '报告类型')
 }
 
-function reportStatusLabel(value: unknown): string {
-  if (isReportStatus(value)) return REPORT_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('报告状态不符合前后端契约')
+function reportStatusLabel(value: ReportStatus): string {
+  return strictEnumLabel(REPORT_STATUS_LABEL, value, '报告状态')
 }
 
-function reportStatusColor(value: unknown): string {
-  if (isReportStatus(value)) return REPORT_STATUS_COLOR[value]
-  throw new Error('报告状态不符合前后端契约')
+function reportStatusColor(value: ReportStatus): string {
+  return strictEnumTone(REPORT_STATUS_COLOR, value, '报告状态')
 }
 
-function exportStatusLabel(value: unknown): string {
-  if (isReportExportStatus(value)) return REPORT_EXPORT_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('报告导出状态不符合前后端契约')
+function exportStatusLabel(value: ReportExportStatus): string {
+  return strictEnumLabel(REPORT_EXPORT_STATUS_LABEL, value, '报告导出状态')
 }
 
-function exportStatusColor(value: unknown): string {
-  if (isReportExportStatus(value)) return REPORT_EXPORT_STATUS_COLOR[value]
-  throw new Error('报告导出状态不符合前后端契约')
+function exportStatusColor(value: ReportExportStatus): string {
+  return strictEnumTone(REPORT_EXPORT_STATUS_COLOR, value, '报告导出状态')
 }
 
-function requireExportErrorMessage(record: ReportVO): string {
-  if (record.exportStatus !== 'FAILED') {
-    throw new Error('只有导出失败报告才能读取失败原因')
-  }
-  if (!record.exportErrorMessage) {
-    throw new Error('报告导出失败时后端必须返回 exportErrorMessage')
-  }
-  return record.exportErrorMessage
+function reportExportFailureMessage(errorMessage?: string): string {
+  return getUserProcessFailureMessage(
+    errorMessage,
+    '报告文件生成未完成，请稍后重试；如多次失败，请联系管理员核对报告模板和附件材料。',
+  )
 }
 
 const qualityStore = useQualityStore()
@@ -100,7 +88,7 @@ const qualityStore = useQualityStore()
 const list = ref<ReportVO[]>([])
 const total = ref(0)
 const loading = ref(false)
-const query = reactive<ReportQueryPayload>({
+const query = reactive<ReportQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   trainingPlanId: qualityStore.currentTrainingPlanId,
@@ -114,7 +102,7 @@ const query = reactive<ReportQueryPayload>({
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
-const editor = reactive<ReportSavePayload>({
+const editor = reactive<ReportSaveRequest>({
   reportType: 'COURSE_ACHIEVEMENT',
   programId: '',
   trainingPlanId: '',
@@ -123,7 +111,7 @@ const editor = reactive<ReportSavePayload>({
   title: '',
   schoolYear: '',
   semester: '',
-  bodyMarkdown: '',
+  bodyContent: '',
 })
 const submitting = ref(false)
 
@@ -139,11 +127,19 @@ function handleEditorQualityCourseChange(value: string | null): void {
   editor.qualityCourseId = value ?? ''
 }
 
+function handleQueryQualityCourseChange(value: string | null): void {
+  query.qualityCourseId = value ?? ''
+}
+
+function handleEditorAchievementResultChange(value: string | null): void {
+  editor.achievementResultId = value ?? ''
+}
+
 const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportType, label: string }> = [
+const reportTypeOptions: Array<{ value: ReportType; label: string }> = [
   { value: 'COURSE_ACHIEVEMENT', label: REPORT_TYPE_LABEL.COURSE_ACHIEVEMENT },
   { value: 'PROGRAM_QUALITY', label: REPORT_TYPE_LABEL.PROGRAM_QUALITY },
   { value: 'IMPROVEMENT', label: REPORT_TYPE_LABEL.IMPROVEMENT },
@@ -152,7 +148,7 @@ const reportTypeOptions: Array<{ value: ReportType, label: string }> = [
     label: REPORT_TYPE_LABEL.AUDIT_EVALUATION_RECTIFICATION,
   },
 ]
-const statusOptions: Array<{ value: ReportStatus, label: string }> = [
+const statusOptions: Array<{ value: ReportStatus; label: string }> = [
   { value: 'DRAFT', label: REPORT_STATUS_LABEL.DRAFT },
   { value: 'SUBMITTED', label: REPORT_STATUS_LABEL.SUBMITTED },
   { value: 'CONFIRMED', label: REPORT_STATUS_LABEL.CONFIRMED },
@@ -182,24 +178,23 @@ async function loadList() {
       keyword: query.keyword?.trim() || undefined,
     })
     list.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
 const columns: ColumnsType = [
-  { title: '报告 ID', dataIndex: 'id', key: 'id', width: 140 },
   { title: '标题', dataIndex: 'title', key: 'title' },
   { title: '类型', dataIndex: 'reportType', key: 'reportType', width: 120 },
-  { title: '课程 ID', dataIndex: 'qualityCourseId', key: 'qualityCourseId', width: 120 },
-  { title: '达成度 ID', dataIndex: 'achievementResultId', key: 'achievementResultId', width: 120 },
+  { title: '关联课程', key: 'qualityCourseRef', width: 120 },
+  { title: '达成结果', key: 'achievementResultRef', width: 140 },
   { title: '学年 / 学期', key: 'period', width: 120 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 110 },
   { title: '附件 / 导出', key: 'exports', width: 260 },
@@ -231,7 +226,7 @@ function openCreate() {
     title: '',
     schoolYear: qualityStore.currentSchoolYear || '',
     semester: qualityStore.currentSemester || '',
-    bodyMarkdown: '',
+    bodyContent: '',
   })
   editorVisible.value = true
 }
@@ -251,10 +246,7 @@ async function openEdit(record: ReportVO) {
       title: detail.title,
       schoolYear: detail.schoolYear || '',
       semester: detail.semester || '',
-      bodyMarkdown: detail.bodyMarkdown || '',
-      wordFileId: detail.wordFileId,
-      pdfFileId: detail.pdfFileId,
-      excelFileId: detail.excelFileId,
+      bodyContent: detail.bodyContent || '',
     })
     editorVisible.value = true
   } finally {
@@ -268,7 +260,7 @@ async function submitEditor() {
     return
   }
   if (!editor.programId) {
-    message.error('请填写专业 ID')
+    message.error('请选择报告所属专业')
     return
   }
   if (!editor.schoolYear || !editor.semester) {
@@ -277,18 +269,23 @@ async function submitEditor() {
   }
   submitting.value = true
   try {
-    const payload: ReportSavePayload = {
-      ...editor,
-      title: editor.title.trim(),
+    const request: ReportSaveRequest = {
+      id: editor.id,
+      reportType: editor.reportType,
+      programId: editor.programId,
       trainingPlanId: editor.trainingPlanId || undefined,
       qualityCourseId: editor.qualityCourseId || undefined,
       achievementResultId: editor.achievementResultId || undefined,
+      title: editor.title.trim(),
+      schoolYear: editor.schoolYear,
+      semester: editor.semester,
+      bodyContent: editor.bodyContent,
     }
     if (editorMode.value === 'create') {
-      await reportApi.create(payload)
+      await reportApi.create(request)
       message.success('已创建报告草稿')
     } else {
-      await reportApi.update(payload)
+      await reportApi.update(request)
       message.success('已保存修改')
     }
     editorVisible.value = false
@@ -299,10 +296,7 @@ async function submitEditor() {
 }
 
 function nextStatuses(status: ReportStatus) {
-  if (!isReportStatus(status)) {
-    throw new Error('报告状态不符合前后端契约')
-  }
-  return transitMap[status]
+  return strictEnumValue(transitMap, status, '报告状态')
 }
 
 function canEditReport(status: ReportStatus): boolean {
@@ -355,7 +349,7 @@ async function pollExportStatus(id: string) {
       if (exportStatus === 'FAILED') {
         Modal.error({
           title: `${title} 导出失败`,
-          content: requireExportErrorMessage(detail),
+          content: reportExportFailureMessage(detail.exportErrorMessage),
           width: 640,
         })
         return
@@ -374,21 +368,17 @@ function reportTitle(record: ReportVO): string {
 }
 
 async function handleExport(record: ReportVO) {
-  if (!isReportExportStatus(record.exportStatus)) {
-    throw new Error('报告导出状态不符合前后端契约')
-  }
   const currentExport = record.exportStatus
   if (currentExport === 'PENDING' || currentExport === 'PROCESSING') {
     message.info(
-      `${reportTitle(record)}当前处于「${REPORT_EXPORT_STATUS_LABEL[currentExport]}」，请等待完成`,
+      `${reportTitle(record)}当前处于「${exportStatusLabel(currentExport)}」，请等待完成`,
     )
     if (!pollingExportIds.value.has(record.id)) void pollExportStatus(record.id)
     return
   }
   void confirmAsync({
     title: `导出 ${record.title}？`,
-    content:
-      '后端会异步生成 Word / PDF / Excel 三格式并上传 edu-storage；前端每 5 秒轮询一次状态，附件列会在完成后自动更新。',
+    content: '系统会生成 Word / PDF / Excel 三种报告文件，完成后可在附件列查看。',
     type: 'info',
     onOk: async () => {
       await reportApi.export(record.id)
@@ -413,7 +403,7 @@ function isExportInFlight(status: ReportExportStatus | undefined) {
 
 async function handleDelete(record: ReportVO) {
   if (record.status !== 'DRAFT') {
-    message.warning('只能删除 DRAFT 状态的报告')
+    message.warning('只能删除草稿状态的报告')
     return
   }
   void confirmAsync({
@@ -448,14 +438,14 @@ const statusBuckets = computed(() => {
     ARCHIVED: 0,
   }
   for (const r of list.value) {
-    if (isReportStatus(r.status)) buckets[r.status] += 1
+    buckets[r.status] += 1
   }
   return buckets
 })
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatus, title: string }> = [
+  const order: Array<{ key: ReportStatus; title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'SUBMITTED', title: '待确认' },
     { key: 'CONFIRMED', title: '已确认' },
@@ -504,7 +494,7 @@ const signals = computed<SignalMetric[]>(() => {
     },
     {
       key: 'export-failed',
-      label: '导出失败',
+      label: '导出未完成',
       value: exportFailed,
       tone: exportFailed > 0 ? 'red' : 'gray',
     },
@@ -528,7 +518,6 @@ async function openAuditDrawer(record: ReportVO) {
       description: record.id,
     })
     auditEvents.value = page.list.map((log) => {
-      const changeDetails = strictAuditChangeDetails(log.changeDetails, '报告审计变更详情')
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -537,8 +526,7 @@ async function openAuditDrawer(record: ReportVO) {
         time: log.createTime,
         targetType: log.module,
         targetId: log.bizId || undefined,
-        beforeValue: changeDetails.beforeValue,
-        afterValue: changeDetails.afterValue,
+        reason: log.changeDetails || log.errorStack || undefined,
       }
     })
   } finally {
@@ -553,17 +541,19 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     .map((r) => ({
       id: r.id,
       title: reportTitle(r),
-      statusLabel: r.status === 'RETURNED' ? '已驳回' : '导出失败',
+      statusLabel: r.status === 'RETURNED' ? '已驳回' : '导出未完成',
       statusTone: 'red',
       description:
-        r.status === 'RETURNED' ? '审核驳回，需修订后重新提交' : requireExportErrorMessage(r),
+        r.status === 'RETURNED'
+          ? '审核驳回，需修订后重新提交'
+          : reportExportFailureMessage(r.exportErrorMessage),
       actions: [{ key: 'detail', label: '详情' }],
     }))
 })
 
-function handleReportResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
-  const record = list.value.find((r) => r.id === payload.item.id)
-  if (record && payload.action.key === 'detail') openDetail(record)
+function handleReportResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+  const record = list.value.find((r) => r.id === actionEvent.item.id)
+  if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
 
 onMounted(loadList)
@@ -607,10 +597,12 @@ onMounted(loadList)
             allow-clear
             :options="reportTypeOptions"
           />
-          <a-input
-            v-model:value="query.qualityCourseId"
-            placeholder="课程 ID"
+          <CourseSelector
+            :value="query.qualityCourseId || null"
+            :training-plan-id="qualityStore.currentTrainingPlanId || null"
+            placeholder="关联课程"
             class="report__filter report__filter--xs"
+            @change="handleQueryQualityCourseChange"
           />
           <a-input
             v-model:value="query.schoolYear"
@@ -654,21 +646,24 @@ onMounted(loadList)
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'reportType'">
-            {{ reportTypeLabel(text) }}
+            {{ reportTypeLabel(record.reportType) }}
           </template>
-          <template
-            v-else-if="column.key === 'qualityCourseId' || column.key === 'achievementResultId'"
-          >
-            {{ text || '-' }}
+          <template v-else-if="column.key === 'qualityCourseRef'">
+            <span v-if="record.qualityCourseId">
+              {{ record.qualityCourseCode }} {{ record.qualityCourseName }}
+            </span>
+          </template>
+          <template v-else-if="column.key === 'achievementResultRef'">
+            {{ record.achievementResultLabel }}
           </template>
           <template v-else-if="column.key === 'period'">
-            {{ record.schoolYear || '-' }} / {{ record.semester || '-' }}
+            {{ record.schoolYear }} / {{ record.semester }}
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="reportStatusColor(text)">
-              {{ reportStatusLabel(text) }}
+            <a-tag :color="reportStatusColor(record.status)">
+              {{ reportStatusLabel(record.status) }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'exports'">
@@ -687,7 +682,7 @@ onMounted(loadList)
               </a-tag>
               <a-tooltip
                 v-if="record.exportStatus === 'FAILED'"
-                :title="requireExportErrorMessage(record)"
+                :title="reportExportFailureMessage(record.exportErrorMessage)"
               >
                 <a-tag color="red"> 错误详情 </a-tag>
               </a-tooltip>
@@ -716,9 +711,9 @@ onMounted(loadList)
               </UiButton>
               <UiButton
                 v-if="
-                  record.status === 'SUBMITTED'
-                    || record.status === 'CONFIRMED'
-                    || record.status === 'ARCHIVED'
+                  record.status === 'SUBMITTED' ||
+                  record.status === 'CONFIRMED' ||
+                  record.status === 'ARCHIVED'
                 "
                 variant="ghost"
                 size="sm"
@@ -799,10 +794,16 @@ onMounted(loadList)
         </a-row>
         <a-row :gutter="12">
           <a-col :span="24">
-            <a-form-item label="达成度结果 ID">
-              <a-input
-                v-model:value="editor.achievementResultId"
-                placeholder="可选，填入 achievement_result.id"
+            <a-form-item label="达成度结果">
+              <AchievementResultSelector
+                :value="editor.achievementResultId || null"
+                :program-id="editor.programId || null"
+                :training-plan-id="editor.trainingPlanId || null"
+                :quality-course-id="editor.qualityCourseId || null"
+                :school-year="editor.schoolYear || null"
+                :semester="editor.semester || null"
+                placeholder="可选，用于关联已有达成度结果"
+                @change="handleEditorAchievementResultChange"
               />
             </a-form-item>
           </a-col>
@@ -819,12 +820,12 @@ onMounted(loadList)
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="正文（Markdown）">
+        <a-form-item label="报告正文">
           <a-textarea
-            v-model:value="editor.bodyMarkdown"
+            v-model:value="editor.bodyContent"
             :rows="12"
-            placeholder="支持 Markdown；AI 任务生成后会自动回填"
-            class="report__mono"
+            placeholder="填写报告正文；AI 任务生成后会自动回填"
+            class="report__body-editor"
           />
         </a-form-item>
       </a-form>
@@ -833,9 +834,6 @@ onMounted(loadList)
     <UiDrawer v-model:open="detailVisible" title="报告详情" :width="760" :hide-footer="true">
       <UiEmpty v-if="!detailRecord && !detailLoading" description="详情数据未加载" size="sm" />
       <a-descriptions v-if="detailRecord" :column="2" size="small" bordered>
-        <a-descriptions-item label="报告 ID">
-          {{ detailRecord.id }}
-        </a-descriptions-item>
         <a-descriptions-item label="类型">
           {{ reportTypeLabel(detailRecord.reportType) }}
         </a-descriptions-item>
@@ -844,29 +842,33 @@ onMounted(loadList)
             {{ reportStatusLabel(detailRecord.status) }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="达成度结果 ID">
-          {{ detailRecord.achievementResultId || '-' }}
+        <a-descriptions-item label="达成度结果">
+          {{ detailRecord.achievementResultLabel }}
         </a-descriptions-item>
-        <a-descriptions-item label="专业 ID">
-          {{ detailRecord.programId || '-' }}
+        <a-descriptions-item label="所属专业">
+          {{ detailRecord.programName }}
         </a-descriptions-item>
-        <a-descriptions-item label="培养方案 ID">
-          {{ detailRecord.trainingPlanId || '-' }}
+        <a-descriptions-item label="培养方案">
+          <span v-if="detailRecord.trainingPlanId">
+            {{ detailRecord.trainingPlanCode }} {{ detailRecord.trainingPlanName }}
+          </span>
         </a-descriptions-item>
-        <a-descriptions-item label="课程 ID">
-          {{ detailRecord.qualityCourseId || '-' }}
+        <a-descriptions-item label="关联课程">
+          <span v-if="detailRecord.qualityCourseId">
+            {{ detailRecord.qualityCourseCode }} {{ detailRecord.qualityCourseName }}
+          </span>
         </a-descriptions-item>
         <a-descriptions-item label="学年 / 学期">
-          {{ detailRecord.schoolYear || '-' }} / {{ detailRecord.semester || '-' }}
+          {{ detailRecord.schoolYear }} / {{ detailRecord.semester }}
         </a-descriptions-item>
         <a-descriptions-item label="Word 文件">
-          {{ detailRecord.wordFileId ?? '-' }}
+          {{ detailRecord.wordFileId ? '已生成 Word 文件' : '未生成 Word 文件' }}
         </a-descriptions-item>
         <a-descriptions-item label="PDF 文件">
-          {{ detailRecord.pdfFileId ?? '-' }}
+          {{ detailRecord.pdfFileId ? '已生成 PDF 文件' : '未生成 PDF 文件' }}
         </a-descriptions-item>
         <a-descriptions-item label="Excel 文件">
-          {{ detailRecord.excelFileId ?? '-' }}
+          {{ detailRecord.excelFileId ? '已生成 Excel 文件' : '未生成 Excel 文件' }}
         </a-descriptions-item>
         <a-descriptions-item label="导出状态">
           <a-tag :color="exportStatusColor(detailRecord.exportStatus)">
@@ -879,8 +881,12 @@ onMounted(loadList)
         <a-descriptions-item v-if="detailRecord.exportFinishedAt" label="导出结束">
           {{ detailRecord.exportFinishedAt }}
         </a-descriptions-item>
-        <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出错误" :span="2">
-          <a-alert type="error" show-icon :message="detailRecord.exportErrorMessage" />
+        <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出处理说明" :span="2">
+          <a-alert
+            type="error"
+            show-icon
+            :message="reportExportFailureMessage(detailRecord.exportErrorMessage)"
+          />
         </a-descriptions-item>
         <a-descriptions-item v-if="detailRecord.confirmedAt" label="确认时间">
           {{ detailRecord.confirmedAt }}
@@ -893,8 +899,8 @@ onMounted(loadList)
         </a-descriptions-item>
       </a-descriptions>
       <h4 class="report__section-title">正文预览</h4>
-      <div v-if="detailRecord?.bodyMarkdown" class="report__md-preview">
-        {{ detailRecord.bodyMarkdown }}
+      <div v-if="detailRecord?.bodyContent" class="report__body-preview">
+        {{ detailRecord.bodyContent }}
       </div>
       <UiEmpty v-else description="尚无正文" size="sm" />
     </UiDrawer>
@@ -1003,13 +1009,13 @@ onMounted(loadList)
     color: var(--dp-text-primary, #0f172a);
   }
 
-  &__md-preview {
+  &__body-preview {
     margin: 0;
     padding: 12px;
     white-space: pre-wrap;
     word-break: break-word;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 13px;
+    line-height: 1.7;
     background: var(--dp-gray-50, #f8fafc);
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 6px;
@@ -1024,10 +1030,11 @@ onMounted(loadList)
     color: var(--ant-color-error, #dc2626);
   }
 
-  &__mono {
+  &__body-editor {
     :deep(textarea) {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px;
+      font-family: var(--dp-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+      font-size: 13px;
+      line-height: 1.7;
     }
   }
 }

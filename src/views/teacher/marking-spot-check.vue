@@ -75,10 +75,17 @@
             </span>
             <div class="spot-check-page__sub">{{ pendingItems[index].examNo }}</div>
           </template>
-          <template v-else-if="column.key === 'questionTemplateId'">
-            <span>第 {{ pendingItems[index].questionNo }} 题</span>
+          <template v-else-if="column.key === 'question'">
+            <span>
+              第 {{ pendingItems[index].questionNo }} 题 ·
+              {{ pendingItems[index].questionTypeMessage }}
+            </span>
             <div class="spot-check-page__sub">
-              模板 #{{ pendingItems[index].questionTemplateId }}
+              {{ pendingItems[index].groupName }} ·
+              {{ pendingItems[index].paperDisplay.primaryText }}
+            </div>
+            <div class="spot-check-page__sub">
+              {{ pendingItems[index].paperDisplay.secondaryText }}
             </div>
           </template>
           <template v-else-if="column.key === 'originalScore'">
@@ -119,17 +126,20 @@
         bordered
         class="spot-check-page__target-desc"
       >
-        <a-descriptions-item label="抽检记录ID">{{ targetItem.id }}</a-descriptions-item>
         <a-descriptions-item label="考试">
           {{ targetItem.examName }}（{{ targetItem.examNo }}）
         </a-descriptions-item>
-        <a-descriptions-item label="题目模板ID">
-          第 {{ targetItem.questionNo }} 题（模板 #{{ targetItem.questionTemplateId }}）
+        <a-descriptions-item label="题组">
+          {{ targetItem.groupName }}
         </a-descriptions-item>
-        <a-descriptions-item label="试卷实例ID">
-          {{ targetItem.paperInstanceId }}
+        <a-descriptions-item label="题目">
+          第 {{ targetItem.questionNo }} 题 · {{ targetItem.questionTypeMessage }}
         </a-descriptions-item>
-        <a-descriptions-item label="教师原分">
+        <a-descriptions-item label="答卷">
+          {{ targetItem.paperDisplay.primaryText }}
+          <div class="spot-check-page__sub">{{ targetItem.paperDisplay.secondaryText }}</div>
+        </a-descriptions-item>
+        <a-descriptions-item label="抽检前教师复核评分">
           {{ formatScore(targetItem.originalScore) }}
         </a-descriptions-item>
         <a-descriptions-item label="分派时间">
@@ -145,13 +155,13 @@
           </a-radio-group>
         </a-form-item>
 
-        <a-form-item v-if="form.conclusion === 'ABNORMAL'" label="组长建议分（可选）">
+        <a-form-item v-if="form.conclusion === 'ABNORMAL'" label="抽检评分（可选）">
           <a-input-number
-            v-model:value="form.suggestedScore"
+            v-model:value="form.reviewScore"
             :min="0"
             :step="0.5"
             class="spot-check-page__field-full"
-            placeholder="如认为该题应给分，填入建议分"
+            placeholder="如认为该题需要调整，填写抽检评分"
           />
         </a-form-item>
 
@@ -161,7 +171,7 @@
             :rows="4"
             :placeholder="
               form.conclusion === 'ABNORMAL'
-                ? '判分异常时建议填写依据（500 字内）'
+                ? '判分异常时请填写依据（500 字内）'
                 : '可选：填写一致通过的简要说明'
             "
             :maxlength="500"
@@ -176,21 +186,21 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  MyPendingSpotCheckItemVO,
+  MyPendingSpotCheckItemResponse,
   MyPendingSpotCheckStatusCode,
   SpotCheckConclusionCode,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   handleSpotCheck,
   listMyPendingSpotChecks,
   SPOT_CHECK_STATUS_LABEL,
   SPOT_CHECK_STATUS_TONE,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   UiAlertStrip,
   UiBadge,
@@ -203,6 +213,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -218,10 +229,10 @@ const {
 } = useMarkExamSelector()
 
 // ─── 待处理抽检列表 ──────────────────────────────────────
-const pendingItems = ref<MyPendingSpotCheckItemVO[]>([])
+const pendingItems = ref<MyPendingSpotCheckItemResponse[]>([])
 const loading = ref(false)
 // D-9 错误态：待处理抽检加载失败时 UiErrorRetryPanel 重试 + 上报
-const listLoadError = ref<unknown>(null)
+const listLoadError = ref<Error | null>(null)
 
 async function loadList(): Promise<void> {
   loading.value = true
@@ -231,18 +242,18 @@ async function loadList(): Promise<void> {
       examId: selectedExamId.value || undefined,
     })
   } catch (error) {
-    listLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载待处理抽检失败')
+    listLoadError.value = toUserError(error, '待处理阅卷抽检加载失败')
+    showUserError(error, '待处理阅卷抽检加载失败')
     pendingItems.value = []
   } finally {
     loading.value = false
   }
 }
 
-const columns: ColumnType<MyPendingSpotCheckItemVO>[] = [
+const columns: ColumnType<MyPendingSpotCheckItemResponse>[] = [
   { title: '考试', key: 'examId', width: 220, ellipsis: true },
-  { title: '题目', key: 'questionTemplateId', width: 150 },
-  { title: '教师原分', key: 'originalScore', width: 110, align: 'right' },
+  { title: '题目', key: 'question', width: 240 },
+  { title: '抽检前教师复核评分', key: 'originalScore', width: 160, align: 'right' },
   { title: '抽检状态', key: 'spotCheckStatus', width: 110 },
   { title: '分派时间', key: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 120, fixed: 'right' },
@@ -263,27 +274,27 @@ function formatScore(value: number): string {
 // ─── 内联处理 Modal ─────────────────────────────────────
 const modalOpen = ref(false)
 const submitting = ref(false)
-const targetItem = ref<MyPendingSpotCheckItemVO | null>(null)
+const targetItem = ref<MyPendingSpotCheckItemResponse | null>(null)
 
 // a-input-number v-model:value 不接受 null，未填状态统一用 undefined
 interface SpotCheckForm {
   conclusion: SpotCheckConclusionCode
-  suggestedScore: number | undefined
+  reviewScore: number | undefined
   handleNote: string
 }
 
 const form = reactive<SpotCheckForm>({
   conclusion: 'PASSED',
-  suggestedScore: undefined,
+  reviewScore: undefined,
   handleNote: '',
 })
 
 const valid = computed(() => Boolean(targetItem.value?.id && form.conclusion))
 
-function openHandleModal(item: MyPendingSpotCheckItemVO): void {
+function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
   targetItem.value = item
   form.conclusion = 'PASSED'
-  form.suggestedScore = undefined
+  form.reviewScore = undefined
   form.handleNote = ''
   modalOpen.value = true
 }
@@ -295,7 +306,7 @@ async function submitConclusion(): Promise<void> {
     await handleSpotCheck({
       spotCheckId: targetItem.value.id,
       conclusion: form.conclusion,
-      suggestedScore: form.suggestedScore,
+      reviewScore: form.reviewScore,
       handleNote: form.handleNote.trim() || undefined,
     })
     message.success('已提交抽检处理结论')
@@ -304,7 +315,7 @@ async function submitConclusion(): Promise<void> {
     modalOpen.value = false
     targetItem.value = null
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '处理抽检结论失败')
+    showUserError(error, '阅卷抽检结论提交失败')
   } finally {
     submitting.value = false
   }

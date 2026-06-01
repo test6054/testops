@@ -173,7 +173,7 @@
           </template>
           <template v-else-if="column.key === 'reviewNote'">
             <a-tooltip :title="filteredRequests[index].reviewNote">
-              <div class="reason-cell">{{ filteredRequests[index].reviewNote || '-' }}</div>
+              <div class="reason-cell">{{ reviewNoteText(filteredRequests[index]) }}</div>
             </a-tooltip>
           </template>
         </template>
@@ -218,15 +218,22 @@
         </a-form-item>
         <a-form-item
           :label="
-            sourceQuestionId
-              ? `申请题目ID（来自第 ${sourceQuestionId} 题的复核入口，可手动调整）`
-              : '申请题目ID（可选）'
+            sourceQuestionId ? '复核题目（已带入成绩明细中的题目，可调整）' : '复核题目（可选）'
           "
         >
-          <a-input
+          <a-select
             v-model:value="form.questionIds"
-            placeholder="逗号分隔，例如：1001,1002；不填表示对总分申诉"
+            mode="multiple"
+            placeholder="不选择题目表示申请总分复核"
+            :options="questionOptions"
+            :loading="scoreDetailLoading"
+            :disabled="scoreDetailLoading"
+            option-filter-prop="label"
+            show-search
           />
+          <div v-if="questionLoadError" class="question-load-error">
+            题目列表加载失败，请刷新后重试。
+          </div>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -239,7 +246,16 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
-import type { StudentExamItemVO } from '@/apis/mark/student-exam'
+import {
+  GRADE_REVIEW_REASON_TYPE_LABEL,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
+import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
+import { canSubmitReview, getMyScoreDetail, listMyExams } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -250,14 +266,6 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  GRADE_REVIEW_REASON_TYPE_LABEL,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import { canSubmitReview, listMyExams } from '@/apis/mark/student-exam'
-import {
   UiBadge,
   UiButton,
   UiCard,
@@ -267,6 +275,7 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -278,32 +287,38 @@ const loadingExams = ref(false)
 const loadingRequests = ref(false)
 const submitting = ref(false)
 const submitModalOpen = ref(false)
+const scoreDetailLoading = ref(false)
 
 const exams = ref<StudentExamItemVO[]>([])
 const requests = ref<StudentGradeReviewRequestItemVO[]>([])
+const selectedExamQuestions = ref<StudentQuestionScoreVO[]>([])
 // D-9 错误态：考试 / 复核申请列表加载失败时 UiErrorRetryPanel 重试入口
-const examsLoadError = ref<unknown>(null)
-const requestsLoadError = ref<unknown>(null)
+const examsLoadError = ref<Error | null>(null)
+const requestsLoadError = ref<Error | null>(null)
+const questionLoadError = ref<Error | null>(null)
 const selectedExamId = ref<string | undefined>(undefined)
 const filterExamId = ref<string | undefined>(undefined)
 const filterStatus = ref<GradeReviewRequestStatusCode | undefined>(undefined)
+const DEFAULT_REASON_TYPE: GradeReviewReasonTypeCode = 'SCORE_ERROR'
 
-const form = reactive({
-  reasonType: 'SCORE_ERROR' as GradeReviewReasonTypeCode,
+interface ReviewRequestFormState {
+  reasonType: GradeReviewReasonTypeCode
+  requestReason: string
+  questionIds: string[]
+}
+
+const form = reactive<ReviewRequestFormState>({
+  reasonType: DEFAULT_REASON_TYPE,
   requestReason: '',
-  questionIds: '',
+  questionIds: [],
 })
 
 // 来自 score-detail 题目级复核入口时，记录来源题号用于弹窗内提示
 const sourceQuestionId = ref<string | undefined>(undefined)
 
-const reasonTypeOptions: Array<{ value: GradeReviewReasonTypeCode, label: string }>
-  = Object.entries(GRADE_REVIEW_REASON_TYPE_LABEL).map(([value, label]) => ({
-    value: value as GradeReviewReasonTypeCode,
-    label,
-  }))
+const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -324,6 +339,13 @@ const selectedAppealableExam = computed<StudentExamItemVO | null>(() => {
   if (!selectedExamId.value) return null
   return appealableExams.value.find((e) => e.examId === selectedExamId.value) ?? null
 })
+
+const questionOptions = computed(() =>
+  selectedExamQuestions.value.map((question) => ({
+    value: question.questionTemplateId,
+    label: `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
+  })),
+)
 
 const filteredRequests = computed<StudentGradeReviewRequestItemVO[]>(() => {
   return requests.value.filter((item) => {
@@ -351,7 +373,9 @@ async function loadExams() {
   loadingExams.value = true
   examsLoadError.value = null
   try {
-    exams.value = await listMyExams()
+    const loadedExams = await listMyExams()
+    validateAppealableExamContracts(loadedExams)
+    exams.value = loadedExams
     if (!selectedExamId.value && appealableExams.value.length > 0) {
       const queryExamId = typeof route.query.examId === 'string' ? route.query.examId : undefined
       if (queryExamId && appealableExams.value.some((e) => e.examId === queryExamId)) {
@@ -361,11 +385,19 @@ async function loadExams() {
       }
     }
   } catch (error) {
-    examsLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载考试失败'
-    message.error(msg)
+    examsLoadError.value = toUserError(error, '考试列表加载失败')
+    showUserError(error, '可复核考试加载失败')
   } finally {
     loadingExams.value = false
+  }
+}
+
+/** 校验学生复核入口依赖的已发布成绩字段，合同缺失时进入页面错误态。 */
+function validateAppealableExamContracts(list: StudentExamItemVO[]): void {
+  for (const exam of list) {
+    if (exam.finalScoreStatus === 'PUBLISHED' && exam.finalScore == null) {
+      throw new Error(`已发布成绩缺少发布成绩：examId=${exam.examId}`)
+    }
   }
 }
 
@@ -382,9 +414,8 @@ async function loadRequests() {
       requestStatus: filterStatus.value,
     })
   } catch (error) {
-    requestsLoadError.value = error
-    const msg = error instanceof Error ? error.message : '加载复核申请失败'
-    message.error(msg)
+    requestsLoadError.value = toUserError(error, '复核申请列表加载失败')
+    showUserError(error, '复核申请记录加载失败')
   } finally {
     loadingRequests.value = false
   }
@@ -396,13 +427,7 @@ async function reloadAll() {
 }
 
 function formatPublishedScore(exam: StudentExamItemVO): string {
-  if (exam.finalScoreStatus !== 'PUBLISHED') {
-    throw new Error(`不可复核考试不是已发布状态：examId=${exam.examId}`)
-  }
-  if (exam.finalScore == null) {
-    throw new Error(`已发布成绩缺少最终分数：examId=${exam.examId}`)
-  }
-  return exam.finalScore.toFixed(2)
+  return (exam.finalScore as number).toFixed(2)
 }
 
 function requestStatusTone(status: GradeReviewRequestStatusCode): BadgeTone {
@@ -413,6 +438,13 @@ function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
   return strictEnumLabel(REVIEW_REQUEST_STATUS_LABEL, status, '复核申请状态')
 }
 
+function reviewNoteText(item: StudentGradeReviewRequestItemVO): string {
+  if (item.reviewNote) return item.reviewNote
+  if (item.requestStatus === 'PENDING') return '等待复核处理'
+  if (item.requestStatus === 'IN_REVIEW') return '复核处理中'
+  return '未填写复核意见'
+}
+
 function formatReasonType(value: GradeReviewReasonTypeCode): string {
   return strictEnumLabel(GRADE_REVIEW_REASON_TYPE_LABEL, value, '复核原因类型')
 }
@@ -420,10 +452,11 @@ function formatReasonType(value: GradeReviewReasonTypeCode): string {
 function openSubmitModal() {
   if (!selectedAppealableExam.value) return
   sourceQuestionId.value = undefined
-  form.reasonType = 'SCORE_ERROR'
+  form.reasonType = DEFAULT_REASON_TYPE
   form.requestReason = ''
-  form.questionIds = ''
+  form.questionIds = []
   submitModalOpen.value = true
+  void loadSelectedExamQuestions()
 }
 
 async function submit() {
@@ -439,16 +472,15 @@ async function submit() {
   try {
     const paperInstanceId = selectedAppealableExam.value.paperInstanceId
     if (!paperInstanceId) {
-      message.error(`可复核考试缺少试卷实例 ID：examId=${selectedAppealableExam.value.examId}`)
+      message.error('当前考试信息不完整，暂不能提交复核申请')
       return
     }
-    const questionIdsArray = parseQuestionIds(form.questionIds)
     await submitReviewRequest({
       examId: selectedAppealableExam.value.examId,
       paperInstanceId,
       requestReason: form.requestReason.trim(),
       reasonType: form.reasonType,
-      questionIds: questionIdsArray,
+      questionIds: form.questionIds,
     })
     message.success('复核申请已提交')
     submitModalOpen.value = false
@@ -461,24 +493,10 @@ async function submit() {
     }
     await loadRequests()
   } catch (error) {
-    const msg = error instanceof Error ? error.message : '提交复核申请失败'
-    message.error(msg)
+    showUserError(error, '复核申请提交失败')
   } finally {
     submitting.value = false
   }
-}
-
-function parseQuestionIds(value: string): string[] {
-  const text = value.trim()
-  if (!text) {
-    return []
-  }
-  const tokens = text.split(',').map((item) => item.trim())
-  const invalidToken = tokens.find((item) => !/^[1-9]\d*$/.test(item))
-  if (invalidToken) {
-    throw new Error(`申请题目ID必须为正整数：${invalidToken}`)
-  }
-  return tokens
 }
 
 watch(
@@ -487,6 +505,16 @@ watch(
     if (typeof val === 'string' && appealableExams.value.some((e) => e.examId === val)) {
       selectedExamId.value = val
     }
+  },
+)
+
+watch(
+  () => selectedExamId.value,
+  () => {
+    selectedExamQuestions.value = []
+    questionLoadError.value = null
+    form.questionIds = []
+    sourceQuestionId.value = undefined
   },
 )
 
@@ -505,10 +533,27 @@ function autoOpenFromQuestionQuery(): void {
   if (!queryQuestionId) return
   if (!selectedAppealableExam.value) return
   sourceQuestionId.value = queryQuestionId
-  form.reasonType = 'SCORE_ERROR'
+  form.reasonType = DEFAULT_REASON_TYPE
   form.requestReason = ''
-  form.questionIds = queryQuestionId
+  form.questionIds = [queryQuestionId]
   submitModalOpen.value = true
+  void loadSelectedExamQuestions()
+}
+
+async function loadSelectedExamQuestions(): Promise<void> {
+  if (!selectedAppealableExam.value) return
+  scoreDetailLoading.value = true
+  questionLoadError.value = null
+  try {
+    const detail = await getMyScoreDetail(selectedAppealableExam.value.examId)
+    selectedExamQuestions.value = detail.questions
+  } catch (error) {
+    selectedExamQuestions.value = []
+    questionLoadError.value = toUserError(error, '题目成绩加载失败')
+    showUserError(error, '题目列表加载失败')
+  } finally {
+    scoreDetailLoading.value = false
+  }
 }
 </script>
 
@@ -694,5 +739,11 @@ function autoOpenFromQuestionQuery(): void {
       font-size: 16px;
     }
   }
+}
+
+.question-load-error {
+  margin-top: 6px;
+  color: var(--ant-color-error);
+  font-size: 12px;
 }
 </style>

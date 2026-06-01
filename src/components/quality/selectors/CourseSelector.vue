@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { QualityCourseVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 import { qualityCourseApi } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 import { requirePageList } from './page-contract'
 
 interface Props {
@@ -34,7 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: QualityCourseVO]
+  change: [value: string | null, option?: QualityCourseVO]
 }>()
 
 const options = ref<QualityCourseVO[]>([])
@@ -68,7 +68,7 @@ async function loadOptions() {
     options.value = requirePageList(res, '质量评价课程')
   } catch (e) {
     console.error('[CourseSelector] 加载质量评价课程列表失败', e)
-    message.error('加载课程列表失败')
+    showUserError(e, '质量评价课程列表加载失败')
   } finally {
     loading.value = false
   }
@@ -107,10 +107,11 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.courseCode} · ${opt.courseName}`"
     >
-      <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.courseCode }}</span>
+      <span class="text-xs text-gray-500 mr-1">{{ opt.courseCode }}</span>
       {{ opt.courseName }}
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
+        >)
       </span>
     </a-select-option>
   </a-select>

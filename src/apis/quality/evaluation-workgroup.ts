@@ -4,11 +4,21 @@
  *
  * 工作组层级：PROGRAM（专业级）/ SCHOOL（校级）/ INDUSTRY（行业企业）。
  */
+import type { WorkgroupLevel } from './types'
 import type { ImportResult } from '@/apis/quality/importing'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/evaluation-workgroups'
+
+/** 评价工作组成员角色 - WorkgroupMemberRoleEnum */
+export type WorkgroupMemberRole = 'CONVENER' | 'MEMBER' | 'EXTERNAL_EXPERT'
+
+export const WORKGROUP_MEMBER_ROLE_LABEL: Record<WorkgroupMemberRole, string> = {
+  CONVENER: '召集人',
+  MEMBER: '成员',
+  EXTERNAL_EXPERT: '外部专家',
+}
 
 /**
  * 工作组成员结构化对象（后端 WorkgroupMember 投影）。
@@ -21,7 +31,7 @@ export interface WorkgroupMember {
   /** 姓名；必填 */
   userName: string
   /** 角色；CONVENER / MEMBER / EXTERNAL_EXPERT */
-  role?: string
+  role: WorkgroupMemberRole
   /** 备注：组织 / 单位 / 联系方式等 */
   note?: string
 }
@@ -29,10 +39,12 @@ export interface WorkgroupMember {
 export interface EvaluationWorkgroupVO {
   id: string
   programId: string
+  programName: string
   workgroupCode: string
   workgroupName: string
-  levelCode: string
+  levelCode: WorkgroupLevel
   convenerUserId: string
+  convenerUserName: string
   members: WorkgroupMember[]
   responsibility?: string
   enabled: boolean
@@ -40,32 +52,32 @@ export interface EvaluationWorkgroupVO {
   updateTime?: string
 }
 
-export interface EvaluationWorkgroupSavePayload {
+export interface EvaluationWorkgroupSaveRequest {
   id?: string
   programId: string
   workgroupCode: string
   workgroupName: string
-  levelCode: string
+  levelCode: WorkgroupLevel
   convenerUserId: string
   members: WorkgroupMember[]
   responsibility?: string
   enabled?: boolean
 }
 
-export interface EvaluationWorkgroupQueryPayload extends QueryDto {
+export interface EvaluationWorkgroupQueryRequest extends QueryDto {
   programId?: string
-  levelCode?: string
+  levelCode?: WorkgroupLevel
   enabled?: boolean
 }
 
 export const evaluationWorkgroupApi = {
-  page: (data: EvaluationWorkgroupQueryPayload) =>
+  page: (data: EvaluationWorkgroupQueryRequest) =>
     http.post<PageResult<EvaluationWorkgroupVO>>(`${BASE}/page`, data),
   detail: (id: string) =>
     http.post<EvaluationWorkgroupVO>(`${BASE}/detail`, { id }),
-  create: (data: EvaluationWorkgroupSavePayload) =>
+  create: (data: EvaluationWorkgroupSaveRequest) =>
     http.post<string>(`${BASE}/create`, data),
-  update: (data: EvaluationWorkgroupSavePayload) =>
+  update: (data: EvaluationWorkgroupSaveRequest) =>
     http.post<void>(`${BASE}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${BASE}/delete`, { id }),

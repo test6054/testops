@@ -19,10 +19,7 @@
           {{ item.label }}
         </span>
 
-        <RightOutlined
-          v-if="index < props.items.length - 1"
-          class="ui-breadcrumbs__separator"
-        />
+        <RightOutlined v-if="index < props.items.length - 1" class="ui-breadcrumbs__separator" />
       </li>
     </ol>
   </nav>
@@ -38,25 +35,26 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  items?: UiBreadcrumbItem[]
-  clickableLast?: boolean
-}>(), {
-  items: () => [],
-  clickableLast: false,
-})
+const props = withDefaults(
+  defineProps<{
+    items?: UiBreadcrumbItem[]
+    clickableLast?: boolean
+  }>(),
+  {
+    items: () => [],
+    clickableLast: false,
+  },
+)
 
 const emit = defineEmits<{
-  (e: 'navigate', payload: { item: UiBreadcrumbItem, index: number }): void
+  (e: 'navigate', navigateEvent: { item: UiBreadcrumbItem; index: number }): void
 }>()
 
 const router = useRouter()
 
 const isClickable = (item: UiBreadcrumbItem, index: number) => {
-  if (item.disabled)
-    return false
-  if (!props.clickableLast && index === props.items.length - 1)
-    return false
+  if (item.disabled) return false
+  if (!props.clickableLast && index === props.items.length - 1) return false
   return !!item.path || !!item.href
 }
 
@@ -68,8 +66,7 @@ const handleNavigate = (item: UiBreadcrumbItem, index: number) => {
     return
   }
 
-  if (item.path)
-    router.push(item.path)
+  if (item.path) router.push(item.path)
 }
 </script>
 

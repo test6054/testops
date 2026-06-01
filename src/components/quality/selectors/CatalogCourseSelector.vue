@@ -7,9 +7,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 import { courseCatalogApi } from '@/apis/quality/user-catalog'
+import { onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
 interface Props {
@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: CourseListVO]
+  change: [value: string | null, option?: CourseListVO]
 }>()
 
 const options = ref<CourseListVO[]>([])
@@ -53,14 +53,13 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    options.value
-      = requireArrayResult(
-        await courseCatalogApi.authorizedByMajorCategory(props.majorCategoryId || undefined),
-        '目录课程',
-      )
+    options.value = requireArrayResult(
+      await courseCatalogApi.authorizedByMajorCategory(props.majorCategoryId || undefined),
+      '目录课程',
+    )
   } catch (e) {
     console.error('[CatalogCourseSelector] 加载课程目录失败', e)
-    message.error('加载课程目录失败')
+    showUserError(e, '课程目录加载失败')
   } finally {
     loading.value = false
   }
@@ -94,9 +93,7 @@ defineExpose({ reload: loadOptions })
     @change="handleChange"
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.courseName">
-      <span v-if="opt.courseCode" class="font-mono text-xs text-gray-500 mr-1">{{
-        opt.courseCode
-      }}</span>
+      <span v-if="opt.courseCode" class="text-xs text-gray-500 mr-1">{{ opt.courseCode }}</span>
       {{ opt.courseName }}
       <span v-if="opt.majorCategoryName" class="text-gray-400 ml-1">{{
         opt.majorCategoryName
@@ -106,10 +103,6 @@ defineExpose({ reload: loadOptions })
 </template>
 
 <style scoped>
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
 .text-xs {
   font-size: 12px;
 }

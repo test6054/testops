@@ -108,7 +108,7 @@
           v-if="candidatesLoadError"
           :error="candidatesLoadError"
           title="成绩确认列表加载失败"
-          :helper="`考试 ID：${selectedExamId}`"
+          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
           compact
           @retry="loadCandidates"
         />
@@ -127,8 +127,16 @@
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'studentName'">
-              <a-typography-text strong :content="candidates[index].studentName" />
+            <template v-if="column.key === 'paperDisplay'">
+              <div class="score-finalize__identity-cell">
+                <a-typography-text strong :content="candidates[index].paperDisplay.primaryText" />
+                <span
+                  v-if="candidates[index].paperDisplay.secondaryText"
+                  class="score-finalize__hint"
+                >
+                  {{ candidates[index].paperDisplay.secondaryText }}
+                </span>
+              </div>
             </template>
             <template v-else-if="column.key === 'finalScore'">
               <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
@@ -138,11 +146,8 @@
             </template>
             <template v-else-if="column.key === 'bias'">
               <div class="score-finalize__bias-cell">
-                <UiTag
-                  :tone="BIAS_LEVEL_TONE[classifyBias(candidates[index].finalScore)]"
-                  size="sm"
-                >
-                  {{ BIAS_LEVEL_LABEL[classifyBias(candidates[index].finalScore)] }}
+                <UiTag :tone="biasLevelTone(classifyBias(candidates[index].finalScore))" size="sm">
+                  {{ biasLevelLabel(classifyBias(candidates[index].finalScore)) }}
                 </UiTag>
                 <span
                   v-if="biasDelta(candidates[index].finalScore)"
@@ -213,14 +218,11 @@
         <UiEmpty v-if="!paperScore" description="暂无成绩明细" />
         <div v-else>
           <a-descriptions :column="2" size="small" bordered class="score-finalize__detail-summary">
-            <a-descriptions-item label="考生">
-              {{ detailCandidate?.studentName }}（{{ detailCandidate?.studentNo }}）
+            <a-descriptions-item label="答卷">
+              {{ detailCandidate?.paperDisplay.primaryText }}
             </a-descriptions-item>
             <a-descriptions-item label="班级">
               {{ detailCandidate?.studentClassName }}
-            </a-descriptions-item>
-            <a-descriptions-item label="试卷实例">
-              <a-typography-text :content="paperScore.paperInstanceId" copyable />
             </a-descriptions-item>
             <a-descriptions-item label="总分">
               <a-typography-text strong type="success">
@@ -248,9 +250,9 @@
               <template v-if="column.key === 'questionNo'">
                 <UiTag tone="blue" size="sm">{{ paperQuestions[index].questionNo }}</UiTag>
               </template>
-              <template v-else-if="column.key === 'finalScore'">
-                <a-typography-text v-if="paperQuestions[index].finalScore != null" strong>
-                  {{ paperQuestions[index].finalScore }}
+              <template v-else-if="column.key === 'teacherReviewScore'">
+                <a-typography-text v-if="paperQuestions[index].teacherReviewScore != null" strong>
+                  {{ paperQuestions[index].teacherReviewScore }}
                 </a-typography-text>
                 <span v-else class="score-finalize__hint">-</span>
               </template>
@@ -304,19 +306,6 @@
           style="display: flex; align-items: center; justify-content: space-between; width: 100%"
         >
           <h3 class="ui-drawer__title">试卷成绩明细</h3>
-          <UiButton
-            v-if="
-              detailCandidate?.paperInstanceId && detailCandidate?.finalScoreStatus === 'PUBLISHED'
-            "
-            variant="outline"
-            size="sm"
-            @click="handleDeanonymize"
-          >
-            <template #icon>
-              <EyeOutlined />
-            </template>
-            解匿名查看
-          </UiButton>
         </div>
       </template>
     </UiDrawer>
@@ -335,21 +324,17 @@
         <UiAlertStrip
           tone="info"
           title="确认说明"
-          description="后端将以题目确认得分重新汇总作为最终总分。确认后状态进入「已确认」，需要进一步「发布」才会通知学生。"
+          description="系统将以题目确认得分重新汇总为教师复核评分。确认后状态进入「已确认」，需要进一步「发布」才会通知学生。"
           dense
           class="score-finalize__alert"
         />
         <a-form-item label="考生">
           <a-input
-            :value="
-              confirmCandidate
-                ? `${confirmCandidate.studentName}（${confirmCandidate.studentNo}）`
-                : ''
-            "
+            :value="confirmCandidate ? confirmCandidate.paperDisplay.primaryText : ''"
             disabled
           />
         </a-form-item>
-        <a-form-item label="试卷计算总分将作为最终分">
+        <a-form-item label="试卷计算总分将作为教师复核评分">
           <a-input
             :value="confirmComputedScore != null ? `${confirmComputedScore} 分` : '加载中...'"
             disabled
@@ -381,11 +366,7 @@
         />
         <a-form-item label="考生">
           <a-input
-            :value="
-              withdrawCandidate
-                ? `${withdrawCandidate.studentName}（${withdrawCandidate.studentNo}）`
-                : ''
-            "
+            :value="withdrawCandidate ? withdrawCandidate.paperDisplay.primaryText : ''"
             disabled
           />
         </a-form-item>
@@ -401,7 +382,7 @@
       </a-form>
     </UiDrawer>
 
-    <!-- D-3 下一步建议：确认成功后弹出，可选择继续核对下一份 / 跳转成绩发布 -->
+    <!-- D-3 下一步动作：确认成功后弹出，可选择继续核对下一份 / 跳转成绩发布 -->
     <a-modal
       :open="nextStep.visible"
       :title="nextStep.title"
@@ -441,26 +422,18 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
-import type { OperationLogVO } from '@/apis/mark/admin-audit'
+import type { OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
+import { listOperationLogs, OPERATION_TYPE_LABEL } from '@/apis/mark/admin-audit'
 import type {
   ExamPaperScoreVO,
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
-import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { listOperationLogs } from '@/apis/mark/admin-audit'
 import {
   confirmFinalScore,
-  deanonymizePaper,
   FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
   getPaperScore,
   pageExams,
@@ -468,6 +441,13 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
+import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   UiActivityTimeline,
   UiAlertStrip,
@@ -485,6 +465,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -498,11 +479,7 @@ function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
   return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, value, '最终成绩状态')
 }
 
-// 直接从后端真实枚举 LABEL 对象派生 select options，零 as 断言。
-const finalStatusOptions = Object.entries(FINAL_SCORE_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const finalStatusOptions = FINAL_SCORE_STATUS_OPTIONS
 
 const router = useRouter()
 
@@ -510,6 +487,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   selectedExam,
   onExamChange,
   init: initExamSelector,
@@ -518,7 +496,7 @@ const {
 // ─── 考生名单（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemVO[]>([])
 const loading = ref(false)
-const candidatesLoadError = ref<unknown>(null)
+const candidatesLoadError = ref<Error | null>(null)
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
@@ -531,12 +509,11 @@ const pagination = reactive<TablePaginationConfig>({
 })
 
 const columns: ColumnType<ExamScoreSummaryItemVO>[] = [
-  { title: '学号', dataIndex: 'studentNo', key: 'studentNo', width: 140 },
-  { title: '姓名', key: 'studentName', width: 120 },
+  { title: '答卷', key: 'paperDisplay', width: 220 },
   { title: '班级', dataIndex: 'studentClassName', key: 'studentClassName', width: 160 },
-  { title: '最终分', key: 'finalScore', width: 110 },
+  { title: '教师复核评分', key: 'finalScore', width: 130 },
   { title: '偏差', key: 'bias', width: 130 },
-  { title: '最终状态', key: 'finalScoreStatus', width: 110 },
+  { title: '成绩状态', key: 'finalScoreStatus', width: 110 },
   { title: '确认时间', key: 'confirmedTime', width: 170 },
   { title: '操作', key: 'actions', width: 320, fixed: 'right' },
 ]
@@ -554,17 +531,16 @@ async function loadCandidates(): Promise<void> {
       pageSize: pagination.pageSize ?? 20,
     })
     if (!Array.isArray(result.list)) {
-      const errMsg = '成绩确认候选列表响应缺少 list 数组'
-      candidatesLoadError.value = new TypeError(errMsg)
-      message.error(errMsg)
-      return
+      throw new TypeError('成绩确认候选列表响应缺少 list 数组')
     }
     candidates.value = result.list
-    pagination.total = result.total
+    pagination.total = Number(result.total)
   } catch (error) {
-    candidatesLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '成绩汇总加载失败'
-    message.error(errMsg)
+    candidatesLoadError.value =
+      error instanceof Error
+        ? error
+        : new Error(getUserErrorMessage(error, '成绩确认名单加载失败，请稍后重试'))
+    showUserError(error, '成绩确认名单加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -582,9 +558,9 @@ function handleReset(): void {
   void loadCandidates()
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }): void {
-  pagination.current = payload.current
-  pagination.pageSize = payload.pageSize
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
 }
 
@@ -671,7 +647,7 @@ const candidateBuckets = computed<Record<FinalScoreStatusCode, number>>(() => {
  * 因后端为服务端分页，统计口径在视觉上限定为「当前页」，避免误导教师把页内异常当作整考试异常。
  * 当样本数 < 3 或方差为 0 时，stddev 返回 0，模板侧降级为「样本不足」展示。
  */
-const pageScoreStats = computed<{ count: number, mean: number, stddev: number }>(() => {
+const pageScoreStats = computed<{ count: number; mean: number; stddev: number }>(() => {
   const scores = candidates.value
     .map((c) => c.finalScore)
     .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
@@ -699,25 +675,33 @@ function classifyBias(score: number | undefined): BiasLevel {
 }
 
 const BIAS_LEVEL_LABEL: Record<BiasLevel, string> = {
-  "normal": '≈ 正常',
+  normal: '≈ 正常',
   'mild-high': '↑ 偏高',
   'mild-low': '↓ 偏低',
   'severe-high': '⇈ 显著偏高',
   'severe-low': '⇊ 显著偏低',
-  "insufficient": '-',
+  insufficient: '-',
 }
 
 const BIAS_LEVEL_TONE: Record<BiasLevel, BadgeTone> = {
-  "normal": 'gray',
+  normal: 'gray',
   'mild-high': 'blue',
   'mild-low': 'orange',
   'severe-high': 'purple',
   'severe-low': 'red',
-  "insufficient": 'gray',
+  insufficient: 'gray',
+}
+
+function biasLevelLabel(level: BiasLevel): string {
+  return strictEnumLabel(BIAS_LEVEL_LABEL, level, '成绩偏差等级')
+}
+
+function biasLevelTone(level: BiasLevel): BadgeTone {
+  return strictEnumTone(BIAS_LEVEL_TONE, level, '成绩偏差等级')
 }
 
 /** D-3 顶部偏差提示：当前页严重偏离样本数 */
-const biasAlert = computed<{ visible: boolean, severeCount: number, message: string }>(() => {
+const biasAlert = computed<{ visible: boolean; severeCount: number; message: string }>(() => {
   const { count, mean, stddev } = pageScoreStats.value
   if (count < 3 || stddev === 0) {
     return { visible: false, severeCount: 0, message: '' }
@@ -733,7 +717,7 @@ const biasAlert = computed<{ visible: boolean, severeCount: number, message: str
   return {
     visible: true,
     severeCount: severe,
-    message: `当前页有 ${severe} 名考生最终分偏离均值 ≥ 1.5 倍标准差（均值 ${meanText} / σ ${stdText}），建议对照原卷复核。`,
+    message: `当前页有 ${severe} 名考生教师复核评分偏离均值 ≥ 1.5 倍标准差（均值 ${meanText} / σ ${stdText}），请对照原卷复核。`,
   }
 })
 
@@ -772,7 +756,7 @@ const finalizeStepItems = computed(() => {
     {
       key: 'calculate',
       title: '1. 计算总分',
-      description: '后端按题目得分汇总到 paper_total_score；进入此步后教师可点击「确认」。',
+      description: '系统按题目得分汇总为试卷总分；进入此步后教师可点击「确认」。',
       meta: total > 0 ? `${calculated} / ${total}` : '-',
       percent: calcPercent,
       status: deriveStatus(calcPercent, calculated),
@@ -817,55 +801,66 @@ const detailLoading = ref(false)
 const detailCandidate = ref<ExamScoreSummaryItemVO | null>(null)
 const paperScore = ref<ExamPaperScoreVO | null>(null)
 
-// computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record:any。
+// computed 派生强类型题目数组，模板侧用 paperQuestions[index] 取 VO，避免 a-table slot record 类型丢失。
 const paperQuestions = computed<ExamQuestionScoreVO[]>(() => paperScore.value?.questions ?? [])
 
 const paperItemColumns: ColumnType<ExamQuestionScoreVO>[] = [
   { title: '题号', key: 'questionNo', width: 80 },
   { title: '题型', dataIndex: 'questionType', key: 'questionType', width: 100 },
   { title: '满分', dataIndex: 'fullScore', key: 'fullScore', width: 80 },
-  { title: '最终得分', key: 'finalScore', width: 100 },
+  { title: '题目得分', key: 'teacherReviewScore', width: 100 },
   { title: '状态', dataIndex: 'gradeStatus', key: 'gradeStatus', width: 110 },
 ]
 
 // ─── B-6 操作记录（审计可追溯） ─────────────────────────────
 const auditLogs = ref<OperationLogVO[]>([])
 const auditLoading = ref(false)
+const TRACE_TAG_TONE: BadgeTone = 'gray'
 
-type ScoreAuditOperationType = 'SCORE_CONFIRM' | 'SCORE_PUBLISH' | 'SCORE_WITHDRAW' | 'SCORE_CHANGE'
-
-/** 后端真实操作类型与文案（admin-audit 中的 OPERATION_TYPE_LABEL 用的是不同 key，本页按真实落库口径再列一次） */
-const SCORE_AUDIT_LABEL: Record<ScoreAuditOperationType, string> = {
-  SCORE_CONFIRM: '确认最终成绩',
-  SCORE_PUBLISH: '发布最终成绩',
-  SCORE_WITHDRAW: '撤回最终成绩',
-  SCORE_CHANGE: '题目得分变更',
-}
-
-const SCORE_AUDIT_TONE: Record<ScoreAuditOperationType, BadgeTone> = {
+const SCORE_AUDIT_TONE: Record<OperationTypeCode, BadgeTone> = {
+  SCORE_CHANGE: 'orange',
   SCORE_CONFIRM: 'blue',
   SCORE_PUBLISH: 'green',
   SCORE_WITHDRAW: 'red',
-  SCORE_CHANGE: 'orange',
-}
-
-function isScoreAuditOperationType(value: unknown): value is ScoreAuditOperationType {
-  return (
-    value === 'SCORE_CONFIRM'
-    || value === 'SCORE_PUBLISH'
-    || value === 'SCORE_WITHDRAW'
-    || value === 'SCORE_CHANGE'
-  )
+  REVIEW_REQUEST_HANDLE: 'blue',
+  GRADE_CORRECTION_CREATE: 'orange',
+  QUALITY_OVERRIDE: 'orange',
+  ABSENCE_CONFIRM: 'gray',
+  ABSENCE_REVOKE: 'gray',
+  ABSENCE_RECONCILE: 'gray',
+  DUPLICATE_RESOLVE: 'orange',
+  BINDING_CONFIRM: 'blue',
+  DEANONYMIZE: 'purple',
+  REPAIR_SUBMIT: 'orange',
+  SPOT_CHECK_ABNORMAL: 'red',
+  BATCH_REPROCESS: 'orange',
+  GRADE_PASSBACK_EXECUTE: 'blue',
+  GRADE_PASSBACK_RECONCILE: 'blue',
+  GRADE_PASSBACK_CALLBACK: 'blue',
+  SYNC_TASK_RETRY: 'orange',
+  SYNC_TASK_CANCEL: 'gray',
+  EXPORT_CREATE: 'blue',
+  EXPORT_START: 'blue',
+  EXPORT_COMPLETE: 'green',
+  EXPORT_FAIL: 'red',
+  ARCHIVE_CREATE: 'blue',
+  ARCHIVE_PACKAGE_START: 'blue',
+  ARCHIVE_PACKAGE_COMPLETE: 'green',
+  ARCHIVE_PACKAGE_FAIL: 'red',
+  ARCHIVE_APPRAISAL_REQUEST: 'orange',
+  ARCHIVE_APPRAISAL_DECIDE: 'blue',
+  ARCHIVE_RETENTION_EXTEND: 'orange',
+  ARCHIVE_DESTRUCTION_REQUEST: 'orange',
+  ARCHIVE_DESTRUCTION_APPROVE: 'red',
+  ARCHIVE_DESTROY: 'red',
 }
 
 function scoreAuditTitle(log: OperationLogVO): string {
-  if (isScoreAuditOperationType(log.operationType)) return SCORE_AUDIT_LABEL[log.operationType]
-  return '审计操作类型异常'
+  return strictEnumLabel(OPERATION_TYPE_LABEL, log.operationType, '审计操作类型')
 }
 
 function scoreAuditTone(log: OperationLogVO): BadgeTone {
-  if (isScoreAuditOperationType(log.operationType)) return SCORE_AUDIT_TONE[log.operationType]
-  return 'red'
+  return strictEnumTone(SCORE_AUDIT_TONE, log.operationType, '审计操作类型')
 }
 
 async function loadPaperAuditLogs(): Promise<void> {
@@ -875,19 +870,20 @@ async function loadPaperAuditLogs(): Promise<void> {
   }
   auditLoading.value = true
   try {
-    const all = await listOperationLogs({
+    const page = await listOperationLogs({
       examId: selectedExamId.value,
-      targetType: 'FINAL_SCORE',
+      targetType: 'EXAM_FINAL_SCORE',
       targetId: detailCandidate.value.paperInstanceId,
+      pageNum: 1,
+      pageSize: 200,
     })
-    auditLogs.value = all.sort((a, b) => {
+    auditLogs.value = page.list.sort((a, b) => {
       const ta = a.createTime ? dayjs(a.createTime).valueOf() : 0
       const tb = b.createTime ? dayjs(b.createTime).valueOf() : 0
       return tb - ta
     })
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '操作记录加载失败'
-    message.warning(errMsg)
+    message.warning(getUserErrorMessage(error, '操作记录加载失败'))
     auditLogs.value = []
   } finally {
     auditLoading.value = false
@@ -905,7 +901,7 @@ const auditTimelineGroups = computed(() => {
       actor: log.operatorRole ? `操作角色：${log.operatorRole}` : undefined,
       tone: scoreAuditTone(log),
       tags: log.traceId
-        ? [{ label: `traceId ${log.traceId.slice(0, 8)}…`, tone: 'gray' as BadgeTone }]
+        ? [{ label: `处理追踪编号 ${log.traceId.slice(0, 8)}…`, tone: TRACE_TAG_TONE }]
         : undefined,
     }
   })
@@ -982,15 +978,14 @@ async function loadHistoricalScores(): Promise<void> {
         return ta - tb
       })
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '历次成绩趋势加载失败'
-    message.warning(errMsg)
+    message.warning(getUserErrorMessage(error, '历次成绩趋势加载失败'))
     historicalScores.value = []
   } finally {
     historicalLoading.value = false
   }
 }
 
-/** UiTrendChart 输入：考试名为 label，最终分为 value，当前考试 key 用于 modelValue 高亮 */
+/** UiTrendChart 输入：考试名为 label，教师复核评分为 value，当前考试 key 用于 modelValue 高亮 */
 const historicalTrendPoints = computed<UiTrendPoint[]>(() => {
   return historicalScores.value.map((p) => ({
     key: p.examId,
@@ -1029,30 +1024,13 @@ async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
   try {
     paperScore.value = await getPaperScore(selectedExamId.value, record.paperInstanceId)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '成绩明细加载失败'
-    message.error(errMsg)
+    showUserError(error, '成绩明细加载失败')
   } finally {
     detailLoading.value = false
   }
   // 操作记录、历次成绩趋势与成绩明细并行展示但顺序加载，避免单点失败阻断主明细
   void loadPaperAuditLogs()
   void loadHistoricalScores()
-}
-
-async function handleDeanonymize(): Promise<void> {
-  if (!selectedExamId.value || !detailCandidate.value?.paperInstanceId) return
-  try {
-    const result = await deanonymizePaper({
-      examId: selectedExamId.value,
-      paperInstanceId: detailCandidate.value.paperInstanceId,
-      revealScenario: 'SCORE_FINALIZE_REVIEW',
-      reason: '成绩确认明细查看考生身份',
-    })
-    message.success(`解匿名成功：${result.studentName}（${result.studentNo}）`)
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '解匿名失败'
-    message.error(errMsg)
-  }
 }
 
 // ─── 确认成绩 Modal ─────────────────────────────
@@ -1072,12 +1050,11 @@ async function openConfirmModal(record: ExamScoreSummaryItemVO): Promise<void> {
     const score = await getPaperScore(selectedExamId.value, record.paperInstanceId)
     confirmComputedScore.value = score.totalScore ?? 0
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '试卷计算总分加载失败'
-    message.warning(errMsg)
+    message.warning(getUserErrorMessage(error, '试卷总分加载失败'))
   }
 }
 
-// ─── D-3 下一步建议 ─────────────────────────────
+// ─── D-3 下一步动作 ─────────────────────────────
 type NextStepKind = 'all-confirmed' | 'continue-next' | 'none'
 
 interface NextStepState {
@@ -1118,14 +1095,14 @@ function deriveNextStepSuggestion(): void {
       visible: true,
       kind: 'all-confirmed',
       title: '本场全部成绩已核定',
-      description: `共 ${total} 名考生：已确认 ${b.CONFIRMED} · 已发布 ${b.PUBLISHED} · 已撤回 ${b.WITHDRAWN} · 已更正 ${b.CORRECTED}。建议进入「成绩发布」推进到学生侧。`,
+      description: `共 ${total} 名考生：已确认 ${b.CONFIRMED} · 已发布 ${b.PUBLISHED} · 已撤回 ${b.WITHDRAWN} · 已更正 ${b.CORRECTED}。进入「成绩发布」可推进到学生侧。`,
       nextCandidate: null,
     }
     return
   }
   // 当前页找下一份未确认
-  const next
-    = candidates.value.find(
+  const next =
+    candidates.value.find(
       (c) => c.finalScoreStatus === 'CALCULATED' || c.finalScoreStatus === 'PENDING',
     ) ?? null
   if (next) {
@@ -1133,7 +1110,7 @@ function deriveNextStepSuggestion(): void {
       visible: true,
       kind: 'continue-next',
       title: '继续核对下一份',
-      description: `当前页还有 ${b.CALCULATED + b.PENDING} 名考生待确认。下一位待确认：${next.studentName}（${next.studentNo}）。`,
+      description: `当前页还有 ${b.CALCULATED + b.PENDING} 名考生待确认。下一份待确认：${next.paperDisplay.primaryText}。`,
       nextCandidate: next,
     }
     return
@@ -1143,7 +1120,7 @@ function deriveNextStepSuggestion(): void {
     visible: true,
     kind: 'continue-next',
     title: '当前页已全部核对',
-    description: `当前页 ${pagination.pageSize} 条已处理，全场仍有未确认成绩。建议翻到下一页继续核对。`,
+    description: `当前页 ${pagination.pageSize} 条已处理，全场仍有未确认成绩。请翻到下一页继续核对。`,
     nextCandidate: null,
   }
 }
@@ -1181,8 +1158,7 @@ async function handleConfirm(): Promise<void> {
     await loadCandidates()
     deriveNextStepSuggestion()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '成绩确认失败'
-    message.error(errMsg)
+    showUserError(error, '成绩确认失败')
   } finally {
     confirming.value = false
   }
@@ -1199,8 +1175,7 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
     message.success('成绩已发布，学生通知已下发')
     await loadCandidates()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '成绩发布失败'
-    message.error(errMsg)
+    showUserError(error, '成绩发布失败')
   }
 }
 
@@ -1234,8 +1209,7 @@ async function handleWithdraw(): Promise<void> {
     withdrawOpen.value = false
     await loadCandidates()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '成绩撤回失败'
-    message.error(errMsg)
+    showUserError(error, '成绩撤回失败')
   } finally {
     withdrawing.value = false
   }

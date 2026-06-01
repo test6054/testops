@@ -5,19 +5,16 @@
 -->
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ArchiveVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
+import type { ArchiveBusinessType, ArchiveVO } from '@/apis/quality'
+import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi } from '@/apis/quality'
 import { onMounted, ref, watch } from 'vue'
-import {
-  ARCHIVE_BUSINESS_TYPE_LABEL,
-  archiveApi,
-  isArchiveBusinessType,
-} from '@/apis/quality'
+import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
-  businessType?: string | null
+  businessType?: ArchiveBusinessType | null
   archiveCategory?: string | null
   /** 仅返回已被档案室确认的归档 */
   onlyConfirmed?: boolean
@@ -37,7 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: ArchiveVO]
+  change: [value: string | null, option?: ArchiveVO]
 }>()
 
 const options = ref<ArchiveVO[]>([])
@@ -69,16 +66,14 @@ async function loadOptions() {
     options.value = requirePageList(res, '材料归档')
   } catch (e) {
     console.error('[ArchiveSelector] 加载归档列表失败', e)
-    message.error('加载归档列表失败')
+    showUserError(e, '质量档案列表加载失败')
   } finally {
     loading.value = false
   }
 }
 
-function archiveBusinessTypeLabel(value: unknown): string {
-  if (value == null || value === '') return ''
-  if (isArchiveBusinessType(value)) return ARCHIVE_BUSINESS_TYPE_LABEL[value]
-  throw new Error(`材料归档业务类型不符合前后端契约：${String(value)}`)
+function archiveBusinessTypeLabel(value: ArchiveBusinessType): string {
+  return strictEnumLabel(ARCHIVE_BUSINESS_TYPE_LABEL, value, '归档业务类型')
 }
 
 function handleChange(val: SelectValue) {
@@ -109,7 +104,7 @@ defineExpose({ reload: loadOptions })
     @change="handleChange"
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.archiveCode">
-      <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.archiveCode }}</span>
+      <span class="text-xs text-gray-500 mr-1">{{ opt.archiveCode }}</span>
       <span v-if="opt.fileName">{{ opt.fileName }}</span>
       <span v-if="opt.businessType" class="text-gray-400 ml-1">
         · {{ archiveBusinessTypeLabel(opt.businessType) }}
@@ -119,10 +114,6 @@ defineExpose({ reload: loadOptions })
 </template>
 
 <style scoped>
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
 .text-xs {
   font-size: 12px;
 }

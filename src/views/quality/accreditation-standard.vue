@@ -7,24 +7,21 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 权限：通常由系统管理员或平台运维维护；该页面只做 CRUD。
  */
 import type {
-  AccreditationStandardQueryPayload,
-  AccreditationStandardSavePayload,
+  AccreditationStandardQueryRequest,
+  AccreditationStandardSaveRequest,
   AccreditationStandardSummaryVO,
   AccreditationStandardVO,
   AccreditationType,
 } from '@/apis/quality'
+import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import {
-  ACCREDITATION_TYPE_LABEL,
-  accreditationStandardApi,
-  isAccreditationType,
-} from '@/apis/quality'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<AccreditationStandardVO[]>([])
 const total = ref(0)
@@ -36,7 +33,7 @@ const summary = ref<AccreditationStandardSummaryVO>({
   pilotOnlyCount: 0,
   accreditationTypeCount: 0,
 })
-const query = reactive<AccreditationStandardQueryPayload>({
+const query = reactive<AccreditationStandardQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   accreditationType: undefined,
@@ -46,7 +43,7 @@ const query = reactive<AccreditationStandardQueryPayload>({
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
-const editor = reactive<AccreditationStandardSavePayload>({
+const editor = reactive<AccreditationStandardSaveRequest>({
   standardCode: '',
   standardName: '',
   accreditationType: 'ENGINEERING_ACCREDITATION',
@@ -59,6 +56,12 @@ const editor = reactive<AccreditationStandardSavePayload>({
   isPilotOnly: false,
 })
 const submitting = ref(false)
+
+interface AccreditationStandardFilterModel {
+  accreditationType?: AccreditationType
+  enabled?: 'enabled' | 'disabled'
+  keyword: string
+}
 
 const ACCREDITATION_TYPES: AccreditationType[] = [
   'ENGINEERING_ACCREDITATION',
@@ -73,7 +76,7 @@ const ACCREDITATION_TYPES: AccreditationType[] = [
 
 const accreditationOptions = ACCREDITATION_TYPES.map((value) => ({
   value,
-  label: ACCREDITATION_TYPE_LABEL[value],
+  label: strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型'),
 }))
 
 const columns: ColumnsType<AccreditationStandardVO> = [
@@ -118,20 +121,14 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const filterModel = ref<Record<string, unknown>>({
+const filterModel = ref<AccreditationStandardFilterModel>({
   accreditationType: undefined,
   enabled: undefined,
   keyword: '',
 })
 
-/**
- * 在 a-table bodyCell 中按枚举守卫转文案，避免后端返回前端未覆盖枚举时 label 为 undefined 直接显示空白。
- */
-function accreditationTypeLabel(value: unknown): string {
-  if (!isAccreditationType(value)) {
-    return typeof value === 'string' && value ? `未识别认证类型：${value}` : '-'
-  }
-  return ACCREDITATION_TYPE_LABEL[value]
+function accreditationTypeLabel(value: AccreditationType): string {
+  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
 }
 
 async function loadList() {
@@ -142,7 +139,7 @@ async function loadList() {
       keyword: query.keyword?.trim() || undefined,
     })
     list.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
@@ -156,18 +153,21 @@ async function loadPageData() {
   await Promise.all([loadList(), loadSummary()])
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
 function syncFilterToQuery() {
-  const accTypeRaw = filterModel.value.accreditationType
-  query.accreditationType = isAccreditationType(accTypeRaw) ? accTypeRaw : undefined
-  const enabledRaw = filterModel.value.enabled
-  query.enabled = enabledRaw === 'enabled' ? true : enabledRaw === 'disabled' ? false : undefined
-  query.keyword = typeof filterModel.value.keyword === 'string' ? filterModel.value.keyword : ''
+  query.accreditationType = filterModel.value.accreditationType
+  query.enabled =
+    filterModel.value.enabled === 'enabled'
+      ? true
+      : filterModel.value.enabled === 'disabled'
+        ? false
+        : undefined
+  query.keyword = filterModel.value.keyword
 }
 
 function handleSearch() {
@@ -315,9 +315,9 @@ onMounted(() => loadPageData())
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'accreditationType'">
-            {{ accreditationTypeLabel(text) }}
+            {{ accreditationTypeLabel(record.accreditationType) }}
           </template>
           <template v-else-if="column.key === 'enabled'">
             <a-tag :color="record.enabled ? 'green' : 'default'">

@@ -1,3 +1,4 @@
+import type { CivicDimension } from './types'
 /**
  * 毕业要求观测点 + 观测点-标准映射 API
  *
@@ -20,14 +21,13 @@ export interface RequirementIndicatorVO {
   description?: string
   requirementWeight: number
   thresholdValue?: number
-  /** 五育维度标签集合：逗号分隔的 CivicDimension */
-  civicDimensions?: string
+  civicDimensions?: CivicDimension[]
   sortOrder?: number
   createTime?: string
   updateTime?: string
 }
 
-export interface RequirementIndicatorSavePayload {
+export interface RequirementIndicatorSaveRequest {
   id?: string
   requirementId: string
   indicatorCode: string
@@ -35,8 +35,7 @@ export interface RequirementIndicatorSavePayload {
   description?: string
   requirementWeight: number
   thresholdValue?: number
-  // 后端 RequirementIndicatorSaveRequest.civicDimensions 是 String：逗号分隔的 CivicDimension 代码列表。
-  civicDimensions?: string
+  civicDimensions?: CivicDimension[]
   sortOrder?: number
 }
 
@@ -50,7 +49,7 @@ export interface RequirementStandardMappingVO {
   updateTime?: string
 }
 
-export interface RequirementStandardMappingSavePayload {
+export interface RequirementStandardMappingSaveRequest {
   id?: string
   requirementId: string
   standardId: string
@@ -61,14 +60,10 @@ export interface RequirementStandardMappingSavePayload {
 export const requirementIndicatorApi = {
   listByRequirement: (requirementId: string) =>
     http.post<RequirementIndicatorVO[]>(`${INDICATOR}/list-by-requirement`, { id: requirementId }),
-  detail: (id: string) =>
-    http.post<RequirementIndicatorVO>(`${INDICATOR}/detail`, { id }),
-  create: (data: RequirementIndicatorSavePayload) =>
-    http.post<string>(`${INDICATOR}/create`, data),
-  update: (data: RequirementIndicatorSavePayload) =>
-    http.post<void>(`${INDICATOR}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${INDICATOR}/delete`, { id }),
+  detail: (id: string) => http.post<RequirementIndicatorVO>(`${INDICATOR}/detail`, { id }),
+  create: (data: RequirementIndicatorSaveRequest) => http.post<string>(`${INDICATOR}/create`, data),
+  update: (data: RequirementIndicatorSaveRequest) => http.post<void>(`${INDICATOR}/update`, data),
+  delete: (id: string) => http.post<void>(`${INDICATOR}/delete`, { id }),
   /** 校验某毕业要求下所有观测点权重之和是否为 1，不满足时抛出 BizException */
   validateWeights: (requirementId: string) =>
     http.post<void>(`${INDICATOR}/validate-weights`, { id: requirementId }),
@@ -76,13 +71,13 @@ export const requirementIndicatorApi = {
 
 export const requirementStandardMappingApi = {
   listByRequirement: (requirementId: string) =>
-    http.post<RequirementStandardMappingVO[]>(`${MAPPING}/list-by-requirement`, { id: requirementId }),
-  detail: (id: string) =>
-    http.post<RequirementStandardMappingVO>(`${MAPPING}/detail`, { id }),
-  create: (data: RequirementStandardMappingSavePayload) =>
+    http.post<RequirementStandardMappingVO[]>(`${MAPPING}/list-by-requirement`, {
+      id: requirementId,
+    }),
+  detail: (id: string) => http.post<RequirementStandardMappingVO>(`${MAPPING}/detail`, { id }),
+  create: (data: RequirementStandardMappingSaveRequest) =>
     http.post<string>(`${MAPPING}/create`, data),
-  update: (data: RequirementStandardMappingSavePayload) =>
+  update: (data: RequirementStandardMappingSaveRequest) =>
     http.post<void>(`${MAPPING}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${MAPPING}/delete`, { id }),
+  delete: (id: string) => http.post<void>(`${MAPPING}/delete`, { id }),
 }

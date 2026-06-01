@@ -35,22 +35,22 @@
       </template>
       <a-descriptions :column="3" size="small">
         <a-descriptions-item label="档案编号">{{ set.archiveNo }}</a-descriptions-item>
-        <a-descriptions-item label="学年">{{ set.examYear || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="学期">{{ set.examTerm || '-' }}</a-descriptions-item>
-        <a-descriptions-item label="考期">{{ set.examRound || '-' }}</a-descriptions-item>
+        <a-descriptions-item label="学年">{{ set.examYear || '未登记学年' }}</a-descriptions-item>
+        <a-descriptions-item label="学期">{{ set.examTerm || '未登记学期' }}</a-descriptions-item>
+        <a-descriptions-item label="考期">{{ set.examRound || '未登记考期' }}</a-descriptions-item>
         <a-descriptions-item label="保管期限">
           <span v-if="set.permanentRetention">永久保管</span>
-          <span v-else>{{ set.retentionYears ?? '-' }} 年（至 {{ set.retentionUntil || '-' }}）</span>
+          <span v-else>{{ retentionPeriodText(set) }}</span>
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">
           {{ formatDateTime(set.createTime) }}
         </a-descriptions-item>
-        <a-descriptions-item label="档案 tag" :span="3">
+        <a-descriptions-item label="档案标签" :span="3">
           <UiTag v-for="tag in set.tags ?? []" :key="tag" tone="purple" size="sm" class="tag-chip">
             {{ tag }}
           </UiTag>
           <UiButton size="sm" variant="ghost" @click="openSetTagModal">
-            {{ set.tags?.length ? '编辑 tag' : '添加 tag' }}
+            {{ set.tags?.length ? '编辑标签' : '添加标签' }}
           </UiButton>
         </a-descriptions-item>
       </a-descriptions>
@@ -98,7 +98,7 @@
             :options="ocrStatusOptions"
           />
         </a-form-item>
-        <a-form-item label="tag">
+        <a-form-item label="标签">
           <a-select
             v-model:value="searchForm.tagAny"
             mode="tags"
@@ -127,42 +127,42 @@
         row-key="itemId"
         size="middle"
       >
-        <template #bodyCell="{ column, index }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'sequenceNo'">
-            <span class="seq">{{ items[index].sequenceNo ?? '-' }}</span>
-            <div class="muted">{{ items[index].fileName || '-' }}</div>
+            <span class="seq">{{ record.sequenceNo ?? '未编序' }}</span>
+            <div class="muted">{{ record.fileName || '未登记文件名' }}</div>
           </template>
           <template v-else-if="column.key === 'student'">
-            <span>{{ items[index].studentNo || '-' }}</span>
-            <div v-if="items[index].studentName" class="muted">
-              {{ items[index].studentName }}
+            <span>{{ archiveStudentNoText(record) }}</span>
+            <div v-if="record.studentName" class="muted">
+              {{ record.studentName }}
             </div>
           </template>
           <template v-else-if="column.key === 'finalScore'">
-            <span v-if="items[index].finalScore !== undefined">
-              {{ items[index].finalScore }}
+            <span v-if="record.finalScore !== undefined">
+              {{ record.finalScore }}
             </span>
-            <span v-else class="muted">-</span>
+            <span v-else class="muted">未登记成绩</span>
           </template>
           <template v-else-if="column.key === 'ocrStatus'">
-            <UiTag :tone="ocrStatusTone(items[index].ocrStatus)" size="sm">
-              {{ items[index].ocrStatusMessage || ocrStatusLabel(items[index].ocrStatus) }}
+            <UiTag :tone="ocrStatusTone(record.ocrStatus)" size="sm">
+              {{ ocrStatusMessage(record) }}
             </UiTag>
             <div
-              v-if="items[index].ocrStatus === 'FAILED' && items[index].ocrFailureReason"
+              v-if="record.ocrStatus === 'FAILED' && record.ocrFailureReason"
               class="muted ocr-failure"
             >
-              {{ items[index].ocrFailureReason }}
+              {{ record.ocrFailureReason }}
             </div>
           </template>
           <template v-else-if="column.key === 'ocrText'">
             <div class="ocr-text-preview">
-              {{ truncate(items[index].ocrText, 100) || '-' }}
+              {{ ocrTextPreview(record) }}
             </div>
           </template>
           <template v-else-if="column.key === 'tags'">
             <UiTag
-              v-for="tag in items[index].tags ?? []"
+              v-for="tag in record.tags ?? []"
               :key="tag"
               tone="purple"
               size="sm"
@@ -170,32 +170,32 @@
             >
               {{ tag }}
             </UiTag>
-            <span v-if="!items[index].tags?.length" class="muted">-</span>
+            <span v-if="!record.tags?.length" class="muted">未设置标签</span>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatDateTime(items[index].createTime) }}
+            {{ formatDateTime(record.createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
               <UiButton
                 size="sm"
                 variant="ghost"
-                :disabled="!items[index].fileId"
-                @click="handleDownloadItem(items[index])"
+                :disabled="!record.fileId"
+                @click="handleDownloadItem(record)"
               >
                 <template #icon><DownloadOutlined /></template>
                 原图
               </UiButton>
-              <UiButton size="sm" variant="ghost" @click="openItemTagModal(items[index])">
-                tag
+              <UiButton size="sm" variant="ghost" @click="openItemTagModal(record)">
+                标签
               </UiButton>
               <UiButton
-                v-if="canTriggerOcr(items[index])"
+                v-if="canTriggerOcr(record)"
                 size="sm"
                 variant="outline"
-                @click="confirmTriggerOcr(items[index])"
+                @click="confirmTriggerOcr(record)"
               >
-                {{ items[index].ocrStatus === 'FAILED' ? '重试 OCR' : '识别' }}
+                {{ record.ocrStatus === 'FAILED' ? '重试 OCR' : '识别' }}
               </UiButton>
             </a-space>
           </template>
@@ -243,14 +243,14 @@
           </UiButton>
         </a-upload>
         <div class="muted upload-hint">
-          支持 PDF / PNG / JPG / TIFF；建议单文件 ≤ 100MB；多页 PDF 推荐使用扫描仪输出。
+          支持 PDF / PNG / JPG / TIFF；单文件控制在 100MB 以内；多页 PDF 推荐使用扫描仪输出。
         </div>
       </a-form-item>
       <a-form-item label="序号（不填自动 +1）">
         <a-input-number
           v-model:value="uploadForm.sequenceNo"
           :min="1"
-          placeholder="不填由后端自动分配"
+          placeholder="不填则由系统自动分配"
           style="width: 200px"
         />
       </a-form-item>
@@ -284,11 +284,11 @@
           />
         </a-space>
       </a-form-item>
-      <a-form-item label="试卷 tag">
+      <a-form-item label="试卷标签">
         <a-select
           v-model:value="uploadForm.tags"
           mode="tags"
-          placeholder="按回车添加 tag"
+          placeholder="按回车添加标签"
           style="width: 100%"
         />
       </a-form-item>
@@ -315,18 +315,18 @@
   <!-- tag 编辑弹窗（档案集 / 档案项共用） -->
   <a-modal
     v-model:open="tagModal.open"
-    :title="tagModal.target === 'set' ? '编辑档案集 tag' : '编辑档案项 tag'"
+    :title="tagModal.target === 'set' ? '编辑档案集标签' : '编辑档案项标签'"
     :confirm-loading="tagSaving"
     ok-text="保存"
     cancel-text="取消"
     @ok="submitTagUpdate"
   >
     <a-form layout="vertical">
-      <a-form-item label="tag 列表（最多 32 个）">
+      <a-form-item label="标签列表（最多 32 个）">
         <a-select
           v-model:value="tagModal.tags"
           mode="tags"
-          placeholder="按回车添加 tag"
+          placeholder="按回车添加标签"
           style="width: 100%"
         />
       </a-form-item>
@@ -336,11 +336,25 @@
 
 <script setup lang="ts">
 import type { UploadFile } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PaperArchiveItemVO,
   PaperArchiveOcrStatusCode,
   PaperArchiveSetStatusCode,
   PaperArchiveSetVO,
+} from '@/apis/mark/paper-archive'
+import {
+  getPaperArchiveSetDetail,
+  PAPER_ARCHIVE_OCR_STATUS_LABEL,
+  PAPER_ARCHIVE_OCR_STATUS_OPTIONS,
+  PAPER_ARCHIVE_OCR_STATUS_TONE,
+  PAPER_ARCHIVE_SET_STATUS_TONE,
+  registerPaperArchiveItem,
+  searchPaperArchiveItems,
+  triggerPaperArchiveItemOcr,
+  updatePaperArchiveItemTags,
+  updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
@@ -351,29 +365,18 @@ import {
   ReloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   downloadFile as downloadStorageFile,
   uploadFile as uploadStorageFile,
 } from '@/apis/edu/file-management'
-import {
-  getPaperArchiveSetDetail,
-  PAPER_ARCHIVE_OCR_STATUS_LABEL,
-  PAPER_ARCHIVE_OCR_STATUS_TONE,
-  PAPER_ARCHIVE_SET_STATUS_TONE,
-  registerPaperArchiveItem,
-  searchPaperArchiveItems,
-  triggerPaperArchiveItemOcr,
-  updatePaperArchiveItemTags,
-  updatePaperArchiveSetTags,
-} from '@/apis/mark/paper-archive'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -472,12 +475,9 @@ const tagModal = reactive<{
   tags: [],
 })
 
-const ocrStatusOptions = Object.entries(PAPER_ARCHIVE_OCR_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const ocrStatusOptions = PAPER_ARCHIVE_OCR_STATUS_OPTIONS
 
-const itemColumns = [
+const itemColumns: ColumnsType<PaperArchiveItemVO> = [
   { title: '序号 / 文件', key: 'sequenceNo', dataIndex: 'sequenceNo', width: 200 },
   { title: '学号 / 姓名', key: 'student', width: 160 },
   { title: '当年成绩', key: 'finalScore', dataIndex: 'finalScore', width: 100 },
@@ -485,7 +485,7 @@ const itemColumns = [
   { title: 'OCR 文本预览', key: 'ocrText', dataIndex: 'ocrText', width: 280 },
   { title: 'tag', key: 'tags', dataIndex: 'tags', width: 200 },
   { title: '上传时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 180, align: 'right' as const },
+  { title: '操作', key: 'actions', width: 180, align: 'right' },
 ]
 
 const canUpload = computed(() => {
@@ -535,7 +535,7 @@ async function loadSet(): Promise<void> {
     set.value = await getPaperArchiveSetDetail(archiveSetId.value)
     if (set.value) syncArchiveSetStageToStore(set.value)
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '档案集详情加载失败')
+    showUserError(error, '试卷档案详情加载失败')
   }
 }
 
@@ -556,7 +556,7 @@ async function loadItems(): Promise<void> {
     items.value = result.list
     pagination.total = Number(result.total)
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '档案项加载失败')
+    showUserError(error, '试卷档案明细加载失败')
   } finally {
     loading.value = false
   }
@@ -615,7 +615,7 @@ function onRemoveUpload(): boolean {
  *   2. 调 mark 服务 registerPaperArchiveItem() 以 fileId 注册档案项，
  *      服务内部负责 confirmFiles 把节点状态由 TEMP 切为 CONFIRMED。
  *
- * 不再在业务服务里维护 multipart，也消除了原先 originFileObj ?? raw 的兜底。
+ * 不再在业务服务里维护 multipart，也由 beforeUpload 明确接管文件选择结果。
  */
 async function submitUpload(): Promise<void> {
   if (!uploadForm.file) {
@@ -630,7 +630,7 @@ async function submitUpload(): Promise<void> {
       businessType: 'paper-archive-scan',
     })
     if (!node?.id) {
-      message.error('edu-storage 返回的文件节点为空，无法注册档案项')
+      message.error('扫描文件上传后未完成登记，请重新上传')
       return
     }
     uploadProgress.value = 50
@@ -655,14 +655,14 @@ async function submitUpload(): Promise<void> {
     pagination.pageNum = 1
     await reload()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '上传失败')
+    showUserError(error, '扫描试卷上传失败')
   } finally {
     uploading.value = false
   }
 }
 
 /**
- * 从 edu-storage 下载原始扫描影像。
+ * 从 edu-storage 下载扫描影像。
  *
  * 走 file-management 的 downloadFile()（POST /api/storage/filesystem/download），
  * 依靠 axios http.download 拦截器带 token + 改为 GET 下载。
@@ -675,7 +675,7 @@ async function handleDownloadItem(item: PaperArchiveItemVO): Promise<void> {
   try {
     await downloadStorageFile({ nodeId: item.fileId })
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '下载失败')
+    showUserError(error, '扫描试卷下载失败')
   }
 }
 
@@ -708,11 +708,11 @@ async function submitTagUpdate(): Promise<void> {
         tags: tagModal.tags,
       })
     }
-    message.success('tag 已更新')
+    message.success('档案标签已更新')
     tagModal.open = false
     await reload()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '更新 tag 失败')
+    showUserError(error, '档案标签更新失败')
   } finally {
     tagSaving.value = false
   }
@@ -735,7 +735,7 @@ function confirmTriggerOcr(item: PaperArchiveItemVO): void {
         message.success('已入队，等待识别')
         await loadItems()
       } catch (error) {
-        message.error(error instanceof Error ? error.message : 'OCR 入队失败')
+        showUserError(error, '试卷识别任务提交失败')
       }
     },
   })
@@ -745,19 +745,41 @@ function goBack(): void {
   void router.push({ name: 'TeacherPaperArchiveList' })
 }
 
-
-function setStatusTone(status?: PaperArchiveSetStatusCode): BadgeTone {
-  if (!status) return 'gray'
+function setStatusTone(status: PaperArchiveSetStatusCode): BadgeTone {
   return strictEnumTone(PAPER_ARCHIVE_SET_STATUS_TONE, status, '试卷档案集状态')
 }
 
-function ocrStatusTone(status?: PaperArchiveOcrStatusCode): BadgeTone {
-  if (!status) return 'gray'
+function ocrStatusTone(status: PaperArchiveOcrStatusCode): BadgeTone {
   return strictEnumTone(PAPER_ARCHIVE_OCR_STATUS_TONE, status, '试卷档案 OCR 状态')
 }
 
-function ocrStatusLabel(status?: PaperArchiveOcrStatusCode): string {
+function ocrStatusLabel(status: PaperArchiveOcrStatusCode): string {
   return strictEnumLabel(PAPER_ARCHIVE_OCR_STATUS_LABEL, status, '试卷档案 OCR 状态')
+}
+
+function ocrStatusMessage(item: PaperArchiveItemVO): string {
+  return item.ocrStatusMessage
+}
+
+function retentionPeriodText(set: PaperArchiveSetVO): string {
+  if (set.retentionYears == null) return '未登记保管年限'
+  if (!set.retentionUntil) return `${set.retentionYears} 年（未计算到期日期）`
+  return `${set.retentionYears} 年（至 ${set.retentionUntil}）`
+}
+
+function archiveStudentNoText(item: PaperArchiveItemVO): string {
+  if (item.studentNo) return item.studentNo
+  if (item.studentName) return '未登记学号'
+  return '未绑定学生'
+}
+
+function ocrTextPreview(item: PaperArchiveItemVO): string {
+  const text = truncate(item.ocrText, 100)
+  if (text) return text
+  if (item.ocrStatus === 'COMPLETED') return 'OCR 未识别到可展示文本'
+  if (item.ocrStatus === 'FAILED') return 'OCR 识别失败'
+  if (item.ocrStatus === 'RUNNING') return 'OCR 识别中'
+  return '尚未识别 OCR 文本'
 }
 
 function truncate(value: string | undefined, max: number): string {

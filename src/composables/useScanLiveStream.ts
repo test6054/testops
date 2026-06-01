@@ -25,15 +25,16 @@
  *   对账，不通过数组下标猜测。
  */
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { ScanLiveEventVO, ScanLiveSubscribeFilter } from '@/apis/mark/scan-live'
+import { listRecentScanEvents, subscribeScanLive } from '@/apis/mark/scan-live'
 import type {
   ExamScannerPageLedgerRequest,
   ExamScannerPageLedgerVO,
 } from '@/apis/mark/scanner-kiosk'
-import { computed, ref } from 'vue'
-import { listRecentScanEvents, subscribeScanLive } from '@/apis/mark/scan-live'
 import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
+import { toUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 
 export interface UseScanLiveStreamOptions {
@@ -58,7 +59,7 @@ export interface UseScanLiveStreamReturn {
   /** SSE 是否在订阅中（start 后到 stop/onError 之前） */
   isStreaming: Ref<boolean>
   /** 最近一次错误（仅诊断用） */
-  error: Ref<unknown>
+  error: Ref<Error | null>
   /** 已收到的最大 eventId，用作断线补差游标 */
   lastEventId: Ref<string | undefined>
   /** 是否已注册 token 刷新事件监听，仅诊断用 */
@@ -66,7 +67,7 @@ export interface UseScanLiveStreamReturn {
   /** 当前批次页级账本快照；options.ledgerFilter 缺省或返回 null 时为 null */
   ledger: Ref<ExamScannerPageLedgerVO | null>
   /** ledger 拉取过程中的最近一次错误（不影响 SSE 流） */
-  ledgerError: Ref<unknown>
+  ledgerError: Ref<Error | null>
   /** ledger 是否正在请求中（视图可用于显示骨架/loading） */
   ledgerLoading: Ref<boolean>
   /** 启动订阅 + 历史回填 + 页级账本初次拉取 */
@@ -89,12 +90,12 @@ export function useScanLiveStream(
   const events = ref<ScanLiveEventVO[]>([]) as Ref<ScanLiveEventVO[]>
   const ready = ref(false)
   const isStreaming = ref(false)
-  const error = ref<unknown>(null)
+  const error = ref<Error | null>(null)
   const lastEventId = ref<string | undefined>(undefined)
 
   /** 页级账本：当前批次的逐页状态快照 */
   const ledger = ref<ExamScannerPageLedgerVO | null>(null) as Ref<ExamScannerPageLedgerVO | null>
-  const ledgerError = ref<unknown>(null)
+  const ledgerError = ref<Error | null>(null)
   const ledgerLoading = ref(false)
   /**
    * 标识当前正在进行的 ledger 请求序号。当并发触发（如 onReady + watch refresh 同时发起）时，
@@ -208,7 +209,7 @@ export function useScanLiveStream(
       if (token !== ledgerRequestToken) {
         return
       }
-      ledgerError.value = err
+      ledgerError.value = toUserError(err, '扫描页级账本加载失败')
     }
     finally {
       if (token === ledgerRequestToken) {
@@ -234,7 +235,7 @@ export function useScanLiveStream(
       appendEvents(list)
     }
     catch (err) {
-      error.value = err
+      error.value = toUserError(err, '扫描实时事件加载失败')
     }
   }
 
@@ -268,7 +269,7 @@ export function useScanLiveStream(
         appendEvents([event])
       },
       onError: (err) => {
-        error.value = err
+        error.value = toUserError(err, '扫描实时订阅失败')
         ready.value = false
       },
       onClose: () => {

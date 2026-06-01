@@ -4,8 +4,8 @@
       <div class="exam-list-page__context">
         <div class="exam-list-page__context-left">
           <UiTag tone="blue" size="sm">{{ pagination.total ?? 0 }} 场</UiTag>
-          <UiTag v-if="isAdminView" tone="purple" size="sm">管理员视角</UiTag>
-          <UiTag v-else tone="gray" size="sm">仅看本人创建</UiTag>
+          <UiTag v-if="isAdminView" tone="purple" size="sm">全租户审计视角</UiTag>
+          <UiTag v-else tone="gray" size="sm">我创建或被分配评阅</UiTag>
         </div>
         <div class="exam-list-page__context-right">
           <UiButton variant="outline" size="sm" :loading="loading" @click="reloadAll">
@@ -41,7 +41,7 @@
     <UiAlertStrip
       v-if="staleExamCount > 0"
       tone="warning"
-      :title="`${staleExamCount} 场进行中考试创建超过 7 天，建议核查推进状态`"
+      :title="`${staleExamCount} 场进行中考试创建超过 7 天，请核查推进状态`"
       description="未配置考试时间窗或长期未关闭的考试可能存在配置疏漏，请进入「准备工作台」检查模板、答案、考生名册是否完整。"
       dense
       class="exam-list-page__alert"
@@ -208,6 +208,13 @@
                 准备工作台
               </UiButton>
               <UiButton
+                v-if="canAssignMarking(dataSource[index])"
+                size="sm"
+                @click="goMarkingOrganization(dataSource[index])"
+              >
+                分配批阅
+              </UiButton>
+              <UiButton
                 v-if="dataSource[index].status !== 'CLOSED'"
                 size="sm"
                 variant="ghost"
@@ -248,6 +255,19 @@
           :allow-clear="false"
         />
       </a-form-item>
+      <a-form-item label="考试模式" name="examMode" required>
+        <a-radio-group v-model:value="examForm.examMode" :disabled="isEditMode">
+          <a-radio-button value="OFFLINE_SCAN">线下扫描</a-radio-button>
+          <a-radio-button value="ONLINE">在线作答</a-radio-button>
+        </a-radio-group>
+        <div class="exam-list-page__form-helper">
+          {{
+            isEditMode
+              ? '考试模式一旦创建不可修改。'
+              : '线下扫描：学生纸笔作答 + 扫描入站；在线作答：学生 Web 端直接答题，跳过扫描环节。'
+          }}
+        </div>
+      </a-form-item>
       <a-form-item label="考试名称" name="examName">
         <a-input
           v-model:value="examForm.examName"
@@ -256,7 +276,7 @@
           show-count
         />
       </a-form-item>
-      <a-form-item label="考试编号" name="examNo">
+      <a-form-item label="考务编号" name="examNo">
         <a-input
           v-model:value="examForm.examNo"
           placeholder="教务系统编号或自定义编号"
@@ -307,7 +327,15 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
-import type { ExamCreatePayload, ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import type { ExamCreateRequest, ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import {
+  createExam,
+  deleteExam,
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  pageExams,
+  updateExam,
+} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -318,14 +346,6 @@ import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createExam,
-  deleteExam,
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  pageExams,
-  updateExam,
-} from '@/apis/mark/exam'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import {
   UiAlertStrip,
@@ -341,9 +361,11 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
+import { RoleEnum } from '@/types/enums'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { strictEnumTone } from '@/utils/strict-enum'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamList' })
 
@@ -352,10 +374,22 @@ const authStore = useAuthStore()
 const userStore = useUserStore()
 
 /**
- * 是否管理员视角：平台超级管理员 + 租户管理员可看本租户全部考试，
- * 其他角色（普通教师）只看自己创建的考试。
+ * 是否全租户审计读视角。
+ *
+ * <p>与后端 ExamMarkPermissionService.hasFullTenantReadView() 对齐：
+ * 仅平台超管 + 企业管理员（CROP_ADMIN / CROP_USER）享有跨主考可见性；
+ * 租户管理员（SCH_TECH + isTenantAdmin）在阅卷链路上与普通教师一致，
+ * 仅可见自己创建 + 被分配评阅的考试。这是用户口径下的"禁止越权"硬约束。</p>
+ *
+ * <p>后端 listExamPage 切面已强制按角色注入 createUserId，前端传值在教师视角下被忽略；
+ * 这个 computed 仅用于 UI 显隐（创建人列、教师下钻控件、KPI 文案）。</p>
  */
-const isAdminView = computed(() => authStore.isAdmin || userStore.isTenantAdmin)
+const isAdminView = computed(() => {
+  const role = authStore.userRole
+  return (
+    role === RoleEnum.SUPER_ADMIN || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER
+  )
+})
 
 const filterForm = reactive<{
   status?: ExamStatusCode
@@ -371,7 +405,7 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -382,7 +416,7 @@ const semesterOptions = SemesterOptions
 const dataSource = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
 // D-9 错误态：考试列表加载失败时 UiErrorRetryPanel 重试 + 上报
-const examsLoadError = ref<unknown>(null)
+const examsLoadError = ref<Error | null>(null)
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
   pageSize: 10,
@@ -401,20 +435,18 @@ const columns: ColumnType<ExamSummaryVO>[] = [
 ]
 
 // helper 严格 typed 接收后端 API 对象 ExamSummaryVO。
-// 模板侧统一用 dataSource[index] 取同一个 VO 对象引用，避免 slot record:any。
+// 模板侧统一用 dataSource[index] 取同一个 VO 对象引用，避免 slot record 类型丢失。
 function examStatusTone(exam: ExamSummaryVO): BadgeTone {
   return strictEnumTone(EXAM_STATUS_TONE, exam.status, '考试状态')
 }
 
 function examStatusLabel(exam: ExamSummaryVO): string {
-  return exam.statusMessage
+  return strictEnumLabel(EXAM_STATUS_LABEL, exam.status, '考试状态')
 }
 
 function formatAcademicTerm(exam: ExamSummaryVO): string {
   if (!exam.academicYear && !exam.semester) return ''
-  return [exam.academicYear, formatSemester(exam.semester) || exam.semester]
-    .filter(Boolean)
-    .join(' · ')
+  return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
 
 async function loadExams(): Promise<void> {
@@ -434,11 +466,10 @@ async function loadExams(): Promise<void> {
       createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
     })
     dataSource.value = result.list
-    pagination.total = result.total
+    pagination.total = Number(result.total)
   } catch (error) {
-    examsLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
-    message.error(errMsg)
+    examsLoadError.value = toUserError(error, '考试列表加载失败')
+    showUserError(error, '考试列表加载失败')
   } finally {
     loading.value = false
   }
@@ -458,9 +489,9 @@ function handleReset(): void {
   pagination.current = 1
   void loadExams()
 }
-function handleUiPageChange(payload: { current: number, pageSize: number }): void {
-  pagination.current = payload.current
-  pagination.pageSize = payload.pageSize
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
+  pagination.current = page.current
+  pagination.pageSize = page.pageSize
   void loadExams()
 }
 
@@ -480,6 +511,16 @@ function goPrepWorkbench(exam: ExamSummaryVO): void {
   void router.push({ name: 'TeacherExamPrepWorkbench', query: { examId: exam.examId } })
 }
 
+function canAssignMarking(exam: ExamSummaryVO): boolean {
+  return (
+    exam.status !== 'CLOSED' && !!exam.createUser && exam.createUser === userStore.userInfo.userId
+  )
+}
+
+function goMarkingOrganization(exam: ExamSummaryVO): void {
+  void router.push({ name: 'TeacherMarkingOrganizationIndex', query: { examId: exam.examId } })
+}
+
 // ─── KPI 概览：单独维护进行中 / 已关闭的全量计数 ─────────────────
 // 复用 pageExams 的 status 维度查询，pageSize=1 仅取 total，避免额外列表传输。
 const activeTotal = ref<number>(0)
@@ -494,11 +535,10 @@ async function loadStatusTotals(): Promise<void> {
       pageExams({ pageNum: 1, pageSize: 1, status: 'ACTIVE', createUserId }),
       pageExams({ pageNum: 1, pageSize: 1, status: 'CLOSED', createUserId }),
     ])
-    activeTotal.value = activeRes.total
-    closedTotal.value = closedRes.total
+    activeTotal.value = Number(activeRes.total)
+    closedTotal.value = Number(closedRes.total)
   } catch (error) {
-    statusTotalsError.value
-      = error instanceof Error ? error.message : '进行中 / 已关闭考试计数加载失败'
+    statusTotalsError.value = getUserErrorMessage(error, '考试状态计数加载失败')
   }
 }
 
@@ -523,14 +563,14 @@ const kpiItems = computed(() => [
     key: 'active',
     label: '进行中考试',
     value: statusTotalsError.value ? '不可用' : activeTotal.value,
-    helper: isAdminView.value ? '租户全部 ACTIVE' : '本人创建 ACTIVE',
+    helper: isAdminView.value ? '租户全部 ACTIVE' : '我创建或被分配 ACTIVE',
     tone: 'green' as BadgeTone,
   },
   {
     key: 'closed',
     label: '已关闭',
     value: statusTotalsError.value ? '不可用' : closedTotal.value,
-    helper: isAdminView.value ? '租户全部 CLOSED' : '本人创建 CLOSED',
+    helper: isAdminView.value ? '租户全部 CLOSED' : '我创建或被分配 CLOSED',
     tone: 'gray' as BadgeTone,
   },
   {
@@ -549,6 +589,7 @@ const isEditMode = computed(() => !!editingExamId.value)
 const formRef = ref<FormInstance>()
 const examForm = reactive<{
   courseId: string | null
+  examMode: 'ONLINE' | 'OFFLINE_SCAN'
   examName: string
   examNo: string
   academicYear?: string
@@ -558,6 +599,7 @@ const examForm = reactive<{
   remark?: string
 }>({
   courseId: null,
+  examMode: 'OFFLINE_SCAN',
   examName: '',
   examNo: '',
   academicYear: '',
@@ -574,8 +616,8 @@ const examFormRules: Record<string, Rule[]> = {
     { max: 100, message: '考试名称最多 100 个字符', trigger: 'blur' },
   ],
   examNo: [
-    { required: true, message: '请输入考试编号', trigger: 'blur' },
-    { max: 64, message: '考试编号最多 64 个字符', trigger: 'blur' },
+    { required: true, message: '请输入考务编号', trigger: 'blur' },
+    { max: 64, message: '考务编号最多 64 个字符', trigger: 'blur' },
   ],
   academicYear: [
     {
@@ -623,6 +665,7 @@ const examFormRules: Record<string, Rule[]> = {
 function resetExamForm(): void {
   editingExamId.value = null
   examForm.courseId = null
+  examForm.examMode = 'OFFLINE_SCAN'
   examForm.examName = ''
   examForm.examNo = ''
   examForm.academicYear = ''
@@ -646,14 +689,14 @@ function openEditModal(exam: ExamSummaryVO): void {
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow
-    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.examWindow =
+    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.gradingStrategy = exam.gradingStrategy ?? ''
   examForm.remark = exam.remark ?? ''
   formModalOpen.value = true
 }
 
-function buildExamPayload(): ExamCreatePayload {
+function buildExamRequest(): ExamCreateRequest {
   const [startTime, endTime] = examForm.examWindow ?? []
   if (!examForm.courseId || !startTime || !endTime) {
     throw new Error('考试课程与时间窗不能为空')
@@ -668,6 +711,7 @@ function buildExamPayload(): ExamCreatePayload {
     examEndTime: endTime,
     gradingStrategy: examForm.gradingStrategy?.trim() || undefined,
     remark: examForm.remark?.trim() || undefined,
+    examMode: examForm.examMode,
   }
 }
 
@@ -680,12 +724,14 @@ async function handleSave(): Promise<void> {
   }
   saving.value = true
   try {
-    const payload = buildExamPayload()
+    const request = buildExamRequest()
     if (editingExamId.value) {
-      await updateExam({ examId: editingExamId.value, ...payload })
+      // 考试模式一旦创建不可改，update 链路不传 examMode（后端 ExamUpdateRequest 也无此字段）
+      const { examMode: _examMode, ...updateRequest } = request
+      await updateExam({ examId: editingExamId.value, ...updateRequest })
       message.success('考试已更新')
     } else {
-      const examId = await createExam(payload)
+      const examId = await createExam(request)
       message.success('考试已创建')
       pagination.current = 1
       formModalOpen.value = false
@@ -707,8 +753,7 @@ async function handleSave(): Promise<void> {
     formModalOpen.value = false
     await Promise.all([loadExams(), loadStatusTotals()])
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '保存考试失败'
-    message.error(errMsg)
+    showUserError(error, '保存考试失败')
   } finally {
     saving.value = false
   }
@@ -717,7 +762,7 @@ async function handleSave(): Promise<void> {
 function confirmDelete(exam: ExamSummaryVO): void {
   Modal.confirm({
     title: `删除考试 ${exam.examName}？`,
-    content: '已配置模板、考生、印刷、扫描或成绩的考试会由后端拒绝删除。',
+    content: '已进入模板、考生、印刷、扫描或成绩流程的考试不能删除。',
     okText: '删除',
     okType: 'danger',
     cancelText: '取消',

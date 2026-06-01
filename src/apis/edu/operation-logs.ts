@@ -62,7 +62,7 @@ export interface OperationLogDto {
   errorStack?: string
   /** 操作时间 */
   createTime: string
-  /** 变更详情 (JSON格式) */
+  /** 业务变更摘要 */
   changeDetails?: string
 }
 

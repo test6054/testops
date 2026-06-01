@@ -37,7 +37,7 @@ export interface ProcessEvaluationNodeVO {
   updateTime?: string
 }
 
-export interface ProcessEvaluationNodeSavePayload {
+export interface ProcessEvaluationNodeSaveRequest {
   id?: string
   qualityCourseId: string
   assessmentItemId?: string
@@ -60,7 +60,8 @@ export interface ProcessEvaluationRecordVO {
   qualityCourseId: string
   studentUserId?: string
   studentNumber?: string
-  rawScore: number
+  studentName?: string
+  score: number
   convertedScore?: number
   evidenceFileId?: string
   sourceBatchId?: string
@@ -74,13 +75,13 @@ export interface ProcessEvaluationRecordVO {
   updateTime?: string
 }
 
-export interface ProcessEvaluationRecordSavePayload {
+export interface ProcessEvaluationRecordSaveRequest {
   id?: string
   nodeId: string
   qualityCourseId: string
   studentUserId?: string
   studentNumber?: string
-  rawScore: number
+  score: number
   convertedScore?: number
   evidenceFileId?: string
   sourceBatchId?: string
@@ -94,9 +95,9 @@ export const processNodeApi = {
     http.post<ProcessEvaluationNodeVO[]>(`${NODE}/list-by-course`, { id: qualityCourseId }),
   detail: (id: string) =>
     http.post<ProcessEvaluationNodeVO>(`${NODE}/detail`, { id }),
-  create: (data: ProcessEvaluationNodeSavePayload) =>
+  create: (data: ProcessEvaluationNodeSaveRequest) =>
     http.post<string>(`${NODE}/create`, data),
-  update: (data: ProcessEvaluationNodeSavePayload) =>
+  update: (data: ProcessEvaluationNodeSaveRequest) =>
     http.post<void>(`${NODE}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${NODE}/delete`, { id }),
@@ -115,9 +116,9 @@ export const processRecordApi = {
     }),
   detail: (id: string) =>
     http.post<ProcessEvaluationRecordVO>(`${RECORD}/detail`, { id }),
-  create: (data: ProcessEvaluationRecordSavePayload) =>
+  create: (data: ProcessEvaluationRecordSaveRequest) =>
     http.post<string>(`${RECORD}/create`, data),
-  update: (data: ProcessEvaluationRecordSavePayload) =>
+  update: (data: ProcessEvaluationRecordSaveRequest) =>
     http.post<void>(`${RECORD}/update`, data),
   delete: (id: string) =>
     http.post<void>(`${RECORD}/delete`, { id }),

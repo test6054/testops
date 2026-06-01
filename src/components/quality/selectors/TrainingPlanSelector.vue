@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TrainingPlanVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 import { trainingPlanApi } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 import { requirePageList } from './page-contract'
 
 interface Props {
@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: TrainingPlanVO]
+  change: [value: string | null, option?: TrainingPlanVO]
 }>()
 
 const options = ref<TrainingPlanVO[]>([])
@@ -69,7 +69,7 @@ async function loadOptions() {
     options.value = requirePageList(res, '培养方案')
   } catch (e) {
     console.error('[TrainingPlanSelector] 加载培养方案列表失败', e)
-    message.error('加载培养方案列表失败')
+    showUserError(e, '培养方案列表加载失败')
   } finally {
     loading.value = false
   }
@@ -108,7 +108,7 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.planCode} · ${opt.planName}`"
     >
-      <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.planCode }}</span>
+      <span class="text-xs text-gray-500 mr-1">{{ opt.planCode }}</span>
       {{ opt.planName }}
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">({{ opt.schoolYear }})</span>
     </a-select-option>

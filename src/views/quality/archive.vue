@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
+import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
+import { uploadFile } from '@/apis/edu/file-management'
 /**
  * 质量评价 - 材料归档与专家包导出台
  *
@@ -10,22 +13,28 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - POST /quality/archives/export-expert-package 专家材料包异步导出，返回 archiveId
  */
 import type {
-  ArchiveQueryPayload,
-  ArchiveSavePayload,
+  ArchiveBusinessType,
+  ArchiveQueryRequest,
+  ArchiveSaveRequest,
   ArchiveVO,
-  ExpertPackageExportPayload,
+  ExpertPackageExportRequest,
 } from '@/apis/quality'
+import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
-  ARCHIVE_BUSINESS_TYPE_LABEL,
-  archiveApi,
-  EXPERT_PACKAGE_TYPE_LABEL,
-  isArchiveBusinessType,
-} from '@/apis/quality'
+  AchievementResultSelector,
+  AuditRectificationSelector,
+  CourseGoalSelector,
+  CourseSelector,
+  GraduationRequirementSelector,
+  ReportSelector,
+  TeacherSelector,
+  TrainingPlanSelector,
+} from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiSearchForm } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -34,32 +43,36 @@ import {
   StageWorkbenchShell,
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { strictAuditChangeDetails } from '@/utils/strict-enum'
+import { useQualityStore } from '@/stores/modules/quality'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
-function archiveBusinessTypeLabel(value: unknown): string {
-  if (isArchiveBusinessType(value)) return ARCHIVE_BUSINESS_TYPE_LABEL[value]
-  throw new Error('归档业务类型不符合前后端契约')
+function archiveBusinessTypeLabel(value: ArchiveBusinessType): string {
+  return strictEnumLabel(ARCHIVE_BUSINESS_TYPE_LABEL, value, '归档业务类型')
 }
 
-function archiveBusinessTypeColor(value: unknown): string {
-  if (!isArchiveBusinessType(value)) {
-    throw new Error('归档业务类型不符合前后端契约')
-  }
+function archiveBusinessTypeColor(value: ArchiveBusinessType): string {
   if (value === 'EXPERT_PACKAGE') return 'gold'
   if (value === 'REPORT') return 'cyan'
   if (value === 'GRADUATION_REQUIREMENT') return 'purple'
   return 'blue'
 }
 
-function isExpertPackageRecord(value: unknown): boolean {
-  return isArchiveBusinessType(value) && value === 'EXPERT_PACKAGE'
+function isExpertPackageRecord(value: ArchiveBusinessType): boolean {
+  return value === 'EXPERT_PACKAGE'
 }
 
 const list = ref<ArchiveVO[]>([])
 const total = ref(0)
 const loading = ref(false)
+const qualityStore = useQualityStore()
 
-const query = reactive<ArchiveQueryPayload>({
+interface ArchiveFilterModel {
+  businessType?: ArchiveBusinessType
+  archiveCategory: string
+  keyword: string
+}
+
+const query = reactive<ArchiveQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   businessType: undefined,
@@ -68,10 +81,12 @@ const query = reactive<ArchiveQueryPayload>({
   keyword: '',
 })
 
-const businessTypeOptions = Object.entries(ARCHIVE_BUSINESS_TYPE_LABEL).map(([value, label]) => ({
+const businessTypeOptions: { value: ArchiveBusinessType; label: string }[] = Object.entries(
+  ARCHIVE_BUSINESS_TYPE_LABEL,
+).map(([value, label]) => ({
   value,
   label,
-}))
+})) as { value: ArchiveBusinessType; label: string }[]
 
 const filterFields: FilterField[] = [
   {
@@ -94,7 +109,7 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const filterModel = ref<Record<string, unknown>>({
+const filterModel = ref<ArchiveFilterModel>({
   businessType: undefined,
   archiveCategory: '',
   keyword: '',
@@ -102,7 +117,7 @@ const filterModel = ref<Record<string, unknown>>({
 
 const exportVisible = ref(false)
 const exportSubmitting = ref(false)
-const exportForm = reactive<ExpertPackageExportPayload>({
+const exportForm = reactive<ExpertPackageExportRequest>({
   packageType: 'REQUIREMENT',
   targetId: '',
   archiveCode: '',
@@ -111,7 +126,7 @@ const exportForm = reactive<ExpertPackageExportPayload>({
   notes: '',
   recipientUserIds: [],
 })
-const recipientInput = ref('')
+const exportTrainingPlanId = ref('')
 
 const detailVisible = ref(false)
 const detailRecord = ref<ArchiveVO | null>(null)
@@ -120,7 +135,7 @@ const detailLoading = ref(false)
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
 const editorSubmitting = ref(false)
-const editor = reactive<ArchiveSavePayload>({
+const editor = reactive<ArchiveSaveRequest>({
   archiveCode: '',
   businessType: 'TRAINING_PLAN',
   businessId: '',
@@ -131,6 +146,10 @@ const editor = reactive<ArchiveSavePayload>({
   digitalStatus: '',
   notes: '',
 })
+const editorTrainingPlanId = ref('')
+const editorQualityCourseId = ref('')
+const uploadedArchiveFile = ref<FileSystemNodeResponseDTO | null>(null)
+const archiveFileUploading = ref(false)
 
 async function loadList() {
   loading.value = true
@@ -142,24 +161,22 @@ async function loadList() {
       keyword: query.keyword?.trim() || undefined,
     })
     list.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
 function syncFilterToQuery() {
-  const businessTypeRaw = filterModel.value.businessType
-  query.businessType = isArchiveBusinessType(businessTypeRaw) ? businessTypeRaw : undefined
-  query.archiveCategory
-    = typeof filterModel.value.archiveCategory === 'string' ? filterModel.value.archiveCategory : ''
-  query.keyword = typeof filterModel.value.keyword === 'string' ? filterModel.value.keyword : ''
+  query.businessType = filterModel.value.businessType
+  query.archiveCategory = filterModel.value.archiveCategory
+  query.keyword = filterModel.value.keyword
 }
 
 function handleSearch() {
@@ -186,32 +203,28 @@ function openExport() {
     notes: '',
     recipientUserIds: [],
   })
-  recipientInput.value = ''
+  exportTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
   exportVisible.value = true
 }
 
 async function submitExport() {
   if (!exportForm.targetId.trim()) {
-    message.error(
-      '请填写目标 ID（按毕业要求时为 graduation_requirement_id；按专业认证时为 training_plan_id）',
-    )
+    message.error('请选择材料包对应的毕业要求或培养方案')
     return
   }
-  const recipients = recipientInput.value
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
   exportSubmitting.value = true
   try {
-    const archiveId = await archiveApi.exportExpertPackage({
+    await archiveApi.exportExpertPackage({
       ...exportForm,
       targetId: exportForm.targetId.trim(),
       archiveCode: exportForm.archiveCode?.trim() || undefined,
       archiveCategory: exportForm.archiveCategory?.trim() || undefined,
       notes: exportForm.notes?.trim() || undefined,
-      recipientUserIds: recipients.length ? recipients : undefined,
+      recipientUserIds: exportForm.recipientUserIds?.length
+        ? exportForm.recipientUserIds
+        : undefined,
     })
-    message.success(`导出成功，归档 ID = ${archiveId}`)
+    message.success('专家材料包导出成功')
     exportVisible.value = false
     await loadList()
   } finally {
@@ -243,6 +256,9 @@ function openCreate() {
     digitalStatus: '',
     notes: '',
   })
+  editorTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
+  editorQualityCourseId.value = qualityStore.currentQualityCourseId || ''
+  uploadedArchiveFile.value = null
   editorVisible.value = true
 }
 
@@ -263,6 +279,18 @@ async function openEdit(record: ArchiveVO) {
       digitalStatus: detail.digitalStatus || '',
       notes: detail.notes || '',
     })
+    editorTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
+    editorQualityCourseId.value = qualityStore.currentQualityCourseId || ''
+    uploadedArchiveFile.value = detail.fileId
+      ? {
+          id: detail.fileId,
+          nodeName: detail.fileName,
+          nodeType: 'FILE',
+          tenantId: '',
+          ownerId: '',
+          createTime: '',
+        }
+      : null
     editorVisible.value = true
   } finally {
     detailLoading.value = false
@@ -275,12 +303,12 @@ async function submitEditor() {
     return
   }
   if (!editor.businessType || !editor.businessId?.trim() || !editor.fileId?.trim()) {
-    message.error('请填写业务类型、业务 ID 与归档文件 ID')
+    message.error('请选择归档业务对象并上传归档文件')
     return
   }
   editorSubmitting.value = true
   try {
-    const payload: ArchiveSavePayload = {
+    const request: ArchiveSaveRequest = {
       ...editor,
       archiveCode: editor.archiveCode.trim(),
       businessId: editor.businessId.trim(),
@@ -291,10 +319,10 @@ async function submitEditor() {
       notes: editor.notes?.trim() || undefined,
     }
     if (editorMode.value === 'create') {
-      await archiveApi.create(payload)
+      await archiveApi.create(request)
       message.success('已新建归档记录')
     } else {
-      await archiveApi.update(payload)
+      await archiveApi.update(request)
       message.success('已更新归档记录')
     }
     editorVisible.value = false
@@ -307,7 +335,7 @@ async function submitEditor() {
 function handleDelete(record: ArchiveVO) {
   void confirmAsync({
     title: `删除归档 ${record.archiveCode}？`,
-    content: '删除后文件本身保留在 edu-storage，仅删除归档台帐记录。',
+    content: '删除后仅移除归档台帐记录，已上传的归档文件不会被删除。',
     type: 'error',
     onOk: async () => {
       await archiveApi.delete(record.id)
@@ -315,6 +343,40 @@ function handleDelete(record: ArchiveVO) {
       await loadList()
     },
   })
+}
+
+function clearEditorBusinessObject() {
+  editor.businessId = ''
+}
+
+function syncEditorTrainingPlan(value: string | null) {
+  editorTrainingPlanId.value = value || ''
+  if (editor.businessType === 'TRAINING_PLAN') editor.businessId = value || ''
+}
+
+function syncEditorCourse(value: string | null) {
+  editorQualityCourseId.value = value || ''
+}
+
+async function handleArchiveFileUpload(options: UploadRequestOption): Promise<void> {
+  archiveFileUploading.value = true
+  try {
+    const { file } = options
+    if (!(file instanceof File)) {
+      message.error('无效的归档文件')
+      options.onError?.(new TypeError('无效的归档文件'))
+      return
+    }
+    const uploaded = await uploadFile(file, { businessType: 'QUALITY_ARCHIVE_FILE' })
+    uploadedArchiveFile.value = uploaded
+    editor.fileId = uploaded.id
+    message.success(`已上传归档文件：${uploaded.nodeName}`)
+    options.onSuccess?.({})
+  } catch (err) {
+    options.onError?.(err instanceof Error ? err : new Error(String(err)))
+  } finally {
+    archiveFileUploading.value = false
+  }
 }
 
 /* ========== 信号指标 ========== */
@@ -343,8 +405,8 @@ const signals = computed<SignalMetric[]>(() => {
 const columns: ColumnsType = [
   { title: '归档编码', dataIndex: 'archiveCode', key: 'archiveCode' },
   { title: '业务类型', dataIndex: 'businessType', key: 'businessType', width: 160 },
-  { title: '业务 ID', dataIndex: 'businessId', key: 'businessId', width: 120 },
-  { title: '文件 ID', dataIndex: 'fileId', key: 'fileId', width: 120 },
+  { title: '业务对象', dataIndex: 'businessLabel', key: 'businessRef', width: 220 },
+  { title: '归档文件', key: 'fileRef', width: 220 },
   { title: '分类', dataIndex: 'archiveCategory', key: 'archiveCategory' },
   { title: '保管年限', dataIndex: 'retentionYears', key: 'retentionYears', width: 100 },
   {
@@ -374,7 +436,6 @@ async function openAuditDrawer(record: ArchiveVO) {
       description: record.id,
     })
     auditEvents.value = page.list.map((log) => {
-      const changeDetails = strictAuditChangeDetails(log.changeDetails, '材料归档审计变更详情')
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -383,8 +444,7 @@ async function openAuditDrawer(record: ArchiveVO) {
         time: log.createTime,
         targetType: log.module,
         targetId: log.bizId || undefined,
-        beforeValue: changeDetails.beforeValue,
-        afterValue: changeDetails.afterValue,
+        reason: log.changeDetails || log.errorStack || undefined,
       }
     })
   } finally {
@@ -392,7 +452,27 @@ async function openAuditDrawer(record: ArchiveVO) {
   }
 }
 
-onMounted(loadList)
+watch(
+  () => exportForm.packageType,
+  () => {
+    exportForm.targetId = ''
+  },
+)
+
+watch(
+  () => editor.businessType,
+  () => {
+    clearEditorBusinessObject()
+  },
+)
+
+onMounted(async () => {
+  if (!qualityStore.currentTrainingPlanId) {
+    const plans = await qualityStore.loadTrainingPlanOptions()
+    if (plans.length) qualityStore.setTrainingPlan(plans[0].id)
+  }
+  await loadList()
+})
 </script>
 
 <template>
@@ -437,23 +517,37 @@ onMounted(loadList)
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'businessType'">
-            <a-tag :color="archiveBusinessTypeColor(text)">
-              {{ archiveBusinessTypeLabel(text) }}
+            <a-tag :color="archiveBusinessTypeColor(record.businessType)">
+              {{ archiveBusinessTypeLabel(record.businessType) }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'archiveCategory'">
-            {{ text || '-' }}
+            {{ record.archiveCategory || '未设置分类' }}
           </template>
-          <template v-else-if="column.key === 'retentionYears'"> {{ text ?? '-' }} 年 </template>
+          <template v-else-if="column.key === 'businessRef'">
+            {{ record.businessLabel }}
+          </template>
+          <template v-else-if="column.key === 'fileRef'">
+            <a-tag color="green">
+              {{ record.fileName }}
+            </a-tag>
+          </template>
+          <template v-else-if="column.key === 'retentionYears'">
+            {{
+              typeof record.retentionYears === 'number'
+                ? `${record.retentionYears} 年`
+                : '未设置保管年限'
+            }}
+          </template>
           <template v-else-if="column.key === 'archiveOfficeConfirmed'">
-            <a-tag :color="text ? 'green' : 'default'">
-              {{ text ? '已确认' : '未确认' }}
+            <a-tag :color="record.archiveOfficeConfirmed ? 'green' : 'default'">
+              {{ record.archiveOfficeConfirmed ? '已确认' : '未确认' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'archivedAt'">
-            {{ text || '-' }}
+            {{ record.archivedAt || '尚未归档确认' }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space wrap>
@@ -481,7 +575,7 @@ onMounted(loadList)
       <a-alert
         type="info"
         show-icon
-        message="REQUIREMENT 整包：targetId 为毕业要求 ID；PROGRAM_ACCREDITATION 整包：targetId 为培养方案 ID。导出后会自动落 t_quality_archive 并通过 edu-message 推送站内信。"
+        message="毕业要求材料包面向单条毕业要求；专业认证材料包面向一套培养方案。导出完成后将生成归档记录，并向接收人发送站内通知。"
         class="archive__alert"
       />
       <a-form layout="vertical" :model="exportForm">
@@ -496,30 +590,52 @@ onMounted(loadList)
             </a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="目标 ID" required>
-          <a-input
+        <a-form-item
+          :label="exportForm.packageType === 'REQUIREMENT' ? '毕业要求' : '培养方案'"
+          required
+        >
+          <TrainingPlanSelector
+            v-if="exportForm.packageType === 'REQUIREMENT'"
+            v-model:value="exportTrainingPlanId"
+            :program-id="qualityStore.currentProgramId || null"
+            class="archive__stacked-control archive__stacked-control--first"
+            placeholder="请选择毕业要求所属培养方案"
+          />
+          <GraduationRequirementSelector
+            v-if="exportForm.packageType === 'REQUIREMENT'"
             v-model:value="exportForm.targetId"
-            :placeholder="
-              exportForm.packageType === 'REQUIREMENT'
-                ? 'graduation_requirement_id'
-                : 'training_plan_id'
-            "
+            :training-plan-id="exportTrainingPlanId || qualityStore.currentTrainingPlanId || null"
+            class="archive__stacked-control"
+            placeholder="请选择毕业要求"
+          />
+          <TrainingPlanSelector
+            v-else
+            v-model:value="exportForm.targetId"
+            :program-id="qualityStore.currentProgramId || null"
+            placeholder="请选择培养方案"
           />
         </a-form-item>
         <a-form-item label="归档编码">
           <a-input
             v-model:value="exportForm.archiveCode"
-            placeholder="可选；为空时自动生成 EP-{REQ|PROG}-{id}-{timestamp}"
+            placeholder="可选；为空时系统自动生成归档编码"
           />
         </a-form-item>
         <a-form-item label="保管年限">
           <a-input-number v-model:value="exportForm.retentionYears" :min="1" :max="50" />
         </a-form-item>
         <a-form-item label="归档分类">
-          <a-input v-model:value="exportForm.archiveCategory" placeholder="默认 EXPERT_PACKAGE" />
+          <a-input
+            v-model:value="exportForm.archiveCategory"
+            placeholder="可填写专家包、评审材料等分类"
+          />
         </a-form-item>
-        <a-form-item label="通知接收人 user_id">
-          <a-input v-model:value="recipientInput" placeholder="多个用逗号分隔，例如：1, 5" />
+        <a-form-item label="通知接收人">
+          <TeacherSelector
+            v-model:value="exportForm.recipientUserIds"
+            mode="multiple"
+            placeholder="请选择通知接收人"
+          />
         </a-form-item>
         <a-form-item label="备注">
           <a-textarea v-model:value="exportForm.notes" :rows="2" placeholder="可选" />
@@ -551,20 +667,93 @@ onMounted(loadList)
         </a-row>
         <a-row :gutter="12">
           <a-col :span="12">
-            <a-form-item label="业务对象 ID" required>
-              <a-input v-model:value="editor.businessId" placeholder="对应业务类型的实体主键" />
+            <a-form-item label="关联业务对象" required>
+              <TrainingPlanSelector
+                v-if="editor.businessType === 'TRAINING_PLAN'"
+                :value="editor.businessId || null"
+                :program-id="qualityStore.currentProgramId || null"
+                placeholder="请选择培养方案"
+                @change="syncEditorTrainingPlan"
+              />
+              <GraduationRequirementSelector
+                v-else-if="editor.businessType === 'GRADUATION_REQUIREMENT'"
+                v-model:value="editor.businessId"
+                :training-plan-id="
+                  editorTrainingPlanId || qualityStore.currentTrainingPlanId || null
+                "
+                placeholder="请选择毕业要求"
+              />
+              <CourseSelector
+                v-else-if="editor.businessType === 'COURSE_GOAL'"
+                :value="editorQualityCourseId || null"
+                :training-plan-id="
+                  editorTrainingPlanId || qualityStore.currentTrainingPlanId || null
+                "
+                :program-id="qualityStore.currentProgramId || null"
+                placeholder="请先选择课程目标所属课程"
+                @change="syncEditorCourse"
+              />
+              <CourseGoalSelector
+                v-if="editor.businessType === 'COURSE_GOAL'"
+                v-model:value="editor.businessId"
+                :quality-course-id="
+                  editorQualityCourseId || qualityStore.currentQualityCourseId || null
+                "
+                class="archive__stacked-control"
+                placeholder="请选择课程目标"
+              />
+              <AchievementResultSelector
+                v-else-if="editor.businessType === 'ACHIEVEMENT_RESULT'"
+                v-model:value="editor.businessId"
+                :training-plan-id="
+                  editorTrainingPlanId || qualityStore.currentTrainingPlanId || null
+                "
+                :quality-course-id="
+                  editorQualityCourseId || qualityStore.currentQualityCourseId || null
+                "
+                placeholder="请选择达成度结果"
+              />
+              <ReportSelector
+                v-else-if="editor.businessType === 'REPORT'"
+                v-model:value="editor.businessId"
+                :program-id="qualityStore.currentProgramId || null"
+                :training-plan-id="
+                  editorTrainingPlanId || qualityStore.currentTrainingPlanId || null
+                "
+                :quality-course-id="
+                  editorQualityCourseId || qualityStore.currentQualityCourseId || null
+                "
+                placeholder="请选择报告"
+              />
+              <AuditRectificationSelector
+                v-else-if="editor.businessType === 'AUDIT_RECTIFICATION'"
+                v-model:value="editor.businessId"
+                placeholder="请选择审核评估整改任务"
+              />
+              <a-alert v-else type="warning" show-icon message="该类型需要从对应业务页面发起归档" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="归档文件 ID" required>
-              <a-input v-model:value="editor.fileId" placeholder="edu-storage 中的文件节点 ID" />
+            <a-form-item label="归档文件" required>
+              <a-upload
+                :show-upload-list="false"
+                :custom-request="handleArchiveFileUpload"
+                :disabled="archiveFileUploading"
+              >
+                <UiButton variant="outline" size="sm" :loading="archiveFileUploading">
+                  上传归档文件
+                </UiButton>
+              </a-upload>
+              <div v-if="uploadedArchiveFile" class="archive__file-name">
+                {{ uploadedArchiveFile.nodeName }}
+              </div>
             </a-form-item>
           </a-col>
         </a-row>
         <a-row :gutter="12">
           <a-col :span="8">
             <a-form-item label="归档分类">
-              <a-input v-model:value="editor.archiveCategory" placeholder="例：EXPERT_PACKAGE" />
+              <a-input v-model:value="editor.archiveCategory" placeholder="例：专家材料包" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -584,7 +773,7 @@ onMounted(loadList)
           </a-col>
         </a-row>
         <a-form-item label="电子化保管状态">
-          <a-input v-model:value="editor.digitalStatus" placeholder="例：FULL_DIGITAL / HYBRID" />
+          <a-input v-model:value="editor.digitalStatus" placeholder="例：全电子化 / 纸电混合" />
         </a-form-item>
         <a-form-item label="备注">
           <a-textarea v-model:value="editor.notes" :rows="2" />
@@ -603,20 +792,26 @@ onMounted(loadList)
             {{ archiveBusinessTypeLabel(detailRecord.businessType) }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="业务 ID">
-          {{ detailRecord.businessId }}
+        <a-descriptions-item label="关联业务对象">
+          {{ detailRecord.businessLabel }}
         </a-descriptions-item>
-        <a-descriptions-item label="文件 ID">
-          {{ detailRecord.fileId }}
+        <a-descriptions-item label="归档文件">
+          <a-tag color="green">
+            {{ detailRecord.fileName }}
+          </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="分类">
-          {{ detailRecord.archiveCategory || '-' }}
+          {{ detailRecord.archiveCategory || '未设置分类' }}
         </a-descriptions-item>
         <a-descriptions-item label="保管年限">
-          {{ detailRecord.retentionYears ?? '-' }} 年
+          {{
+            typeof detailRecord.retentionYears === 'number'
+              ? `${detailRecord.retentionYears} 年`
+              : '未设置保管年限'
+          }}
         </a-descriptions-item>
         <a-descriptions-item label="保管期编码">
-          {{ detailRecord.retentionPolicyCode || '-' }}
+          {{ detailRecord.retentionPolicyCode || '未设置保管期编码' }}
         </a-descriptions-item>
         <a-descriptions-item label="档案室确认">
           <a-tag :color="detailRecord.archiveOfficeConfirmed ? 'green' : 'default'">
@@ -624,10 +819,10 @@ onMounted(loadList)
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="归档时间">
-          {{ detailRecord.archivedAt || '-' }}
+          {{ detailRecord.archivedAt || '尚未归档确认' }}
         </a-descriptions-item>
         <a-descriptions-item label="备注">
-          {{ detailRecord.notes || '-' }}
+          {{ detailRecord.notes || '未填写备注' }}
         </a-descriptions-item>
       </a-descriptions>
     </UiDrawer>
@@ -696,6 +891,21 @@ onMounted(loadList)
 
   &__number-full {
     width: 100%;
+  }
+
+  &__stacked-control {
+    margin-top: 8px;
+
+    &--first {
+      margin-top: 0;
+    }
+  }
+
+  &__file-name {
+    margin-top: 8px;
+    color: var(--dp-text-secondary, #475569);
+    font-size: 13px;
+    line-height: 20px;
   }
 }
 </style>

@@ -21,11 +21,7 @@
     <div class="ui-state-block__content">
       <div v-if="props.badgeLabel || $slots.badge" class="ui-state-block__badge">
         <slot name="badge">
-          <UiBadge
-            :tone="props.badgeTone"
-            variant="soft"
-            size="sm"
-          >
+          <UiBadge :tone="props.badgeTone" variant="soft" size="sm">
             {{ props.badgeLabel }}
           </UiBadge>
         </slot>
@@ -66,31 +62,33 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  state?: UiStateBlockState
-  title?: string
-  description?: string
-  helper?: string
-  badgeLabel?: string
-  badgeTone?: BadgeTone
-  size?: 'sm' | 'md' | 'lg'
-  minHeight?: string | number
-  compact?: boolean
-}>(), {
-  state: 'empty',
-  title: '',
-  description: '',
-  helper: '',
-  badgeLabel: '',
-  badgeTone: 'blue',
-  size: 'md',
-  minHeight: '',
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    state?: UiStateBlockState
+    title?: string
+    description?: string
+    helper?: string
+    badgeLabel?: string
+    badgeTone?: BadgeTone
+    size?: 'sm' | 'md' | 'lg'
+    minHeight?: string | number
+    compact?: boolean
+  }>(),
+  {
+    state: 'empty',
+    title: '',
+    description: '',
+    helper: '',
+    badgeLabel: '',
+    badgeTone: 'blue',
+    size: 'md',
+    minHeight: '',
+    compact: false,
+  },
+)
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
@@ -110,8 +108,7 @@ const iconComponent = computed(() => {
 })
 
 const mergedTitle = computed(() => {
-  if (props.title)
-    return props.title
+  if (props.title) return props.title
 
   const titleMap: Record<UiStateBlockState, string> = {
     empty: '暂无内容',
@@ -126,14 +123,13 @@ const mergedTitle = computed(() => {
 })
 
 const mergedDescription = computed(() => {
-  if (props.description)
-    return props.description
+  if (props.description) return props.description
 
   const descriptionMap: Record<UiStateBlockState, string> = {
     empty: '当前没有可展示的数据，可以调整筛选条件或稍后再试。',
     loading: '数据正在准备中，请稍候。',
     success: '当前结果已生成，可以继续查看详情或进入下一步。',
-    warning: '当前结果存在风险项，建议先查看提示信息再继续操作。',
+    warning: '当前结果存在风险项，请先查看提示信息再继续操作。',
     error: '当前请求未成功完成，请检查参数或稍后重试。',
     info: '当前模块已准备就绪，可继续执行下一步操作。',
   }
@@ -143,8 +139,7 @@ const mergedDescription = computed(() => {
 
 const containerStyle = computed(() => {
   const minHeight = normalizeCssSize(props.minHeight)
-  if (!minHeight)
-    return undefined
+  if (!minHeight) return undefined
 
   return {
     minHeight,

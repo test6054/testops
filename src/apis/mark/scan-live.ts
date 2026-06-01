@@ -14,16 +14,25 @@ import { getValidToken } from '@/utils/auth'
 /** SSE 扫描事件状态码 - 对应后端 ScanEventStatus 枚举 */
 export type ScanEventStatusCode = 'PENDING' | 'BATCHED' | 'INVALID'
 
+/** 来源文件引用 - 对应后端 ExamFileRefVO */
+export interface ExamFileRefVO {
+  fileId: string
+  fileName: string
+}
+
 /** 扫描事件视图 - 对应 ScanLiveEventResponse */
 export interface ScanLiveEventVO {
   /** 扫描事件ID（用作 SSE 重连补差的 afterEventId 游标） */
   eventId: string
   examId: string
+  examName: string
+  examNo: string
   scannerDeviceId: string
   scannerStationId: string
   scannerIp?: string
   pageCount: number
-  sourceFileIds?: string[]
+  sourceFiles: ExamFileRefVO[]
+  sourceFileCount: number
   reportId?: string
   batchExternalNo?: string
   scanStartTime?: string
@@ -35,7 +44,7 @@ export interface ScanLiveEventVO {
 }
 
 /** 增量查询请求 - 对应 ScanLiveQueryRequest */
-export interface ScanLiveQueryPayload {
+export interface ScanLiveQueryRequest {
   examId?: string
   scannerStationId?: string
   scannerDeviceId?: string
@@ -59,7 +68,7 @@ export interface ScanLiveStreamHandler {
   /** 收到 scan 事件 */
   onEvent: (event: ScanLiveEventVO) => void
   /** 连接错误（仅在不可恢复时触发，库内自动重连） */
-  onError?: (err: unknown) => void
+  onError?: (err: Error) => void
   /** 连接关闭（手动 abort 或服务端关闭流） */
   onClose?: () => void
   /** 重连前需要刷新鉴权 token 时调用 */
@@ -71,9 +80,9 @@ export interface ScanLiveStreamHandler {
  * POST /api/mark/scan-live/recent
  */
 export function listRecentScanEvents(
-  payload: ScanLiveQueryPayload,
+  request: ScanLiveQueryRequest,
 ): Promise<ScanLiveEventVO[]> {
-  return http.post<unknown>('/api/mark/scan-live/recent', payload).then(validateScanLiveEventList)
+  return http.post<ScanLiveEventVO[]>('/api/mark/scan-live/recent', request)
 }
 
 /**
@@ -144,16 +153,16 @@ export function subscribeScanLive(
       }
       if (message.event === 'scan') {
         try {
-          const parsed = validateScanLiveEvent(JSON.parse(message.data))
+          const parsed: ScanLiveEventVO = JSON.parse(message.data)
           handler.onEvent(parsed)
         }
         catch (err) {
-          handler.onError?.(err)
+          handler.onError?.(err instanceof Error ? err : new Error('SSE 扫描事件解析失败'))
         }
       }
     },
     onerror(err) {
-      handler.onError?.(err)
+      handler.onError?.(err instanceof Error ? err : new Error('SSE 订阅连接失败'))
       // 默认抛出 -> 不重连；这里返回数字 -> 库会按毫秒间隔重连。控制 5 秒重连一次
       return 5000
     },
@@ -195,75 +204,4 @@ function normalizedHeaders(headers: HeadersInit | undefined): Record<string, str
     return Object.fromEntries(headers)
   }
   return headers
-}
-
-function requireString(value: unknown, fieldName: string): string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError(`扫描实时事件缺少 ${fieldName}`)
-  }
-  return value
-}
-
-function requireFiniteNumber(value: unknown, fieldName: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`扫描实时事件 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function optionalString(value: unknown, fieldName: string): string | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string') {
-    throw new TypeError(`扫描实时事件 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function optionalStringList(value: unknown, fieldName: string): string[] | undefined {
-  if (value === undefined || value === null) {
-    return undefined
-  }
-  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
-    throw new TypeError(`扫描实时事件 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireScanEventStatus(value: unknown): ScanEventStatusCode {
-  if (value !== 'PENDING' && value !== 'BATCHED' && value !== 'INVALID') {
-    throw new TypeError('扫描实时事件 status 格式错误')
-  }
-  return value
-}
-
-function validateScanLiveEvent(value: unknown): ScanLiveEventVO {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError('扫描实时事件返回格式错误')
-  }
-  const record = value as Record<string, unknown>
-  return {
-    eventId: requireString(record.eventId, 'eventId'),
-    examId: requireString(record.examId, 'examId'),
-    scannerDeviceId: requireString(record.scannerDeviceId, 'scannerDeviceId'),
-    scannerStationId: requireString(record.scannerStationId, 'scannerStationId'),
-    scannerIp: optionalString(record.scannerIp, 'scannerIp'),
-    pageCount: requireFiniteNumber(record.pageCount, 'pageCount'),
-    sourceFileIds: optionalStringList(record.sourceFileIds, 'sourceFileIds'),
-    reportId: optionalString(record.reportId, 'reportId'),
-    batchExternalNo: optionalString(record.batchExternalNo, 'batchExternalNo'),
-    scanStartTime: optionalString(record.scanStartTime, 'scanStartTime'),
-    scanEndTime: optionalString(record.scanEndTime, 'scanEndTime'),
-    status: requireScanEventStatus(record.status),
-    scanBatchId: optionalString(record.scanBatchId, 'scanBatchId'),
-    createTime: requireString(record.createTime, 'createTime'),
-  }
-}
-
-function validateScanLiveEventList(value: unknown): ScanLiveEventVO[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError('扫描实时事件列表返回格式错误')
-  }
-  return value.map(validateScanLiveEvent)
 }

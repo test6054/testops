@@ -1,18 +1,13 @@
 <template>
   <div class="ui-activity-feed">
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div v-if="props.groups.length" class="ui-activity-feed__groups" :style="listStyle">
-        <section
-          v-for="group in props.groups"
-          :key="group.key"
-          class="ui-activity-feed__group"
-        >
-          <div
-            v-if="group.label || group.countText"
-            class="ui-activity-feed__group-header"
-          >
+        <section v-for="group in props.groups" :key="group.key" class="ui-activity-feed__group">
+          <div v-if="group.label || group.countText" class="ui-activity-feed__group-header">
             <div v-if="group.label" class="ui-activity-feed__group-title">{{ group.label }}</div>
-            <div v-if="group.countText" class="ui-activity-feed__group-count">{{ group.countText }}</div>
+            <div v-if="group.countText" class="ui-activity-feed__group-count">
+              {{ group.countText }}
+            </div>
           </div>
 
           <article
@@ -83,8 +78,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiActivityFeedGroup, UiActivityFeedItem, UiNoticeAction } from './types'
 import { computed } from 'vue'
+import type { UiActivityFeedGroup, UiActivityFeedItem, UiNoticeAction } from './types'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
 import UiActionLink from './UiActionLink.vue'
@@ -93,35 +88,36 @@ defineOptions({
   name: 'UiActivityFeed',
 })
 
-const props = withDefaults(defineProps<{
-  groups?: UiActivityFeedGroup[]
-  loading?: boolean
-  emptyText?: string
-  itemClickable?: boolean
-  maxHeight?: string | number
-}>(), {
-  groups: () => [],
-  loading: false,
-  emptyText: '暂无动态',
-  itemClickable: true,
-  maxHeight: '',
-})
+const props = withDefaults(
+  defineProps<{
+    groups?: UiActivityFeedGroup[]
+    loading?: boolean
+    emptyText?: string
+    itemClickable?: boolean
+    maxHeight?: string | number
+  }>(),
+  {
+    groups: () => [],
+    loading: false,
+    emptyText: '暂无动态',
+    itemClickable: true,
+    maxHeight: '',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiActivityFeedItem): void
-  (e: 'action-click', payload: { item: UiActivityFeedItem, action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiActivityFeedItem; action: UiNoticeAction }): void
 }>()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
 const listStyle = computed<CSSProperties | undefined>(() => {
   const maxHeight = normalizeCssSize(props.maxHeight)
-  if (!maxHeight)
-    return undefined
+  if (!maxHeight) return undefined
 
   return {
     maxHeight,
@@ -131,15 +127,13 @@ const listStyle = computed<CSSProperties | undefined>(() => {
 })
 
 const handleItemClick = (item: UiActivityFeedItem) => {
-  if (!props.itemClickable)
-    return
+  if (!props.itemClickable) return
 
   emit('item-click', item)
 }
 
 const handleActionClick = (item: UiActivityFeedItem, action: UiNoticeAction) => {
-  if (action.disabled)
-    return
+  if (action.disabled) return
 
   emit('action-click', { item, action })
 }

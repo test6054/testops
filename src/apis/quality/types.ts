@@ -145,7 +145,7 @@ export const AI_TASK_TYPE_LABEL: Record<AiTaskType, string> = {
   ACHIEVEMENT_DIAGNOSIS: '达成度诊断',
   COURSE_REPORT_GENERATE: '课程目标达成报告生成',
   PROGRAM_REPORT_GENERATE: '专业质量分析报告生成',
-  IMPROVEMENT_SUGGESTION_GENERATE: '改进建议生成',
+  IMPROVEMENT_SUGGESTION_GENERATE: '改进措施生成',
   MATERIAL_QA: '材料问答',
   INDIRECT_RESPONSE_DOC_PARSE: '间接评价答卷文档解析',
 }
@@ -410,17 +410,31 @@ export const EVALUATION_METHOD_LABEL: Record<EvaluationMethod, string> = {
   MANUAL_REVIEW_CONFIRMED: '人工审核确认',
 }
 
+/** 评价周期 - EvaluationCycleEnum */
+export type EvaluationCycle
+  = | 'SEMESTER'
+    | 'YEAR'
+    | 'BIENNIAL'
+    | 'TRIENNIAL'
+    | 'PROGRAM_CYCLE'
+
+export const EVALUATION_CYCLE_LABEL: Record<EvaluationCycle, string> = {
+  SEMESTER: '按学期',
+  YEAR: '按学年',
+  BIENNIAL: '每两年',
+  TRIENNIAL: '每三年',
+  PROGRAM_CYCLE: '按培养周期',
+}
+
 /** 聚合函数 - AggregationFunctionEnum */
 export type AggregationFunction
   = | 'WEIGHTED_SUM'
     | 'MINIMUM'
-    | 'WEIGHTED_MINIMUM_MIXED'
     | 'DIRECT_INDIRECT_WEIGHTED'
 
 export const AGGREGATION_FUNCTION_LABEL: Record<AggregationFunction, string> = {
   WEIGHTED_SUM: '加权平均',
   MINIMUM: '取最小值',
-  WEIGHTED_MINIMUM_MIXED: '加权与最小值混合',
   DIRECT_INDIRECT_WEIGHTED: '直接间接加权',
 }
 
@@ -433,6 +447,17 @@ export const WORKGROUP_LEVEL_LABEL: Record<WorkgroupLevel, string> = {
   PROGRAM: '专业级',
   INDUSTRY: '行业企业专家组',
 }
+
+/** 评价工作组层级下拉选项，值必须与后端 WorkgroupLevelEnum 完全一致 */
+export const WORKGROUP_LEVEL_OPTIONS: Array<{
+  label: string
+  value: WorkgroupLevel
+}> = [
+  { value: 'UNIVERSITY', label: WORKGROUP_LEVEL_LABEL.UNIVERSITY },
+  { value: 'COLLEGE', label: WORKGROUP_LEVEL_LABEL.COLLEGE },
+  { value: 'PROGRAM', label: WORKGROUP_LEVEL_LABEL.PROGRAM },
+  { value: 'INDUSTRY', label: WORKGROUP_LEVEL_LABEL.INDUSTRY },
+]
 
 /** 审核评估问题状态 - AuditIssueStatusEnum */
 export type AuditIssueStatus
@@ -585,6 +610,19 @@ export const EXTERNAL_SOURCE_TYPE_LABEL: Record<ExternalSourceType, string> = {
   KINGBASE: '人大金仓',
 }
 
+/** 外部数据源类型下拉选项，值必须与后端 ExternalSourceTypeEnum 完全一致 */
+export const EXTERNAL_SOURCE_TYPE_OPTIONS: Array<{
+  label: string
+  value: ExternalSourceType
+}> = [
+  { value: 'POSTGRESQL', label: EXTERNAL_SOURCE_TYPE_LABEL.POSTGRESQL },
+  { value: 'MYSQL', label: EXTERNAL_SOURCE_TYPE_LABEL.MYSQL },
+  { value: 'ORACLE', label: EXTERNAL_SOURCE_TYPE_LABEL.ORACLE },
+  { value: 'SQLSERVER', label: EXTERNAL_SOURCE_TYPE_LABEL.SQLSERVER },
+  { value: 'DM', label: EXTERNAL_SOURCE_TYPE_LABEL.DM },
+  { value: 'KINGBASE', label: EXTERNAL_SOURCE_TYPE_LABEL.KINGBASE },
+]
+
 /** 外部拔取任务状态 - ExternalPullTaskStatusEnum */
 export type ExternalPullTaskStatus
   = | 'PENDING'
@@ -608,6 +646,18 @@ export const EXTERNAL_PULL_TASK_STATUS_COLOR: Record<ExternalPullTaskStatus, str
   FAILED: 'red',
   CANCELLED: 'orange',
 }
+
+/** 外部拔取任务状态下拉选项，值必须与后端 ExternalPullTaskStatusEnum 完全一致 */
+export const EXTERNAL_PULL_TASK_STATUS_OPTIONS: Array<{
+  label: string
+  value: ExternalPullTaskStatus
+}> = [
+  { value: 'PENDING', label: EXTERNAL_PULL_TASK_STATUS_LABEL.PENDING },
+  { value: 'RUNNING', label: EXTERNAL_PULL_TASK_STATUS_LABEL.RUNNING },
+  { value: 'SUCCEEDED', label: EXTERNAL_PULL_TASK_STATUS_LABEL.SUCCEEDED },
+  { value: 'FAILED', label: EXTERNAL_PULL_TASK_STATUS_LABEL.FAILED },
+  { value: 'CANCELLED', label: EXTERNAL_PULL_TASK_STATUS_LABEL.CANCELLED },
+]
 
 /** 外部数据拔取审计事件 - ExternalPullAuditEventEnum */
 export type ExternalPullAuditEvent
@@ -734,6 +784,21 @@ export const PROCESS_NODE_TYPE_LABEL: Record<ProcessNodeType, string> = {
   INTERNSHIP_EVALUATION: '实习过程评价',
 }
 
+/** 过程性评价节点类型下拉选项，值必须与后端 ProcessNodeTypeEnum 完全一致 */
+export const PROCESS_NODE_TYPE_OPTIONS: Array<{
+  label: string
+  value: ProcessNodeType
+}> = [
+  { value: 'CLASS_INTERACTION', label: PROCESS_NODE_TYPE_LABEL.CLASS_INTERACTION },
+  { value: 'STAGE_HOMEWORK', label: PROCESS_NODE_TYPE_LABEL.STAGE_HOMEWORK },
+  { value: 'PROJECT_MILESTONE', label: PROCESS_NODE_TYPE_LABEL.PROJECT_MILESTONE },
+  { value: 'LAB_RECORD', label: PROCESS_NODE_TYPE_LABEL.LAB_RECORD },
+  { value: 'PRACTICE_LOG', label: PROCESS_NODE_TYPE_LABEL.PRACTICE_LOG },
+  { value: 'WORK_ITERATION', label: PROCESS_NODE_TYPE_LABEL.WORK_ITERATION },
+  { value: 'CASE_DISCUSSION', label: PROCESS_NODE_TYPE_LABEL.CASE_DISCUSSION },
+  { value: 'INTERNSHIP_EVALUATION', label: PROCESS_NODE_TYPE_LABEL.INTERNSHIP_EVALUATION },
+]
+
 /** 间接评价应答人类型 - 对应 RespondentTypeEnum */
 export type RespondentType
   = | 'STUDENT'
@@ -768,391 +833,4 @@ export const INDIRECT_FORM_TYPE_LABEL: Record<IndirectFormType, string> = {
   TEACHER_EVALUATION: '教师评价',
   EXPERT_EVALUATION: '行业或校外专家评价',
   SUPERVISOR_EVALUATION: '教学督导评价',
-}
-
-// ─── 类型守卫 ──────────────────────────────────────────────────
-// 视图层从 a-table slot/通用 record 字段解析后端字符串字段时，
-// 必须通过下列守卫将 string 收窄到具体枚举字面量再访问 LABEL/COLOR Record。
-// 严禁使用 `as keyof typeof` 类型断言把任意 string 强行变成枚举类型。
-
-export function isAchievementStatus(value: unknown): value is AchievementStatus {
-  return (
-    value === 'ACHIEVED'
-    || value === 'PARTIALLY_ACHIEVED'
-    || value === 'NOT_ACHIEVED'
-    || value === 'INSUFFICIENT_EVIDENCE'
-  )
-}
-
-export function isAchievementAuditStatus(value: unknown): value is AchievementAuditStatus {
-  return (
-    value === 'DRAFT'
-    || value === 'CALCULATED'
-    || value === 'SUBMITTED'
-    || value === 'CONFIRMED'
-    || value === 'RETURNED'
-    || value === 'ARCHIVED'
-  )
-}
-
-export function isAchievementTargetType(value: unknown): value is AchievementTargetType {
-  return (
-    value === 'COURSE_GOAL'
-    || value === 'REQUIREMENT_INDICATOR'
-    || value === 'GRADUATION_REQUIREMENT'
-    || value === 'TRAINING_OBJECTIVE'
-    || value === 'PROGRAM_SUMMARY'
-    || value === 'CIVIC_GOAL_AGGREGATE'
-    || value === 'COMPLEX_ENGINEERING_AGGREGATE'
-  )
-}
-
-export function isAiTaskStatus(value: unknown): value is AiTaskStatus {
-  return (
-    value === 'PENDING'
-    || value === 'PROCESSING'
-    || value === 'SUCCEEDED'
-    || value === 'FAILED'
-    || value === 'CANCELLED'
-  )
-}
-
-export function isAiTaskType(value: unknown): value is AiTaskType {
-  return (
-    value === 'SYLLABUS_PARSE'
-    || value === 'TRAINING_PLAN_PARSE'
-    || value === 'ACHIEVEMENT_DIAGNOSIS'
-    || value === 'COURSE_REPORT_GENERATE'
-    || value === 'PROGRAM_REPORT_GENERATE'
-    || value === 'IMPROVEMENT_SUGGESTION_GENERATE'
-    || value === 'MATERIAL_QA'
-    || value === 'INDIRECT_RESPONSE_DOC_PARSE'
-  )
-}
-
-export function isImprovementTaskStatus(value: unknown): value is ImprovementTaskStatus {
-  return (
-    value === 'OPEN'
-    || value === 'IN_PROGRESS'
-    || value === 'SUBMITTED'
-    || value === 'REVIEWED'
-    || value === 'CLOSED'
-    || value === 'RETURNED'
-  )
-}
-
-export function isScoreBatchStatus(value: unknown): value is ScoreBatchStatus {
-  return (
-    value === 'PENDING'
-    || value === 'PARSING'
-    || value === 'PREVIEW_READY'
-    || value === 'VALIDATED'
-    || value === 'CONFIRMED'
-    || value === 'FAILED'
-    || value === 'CANCELLED'
-  )
-}
-
-export function isReportStatus(value: unknown): value is ReportStatus {
-  return (
-    value === 'DRAFT'
-    || value === 'SUBMITTED'
-    || value === 'RETURNED'
-    || value === 'CONFIRMED'
-    || value === 'ARCHIVED'
-  )
-}
-
-export function isReportExportStatus(value: unknown): value is ReportExportStatus {
-  return (
-    value === 'IDLE'
-    || value === 'PENDING'
-    || value === 'PROCESSING'
-    || value === 'COMPLETED'
-    || value === 'FAILED'
-  )
-}
-
-export function isReportType(value: unknown): value is ReportType {
-  return (
-    value === 'COURSE_ACHIEVEMENT'
-    || value === 'PROGRAM_QUALITY'
-    || value === 'IMPROVEMENT'
-    || value === 'AUDIT_EVALUATION_RECTIFICATION'
-  )
-}
-
-export function isExternalPullTaskStatus(value: unknown): value is ExternalPullTaskStatus {
-  return (
-    value === 'PENDING'
-    || value === 'RUNNING'
-    || value === 'SUCCEEDED'
-    || value === 'FAILED'
-    || value === 'CANCELLED'
-  )
-}
-
-export function isExternalPullAuditEvent(value: unknown): value is ExternalPullAuditEvent {
-  return (
-    value === 'SQL_SAFETY_CHECK'
-    || value === 'FIELD_WHITELIST_CHECK'
-    || value === 'MASK_PREVIEW_CHECK'
-    || value === 'QUERY_TIMEOUT'
-    || value === 'ROW_LIMIT_EXCEEDED'
-    || value === 'TASK_FAILED'
-    || value === 'TASK_SUCCEEDED'
-    || value === 'MANUAL_REJECT'
-    || value === 'MANUAL_CONFIRM'
-    || value === 'TASK_CANCELLED'
-  )
-}
-
-export function isExternalPullAuditCheckStatus(value: unknown): value is ExternalPullAuditCheckStatus {
-  return value === 'PASSED' || value === 'REJECTED' || value === 'WARNING'
-}
-
-export function isExternalPullConfirmationStatus(value: unknown): value is ExternalPullConfirmationStatus {
-  return value === 'PREVIEW' || value === 'CONFIRMED' || value === 'REJECTED'
-}
-
-export function isAuditIssueStatus(value: unknown): value is AuditIssueStatus {
-  return (
-    value === 'OPEN'
-    || value === 'IN_RECTIFICATION'
-    || value === 'RECTIFIED'
-    || value === 'VERIFIED'
-    || value === 'CLOSED'
-  )
-}
-
-export function isAuditRectificationStatus(value: unknown): value is AuditRectificationStatus {
-  return (
-    value === 'PLANNED'
-    || value === 'IN_PROGRESS'
-    || value === 'SUBMITTED'
-    || value === 'VERIFIED'
-    || value === 'RETURNED'
-    || value === 'CLOSED'
-  )
-}
-
-export function isConfirmationStatus(value: unknown): value is ConfirmationStatus {
-  return (
-    value === 'DRAFT'
-    || value === 'SUBMITTED'
-    || value === 'CONFIRMED'
-    || value === 'RETURNED'
-  )
-}
-
-export function isSupportLevel(value: unknown): value is SupportLevel {
-  return value === 'HIGH' || value === 'MEDIUM' || value === 'LOW'
-}
-
-export function isAiOutputValidation(value: unknown): value is AiOutputValidation {
-  return value === 'PASSED' || value === 'REJECTED' || value === 'WARN'
-}
-
-export function isAiHealthStatus(value: unknown): value is AiHealthStatus {
-  return value === 'UNKNOWN' || value === 'HEALTHY' || value === 'FAILED'
-}
-
-export function isSqlSafetyStatus(value: unknown): value is SqlSafetyStatus {
-  return value === 'PASSED' || value === 'REJECTED' || value === 'ERROR'
-}
-
-export function isAccreditationType(value: unknown): value is AccreditationType {
-  return (
-    value === 'ENGINEERING_ACCREDITATION'
-    || value === 'TEACHER_ACCREDITATION'
-    || value === 'MEDICAL_HEALTH_ACCREDITATION'
-    || value === 'ART_DESIGN_QUALITY_EVALUATION'
-    || value === 'ECONOMICS_FINANCE_QUALITY_EVALUATION'
-    || value === 'LAW_QUALITY_EVALUATION'
-    || value === 'AGRICULTURE_ACCREDITATION'
-    || value === 'GENERAL_QUALITY_EVALUATION'
-  )
-}
-
-export function isEvaluationMethod(value: unknown): value is EvaluationMethod {
-  return (
-    value === 'DIRECT_ONLY'
-    || value === 'DIRECT_INDIRECT_WEIGHTED'
-    || value === 'MANUAL_REVIEW_CONFIRMED'
-  )
-}
-
-export function isAggregationFunction(value: unknown): value is AggregationFunction {
-  return (
-    value === 'WEIGHTED_SUM'
-    || value === 'MINIMUM'
-    || value === 'WEIGHTED_MINIMUM_MIXED'
-    || value === 'DIRECT_INDIRECT_WEIGHTED'
-  )
-}
-
-export function isWorkgroupLevel(value: unknown): value is WorkgroupLevel {
-  return (
-    value === 'UNIVERSITY'
-    || value === 'COLLEGE'
-    || value === 'PROGRAM'
-    || value === 'INDUSTRY'
-  )
-}
-
-export function isAssessmentItemType(value: unknown): value is AssessmentItemType {
-  return (
-    value === 'FINAL_EXAM'
-    || value === 'HOMEWORK'
-    || value === 'EXPERIMENT'
-    || value === 'COURSE_DESIGN'
-    || value === 'INTERNSHIP'
-    || value === 'DISSERTATION'
-    || value === 'PROCESS_NODE'
-    || value === 'PROJECT_MILESTONE'
-    || value === 'CASE_STUDY'
-    || value === 'DEFENSE'
-    || value === 'WORK_PORTFOLIO'
-    || value === 'FIELD_TRIAL'
-    || value === 'CLINICAL_PRACTICE'
-  )
-}
-
-export function isCivicDimension(value: unknown): value is CivicDimension {
-  return (
-    value === 'MORAL'
-    || value === 'INTELLECTUAL'
-    || value === 'PHYSICAL'
-    || value === 'AESTHETIC'
-    || value === 'LABOR'
-  )
-}
-
-export function isAiProviderType(value: unknown): value is AiProviderType {
-  return value === 'OPENAI' || value === 'DEEPSEEK' || value === 'QWEN'
-}
-
-export function isExternalSourceType(value: unknown): value is ExternalSourceType {
-  return (
-    value === 'POSTGRESQL'
-    || value === 'MYSQL'
-    || value === 'ORACLE'
-    || value === 'SQLSERVER'
-    || value === 'DM'
-    || value === 'KINGBASE'
-  )
-}
-
-export function isDataSourceMode(value: unknown): value is DataSourceMode {
-  return (
-    value === 'EXCEL_IMPORT'
-    || value === 'EXTERNAL_AI_CONNECTOR'
-    || value === 'READ_ONLY_DATABASE_PULL'
-    || value === 'MANUAL_CONFIRMATION'
-    || value === 'EDU_MARK_EXAM'
-    || value === 'EDU_MARK_FINAL_SCORE'
-  )
-}
-
-export function isProcessNodeType(value: unknown): value is ProcessNodeType {
-  return (
-    value === 'CLASS_INTERACTION'
-    || value === 'STAGE_HOMEWORK'
-    || value === 'PROJECT_MILESTONE'
-    || value === 'LAB_RECORD'
-    || value === 'PRACTICE_LOG'
-    || value === 'WORK_ITERATION'
-    || value === 'CASE_DISCUSSION'
-    || value === 'INTERNSHIP_EVALUATION'
-  )
-}
-
-export function isRespondentType(value: unknown): value is RespondentType {
-  return (
-    value === 'STUDENT'
-    || value === 'GRADUATE'
-    || value === 'EMPLOYER'
-    || value === 'TEACHER'
-    || value === 'EXPERT'
-    || value === 'SUPERVISOR'
-  )
-}
-
-export function isIndirectFormType(value: unknown): value is IndirectFormType {
-  return (
-    value === 'STUDENT_SELF'
-    || value === 'GRADUATE_TRACKING'
-    || value === 'EMPLOYER_FEEDBACK'
-    || value === 'TEACHER_EVALUATION'
-    || value === 'EXPERT_EVALUATION'
-    || value === 'SUPERVISOR_EVALUATION'
-  )
-}
-
-export function isScaleType(value: unknown): value is ScaleType {
-  return (
-    value === 'FIVE_LEVEL'
-    || value === 'FOUR_LEVEL'
-    || value === 'TEN_POINT'
-    || value === 'PERCENTAGE'
-    || value === 'CUSTOM'
-  )
-}
-
-export function isExpertPackageType(value: unknown): value is ExpertPackageType {
-  return value === 'REQUIREMENT' || value === 'PROGRAM_ACCREDITATION'
-}
-
-export function isArchiveBusinessType(value: unknown): value is ArchiveBusinessType {
-  return (
-    value === 'TRAINING_PLAN'
-    || value === 'GRADUATION_REQUIREMENT'
-    || value === 'COURSE_GOAL'
-    || value === 'SCORE_BATCH'
-    || value === 'ACHIEVEMENT_RESULT'
-    || value === 'AI_RESULT'
-    || value === 'REPORT'
-    || value === 'IMPROVEMENT_TASK'
-    || value === 'EXPERT_PACKAGE'
-    || value === 'AUDIT_RECTIFICATION'
-  )
-}
-
-export function isAiTaskBusinessType(value: unknown): value is AiTaskBusinessType {
-  return (
-    value === 'ACHIEVEMENT_RESULT'
-    || value === 'QUALITY_COURSE'
-    || value === 'TRAINING_PLAN'
-    || value === 'REPORT'
-    || value === 'INDIRECT_FORM'
-  )
-}
-
-export function isAuditSupervisionType(value: unknown): value is AuditSupervisionType {
-  return (
-    value === 'DAILY' || value === 'SPECIAL' || value === 'PRE_AUDIT' || value === 'SITE_VISIT'
-  )
-}
-
-export function isManualReviewDecision(value: unknown): value is ManualReviewDecision {
-  return value === 'CONFIRMED' || value === 'RETURNED' || value === 'ARCHIVED'
-}
-
-export function isAchievementDetailType(value: unknown): value is AchievementDetailType {
-  return (
-    value === 'ASSESSMENT_ITEM'
-    || value === 'COURSE_GOAL'
-    || value === 'INDICATOR'
-    || value === 'REQUIREMENT'
-  )
-}
-
-export function isAiManualHandlingStatus(value: unknown): value is AiManualHandlingStatus {
-  return (
-    value === 'NONE'
-    || value === 'PENDING'
-    || value === 'IN_PROGRESS'
-    || value === 'RESOLVED'
-    || value === 'IGNORED'
-  )
 }

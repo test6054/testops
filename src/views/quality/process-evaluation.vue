@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
@@ -15,26 +16,25 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  */
 import type {
   ConfirmationStatus,
-  DataSourceMode,
-  ProcessEvaluationNodeSavePayload,
+  ProcessEvaluationNodeSaveRequest,
   ProcessEvaluationNodeVO,
-  ProcessEvaluationRecordSavePayload,
+  ProcessEvaluationRecordSaveRequest,
   ProcessEvaluationRecordVO,
+  ProcessNodeType,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
   DATA_SOURCE_MODE_LABEL,
-  isConfirmationStatus,
-  isDataSourceMode,
-  isProcessNodeType,
   PROCESS_NODE_TYPE_LABEL,
+  PROCESS_NODE_TYPE_OPTIONS,
   processNodeApi,
   processRecordApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import {
   AssessmentItemSelector,
@@ -44,10 +44,12 @@ import {
   StudentSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { toUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const nodeColumns: ColumnsType = [
   { title: '编码', dataIndex: 'nodeCode', key: 'nodeCode', width: 100 },
@@ -59,8 +61,8 @@ const nodeColumns: ColumnsType = [
 
 const recordColumns: ColumnsType = [
   { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
-  { title: '学生', dataIndex: 'studentUserId', key: 'studentUserId', width: 120 },
-  { title: '原始分', dataIndex: 'rawScore', key: 'rawScore', width: 80 },
+  { title: '学生', key: 'studentBinding', width: 120 },
+  { title: '得分', dataIndex: 'score', key: 'score', width: 80 },
   { title: '换算分', dataIndex: 'convertedScore', key: 'convertedScore', width: 80 },
   { title: '来源', dataIndex: 'sourceMode', key: 'sourceMode', width: 140 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
@@ -68,60 +70,48 @@ const recordColumns: ColumnsType = [
 ]
 
 const confirmedByGoalColumns: ColumnsType = [
-  { title: '节点 ID', dataIndex: 'nodeId', key: 'nodeId', width: 100 },
+  { title: '评价节点', key: 'nodeBinding', width: 120 },
   { title: '学号', dataIndex: 'studentNumber', key: 'studentNumber', width: 120 },
-  { title: '原始分 / 换算分', key: 'scores', width: 150 },
-  { title: '证据文件', dataIndex: 'evidenceFileId', key: 'evidenceFileId', width: 120 },
+  { title: '得分 / 换算分', key: 'scores', width: 150 },
+  { title: '证据文件', key: 'evidenceFileRef', width: 120 },
   { title: '确认时间', dataIndex: 'confirmedAt', key: 'confirmedAt', width: 160 },
 ]
 
 const qualityStore = useQualityStore()
 
-/* ========== 状态守卫 helper（禁用 as 类型断言） ========== */
-
-function confirmationStatusLabel(value: unknown): string {
-  if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_LABEL[value]
-  throw new Error(`过程性评价确认状态不符合前后端契约：${String(value)}`)
+function confirmationStatusLabel(value: ConfirmationStatus): string {
+  return strictEnumLabel(CONFIRMATION_STATUS_LABEL, value, '确认状态')
 }
 
-function confirmationStatusColor(value: unknown): string {
-  if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_COLOR[value]
-  throw new Error(`过程性评价确认状态不符合前后端契约：${String(value)}`)
+function confirmationStatusColor(value: ConfirmationStatus): string {
+  return strictEnumTone(CONFIRMATION_STATUS_COLOR, value, '确认状态')
 }
 
-function processNodeTypeLabel(value: unknown): string {
-  if (isProcessNodeType(value)) return PROCESS_NODE_TYPE_LABEL[value]
-  throw new Error(`过程性评价节点类型不符合前后端契约：${String(value)}`)
+function processNodeTypeLabel(value: ProcessNodeType): string {
+  return strictEnumLabel(PROCESS_NODE_TYPE_LABEL, value, '过程节点类型')
 }
 
 function dataSourceModeLabel(record: ProcessEvaluationRecordVO): string {
-  const value = record.sourceMode
-  if (!value) return '-'
-  if (isDataSourceMode(value)) return DATA_SOURCE_MODE_LABEL[value]
-  return dataSourceModeContractError(value)
+  return strictEnumLabel(DATA_SOURCE_MODE_LABEL, record.sourceMode, '数据来源模式')
 }
 
-function dataSourceModeContractError(
-  value: Exclude<ProcessEvaluationRecordVO['sourceMode'], DataSourceMode | undefined>,
-): string {
-  throw new Error(`过程性评价记录数据来源类型异常：${String(value)}`)
-}
-
-function requireFiniteNumber(value: unknown, fieldName: string): number {
-  const numberValue = Number(value)
-  if (!Number.isFinite(numberValue)) {
-    throw new TypeError(`${fieldName}字段异常：${String(value)}`)
+function studentDisplay(record: ProcessEvaluationRecordVO): string {
+  if (!record.studentUserId) return '未关联学生'
+  if (!record.studentName?.trim()) {
+    throw new TypeError(`过程性评价记录 ${record.id} 缺少学生姓名`)
   }
-  return numberValue
+  return record.studentName.trim()
 }
 
-function formatRequiredNumber(value: unknown, fieldName: string, digits: number): string {
-  return requireFiniteNumber(value, fieldName).toFixed(digits)
-}
-
-function formatOptionalNumber(value: unknown, fieldName: string, digits: number): string {
-  if (value == null || value === '') return '-'
-  return requireFiniteNumber(value, fieldName).toFixed(digits)
+function assertRecordStudentContract(items: ProcessEvaluationRecordVO[], scenario: string): void {
+  for (const item of items) {
+    if (!item.sourceMode) {
+      throw new TypeError(`${scenario} ${item.id} 缺失数据来源模式`)
+    }
+    if (item.studentUserId && !item.studentName?.trim()) {
+      throw new TypeError(`${scenario} ${item.id} 缺失学生姓名`)
+    }
+  }
 }
 
 /* ========== 节点列表 ========== */
@@ -130,10 +120,7 @@ const nodes = ref<ProcessEvaluationNodeVO[]>([])
 const nodesLoading = ref(false)
 const selectedNode = ref<ProcessEvaluationNodeVO | null>(null)
 
-const nodeTypeOptions = Object.entries(PROCESS_NODE_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const nodeTypeOptions = PROCESS_NODE_TYPE_OPTIONS
 
 async function loadNodes() {
   if (!qualityStore.currentQualityCourseId) {
@@ -152,7 +139,7 @@ async function loadNodes() {
 
 const nodeEditorVisible = ref(false)
 const nodeEditorMode = ref<'create' | 'edit'>('create')
-const nodeEditor = ref<ProcessEvaluationNodeSavePayload>({
+const nodeEditor = ref<ProcessEvaluationNodeSaveRequest>({
   qualityCourseId: '',
   nodeCode: '',
   nodeName: '',
@@ -232,7 +219,7 @@ async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
 
 async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: ConfirmationStatus) {
   await processNodeApi.updateConfirmationStatus(record.id, target)
-  message.success(`已切换到 ${CONFIRMATION_STATUS_LABEL[target]}`)
+  message.success(`已切换到 ${confirmationStatusLabel(target)}`)
   await loadNodes()
 }
 
@@ -240,19 +227,27 @@ async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: Confirm
 
 const records = ref<ProcessEvaluationRecordVO[]>([])
 const recordsLoading = ref(false)
+const recordsError = ref<Error | null>(null)
 const recordStatusFilter = ref<ConfirmationStatus | undefined>(undefined)
 
 async function loadRecords() {
   if (!selectedNode.value) {
     records.value = []
+    recordsError.value = null
     return
   }
   recordsLoading.value = true
+  recordsError.value = null
   try {
-    records.value = await processRecordApi.listByNode(
+    const result = await processRecordApi.listByNode(
       selectedNode.value.id,
       recordStatusFilter.value,
     )
+    assertRecordStudentContract(result, '过程性评价记录')
+    records.value = result
+  } catch (err) {
+    records.value = []
+    recordsError.value = toUserError(err, '过程性评价记录加载失败')
   } finally {
     recordsLoading.value = false
   }
@@ -260,17 +255,19 @@ async function loadRecords() {
 
 const recordEditorVisible = ref(false)
 const recordEditorMode = ref<'create' | 'edit'>('create')
-const recordEditor = ref<ProcessEvaluationRecordSavePayload>({
+const recordEditor = ref<ProcessEvaluationRecordSaveRequest>({
   nodeId: '',
   qualityCourseId: '',
   studentUserId: '',
   studentNumber: '',
-  rawScore: 0,
+  score: 0,
   convertedScore: undefined,
   evidenceFileId: '',
   sourceMode: 'MANUAL_CONFIRMATION',
   notes: '',
 })
+const evidenceFileUploading = ref(false)
+const evidenceFileName = ref('')
 
 function handleRecordStudentChange(value: string | null): void {
   recordEditor.value.studentUserId = value ?? ''
@@ -288,12 +285,13 @@ function openRecordCreate() {
     qualityCourseId: qualityStore.currentQualityCourseId,
     studentUserId: '',
     studentNumber: '',
-    rawScore: 0,
+    score: 0,
     convertedScore: undefined,
     evidenceFileId: '',
     sourceMode: 'MANUAL_CONFIRMATION',
     notes: '',
   }
+  evidenceFileName.value = ''
   recordEditorVisible.value = true
 }
 
@@ -304,12 +302,34 @@ function openRecordEdit(record: ProcessEvaluationRecordVO) {
   }
   recordEditorMode.value = 'edit'
   recordEditor.value = { ...record }
+  evidenceFileName.value = record.evidenceFileId ? '已关联证据文件' : ''
   recordEditorVisible.value = true
+}
+
+async function handleEvidenceFileUpload(options: UploadRequestOption): Promise<void> {
+  evidenceFileUploading.value = true
+  try {
+    const { file } = options
+    if (!(file instanceof File)) {
+      message.error('无效的证据文件')
+      options.onError?.(new TypeError('无效的证据文件'))
+      return
+    }
+    const uploaded = await uploadFile(file, { businessType: 'QUALITY_PROCESS_EVIDENCE' })
+    recordEditor.value.evidenceFileId = uploaded.id
+    evidenceFileName.value = uploaded.nodeName
+    message.success(`已上传证据文件：${uploaded.nodeName}`)
+    options.onSuccess?.({})
+  } catch (err) {
+    options.onError?.(err instanceof Error ? err : new Error(String(err)))
+  } finally {
+    evidenceFileUploading.value = false
+  }
 }
 
 async function submitRecord() {
   const v = recordEditor.value
-  if (!v.nodeId || v.rawScore == null) {
+  if (!v.nodeId || v.score == null) {
     message.error('请填写完整记录')
     return
   }
@@ -374,6 +394,7 @@ async function handleImportFinished() {
 
 const confirmedByGoalVisible = ref(false)
 const confirmedByGoalLoading = ref(false)
+const confirmedByGoalError = ref<Error | null>(null)
 const confirmedByGoalId = ref<string>('')
 const confirmedByGoalRecords = ref<ProcessEvaluationRecordVO[]>([])
 
@@ -385,6 +406,7 @@ function openConfirmedByGoal() {
   if (!qualityStore.currentQualityCourseId) return
   confirmedByGoalId.value = ''
   confirmedByGoalRecords.value = []
+  confirmedByGoalError.value = null
   confirmedByGoalVisible.value = true
 }
 
@@ -394,11 +416,17 @@ async function queryConfirmedByGoal() {
     return
   }
   confirmedByGoalLoading.value = true
+  confirmedByGoalError.value = null
   try {
-    confirmedByGoalRecords.value = await processRecordApi.listConfirmedByCourseGoal(
+    const result = await processRecordApi.listConfirmedByCourseGoal(
       qualityStore.currentQualityCourseId,
       confirmedByGoalId.value,
     )
+    assertRecordStudentContract(result, '课程目标已确认过程性评价记录')
+    confirmedByGoalRecords.value = result
+  } catch (err) {
+    confirmedByGoalRecords.value = []
+    confirmedByGoalError.value = toUserError(err, '课程目标已确认记录加载失败')
   } finally {
     confirmedByGoalLoading.value = false
   }
@@ -414,15 +442,23 @@ const signals = computed<SignalMetric[]>(() => {
     RETURNED: 0,
   }
   for (const n of nodes.value) {
-    if (isConfirmationStatus(n.confirmationStatus)) buckets[n.confirmationStatus] += 1
+    buckets[n.confirmationStatus] += 1
   }
   let weightSum = 0
   let coverageSum = 0
   let coverageCount = 0
   for (const n of nodes.value) {
-    if (n.weight != null) weightSum += requireFiniteNumber(n.weight, '过程性评价节点权重')
+    if (n.weight != null) {
+      if (!Number.isFinite(n.weight)) {
+        throw new TypeError('过程性评价节点权重字段异常')
+      }
+      weightSum += n.weight
+    }
     if (n.coverageRequired != null) {
-      coverageSum += requireFiniteNumber(n.coverageRequired, '过程性评价节点覆盖率要求')
+      if (!Number.isFinite(n.coverageRequired)) {
+        throw new TypeError('过程性评价节点覆盖率要求字段异常')
+      }
+      coverageSum += n.coverageRequired
       coverageCount += 1
     }
   }
@@ -433,7 +469,7 @@ const signals = computed<SignalMetric[]>(() => {
     RETURNED: 0,
   }
   for (const r of records.value) {
-    if (isConfirmationStatus(r.confirmationStatus)) recordBuckets[r.confirmationStatus] += 1
+    recordBuckets[r.confirmationStatus] += 1
   }
   const totalWeight = Number(weightSum.toFixed(2))
   const avgCoverage = coverageCount > 0 ? Number((coverageSum / coverageCount).toFixed(2)) : 0
@@ -584,7 +620,7 @@ function handleCourseChange(courseId: string | null) {
               })
             "
           >
-            <template #bodyCell="{ column, record, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'nodeName'">
                 {{ record.nodeName }}
                 <div class="pe__sub-desc">
@@ -592,11 +628,11 @@ function handleCourseChange(courseId: string | null) {
                 </div>
               </template>
               <template v-else-if="column.key === 'weight'">
-                {{ formatOptionalNumber(text, '过程性评价节点权重', 2) }}
+                {{ record.weight == null ? '-' : record.weight.toFixed(2) }}
               </template>
               <template v-else-if="column.key === 'confirmationStatus'">
-                <a-tag :color="confirmationStatusColor(text)">
-                  {{ confirmationStatusLabel(text) }}
+                <a-tag :color="confirmationStatusColor(record.confirmationStatus)">
+                  {{ confirmationStatusLabel(record.confirmationStatus) }}
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -695,7 +731,17 @@ function handleCourseChange(courseId: string | null) {
             class="pe__alert"
           />
 
+          <UiErrorRetryPanel
+            v-if="recordsError"
+            :error="recordsError"
+            title="过程性评价记录加载失败"
+            helper="请检查后端过程性评价记录学生展示合同。"
+            compact
+            @retry="loadRecords"
+          />
+
           <UiDataTable
+            v-else
             :columns="recordColumns"
             :data-source="records"
             :loading="recordsLoading"
@@ -705,19 +751,22 @@ function handleCourseChange(courseId: string | null) {
             flat
             :total="records.length"
           >
-            <template #bodyCell="{ column, record, text }">
-              <template v-if="column.key === 'rawScore'">
-                {{ formatRequiredNumber(text, '过程性评价记录原始分', 2) }}
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'score'">
+                {{ record.score.toFixed(2) }}
+              </template>
+              <template v-else-if="column.key === 'studentBinding'">
+                {{ studentDisplay(record) }}
               </template>
               <template v-else-if="column.key === 'convertedScore'">
-                {{ formatOptionalNumber(text, '过程性评价记录换算分', 2) }}
+                {{ record.convertedScore == null ? '-' : record.convertedScore.toFixed(2) }}
               </template>
               <template v-else-if="column.key === 'sourceMode'">
                 {{ dataSourceModeLabel(record) }}
               </template>
               <template v-else-if="column.key === 'confirmationStatus'">
-                <a-tag :color="confirmationStatusColor(text)">
-                  {{ confirmationStatusLabel(text) }}
+                <a-tag :color="confirmationStatusColor(record.confirmationStatus)">
+                  {{ confirmationStatusLabel(record.confirmationStatus) }}
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -881,8 +930,8 @@ function handleCourseChange(courseId: string | null) {
         </a-row>
         <a-row :gutter="12">
           <a-col :span="8">
-            <a-form-item label="原始分" required>
-              <a-input-number v-model:value="recordEditor.rawScore" :min="0" style="width: 100%" />
+            <a-form-item label="得分" required>
+              <a-input-number v-model:value="recordEditor.score" :min="0" style="width: 100%" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -906,8 +955,19 @@ function handleCourseChange(courseId: string | null) {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="证据文件 ID">
-          <a-input v-model:value="recordEditor.evidenceFileId" placeholder="edu-storage 文件 ID" />
+        <a-form-item label="证据文件">
+          <a-upload
+            :show-upload-list="false"
+            :custom-request="handleEvidenceFileUpload"
+            :disabled="evidenceFileUploading"
+          >
+            <UiButton variant="outline" size="sm" :loading="evidenceFileUploading">
+              上传证据文件
+            </UiButton>
+          </a-upload>
+          <div v-if="evidenceFileName" class="pe__file-name">
+            {{ evidenceFileName }}
+          </div>
         </a-form-item>
         <a-form-item label="备注">
           <a-textarea v-model:value="recordEditor.notes" :rows="3" />
@@ -922,7 +982,7 @@ function handleCourseChange(courseId: string | null) {
       accept=".xlsx,.xls"
       accept-hint="支持 .xlsx / .xls 格式"
       description-title="模板说明"
-      description="Excel 列顺序：学号 | 姓名（可选） | 原始得分 | 换算得分（可选 0-1） | 备注（可选）。学号和原始得分必填；行级校验失败的行不会入库，可在导入完成后下载错误清单修订后重传。"
+      description="Excel 列顺序：学号 | 姓名（可选） | 得分 | 换算得分（可选 0-1） | 备注（可选）。学号和得分必填；行级校验失败的行不会入库，可在导入完成后下载错误清单修订后重传。"
       template-button-label="下载节点记录模板"
       template-file-name="过程性评价记录导入模板.xlsx"
       :template-api="importTemplateApi"
@@ -955,7 +1015,17 @@ function handleCourseChange(courseId: string | null) {
           查询
         </UiButton>
       </a-space>
+      <UiErrorRetryPanel
+        v-if="confirmedByGoalError"
+        :error="confirmedByGoalError"
+        title="课程目标已确认记录加载失败"
+        helper="请检查后端过程性评价记录学生展示合同。"
+        compact
+        @retry="queryConfirmedByGoal"
+      />
+
       <UiDataTable
+        v-else
         :columns="confirmedByGoalColumns"
         :data-source="confirmedByGoalRecords"
         :loading="confirmedByGoalLoading"
@@ -965,15 +1035,18 @@ function handleCourseChange(courseId: string | null) {
         :total="confirmedByGoalRecords.length"
         flat
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'scores'">
-            {{ formatRequiredNumber(record.rawScore, '过程性评价记录原始分', 1) }}
+            {{ record.score.toFixed(1) }}
             <span v-if="record.convertedScore != null" class="pe__sub-desc">
-              / {{ formatOptionalNumber(record.convertedScore, '过程性评价记录换算分', 2) }}
+              / {{ record.convertedScore.toFixed(2) }}
             </span>
           </template>
-          <template v-else-if="column.key === 'evidenceFileId'">
-            {{ text || '-' }}
+          <template v-else-if="column.key === 'nodeBinding'">
+            {{ record.nodeId ? '已关联评价节点' : '-' }}
+          </template>
+          <template v-else-if="column.key === 'evidenceFileRef'">
+            {{ record.evidenceFileId ? '已关联证据文件' : '-' }}
           </template>
         </template>
       </UiDataTable>
@@ -1073,6 +1146,12 @@ function handleCourseChange(courseId: string | null) {
 
   &__modal-toolbar {
     margin-bottom: 12px;
+  }
+
+  &__file-name {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
   }
 }
 

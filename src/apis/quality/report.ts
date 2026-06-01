@@ -13,19 +13,25 @@ import http from '@/config/axios'
 
 const BASE = '/api/quality/reports'
 
-/** 后端 ReportVO 真值（一一对应 Java 字段；Long 在 JSON 中以 string 透传） */
+/** 后端 ReportVO 真值（一一对应 Java 字段；Long ID 在接口中以 string 透传） */
 export interface ReportVO {
   id: string
   tenantId?: string
   reportType: ReportType
   programId?: string
+  programName: string
   trainingPlanId?: string
+  trainingPlanCode: string
+  trainingPlanName: string
   qualityCourseId?: string
+  qualityCourseCode: string
+  qualityCourseName: string
   achievementResultId?: string
+  achievementResultLabel: string
   title: string
-  schoolYear?: string
-  semester?: string
-  bodyMarkdown?: string
+  schoolYear: string
+  semester: string
+  bodyContent?: string
   wordFileId?: string
   pdfFileId?: string
   excelFileId?: string
@@ -47,7 +53,7 @@ export interface ReportVO {
 }
 
 /** 后端 ReportQueryRequest 真值 */
-export interface ReportQueryPayload extends QueryDto {
+export interface ReportQueryRequest extends QueryDto {
   reportType?: ReportType
   programId?: string
   trainingPlanId?: string
@@ -60,7 +66,7 @@ export interface ReportQueryPayload extends QueryDto {
 }
 
 /** 后端 ReportSaveRequest 真值 */
-export interface ReportSavePayload {
+export interface ReportSaveRequest {
   id?: string
   reportType: ReportType
   programId: string
@@ -70,31 +76,26 @@ export interface ReportSavePayload {
   title: string
   schoolYear: string
   semester: string
-  bodyMarkdown?: string
+  bodyContent?: string
   wordFileId?: string
   pdfFileId?: string
   excelFileId?: string
 }
 
 /** 后端 ReportStatusTransitRequest 真值 */
-export interface ReportStatusTransitPayload {
+export interface ReportStatusTransitRequest {
   id: string
   targetStatus: ReportStatus
 }
 
 export const reportApi = {
-  page: (data: ReportQueryPayload) =>
-    http.post<PageResult<ReportVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<ReportVO>(`${BASE}/detail`, { id }),
-  create: (data: ReportSavePayload) =>
-    http.post<string>(`${BASE}/create`, data),
-  update: (data: ReportSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
+  page: (data: ReportQueryRequest) => http.post<PageResult<ReportVO>>(`${BASE}/page`, data),
+  detail: (id: string) => http.post<ReportVO>(`${BASE}/detail`, { id }),
+  create: (data: ReportSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: ReportSaveRequest) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   /** 状态流转 DRAFT→SUBMITTED→CONFIRMED/RETURNED→ARCHIVED */
-  transitStatus: (data: ReportStatusTransitPayload) =>
+  transitStatus: (data: ReportStatusTransitRequest) =>
     http.post<void>(`${BASE}/transit-status`, data),
   /**
    * 触发异步三格式导出：后端 ReportServiceImpl.export 仅写 exportStatus=PENDING 即返回；
@@ -103,6 +104,5 @@ export const reportApi = {
    * exportStatus=FAILED + exportErrorMessage。
    * 前端通过 detail 轮询 exportStatus 获取进度。
    */
-  export: (id: string) =>
-    http.post<void>(`${BASE}/export`, { id }),
+  export: (id: string) => http.post<void>(`${BASE}/export`, { id }),
 }

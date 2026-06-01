@@ -13,7 +13,7 @@
         type="info"
         show-icon
         style="margin-bottom: 12px"
-        message="教师需要在重复影像的两份试卷实例中选择保留一份，处置后未保留的试卷实例由教师在扫描异常页主动作废。"
+        message="教师需要在重复影像的两份试卷中选择保留一份，处置后未保留的试卷由教师在扫描异常页主动作废。"
       />
       <a-alert
         v-if="submitError"
@@ -22,29 +22,19 @@
         style="margin-bottom: 12px"
         :message="submitError"
       />
-      <a-form-item label="页面哈希">
-        <a-input :value="resolution.pageHash" disabled />
+      <a-form-item label="重复判定">
+        <a-input value="两份影像内容重复，需要选择保留的试卷" disabled />
       </a-form-item>
-      <a-form-item label="基准扫描页 / 试卷实例">
-        <a-input
-          :value="`页ID=${resolution.firstPageId}，试卷=${resolution.firstPaperInstanceId}`"
-          disabled
-        />
+      <a-form-item label="基准影像">
+        <a-input value="系统识别为基准试卷影像" disabled />
       </a-form-item>
-      <a-form-item label="重复扫描页 / 试卷实例">
-        <a-input
-          :value="`页ID=${resolution.secondPageId}，试卷=${resolution.secondPaperInstanceId}`"
-          disabled
-        />
+      <a-form-item label="重复影像">
+        <a-input value="系统识别为重复试卷影像" disabled />
       </a-form-item>
-      <a-form-item label="保留的试卷实例" required>
+      <a-form-item label="保留的试卷" required>
         <a-radio-group v-model:value="selectedPaperInstanceId">
-          <a-radio :value="resolution.firstPaperInstanceId">
-            保留基准试卷实例 {{ resolution.firstPaperInstanceId }}
-          </a-radio>
-          <a-radio :value="resolution.secondPaperInstanceId">
-            保留重复试卷实例 {{ resolution.secondPaperInstanceId }}
-          </a-radio>
+          <a-radio :value="resolution.firstPaperInstanceId"> 保留基准试卷 </a-radio>
+          <a-radio :value="resolution.secondPaperInstanceId"> 保留重复试卷 </a-radio>
         </a-radio-group>
       </a-form-item>
       <a-form-item label="处置原因" required>
@@ -56,9 +46,10 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
+import { resolveDuplicate } from '@/apis/mark/image-ledger'
 import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
-import { resolveDuplicate } from '@/apis/mark/image-ledger'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'DuplicateResolveModal' })
 
@@ -96,8 +87,8 @@ async function handleOk(): Promise<void> {
     return
   }
   if (!selectedPaperInstanceId.value) {
-    submitError.value = '请选择保留的试卷实例'
-    message.warning('请选择保留的试卷实例')
+    submitError.value = '请选择要保留的试卷'
+    message.warning('请选择要保留的试卷')
     return
   }
   if (!props.resolution) {
@@ -105,13 +96,10 @@ async function handleOk(): Promise<void> {
     message.warning('重复影像记录未加载')
     return
   }
-  const allowedIds = [
-    props.resolution.firstPaperInstanceId,
-    props.resolution.secondPaperInstanceId,
-  ]
+  const allowedIds = [props.resolution.firstPaperInstanceId, props.resolution.secondPaperInstanceId]
   if (!allowedIds.includes(selectedPaperInstanceId.value)) {
-    submitError.value = '保留的试卷实例必须来自当前重复影像记录'
-    message.warning('保留的试卷实例必须来自当前重复影像记录')
+    submitError.value = '保留的试卷必须来自当前重复影像记录'
+    message.warning('保留的试卷必须来自当前重复影像记录')
     return
   }
   submitting.value = true
@@ -127,8 +115,8 @@ async function handleOk(): Promise<void> {
     emit('update:open', false)
     emit('submitted')
   } catch (e) {
-    submitError.value = e instanceof Error ? e.message : '处置提交失败'
-    message.error(submitError.value)
+    submitError.value = getUserErrorMessage(e, '重复影像处置提交失败')
+    showUserError(e, '重复影像处置提交失败')
   } finally {
     submitting.value = false
   }

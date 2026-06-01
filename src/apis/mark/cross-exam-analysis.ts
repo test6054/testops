@@ -1,4 +1,4 @@
-import type {AiAnalysisStatusCode} from './teaching-analysis'
+import type { AiAnalysisStatusCode, AnalysisScopeTypeCode } from './teaching-analysis'
 
 /**
  * AI 跨考试纵向分析 API - 对接 edu-mark 模块 CrossExamAnalysisController
@@ -12,96 +12,148 @@ import http from '@/config/axios'
 
 /** 跨考试趋势条目 */
 export interface CrossExamTrendItemVO {
-  title?: string
-  examName?: string
-  metricName?: string
-  trend?: string
-  summary?: string
+  dimension?: string
+  description?: string
+  direction?: string
+  changeRate?: number
+  turningPoint?: string
+  possibleCause?: string
   suggestion?: string
+}
+
+/** 学期成长趋势 - 与后端 AbilityGrowthAiResponse.growthTrend 完整一致 */
+export type SemesterGrowthTrendCode = 'IMPROVING' | 'STABLE' | 'DECLINING'
+
+/** 学期成长趋势文案，未知趋势必须暴露合同错误。 */
+export const SEMESTER_GROWTH_TREND_LABEL: Record<SemesterGrowthTrendCode, string> = {
+  IMPROVING: '上升',
+  STABLE: '稳定',
+  DECLINING: '下降',
+}
+
+/** 学期成长趋势颜色，保持成长曲线页趋势状态一致。 */
+export const SEMESTER_GROWTH_TREND_COLOR: Record<SemesterGrowthTrendCode, string> = {
+  IMPROVING: 'green',
+  STABLE: 'blue',
+  DECLINING: 'red',
+}
+
+/** 分析范围类型文案 - 与后端 AnalysisScopeType 完整一致。 */
+export const ANALYSIS_SCOPE_TYPE_LABEL: Record<AnalysisScopeTypeCode, string> = {
+  EXAM: '考试维度',
+  CLASS: '班级维度',
+  COURSE: '课程维度',
+  QUESTION: '题目维度',
+  QUESTION_TYPE: '题型维度',
+  STUDENT: '学生个体维度',
 }
 
 /** 学期成长条目 */
 export interface SemesterGrowthItemVO {
-  stageName?: string
-  abilityName?: string
-  trend?: string
-  scoreRate?: string
-  summary?: string
-  suggestion?: string
+  dimension?: string
+  dimensionLabel?: string
+  description?: string
+  startValue?: number
+  endValue?: number
+  changeRate?: number
+  improvementNote?: string
+  riskNote?: string
+}
+
+/** 课程目标维度 - 与后端 CourseObjectiveDimension 完整一致 */
+export type CourseObjectiveDimensionCode = 'OVERALL_SCORE_RATE' | 'PASS_RATE' | 'SCORE_STABILITY'
+
+/** 课程目标达成条目 */
+export type CourseAchievementStatusCode = 'ACHIEVED' | 'PARTIALLY' | 'NOT_ACHIEVED'
+
+/** 课程目标达成状态文案，前端展示达成结论时禁止暴露后端状态编码。 */
+export const COURSE_ACHIEVEMENT_STATUS_LABEL: Record<CourseAchievementStatusCode, string> = {
+  ACHIEVED: '已达成',
+  PARTIALLY: '部分达成',
+  NOT_ACHIEVED: '未达成',
+}
+
+/** 课程目标达成状态颜色，保持达成结论在分析页中的语义一致。 */
+export const COURSE_ACHIEVEMENT_STATUS_COLOR: Record<CourseAchievementStatusCode, string> = {
+  ACHIEVED: 'green',
+  PARTIALLY: 'orange',
+  NOT_ACHIEVED: 'red',
 }
 
 /** 课程目标达成条目 */
 export interface CourseAchievementItemVO {
-  objectiveName?: string
+  objectiveDimension?: CourseObjectiveDimensionCode
+  objectiveDescription?: string
   achievementRate?: number
-  summary?: string
-  weakPoint?: string
+  status?: CourseAchievementStatusCode
+  evidenceNote?: string
   suggestion?: string
+}
+
+/** AI 分析使用的考试范围项 */
+export interface AnalysisExamScopeVO {
+  examId: string
+  examName: string
+  examTime?: string
+  displayOrder?: number
 }
 
 /** 跨考试趋势分析记录 - 对应 CrossExamTrendAnalysis */
 export interface CrossExamTrendAnalysisVO {
   id: string
-  tenantId?: string
-  courseId?: string
+  courseId: string
+  courseName: string
   classId?: string
-  scopeType?: 'COURSE' | 'CLASS'
-  examIds?: string
-  examCount?: number
+  className?: string
+  scopeType: 'COURSE' | 'CLASS'
+  exams: AnalysisExamScopeVO[]
+  examCount: number
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   trendSummary?: string
   trendItems?: CrossExamTrendItemVO[]
-  analysisStatus?: AiAnalysisStatusCode
+  analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
-  createTime?: string
-  updateTime?: string
+  latencyMs?: number
+  createTime: string
 }
 
 /** 学期能力成长曲线记录 - 对应 SemesterAbilityGrowth */
 export interface SemesterAbilityGrowthVO {
   id: string
-  tenantId?: string
-  semesterCode?: string
-  courseId?: string
-  scopeType?: 'CLASS' | 'COURSE' | 'STUDENT'
-  scopeId?: string
-  examIds?: string
-  examCount?: number
+  semesterCode: string
+  courseId: string
+  courseName: string
+  scopeType: AnalysisScopeTypeCode
+  scopeId: string
+  scopeName: string
+  exams: AnalysisExamScopeVO[]
+  examCount: number
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   growthSummary?: string
   growthItems?: SemesterGrowthItemVO[]
-  growthTrend?: string
-  analysisStatus?: AiAnalysisStatusCode
+  growthTrend?: SemesterGrowthTrendCode
+  analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
-  createTime?: string
-  updateTime?: string
+  latencyMs?: number
+  createTime: string
 }
 
 /** 课程目标达成度记录 - 对应 CourseObjectiveAchievement */
 export interface CourseObjectiveAchievementVO {
   id: string
-  tenantId?: string
-  courseId?: string
+  courseId: string
+  courseName: string
   semesterCode?: string
-  examIds?: string
-  examCount?: number
+  exams: AnalysisExamScopeVO[]
+  examCount: number
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   achievementSummary?: string
   achievementItems?: CourseAchievementItemVO[]
   overallAchievementRate?: number
-  analysisStatus?: AiAnalysisStatusCode
+  analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
-  createTime?: string
-  updateTime?: string
+  latencyMs?: number
+  createTime: string
 }
 
 /**
@@ -177,7 +229,7 @@ export function generateClassGrowth(params: {
  */
 export function listGrowth(params: {
   semesterCode: string
-  scopeType: string
+  scopeType: AnalysisScopeTypeCode
   scopeId?: string
 }): Promise<SemesterAbilityGrowthVO[]> {
   return http.get<SemesterAbilityGrowthVO[]>(

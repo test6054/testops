@@ -54,21 +54,24 @@
 </template>
 
 <script lang="ts" setup>
-import type { InboxMessageListItemDTO, PublishedSystemAnnouncementResponse } from '@/apis/edu/message'
-import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
-import message from 'ant-design-vue/es/message'
-import dayjs from 'dayjs'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
+import type {
+  InboxMessageListItemDTO,
+  PublishedSystemAnnouncementResponse,
+} from '@/apis/edu/message'
 import {
   getInboxMessages,
   getPublishedAnnouncementList,
   markAllAnnouncementsAsRead,
   markAllAsRead,
 } from '@/apis/edu/message'
+import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
+import message from 'ant-design-vue/es/message'
+import dayjs from 'dayjs'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
 import router from '@/router'
 import { useNotificationStore } from '@/stores/modules/notification'
-import { isErrorHandled } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -153,14 +156,12 @@ const getMessageData = async () => {
     if (inboxResult.status === 'rejected' && announcementResult.status === 'rejected') {
       loadError.value = true
       messageList.value = []
-      if (!isErrorHandled(inboxResult.reason)) {
-        message.error('加载消息失败，请重试')
-      }
+      showUserError(inboxResult.reason, '未读消息加载失败，请稍后重试')
       return
     }
 
-    const inboxMessages: UnifiedMessageItem[]
-      = inboxResult.status === 'fulfilled'
+    const inboxMessages: UnifiedMessageItem[] =
+      inboxResult.status === 'fulfilled'
         ? inboxResult.value.list.map((item: InboxMessageListItemDTO) => ({
             id: item.id,
             subject: item.subject,
@@ -171,8 +172,8 @@ const getMessageData = async () => {
           }))
         : []
 
-    const announcementMessages: UnifiedMessageItem[]
-      = announcementResult.status === 'fulfilled'
+    const announcementMessages: UnifiedMessageItem[] =
+      announcementResult.status === 'fulfilled'
         ? announcementResult.value.list.map((item: PublishedSystemAnnouncementResponse) => ({
             id: item.id,
             subject: `【公告】${item.title}`,
@@ -189,9 +190,7 @@ const getMessageData = async () => {
   } catch (error) {
     loadError.value = true
     messageList.value = []
-    if (!isErrorHandled(error)) {
-      message.error('加载消息失败，请重试')
-    }
+    showUserError(error, '未读消息加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -226,9 +225,7 @@ const handleReadAll = async () => {
     messageList.value = []
     emit('readall-success')
   } catch (error) {
-    if (!isErrorHandled(error)) {
-      message.error('操作失败，请重试')
-    }
+    showUserError(error, '消息已读状态更新失败，请稍后重试')
   } finally {
     readAllLoading.value = false
   }

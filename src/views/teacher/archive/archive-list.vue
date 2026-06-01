@@ -4,8 +4,12 @@
       <div class="archive-list-page__context">
         <div class="archive-list-page__context-left">
           <UiTag tone="blue" size="sm">{{ archivePagination.total }} 个归档</UiTag>
-          <UiTag v-if="filterForm.examId" tone="purple" size="sm">
-            考试 #{{ filterForm.examId }}
+          <UiTag v-if="selectedExam" tone="purple" size="sm">
+            {{
+              selectedExam.examNo
+                ? `${selectedExam.examName} (${selectedExam.examNo})`
+                : selectedExam.examName
+            }}
           </UiTag>
         </div>
         <div class="archive-list-page__context-right">
@@ -43,13 +47,17 @@
       </template>
 
       <a-form layout="inline" :model="filterForm" @submit.prevent="handleSearch">
-        <a-form-item label="考试ID">
-          <a-input
-            v-model:value="filterForm.examId"
-            placeholder="按考试ID过滤"
+        <a-form-item label="当前考试">
+          <a-select
+            :value="selectedExamId"
+            placeholder="选择考试"
             allow-clear
-            style="width: 180px"
-            @press-enter="handleSearch"
+            show-search
+            :loading="examLoading"
+            :options="examOptions"
+            option-filter-prop="label"
+            style="width: 260px"
+            @change="onExamChange"
           />
         </a-form-item>
         <a-form-item label="状态">
@@ -107,28 +115,26 @@
             </button>
             <div class="link-cell__sub">{{ archives[index].archiveTitle }}</div>
           </template>
-          <template v-else-if="column.key === 'examId'">
-            考试 #{{ archives[index].examId }}
+          <template v-else-if="column.key === 'exam'">
+            {{ archives[index].examName }}
+            <div v-if="archives[index].examNo" class="muted">{{ archives[index].examNo }}</div>
           </template>
           <template v-else-if="column.key === 'status'">
             <UiTag :tone="archiveStatusTone(archives[index].archiveStatus)" size="sm">
-              {{
-                archives[index].archiveStatusMessage
-                  || archiveStatusLabel(archives[index].archiveStatus)
-              }}
+              {{ archiveStatusLabel(archives[index].archiveStatus) }}
             </UiTag>
             <div
               v-if="archives[index].archiveStatus === 'PACKAGING' && archives[index].packagingPhase"
               class="phase-line"
             >
               {{ archivePhaseLabel(archives[index].packagingPhase) }} ·
-              {{ archives[index].packagingProgressPercent ?? 0 }}%
+              {{ archives[index].packagingProgressPercent }}%
             </div>
           </template>
           <template v-else-if="column.key === 'retention'">
             <span v-if="archives[index].permanentRetention">永久保管</span>
             <span v-else>
-              {{ archives[index].retentionYears ?? '-' }} 年
+              {{ archives[index].retentionYears }} 年
               <span v-if="archives[index].retentionUntil" class="muted">
                 · 至 {{ archives[index].retentionUntil }}
               </span>
@@ -138,11 +144,11 @@
             <span v-if="archives[index].archiveFileSize">
               {{ formatBytes(Number(archives[index].archiveFileSize)) }}
             </span>
-            <span v-else class="muted">-</span>
           </template>
           <template v-else-if="column.key === 'itemCount'">
-            <span v-if="archives[index].itemCount">{{ archives[index].itemCount }}</span>
-            <span v-else class="muted">-</span>
+            <span v-if="typeof archives[index].itemCount === 'number'">
+              {{ archives[index].itemCount }}
+            </span>
           </template>
           <template v-else-if="column.key === 'createTime'">
             {{ formatDateTime(archives[index].createTime) }}
@@ -154,8 +160,8 @@
               </UiButton>
               <UiButton
                 v-if="
-                  archives[index].archiveStatus === 'DRAFT'
-                    || archives[index].archiveStatus === 'PACKAGING_FAILED'
+                  archives[index].archiveStatus === 'DRAFT' ||
+                  archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
                 size="sm"
                 @click="confirmPackage(archives[index])"
@@ -173,20 +179,23 @@
     v-model:open="createModalOpen"
     title="新建归档包"
     :confirm-loading="creating"
-    :ok-button-props="{ disabled: !filterForm.examId }"
+    :ok-button-props="{ disabled: !selectedExamId }"
     ok-text="创建草稿"
     cancel-text="取消"
     @ok="submitCreate"
   >
     <a-form layout="vertical" :model="createForm" class="archive-create-form">
-      <a-alert
-        v-if="!filterForm.examId"
-        type="warning"
-        show-icon
-        message="请先在筛选区填入考试ID再新建归档"
-      />
-      <a-form-item label="考试ID">
-        <a-input :value="filterForm.examId" disabled placeholder="从筛选区考试ID带入" />
+      <a-alert v-if="!selectedExamId" type="warning" show-icon message="请先选择考试再新建归档" />
+      <a-form-item label="当前考试">
+        <a-input
+          :value="
+            selectedExam?.examNo
+              ? `${selectedExam.examName} (${selectedExam.examNo})`
+              : selectedExam?.examName
+          "
+          disabled
+          placeholder="从筛选区当前考试带入"
+        />
       </a-form-item>
       <a-form-item label="归档包名称">
         <a-input
@@ -210,7 +219,7 @@
       <a-form-item label="归档内容">
         <a-space direction="vertical">
           <a-checkbox v-model:checked="createForm.includeOriginalScans">
-            原始扫描件（按学生分目录）
+            扫描影像文件（按学生分目录）
           </a-checkbox>
           <a-checkbox v-model:checked="createForm.includeMarkedSlices">
             批改切片 + 批注 + 评分流水
@@ -231,15 +240,8 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
+  ARCHIVE_PACKAGE_STATUS_CODES,
   ARCHIVE_PHASE_LABEL,
   ARCHIVE_STATUS_LABEL,
   ARCHIVE_STATUS_TONE,
@@ -247,6 +249,14 @@ import {
   listArchives,
   packageArchive,
 } from '@/apis/mark/archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -259,23 +269,32 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveList' })
 
-const route = useRoute()
 const router = useRouter()
 const markStageStore = useMarkStageStore()
 const examContextStore = useMarkExamContextStore()
+const {
+  selectedExamId,
+  selectedExam,
+  examOptions,
+  loading: examLoading,
+  onExamChange,
+  init,
+} = useMarkExamSelector()
 
 const archives = ref<ArchivePackageVO[]>([])
 const loading = ref(false)
 const creating = ref(false)
 const createModalOpen = ref(false)
-const archiveLoadError = ref<unknown>(null)
+const archiveLoadError = ref<Error | null>(null)
 const archivePagination = reactive({
   pageNum: 1,
   pageSize: 20,
@@ -283,10 +302,8 @@ const archivePagination = reactive({
 })
 
 const filterForm = reactive<{
-  examId?: string
   archiveStatus?: ArchivePackageStatusCode
 }>({
-  examId: typeof route.query.examId === 'string' ? route.query.examId : undefined,
   archiveStatus: undefined,
 })
 
@@ -299,38 +316,23 @@ const createForm = reactive({
   includeAnswerBooklet: true,
 })
 
-const archivePackageStatuses: ArchivePackageStatusCode[] = [
-  'DRAFT',
-  'PACKAGING',
-  'PACKAGING_FAILED',
-  'STORED',
-  'ACTIVE',
-  'APPRAISAL_PENDING',
-  'APPRAISAL_DECIDED',
-  'DESTRUCTION_PENDING',
-  'DESTRUCTION_APPROVED',
-  'DESTRUCTION_EXECUTING',
-  'DESTRUCTION_FAILED',
-  'DESTROYED',
-]
-
-const statusOptions = archivePackageStatuses.map((value) => ({
+const statusOptions = ARCHIVE_PACKAGE_STATUS_CODES.map((value) => ({
   value,
-  label: ARCHIVE_STATUS_LABEL[value],
+  label: strictEnumLabel(ARCHIVE_STATUS_LABEL, value, '归档状态'),
 }))
 
 const columns: ColumnsType = [
   { title: '归档编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 220 },
-  { title: '所属考试', key: 'examId', dataIndex: 'examId', width: 110 },
+  { title: '所属考试', key: 'exam', dataIndex: 'examName', width: 220 },
   { title: '状态', key: 'status', dataIndex: 'archiveStatus', width: 200 },
   { title: '保管期限', key: 'retention', dataIndex: 'retentionYears', width: 200 },
-  { title: 'ZIP 大小', key: 'fileSize', dataIndex: 'archiveFileSize', width: 110 },
+  { title: '归档包大小', key: 'fileSize', dataIndex: 'archiveFileSize', width: 110 },
   { title: '清单数', key: 'itemCount', dataIndex: 'itemCount', width: 90 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 200, align: 'right' },
 ]
 
-const canCreate = computed(() => Boolean(filterForm.examId))
+const canCreate = computed(() => Boolean(selectedExamId.value))
 
 // ─── B-10 「已发布未归档」提醒 ─────────────────────────
 // 教师从 examId 进入归档列表后，如果尚未创建归档草稿，按档案合规要求需要尽快推进；
@@ -339,11 +341,11 @@ interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
   description: string
-  action: { label: string, handler: () => void }
+  action: { label: string; handler: () => void }
 }
 
 const archiveAlert = computed<ArchiveAlert | null>(() => {
-  const examId = filterForm.examId
+  const examId = selectedExamId.value
   if (!examId) return null
   if (loading.value) return null
   if (archiveLoadError.value) return null
@@ -353,7 +355,7 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
       tone: 'error',
       title: '该考试尚未创建归档包',
       description:
-        '按档案合规要求，成绩发布后应及时归档原始扫描件、批改流水与评分细则。点击立即创建归档草稿，再触发打包。',
+        '按档案合规要求，成绩发布后应及时归档扫描影像、批改流水与评分细则。点击立即创建归档草稿，再触发打包。',
       action: { label: '立即创建归档', handler: openCreateModal },
     }
   }
@@ -386,7 +388,7 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
  * - 列表为空且有 examId → blocked（尚未创建归档）
  */
 function syncArchiveStageToStore(): void {
-  const examId = filterForm.examId
+  const examId = selectedExamId.value
   if (!examId) return
   if (archives.value.length === 0) {
     markStageStore.setStageStatus(examId, 'ARCHIVE', 'blocked', '尚未创建归档包')
@@ -399,12 +401,12 @@ function syncArchiveStageToStore(): void {
   )
   const hasActive = statuses.some(
     (s) =>
-      s === 'PACKAGING'
-      || s === 'ACTIVE'
-      || s === 'APPRAISAL_PENDING'
-      || s === 'DESTRUCTION_PENDING'
-      || s === 'DESTRUCTION_APPROVED'
-      || s === 'DESTRUCTION_EXECUTING',
+      s === 'PACKAGING' ||
+      s === 'ACTIVE' ||
+      s === 'APPRAISAL_PENDING' ||
+      s === 'DESTRUCTION_PENDING' ||
+      s === 'DESTRUCTION_APPROVED' ||
+      s === 'DESTRUCTION_EXECUTING',
   )
   const hasCompleted = statuses.some((s) => s === 'APPRAISAL_DECIDED' || s === 'DESTROYED')
   let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
@@ -413,8 +415,8 @@ function syncArchiveStageToStore(): void {
     status = 'blocked'
     const draftOrFailed = statuses.filter((s) => s === 'DRAFT' || s === 'PACKAGING_FAILED').length
     const destructionFailed = statuses.filter((s) => s === 'DESTRUCTION_FAILED').length
-    hint
-      = destructionFailed > 0
+    hint =
+      destructionFailed > 0
         ? `${destructionFailed} 个销毁失败需人工处理`
         : `${draftOrFailed} 个草稿 / 打包失败待人工处理`
   } else if (hasActive) {
@@ -422,14 +424,14 @@ function syncArchiveStageToStore(): void {
     const packaging = statuses.filter((s) => s === 'PACKAGING').length
     const archived = statuses.filter(
       (s) =>
-        s === 'ACTIVE'
-        || s === 'APPRAISAL_PENDING'
-        || s === 'DESTRUCTION_PENDING'
-        || s === 'DESTRUCTION_APPROVED'
-        || s === 'DESTRUCTION_EXECUTING',
+        s === 'ACTIVE' ||
+        s === 'APPRAISAL_PENDING' ||
+        s === 'DESTRUCTION_PENDING' ||
+        s === 'DESTRUCTION_APPROVED' ||
+        s === 'DESTRUCTION_EXECUTING',
     ).length
-    hint
-      = packaging > 0
+    hint =
+      packaging > 0
         ? `${packaging} 个打包中 / ${archived} 个归档处理中`
         : `${archived} 个归档处理中`
   } else if (hasCompleted) {
@@ -447,7 +449,7 @@ async function loadArchives(): Promise<void> {
   archiveLoadError.value = null
   try {
     const page = await listArchives({
-      examId: filterForm.examId || undefined,
+      examId: selectedExamId.value || undefined,
       archiveStatus: filterForm.archiveStatus,
       pageNum: archivePagination.pageNum,
       pageSize: archivePagination.pageSize,
@@ -455,12 +457,12 @@ async function loadArchives(): Promise<void> {
     archives.value = page.list
     archivePagination.pageNum = page.pageNum
     archivePagination.pageSize = page.pageSize
-    archivePagination.total = page.total
+    archivePagination.total = Number(page.total)
     syncArchiveStageToStore()
-    if (filterForm.examId) examContextStore.currentExamId = filterForm.examId
+    if (selectedExamId.value) examContextStore.currentExamId = selectedExamId.value
   } catch (error) {
-    archiveLoadError.value = error
-    message.error(error instanceof Error ? error.message : '归档列表加载失败')
+    archiveLoadError.value = toUserError(error, '归档列表加载失败')
+    showUserError(error, '考试归档列表加载失败')
   } finally {
     loading.value = false
   }
@@ -472,21 +474,21 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
-  filterForm.examId = undefined
+  onExamChange(undefined)
   filterForm.archiveStatus = undefined
   archivePagination.pageNum = 1
   void loadArchives()
 }
 
-function handleArchivePageChange(payload: { current: number, pageSize: number }): void {
-  archivePagination.pageNum = payload.current
-  archivePagination.pageSize = payload.pageSize
+function handleArchivePageChange(pageInfo: { current: number; pageSize: number }): void {
+  archivePagination.pageNum = pageInfo.current
+  archivePagination.pageSize = pageInfo.pageSize
   void loadArchives()
 }
 
 function openCreateModal(): void {
-  if (!filterForm.examId) {
-    message.warning('请先在筛选区填入考试ID')
+  if (!selectedExamId.value) {
+    message.warning('请先选择考试')
     return
   }
   createForm.archiveTitle = ''
@@ -499,14 +501,14 @@ function openCreateModal(): void {
 }
 
 async function submitCreate(): Promise<void> {
-  if (!filterForm.examId) {
-    message.warning('请先在筛选区填入考试ID')
+  if (!selectedExamId.value) {
+    message.warning('请先选择考试')
     return
   }
   if (
-    !createForm.includeOriginalScans
-    && !createForm.includeMarkedSlices
-    && !createForm.includeAnswerBooklet
+    !createForm.includeOriginalScans &&
+    !createForm.includeMarkedSlices &&
+    !createForm.includeAnswerBooklet
   ) {
     message.warning('归档内容至少包含一类材料')
     return
@@ -514,7 +516,7 @@ async function submitCreate(): Promise<void> {
   creating.value = true
   try {
     await createArchive({
-      examId: filterForm.examId,
+      examId: selectedExamId.value,
       archiveTitle: createForm.archiveTitle?.trim() || undefined,
       retentionYears: createForm.permanentRetention ? undefined : createForm.retentionYears,
       permanentRetention: createForm.permanentRetention,
@@ -526,7 +528,7 @@ async function submitCreate(): Promise<void> {
     createModalOpen.value = false
     await loadArchives()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '创建归档草稿失败')
+    showUserError(error, '考试归档草稿创建失败')
   } finally {
     creating.value = false
   }
@@ -545,7 +547,7 @@ function confirmPackage(record: ArchivePackageVO): void {
         message.success('归档已入队，正在异步打包')
         await loadArchives()
       } catch (error) {
-        message.error(error instanceof Error ? error.message : '触发打包失败')
+        showUserError(error, '考试归档打包提交失败')
       }
     },
   })
@@ -563,13 +565,14 @@ function archiveStatusLabel(status: ArchivePackageStatusCode): string {
   return strictEnumLabel(ARCHIVE_STATUS_LABEL, status, '归档状态')
 }
 
-function archivePhaseLabel(phase?: ArchivePackagingPhase): string {
-  if (!phase) return ''
+function archivePhaseLabel(phase: ArchivePackagingPhase): string {
   return strictEnumLabel(ARCHIVE_PHASE_LABEL, phase, '归档打包阶段')
 }
 
 function formatBytes(bytes: number): string {
-  if (!bytes || bytes <= 0) return '-'
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    throw new Error(`归档文件大小非法：${bytes}`)
+  }
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   let size = bytes
   let i = 0
@@ -580,17 +583,9 @@ function formatBytes(bytes: number): string {
   return `${size.toFixed(size >= 100 || i === 0 ? 0 : 1)} ${units[i]}`
 }
 
-watch(
-  () => route.query.examId,
-  (next) => {
-    if (typeof next === 'string') {
-      filterForm.examId = next
-    }
-  },
-)
-
-onMounted(() => {
-  void loadArchives()
+onMounted(async () => {
+  await init()
+  await loadArchives()
 })
 </script>
 

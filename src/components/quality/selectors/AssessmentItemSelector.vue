@@ -6,9 +6,9 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AssessmentItemVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import { assessmentItemApi } from '@/apis/quality'
+import { computed, onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
 interface Props {
@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AssessmentItemVO]
+  change: [value: string | null, option?: AssessmentItemVO]
 }>()
 
 const options = ref<AssessmentItemVO[]>([])
@@ -79,7 +79,7 @@ async function loadOptions() {
     )
   } catch (e) {
     console.error('[AssessmentItemSelector] 加载考核环节列表失败', e)
-    message.error('加载考核环节列表失败')
+    showUserError(e, '考核环节列表加载失败')
   } finally {
     loading.value = false
   }
@@ -118,7 +118,7 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.itemCode} · ${opt.itemName}`"
     >
-      <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.itemCode }}</span>
+      <span class="text-xs text-gray-500 mr-1">{{ opt.itemCode }}</span>
       {{ opt.itemName }}
       <a-tag v-if="opt.isProcessOriented" color="green" class="ml-1">过程</a-tag>
       <span class="text-gray-400 ml-1">满分 {{ opt.fullScore }}</span>

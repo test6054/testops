@@ -1,4 +1,4 @@
-import type { AccreditationType, EvaluationMethod } from './types'
+import type { AccreditationType, EvaluationCycle, EvaluationMethod } from './types'
 /**
  * 专业评价口径 API - 对应 ProgramEvaluationProfileController
  * 后端路径：/api/quality/program-evaluation-profiles
@@ -21,19 +21,28 @@ export interface ProgramEvaluationProfileVO {
   standardYear?: string
   accreditationLevel?: string
   evaluationMethod: EvaluationMethod
-  evaluationCycle: string
-  sampleScope?: string
-  reviewChain?: string
-  archivePolicy?: string
+  evaluationCycle: EvaluationCycle
+  includeGraduateSamples?: boolean
+  includeEmployerSamples?: boolean
+  includeAlumniSamples?: boolean
+  includeCurrentStudentSamples?: boolean
+  sampleScopeRemark?: string
+  collegeReviewOwner?: string
+  departmentReviewOwner?: string
+  programReviewOwner?: string
+  reviewChainRemark?: string
+  archiveRetentionYears?: number
+  archiveLocation?: string
+  archiveResponsibleUnit?: string
+  archivePolicyRemark?: string
   enabled: boolean
   createTime?: string
   updateTime?: string
 }
 
-export interface ProgramEvaluationProfileSavePayload {
+export interface ProgramEvaluationProfileSaveRequest {
   id?: string
   programId: string
-  programName: string
   schoolId?: string
   departmentId?: string
   accreditationType: AccreditationType
@@ -41,14 +50,24 @@ export interface ProgramEvaluationProfileSavePayload {
   standardYear?: string
   accreditationLevel?: string
   evaluationMethod: EvaluationMethod
-  evaluationCycle: string
-  sampleScope?: string
-  reviewChain?: string
-  archivePolicy?: string
+  evaluationCycle: EvaluationCycle
+  includeGraduateSamples?: boolean
+  includeEmployerSamples?: boolean
+  includeAlumniSamples?: boolean
+  includeCurrentStudentSamples?: boolean
+  sampleScopeRemark?: string
+  collegeReviewOwner?: string
+  departmentReviewOwner?: string
+  programReviewOwner?: string
+  reviewChainRemark?: string
+  archiveRetentionYears?: number
+  archiveLocation?: string
+  archiveResponsibleUnit?: string
+  archivePolicyRemark?: string
   enabled?: boolean
 }
 
-export interface ProgramEvaluationProfileQueryPayload extends QueryDto {
+export interface ProgramEvaluationProfileQueryRequest extends QueryDto {
   schoolId?: string
   departmentId?: string
   accreditationType?: AccreditationType
@@ -57,16 +76,12 @@ export interface ProgramEvaluationProfileQueryPayload extends QueryDto {
 }
 
 export const programEvaluationProfileApi = {
-  page: (data: ProgramEvaluationProfileQueryPayload) =>
+  page: (data: ProgramEvaluationProfileQueryRequest) =>
     http.post<PageResult<ProgramEvaluationProfileVO>>(`${BASE}/page`, data),
-  detail: (id: string) =>
-    http.post<ProgramEvaluationProfileVO>(`${BASE}/detail`, { id }),
-  create: (data: ProgramEvaluationProfileSavePayload) =>
-    http.post<string>(`${BASE}/create`, data),
-  update: (data: ProgramEvaluationProfileSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
+  detail: (id: string) => http.post<ProgramEvaluationProfileVO>(`${BASE}/detail`, { id }),
+  create: (data: ProgramEvaluationProfileSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: ProgramEvaluationProfileSaveRequest) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   /** 按专业取启用中的口径 */
   byProgram: (programId: string) =>
     http.post<ProgramEvaluationProfileVO | null>(`${BASE}/by-program`, { id: programId }),

@@ -4,7 +4,9 @@
       <div v-if="hasTopBar" class="ui-data-table__top">
         <div class="ui-data-table__meta">
           <div v-if="props.title" class="ui-data-table__title">{{ props.title }}</div>
-          <div v-if="props.description" class="ui-data-table__description">{{ props.description }}</div>
+          <div v-if="props.description" class="ui-data-table__description">
+            {{ props.description }}
+          </div>
           <div v-if="$slots['toolbar-left']" class="ui-data-table__toolbar-left">
             <slot name="toolbar-left" />
           </div>
@@ -35,11 +37,7 @@
             </slot>
           </template>
 
-          <template
-            v-for="name in forwardedSlots"
-            :key="name"
-            #[name]="slotProps"
-          >
+          <template v-for="name in forwardedSlots" :key="name" #[name]="slotProps">
             <slot :name="name" v-bind="slotProps" />
           </template>
         </a-table>
@@ -62,7 +60,9 @@
       <div v-if="hasTopBar" class="ui-data-table__top">
         <div class="ui-data-table__meta">
           <div v-if="props.title" class="ui-data-table__title">{{ props.title }}</div>
-          <div v-if="props.description" class="ui-data-table__description">{{ props.description }}</div>
+          <div v-if="props.description" class="ui-data-table__description">
+            {{ props.description }}
+          </div>
           <div v-if="$slots['toolbar-left']" class="ui-data-table__toolbar-left">
             <slot name="toolbar-left" />
           </div>
@@ -93,11 +93,7 @@
             </slot>
           </template>
 
-          <template
-            v-for="name in forwardedSlots"
-            :key="name"
-            #[name]="slotProps"
-          >
+          <template v-for="name in forwardedSlots" :key="name" #[name]="slotProps">
             <slot :name="name" v-bind="slotProps" />
           </template>
         </a-table>
@@ -121,7 +117,7 @@
 <script lang="ts" setup>
 import type { ColumnsType, TableProps } from 'ant-design-vue/es/table'
 import type { Key, TableRowSelection } from 'ant-design-vue/es/table/interface'
-import type { UiDataTableChangePayload } from './data-table'
+import type { UiDataTableChangeEvent } from './data-table'
 import { computed, ref, useSlots } from 'vue'
 import UiCard from './Card.vue'
 import UiEmpty from './Empty.vue'
@@ -136,47 +132,50 @@ defineOptions({
 const current = defineModel<number>('current', { default: 1 })
 const pageSize = defineModel<number>('pageSize', { default: 10 })
 
-const props = withDefaults(defineProps<{
-  columns: ColumnsType
-  dataSource: unknown[]
-  loading?: boolean
-  rowKey?: string | ((record: unknown) => string | number)
-  title?: string
-  description?: string
-  size?: 'small' | 'middle' | 'large'
-  total?: number
-  showPagination?: boolean
-  showSizeChanger?: boolean
-  showQuickJumper?: boolean
-  pageSizeOptions?: string[]
-  enableSelection?: boolean
-  selectionType?: 'checkbox' | 'radio'
-  selectedRowKeys?: Key[]
-  flat?: boolean
-  emptyTitle?: string
-  emptyDescription?: string
-}>(), {
-  loading: false,
-  rowKey: 'id',
-  title: '',
-  description: '',
-  size: 'middle',
-  total: 0,
-  showPagination: true,
-  showSizeChanger: true,
-  showQuickJumper: false,
-  pageSizeOptions: () => ['10', '20', '50', '100'],
-  enableSelection: false,
-  selectionType: 'checkbox',
-  selectedRowKeys: () => [],
-  flat: false,
-  emptyTitle: '暂无数据',
-  emptyDescription: '当前条件下没有可展示内容。',
-})
+const props = withDefaults(
+  defineProps<{
+    columns: ColumnsType
+    dataSource: unknown[]
+    loading?: boolean
+    rowKey?: string | ((record: unknown) => string | number)
+    title?: string
+    description?: string
+    size?: 'small' | 'middle' | 'large'
+    total?: number
+    showPagination?: boolean
+    showSizeChanger?: boolean
+    showQuickJumper?: boolean
+    pageSizeOptions?: string[]
+    enableSelection?: boolean
+    selectionType?: 'checkbox' | 'radio'
+    selectedRowKeys?: Key[]
+    flat?: boolean
+    emptyTitle?: string
+    emptyDescription?: string
+  }>(),
+  {
+    loading: false,
+    rowKey: 'id',
+    title: '',
+    description: '',
+    size: 'middle',
+    total: 0,
+    showPagination: true,
+    showSizeChanger: true,
+    showQuickJumper: false,
+    pageSizeOptions: () => ['10', '20', '50', '100'],
+    enableSelection: false,
+    selectionType: 'checkbox',
+    selectedRowKeys: () => [],
+    flat: false,
+    emptyTitle: '暂无数据',
+    emptyDescription: '当前条件下没有可展示内容。',
+  },
+)
 
 const emit = defineEmits<{
-  (e: 'change', payload: UiDataTableChangePayload): void
-  (e: 'page-change', payload: { current: number, pageSize: number }): void
+  (e: 'change', changeEvent: UiDataTableChangeEvent): void
+  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
 }>()
 
@@ -189,12 +188,11 @@ const hasTopBar = computed(() => {
 
 const forwardedSlots = computed(() => {
   const reserved = ['toolbar-left', 'toolbar-right', 'empty']
-  return Object.keys(slots).filter(name => !reserved.includes(name))
+  return Object.keys(slots).filter((name) => !reserved.includes(name))
 })
 
 const rowSelection = computed<TableRowSelection | undefined>(() => {
-  if (!props.enableSelection)
-    return undefined
+  if (!props.enableSelection) return undefined
 
   return {
     type: props.selectionType,
@@ -205,7 +203,12 @@ const rowSelection = computed<TableRowSelection | undefined>(() => {
   }
 })
 
-const handleTableChange: NonNullable<TableProps['onChange']> = (pagination, filters, sorter, extra) => {
+const handleTableChange: NonNullable<TableProps['onChange']> = (
+  pagination,
+  filters,
+  sorter,
+  extra,
+) => {
   emit('change', { pagination, filters, sorter, extra })
 }
 
@@ -290,8 +293,10 @@ const handlePageChange = (page: number, size: number) => {
   padding-inline: 8px !important;
 }
 
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-table-selection),
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox-wrapper),
+.ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-table-selection),
+.ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox-wrapper),
 .ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox) {
   display: flex;
   align-items: center;
@@ -300,17 +305,35 @@ const handlePageChange = (page: number, size: number) => {
   margin: 0 !important;
 }
 
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox::after) {
+.ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox::after) {
   display: none !important;
   animation: none !important;
 }
 
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox-input:focus-visible + .ant-checkbox-inner) {
+.ui-data-table__table
+  :deep(
+    .ant-table-thead
+      > tr
+      > th.ant-table-selection-column
+      .ant-checkbox-input:focus-visible
+      + .ant-checkbox-inner
+  ) {
   box-shadow: none !important;
 }
 
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox:hover .ant-checkbox-inner),
-.ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox-wrapper:hover .ant-checkbox-inner) {
+.ui-data-table__table
+  :deep(
+    .ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox:hover .ant-checkbox-inner
+  ),
+.ui-data-table__table
+  :deep(
+    .ant-table-thead
+      > tr
+      > th.ant-table-selection-column
+      .ant-checkbox-wrapper:hover
+      .ant-checkbox-inner
+  ) {
   border-color: var(--dp-border, #e5e7eb) !important;
 }
 

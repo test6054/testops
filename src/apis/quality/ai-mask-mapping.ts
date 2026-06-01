@@ -2,8 +2,9 @@
  * AI 脱敏映射 API - 对应 AiMaskMappingController
  * 后端路径：/api/quality/ai-mask-mappings
  *
- * 前端只读取脱敏映射审计摘要，不获取明文、密文载荷或加密参数。
+ * 前端只读取脱敏映射审计摘要，敏感内容不进入页面侧合同。
  */
+import type { AiTaskBusinessType } from './types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/ai-mask-mappings'
@@ -12,8 +13,9 @@ export interface AiMaskMappingVO {
   id: string
   tenantId?: string
   aiTaskId: string
-  businessType: string
+  businessType: AiTaskBusinessType
   businessId: string
+  businessLabel: string
   createTime?: string
   updateTime?: string
 }

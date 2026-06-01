@@ -14,15 +14,14 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AchievementAuditStatus,
   AchievementAuditVO,
+  AchievementDetailType,
   AchievementDetailVO,
   AchievementManualReviewVO,
   AchievementResultVO,
+  AchievementStatus,
+  AchievementTargetType,
   ManualReviewDecision,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -34,16 +33,16 @@ import {
   achievementAuditApi,
   achievementDetailApi,
   achievementManualReviewApi,
-  isAchievementAuditStatus,
-  isAchievementDetailType,
-  isAchievementStatus,
-  isAchievementTargetType,
-  isManualReviewDecision,
   MANUAL_REVIEW_DECISION_LABEL,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import { formatOptionalNumber, promptModal } from './_helpers'
+import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
+import { promptModal } from './_helpers'
 
 const detailColumns: ColumnsType = [
   { title: '明细类型', dataIndex: 'detailType', key: 'detailType', width: 140 },
@@ -65,55 +64,37 @@ const details = ref<AchievementDetailVO[]>([])
 const audits = ref<AchievementAuditVO[]>([])
 const reviews = ref<AchievementManualReviewVO[]>([])
 const loading = ref(false)
-const reviewForm = reactive<{ decision: ManualReviewDecision, reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecision; reviewRemark: string }>({
   decision: 'CONFIRMED',
   reviewRemark: '',
 })
 
-function targetTypeLabel(value: unknown): string {
-  if (isAchievementTargetType(value)) return ACHIEVEMENT_TARGET_TYPE_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('达成度目标类型不符合前后端契约')
+function targetTypeLabel(value: AchievementTargetType): string {
+  return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成目标类型')
 }
 
-function achievementStatusLabel(value: unknown): string {
-  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('达成度结论不符合前后端契约')
+function achievementStatusLabel(value: AchievementStatus): string {
+  return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
 }
 
-function achievementStatusColor(value: unknown): string {
-  if (isAchievementStatus(value)) return ACHIEVEMENT_STATUS_COLOR[value]
-  if (value === null || value === undefined || value === '')
-    return ACHIEVEMENT_STATUS_COLOR.INSUFFICIENT_EVIDENCE
-  throw new Error('达成度结论不符合前后端契约')
+function achievementStatusColor(value: AchievementStatus): string {
+  return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
-function auditStatusLabel(value: unknown): string {
-  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('达成度审核状态不符合前后端契约')
+function auditStatusLabel(value: AchievementAuditStatus): string {
+  return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
 }
 
-function auditStatusColor(value: unknown): string {
-  if (isAchievementAuditStatus(value)) return ACHIEVEMENT_AUDIT_STATUS_COLOR[value]
-  throw new Error('达成度审核状态不符合前后端契约')
+function auditStatusColor(value: AchievementAuditStatus): string {
+  return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
 }
 
-function detailTypeLabel(value: unknown): string {
-  if (isAchievementDetailType(value)) return ACHIEVEMENT_DETAIL_TYPE_LABEL[value]
-  throw new Error('达成度明细类型不符合前后端契约')
+function detailTypeLabel(value: AchievementDetailType): string {
+  return strictEnumLabel(ACHIEVEMENT_DETAIL_TYPE_LABEL, value, '达成明细类型')
 }
 
-function manualReviewDecisionLabel(value: unknown): string {
-  if (isManualReviewDecision(value)) return MANUAL_REVIEW_DECISION_LABEL[value]
-  throw new Error('人工复核决定不符合前后端契约')
-}
-
-function referenceNameText(record: AchievementDetailVO): string {
-  if (record.referenceName?.trim()) return record.referenceName
-  if (record.referenceCode?.trim()) return '未匹配引用对象'
-  throw new Error('达成度明细缺少引用对象名称')
+function manualReviewDecisionLabel(value: ManualReviewDecision): string {
+  return strictEnumLabel(MANUAL_REVIEW_DECISION_LABEL, value, '人工复核决定')
 }
 
 const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> = {
@@ -128,10 +109,7 @@ const auditTransitMap: Record<AchievementAuditStatus, AchievementAuditStatus[]> 
 const nextStatuses = computed<AchievementAuditStatus[]>(() => {
   const status = result.value?.auditStatus
   if (!status) return []
-  if (!isAchievementAuditStatus(status)) {
-    throw new Error('达成度审核状态不符合前后端契约')
-  }
-  return auditTransitMap[status]
+  return strictEnumValue(auditTransitMap, status, '达成审核状态')
 })
 
 async function loadAll() {
@@ -157,9 +135,6 @@ async function handleTransit(to: AchievementAuditStatus) {
   if (!result.value) return
   const fromStatus = result.value.auditStatus
   if (!fromStatus) return
-  if (!isAchievementAuditStatus(fromStatus)) {
-    throw new Error('达成度审核状态不符合前后端契约')
-  }
   const remark = await promptModal({
     title: `${auditStatusLabel(fromStatus)} → ${auditStatusLabel(to)}`,
     placeholder: '审核备注（驳回时必填）',
@@ -205,19 +180,19 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'final',
       label: '达成值',
-      value: formatOptionalNumber(finalValue, '达成值'),
+      value: finalValue == null ? '-' : finalValue.toFixed(3),
       tone: isBelow ? 'red' : finalValue == null ? 'gray' : 'green',
     },
     {
       key: 'threshold',
       label: '阈值',
-      value: formatOptionalNumber(threshold, '阈值'),
+      value: threshold == null ? '-' : threshold.toFixed(3),
       tone: 'blue',
     },
     {
       key: 'sample',
       label: '有效 / 总量',
-      value: `${r.sampleValid ?? '-'} / ${r.sampleTotal ?? '-'}`,
+      value: `${r.sampleValid} / ${r.sampleTotal}`,
       tone: 'gray',
     },
     {
@@ -308,32 +283,28 @@ onMounted(loadAll)
           <a-descriptions-item label="目标类型">
             {{ targetTypeLabel(result.targetType) }}
           </a-descriptions-item>
-          <a-descriptions-item label="目标 ID">
-            {{ result.targetId }}
+          <a-descriptions-item label="目标对象">
+            {{ result.targetLabel }}
           </a-descriptions-item>
-          <a-descriptions-item label="专业 ID">
-            {{ result.programId || '-' }}
+          <a-descriptions-item v-if="result.programId" label="所属专业">
+            {{ result.programName }}
           </a-descriptions-item>
-          <a-descriptions-item label="培养方案 ID">
-            {{ result.trainingPlanId || '-' }}
+          <a-descriptions-item v-if="result.trainingPlanId" label="培养方案">
+            {{ result.trainingPlanCode }} {{ result.trainingPlanName }}
           </a-descriptions-item>
-          <a-descriptions-item label="课程 ID">
-            {{ result.qualityCourseId || '-' }}
+          <a-descriptions-item v-if="result.qualityCourseId" label="关联课程">
+            {{ result.qualityCourseCode }} {{ result.qualityCourseName }}
           </a-descriptions-item>
           <a-descriptions-item label="学年 / 学期">
-            {{ result.schoolYear || '-' }} / {{ result.semester || '-' }}
+            {{ result.schoolYear }} / {{ result.semester }}
           </a-descriptions-item>
           <a-descriptions-item label="达成结论">
-            <a-tag
-              v-if="result.achievementStatus"
-              :color="achievementStatusColor(result.achievementStatus)"
-            >
+            <a-tag :color="achievementStatusColor(result.achievementStatus)">
               {{ achievementStatusLabel(result.achievementStatus) }}
             </a-tag>
-            <span v-else>-</span>
           </a-descriptions-item>
           <a-descriptions-item label="计算时间">
-            {{ result.calculatedAt || '-' }}
+            {{ result.calculatedAt }}
           </a-descriptions-item>
           <a-descriptions-item label="审核状态">
             <a-tag :color="auditStatusColor(result.auditStatus)">
@@ -365,28 +336,34 @@ onMounted(loadAll)
             flat
             :total="details.length"
           >
-            <template #bodyCell="{ column, record, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'detailType'">
-                {{ detailTypeLabel(text) }}
+                {{ detailTypeLabel(record.detailType) }}
               </template>
               <template v-else-if="column.key === 'referenceName'">
                 <span v-if="record.referenceCode" class="achievement-detail__ref-code">
                   {{ record.referenceCode }}
                 </span>
-                {{ referenceNameText(record) }}
+                {{ record.referenceName }}
               </template>
-              <template
-                v-else-if="
-                  column.key === 'weight'
-                    || column.key === 'fullScore'
-                    || column.key === 'averageScore'
-                    || column.key === 'achievementValue'
-                "
-              >
-                {{ text ?? '-' }}
+              <template v-else-if="column.key === 'weight'">
+                {{ typeof record.weight === 'number' ? record.weight : '未配置权重' }}
+              </template>
+              <template v-else-if="column.key === 'fullScore'">
+                {{ typeof record.fullScore === 'number' ? record.fullScore : '未配置满分' }}
+              </template>
+              <template v-else-if="column.key === 'averageScore'">
+                {{ typeof record.averageScore === 'number' ? record.averageScore : '未生成平均分' }}
+              </template>
+              <template v-else-if="column.key === 'achievementValue'">
+                {{
+                  typeof record.achievementValue === 'number'
+                    ? record.achievementValue
+                    : '未生成达成值'
+                }}
               </template>
               <template v-else-if="column.key === 'sampleValid'">
-                {{ record.sampleValid ?? '-' }} / {{ record.sampleTotal ?? '-' }}
+                {{ record.sampleValid }} / {{ record.sampleTotal }}
               </template>
             </template>
           </UiDataTable>
@@ -419,8 +396,7 @@ onMounted(loadAll)
                 </strong>
               </p>
               <p class="achievement-detail__audit-meta">
-                {{ audit.auditorRole }}（{{ audit.auditorNickName }}）·
-                {{ audit.auditedAt }}
+                {{ audit.auditorNickName || '审核人' }} · {{ audit.auditedAt }}
               </p>
               <p v-if="audit.auditOpinion" class="achievement-detail__audit-opinion">
                 意见：{{ audit.auditOpinion }}
@@ -447,7 +423,7 @@ onMounted(loadAll)
           <template #renderItem="{ item }">
             <a-list-item>
               <a-list-item-meta
-                :title="`${manualReviewDecisionLabel(item.decision)} · ${item.reviewerRole}（${item.reviewerNickName}）`"
+                :title="`${manualReviewDecisionLabel(item.decision)} · ${item.reviewerNickName || '复核人'}`"
                 :description="item.reviewRemark"
               />
               <template #actions>
@@ -565,7 +541,6 @@ onMounted(loadAll)
   &__ref-code {
     color: var(--dp-text-muted, #64748b);
     font-size: 12px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     margin-right: 4px;
   }
 

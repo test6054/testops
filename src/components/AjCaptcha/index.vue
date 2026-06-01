@@ -116,6 +116,7 @@ import RightOutlined from '@ant-design/icons-vue/RightOutlined'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { checkCaptcha, getCaptcha } from '@/apis/auth'
 import { aesEncrypt } from '@/utils/crypto'
+import { getUserErrorMessage } from '@/utils/error-handler'
 
 const props = defineProps<{
   modelValue: boolean
@@ -160,10 +161,10 @@ const sliderLeft = ref(0)
 const isDragging = ref(false)
 const startX = ref(0)
 const startTime = ref(0)
-const moveTrack = ref<Array<{ x: number, y: number, t: number }>>([])
+const moveTrack = ref<Array<{ x: number; y: number; t: number }>>([])
 
 // 点选相关
-const clickPoints = ref<Array<{ x: number, y: number }>>([])
+const clickPoints = ref<Array<{ x: number; y: number }>>([])
 
 // 计算属性
 const sliderClass = computed(() => ({
@@ -205,7 +206,7 @@ const refreshCaptcha = async () => {
       errorMsg.value = res.repMsg || '获取验证码失败'
     }
   } catch (error) {
-    errorMsg.value = error instanceof Error ? error.message : '获取验证码失败'
+    errorMsg.value = getUserErrorMessage(error, '获取验证码失败')
   } finally {
     loading.value = false
   }
@@ -320,7 +321,7 @@ const verifySlider = async () => {
     }
   } catch (error) {
     verifyFail.value = true
-    errorMsg.value = error instanceof Error ? error.message : '验证失败'
+    errorMsg.value = getUserErrorMessage(error, '验证失败，请重试')
     setTimeout(() => {
       refreshCaptcha()
     }, 1000)
@@ -392,7 +393,7 @@ const verifyClickWord = async () => {
     }
   } catch (error) {
     verifyFail.value = true
-    errorMsg.value = error instanceof Error ? error.message : '验证失败'
+    errorMsg.value = getUserErrorMessage(error, '验证失败，请重试')
     setTimeout(() => {
       refreshCaptcha()
     }, 1000)

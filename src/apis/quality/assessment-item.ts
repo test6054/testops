@@ -1,3 +1,4 @@
+import type { AssessmentItemType } from './types'
 /**
  * 考核环节 + 课程目标权重 + Rubric API
  *
@@ -20,7 +21,7 @@ export interface AssessmentItemVO {
   qualityCourseId: string
   itemCode: string
   itemName: string
-  itemType: string
+  itemType: AssessmentItemType
   fullScore: number
   passScore?: number
   weightInCourse?: number
@@ -31,12 +32,12 @@ export interface AssessmentItemVO {
   updateTime?: string
 }
 
-export interface AssessmentItemSavePayload {
+export interface AssessmentItemSaveRequest {
   id?: string
   qualityCourseId: string
   itemCode: string
   itemName: string
-  itemType: string
+  itemType: AssessmentItemType
   fullScore: number
   passScore?: number
   weightInCourse?: number
@@ -48,14 +49,19 @@ export interface AssessmentItemSavePayload {
 export interface AssessmentGoalWeightVO {
   id: string
   assessmentItemId: string
+  assessmentItemCode: string
+  assessmentItemName: string
+  assessmentItemFullScore: number
   courseGoalId: string
+  courseGoalCode: string
+  courseGoalName: string
   weight: number
   fullScore: number
   createTime?: string
   updateTime?: string
 }
 
-export interface AssessmentGoalWeightSavePayload {
+export interface AssessmentGoalWeightSaveRequest {
   id?: string
   assessmentItemId: string
   courseGoalId: string
@@ -66,8 +72,10 @@ export interface AssessmentGoalWeightSavePayload {
 export interface RubricItemVO {
   id: string
   assessmentItemId: string
-  courseGoalId?: string
-  rubricCode?: string
+  courseGoalId: string
+  courseGoalCode: string
+  courseGoalName: string
+  rubricCode: string
   rubricName: string
   description?: string
   fullScore: number
@@ -76,7 +84,7 @@ export interface RubricItemVO {
   updateTime?: string
 }
 
-export interface RubricItemSavePayload {
+export interface RubricItemSaveRequest {
   id?: string
   assessmentItemId: string
   courseGoalId?: string
@@ -90,14 +98,10 @@ export interface RubricItemSavePayload {
 export const assessmentItemApi = {
   listByCourse: (qualityCourseId: string) =>
     http.post<AssessmentItemVO[]>(`${ITEM}/list-by-course`, { id: qualityCourseId }),
-  detail: (id: string) =>
-    http.post<AssessmentItemVO>(`${ITEM}/detail`, { id }),
-  create: (data: AssessmentItemSavePayload) =>
-    http.post<string>(`${ITEM}/create`, data),
-  update: (data: AssessmentItemSavePayload) =>
-    http.post<void>(`${ITEM}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${ITEM}/delete`, { id }),
+  detail: (id: string) => http.post<AssessmentItemVO>(`${ITEM}/detail`, { id }),
+  create: (data: AssessmentItemSaveRequest) => http.post<string>(`${ITEM}/create`, data),
+  update: (data: AssessmentItemSaveRequest) => http.post<void>(`${ITEM}/update`, data),
+  delete: (id: string) => http.post<void>(`${ITEM}/delete`, { id }),
 }
 
 export const assessmentGoalWeightApi = {
@@ -105,14 +109,10 @@ export const assessmentGoalWeightApi = {
     http.post<AssessmentGoalWeightVO[]>(`${WEIGHT}/list-by-item`, { id: assessmentItemId }),
   listByCourseGoal: (courseGoalId: string) =>
     http.post<AssessmentGoalWeightVO[]>(`${WEIGHT}/list-by-course-goal`, { id: courseGoalId }),
-  detail: (id: string) =>
-    http.post<AssessmentGoalWeightVO>(`${WEIGHT}/detail`, { id }),
-  create: (data: AssessmentGoalWeightSavePayload) =>
-    http.post<string>(`${WEIGHT}/create`, data),
-  update: (data: AssessmentGoalWeightSavePayload) =>
-    http.post<void>(`${WEIGHT}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${WEIGHT}/delete`, { id }),
+  detail: (id: string) => http.post<AssessmentGoalWeightVO>(`${WEIGHT}/detail`, { id }),
+  create: (data: AssessmentGoalWeightSaveRequest) => http.post<string>(`${WEIGHT}/create`, data),
+  update: (data: AssessmentGoalWeightSaveRequest) => http.post<void>(`${WEIGHT}/update`, data),
+  delete: (id: string) => http.post<void>(`${WEIGHT}/delete`, { id }),
   /** 校验某考核环节下所有权重和是否为 1，不满足时抛出 BizException */
   validateWeights: (assessmentItemId: string) =>
     http.post<void>(`${WEIGHT}/validate-weights`, { id: assessmentItemId }),
@@ -121,14 +121,10 @@ export const assessmentGoalWeightApi = {
 export const rubricItemApi = {
   listByItem: (assessmentItemId: string) =>
     http.post<RubricItemVO[]>(`${RUBRIC}/list-by-item`, { id: assessmentItemId }),
-  detail: (id: string) =>
-    http.post<RubricItemVO>(`${RUBRIC}/detail`, { id }),
-  create: (data: RubricItemSavePayload) =>
-    http.post<string>(`${RUBRIC}/create`, data),
-  update: (data: RubricItemSavePayload) =>
-    http.post<void>(`${RUBRIC}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${RUBRIC}/delete`, { id }),
+  detail: (id: string) => http.post<RubricItemVO>(`${RUBRIC}/detail`, { id }),
+  create: (data: RubricItemSaveRequest) => http.post<string>(`${RUBRIC}/create`, data),
+  update: (data: RubricItemSaveRequest) => http.post<void>(`${RUBRIC}/update`, data),
+  delete: (id: string) => http.post<void>(`${RUBRIC}/delete`, { id }),
   /** 校验 rubric 满分加总 = 对应 (item, goal) 的 fullScore */
   validateFullScore: (assessmentItemId: string) =>
     http.post<void>(`${RUBRIC}/validate-full-score`, { id: assessmentItemId }),

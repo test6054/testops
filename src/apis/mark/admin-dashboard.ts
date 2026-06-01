@@ -55,6 +55,15 @@ export interface DashboardRecentExamItemVO {
 /** 重大事件级别 - 对应后端 IncidentLevel 枚举 */
 export type IncidentLevelCode = 'BLOCKING' | 'REVIEW_REQUIRED' | 'WARNING' | 'INFO'
 
+/** 重大事件来源类型 - 对应后端 IncidentSourceType 枚举 */
+export type IncidentSourceTypeCode
+  = | 'IMAGE_LEDGER'
+    | 'SCAN_BATCH'
+    | 'SCANNED_PAGE'
+    | 'PROCESSING_TASK'
+    | 'DUPLICATE_RESOLUTION'
+    | 'GRADE_RESULT'
+
 /** 重大事件级别文案映射 */
 export const INCIDENT_LEVEL_LABEL: Record<IncidentLevelCode, string> = {
   BLOCKING: '阻断',
@@ -99,9 +108,9 @@ export interface IncidentRecordVO {
   id: string
   tenantId?: string
   examId: string
-  incidentLevel?: IncidentLevelCode
+  incidentLevel: IncidentLevelCode
   incidentType: IncidentTypeCode
-  sourceType?: string
+  sourceType?: IncidentSourceTypeCode
   sourceId?: string
   summary: string
   detail?: string
@@ -115,7 +124,20 @@ export interface IncidentRecordVO {
   updateTime?: string
 }
 
-/** 用于在 finalScore 文案上复用学生侧映射 */
+/** Dashboard 最近重大事件列表项 - 对应 MarkDashboardIncidentItem */
+export interface DashboardIncidentRecordVO {
+  id: string
+  examId: string
+  examName: string
+  examNo: string
+  incidentLevel: IncidentLevelCode
+  incidentType: IncidentTypeCode
+  summary: string
+  detail?: string
+  createTime?: string
+}
+
+/** 用于复用学生侧成绩状态文案 */
 export type DashboardFinalScoreStatusCode = FinalScoreStatusCode
 
 /**
@@ -131,7 +153,7 @@ export interface MarkDashboardOverviewVO {
   gradingMetrics: DashboardGradingMetricsVO
   incidentMetrics: DashboardIncidentMetricsVO
   recentExams: DashboardRecentExamItemVO[]
-  recentIncidents: IncidentRecordVO[]
+  recentIncidents: DashboardIncidentRecordVO[]
 }
 
 /**
@@ -139,163 +161,7 @@ export interface MarkDashboardOverviewVO {
  * GET /api/mark/admin/dashboard/overview?recentLimit=
  */
 export function loadDashboardOverview(recentLimit = 5): Promise<MarkDashboardOverviewVO> {
-  return http
-    .get<unknown>('/api/mark/admin/dashboard/overview', {
-      params: { recentLimit },
-    })
-    .then(validateDashboardOverview)
-}
-
-function requireRecord(value: unknown, message: string): Record<string, unknown> {
-  if (!value || typeof value !== 'object') {
-    throw new TypeError(message)
-  }
-  return value as Record<string, unknown>
-}
-
-function requireString(value: unknown, fieldName: string): string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError(`Dashboard 接口缺少 ${fieldName}`)
-  }
-  return value
-}
-
-function optionalString(value: unknown, fieldName: string): string | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (typeof value !== 'string') {
-    throw new TypeError(`Dashboard 接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireExamStatus(value: unknown, fieldName: string): ExamStatusCode {
-  if (value === 'ACTIVE' || value === 'CLOSED') {
-    return value
-  }
-  throw new TypeError(`Dashboard 接口 ${fieldName} 格式错误`)
-}
-
-function requireIncidentType(value: unknown): IncidentTypeCode {
-  if (
-    value !== 'DUPLICATE_DETECTED'
-    && value !== 'BINDING_CONFLICT'
-    && value !== 'SCAN_BATCH_REPROCESS'
-    && value !== 'SCORE_ANOMALY'
-  ) {
-    throw new TypeError('Dashboard 接口 incidentType 格式错误')
-  }
-  return value
-}
-
-function optionalIncidentLevel(value: unknown): IncidentLevelCode | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined
-  }
-  if (
-    value !== 'BLOCKING'
-    && value !== 'REVIEW_REQUIRED'
-    && value !== 'WARNING'
-    && value !== 'INFO'
-  ) {
-    throw new TypeError('Dashboard 接口 incidentLevel 格式错误')
-  }
-  return value
-}
-
-function optionalBoolean(value: unknown, fieldName: string): boolean | undefined {
-  if (value === undefined || value === null) {
-    return undefined
-  }
-  if (typeof value !== 'boolean') {
-    throw new TypeError(`Dashboard 接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function validateIncidentRecord(value: unknown): IncidentRecordVO {
-  const record = requireRecord(value, 'Dashboard 最近事件返回格式错误')
-  return {
-    id: requireString(record.id, 'recentIncidents.id'),
-    tenantId: optionalString(record.tenantId, 'recentIncidents.tenantId'),
-    examId: requireString(record.examId, 'recentIncidents.examId'),
-    incidentLevel: optionalIncidentLevel(record.incidentLevel),
-    incidentType: requireIncidentType(record.incidentType),
-    sourceType: optionalString(record.sourceType, 'recentIncidents.sourceType'),
-    sourceId: optionalString(record.sourceId, 'recentIncidents.sourceId'),
-    summary: requireString(record.summary, 'recentIncidents.summary'),
-    detail: optionalString(record.detail, 'recentIncidents.detail'),
-    resolved: optionalBoolean(record.resolved, 'recentIncidents.resolved'),
-    resolvedBy: optionalString(record.resolvedBy, 'recentIncidents.resolvedBy'),
-    resolvedTime: optionalString(record.resolvedTime, 'recentIncidents.resolvedTime'),
-    resolveNote: optionalString(record.resolveNote, 'recentIncidents.resolveNote'),
-    createUser: optionalString(record.createUser, 'recentIncidents.createUser'),
-    updateUser: optionalString(record.updateUser, 'recentIncidents.updateUser'),
-    createTime: optionalString(record.createTime, 'recentIncidents.createTime'),
-    updateTime: optionalString(record.updateTime, 'recentIncidents.updateTime'),
-  }
-}
-
-function validateRecentExamItem(value: unknown): DashboardRecentExamItemVO {
-  const record = requireRecord(value, 'Dashboard 最近考试返回格式错误')
-  return {
-    examId: requireString(record.examId, 'recentExams.examId'),
-    examName: requireString(record.examName, 'recentExams.examName'),
-    examNo: requireString(record.examNo, 'recentExams.examNo'),
-    status: requireExamStatus(record.status, 'recentExams.status'),
-    createTime: optionalString(record.createTime, 'recentExams.createTime'),
-    examStartTime: optionalString(record.examStartTime, 'recentExams.examStartTime'),
-    candidateCount: requireNumber(record.candidateCount, 'recentExams.candidateCount'),
-    openProcessingTaskCount: requireNumber(record.openProcessingTaskCount, 'recentExams.openProcessingTaskCount'),
-    publishedScoreCount: requireNumber(record.publishedScoreCount, 'recentExams.publishedScoreCount'),
-  }
-}
-
-function requireGradingMetrics(value: unknown): DashboardGradingMetricsVO {
-  const record = requireRecord(value, 'Dashboard 接口缺少 gradingMetrics')
-  return {
-    publishedScoreCount: requireNumber(record.publishedScoreCount, 'gradingMetrics.publishedScoreCount'),
-    pendingScoreCount: requireNumber(record.pendingScoreCount, 'gradingMetrics.pendingScoreCount'),
-    confirmedScoreCount: requireNumber(record.confirmedScoreCount, 'gradingMetrics.confirmedScoreCount'),
-    withdrawnScoreCount: requireNumber(record.withdrawnScoreCount, 'gradingMetrics.withdrawnScoreCount'),
-    confirmedQuestionResultCount: requireNumber(record.confirmedQuestionResultCount, 'gradingMetrics.confirmedQuestionResultCount'),
-    openReviewTaskCount: requireNumber(record.openReviewTaskCount, 'gradingMetrics.openReviewTaskCount'),
-    openProcessingTaskCount: requireNumber(record.openProcessingTaskCount, 'gradingMetrics.openProcessingTaskCount'),
-  }
-}
-
-function requireIncidentMetrics(value: unknown): DashboardIncidentMetricsVO {
-  const record = requireRecord(value, 'Dashboard 接口缺少 incidentMetrics')
-  return {
-    unresolvedIncidentCount: requireNumber(record.unresolvedIncidentCount, 'incidentMetrics.unresolvedIncidentCount'),
-    pendingDuplicateCount: requireNumber(record.pendingDuplicateCount, 'incidentMetrics.pendingDuplicateCount'),
-  }
-}
-
-function requireNumber(value: unknown, fieldName: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`Dashboard 接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function requireArray(value: unknown, fieldName: string): unknown[] {
-  if (!Array.isArray(value)) {
-    throw new TypeError(`Dashboard 接口 ${fieldName} 格式错误`)
-  }
-  return value
-}
-
-function validateDashboardOverview(value: unknown): MarkDashboardOverviewVO {
-  const record = requireRecord(value, 'Dashboard 概览返回格式错误')
-  return {
-    // examMetrics 当前 UI 未消费，保留为软字段
-    examMetrics: record.examMetrics as DashboardExamMetricsVO | undefined,
-    // 核心 KPI 字段必须存在，缺失即视为后端协议异常 → loadOverview catch 显示错误面板
-    gradingMetrics: requireGradingMetrics(record.gradingMetrics),
-    incidentMetrics: requireIncidentMetrics(record.incidentMetrics),
-    recentExams: requireArray(record.recentExams, 'recentExams').map(validateRecentExamItem),
-    recentIncidents: requireArray(record.recentIncidents, 'recentIncidents').map(validateIncidentRecord),
-  }
+  return http.get<MarkDashboardOverviewVO>('/api/mark/admin/dashboard/overview', {
+    params: { recentLimit },
+  })
 }

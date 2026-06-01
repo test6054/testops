@@ -13,7 +13,7 @@
       </template>
     </UiPanelHeader>
 
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div v-if="props.items.length" class="ui-simple-list__items" :style="listStyle">
         <article
           v-for="item in props.items"
@@ -33,16 +33,14 @@
               >
                 {{ item.badgeLabel }}
               </UiTag>
-              <UiTag
-                v-if="item.statusLabel"
-                size="sm"
-                :tone="item.statusTone || 'gray'"
-              >
+              <UiTag v-if="item.statusLabel" size="sm" :tone="item.statusTone || 'gray'">
                 {{ item.statusLabel }}
               </UiTag>
             </div>
 
-            <p v-if="item.description" class="ui-simple-list__description">{{ item.description }}</p>
+            <p v-if="item.description" class="ui-simple-list__description">
+              {{ item.description }}
+            </p>
 
             <div v-if="item.helper || item.meta" class="ui-simple-list__meta">
               <span v-if="item.helper">{{ item.helper }}</span>
@@ -75,8 +73,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiNoticeAction, UiSimpleListItem } from './types'
 import { computed, useSlots } from 'vue'
+import type { UiNoticeAction, UiSimpleListItem } from './types'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
 import UiActionLink from './UiActionLink.vue'
@@ -87,40 +85,42 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiSimpleListItem[]
-  loading?: boolean
-  emptyText?: string
-  compact?: boolean
-  divided?: boolean
-  itemClickable?: boolean
-  maxHeight?: string | number
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  loading: false,
-  emptyText: '暂无列表数据',
-  compact: false,
-  divided: false,
-  itemClickable: true,
-  maxHeight: '',
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiSimpleListItem[]
+    loading?: boolean
+    emptyText?: string
+    compact?: boolean
+    divided?: boolean
+    itemClickable?: boolean
+    maxHeight?: string | number
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    loading: false,
+    emptyText: '暂无列表数据',
+    compact: false,
+    divided: false,
+    itemClickable: true,
+    maxHeight: '',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiSimpleListItem): void
-  (e: 'action-click', payload: { item: UiSimpleListItem, action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiSimpleListItem; action: UiNoticeAction }): void
 }>()
 
 const slots = useSlots()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
@@ -130,8 +130,7 @@ const hasHeader = computed(() => {
 
 const listStyle = computed<CSSProperties | undefined>(() => {
   const maxHeight = normalizeCssSize(props.maxHeight)
-  if (!maxHeight)
-    return undefined
+  if (!maxHeight) return undefined
 
   return {
     maxHeight,
@@ -141,15 +140,13 @@ const listStyle = computed<CSSProperties | undefined>(() => {
 })
 
 const handleItemClick = (item: UiSimpleListItem) => {
-  if (!props.itemClickable)
-    return
+  if (!props.itemClickable) return
 
   emit('item-click', item)
 }
 
 const handleActionClick = (item: UiSimpleListItem, action: UiNoticeAction) => {
-  if (action.disabled)
-    return
+  if (action.disabled) return
 
   emit('action-click', { item, action })
 }

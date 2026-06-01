@@ -114,22 +114,28 @@
               @change="loadTasks"
             />
           </a-form-item>
-          <a-form-item label="题组ID">
-            <a-input
+          <a-form-item label="题组">
+            <a-select
               v-model:value="filterForm.groupId"
-              placeholder="精确匹配"
+              :options="claimGroupOptions"
+              :loading="claimContextLoading"
+              placeholder="选择题组"
               allow-clear
               style="width: 180px"
-              @press-enter="loadTasks"
+              show-search
+              option-filter-prop="label"
+              @change="onFilterGroupChange"
             />
           </a-form-item>
-          <a-form-item label="正评会话ID">
-            <a-input
+          <a-form-item label="正评会话">
+            <a-select
               v-model:value="filterForm.sessionId"
-              placeholder="精确匹配"
+              :options="filterSessionOptions"
+              :disabled="!filterForm.groupId"
+              placeholder="选择正评会话"
               allow-clear
               style="width: 180px"
-              @press-enter="loadTasks"
+              @change="loadTasks"
             />
           </a-form-item>
           <a-form-item>
@@ -153,7 +159,7 @@
           v-if="tasksLoadError"
           :error="tasksLoadError"
           title="任务列表加载失败"
-          :helper="`考试 ID：${selectedExamId}`"
+          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
           compact
           @retry="loadTasks"
         />
@@ -170,8 +176,37 @@
           flat
         >
           <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'id'">
-              <a-typography-text strong>#{{ tasks[index].id }}</a-typography-text>
+            <template v-if="column.key === 'question'">
+              <a-space direction="vertical" :size="2">
+                <a-typography-text v-if="tasks[index].taskUnit === 'WHOLE_PAPER'" strong>
+                  整卷批阅
+                </a-typography-text>
+                <a-typography-text v-else strong>
+                  第 {{ tasks[index].questionNo }} 题 · {{ tasks[index].questionTypeMessage }}
+                </a-typography-text>
+              </a-space>
+            </template>
+            <template v-else-if="column.key === 'paperDisplay'">
+              <a-space direction="vertical" :size="2">
+                <a-typography-text strong>
+                  {{ tasks[index].paperDisplay.primaryText }}
+                </a-typography-text>
+                <span v-if="tasks[index].paperDisplay.secondaryText" class="muted">
+                  {{ tasks[index].paperDisplay.secondaryText }}
+                </span>
+              </a-space>
+            </template>
+            <template v-else-if="column.key === 'groupName'">
+              <span>{{ tasks[index].groupName }}</span>
+            </template>
+            <template v-else-if="column.key === 'reviewerName'">
+              <span>{{ tasks[index].reviewerName }}</span>
+            </template>
+            <template v-else-if="column.key === 'session'">
+              <a-space direction="vertical" :size="2">
+                <UiTag tone="green" size="sm">{{ tasks[index].sessionStatusMessage }}</UiTag>
+                <span class="muted">{{ formatDateTime(tasks[index].sessionStartTime) }}</span>
+              </a-space>
             </template>
             <template v-else-if="column.key === 'taskStatus'">
               <UiTag :tone="taskStatusTone(tasks[index].taskStatus)" size="sm">
@@ -213,11 +248,17 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  MarkingTaskClaimPayload,
-  MarkingTaskQueryPayload,
+  MarkingTaskClaimRequest,
+  MarkingTaskQueryRequest,
   MarkingTaskStatusCode,
   MarkingTaskVO,
   TeacherClaimContextVO,
+} from '@/apis/mark/marking-organization'
+import {
+  FORMAL_SESSION_STATUS_LABEL,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
@@ -229,10 +270,6 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,
@@ -246,6 +283,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -258,6 +296,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -274,7 +313,7 @@ const markTaskStore = useMarkTaskStore()
 // clearTasks 等 action，避免组件直接修改 storeToRefs 解开后的 ref。
 const { tasks, tasksLoading: loading, claimContextLoading } = storeToRefs(markTaskStore)
 // D-9 错误态：任务列表加载失败时 UiErrorRetryPanel 重试 + 上报
-const tasksLoadError = ref<unknown>(null)
+const tasksLoadError = ref<Error | null>(null)
 
 const filterForm = reactive<{
   taskStatus?: MarkingTaskStatusCode
@@ -286,8 +325,7 @@ const filterForm = reactive<{
   sessionId: '',
 })
 
-// 直接从后端真实枚举 LABEL 对象派生 select options，零 as 断言。
-const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }))
+const statusOptions = MARKING_TASK_STATUS_OPTIONS
 
 const inProgressCount = computed(
   () =>
@@ -297,10 +335,11 @@ const inProgressCount = computed(
 )
 
 const columns: ColumnType<MarkingTaskVO>[] = [
-  { title: '任务ID', key: 'id', width: 120 },
-  { title: '题组', key: 'groupId', dataIndex: 'groupId', width: 140 },
-  { title: '会话', key: 'sessionId', dataIndex: 'sessionId', width: 140 },
-  { title: '试卷', key: 'paperInstanceId', dataIndex: 'paperInstanceId', width: 140 },
+  { title: '题目', key: 'question', width: 190 },
+  { title: '答卷', key: 'paperDisplay', width: 220 },
+  { title: '题组', key: 'groupName', width: 150 },
+  { title: '阅卷教师', key: 'reviewerName', width: 120 },
+  { title: '正评会话', key: 'session', width: 150 },
   { title: '轮次', key: 'reviewRound', width: 80 },
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '给分', key: 'score', width: 80 },
@@ -318,25 +357,25 @@ async function loadTasks(): Promise<void> {
   if (!currentUserId.value) {
     const error = new Error('当前登录用户缺少 userId，无法加载阅卷任务')
     tasksLoadError.value = error
-    message.error(error.message)
+    message.error('登录状态异常，请重新登录后再加载阅卷任务')
     return
   }
   // tasksLoading 由 markTaskStore.loadTasks 内部 try/finally 维护，
   // 组件不再直接写 loading.value，防止与 store 状态机交叉
   tasksLoadError.value = null
   try {
-    const payload: MarkingTaskQueryPayload = {
+    const request: MarkingTaskQueryRequest = {
       examId: selectedExamId.value,
       reviewerUserId: currentUserId.value,
       groupId: filterForm.groupId?.trim() || undefined,
       sessionId: filterForm.sessionId?.trim() || undefined,
       taskStatus: filterForm.taskStatus,
     }
-    await markTaskStore.loadTasks(payload)
+    await markTaskStore.loadTasks(request)
   } catch (error) {
-    tasksLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '任务列表加载失败'
-    message.error(errMsg)
+    tasksLoadError.value =
+      error instanceof Error ? error : new Error(getUserErrorMessage(error, '阅卷任务列表加载失败'))
+    showUserError(error, '阅卷任务列表加载失败')
   }
 }
 
@@ -347,7 +386,7 @@ function resetFilter(): void {
   void loadTasks()
 }
 
-const claimForm = reactive<MarkingTaskClaimPayload>({
+const claimForm = reactive<MarkingTaskClaimRequest>({
   sessionId: '',
   groupId: '',
 })
@@ -361,7 +400,7 @@ const claimContext = computed<TeacherClaimContextVO | null>(() =>
 const claimGroupOptions = computed(() =>
   (claimContext.value?.groups ?? []).map((g) => ({
     value: g.groupId,
-    label: `${g.groupName} (#${g.groupId})`,
+    label: g.groupName,
   })),
 )
 
@@ -370,7 +409,16 @@ const claimSessionOptions = computed(() => {
   const matched = claimContext.value?.groups.find((g) => g.groupId === claimForm.groupId)
   return (matched?.activeSessions ?? []).map((s) => ({
     value: s.id,
-    label: `会话 #${s.id}${s.startTime ? ` · 启动于 ${formatDateTime(s.startTime)}` : ''}`,
+    label: `${strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, s.sessionStatus, '正评会话状态')}${s.startTime ? ` · ${formatDateTime(s.startTime)}` : ''}`,
+  }))
+})
+
+const filterSessionOptions = computed(() => {
+  if (!filterForm.groupId) return []
+  const matched = claimContext.value?.groups.find((g) => g.groupId === filterForm.groupId)
+  return (matched?.activeSessions ?? []).map((s) => ({
+    value: s.id,
+    label: `${strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, s.sessionStatus, '正评会话状态')}${s.startTime ? ` · ${formatDateTime(s.startTime)}` : ''}`,
   }))
 })
 
@@ -379,8 +427,7 @@ async function loadClaimContext(): Promise<void> {
   try {
     await markTaskStore.loadClaimContext({ examId: selectedExamId.value })
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '领取上下文加载失败'
-    message.error(errMsg)
+    showUserError(error, '领取条件加载失败')
   }
 }
 
@@ -389,11 +436,16 @@ function onClaimGroupChange(): void {
   claimForm.sessionId = ''
 }
 
+function onFilterGroupChange(): void {
+  filterForm.sessionId = ''
+  void loadTasks()
+}
+
 const claiming = ref(false)
 
 async function submitClaim(): Promise<void> {
   if (!canClaim.value) {
-    message.warning('请填写正评会话ID 和题组ID')
+    message.warning('请选择题组和正评会话')
     return
   }
   claiming.value = true
@@ -409,8 +461,7 @@ async function submitClaim(): Promise<void> {
       await loadTasks()
     }
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '领取任务失败'
-    message.error(errMsg)
+    showUserError(error, '领取阅卷任务失败')
   } finally {
     claiming.value = false
   }

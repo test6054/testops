@@ -175,10 +175,10 @@
         </template>
       </a-table>
 
-      <!-- 失败原因展开面板（表格下方） -->
+      <!-- 导出处理说明展开面板（表格下方） -->
       <template v-if="expandedTask">
         <a-alert
-          :message="`失败原因：${expandedTask?.failReason}`"
+          :message="`导出处理说明：${getExportFailReason(expandedTask)}`"
           type="error"
           closable
           @close="expandedTask = null"
@@ -191,6 +191,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
+import { ExportBusinessType } from '@/apis/edu/export'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleFilled from '@ant-design/icons-vue/CheckCircleFilled'
@@ -205,11 +206,10 @@ import LoadingOutlined from '@ant-design/icons-vue/LoadingOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ExportBusinessType } from '@/apis/edu/export'
 import { UiFilterBar } from '@/components/ui-guide/ui'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { AsyncTaskStatusEnum, ExportFormatEnum } from '@/types/enums'
-import { isErrorHandled } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 
 defineOptions({ name: 'ExportTaskCenter' })
@@ -424,12 +424,12 @@ const businessTypeLabel = (type: ExportBusinessType) => businessTypeMap[type]
 // 下载文件 - 使用统一下载工具，直接通过fileNodeId下载
 const downloadFile = async (task: ExportJobStatusVO) => {
   if (!task.fileNodeId) {
-    message.error('文件不存在，无法下载')
+    message.error('导出文件不存在或已被清理')
     return
   }
   try {
     downloadingJobId.value = task.jobId
-    message.info('正在准备下载...')
+    message.info('正在准备下载文件')
     await handleDownloadFile(
       {
         fileId: task.fileNodeId,
@@ -442,9 +442,7 @@ const downloadFile = async (task: ExportJobStatusVO) => {
     )
     // 下载成功消息已在 handleDownloadFile 内部处理，不再重复显示
   } catch (error) {
-    if (!isErrorHandled(error)) {
-      message.error('下载失败，请重试')
-    }
+    showUserError(error, '导出文件下载失败，请稍后重试')
   } finally {
     downloadingJobId.value = null
   }
@@ -453,7 +451,8 @@ const downloadFile = async (task: ExportJobStatusVO) => {
 const downloadFileByJobId = async (jobId: string) => {
   const task = exportTaskMap.value.get(jobId)
   if (!task) {
-    throw new Error(`导出任务不存在：${jobId}`)
+    message.error('导出任务不存在或已被清理')
+    return
   }
   await downloadFile(task)
 }
@@ -468,9 +467,7 @@ const deleteTask = async (jobId: string) => {
     await exportTaskStore.deleteTask(jobId)
     message.success('删除成功')
   } catch (error) {
-    if (!isErrorHandled(error)) {
-      message.error('删除失败')
-    }
+    showUserError(error, '导出任务删除失败，请稍后重试')
     throw error
   }
 }
@@ -486,6 +483,10 @@ const formatFileSize = (bytes: number): string => {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`
+}
+
+const getExportFailReason = (task: ExportJobStatusVO): string => {
+  return getUserProcessFailureMessage(task.failReason, '导出任务处理失败，请检查筛选条件后重新导出')
 }
 
 // 根据格式返回颜色

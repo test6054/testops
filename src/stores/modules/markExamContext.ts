@@ -15,14 +15,11 @@
  *
  * 持久化：仅保留 currentExamId，避免缓存陈旧 detail 与 list。
  */
-import type {
-  ExamDetailVO,
-  ExamPageQueryPayload,
-  ExamSummaryVO,
-} from '@/apis/mark/exam'
+import type { ExamDetailVO, ExamPageQueryRequest, ExamSummaryVO } from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { getExamDetail, pageExams } from '@/apis/mark/exam'
+import { useMarkStageStore } from '@/stores/modules/markStage'
 import { formatSemester } from '@/types/enums/semester-enum'
 
 export const useMarkExamContextStore = defineStore(
@@ -71,19 +68,19 @@ export const useMarkExamContextStore = defineStore(
 
     /**
      * 加载当前用户可见的考试列表。默认拉取 ACTIVE 状态前 200 条。
-     * 业务用 createUserId 过滤教师本人创建的考试；管理员场景需调用方在 payload 中显式置空。
+     * 业务用 createUserId 过滤教师本人创建的考试；管理员场景需调用方在 request 中显式置空。
      */
-    async function loadExams(payload?: Partial<ExamPageQueryPayload>): Promise<void> {
+    async function loadExams(request?: Partial<ExamPageQueryRequest>): Promise<void> {
       examsLoading.value = true
       try {
         const result = await pageExams({
-          pageNum: payload?.pageNum ?? 1,
-          pageSize: payload?.pageSize ?? 200,
-          status: payload?.status,
-          keyword: payload?.keyword,
-          createUserId: payload?.createUserId,
-          startTime: payload?.startTime,
-          endTime: payload?.endTime,
+          pageNum: request?.pageNum ?? 1,
+          pageSize: request?.pageSize ?? 200,
+          status: request?.status,
+          keyword: request?.keyword,
+          createUserId: request?.createUserId,
+          startTime: request?.startTime,
+          endTime: request?.endTime,
         })
         exams.value = result.list
       } finally {
@@ -100,8 +97,19 @@ export const useMarkExamContextStore = defineStore(
     ): Promise<void> {
       currentExamId.value = examId || ''
       if (!examId) return
+      const stageStore = useMarkStageStore()
+      stageStore.observeExam(examId)
       if (opts.ensureDetail && !detailCache.value.has(examId)) {
         await loadDetail(examId)
+      } else if (detailCache.value.has(examId)) {
+        const detail = detailCache.value.get(examId)
+        if (detail) {
+          stageStore.setSelectedExamMeta({
+            examId: detail.examId,
+            examName: detail.examName,
+            examNo: detail.examNo,
+          })
+        }
       }
     }
 
@@ -115,6 +123,11 @@ export const useMarkExamContextStore = defineStore(
         const next = new Map(detailCache.value)
         next.set(examId, detail)
         detailCache.value = next
+        useMarkStageStore().setSelectedExamMeta({
+          examId: detail.examId,
+          examName: detail.examName,
+          examNo: detail.examNo,
+        })
         return detail
       } finally {
         detailLoading.value = false
@@ -136,10 +149,11 @@ export const useMarkExamContextStore = defineStore(
       currentExamId.value = ''
       exams.value = []
       detailCache.value = new Map()
+      useMarkStageStore().reset()
     }
 
     function formatAcademicTerm(exam: ExamSummaryVO): string {
-      return [exam.academicYear, formatSemester(exam.semester) || exam.semester].filter(Boolean).join(' · ')
+      return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
     }
 
     function formatExamOptionLabel(exam: ExamSummaryVO): string {

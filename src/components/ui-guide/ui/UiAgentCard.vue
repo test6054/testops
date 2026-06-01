@@ -19,12 +19,7 @@
           </div>
         </div>
 
-        <UiBadge
-          v-if="props.statusLabel"
-          :tone="props.statusTone"
-          variant="soft"
-          size="sm"
-        >
+        <UiBadge v-if="props.statusLabel" :tone="props.statusTone" variant="soft" size="sm">
           {{ props.statusLabel }}
         </UiBadge>
       </div>
@@ -80,34 +75,37 @@ defineOptions({
   name: 'UiAgentCard',
 })
 
-const props = withDefaults(defineProps<{
-  title: string
-  description?: string
-  eyebrow?: string
-  avatarText?: string
-  helper?: string
-  statusLabel?: string
-  statusTone?: BadgeTone
-  tone?: BadgeTone
-  capabilities?: string[]
-  metrics?: UiAgentMetricItem[]
-  clickable?: boolean
-  selected?: boolean
-  compact?: boolean
-}>(), {
-  description: '',
-  eyebrow: 'Agent',
-  avatarText: 'AI',
-  helper: '',
-  statusLabel: '',
-  statusTone: 'blue',
-  tone: 'purple',
-  capabilities: () => [],
-  metrics: () => [],
-  clickable: true,
-  selected: false,
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    description?: string
+    eyebrow?: string
+    avatarText?: string
+    helper?: string
+    statusLabel?: string
+    statusTone?: BadgeTone
+    tone?: BadgeTone
+    capabilities?: string[]
+    metrics?: UiAgentMetricItem[]
+    clickable?: boolean
+    selected?: boolean
+    compact?: boolean
+  }>(),
+  {
+    description: '',
+    eyebrow: '智能体',
+    avatarText: 'AI',
+    helper: '',
+    statusLabel: '',
+    statusTone: 'blue',
+    tone: 'purple',
+    capabilities: () => [],
+    metrics: () => [],
+    clickable: true,
+    selected: false,
+    compact: false,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'click', evt: MouseEvent): void

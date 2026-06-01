@@ -15,19 +15,22 @@
             allow-clear
             @change="handleExamChange"
           />
-          <a-input
-            v-model:value="organizationIdInput"
-            class="quality-dashboard__org-input"
-            placeholder="阅卷组织 ID"
+          <a-select
+            :value="selectedOrganizationId"
+            class="quality-dashboard__org-select"
+            placeholder="选择阅卷组织"
+            :options="organizationOptions"
+            :loading="organizationLoading"
             allow-clear
-            @change="handleScopeChange"
+            @change="handleOrganizationChange"
           />
-          <a-input
-            v-model:value="groupIdInput"
-            class="quality-dashboard__group-input"
-            placeholder="题组 ID（可选）"
+          <a-select
+            :value="selectedGroupId"
+            class="quality-dashboard__group-select"
+            placeholder="选择题组"
+            :options="groupOptions"
             allow-clear
-            @change="handleScopeChange"
+            @change="handleGroupChange"
           />
         </div>
         <div class="quality-dashboard__context-actions">
@@ -92,8 +95,8 @@
             <UiAlertStrip
               v-if="!scopeValid"
               tone="info"
-              title="请填写阅卷组织ID（必填）"
-              description="进度监控按 (考试 + 阅卷组织 + 题组) 维度统计；题组留空表示组织级合计。"
+              title="请选择阅卷组织"
+              description="进度监控按考试、阅卷组织和题组维度统计；题组留空表示组织级合计。"
               dense
               class="quality-dashboard__alert"
             />
@@ -102,7 +105,7 @@
               v-else-if="progressLoadError"
               :error="progressLoadError"
               title="进度快照加载失败"
-              :helper="`考试 ${selectedExamId} · 组织 ${organizationIdInput || '-'}`"
+              :helper="selectedScopeLabel"
               compact
               @retry="loadProgress"
             />
@@ -137,7 +140,7 @@
                 {{ progress.completionRate.toFixed(2) }}%
               </a-descriptions-item>
               <a-descriptions-item label="预估剩余">
-                {{ progress.estimatedRemainingMinutes ?? '-' }} 分钟
+                {{ estimatedRemainingText(progress.estimatedRemainingMinutes) }}
               </a-descriptions-item>
               <a-descriptions-item label="风险等级">
                 <UiTag :tone="riskTone(progress.riskLevel)" size="sm">
@@ -220,7 +223,7 @@
               v-if="reviewerMetricsLoadError"
               :error="reviewerMetricsLoadError"
               title="教师质量指标加载失败"
-              :helper="`考试 ${selectedExamId} · 组织 ${organizationIdInput || '-'}`"
+              :helper="selectedScopeLabel"
               compact
               @retry="loadReviewerMetrics"
             />
@@ -236,7 +239,21 @@
               size="middle"
             >
               <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'metricStatus'">
+                <template v-if="column.key === 'reviewer'">
+                  {{ reviewerMetrics[index].reviewerUserName }} ·
+                  {{ reviewerMetrics[index].reviewerTeacherNo }}
+                </template>
+                <template v-else-if="column.key === 'organization'">
+                  {{ reviewerMetrics[index].organizationStatusMessage }}
+                </template>
+                <template v-else-if="column.key === 'group'">
+                  {{
+                    reviewerMetrics[index].groupName
+                      ? `${reviewerMetrics[index].groupName} · ${reviewerMetrics[index].groupStatusMessage}`
+                      : '组织级'
+                  }}
+                </template>
+                <template v-else-if="column.key === 'metricStatus'">
                   <UiTag :tone="metricStatusTone(reviewerMetrics[index].metricStatus)" size="sm">
                     {{ metricStatusLabel(reviewerMetrics[index].metricStatus) }}
                   </UiTag>
@@ -272,17 +289,22 @@
             <UiAlertStrip
               tone="info"
               title="抽检规则"
-              description="按阅卷组织、题组和抽检比例创建任务。可选指定教师；不指定则全组抽检。后端将随机抽样并生成待处理抽检记录，由组长在「抽检处理」入口处理结论。"
+              description="按阅卷组织、题组和抽检比例创建任务。可选指定教师；不指定则全组抽检。系统将按抽检比例随机生成待处理记录，由组长在「抽检处理」入口处理结论。"
               dense
               class="quality-dashboard__alert"
             />
 
             <a-form layout="vertical" class="quality-dashboard__form">
-              <a-form-item label="阅卷组织ID" required>
-                <a-input :value="organizationIdInput" disabled />
+              <a-form-item label="阅卷组织" required>
+                <a-select :value="selectedOrganizationId" :options="organizationOptions" disabled />
               </a-form-item>
-              <a-form-item label="题组ID（可选）">
-                <a-input :value="groupIdInput || ''" disabled />
+              <a-form-item label="题组（可选）">
+                <a-select
+                  :value="selectedGroupId"
+                  :options="groupOptions"
+                  disabled
+                  placeholder="组织级抽检"
+                />
               </a-form-item>
               <a-form-item label="抽检比例（%）" required>
                 <a-input-number
@@ -293,10 +315,14 @@
                   placeholder="请输入 1~100 之间的抽检比例"
                 />
               </a-form-item>
-              <a-form-item label="目标教师用户ID（可选）">
-                <a-input
+              <a-form-item label="目标教师（可选）">
+                <a-select
                   v-model:value="spotForm.targetReviewerUserId"
-                  placeholder="留空对全组抽检"
+                  :options="reviewerOptions"
+                  placeholder="选择目标教师；留空对全组抽检"
+                  allow-clear
+                  show-search
+                  option-filter-prop="label"
                 />
               </a-form-item>
               <a-form-item>
@@ -333,8 +359,15 @@
             />
 
             <a-form layout="vertical" class="quality-dashboard__form">
-              <a-form-item label="扫描批次ID" required>
-                <a-input v-model:value="reprocessForm.scanBatchId" placeholder="输入扫描批次ID" />
+              <a-form-item label="扫描批次" required>
+                <a-select
+                  v-model:value="reprocessForm.scanBatchId"
+                  :options="scannerBatchOptions"
+                  :loading="scannerBatchLoading"
+                  placeholder="选择扫描批次"
+                  show-search
+                  option-filter-prop="label"
+                />
               </a-form-item>
               <a-form-item label="重处理范围" required>
                 <a-radio-group v-model:value="reprocessForm.scope">
@@ -375,14 +408,39 @@
 </template>
 
 <script lang="ts" setup>
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamScannerBatchVO } from '@/apis/mark/exam'
+import { pageScannerBatches } from '@/apis/mark/exam'
+import type {
+  MarkingOrganizationVO,
+  QuestionGroupReviewerVO,
+  QuestionMarkingGroupVO,
+} from '@/apis/mark/marking-organization'
+import {
+  getOrganization,
+  MARKING_ORGANIZATION_STATUS_LABEL,
+  QUESTION_GROUP_STATUS_LABEL,
+} from '@/apis/mark/marking-organization'
 import type {
   BatchReprocessScopeCode,
   ProgressMonitorRecordVO,
   ProgressRiskItemVO,
   ProgressRiskLevelCode,
   ReviewerMetricStatusCode,
-  ReviewerQualityMetricVO,
+  ReviewerQualityMetricResponse,
+} from '@/apis/mark/marking-quality'
+import {
+  createSpotCheckTasks,
+  getLatestProgress,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_LABEL,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_LABEL,
+  takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -397,18 +455,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  createSpotCheckTasks,
-  getLatestProgress,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_COLOR,
-  PROGRESS_RISK_LEVEL_LABEL,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_COLOR,
-  REVIEWER_METRIC_STATUS_LABEL,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
-import {
   UiAlertStrip,
   UiBadge,
   UiButton,
@@ -420,6 +466,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
@@ -435,14 +482,86 @@ const {
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
-const organizationIdInput = ref<string>(
-  route.query.organizationId ? String(route.query.organizationId) : '',
-)
-const groupIdInput = ref<string>(route.query.groupId ? String(route.query.groupId) : '')
 
 const activeTab = ref<'progress' | 'reviewer' | 'spotcheck' | 'reprocess'>('progress')
 
-const scopeValid = computed(() => Boolean(selectedExamId.value && organizationIdInput.value.trim()))
+const selectedOrganizationId = ref<string | undefined>(
+  route.query.organizationId ? String(route.query.organizationId) : undefined,
+)
+const selectedGroupId = ref<string | undefined>(
+  route.query.groupId ? String(route.query.groupId) : undefined,
+)
+const organizationDetail = ref<MarkingOrganizationVO | null>(null)
+const organizationLoading = ref(false)
+const scannerBatches = ref<ExamScannerBatchVO[]>([])
+const scannerBatchLoading = ref(false)
+
+const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrganizationId.value))
+
+const organizationOptions = computed<DefaultOptionType[]>(() => {
+  if (!organizationDetail.value) {
+    return []
+  }
+  return [
+    {
+      value: organizationDetail.value.id,
+      label: `阅卷组织 · ${strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organizationDetail.value.organizationStatus, '阅卷组织状态')} · 负责人 ${organizationDetail.value.leaderUserName}`,
+    },
+  ]
+})
+
+const groupOptions = computed<DefaultOptionType[]>(() =>
+  (organizationDetail.value?.groups ?? []).map((group) => ({
+    value: group.id,
+    label: `${group.groupName} · ${strictEnumLabel(QUESTION_GROUP_STATUS_LABEL, group.groupStatus, '题组状态')} · 组长 ${group.leaderUserName}`,
+  })),
+)
+
+const selectedGroup = computed<QuestionMarkingGroupVO | undefined>(() =>
+  organizationDetail.value?.groups.find((group) => group.id === selectedGroupId.value),
+)
+
+const reviewerOptions = computed<DefaultOptionType[]>(() => {
+  const reviewersByUserId = new Map<string, QuestionGroupReviewerVO>()
+  const groups = selectedGroup.value
+    ? [selectedGroup.value]
+    : (organizationDetail.value?.groups ?? [])
+  groups.forEach((group) => {
+    group.reviewers.forEach((reviewer) => {
+      reviewersByUserId.set(reviewer.reviewerUserId, reviewer)
+    })
+  })
+  return Array.from(reviewersByUserId.values()).map((reviewer) => ({
+    value: reviewer.reviewerUserId,
+    label: `${reviewer.reviewerUserName} · ${reviewer.reviewerTeacherNo}`,
+  }))
+})
+
+const scannerBatchOptions = computed<DefaultOptionType[]>(() =>
+  scannerBatches.value.map((batch) => ({
+    value: batch.scanBatchId,
+    label: [
+      batch.batchNo,
+      batch.batchExternalNo,
+      batch.statusMessage,
+      typeof batch.pageCount === 'number' ? `${batch.pageCount} 页` : undefined,
+      batch.scanStartTime,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+  })),
+)
+
+const selectedScopeLabel = computed(() => {
+  const examOption = examOptions.value.find((option) => option.value === selectedExamId.value)
+  const organizationOption = organizationOptions.value.find(
+    (option) => option.value === selectedOrganizationId.value,
+  )
+  const groupOption = groupOptions.value.find((option) => option.value === selectedGroupId.value)
+  return [examOption?.label, organizationOption?.label, groupOption?.label ?? '组织级']
+    .filter(Boolean)
+    .join(' / ')
+})
 
 // ─── 进度监控 ─────────────────────────────────
 
@@ -450,7 +569,7 @@ const progress = ref<ProgressMonitorRecordVO | null>(null)
 const progressLoading = ref(false)
 const snapshotting = ref(false)
 // D-9 错误态：进度快照加载失败时，UiErrorRetryPanel 上报 + 重试
-const progressLoadError = ref<unknown>(null)
+const progressLoadError = ref<Error | null>(null)
 const progressRiskItems = computed<ProgressRiskItemVO[]>(() => progress.value?.riskItems ?? [])
 
 async function loadProgress(): Promise<void> {
@@ -460,12 +579,12 @@ async function loadProgress(): Promise<void> {
   try {
     progress.value = await getLatestProgress({
       examId: selectedExamId.value!,
-      organizationId: organizationIdInput.value.trim(),
-      groupId: groupIdInput.value.trim() || undefined,
+      organizationId: selectedOrganizationId.value!,
+      groupId: selectedGroupId.value,
     })
   } catch (error) {
-    progressLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载进度快照失败')
+    progressLoadError.value = toUserError(error, '阅卷进度快照加载失败')
+    showUserError(error, '阅卷进度快照加载失败')
   } finally {
     progressLoading.value = false
   }
@@ -477,12 +596,12 @@ async function handleSnapshot(): Promise<void> {
   try {
     progress.value = await takeProgressSnapshot({
       examId: selectedExamId.value!,
-      organizationId: organizationIdInput.value.trim(),
-      groupId: groupIdInput.value.trim() || undefined,
+      organizationId: selectedOrganizationId.value!,
+      groupId: selectedGroupId.value,
     })
     message.success('已生成进度快照')
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '生成快照失败')
+    showUserError(error, '阅卷进度快照生成失败')
   } finally {
     snapshotting.value = false
   }
@@ -490,17 +609,17 @@ async function handleSnapshot(): Promise<void> {
 
 // ─── 教师质量 ─────────────────────────────────
 
-const reviewerMetrics = ref<ReviewerQualityMetricVO[]>([])
+const reviewerMetrics = ref<ReviewerQualityMetricResponse[]>([])
 const reviewerLoading = ref(false)
 const refreshing = ref(false)
 const metricStatusFilter = ref<ReviewerMetricStatusCode | undefined>(undefined)
 // D-9 错误态：教师质量指标加载失败时，UiErrorRetryPanel 上报 + 重试
-const reviewerMetricsLoadError = ref<unknown>(null)
+const reviewerMetricsLoadError = ref<Error | null>(null)
 
-const reviewerColumns: ColumnType<ReviewerQualityMetricVO>[] = [
-  { title: '教师用户ID', key: 'reviewerUserId', dataIndex: 'reviewerUserId', width: 130 },
-  { title: '组织ID', key: 'organizationId', dataIndex: 'organizationId', width: 100 },
-  { title: '题组ID', key: 'groupId', dataIndex: 'groupId', width: 100 },
+const reviewerColumns: ColumnType<ReviewerQualityMetricResponse>[] = [
+  { title: '教师', key: 'reviewer', width: 180 },
+  { title: '阅卷组织', key: 'organization', width: 140 },
+  { title: '题组', key: 'group', width: 180 },
   { title: '总任务', key: 'totalTasks', dataIndex: 'totalTasks', width: 90 },
   { title: '已提交', key: 'submittedTasks', dataIndex: 'submittedTasks', width: 90 },
   { title: '平均分', key: 'avgScore', width: 90 },
@@ -519,16 +638,16 @@ async function loadReviewerMetrics(): Promise<void> {
   try {
     const page = await listReviewerMetrics({
       examId: selectedExamId.value,
-      organizationId: organizationIdInput.value.trim() || undefined,
-      groupId: groupIdInput.value.trim() || undefined,
+      organizationId: selectedOrganizationId.value,
+      groupId: selectedGroupId.value,
       metricStatus: metricStatusFilter.value,
       pageNum: 1,
       pageSize: 200,
     })
     reviewerMetrics.value = page.list
   } catch (error) {
-    reviewerMetricsLoadError.value = error
-    message.error(error instanceof Error ? error.message : '加载教师质量指标失败')
+    reviewerMetricsLoadError.value = toUserError(error, '阅卷教师质量指标加载失败')
+    showUserError(error, '阅卷教师质量指标加载失败')
   } finally {
     reviewerLoading.value = false
   }
@@ -540,13 +659,13 @@ async function handleRefreshMetrics(): Promise<void> {
   try {
     await refreshReviewerMetrics({
       examId: selectedExamId.value!,
-      organizationId: organizationIdInput.value.trim(),
-      groupId: groupIdInput.value.trim() || undefined,
+      organizationId: selectedOrganizationId.value!,
+      groupId: selectedGroupId.value,
     })
     message.success('已重算教师质量指标')
     await loadReviewerMetrics()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '重算失败')
+    showUserError(error, '阅卷教师质量指标重算失败')
   } finally {
     refreshing.value = false
   }
@@ -570,14 +689,14 @@ async function handleCreateSpotCheck(): Promise<void> {
   try {
     const created = await createSpotCheckTasks({
       examId: selectedExamId.value!,
-      organizationId: organizationIdInput.value.trim(),
-      groupId: groupIdInput.value.trim() || undefined,
+      organizationId: selectedOrganizationId.value!,
+      groupId: selectedGroupId.value,
       sampleRate: spotForm.sampleRate,
-      targetReviewerUserId: spotForm.targetReviewerUserId.trim() || undefined,
+      targetReviewerUserId: spotForm.targetReviewerUserId || undefined,
     })
     message.success(`已创建 ${created} 条抽检任务`)
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '创建抽检任务失败')
+    showUserError(error, '阅卷质量抽检任务创建失败')
   } finally {
     creatingSpot.value = false
   }
@@ -597,7 +716,7 @@ const reprocessForm = reactive<{
 })
 
 const reprocessValid = computed(() =>
-  Boolean(selectedExamId.value && reprocessForm.scanBatchId.trim() && reprocessForm.reason.trim()),
+  Boolean(selectedExamId.value && reprocessForm.scanBatchId && reprocessForm.reason.trim()),
 )
 
 async function handleReprocess(): Promise<void> {
@@ -606,7 +725,7 @@ async function handleReprocess(): Promise<void> {
   try {
     await reprocessBatch({
       examId: selectedExamId.value!,
-      scanBatchId: reprocessForm.scanBatchId.trim(),
+      scanBatchId: reprocessForm.scanBatchId,
       reason: reprocessForm.reason.trim(),
       scope: reprocessForm.scope,
     })
@@ -614,7 +733,7 @@ async function handleReprocess(): Promise<void> {
     reprocessForm.scanBatchId = ''
     reprocessForm.reason = ''
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '触发重处理失败')
+    showUserError(error, '异常扫描批次重处理提交失败')
   } finally {
     reprocessing.value = false
   }
@@ -637,6 +756,11 @@ function riskLabel(level: ProgressRiskLevelCode): string {
   return strictEnumLabel(PROGRESS_RISK_LEVEL_LABEL, level, '进度风险等级')
 }
 
+function estimatedRemainingText(minutes?: number): string {
+  if (minutes == null) return '暂未形成预估'
+  return `${minutes} 分钟`
+}
+
 /* ========== 信号指标：阅卷质量全局风险面板 ========== */
 
 const signalMetrics = computed<SignalMetric[]>(() => {
@@ -646,8 +770,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0
@@ -703,20 +827,75 @@ function syncRouteQuery(): void {
   void router.replace({
     query: {
       ...(selectedExamId.value ? { examId: selectedExamId.value } : {}),
-      ...(organizationIdInput.value ? { organizationId: organizationIdInput.value } : {}),
-      ...(groupIdInput.value ? { groupId: groupIdInput.value } : {}),
+      ...(selectedOrganizationId.value ? { organizationId: selectedOrganizationId.value } : {}),
+      ...(selectedGroupId.value ? { groupId: selectedGroupId.value } : {}),
     },
   })
 }
 
-function handleExamChange(value: unknown): void {
-  onExamChange(value as string | number | undefined, [])
-  // composable 会自动同步 examId 到 URL；此处补充写回以保证 organizationId/groupId 不丢失
+async function loadOrganizationDetail(): Promise<void> {
+  organizationDetail.value = null
+  selectedOrganizationId.value = undefined
+  selectedGroupId.value = undefined
+  spotForm.targetReviewerUserId = ''
+  if (!selectedExamId.value) {
+    return
+  }
+  organizationLoading.value = true
+  try {
+    const detail = await getOrganization({ examId: selectedExamId.value })
+    organizationDetail.value = detail
+    selectedOrganizationId.value = detail.id
+    const queryGroupId = route.query.groupId ? String(route.query.groupId) : undefined
+    selectedGroupId.value = detail.groups.some((group) => group.id === queryGroupId)
+      ? queryGroupId
+      : undefined
+  } catch (error) {
+    showUserError(error, '阅卷组织加载失败')
+  } finally {
+    organizationLoading.value = false
+  }
+}
+
+async function loadScannerBatches(): Promise<void> {
+  scannerBatches.value = []
+  reprocessForm.scanBatchId = ''
+  if (!selectedExamId.value) {
+    return
+  }
+  scannerBatchLoading.value = true
+  try {
+    const page = await pageScannerBatches({
+      examId: selectedExamId.value,
+      pageNum: 1,
+      pageSize: 100,
+      includeDiscarded: true,
+    })
+    scannerBatches.value = page.list
+  } catch (error) {
+    showUserError(error, '扫描批次加载失败')
+  } finally {
+    scannerBatchLoading.value = false
+  }
+}
+
+function handleExamChange(value: SelectValue): void {
+  onExamChange(value)
+}
+
+function handleOrganizationChange(value: SelectValue): void {
+  selectedOrganizationId.value = value != null ? String(value) : undefined
+  if (!selectedOrganizationId.value) {
+    selectedGroupId.value = undefined
+  }
+  spotForm.targetReviewerUserId = ''
   syncRouteQuery()
   reloadActiveTab()
 }
 
-function handleScopeChange(): void {
+function handleGroupChange(value: SelectValue): void {
+  selectedGroupId.value = value != null ? String(value) : undefined
+  spotForm.targetReviewerUserId = ''
   syncRouteQuery()
   reloadActiveTab()
 }
@@ -731,13 +910,16 @@ watch(activeTab, () => {
   reloadActiveTab()
 })
 
-// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
-watch(selectedExamId, () => {
+watch(selectedExamId, async () => {
+  await Promise.all([loadOrganizationDetail(), loadScannerBatches()])
+  syncRouteQuery()
   reloadActiveTab()
 })
 
 onMounted(async () => {
   await initExamSelector()
+  await Promise.all([loadOrganizationDetail(), loadScannerBatches()])
+  syncRouteQuery()
   reloadActiveTab()
 })
 </script>
@@ -794,12 +976,12 @@ onMounted(async () => {
     width: 240px;
   }
 
-  &__org-input {
-    width: 160px;
+  &__org-select {
+    width: 280px;
   }
 
-  &__group-input {
-    width: 140px;
+  &__group-select {
+    width: 240px;
   }
 
   &__metric-filter {

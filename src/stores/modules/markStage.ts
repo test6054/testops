@@ -30,22 +30,28 @@ import type { WorkbenchStageStatus } from '@/types/workbench'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-export type MarkStageKey
-  = | 'EXAM_PREP'
-    | 'PAPER_TEMPLATE'
-    | 'SCAN'
-    | 'MARKING_ORG'
-    | 'TRIAL_MARK'
-    | 'FORMAL_MARK'
-    | 'SCORE_PUBLISH'
-    | 'GRADE_REVIEW'
-    | 'ARCHIVE'
+export type MarkStageKey =
+  | 'EXAM_PREP'
+  | 'PAPER_TEMPLATE'
+  | 'SCAN'
+  | 'MARKING_ORG'
+  | 'TRIAL_MARK'
+  | 'FORMAL_MARK'
+  | 'SCORE_PUBLISH'
+  | 'GRADE_REVIEW'
+  | 'ARCHIVE'
 
 export interface MarkStageProgress {
   current: MarkStageKey
   states: Record<MarkStageKey, WorkbenchStageStatus>
   hints: Record<MarkStageKey, string>
   blockedReason: string
+}
+
+export interface SelectedExamMeta {
+  examId: string
+  examName: string
+  examNo: string
 }
 
 const ORDERED_STAGES: ReadonlyArray<MarkStageKey> = [
@@ -116,6 +122,9 @@ export const useMarkStageStore = defineStore('markStage', () => {
   /** 当前观察的考试 examId（业务调用方设置；与 markExamContext.currentExamId 解耦保持灵活） */
   const observedExamId = ref<string>('')
 
+  /** 当前考试真实展示元数据，由 getExamDetail 成功返回后写入 */
+  const selectedExamMeta = ref<SelectedExamMeta | null>(null)
+
   /* ---------- Helpers ---------- */
 
   function ensureProgress(examId: string): MarkStageProgress {
@@ -147,11 +156,22 @@ export const useMarkStageStore = defineStore('markStage', () => {
     Object.values(observedProgress.value.states).includes('blocked'),
   )
 
+  const selectedExamLabel = computed(() => {
+    const meta = selectedExamMeta.value
+    if (!meta) return ''
+    return meta.examNo ? `${meta.examName}（${meta.examNo}）` : meta.examName
+  })
+
   /* ---------- Actions ---------- */
 
   function observeExam(examId: string): void {
     observedExamId.value = examId
     if (examId) ensureProgress(examId)
+  }
+
+  function setSelectedExamMeta(meta: SelectedExamMeta): void {
+    selectedExamMeta.value = meta
+    observeExam(meta.examId)
   }
 
   function setCurrentStage(examId: string, key: MarkStageKey): void {
@@ -192,15 +212,19 @@ export const useMarkStageStore = defineStore('markStage', () => {
   function reset(): void {
     progressMap.value = new Map()
     observedExamId.value = ''
+    selectedExamMeta.value = null
   }
 
   return {
     progressMap,
     observedExamId,
+    selectedExamMeta,
     observedProgress,
     orderedStages,
     hasBlocked,
+    selectedExamLabel,
     observeExam,
+    setSelectedExamMeta,
     setCurrentStage,
     setStageStatus,
     bulkUpdate,

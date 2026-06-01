@@ -45,13 +45,16 @@
         <template v-if="column.key === 'reasonType'">
           {{ formatReasonType(rows[index].reasonType) }}
         </template>
+        <template v-else-if="column.key === 'student'">
+          <span>{{ formatStudent(rows[index]) }}</span>
+        </template>
         <template v-else-if="column.key === 'requestStatus'">
           <a-tag :color="requestStatusColor(rows[index].requestStatus)">
             {{ requestStatusLabel(rows[index].requestStatus) }}
           </a-tag>
         </template>
-        <template v-else-if="column.key === 'questionIds'">
-          <span class="ellipsis">{{ formatQuestionIds(rows[index]) }}</span>
+        <template v-else-if="column.key === 'questionRefs'">
+          <span class="ellipsis">{{ formatQuestionRefs(rows[index]) }}</span>
         </template>
         <template v-else-if="column.key === 'createTime'">
           {{ formatDateTime(rows[index].createTime) }}
@@ -110,8 +113,15 @@
               : '驳回后申请关闭，无法恢复。'
           "
         />
-        <a-form-item label="申请ID">
-          <a-input :value="targetRequest?.id ?? ''" disabled />
+        <a-form-item label="申请学生">
+          <a-input :value="targetRequest ? formatStudent(targetRequest) : ''" disabled />
+        </a-form-item>
+        <a-form-item label="复核题目">
+          <a-textarea
+            :value="targetRequest ? formatQuestionRefs(targetRequest) : ''"
+            :rows="2"
+            disabled
+          />
         </a-form-item>
         <a-form-item label="原因类型">
           <a-input
@@ -139,23 +149,25 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExamGradeReviewRequestVO,
   GradeReviewReasonTypeCode,
+  GradeReviewRequestItemResponse,
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   GRADE_REVIEW_REASON_TYPE_LABEL,
   handleReviewRequest,
   listReviewRequests,
   REVIEW_REQUEST_STATUS_COLOR,
   REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_OPTIONS,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -164,23 +176,17 @@ defineOptions({ name: 'ReviewRequestsCard' })
 const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
-const rows = ref<ExamGradeReviewRequestVO[]>([])
+const rows = ref<GradeReviewRequestItemResponse[]>([])
 const loading = ref(false)
 // D-9 错误态：复核申请加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 const statusFilter = ref<GradeReviewRequestStatusCode | undefined>(undefined)
 
-// 从后端枚举 LABEL 对象直接派生 select options。
-const statusOptions = Object.entries(REVIEW_REQUEST_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const statusOptions = REVIEW_REQUEST_STATUS_OPTIONS
 
-const columns: ColumnType<ExamGradeReviewRequestVO>[] = [
-  { title: '申请ID', dataIndex: 'id', key: 'id', width: 140 },
-  { title: '学生', dataIndex: 'studentUserId', key: 'studentUserId', width: 120 },
-  { title: '试卷实例', dataIndex: 'paperInstanceId', key: 'paperInstanceId', width: 140 },
-  { title: '题目IDs', key: 'questionIds', width: 160 },
+const columns: ColumnType<GradeReviewRequestItemResponse>[] = [
+  { title: '学生', key: 'student', width: 150 },
+  { title: '复核题目', key: 'questionRefs', width: 220 },
   { title: '原因类型', dataIndex: 'reasonType', key: 'reasonType', width: 120 },
   { title: '申请原因', dataIndex: 'requestReason', key: 'requestReason', ellipsis: true },
   { title: '状态', key: 'requestStatus', width: 100 },
@@ -197,7 +203,7 @@ const pendingCount = computed(
 
 const handleOpen = ref(false)
 const handling = ref(false)
-const targetRequest = ref<ExamGradeReviewRequestVO | null>(null)
+const targetRequest = ref<GradeReviewRequestItemResponse | null>(null)
 const conclusionDraft = ref<ReviewConclusion>('APPROVED')
 const reviewNote = ref('')
 
@@ -205,7 +211,10 @@ const handleTitle = computed(() =>
   conclusionDraft.value === 'APPROVED' ? '通过复核申请' : '驳回复核申请',
 )
 
-function openHandleModal(record: ExamGradeReviewRequestVO, conclusion: ReviewConclusion): void {
+function openHandleModal(
+  record: GradeReviewRequestItemResponse,
+  conclusion: ReviewConclusion,
+): void {
   targetRequest.value = record
   conclusionDraft.value = conclusion
   reviewNote.value = ''
@@ -223,13 +232,23 @@ async function reload(): Promise<void> {
       pageNum: 1,
       pageSize: 200,
     })
+    validateReviewRequestDisplayContracts(page.list)
     rows.value = page.list
   } catch (e) {
     rows.value = []
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '复核申请加载失败')
+    loadError.value = toUserError(e, '复核申请加载失败')
+    showUserError(e, '复核申请加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+/** 校验复核申请列表所需学生展示字段，缺失时进入组件错误态。 */
+function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemResponse[]): void {
+  for (const record of list) {
+    if (!record.studentName.trim() || !record.studentNo.trim()) {
+      throw new Error(`复核申请 ${record.id} 缺失学生展示信息`)
+    }
   }
 }
 
@@ -250,18 +269,18 @@ async function submitHandle(): Promise<void> {
     await reload()
     emit('handled')
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '处理失败')
+    showUserError(e, '复核处理提交失败')
   } finally {
     handling.value = false
   }
 }
 
-// 严格 typed helper：rows[index].requestStatus 是 GradeReviewRequestStatusCode | undefined，避免 slot record:any 索引。
-function requestStatusColor(status?: GradeReviewRequestStatusCode): BadgeTone {
+// 严格 typed helper：rows[index].requestStatus 是后端必填枚举，避免 slot record 类型丢失。
+function requestStatusColor(status: GradeReviewRequestStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_REQUEST_STATUS_COLOR, status, '复核申请状态')
 }
 
-function requestStatusLabel(status?: GradeReviewRequestStatusCode): string {
+function requestStatusLabel(status: GradeReviewRequestStatusCode): string {
   return strictEnumLabel(REVIEW_REQUEST_STATUS_LABEL, status, '复核申请状态')
 }
 
@@ -269,14 +288,22 @@ function formatReasonType(reasonType: GradeReviewReasonTypeCode): string {
   return strictEnumLabel(GRADE_REVIEW_REASON_TYPE_LABEL, reasonType, '复核原因类型')
 }
 
-function formatQuestionIds(record: ExamGradeReviewRequestVO): string {
-  if (!Array.isArray(record.questionIds)) {
-    throw new TypeError(`复核申请缺少题目ID列表：reviewRequestId=${record.id}`)
+function formatStudent(record: GradeReviewRequestItemResponse): string {
+  const name = record.studentName.trim()
+  const no = record.studentNo.trim()
+  return `${name}（${no}）`
+}
+
+function formatQuestionRefs(record: GradeReviewRequestItemResponse): string {
+  if (record.questionRefs.length === 0) {
+    return '总分复核'
   }
-  if (record.questionIds.length === 0) {
-    return '总分申诉'
-  }
-  return record.questionIds.map((questionId) => `第 ${questionId} 题`).join('、')
+  return record.questionRefs
+    .map(
+      (question) =>
+        `第 ${question.questionNo} 题 · ${question.questionType} · 满分 ${question.fullScore} 分`,
+    )
+    .join('、')
 }
 
 watch(

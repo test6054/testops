@@ -61,26 +61,26 @@
 
 <script lang="ts" setup>
 import type { TenantPublicInfo } from '@/apis/auth'
+import { getCaptchaConfig, getTenantsByStudentNo } from '@/apis/auth'
 import type { SchoolItem } from '@/components/SchoolAutocomplete.vue'
+import SchoolAutocomplete from '@/components/SchoolAutocomplete.vue'
 import message from 'ant-design-vue/es/message'
 import { nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCaptchaConfig, getTenantsByStudentNo } from '@/apis/auth'
 import AjCaptcha from '@/components/AjCaptcha/index.vue'
-import SchoolAutocomplete from '@/components/SchoolAutocomplete.vue'
 import { UiButton, UiFormField, UiInput, UiPasswordInput } from '@/components/ui-guide/ui'
 import { resetAuthState } from '@/config/axios/auth-state'
 import { STORAGE_LAST_STUDENT_SCHOOL } from '@/constants/storage-keys'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
-import { ErrorType, standardizeError } from '@/utils/error-handler'
+import { ErrorType, getUserErrorMessage, standardizeError } from '@/utils/error-handler'
 import { getSafeRedirect } from '@/utils/redirect-validator'
 
 // Props
 const props = defineProps<{
   subdomainMode?: boolean
   subdomainTenant?: TenantPublicInfo | null
-  prefillData?: { studentNo: string, password: string }
+  prefillData?: { studentNo: string; password: string }
 }>()
 
 const router = useRouter()
@@ -279,7 +279,7 @@ const doLogin = async () => {
     if (stdError.type === ErrorType.NETWORK) {
       errorMessage.value = '登录失败，请检查学号和密码后重试'
     } else {
-      errorMessage.value = stdError.message || '登录失败，请检查学号和密码'
+      errorMessage.value = getUserErrorMessage(error, '登录失败，请检查学号和密码')
     }
     captchaVerification.value = ''
   } finally {

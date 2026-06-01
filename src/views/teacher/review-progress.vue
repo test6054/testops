@@ -38,7 +38,7 @@
       v-if="selectedExamId && progressLoadError"
       :error="progressLoadError"
       title="复核进度加载失败"
-      :helper="`考试 ID：${selectedExamId}`"
+      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
       @retry="loadAll"
     />
     <UiEmpty
@@ -70,7 +70,7 @@
                     {{ progress.totalQuestionGradeCount }}
                   </a-typography-text>
                 </div>
-                <div><span class="meta-label">题目模板：</span>{{ progress.questionCount }} 道</div>
+                <div><span class="meta-label">题目：</span>{{ progress.questionCount }} 道</div>
                 <div><span class="meta-label">已扫描试卷：</span>{{ progress.paperCount }} 份</div>
                 <div>
                   <span class="meta-label">可阅卷试卷：</span>
@@ -154,7 +154,10 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'questionNo'">
-              <UiTag tone="blue" size="sm">{{ record.questionNo }}</UiTag>
+              <div class="question-cell">
+                <UiTag tone="blue" size="sm">题{{ record.questionNo }}</UiTag>
+                <span class="question-type">{{ record.questionType }}</span>
+              </div>
             </template>
             <template v-else-if="column.key === 'progress'">
               <a-progress
@@ -192,9 +195,6 @@
               </UiTag>
               <span v-else class="muted">0</span>
             </template>
-            <template v-else-if="column.key === 'questionTemplateId'">
-              <a-typography-text :content="record.questionTemplateId" copyable />
-            </template>
           </template>
         </UiDataTable>
       </UiCard>
@@ -212,17 +212,16 @@ import type {
   ReviewQuestionProgressItemVO,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam'
-import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
-import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import TableOutlined from '@ant-design/icons-vue/TableOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   getMarkingProgress,
   REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/exam'
+import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
+import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import TableOutlined from '@ant-design/icons-vue/TableOutlined'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -234,6 +233,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewProgress' })
@@ -242,6 +242,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -252,7 +253,7 @@ const primaryColor = 'var(--ant-color-primary, #2563eb)'
 const progress = ref<MarkingProgressVO | null>(null)
 const loading = ref(false)
 // D-9 错误态：复核进度加载失败时 UiErrorRetryPanel 重试 + 上报
-const progressLoadError = ref<unknown>(null)
+const progressLoadError = ref<Error | null>(null)
 
 const confirmedPercent = computed(() => {
   if (!progress.value) return 0
@@ -287,12 +288,11 @@ const questionRows = computed<ReviewQuestionProgressItemVO[]>(
 )
 
 const questionColumns: ColumnType<ReviewQuestionProgressItemVO>[] = [
-  { title: '题号', key: 'questionNo', width: 100 },
-  { title: '题目模板ID', key: 'questionTemplateId', ellipsis: true, width: 240 },
-  { title: '复核进度', key: 'progress', width: 240 },
-  { title: '待领取', key: 'pending', width: 100 },
-  { title: '复核中', key: 'inProgress', width: 100 },
-  { title: '已驳回', key: 'rejected', width: 100 },
+  { title: '题目', dataIndex: 'questionNo', key: 'questionNo', width: 180 },
+  { title: '复核进度', dataIndex: 'approvedTaskCount', key: 'progress', width: 240 },
+  { title: '待领取', dataIndex: 'pendingTaskCount', key: 'pending', width: 100 },
+  { title: '复核中', dataIndex: 'inProgressTaskCount', key: 'inProgress', width: 100 },
+  { title: '已驳回', dataIndex: 'rejectedTaskCount', key: 'rejected', width: 100 },
 ]
 
 async function loadAll(): Promise<void> {
@@ -302,9 +302,9 @@ async function loadAll(): Promise<void> {
   try {
     progress.value = await getMarkingProgress(selectedExamId.value)
   } catch (error) {
-    progressLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '复核进度加载失败'
-    message.error(errMsg)
+    progressLoadError.value =
+      error instanceof Error ? error : new Error(getUserErrorMessage(error, '复核进度加载失败'))
+    showUserError(error, '复核进度加载失败')
   } finally {
     loading.value = false
   }
@@ -435,6 +435,19 @@ onMounted(async () => {
     background: var(--ant-color-fill-quaternary);
     font-weight: 600;
   }
+}
+
+.question-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.question-type {
+  color: var(--ant-color-text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .progress-detail {

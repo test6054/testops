@@ -21,18 +21,13 @@
         >
           {{ wrapEnabled ? '关闭换行' : '自动换行' }}
         </UiButton>
-        <UiButton
-          v-if="props.copyable && hasValue"
-          size="sm"
-          variant="outline"
-          @click="handleCopy"
-        >
+        <UiButton v-if="props.copyable && hasValue" size="sm" variant="outline" @click="handleCopy">
           {{ copyButtonText }}
         </UiButton>
       </template>
     </UiPanelHeader>
 
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div v-if="hasValue" class="ui-log-viewer__body" :style="bodyStyle">
         <div
           class="ui-log-viewer__viewport"
@@ -56,12 +51,7 @@
         </div>
       </div>
 
-      <UiEmpty
-        v-else
-        size="sm"
-        title="暂无日志内容"
-        :description="props.emptyText"
-      />
+      <UiEmpty v-else size="sm" title="暂无日志内容" :description="props.emptyText" />
     </a-spin>
 
     <footer v-if="$slots.footer" class="ui-log-viewer__footer">
@@ -82,35 +72,38 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  value?: string
-  loading?: boolean
-  emptyText?: string
-  maxHeight?: string | number
-  tone?: UiLogViewerTone
-  wrap?: boolean
-  copyable?: boolean
-  allowWrapToggle?: boolean
-  showLineNumbers?: boolean
-  divided?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  value: '',
-  loading: false,
-  emptyText: '请传入日志文本',
-  maxHeight: 360,
-  tone: 'default',
-  wrap: false,
-  copyable: true,
-  allowWrapToggle: true,
-  showLineNumbers: true,
-  divided: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    value?: string
+    loading?: boolean
+    emptyText?: string
+    maxHeight?: string | number
+    tone?: UiLogViewerTone
+    wrap?: boolean
+    copyable?: boolean
+    allowWrapToggle?: boolean
+    showLineNumbers?: boolean
+    divided?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    value: '',
+    loading: false,
+    emptyText: '请传入日志文本',
+    maxHeight: 360,
+    tone: 'default',
+    wrap: false,
+    copyable: true,
+    allowWrapToggle: true,
+    showLineNumbers: true,
+    divided: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'copy', value: string): void
@@ -121,16 +114,26 @@ const wrapEnabled = ref(props.wrap)
 const copyState = ref<'idle' | 'success' | 'error'>('idle')
 let copyTimer: ReturnType<typeof setTimeout> | null = null
 
-watch(() => props.wrap, value => (wrapEnabled.value = value))
+watch(
+  () => props.wrap,
+  (value) => (wrapEnabled.value = value),
+)
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
 const hasHeader = computed(() => {
-  return !!props.title || !!props.description || !!props.eyebrow || !!slots.meta || !!slots.actions || props.copyable || props.allowWrapToggle
+  return (
+    !!props.title ||
+    !!props.description ||
+    !!props.eyebrow ||
+    !!slots.meta ||
+    !!slots.actions ||
+    props.copyable ||
+    props.allowWrapToggle
+  )
 })
 
 const hasValue = computed(() => props.value.length > 0)
@@ -179,18 +182,15 @@ const copyText = async (value: string) => {
 }
 
 const handleCopy = async () => {
-  if (!hasValue.value)
-    return
+  if (!hasValue.value) return
 
   try {
     await copyText(props.value)
     copyState.value = 'success'
     emit('copy', props.value)
-  }
-  catch {
+  } catch {
     copyState.value = 'error'
-  }
-  finally {
+  } finally {
     resetCopyStateLater()
   }
 }
@@ -266,14 +266,7 @@ onBeforeUnmount(() => {
   display: block;
   padding: 0 14px;
   font-family:
-    'SFMono-Regular',
-    ui-monospace,
-    'JetBrains Mono',
-    Menlo,
-    Monaco,
-    Consolas,
-    'Liberation Mono',
-    monospace;
+    'SFMono-Regular', ui-monospace, 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   font-size: 12px;
   line-height: 1.8;
 }

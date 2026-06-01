@@ -30,25 +30,31 @@ export interface AchievementResultVO {
   id: string
   targetType: AchievementTargetType
   targetId: string
+  targetLabel: string
   programId?: string
+  programName: string
   trainingPlanId?: string
+  trainingPlanCode: string
+  trainingPlanName: string
   qualityCourseId?: string
-  schoolYear?: string
-  semester?: string
+  qualityCourseCode: string
+  qualityCourseName: string
+  schoolYear: string
+  semester: string
   gradeLevel?: string
   classId?: string
+  className: string
   teacherUserId?: string
-  sampleTotal?: number
-  sampleValid?: number
+  sampleTotal: number
+  sampleValid: number
   directValue?: number
   indirectValue?: number
   finalValue?: number
   thresholdValue?: number
-  achievementStatus?: AchievementStatus
+  achievementStatus: AchievementStatus
   aggregation?: AggregationFunction
-  formulaSnapshot?: string
-  scoreBatchIds?: string
-  auditStatus?: AchievementAuditStatus
+  scoreBatchIds: string[]
+  auditStatus: AchievementAuditStatus
   auditRemark?: string
   calculatedAt?: string
   createTime?: string
@@ -58,7 +64,7 @@ export interface AchievementResultVO {
 // ─── 计算入口请求 ──────────────────────────────────────────────────
 
 /** 课程目标计算请求 */
-export interface ComputeCourseGoalPayload {
+export interface ComputeCourseGoalRequest {
   qualityCourseId: string
   courseGoalId: string
   schoolYear?: string
@@ -69,7 +75,7 @@ export interface ComputeCourseGoalPayload {
 }
 
 /** 毕业要求 / 观测点聚合请求 */
-export interface ComputeRequirementPayload {
+export interface ComputeRequirementRequest {
   programId: string
   trainingPlanId: string
   requirementId?: string
@@ -80,7 +86,7 @@ export interface ComputeRequirementPayload {
 }
 
 /** 专业汇总请求 */
-export interface ComputeProgramPayload {
+export interface ComputeProgramRequest {
   programId: string
   trainingPlanId: string
   gradeLevel?: string
@@ -90,7 +96,7 @@ export interface ComputeProgramPayload {
 }
 
 /** 培养目标聚合请求 */
-export interface ComputeTrainingObjectivePayload {
+export interface ComputeTrainingObjectiveRequest {
   programId: string
   trainingPlanId: string
   trainingObjectiveId: string
@@ -101,7 +107,7 @@ export interface ComputeTrainingObjectivePayload {
 }
 
 /** 课程思政聚合请求 */
-export interface ComputeCivicGoalPayload {
+export interface ComputeCivicGoalRequest {
   programId: string
   trainingPlanId: string
   gradeLevel?: string
@@ -111,7 +117,7 @@ export interface ComputeCivicGoalPayload {
 }
 
 /** 复杂工程问题聚合请求 */
-export interface ComputeComplexEngineeringPayload {
+export interface ComputeComplexEngineeringRequest {
   programId: string
   trainingPlanId: string
   gradeLevel?: string
@@ -122,14 +128,21 @@ export interface ComputeComplexEngineeringPayload {
 
 /** 课程目标达成度计算摘要 - 严格对齐后端 CourseGoalAchievementSummaryVO */
 export interface CourseGoalAchievementSummaryVO {
-  achievementResultId?: string
-  courseGoalId?: string
-  qualityCourseId?: string
+  achievementResultId: string
+  courseGoalId: string
+  directValue?: number
+  indirectValue?: number
   finalValue?: number
   thresholdValue?: number
   achievementStatus?: AchievementStatus
-  sampleTotal?: number
-  sampleValid?: number
+  evaluationMethod: EvaluationMethod
+  directWeight?: number
+  indirectWeight?: number
+  assessmentItemCount: number
+  directSampleCount: number
+  indirectValidSampleCount: number
+  indirectCoverage?: number
+  evidenceGap?: string
 }
 
 /** 单条毕业要求 / 观测点摘要 - 严格对齐 RequirementAchievementSummaryVO */
@@ -205,7 +218,7 @@ export interface ComplexEngineeringGoalAchievementSummaryVO {
 // ─── 结果维护请求 ─────────────────────────────────────────────────
 
 /** 结果分页查询 - 严格对齐 AchievementResultQueryRequest */
-export interface AchievementResultQueryPayload extends QueryDto {
+export interface AchievementResultQueryRequest extends QueryDto {
   targetType?: AchievementTargetType
   targetId?: string
   programId?: string
@@ -219,7 +232,7 @@ export interface AchievementResultQueryPayload extends QueryDto {
 }
 
 /** 审核流转请求 - 严格对齐 AchievementResultAuditRequest */
-export interface AchievementResultAuditPayload {
+export interface AchievementResultAuditRequest {
   id: string
   auditStatus: AchievementAuditStatus
   auditRemark?: string
@@ -227,30 +240,28 @@ export interface AchievementResultAuditPayload {
 
 export const achievementApi = {
   // ─── 计算入口 ─────────────────────────────────────────
-  computeCourseGoal: (data: ComputeCourseGoalPayload) =>
+  computeCourseGoal: (data: ComputeCourseGoalRequest) =>
     http.post<CourseGoalAchievementSummaryVO>(`${CALC}/compute-course-goal`, data),
-  computeRequirement: (data: ComputeRequirementPayload) =>
+  computeRequirement: (data: ComputeRequirementRequest) =>
     http.post<RequirementAggregateVO[]>(`${CALC}/compute-requirement`, data),
-  computeProgram: (data: ComputeProgramPayload) =>
+  computeProgram: (data: ComputeProgramRequest) =>
     http.post<ProgramAchievementSummaryVO>(`${CALC}/compute-program`, data),
-  computeTrainingObjective: (data: ComputeTrainingObjectivePayload) =>
+  computeTrainingObjective: (data: ComputeTrainingObjectiveRequest) =>
     http.post<TrainingObjectiveAchievementSummaryVO>(`${CALC}/compute-training-objective`, data),
-  computeCivicGoalAggregate: (data: ComputeCivicGoalPayload) =>
+  computeCivicGoalAggregate: (data: ComputeCivicGoalRequest) =>
     http.post<CivicGoalAchievementSummaryVO>(`${CALC}/compute-civic-goal-aggregate`, data),
-  computeComplexEngineeringAggregate: (data: ComputeComplexEngineeringPayload) =>
+  computeComplexEngineeringAggregate: (data: ComputeComplexEngineeringRequest) =>
     http.post<ComplexEngineeringGoalAchievementSummaryVO>(
       `${CALC}/compute-complex-engineering-aggregate`,
       data,
     ),
 
   // ─── 结果维护 ─────────────────────────────────────────
-  page: (data: AchievementResultQueryPayload) =>
+  page: (data: AchievementResultQueryRequest) =>
     http.post<PageResult<AchievementResultVO>>(`${RESULT}/page`, data),
-  detail: (id: string) =>
-    http.post<AchievementResultVO>(`${RESULT}/detail`, { id }),
-  delete: (id: string) =>
-    http.post<void>(`${RESULT}/delete`, { id }),
+  detail: (id: string) => http.post<AchievementResultVO>(`${RESULT}/detail`, { id }),
+  delete: (id: string) => http.post<void>(`${RESULT}/delete`, { id }),
   /** 审核状态流转：DRAFT ↔ CALCULATED ↔ SUBMITTED ↔ CONFIRMED / RETURNED / ARCHIVED */
-  updateAuditStatus: (data: AchievementResultAuditPayload) =>
+  updateAuditStatus: (data: AchievementResultAuditRequest) =>
     http.post<void>(`${RESULT}/update-audit-status`, data),
 }

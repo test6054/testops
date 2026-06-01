@@ -1,39 +1,53 @@
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  ExternalDataSourceSavePayload,
+  ExternalDataSourceSaveRequest,
   ExternalDataSourceVO,
+  ExternalPullAuditCheckStatus,
+  ExternalPullAuditEvent,
   ExternalPullAuditVO,
+  ExternalPullConfirmationStatus,
   ExternalPullFilterOperator,
   ExternalPullResultVO,
   ExternalPullSortDirection,
-  ExternalPullTaskCreatePayload,
-  ExternalPullTaskQueryPayload,
+  ExternalPullTaskQueryRequest,
+  ExternalPullTaskSaveRequest,
   ExternalPullTaskVO,
   ExternalSourceFieldScope,
   ExternalSourceType,
+} from '@/apis/quality'
+import {
+  EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
+  EXTERNAL_PULL_AUDIT_EVENT_LABEL,
+  EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR,
+  EXTERNAL_PULL_CONFIRMATION_STATUS_LABEL,
+  EXTERNAL_PULL_TASK_STATUS_COLOR,
+  EXTERNAL_PULL_TASK_STATUS_LABEL,
+  EXTERNAL_PULL_TASK_STATUS_OPTIONS,
+  EXTERNAL_SOURCE_TYPE_LABEL,
+  EXTERNAL_SOURCE_TYPE_OPTIONS,
+  externalDataSourceApi,
+  externalPullAuditApi,
+  externalPullResultApi,
+  externalPullTaskApi,
 } from '@/apis/quality'
 import type { SignalMetric, TaskResultItem } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
-  EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL,
-  EXTERNAL_PULL_AUDIT_EVENT_LABEL,
-  EXTERNAL_PULL_TASK_STATUS_COLOR,
-  EXTERNAL_PULL_TASK_STATUS_LABEL,
-  EXTERNAL_SOURCE_TYPE_LABEL,
-  externalDataSourceApi,
-  externalPullAuditApi,
-  externalPullResultApi,
-  externalPullTaskApi,
-  isExternalPullAuditCheckStatus,
-  isExternalPullAuditEvent,
-  isExternalPullTaskStatus,
-  isExternalSourceType,
-} from '@/apis/quality'
+  AchievementResultSelector,
+  AuditIssueSelector,
+  AuditRectificationSelector,
+  CourseSelector,
+  ReportSelector,
+  TrainingPlanSelector,
+} from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
 interface SourceFieldScopeEditorRow {
@@ -49,7 +63,8 @@ interface PullFilterEditorRow {
   key: string
   fieldName: string
   operator: ExternalPullFilterOperator
-  valueText: string
+  singleValue: string
+  multipleValues: string[]
 }
 
 interface PullSortEditorRow {
@@ -61,6 +76,19 @@ interface PullSortEditorRow {
 interface SelectOption {
   value: string
   label: string
+}
+
+interface ExternalDataSourceFormState {
+  sourceCode: string
+  sourceName: string
+  sourceType: ExternalSourceType
+  jdbcUrl: string
+  username: string
+  password: string
+  driverClass: string
+  maxRowCount: number
+  queryTimeoutSeconds: number
+  enabled: boolean
 }
 
 const sourceColumns: ColumnsType = [
@@ -77,9 +105,9 @@ const sourceColumns: ColumnsType = [
 const taskColumns: ColumnsType = [
   { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 160 },
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
-  { title: '数据源', dataIndex: 'sourceId', key: 'sourceId', width: 160 },
+  { title: '数据源', dataIndex: 'sourceName', key: 'sourceRef', width: 160 },
   { title: '来源对象', dataIndex: 'sourceObjectName', key: 'sourceObjectName', width: 180 },
-  { title: '业务锚点', dataIndex: 'businessAnchor', key: 'businessAnchor', width: 180 },
+  { title: '业务归属', dataIndex: 'businessAnchor', key: 'businessAnchor', width: 180 },
   { title: '返回行数', dataIndex: 'returnRows', key: 'returnRows', width: 100 },
   { title: '耗时（ms）', dataIndex: 'elapsedMs', key: 'elapsedMs', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
@@ -87,15 +115,15 @@ const taskColumns: ColumnsType = [
 ]
 
 const detailResultColumns: ColumnsType = [
-  { title: '批次 ID', dataIndex: 'id', key: 'id', width: 120 },
-  { title: '业务锚点', key: 'detailAnchor' },
+  { title: '结果批次', key: 'resultBatch', width: 120 },
+  { title: '业务归属', key: 'detailAnchor' },
   { title: '预览行数', dataIndex: 'previewRows', key: 'previewRows', width: 100 },
   { title: '确认行数', dataIndex: 'confirmedRows', key: 'confirmedRows', width: 100 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 110 },
   { title: '操作', key: 'actions', width: 180 },
 ]
 
-const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator, label: string }> = [
+const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator; label: string }> = [
   { value: 'EQ', label: '等于' },
   { value: 'NE', label: '不等于' },
   { value: 'GT', label: '大于' },
@@ -106,7 +134,7 @@ const filterOperatorOptions: Array<{ value: ExternalPullFilterOperator, label: s
   { value: 'IN', label: '属于多个值' },
 ]
 
-const sortDirectionOptions: Array<{ value: ExternalPullSortDirection, label: string }> = [
+const sortDirectionOptions: Array<{ value: ExternalPullSortDirection; label: string }> = [
   { value: 'ASC', label: '升序' },
   { value: 'DESC', label: '降序' },
 ]
@@ -119,7 +147,7 @@ const sourceQuery = reactive({ pageNum: 1, pageSize: 10 })
 const tasks = ref<ExternalPullTaskVO[]>([])
 const taskTotal = ref(0)
 const taskLoading = ref(false)
-const taskQuery = reactive<ExternalPullTaskQueryPayload>({
+const taskQuery = reactive<ExternalPullTaskQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   sourceId: undefined,
@@ -132,10 +160,10 @@ const sourceEditing = ref(false)
 const sourceEditorMode = ref<'create' | 'edit'>('create')
 const sourceEditingId = ref<string | undefined>(undefined)
 const sourceFieldScopes = ref<SourceFieldScopeEditorRow[]>([])
-const sourceForm = reactive({
+const sourceForm = reactive<ExternalDataSourceFormState>({
   sourceCode: '',
   sourceName: '',
-  sourceType: 'POSTGRESQL' as ExternalSourceType,
+  sourceType: 'POSTGRESQL',
   jdbcUrl: '',
   username: '',
   password: '',
@@ -150,7 +178,7 @@ const taskCreating = ref(false)
 const taskSelectedFields = ref<string[]>([])
 const taskFilters = ref<PullFilterEditorRow[]>([])
 const taskSorts = ref<PullSortEditorRow[]>([])
-const taskForm = reactive<ExternalPullTaskCreatePayload>({
+const taskForm = reactive<ExternalPullTaskSaveRequest>({
   sourceId: '',
   taskCode: '',
   taskName: '',
@@ -170,14 +198,16 @@ const detailResults = ref<ExternalPullResultVO[]>([])
 const detailAudits = ref<ExternalPullAuditVO[]>([])
 const detailLoading = ref(false)
 
-const sourceTypeOptions = Object.entries(EXTERNAL_SOURCE_TYPE_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-const taskStatusOptions = Object.entries(EXTERNAL_PULL_TASK_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const sourceTypeOptions = EXTERNAL_SOURCE_TYPE_OPTIONS
+const taskStatusOptions = EXTERNAL_PULL_TASK_STATUS_OPTIONS
+const businessAnchorOptions = [
+  { value: 'TRAINING_PLAN', label: '培养方案' },
+  { value: 'QUALITY_COURSE', label: '质量评价课程' },
+  { value: 'ACHIEVEMENT_RESULT', label: '达成度结果' },
+  { value: 'REPORT', label: '质量报告' },
+  { value: 'AUDIT_ISSUE', label: '审查问题' },
+  { value: 'AUDIT_RECTIFICATION', label: '整改任务' },
+]
 
 const enabledSourceOptions = computed(() =>
   sources.value.filter((s) => s.enabled).map((s) => ({ value: s.id, label: s.sourceName })),
@@ -213,15 +243,9 @@ const taskFieldOptions = computed<SelectOption[]>(() => {
 
 const signals = computed<SignalMetric[]>(() => {
   const enabledSources = sources.value.filter((s) => s.enabled).length
-  const runningTasks = tasks.value.filter(
-    (t) => isExternalPullTaskStatus(t.status) && t.status === 'RUNNING',
-  ).length
-  const failedTasks = tasks.value.filter(
-    (t) => isExternalPullTaskStatus(t.status) && t.status === 'FAILED',
-  ).length
-  const succeededTasks = tasks.value.filter(
-    (t) => isExternalPullTaskStatus(t.status) && t.status === 'SUCCEEDED',
-  ).length
+  const runningTasks = tasks.value.filter((t) => t.status === 'RUNNING').length
+  const failedTasks = tasks.value.filter((t) => t.status === 'FAILED').length
+  const succeededTasks = tasks.value.filter((t) => t.status === 'SUCCEEDED').length
   return [
     { key: 'src-total', label: '数据源总数', value: sourceTotal.value, tone: 'blue' },
     {
@@ -260,13 +284,19 @@ const taskRuleSummaryLines = computed(() => {
   if (taskSelectedFields.value.length) {
     lines.push(`返回字段：${taskSelectedFields.value.join('、')}`)
   }
-  const activeFilters = taskFilters.value.filter((item) => item.fieldName && item.valueText.trim())
+  const activeFilters = taskFilters.value.filter(
+    (item) =>
+      item.fieldName &&
+      (item.operator === 'IN' ? item.multipleValues.length > 0 : Boolean(item.singleValue.trim())),
+  )
   if (activeFilters.length) {
     lines.push(
       `筛选条件：${activeFilters
-        .map(
-          (item) => `${item.fieldName}${filterOperatorText(item.operator)}${item.valueText.trim()}`,
-        )
+        .map((item) => {
+          const valueText =
+            item.operator === 'IN' ? item.multipleValues.join('、') : item.singleValue.trim()
+          return `${item.fieldName}${filterOperatorText(item.operator)}${valueText}`
+        })
         .join('；')}`,
     )
   }
@@ -283,63 +313,62 @@ const taskRuleSummaryLines = computed(() => {
 
 const pullResultItems = computed<TaskResultItem[]>(() => {
   return tasks.value
-    .filter(
-      (t) =>
-        (isExternalPullTaskStatus(t.status) && t.status === 'FAILED')
-        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING'),
-    )
+    .filter((t) => t.status === 'FAILED' || t.status === 'RUNNING')
     .slice(0, 5)
     .map((t) => ({
       id: t.id,
       title: `${t.taskCode} - ${t.taskName}`,
       statusLabel: taskStatusLabel(t.status),
-      statusTone: isExternalPullTaskStatus(t.status) && t.status === 'FAILED' ? 'red' : 'blue',
+      statusTone: t.status === 'FAILED' ? 'red' : 'blue',
       description:
-        t.failureReason
-        || (isExternalPullTaskStatus(t.status) && t.status === 'RUNNING' ? '任务执行中' : undefined),
+        getUserProcessFailureMessage(
+          t.failureReason,
+          '外部成绩数据接入失败，请检查数据源配置、授权状态和返回字段设置',
+        ) || (t.status === 'RUNNING' ? '任务执行中' : undefined),
       time: t.startedAt || undefined,
       actions: [{ key: 'detail', label: '详情' }],
     }))
 })
 
-function taskStatusLabel(value: unknown): string {
-  if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_LABEL[value]
-  throw new Error(`外部拔取任务状态不在后端枚举内：${String(value)}`)
+function taskStatusLabel(value: ExternalPullTaskVO['status']): string {
+  return strictEnumLabel(EXTERNAL_PULL_TASK_STATUS_LABEL, value, '外部拔取任务状态')
 }
 
-function taskStatusColor(value: unknown): string {
-  if (isExternalPullTaskStatus(value)) return EXTERNAL_PULL_TASK_STATUS_COLOR[value]
-  throw new Error(`外部拔取任务状态不在后端枚举内：${String(value)}`)
+function taskStatusColor(value: ExternalPullTaskVO['status']): string {
+  return strictEnumTone(EXTERNAL_PULL_TASK_STATUS_COLOR, value, '外部拔取任务状态')
 }
 
-function sourceTypeLabel(value: unknown): string {
-  if (isExternalSourceType(value)) return EXTERNAL_SOURCE_TYPE_LABEL[value]
-  throw new Error(`外部数据源类型不在后端枚举内：${String(value)}`)
+function sourceTypeLabel(value: ExternalSourceType): string {
+  return strictEnumLabel(EXTERNAL_SOURCE_TYPE_LABEL, value, '外部数据源类型')
 }
 
-function confirmationStatusColor(value: unknown): string {
-  if (value === 'CONFIRMED') return 'green'
-  if (value === 'REJECTED') return 'red'
-  if (value === 'PREVIEW') return 'orange'
-  throw new Error(`结果批次确认状态不在后端枚举内：${String(value)}`)
+function confirmationStatusLabel(value: ExternalPullConfirmationStatus): string {
+  return strictEnumLabel(EXTERNAL_PULL_CONFIRMATION_STATUS_LABEL, value, '结果批次确认状态')
 }
 
-function auditTone(status: unknown): string {
+function confirmationStatusColor(value: ExternalPullConfirmationStatus): string {
+  return strictEnumTone(EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR, value, '结果批次确认状态')
+}
+
+function auditTone(status: ExternalPullAuditCheckStatus): string {
   if (status === 'PASSED') return 'green'
   if (status === 'REJECTED') return 'red'
   if (status === 'WARNING') return 'orange'
-  if (status === null || status === undefined || status === '') return 'gray'
   throw new Error(`外部拔取审计状态不在后端枚举内：${String(status)}`)
 }
 
-function auditEventLabel(value: unknown): string {
-  if (isExternalPullAuditEvent(value)) return EXTERNAL_PULL_AUDIT_EVENT_LABEL[value]
-  throw new Error(`外部拔取审计事件不在后端枚举内：${String(value)}`)
+function auditTimelineTone(audit: ExternalPullAuditVO): string {
+  if (audit.queryScopeStatus) return auditTone(audit.queryScopeStatus)
+  if (audit.fieldScopeStatus) return auditTone(audit.fieldScopeStatus)
+  return 'gray'
 }
 
-function auditCheckStatusLabel(value: unknown): string {
-  if (isExternalPullAuditCheckStatus(value)) return EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL[value]
-  throw new Error(`外部拔取审计状态不在后端枚举内：${String(value)}`)
+function auditEventLabel(value: ExternalPullAuditEvent): string {
+  return strictEnumLabel(EXTERNAL_PULL_AUDIT_EVENT_LABEL, value, '外部拔取审计事件')
+}
+
+function auditCheckStatusLabel(value: ExternalPullAuditCheckStatus): string {
+  return strictEnumLabel(EXTERNAL_PULL_AUDIT_CHECK_STATUS_LABEL, value, '外部拔取审计状态')
 }
 
 function filterOperatorText(operator: ExternalPullFilterOperator): string {
@@ -348,11 +377,10 @@ function filterOperatorText(operator: ExternalPullFilterOperator): string {
   return option.label
 }
 
-function sourceName(sourceId: string | undefined): string {
-  if (!sourceId) throw new Error('外部拔取任务缺少数据源 ID')
-  const source = sources.value.find((s) => s.id === sourceId)
-  if (!source) throw new Error(`外部拔取任务引用的数据源不存在：${sourceId}`)
-  return source.sourceName
+function businessAnchorLabel(value: string): string {
+  const option = businessAnchorOptions.find((item) => item.value === value)
+  if (!option) throw new Error(`外部拔取业务归属不在前端选择范围内：${value}`)
+  return option.label
 }
 
 function createSourceFieldScopeRow(scope?: ExternalSourceFieldScope): SourceFieldScopeEditorRow {
@@ -371,7 +399,8 @@ function createFilterRow(): PullFilterEditorRow {
     key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     fieldName: '',
     operator: 'EQ',
-    valueText: '',
+    singleValue: '',
+    multipleValues: [],
   }
 }
 
@@ -383,23 +412,18 @@ function createSortRow(): PullSortEditorRow {
   }
 }
 
-function canCancelTask(status: unknown): boolean {
-  if (!isExternalPullTaskStatus(status)) {
-    throw new Error(`外部拔取任务状态不在后端枚举内：${String(status)}`)
-  }
+function canCancelTask(status: ExternalPullTaskVO['status']): boolean {
   return status === 'PENDING' || status === 'RUNNING'
 }
 
-function splitMultiValue(value: string): string[] {
-  return value
-    .split(/[\n,，]/)
-    .map((item) => item.trim())
-    .filter(Boolean)
+function handleFilterOperatorChange(entry: PullFilterEditorRow) {
+  entry.singleValue = ''
+  entry.multipleValues = []
 }
 
-function handleTaskPageChange(payload: { current: number, pageSize: number }) {
-  taskQuery.pageNum = payload.current
-  taskQuery.pageSize = payload.pageSize
+function handleTaskPageChange(page: { current: number; pageSize: number }) {
+  taskQuery.pageNum = page.current
+  taskQuery.pageSize = page.pageSize
   loadTasks()
 }
 
@@ -416,6 +440,16 @@ function resetTaskRuleAfterObjectChange() {
   taskSorts.value = []
 }
 
+function handleTaskBusinessAnchorChange(value: SelectValue) {
+  if (Array.isArray(value)) throw new Error('外部数据任务业务归属不支持多选值')
+  taskForm.businessAnchor = typeof value === 'string' ? value : ''
+  taskForm.businessId = ''
+}
+
+function handleTaskBusinessObjectChange(value: string | null) {
+  taskForm.businessId = value ?? ''
+}
+
 async function reloadAll() {
   await Promise.all([loadSources(), loadTasks()])
 }
@@ -425,7 +459,7 @@ async function loadSources() {
   try {
     const page = await externalDataSourceApi.page(sourceQuery)
     sources.value = page.list
-    sourceTotal.value = page.total
+    sourceTotal.value = Number(page.total)
   } finally {
     sourceLoading.value = false
   }
@@ -441,7 +475,7 @@ async function loadTasks() {
       businessAnchor: taskQuery.businessAnchor?.trim() || undefined,
     })
     tasks.value = page.list
-    taskTotal.value = page.total
+    taskTotal.value = Number(page.total)
   } finally {
     taskLoading.value = false
   }
@@ -454,7 +488,7 @@ function openSourceCreate() {
   Object.assign(sourceForm, {
     sourceCode: '',
     sourceName: '',
-    sourceType: 'POSTGRESQL' as ExternalSourceType,
+    sourceType: 'POSTGRESQL',
     jdbcUrl: '',
     username: '',
     password: '',
@@ -490,9 +524,9 @@ async function openSourceEdit(record: ExternalDataSourceVO) {
 
 async function submitSource() {
   if (
-    !sourceForm.sourceCode.trim()
-    || !sourceForm.sourceName.trim()
-    || !sourceForm.jdbcUrl.trim()
+    !sourceForm.sourceCode.trim() ||
+    !sourceForm.sourceName.trim() ||
+    !sourceForm.jdbcUrl.trim()
   ) {
     message.error('请填写编码 / 名称 / 连接地址')
     return
@@ -537,7 +571,7 @@ async function submitSource() {
 
   sourceEditing.value = true
   try {
-    const payload: ExternalDataSourceSavePayload = {
+    const request: ExternalDataSourceSaveRequest = {
       id: sourceEditorMode.value === 'edit' ? sourceEditingId.value : undefined,
       sourceCode: sourceForm.sourceCode.trim(),
       sourceName: sourceForm.sourceName.trim(),
@@ -552,10 +586,10 @@ async function submitSource() {
       enabled: sourceForm.enabled,
     }
     if (sourceEditorMode.value === 'create') {
-      await externalDataSourceApi.create(payload)
+      await externalDataSourceApi.create(request)
       message.success('数据源已创建')
     } else {
-      await externalDataSourceApi.update(payload)
+      await externalDataSourceApi.update(request)
       message.success('数据源已更新')
     }
     sourceEditorVisible.value = false
@@ -605,14 +639,14 @@ function openTaskCreate() {
 
 async function submitTask() {
   if (
-    !taskForm.taskName.trim()
-    || !taskForm.taskCode.trim()
-    || !taskForm.sourceId
-    || !taskForm.businessAnchor.trim()
-    || !taskForm.businessId
-    || !taskForm.sourceObjectName
+    !taskForm.taskName.trim() ||
+    !taskForm.taskCode.trim() ||
+    !taskForm.sourceId ||
+    !taskForm.businessAnchor.trim() ||
+    !taskForm.businessId ||
+    !taskForm.sourceObjectName
   ) {
-    message.error('请填写任务编码 / 名称 / 数据源 / 业务锚点 / 业务锚点 ID / 来源对象')
+    message.error('请填写任务编码、名称，选择数据源，并补全业务归属和来源对象')
     return
   }
   if (!taskSelectedFields.value.length) {
@@ -624,34 +658,38 @@ async function submitTask() {
     fieldName,
     fieldOrder: index + 1,
   }))
-  const filters: NonNullable<ExternalPullTaskCreatePayload['filters']> = []
+  const filters: NonNullable<ExternalPullTaskSaveRequest['filters']> = []
   for (let index = 0; index < taskFilters.value.length; index += 1) {
     const row = taskFilters.value[index]
-    if (!row.fieldName && !row.valueText.trim()) continue
-    if (!row.fieldName || !row.valueText.trim()) {
+    const hasValue =
+      row.operator === 'IN' ? row.multipleValues.length > 0 : Boolean(row.singleValue.trim())
+    if (!row.fieldName && !hasValue) continue
+    if (!row.fieldName || !hasValue) {
       message.error(`筛选条件 ${index + 1} 需要同时选择字段并填写取值`)
       return
     }
     if (row.operator === 'IN') {
-      const values = splitMultiValue(row.valueText)
+      const values = row.multipleValues.map((value) => value.trim()).filter(Boolean)
       if (!values.length) {
         message.error(`筛选条件 ${index + 1} 至少填写一个取值`)
         return
       }
-      for (const value of values) {
+      for (let valueIndex = 0; valueIndex < values.length; valueIndex += 1) {
         filters.push({
           fieldName: row.fieldName,
           filterOperator: row.operator,
-          filterValue: value,
-          valueOrder: filters.length + 1,
+          filterValue: values[valueIndex],
+          conditionOrder: index + 1,
+          valueOrder: valueIndex + 1,
         })
       }
     } else {
       filters.push({
         fieldName: row.fieldName,
         filterOperator: row.operator,
-        filterValue: row.valueText.trim(),
-        valueOrder: filters.length + 1,
+        filterValue: row.singleValue.trim(),
+        conditionOrder: index + 1,
+        valueOrder: 1,
       })
     }
   }
@@ -703,10 +741,10 @@ async function cancelTask(record: ExternalPullTaskVO) {
 async function confirmResult(result: ExternalPullResultVO) {
   const confirmedRows = result.previewRows
   if (confirmedRows === null || confirmedRows === undefined) {
-    throw new Error(`结果批次 #${result.id} 缺少预览行数，不能确认`)
+    throw new Error('结果批次尚未生成预览数据，不能确认')
   }
   void confirmAsync({
-    title: `确认拔取结果批次 #${result.id}？`,
+    title: '确认当前拔取结果批次？',
     content: '确认后进入达成度计算可用来源',
     type: 'info',
     onOk: async () => {
@@ -722,7 +760,7 @@ async function confirmResult(result: ExternalPullResultVO) {
 
 async function rejectResult(result: ExternalPullResultVO) {
   const reason = await promptModal({
-    title: `驳回拔取结果批次 #${result.id}`,
+    title: '驳回当前拔取结果批次',
     placeholder: '请填写驳回原因',
     required: true,
     okType: 'danger',
@@ -754,9 +792,9 @@ async function reloadDetail(taskId: string) {
   }
 }
 
-function handlePullResultAction(payload: { item: TaskResultItem, action: { key: string } }) {
-  const record = tasks.value.find((t) => t.id === payload.item.id)
-  if (record && payload.action.key === 'detail') openDetail(record)
+function handlePullResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+  const record = tasks.value.find((t) => t.id === actionEvent.item.id)
+  if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
 
 onMounted(async () => {
@@ -824,18 +862,18 @@ onMounted(async () => {
         flat
         :total="sources.length"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'sourceType'">
-            {{ sourceTypeLabel(text) }}
+            {{ sourceTypeLabel(record.sourceType) }}
           </template>
           <template
             v-else-if="column.key === 'maxRowCount' || column.key === 'queryTimeoutSeconds'"
           >
-            {{ text ?? '-' }}
+            {{ column.key === 'maxRowCount' ? record.maxRowCount : record.queryTimeoutSeconds }}
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="text ? 'green' : 'default'">
-              {{ text ? '启用' : '停用' }}
+            <a-tag :color="record.enabled ? 'green' : 'default'">
+              {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -871,11 +909,12 @@ onMounted(async () => {
             allow-clear
             :options="taskStatusOptions"
           />
-          <a-input
+          <a-select
             v-model:value="taskQuery.businessAnchor"
-            placeholder="业务锚点（如 SCORE_BATCH）"
+            placeholder="业务归属"
             class="external-pull__filter external-pull__filter--lg"
-            @press-enter="loadTasks"
+            allow-clear
+            :options="businessAnchorOptions"
           />
           <UiButton variant="outline" size="sm" :loading="taskLoading" @click="loadTasks">
             查询
@@ -901,22 +940,43 @@ onMounted(async () => {
         flat
         @page-change="handleTaskPageChange"
       >
-        <template #bodyCell="{ column, record, text }">
-          <template v-if="column.key === 'sourceId'">
-            {{ sourceName(text) }}
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'sourceRef'">
+            {{ record.sourceName }}
           </template>
           <template v-else-if="column.key === 'businessAnchor'">
-            <div>{{ record.businessAnchor || '-' }}</div>
+            <div>{{ businessAnchorLabel(record.businessAnchor) }}</div>
             <div class="external-pull__sub-text">
-              {{ record.businessId ? '已绑定业务对象' : '未绑定业务对象' }}
+              {{ record.businessLabel }}
             </div>
           </template>
           <template v-else-if="column.key === 'returnRows' || column.key === 'elapsedMs'">
-            {{ text ?? '-' }}
+            <template v-if="column.key === 'returnRows'">
+              {{
+                Number.isFinite(record.returnRows)
+                  ? record.returnRows
+                  : record.status === 'RUNNING'
+                    ? '执行中'
+                    : record.status === 'PENDING'
+                      ? '尚未执行'
+                      : '未返回行数'
+              }}
+            </template>
+            <template v-else>
+              {{
+                Number.isFinite(record.elapsedMs)
+                  ? `${record.elapsedMs} ms`
+                  : record.status === 'RUNNING'
+                    ? '执行中'
+                    : record.status === 'PENDING'
+                      ? '尚未开始计时'
+                      : '未返回耗时'
+              }}
+            </template>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="taskStatusColor(text)">
-              {{ taskStatusLabel(text) }}
+            <a-tag :color="taskStatusColor(record.status)">
+              {{ taskStatusLabel(record.status) }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -1108,16 +1168,54 @@ onMounted(async () => {
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
-            <a-form-item label="业务锚点" required>
-              <a-input
+            <a-form-item label="业务归属" required>
+              <a-select
                 v-model:value="taskForm.businessAnchor"
-                placeholder="SCORE_BATCH / PROCESS_NODE / ..."
+                placeholder="选择业务归属"
+                :options="businessAnchorOptions"
+                @change="handleTaskBusinessAnchorChange"
               />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="业务锚点 ID" required>
-              <a-input v-model:value="taskForm.businessId" placeholder="锚点对应业务表主键 ID" />
+            <a-form-item label="归属对象" required>
+              <TrainingPlanSelector
+                v-if="taskForm.businessAnchor === 'TRAINING_PLAN'"
+                :value="taskForm.businessId || null"
+                placeholder="选择培养方案"
+                @update:value="handleTaskBusinessObjectChange"
+              />
+              <CourseSelector
+                v-else-if="taskForm.businessAnchor === 'QUALITY_COURSE'"
+                :value="taskForm.businessId || null"
+                placeholder="选择质量评价课程"
+                @update:value="handleTaskBusinessObjectChange"
+              />
+              <AchievementResultSelector
+                v-else-if="taskForm.businessAnchor === 'ACHIEVEMENT_RESULT'"
+                :value="taskForm.businessId || null"
+                placeholder="选择达成度结果"
+                @update:value="handleTaskBusinessObjectChange"
+              />
+              <ReportSelector
+                v-else-if="taskForm.businessAnchor === 'REPORT'"
+                :value="taskForm.businessId || null"
+                placeholder="选择质量报告"
+                @update:value="handleTaskBusinessObjectChange"
+              />
+              <AuditIssueSelector
+                v-else-if="taskForm.businessAnchor === 'AUDIT_ISSUE'"
+                :value="taskForm.businessId || null"
+                placeholder="选择审查问题"
+                @update:value="handleTaskBusinessObjectChange"
+              />
+              <AuditRectificationSelector
+                v-else-if="taskForm.businessAnchor === 'AUDIT_RECTIFICATION'"
+                :value="taskForm.businessId || null"
+                placeholder="选择整改任务"
+                @update:value="handleTaskBusinessObjectChange"
+              />
+              <a-select v-else disabled placeholder="先选择业务归属" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -1168,14 +1266,20 @@ onMounted(async () => {
                   />
                 </a-col>
                 <a-col :span="6">
-                  <a-select v-model:value="entry.operator" :options="filterOperatorOptions" />
+                  <a-select
+                    v-model:value="entry.operator"
+                    :options="filterOperatorOptions"
+                    @change="handleFilterOperatorChange(entry)"
+                  />
                 </a-col>
                 <a-col :span="10">
-                  <a-textarea
-                    v-model:value="entry.valueText"
-                    :rows="2"
-                    :placeholder="entry.operator === 'IN' ? '多值条件每行一个值' : '填写筛选值'"
+                  <a-select
+                    v-if="entry.operator === 'IN'"
+                    v-model:value="entry.multipleValues"
+                    mode="tags"
+                    placeholder="逐项录入筛选值"
                   />
+                  <a-input v-else v-model:value="entry.singleValue" placeholder="填写筛选值" />
                 </a-col>
               </a-row>
             </div>
@@ -1283,29 +1387,62 @@ onMounted(async () => {
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="数据源">
-            {{ sourceName(detailRecord.sourceId) }}
+            {{ detailRecord.sourceName }}
           </a-descriptions-item>
           <a-descriptions-item label="来源对象">
             {{ detailRecord.sourceObjectName }}
           </a-descriptions-item>
-          <a-descriptions-item label="业务锚点">
-            {{ detailRecord.businessAnchor }}
-            <span v-if="detailRecord.businessId"> / 已绑定业务对象</span>
+          <a-descriptions-item label="业务归属">
+            {{ businessAnchorLabel(detailRecord.businessAnchor) }}
+            <span> / {{ detailRecord.businessLabel }}</span>
           </a-descriptions-item>
           <a-descriptions-item label="返回行数">
-            {{ detailRecord.returnRows ?? '-' }}
+            {{
+              Number.isFinite(detailRecord.returnRows)
+                ? detailRecord.returnRows
+                : detailRecord.status === 'RUNNING'
+                  ? '执行中'
+                  : detailRecord.status === 'PENDING'
+                    ? '尚未执行'
+                    : '未返回行数'
+            }}
           </a-descriptions-item>
           <a-descriptions-item label="耗时">
-            {{ detailRecord.elapsedMs ?? '-' }} ms
+            {{
+              Number.isFinite(detailRecord.elapsedMs)
+                ? `${detailRecord.elapsedMs} ms`
+                : detailRecord.status === 'RUNNING'
+                  ? '执行中'
+                  : detailRecord.status === 'PENDING'
+                    ? '尚未开始计时'
+                    : '未返回耗时'
+            }}
           </a-descriptions-item>
           <a-descriptions-item label="开始时间">
-            {{ detailRecord.startedAt || '-' }}
+            {{
+              detailRecord.startedAt ||
+              (detailRecord.status === 'PENDING' ? '尚未开始执行' : '缺失开始时间')
+            }}
           </a-descriptions-item>
           <a-descriptions-item label="结束时间">
-            {{ detailRecord.finishedAt || '-' }}
+            {{
+              detailRecord.finishedAt ||
+              (detailRecord.status === 'RUNNING'
+                ? '执行中'
+                : detailRecord.status === 'PENDING'
+                  ? '尚未开始执行'
+                  : '缺失结束时间')
+            }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.failureReason" label="失败原因" :span="2">
-            <span class="external-pull__error-text">{{ detailRecord.failureReason }}</span>
+          <a-descriptions-item v-if="detailRecord.failureReason" label="处理说明" :span="2">
+            <span class="external-pull__error-text">
+              {{
+                getUserProcessFailureMessage(
+                  detailRecord.failureReason,
+                  '外部成绩数据接入失败，请检查数据源配置、授权状态和返回字段设置',
+                )
+              }}
+            </span>
           </a-descriptions-item>
           <a-descriptions-item label="提取规则" :span="2">
             <div class="external-pull__detail-grid">
@@ -1362,17 +1499,29 @@ onMounted(async () => {
           flat
           :total="detailResults.length"
         >
-          <template #bodyCell="{ column, record, text }">
-            <template v-if="column.key === 'detailAnchor'">
-              {{ record.businessAnchor }}
-              <span v-if="record.businessId"> / 已绑定业务对象</span>
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'resultBatch'"> 第 {{ index + 1 }} 批 </template>
+            <template v-else-if="column.key === 'detailAnchor'">
+              {{ businessAnchorLabel(record.businessAnchor) }}
+              <span> / {{ record.businessLabel }}</span>
             </template>
             <template v-else-if="column.key === 'previewRows' || column.key === 'confirmedRows'">
-              {{ text ?? '-' }}
+              <template v-if="column.key === 'previewRows'">
+                {{ record.previewRows }}
+              </template>
+              <template v-else>
+                {{
+                  Number.isFinite(record.confirmedRows)
+                    ? record.confirmedRows
+                    : record.confirmationStatus === 'REJECTED'
+                      ? '已驳回'
+                      : '尚未确认'
+                }}
+              </template>
             </template>
             <template v-else-if="column.key === 'confirmationStatus'">
-              <a-tag :color="confirmationStatusColor(text)">
-                {{ text || '-' }}
+              <a-tag :color="confirmationStatusColor(record.confirmationStatus)">
+                {{ confirmationStatusLabel(record.confirmationStatus) }}
               </a-tag>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -1409,7 +1558,7 @@ onMounted(async () => {
           <a-timeline-item
             v-for="audit in detailAudits"
             :key="audit.id"
-            :color="auditTone(audit.queryScopeStatus || audit.fieldScopeStatus)"
+            :color="auditTimelineTone(audit)"
           >
             <p class="external-pull__audit-event">
               <strong>{{ auditEventLabel(audit.auditEvent) }}</strong>

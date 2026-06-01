@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 /**
  * 培养方案体系工作台 - 4-in-1 综合工作台
  *
@@ -32,23 +33,19 @@ import type {
   AccreditationStandardVO,
   CivicDimension,
   ConfirmationStatus,
-  GraduationRequirementSavePayload,
+  GraduationRequirementSaveRequest,
   GraduationRequirementVO,
-  RequirementIndicatorSavePayload,
+  RequirementIndicatorSaveRequest,
   RequirementIndicatorVO,
-  RequirementStandardMappingSavePayload,
+  RequirementStandardMappingSaveRequest,
   RequirementStandardMappingVO,
-  TrainingObjectiveRequirementSavePayload,
+  TrainingObjectiveRequirementSaveRequest,
   TrainingObjectiveRequirementVO,
-  TrainingObjectiveSavePayload,
+  TrainingObjectiveSaveRequest,
   TrainingObjectiveVO,
-  TrainingPlanSavePayload,
+  TrainingPlanSaveRequest,
   TrainingPlanVO,
 } from '@/apis/quality'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   accreditationStandardApi,
   AGGREGATION_FUNCTION_LABEL,
@@ -56,23 +53,25 @@ import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
   graduationRequirementApi,
-  isAggregationFunction,
-  isCivicDimension,
-  isConfirmationStatus,
   requirementIndicatorApi,
   requirementStandardMappingApi,
   trainingObjectiveApi,
   trainingObjectiveRequirementApi,
   trainingPlanApi,
 } from '@/apis/quality'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { formatOptionalNumber, formatRequiredNumber } from './_helpers'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const objectiveColumns: ColumnsType = [
   { title: '编码', dataIndex: 'objectiveCode', key: 'objectiveCode', width: 80 },
@@ -298,16 +297,13 @@ const totalIndicators = computed(() =>
 )
 
 const planConfirmationStatus = computed<ConfirmationStatus | undefined>(() => {
-  const raw: unknown = currentPlan.value?.confirmationStatus
-  if (raw === undefined || raw === null) return undefined
-  if (isConfirmationStatus(raw)) return raw
-  throw new Error('培养方案确认状态不符合前后端契约')
+  return currentPlan.value?.confirmationStatus
 })
 
 const canConfirmPlan = computed(
   () =>
-    !!currentPlan.value
-    && (planConfirmationStatus.value === 'DRAFT' || planConfirmationStatus.value === 'RETURNED'),
+    !!currentPlan.value &&
+    (planConfirmationStatus.value === 'DRAFT' || planConfirmationStatus.value === 'RETURNED'),
 )
 
 const canRevokePlan = computed(
@@ -319,7 +315,7 @@ const signals = computed<SignalMetric[]>(() => [
     key: 'plan',
     label: '当前方案状态',
     value: planConfirmationStatus.value
-      ? CONFIRMATION_STATUS_LABEL[planConfirmationStatus.value]
+      ? strictEnumLabel(CONFIRMATION_STATUS_LABEL, planConfirmationStatus.value, '培养方案确认状态')
       : '未提交',
     tone:
       planConfirmationStatus.value === 'CONFIRMED'
@@ -404,7 +400,7 @@ const objectiveMatrixCells = computed<MatrixCell[]>(() => {
 
 const planEditorVisible = ref(false)
 const planEditorMode = ref<'create' | 'edit'>('create')
-const planEditor = reactive<TrainingPlanSavePayload>({
+const planEditor = reactive<TrainingPlanSaveRequest>({
   programId: '',
   planCode: '',
   planName: '',
@@ -416,6 +412,8 @@ const planEditor = reactive<TrainingPlanSavePayload>({
   enabled: true,
 })
 const planSubmitting = ref(false)
+const planFileUploading = ref(false)
+const planFileName = ref('')
 
 function openPlanCreate() {
   planEditorMode.value = 'create'
@@ -431,6 +429,7 @@ function openPlanCreate() {
     storageFileId: '',
     enabled: true,
   })
+  planFileName.value = ''
   planEditorVisible.value = true
 }
 
@@ -449,17 +448,18 @@ function openPlanEdit() {
     storageFileId: currentPlan.value.storageFileId || '',
     enabled: currentPlan.value.enabled,
   })
+  planFileName.value = currentPlan.value.storageFileId ? '已关联方案附件' : ''
   planEditorVisible.value = true
 }
 
 async function submitPlan() {
   if (
-    !planEditor.programId.trim()
-    || !planEditor.planCode.trim()
-    || !planEditor.planName.trim()
-    || !planEditor.schoolYear.trim()
+    !planEditor.programId.trim() ||
+    !planEditor.planCode.trim() ||
+    !planEditor.planName.trim() ||
+    !planEditor.schoolYear.trim()
   ) {
-    message.error('请填写专业 ID、方案编码、方案名称、入学学年')
+    message.error('请选择专业，并填写方案编码、方案名称和入学学年')
     return
   }
   planSubmitting.value = true
@@ -477,6 +477,27 @@ async function submitPlan() {
     await loadCurrentPlan()
   } finally {
     planSubmitting.value = false
+  }
+}
+
+async function handlePlanFileUpload(options: UploadRequestOption): Promise<void> {
+  planFileUploading.value = true
+  try {
+    const { file } = options
+    if (!(file instanceof File)) {
+      message.error('无效的培养方案附件')
+      options.onError?.(new TypeError('无效的培养方案附件'))
+      return
+    }
+    const uploaded = await uploadFile(file, { businessType: 'QUALITY_TRAINING_PLAN_FILE' })
+    planEditor.storageFileId = uploaded.id
+    planFileName.value = uploaded.nodeName
+    message.success(`已上传培养方案附件：${uploaded.nodeName}`)
+    options.onSuccess?.({})
+  } catch (err) {
+    options.onError?.(err instanceof Error ? err : new Error(String(err)))
+  } finally {
+    planFileUploading.value = false
   }
 }
 
@@ -539,7 +560,7 @@ async function deletePlan() {
 
 const objectiveEditorVisible = ref(false)
 const objectiveEditorMode = ref<'create' | 'edit'>('create')
-const objectiveEditor = reactive<TrainingObjectiveSavePayload>({
+const objectiveEditor = reactive<TrainingObjectiveSaveRequest>({
   trainingPlanId: '',
   objectiveCode: '',
   objectiveName: '',
@@ -606,7 +627,7 @@ async function deleteObjective(record: TrainingObjectiveVO) {
 
 const objMappingEditorVisible = ref(false)
 const objMappingEditorMode = ref<'create' | 'edit'>('create')
-const objMappingEditor = reactive<TrainingObjectiveRequirementSavePayload>({
+const objMappingEditor = reactive<TrainingObjectiveRequirementSaveRequest>({
   trainingObjectiveId: '',
   graduationRequirementId: '',
   weight: 0,
@@ -650,20 +671,20 @@ function openObjMappingEdit(record: TrainingObjectiveRequirementVO) {
   objMappingEditorVisible.value = true
 }
 
-function handleObjectiveRequirementCellClick(payload: {
+function handleObjectiveRequirementCellClick(cellEvent: {
   row: MatrixRow
   col: MatrixCol
   cell: MatrixCell | undefined
 }): void {
-  const objective = objectives.value.find((item) => item.id === payload.row.key)
+  const objective = objectives.value.find((item) => item.id === cellEvent.row.key)
   if (!objective) return
   selectedObjective.value = objective
 
-  if (payload.cell) {
+  if (cellEvent.cell) {
     const mapping = objectiveRequirementMappings.value.find(
       (item) =>
-        item.trainingObjectiveId === payload.row.key
-        && item.graduationRequirementId === payload.col.key,
+        item.trainingObjectiveId === cellEvent.row.key &&
+        item.graduationRequirementId === cellEvent.col.key,
     )
     if (mapping) openObjMappingEdit(mapping)
     return
@@ -673,8 +694,8 @@ function handleObjectiveRequirementCellClick(payload: {
   objMappingEditingId.value = undefined
   Object.assign(objMappingEditor, {
     id: undefined,
-    trainingObjectiveId: payload.row.key,
-    graduationRequirementId: payload.col.key,
+    trainingObjectiveId: cellEvent.row.key,
+    graduationRequirementId: cellEvent.col.key,
     weight: 0,
     sortOrder: (mappingsOfSelectedObjective.value.length + 1) * 10,
     notes: '',
@@ -688,9 +709,9 @@ async function submitObjMapping() {
     return
   }
   if (
-    objMappingEditor.weight == null
-    || objMappingEditor.weight < 0
-    || objMappingEditor.weight > 1
+    objMappingEditor.weight == null ||
+    objMappingEditor.weight < 0 ||
+    objMappingEditor.weight > 1
   ) {
     message.error('权重必须在 0~1 之间')
     return
@@ -724,12 +745,12 @@ async function deleteObjMapping(record: TrainingObjectiveRequirementVO) {
 
 const requirementEditorVisible = ref(false)
 const requirementEditorMode = ref<'create' | 'edit'>('create')
-const requirementEditor = reactive<GraduationRequirementSavePayload>({
+const requirementEditor = reactive<GraduationRequirementSaveRequest>({
   trainingPlanId: '',
   requirementCode: '',
   requirementName: '',
   description: '',
-  civicDimensions: '',
+  civicDimensions: [],
   thresholdValue: 0.7,
   aggregation: 'WEIGHTED_SUM',
   sortOrder: 0,
@@ -748,7 +769,7 @@ function openRequirementCreate() {
     requirementCode: '',
     requirementName: '',
     description: '',
-    civicDimensions: '',
+    civicDimensions: [],
     thresholdValue: 0.7,
     aggregation: 'WEIGHTED_SUM',
     sortOrder: (requirements.value.length + 1) * 10,
@@ -757,9 +778,6 @@ function openRequirementCreate() {
 }
 
 function openRequirementEdit(record: GraduationRequirementVO) {
-  if (!isAggregationFunction(record.aggregation)) {
-    throw new Error('毕业要求聚合函数不符合前后端契约')
-  }
   requirementEditorMode.value = 'edit'
   Object.assign(requirementEditor, {
     id: record.id,
@@ -767,7 +785,7 @@ function openRequirementEdit(record: GraduationRequirementVO) {
     requirementCode: record.requirementCode,
     requirementName: record.requirementName,
     description: record.description || '',
-    civicDimensions: record.civicDimensions || '',
+    civicDimensions: record.civicDimensions ?? [],
     thresholdValue: record.thresholdValue ?? 0.7,
     aggregation: record.aggregation,
     sortOrder: record.sortOrder ?? 0,
@@ -817,14 +835,14 @@ async function deleteRequirement(record: GraduationRequirementVO) {
 
 const indicatorEditorVisible = ref(false)
 const indicatorEditorMode = ref<'create' | 'edit'>('create')
-const indicatorEditor = reactive<RequirementIndicatorSavePayload>({
+const indicatorEditor = reactive<RequirementIndicatorSaveRequest>({
   requirementId: '',
   indicatorCode: '',
   indicatorName: '',
   description: '',
   requirementWeight: 0,
   thresholdValue: 0.7,
-  civicDimensions: '',
+  civicDimensions: [],
   sortOrder: 0,
 })
 const indicatorSubmitting = ref(false)
@@ -842,7 +860,7 @@ function openIndicatorCreate() {
     description: '',
     requirementWeight: Number(remain.toFixed(3)),
     thresholdValue: selectedRequirement.value.thresholdValue ?? 0.7,
-    civicDimensions: '',
+    civicDimensions: [],
     sortOrder: (indicatorsOfSelected.value.length + 1) * 10,
   })
   indicatorEditorVisible.value = true
@@ -858,7 +876,7 @@ function openIndicatorEdit(record: RequirementIndicatorVO) {
     description: record.description || '',
     requirementWeight: Number(record.requirementWeight) || 0,
     thresholdValue: record.thresholdValue ?? 0.7,
-    civicDimensions: record.civicDimensions || '',
+    civicDimensions: record.civicDimensions ?? [],
     sortOrder: record.sortOrder ?? 0,
   })
   indicatorEditorVisible.value = true
@@ -870,9 +888,9 @@ async function submitIndicator() {
     return
   }
   if (
-    indicatorEditor.requirementWeight == null
-    || indicatorEditor.requirementWeight <= 0
-    || indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null ||
+    indicatorEditor.requirementWeight <= 0 ||
+    indicatorEditor.requirementWeight > 1
   ) {
     message.error('观测点权重必须在 (0, 1] 之间')
     return
@@ -911,7 +929,7 @@ async function validateIndicatorWeights(req: GraduationRequirementVO) {
 
 const stdEditorVisible = ref(false)
 const stdEditorMode = ref<'create' | 'edit'>('create')
-const stdEditor = reactive<RequirementStandardMappingSavePayload>({
+const stdEditor = reactive<RequirementStandardMappingSaveRequest>({
   requirementId: '',
   standardId: '',
   standardClause: '',
@@ -1009,30 +1027,16 @@ onMounted(async () => {
 const aggregationOptions = [
   { value: 'WEIGHTED_SUM', label: AGGREGATION_FUNCTION_LABEL.WEIGHTED_SUM },
   { value: 'MINIMUM', label: AGGREGATION_FUNCTION_LABEL.MINIMUM },
-  { value: 'WEIGHTED_MINIMUM_MIXED', label: AGGREGATION_FUNCTION_LABEL.WEIGHTED_MINIMUM_MIXED },
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
 ]
 
-const civicDimensionOptions: Array<{ value: CivicDimension, label: string }> = [
+const civicDimensionOptions: Array<{ value: CivicDimension; label: string }> = [
   { value: 'MORAL', label: CIVIC_DIMENSION_LABEL.MORAL },
   { value: 'INTELLECTUAL', label: CIVIC_DIMENSION_LABEL.INTELLECTUAL },
   { value: 'PHYSICAL', label: CIVIC_DIMENSION_LABEL.PHYSICAL },
   { value: 'AESTHETIC', label: CIVIC_DIMENSION_LABEL.AESTHETIC },
   { value: 'LABOR', label: CIVIC_DIMENSION_LABEL.LABOR },
 ]
-
-function parseCsv(value?: string): string[] {
-  return value
-    ? value
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : []
-}
-
-function joinCsv(values: string[]): string {
-  return values.join(',')
-}
 
 function handlePlanProgramChange(value: string | null): void {
   planEditor.programId = value ?? ''
@@ -1041,19 +1045,6 @@ function handlePlanProgramChange(value: string | null): void {
 
 function handlePlanAccreditationProfileChange(value: string | null): void {
   planEditor.accreditationProfileId = value ?? ''
-}
-
-function handleRequirementCivicDimensionsChange(value: unknown): void {
-  requirementEditor.civicDimensions = joinCsv(coerceCivicDimensions(value))
-}
-
-function handleIndicatorCivicDimensionsChange(value: unknown): void {
-  indicatorEditor.civicDimensions = joinCsv(coerceCivicDimensions(value))
-}
-
-function coerceCivicDimensions(value: unknown): CivicDimension[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is CivicDimension => isCivicDimension(item))
 }
 </script>
 
@@ -1073,12 +1064,29 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
           />
           <a-tag
             v-if="currentPlan"
-            :color="planConfirmationStatus ? CONFIRMATION_STATUS_COLOR[planConfirmationStatus] : 'default'"
+            :color="
+              planConfirmationStatus
+                ? strictEnumTone(
+                    CONFIRMATION_STATUS_COLOR,
+                    planConfirmationStatus,
+                    '培养方案确认状态',
+                  )
+                : 'default'
+            "
           >
-            {{ planConfirmationStatus ? CONFIRMATION_STATUS_LABEL[planConfirmationStatus] : '未提交' }}
+            {{
+              planConfirmationStatus
+                ? strictEnumLabel(
+                    CONFIRMATION_STATUS_LABEL,
+                    planConfirmationStatus,
+                    '培养方案确认状态',
+                  )
+                : '未提交'
+            }}
           </a-tag>
           <span v-if="currentPlan" class="tpw__context-meta">
-            学年 {{ currentPlan.schoolYear || '-' }} · 年级 {{ currentPlan.gradeLevel || '-' }}
+            学年 {{ currentPlan.schoolYear || '未配置学年' }} · 年级
+            {{ currentPlan.gradeLevel || '未配置年级' }}
           </span>
         </div>
         <div class="tpw__context-right">
@@ -1086,20 +1094,10 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
           <UiButton variant="outline" size="sm" :disabled="!currentPlan" @click="openPlanEdit">
             编辑方案
           </UiButton>
-          <UiButton
-            variant="primary"
-            size="sm"
-            :disabled="!canConfirmPlan"
-            @click="confirmPlan"
-          >
+          <UiButton variant="primary" size="sm" :disabled="!canConfirmPlan" @click="confirmPlan">
             提交确认
           </UiButton>
-          <UiButton
-            v-if="canRevokePlan"
-            variant="outline"
-            size="sm"
-            @click="revokePlan"
-          >
+          <UiButton v-if="canRevokePlan" variant="outline" size="sm" @click="revokePlan">
             撤回修订
           </UiButton>
           <UiButton
@@ -1239,9 +1237,9 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                 flat
                 :total="mappingsOfSelectedObjective.length"
               >
-                <template #bodyCell="{ column, record, text }">
+                <template #bodyCell="{ column, record }">
                   <template v-if="column.key === 'requirement'">
-                    <span class="font-mono text-xs text-gray-500 mr-1">
+                    <span class="text-xs text-gray-500 mr-1">
                       {{
                         requirements.find((r) => r.id === record.graduationRequirementId)
                           ?.requirementCode
@@ -1253,10 +1251,10 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                     }}
                   </template>
                   <template v-else-if="column.key === 'weight'">
-                    {{ formatRequiredNumber(text, '培养目标支撑毕业要求权重', 3) }}
+                    {{ record.weight.toFixed(3) }}
                   </template>
                   <template v-else-if="column.key === 'notes'">
-                    {{ text || '-' }}
+                    {{ record.notes || '未填写说明' }}
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <a-space>
@@ -1379,8 +1377,8 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                   <a-space>
                     <a-tag
                       :color="
-                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1)
-                          < WEIGHT_EPSILON
+                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1) <
+                        WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "
@@ -1402,19 +1400,21 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                   flat
                   :total="indicatorsOfSelected.length"
                 >
-                  <template #bodyCell="{ column, record, text }">
+                  <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'requirementWeight'">
-                      {{ formatRequiredNumber(text, '毕业要求观测点权重', 3) }}
+                      {{ record.requirementWeight.toFixed(3) }}
                     </template>
                     <template v-else-if="column.key === 'thresholdValue'">
-                      {{ formatOptionalNumber(text, '毕业要求观测点达成阈值', 2) }}
+                      {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(2) }}
                     </template>
                     <template v-else-if="column.key === 'civicDimensions'">
                       <a-space size="small" wrap>
-                        <a-tag v-for="d in parseCsv(text)" :key="d" color="purple">
-                          {{ d }}
+                        <a-tag v-for="d in record.civicDimensions ?? []" :key="d" color="purple">
+                          {{ strictEnumLabel(CIVIC_DIMENSION_LABEL, d, '课程思政维度') }}
                         </a-tag>
-                        <span v-if="!parseCsv(text).length" class="tpw__muted">-</span>
+                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted"
+                          >-</span
+                        >
                       </a-space>
                     </template>
                     <template v-else-if="column.key === 'actions'">
@@ -1450,20 +1450,24 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
                   flat
                   :total="standardMappings.length"
                 >
-                  <template #bodyCell="{ column, record, text }">
+                  <template #bodyCell="{ column, record }">
                     <template v-if="column.key === 'standardItem'">
                       <span v-if="standardMap.get(record.standardId)">
-                        <span class="font-mono text-xs text-gray-500 mr-1">
+                        <span class="text-xs text-gray-500 mr-1">
                           {{ standardMap.get(record.standardId)?.standardCode }}
                         </span>
                         {{ standardMap.get(record.standardId)?.standardName }}
                       </span>
-                      <span v-else class="tpw__muted">{{ record.standardId }}</span>
+                      <span v-else class="tpw__muted">已关联认证标准</span>
                     </template>
                     <template
                       v-else-if="column.key === 'standardClause' || column.key === 'coverageNote'"
                     >
-                      {{ text || '-' }}
+                      {{
+                        column.key === 'standardClause'
+                          ? record.standardClause || '未填写标准条款'
+                          : record.coverageNote || '未填写覆盖说明'
+                      }}
                     </template>
                     <template v-else-if="column.key === 'actions'">
                       <a-space>
@@ -1549,8 +1553,19 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
         <a-form-item label="方案说明">
           <a-textarea v-model:value="planEditor.description" :rows="4" />
         </a-form-item>
-        <a-form-item label="附件文件 ID">
-          <a-input v-model:value="planEditor.storageFileId" placeholder="MinIO 文件 ID（可选）" />
+        <a-form-item label="方案附件">
+          <a-upload
+            :show-upload-list="false"
+            :custom-request="handlePlanFileUpload"
+            :disabled="planFileUploading"
+          >
+            <UiButton variant="outline" size="sm" :loading="planFileUploading">
+              上传方案附件
+            </UiButton>
+          </a-upload>
+          <div v-if="planFileName" class="training-plan__file-name">
+            {{ planFileName }}
+          </div>
         </a-form-item>
       </a-form>
     </UiDrawer>
@@ -1601,7 +1616,7 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
             :disabled="objMappingEditorMode === 'edit'"
           >
             <a-select-option v-for="r in requirements" :key="r.id" :value="r.id">
-              <span class="font-mono text-xs text-gray-500 mr-1">{{ r.requirementCode }}</span>
+              <span class="text-xs text-gray-500 mr-1">{{ r.requirementCode }}</span>
               {{ r.requirementName }}
             </a-select-option>
           </a-select>
@@ -1698,11 +1713,10 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
         <a-form-item label="五育维度（多选）">
           <a-select
             mode="multiple"
-            :value="parseCsv(requirementEditor.civicDimensions)"
+            v-model:value="requirementEditor.civicDimensions"
             :options="civicDimensionOptions"
             placeholder="德 智 体 美 劳 维度（如适用）"
             style="width: 100%"
-            @change="handleRequirementCivicDimensionsChange"
           />
         </a-form-item>
       </a-form>
@@ -1768,11 +1782,10 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
         <a-form-item label="五育维度（多选）">
           <a-select
             mode="multiple"
-            :value="parseCsv(indicatorEditor.civicDimensions)"
+            v-model:value="indicatorEditor.civicDimensions"
             :options="civicDimensionOptions"
             placeholder="可选"
             style="width: 100%"
-            @change="handleIndicatorCivicDimensionsChange"
           />
         </a-form-item>
       </a-form>
@@ -1789,7 +1802,7 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
         <a-form-item label="标准条目" required>
           <a-select v-model:value="stdEditor.standardId" placeholder="选择已启用的认证标准">
             <a-select-option v-for="s in standardOptions" :key="s.id" :value="s.id">
-              <span class="font-mono text-xs text-gray-500 mr-1">{{ s.standardCode }}</span>
+              <span class="text-xs text-gray-500 mr-1">{{ s.standardCode }}</span>
               {{ s.standardName }}
             </a-select-option>
           </a-select>
@@ -1870,14 +1883,16 @@ function coerceCivicDimensions(value: unknown): CivicDimension[] {
   &__muted {
     color: var(--dp-text-muted, #94a3b8);
   }
+
+  &__file-name {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
+  }
 }
 
 :deep(.tpw-row-selected) td {
   background-color: var(--ant-color-primary-bg, #e6f4ff) !important;
-}
-
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .text-xs {

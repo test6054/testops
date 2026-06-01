@@ -2,12 +2,16 @@
   <a-card title="题目质量分析" :bordered="false" size="small">
     <template #extra>
       <a-space>
-        <a-input-search
-          v-model:value="qFilter"
-          placeholder="输入题目模板ID查询"
-          style="width: 220px"
+        <a-select
+          v-model:value="selectedQuestionTemplateId"
+          placeholder="选择题目"
+          style="width: 280px"
+          :options="questionOptions"
+          :loading="questionLoading"
+          show-search
+          option-filter-prop="label"
           allow-clear
-          @search="reload"
+          @change="reload"
         />
         <a-button type="primary" :loading="generatingAll" @click="handleGenerateAll">
           全量生成
@@ -54,7 +58,22 @@
       flat
     >
       <template #bodyCell="{ column, index }">
-        <template v-if="column.key === 'difficultyIndex'">
+        <template v-if="column.key === 'question'">
+          <div class="question-analysis-card__question-cell">
+            <div class="question-analysis-card__question-title">
+              题{{ rows[index].questionNo }} · {{ rows[index].questionType }} ·
+              {{ fmtNum(rows[index].fullScore) }} 分
+            </div>
+            <div v-if="rows[index].questionStem" class="question-analysis-card__question-stem">
+              {{
+                rows[index].questionStem.length > 36
+                  ? `${rows[index].questionStem.slice(0, 36)}...`
+                  : rows[index].questionStem
+              }}
+            </div>
+          </div>
+        </template>
+        <template v-else-if="column.key === 'difficultyIndex'">
           {{ fmtNum(rows[index].difficultyIndex) }}
         </template>
         <template v-else-if="column.key === 'discriminationIndex'">
@@ -88,7 +107,14 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import { getExamTemplate } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import {
+  generateAllQuestionAnalysis,
+  generateQuestionAnalysis,
+  listQuestionAnalysis,
+} from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { ScatterChart } from 'echarts/charts'
@@ -102,17 +128,13 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
-import {
-  generateAllQuestionAnalysis,
-  generateQuestionAnalysis,
-  listQuestionAnalysis,
-} from '@/apis/mark/question-analysis'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
@@ -129,13 +151,15 @@ use([
 const rows = ref<ExamQuestionAnalysisRecordVO[]>([])
 const loading = ref(false)
 // D-9 错误态：题目质量分析加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 const generatingAll = ref(false)
 const generatingId = ref<string>('')
-const qFilter = ref('')
+const selectedQuestionTemplateId = ref<string>()
+const questionLoading = ref(false)
+const questionOptions = ref<{ value: string; label: string }[]>([])
 
 const columns: ColumnType<ExamQuestionAnalysisRecordVO>[] = [
-  { title: '题目模板', dataIndex: 'questionTemplateId', key: 'questionTemplateId', width: 140 },
+  { title: '题目', key: 'question', width: 260 },
   { title: '总人数', dataIndex: 'totalCount', key: 'totalCount', width: 90 },
   { title: '正确率', key: 'correctRatio', width: 110 },
   { title: '需复核', dataIndex: 'needReviewCount', key: 'needReviewCount', width: 90 },
@@ -153,14 +177,42 @@ async function reload(): Promise<void> {
   try {
     rows.value = await listQuestionAnalysis({
       examId: props.examId,
-      questionTemplateId: qFilter.value.trim() || undefined,
+      questionTemplateId: selectedQuestionTemplateId.value,
     })
   } catch (e) {
     rows.value = []
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '题目质量分析加载失败')
+    loadError.value = toUserError(e, '题目质量分析加载失败')
+    showUserError(e, '题目质量分析加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadQuestionOptions(): Promise<void> {
+  if (!props.examId) {
+    questionOptions.value = []
+    return
+  }
+  questionLoading.value = true
+  try {
+    const template = await getExamTemplate(props.examId)
+    questionOptions.value = template.questions.map((question: ExamQuestionTemplateVO) => ({
+      value: question.questionTemplateId,
+      label: `题${question.questionNo} · ${question.questionType} · ${question.fullScore}分${
+        question.questionStem
+          ? ` · ${
+              question.questionStem.length > 24
+                ? `${question.questionStem.slice(0, 24)}...`
+                : question.questionStem
+            }`
+          : ''
+      }`,
+    }))
+  } catch (e) {
+    questionOptions.value = []
+    showUserError(e, '题目列表加载失败')
+  } finally {
+    questionLoading.value = false
   }
 }
 
@@ -171,7 +223,7 @@ async function handleGenerateAll(): Promise<void> {
     message.success('已生成全部题目质量分析')
     emit('generated')
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '生成失败')
+    showUserError(e, '全部题目质量分析生成失败')
   } finally {
     generatingAll.value = false
   }
@@ -185,7 +237,7 @@ async function handleGenerateOne(questionTemplateId: string): Promise<void> {
     await reload()
     emit('generated')
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '生成失败')
+    showUserError(e, '题目质量分析重新生成失败')
   } finally {
     generatingId.value = ''
   }
@@ -195,7 +247,6 @@ function fmtNum(v?: number): string {
   if (v == null) return '-'
   return Number(v).toFixed(2)
 }
-
 
 function correctRatio(r: ExamQuestionAnalysisRecordVO): string {
   const total = r.totalCount
@@ -214,9 +265,9 @@ function getCorrectRatioType(r: ExamQuestionAnalysisRecordVO): 'danger' | 'warni
 }
 
 // ─── D-5 难度-区分度散点图派生 ──────────────────────────────
-/** 单个散点：[难度系数, 区分度, 已批人数, 题目模板ID] */
+/** 单个散点：[难度系数, 区分度, 已批人数, 题号, 题型] */
 interface ScatterPointValue {
-  value: [number, number, number, string]
+  value: [number, number, number, string, string]
 }
 
 /** 散点图按 4 个质量区段分组（理想 / 偏难 / 偏易 / 区分度不足） */
@@ -240,8 +291,7 @@ const scatterSeriesGroups = computed<ScatterSeriesGroup[]>(() => {
     const d = Number(r.difficultyIndex)
     const dis = Number(r.discriminationIndex)
     const total = r.totalCount
-    const qid = r.questionTemplateId
-    const point: ScatterPointValue = { value: [d, dis, total, qid] }
+    const point: ScatterPointValue = { value: [d, dis, total, r.questionNo, r.questionType] }
     if (d < 0.3) {
       tooHard.push(point)
     } else if (d > 0.8) {
@@ -266,10 +316,10 @@ const scatterSeriesGroups = computed<ScatterSeriesGroup[]>(() => {
 const chartOption = computed(() => ({
   tooltip: {
     trigger: 'item',
-    formatter: (params: { value: [number, number, number, string] }) => {
-      const [d, dis, total, qid] = params.value
+    formatter: (params: { value: [number, number, number, string, string] }) => {
+      const [d, dis, total, questionNo, questionType] = params.value
       return [
-        `题目模板 #${qid}`,
+        `题${questionNo} · ${questionType}`,
         `难度系数 ${d.toFixed(2)} · 区分度 ${dis.toFixed(2)}`,
         `已批 ${total} 人`,
       ].join('<br/>')
@@ -304,7 +354,7 @@ const chartOption = computed(() => ({
     type: 'scatter',
     name: g.name,
     // 点大小随已批人数线性放大但不超过 40px，避免大题挤占小题视觉
-    symbolSize: (val: [number, number, number, string]) => {
+    symbolSize: (val: [number, number, number, string, string]) => {
       const total = val[2]
       return Math.min(40, 10 + Math.sqrt(total) * 1.5)
     },
@@ -316,7 +366,10 @@ const chartOption = computed(() => ({
 watch(
   () => [props.examId, props.reloadToken],
   () => {
-    if (props.examId) void reload()
+    if (props.examId) {
+      void loadQuestionOptions()
+      void reload()
+    }
   },
   { immediate: true },
 )

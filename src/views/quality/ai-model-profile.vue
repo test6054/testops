@@ -12,39 +12,61 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   串行化并把同租户其它配置置为停用。abilityCode 仅作为 AI 任务与脱敏证据快照的审计
  *   语义存在，不参与模型选择。
  */
-import type { AiModelProfileSavePayload, AiModelProfileVO } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import type {
+  AiHealthStatus,
+  AiModelProfileSaveRequest,
+  AiModelProfileVO,
+  AiProviderType,
+} from '@/apis/quality'
 import {
   AI_HEALTH_STATUS_COLOR,
   AI_HEALTH_STATUS_LABEL,
+  AI_PROVIDER_TYPE_LABEL,
   aiModelProfileApi,
-  isAiHealthStatus,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { getUserErrorMessage } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const columns: ColumnsType = [
   { title: '名称', dataIndex: 'profileName', key: 'profileName' },
-  { title: 'Provider', dataIndex: 'providerType', key: 'providerType', width: 140 },
+  { title: '服务商', dataIndex: 'providerType', key: 'providerType', width: 140 },
   { title: '模型', dataIndex: 'modelName', key: 'modelName', width: 180 },
   { title: '温度', dataIndex: 'temperature', key: 'temperature', width: 80 },
-  { title: '最大 Token', dataIndex: 'maxTokens', key: 'maxTokens', width: 100 },
-  { title: '密钥', dataIndex: 'apiKeyConfigured', key: 'apiKeyConfigured', width: 90 },
+  { title: '最大输出量', dataIndex: 'maxTokens', key: 'maxTokens', width: 110 },
+  { title: '最大输入字符', dataIndex: 'maxInputChars', key: 'maxInputChars', width: 130 },
+  { title: '密钥', dataIndex: 'apiKeyMasked', key: 'apiKeyMasked', width: 220 },
   { title: '健康', dataIndex: 'healthStatus', key: 'healthStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 360, fixed: 'right' },
+  { title: '操作', key: 'actions', width: 380, fixed: 'right' },
 ]
 
-function healthLabel(value: unknown): string {
-  if (isAiHealthStatus(value)) return AI_HEALTH_STATUS_LABEL[value]
-  throw new Error('AI 模型健康状态不符合前后端契约')
+function healthLabel(value: AiHealthStatus | null | undefined): string {
+  if (value === null || value === undefined) return ''
+  return strictEnumLabel(AI_HEALTH_STATUS_LABEL, value, 'AI 模型健康状态')
 }
 
-function healthColor(value: unknown): string {
-  if (isAiHealthStatus(value)) return AI_HEALTH_STATUS_COLOR[value]
-  throw new Error('AI 模型健康状态不符合前后端契约')
+function healthColor(value: AiHealthStatus | null | undefined): string {
+  if (value === null || value === undefined) return 'default'
+  return strictEnumTone(AI_HEALTH_STATUS_COLOR, value, 'AI 模型健康状态')
+}
+
+function providerTypeLabel(value: AiProviderType): string {
+  return strictEnumLabel(AI_PROVIDER_TYPE_LABEL, value, 'AI 服务商类型')
+}
+
+function aiModelHealthMessageText(messageText?: string): string {
+  if (!messageText?.trim()) {
+    return '未返回检测说明'
+  }
+  return getUserErrorMessage(
+    { message: messageText },
+    'AI 模型连通状态已更新，请以当前健康状态为准',
+  )
 }
 
 const list = ref<AiModelProfileVO[]>([])
@@ -65,7 +87,7 @@ const editorMode = ref<'create' | 'edit'>('create')
  * 新建默认 enabled=false，避免「一保存就默认覆盖当前启用」。
  * 启用切换走列表中独立的「设为启用」动作，仅在带提示的确认弹窗下发生。
  */
-const editor = reactive<AiModelProfileSavePayload>({
+const editor = reactive<AiModelProfileSaveRequest>({
   profileName: '',
   providerType: 'OPENAI',
   modelName: 'gpt-4o-mini',
@@ -73,6 +95,7 @@ const editor = reactive<AiModelProfileSavePayload>({
   apiKey: '',
   temperature: 0.2,
   maxTokens: 4096,
+  maxInputChars: 120000,
   connectTimeoutSecs: 30,
   readTimeoutSecs: 600,
   enabled: false,
@@ -107,6 +130,7 @@ function openCreate() {
     apiKey: '',
     temperature: 0.2,
     maxTokens: 4096,
+    maxInputChars: 120000,
     connectTimeoutSecs: 30,
     readTimeoutSecs: 600,
     enabled: false,
@@ -125,6 +149,7 @@ function openEdit(record: AiModelProfileVO) {
     apiKey: '',
     temperature: record.temperature,
     maxTokens: record.maxTokens,
+    maxInputChars: record.maxInputChars,
     connectTimeoutSecs: record.connectTimeoutSecs,
     readTimeoutSecs: record.readTimeoutSecs,
     enabled: record.enabled,
@@ -137,8 +162,12 @@ async function submitEditor() {
     message.error('请填写配置名称 / 模型名')
     return
   }
+  if (!editor.apiHost.trim()) {
+    message.error('请填写模型服务地址')
+    return
+  }
   if (editorMode.value === 'create' && !editor.apiKey?.trim()) {
-    message.error('新建必须填写 API Key')
+    message.error('新建模型配置时必须填写模型访问密钥')
     return
   }
   submitting.value = true
@@ -147,7 +176,7 @@ async function submitEditor() {
       ...editor,
       profileName: editor.profileName.trim(),
       modelName: editor.modelName.trim(),
-      apiHost: editor.apiHost?.trim() || undefined,
+      apiHost: editor.apiHost.trim(),
       apiKey: editor.apiKey?.trim() || undefined,
     })
     message.success('已保存')
@@ -187,6 +216,7 @@ async function handleActivate(record: AiModelProfileVO) {
           apiKey: undefined,
           temperature: record.temperature,
           maxTokens: record.maxTokens,
+          maxInputChars: record.maxInputChars,
           connectTimeoutSecs: record.connectTimeoutSecs,
           readTimeoutSecs: record.readTimeoutSecs,
           enabled: true,
@@ -217,6 +247,7 @@ async function handleDisable(record: AiModelProfileVO) {
         apiKey: undefined,
         temperature: record.temperature,
         maxTokens: record.maxTokens,
+        maxInputChars: record.maxInputChars,
         connectTimeoutSecs: record.connectTimeoutSecs,
         readTimeoutSecs: record.readTimeoutSecs,
         enabled: false,
@@ -232,14 +263,26 @@ async function handleHealthCheck(record: AiModelProfileVO) {
   try {
     const result = await aiModelProfileApi.healthCheck({ profileId: record.id })
     if (result.healthStatus === 'HEALTHY') {
-      message.success(`连通 OK：${result.healthMessage}`)
+      message.success('AI 模型连通检测通过')
     } else {
-      message.error(`连通失败：${result.healthMessage}`)
+      const healthMessage = getUserErrorMessage(
+        { message: result.healthMessage },
+        'AI 模型连通校验失败，请检查模型地址、密钥和网络配置',
+      )
+      message.error(healthMessage)
     }
     await loadList()
   } finally {
     healthLoading.value = ''
   }
+}
+
+function apiKeyDisplayText(record: AiModelProfileVO): string {
+  if (!record.apiKeyConfigured) return '未配置'
+  if (record.apiKeyMasked !== '****') {
+    throw new Error('AI 模型密钥掩码不符合前后端契约')
+  }
+  return record.apiKeyMasked
 }
 
 /* ========== 信号指标 ========== */
@@ -269,7 +312,9 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
-onMounted(loadList)
+onMounted(() => {
+  void loadList()
+})
 </script>
 
 <template>
@@ -292,7 +337,7 @@ onMounted(loadList)
     <a-alert
       type="warning"
       show-icon
-      message="同一租户全局只能启用 1 条 AI 模型配置，被 edu-quality 与 edu-mark 的所有 AI 主链共用。未启用任何配置时 AI 任务会立即进入阻断状态（设计：禁止 yml 兜底）。"
+      message="同一租户全局只能启用 1 条 AI 模型配置，质量评价与阅卷 AI 能力共用该配置。未启用任何配置时，相关 AI 任务将暂停处理。"
       class="ai-model__alert"
     />
 
@@ -324,20 +369,20 @@ onMounted(loadList)
         <a-descriptions-item label="配置名称">
           {{ activeProfile.profileName }}
         </a-descriptions-item>
-        <a-descriptions-item label="Provider">
-          {{ activeProfile.providerType }}
+        <a-descriptions-item label="模型服务商">
+          {{ providerTypeLabel(activeProfile.providerType) }}
         </a-descriptions-item>
         <a-descriptions-item label="模型">
           {{ activeProfile.modelName }}
         </a-descriptions-item>
-        <a-descriptions-item label="API Host" :span="3">
-          {{ activeProfile.apiHost || '-' }}
+        <a-descriptions-item label="模型服务地址" :span="3">
+          {{ activeProfile.apiHost }}
         </a-descriptions-item>
         <a-descriptions-item label="上次检测时间">
-          {{ activeProfile.lastHealthCheckAt || '-' }}
+          {{ activeProfile.lastHealthCheckAt || '尚未检测' }}
         </a-descriptions-item>
-        <a-descriptions-item label="最近诊断" :span="2">
-          {{ activeProfile.lastHealthMessage || '-' }}
+        <a-descriptions-item label="最近检测说明" :span="2">
+          {{ aiModelHealthMessageText(activeProfile.lastHealthMessage) }}
         </a-descriptions-item>
       </a-descriptions>
     </section>
@@ -357,21 +402,30 @@ onMounted(loadList)
         flat
         :total="list.length"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'profileName'">
             <a-space>
               <span>{{ record.profileName }}</span>
               <a-tag v-if="record.enabled" color="green"> 启用 </a-tag>
             </a-space>
           </template>
-          <template v-else-if="column.key === 'apiKeyConfigured'">
-            <a-tag :color="text ? 'blue' : 'red'">
-              {{ text ? '已配置' : '未配置' }}
-            </a-tag>
+          <template v-else-if="column.key === 'providerType'">
+            {{ providerTypeLabel(record.providerType) }}
+          </template>
+          <template v-else-if="column.key === 'apiKeyMasked'">
+            <div class="ai-model__api-key">
+              <span class="ai-model__api-key-text">
+                {{ apiKeyDisplayText(record) }}
+              </span>
+              <template v-if="record.apiKeyConfigured">
+                <a-tag color="green"> 已配置 </a-tag>
+              </template>
+              <a-tag v-else color="red"> 未配置 </a-tag>
+            </div>
           </template>
           <template v-else-if="column.key === 'healthStatus'">
-            <a-tag :color="healthColor(text)">
-              {{ healthLabel(text) }}
+            <a-tag :color="healthColor(record.healthStatus)">
+              {{ healthLabel(record.healthStatus) }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -422,7 +476,7 @@ onMounted(loadList)
         v-if="editor.enabled"
         type="info"
         show-icon
-        message="提交后本条配置将成为当前租户唯一启用模型，同租户其它配置会被后端自动置为停用。"
+        message="提交后本条配置将成为当前租户唯一启用模型，其它模型配置会自动停用。"
         class="ai-model__editor-alert"
       />
       <a-form layout="vertical" :model="editor">
@@ -431,7 +485,7 @@ onMounted(loadList)
         </a-form-item>
         <a-row :gutter="12">
           <a-col :span="12">
-            <a-form-item label="Provider 类型">
+            <a-form-item label="模型服务商">
               <a-select v-model:value="editor.providerType">
                 <a-select-option value="OPENAI"> OpenAI </a-select-option>
                 <a-select-option value="DEEPSEEK"> DeepSeek </a-select-option>
@@ -445,11 +499,13 @@ onMounted(loadList)
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="API Host">
+        <a-form-item label="模型服务地址">
           <a-input v-model:value="editor.apiHost" placeholder="https://api.openai.com/v1" />
         </a-form-item>
         <a-form-item
-          :label="editorMode === 'create' ? 'API Key（必填）' : 'API Key（留空表示保留原密钥）'"
+          :label="
+            editorMode === 'create' ? '模型访问密钥（必填）' : '模型访问密钥（留空表示保留原密钥）'
+          "
         >
           <a-input-password
             v-model:value="editor.apiKey"
@@ -469,12 +525,22 @@ onMounted(loadList)
             </a-form-item>
           </a-col>
           <a-col :span="6">
-            <a-form-item label="最大 Token">
+            <a-form-item label="最大输出量">
               <a-input-number
                 v-model:value="editor.maxTokens"
                 :min="64"
                 :max="32768"
                 :step="64"
+                class="ai-model__number-full"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="6">
+            <a-form-item label="最大输入字符" required>
+              <a-input-number
+                v-model:value="editor.maxInputChars"
+                :min="1"
+                :step="1000"
                 class="ai-model__number-full"
               />
             </a-form-item>
@@ -489,6 +555,8 @@ onMounted(loadList)
               />
             </a-form-item>
           </a-col>
+        </a-row>
+        <a-row :gutter="12">
           <a-col :span="6">
             <a-form-item label="读取超时 (s)">
               <a-input-number
@@ -584,6 +652,21 @@ onMounted(loadList)
 
   &__editor-alert {
     margin-bottom: 12px;
+  }
+
+  &__api-key {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__api-key-text {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--dp-text-primary, #0f172a);
   }
 
   &__number-full {

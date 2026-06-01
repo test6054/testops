@@ -211,7 +211,7 @@ export function getUnassignedStudents(data: UserQueryDto) {
  * GET /api/user/admin/classes/class-student-tree
  */
 export function getClassStudentTree(): Promise<ClassStudentTreeNode[]> {
-  return http.get('/api/user/admin/classes/class-student-tree')
+  return http.get<ClassStudentTreeNode[]>('/api/user/admin/classes/class-student-tree')
 }
 
 /**
@@ -222,8 +222,7 @@ export function getClassStudentTree(): Promise<ClassStudentTreeNode[]> {
  * @param practiceId 实践ID
  */
 export function getAvailableStudentTree(practiceId: string): Promise<ClassStudentTreeNode[]> {
-  return http.get('/api/user/admin/classes/available-student-tree', {
+  return http.get<ClassStudentTreeNode[]>('/api/user/admin/classes/available-student-tree', {
     params: {practiceId}
   })
 }
-

@@ -6,14 +6,10 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditIssueStatus, AuditIssueVO } from '@/apis/quality'
-import { message } from 'ant-design-vue'
+import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL, auditIssueApi } from '@/apis/quality'
 import { onMounted, ref, watch } from 'vue'
-import {
-  AUDIT_ISSUE_STATUS_COLOR,
-  AUDIT_ISSUE_STATUS_LABEL,
-  auditIssueApi,
-  isAuditIssueStatus,
-} from '@/apis/quality'
+import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
 
 interface Props {
@@ -38,7 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AuditIssueVO]
+  change: [value: string | null, option?: AuditIssueVO]
 }>()
 
 const options = ref<AuditIssueVO[]>([])
@@ -78,20 +74,18 @@ async function loadOptions() {
     options.value = requirePageList(res, '审核评估问题')
   } catch (e) {
     console.error('[AuditIssueSelector] 加载审核问题列表失败', e)
-    message.error('加载审核问题列表失败')
+    showUserError(e, '审核问题列表加载失败')
   } finally {
     loading.value = false
   }
 }
 
-function auditIssueStatusLabel(value: unknown): string {
-  if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_LABEL[value]
-  throw new Error(`审核评估问题状态不符合前后端契约：${String(value)}`)
+function auditIssueStatusLabel(value: AuditIssueStatus): string {
+  return strictEnumLabel(AUDIT_ISSUE_STATUS_LABEL, value, '审核评估问题状态')
 }
 
-function auditIssueStatusColor(value: unknown): string {
-  if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_COLOR[value]
-  throw new Error(`审核评估问题状态不符合前后端契约：${String(value)}`)
+function auditIssueStatusColor(value: AuditIssueStatus): string {
+  return strictEnumTone(AUDIT_ISSUE_STATUS_COLOR, value, '审核评估问题状态')
 }
 
 function handleChange(val: SelectValue) {
@@ -127,7 +121,7 @@ defineExpose({ reload: loadOptions })
       :value="opt.id"
       :label="`${opt.issueCode} · ${opt.issueTitle}`"
     >
-      <span class="font-mono text-xs text-gray-500 mr-1">{{ opt.issueCode }}</span>
+      <span class="text-xs text-gray-500 mr-1">{{ opt.issueCode }}</span>
       {{ opt.issueTitle }}
       <a-tag :color="auditIssueStatusColor(opt.status)" class="ml-1">
         {{ auditIssueStatusLabel(opt.status) }}
@@ -137,10 +131,6 @@ defineExpose({ reload: loadOptions })
 </template>
 
 <style scoped>
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
 .text-xs {
   font-size: 12px;
 }

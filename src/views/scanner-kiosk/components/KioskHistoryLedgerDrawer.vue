@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ExamScannerPageLedgerItemVO } from '@/apis/mark/scanner-kiosk'
 /**
  * KioskHistoryLedgerDrawer - 历史批次页级账本抽屉
  *
@@ -49,7 +50,7 @@ const headerBadgeText = computed(() => {
   if (!b) return ''
   if (b.discardedAt || b.status === 'DISCARDED') return '已废弃'
   if (b.sealedAt) return '已封存'
-  return b.statusMessage || b.status
+  return b.statusMessage
 })
 
 function modeText(): string {
@@ -62,27 +63,13 @@ function modeText(): string {
   return `${mode} · ${replaceText} · ${targetText}`
 }
 
-function pageStatusLabel(item: {
-  scanStatus: string
-  uploadStatus: string
-  serverReceiveStatus: string
-  registrationStatus: string
-}): string {
-  // 优先显示更下游的状态：注册 > 服务端接收 > 上传 > 扫描
-  if (item.registrationStatus && item.registrationStatus !== 'PENDING') {
-    return workflow.registrationStatusText(
-      item.registrationStatus as 'REGISTERED' | 'PENDING' | 'DISCARDED' | 'SUPERSEDED',
-    )
-  }
-  if (item.serverReceiveStatus) return '已接收'
-  if (item.uploadStatus) return '已上传'
-  return '已扫描'
+function pageStatusLabel(item: ExamScannerPageLedgerItemVO): string {
+  return workflow.registrationStatusText(item.registrationStatus)
 }
 
-function pageRowTone(item: {
-  attentionType?: string
-  registrationStatus: string
-}): 'success' | 'warning' | 'danger' | 'muted' {
+function pageRowTone(
+  item: ExamScannerPageLedgerItemVO,
+): 'success' | 'warning' | 'danger' | 'muted' {
   if (item.attentionType) return 'warning'
   if (item.registrationStatus === 'DISCARDED') return 'danger'
   if (item.registrationStatus === 'REGISTERED') return 'success'
@@ -105,7 +92,7 @@ function pageRowTone(item: {
         <div class="head-text">
           <strong>{{ batch.batchNo || batch.batchExternalNo }}</strong>
           <span class="head-meta">
-            <span class="mono">{{ batch.batchExternalNo }}</span>
+            <span>{{ batch.batchExternalNo }}</span>
             <span class="dot" />
             <span>{{ modeText() }}</span>
           </span>
@@ -142,15 +129,15 @@ function pageRowTone(item: {
           <dl class="kv">
             <div>
               <dt>申报页数</dt>
-              <dd class="mono">{{ batch.pageCount }}</dd>
+              <dd>{{ batch.pageCount }}</dd>
             </div>
             <div>
               <dt>已落库页</dt>
-              <dd class="mono">{{ snapshot?.registeredCount ?? '—' }}</dd>
+              <dd>{{ snapshot?.registeredCount ?? '—' }}</dd>
             </div>
             <div>
               <dt>异常项</dt>
-              <dd class="mono" :class="{ warn: (snapshot?.attentionCount ?? 0) > 0 }">
+              <dd :class="{ warn: (snapshot?.attentionCount ?? 0) > 0 }">
                 {{ snapshot?.attentionCount ?? '—' }}
               </dd>
             </div>
@@ -160,24 +147,24 @@ function pageRowTone(item: {
             </div>
             <div>
               <dt>扫描开始</dt>
-              <dd class="mono">{{ workflow.formatTime(batch.scanStartTime) }}</dd>
+              <dd>{{ workflow.formatTime(batch.scanStartTime) }}</dd>
             </div>
             <div>
               <dt>扫描结束</dt>
-              <dd class="mono">{{ workflow.formatTime(batch.scanEndTime) }}</dd>
+              <dd>{{ workflow.formatTime(batch.scanEndTime) }}</dd>
             </div>
             <div v-if="batch.sealedAt">
               <dt>封存时间</dt>
-              <dd class="mono">
+              <dd>
                 {{ workflow.formatTime(batch.sealedAt) }}
-                <template v-if="batch.sealedBy"> · #{{ batch.sealedBy }}</template>
+                <template v-if="batch.sealedBy"> · 操作人 {{ batch.sealedBy }}</template>
               </dd>
             </div>
             <div v-if="batch.discardedAt">
               <dt>废弃时间</dt>
-              <dd class="mono danger">
+              <dd class="danger">
                 {{ workflow.formatTime(batch.discardedAt) }}
-                <template v-if="batch.discardedBy"> · #{{ batch.discardedBy }}</template>
+                <template v-if="batch.discardedBy"> · 操作人 {{ batch.discardedBy }}</template>
               </dd>
             </div>
             <div v-if="batch.discardReason">
@@ -192,10 +179,7 @@ function pageRowTone(item: {
           <header class="section-head">
             <h3>页面账本（{{ ledgerItems.length }}）</h3>
           </header>
-          <p v-if="ledgerItems.length === 0" class="empty-inline">
-            该批次尚无已落库 / 已上传页（dataSource =
-            {{ snapshot?.dataSource || '—' }}）
-          </p>
+          <p v-if="ledgerItems.length === 0" class="empty-inline">该批次尚无已入库或已上传页面</p>
           <ul v-else class="page-list">
             <li
               v-for="item in ledgerItems"
@@ -203,7 +187,7 @@ function pageRowTone(item: {
               class="page-row"
               :class="`tone-${pageRowTone(item)}`"
             >
-              <span class="page-no mono">#{{ item.pageNo }}</span>
+              <span class="page-no">第 {{ item.pageNo }} 页</span>
               <div class="page-text">
                 <strong>{{ pageStatusLabel(item) }}</strong>
                 <small v-if="item.attentionType">
@@ -213,7 +197,8 @@ function pageRowTone(item: {
                 <small v-else-if="item.operatorName">
                   操作人 {{ item.operatorName }}
                   <template v-if="item.occurredAt">
-                    · {{ workflow.formatTime(item.occurredAt) }}</template>
+                    · {{ workflow.formatTime(item.occurredAt) }}</template
+                  >
                 </small>
               </div>
               <WarningFilled v-if="item.attentionType" class="page-warn" />
@@ -228,10 +213,12 @@ function pageRowTone(item: {
           </header>
           <ul class="page-list">
             <li v-for="att in attentionItems" :key="att.id" class="page-row tone-warning">
-              <span class="page-no mono">{{ att.attentionType }}</span>
+              <span class="page-no">{{ workflow.attentionTypeText(att.attentionType) }}</span>
               <div class="page-text">
                 <strong>{{ workflow.attentionTypeText(att.attentionType) }}</strong>
-                <small v-if="att.diagnostic">{{ att.diagnostic }}</small>
+                <small v-if="att.diagnostic">{{
+                  workflow.scannerDiagnosticText(att.diagnostic)
+                }}</small>
                 <small v-if="att.updateTime">
                   最后更新 {{ workflow.formatTime(att.updateTime) }}
                 </small>
@@ -283,9 +270,6 @@ function pageRowTone(item: {
   gap: var(--kiosk-space-2);
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
-}
-.mono {
-  font-family: var(--kiosk-font-mono);
 }
 .dot {
   width: 3px;
@@ -398,8 +382,7 @@ function pageRowTone(item: {
   color: var(--kiosk-ink-primary);
   word-break: break-all;
 }
-.kv dd.mono {
-  font-family: var(--kiosk-font-mono);
+.kv dd {
   font-variant-numeric: tabular-nums;
 }
 .kv dd.danger {

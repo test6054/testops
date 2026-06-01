@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { LocalScanPageStatus, ScanPageInfo } from '@/apis/mark/scanner-agent-local'
 /**
  * Stage 2 - 扫描中
  *
@@ -38,6 +39,7 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, stage } = useKioskCtx()
@@ -66,8 +68,7 @@ const imageTransform = computed(
 )
 const imageFilter = computed(() => (grayscale.value ? 'grayscale(1)' : 'none'))
 
-const isPageException = (page: { status: string, diagnostic?: unknown }) =>
-  page.status === 'FAILED' || Boolean(page.diagnostic)
+const isPageException = (page: ScanPageInfo) => page.status === 'FAILED' || Boolean(page.diagnostic)
 
 const currentIndex = computed(() => {
   if (!previewPageNo.value) return -1
@@ -143,21 +144,17 @@ watch(
 
 const stateClass = computed(() => `state-${workflow.workState.value.tone}`)
 
-function pageStatusLabel(status: string): string {
-  switch (status) {
-    case 'CREATED':
-      return '已扫'
-    case 'UPLOADING':
-      return '上传中'
-    case 'UPLOADED':
-      return '已上传'
-    case 'FAILED':
-      return '失败'
-    case 'RETRYING':
-      return '重试中'
-    default:
-      return status
-  }
+const PAGE_STATUS_LABEL: Record<LocalScanPageStatus, string> = {
+  CAPTURED: '已采集',
+  PREPROCESSED: '已预处理',
+  UPLOADING: '上传中',
+  UPLOADED: '已上传',
+  FAILED: '失败',
+  DELETED: '已删除',
+}
+
+function pageStatusLabel(status: LocalScanPageStatus): string {
+  return strictEnumLabel(PAGE_STATUS_LABEL, status, '扫描页状态')
 }
 
 // stage 内部视图键盘快捷键（与全局 useKioskShortcuts 不冲突）
@@ -166,7 +163,7 @@ function shouldIgnoreKey(event: KeyboardEvent): boolean {
   if (!target) return false
   const tag = target.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
-  return target.isContentEditable;
+  return target.isContentEditable
 }
 
 function onViewKeyDown(event: KeyboardEvent) {
@@ -294,7 +291,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
                 <CaretLeftOutlined />
               </button>
               <span class="tool-info">
-                <strong>{{ previewPageNo || '-' }}</strong>
+                <strong>{{ previewPageNo }}</strong>
                 <small>/ {{ pages.length }}</small>
               </span>
               <button
@@ -330,7 +327,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
               >
                 <MinusOutlined />
               </button>
-              <span class="tool-info" :title="`原始 100% · 当前 ${zoomPercent}`">
+              <span class="tool-info" :title="`实际尺寸 100% · 当前 ${zoomPercent}`">
                 <strong>{{ zoomPercent }}</strong>
               </span>
               <button
@@ -401,7 +398,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
             }"
           >
             <button type="button" @click="gotoPage(page.pageNo)">
-              <div class="thumb-no">#{{ page.pageNo }}</div>
+              <div class="thumb-no">第 {{ page.pageNo }} 页</div>
               <div class="thumb-status">
                 <WarningFilled v-if="isPageException(page)" class="thumb-warn-icon" />
                 <span>{{ pageStatusLabel(page.status) }}</span>
@@ -512,7 +509,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   transition: width var(--kiosk-dur-base) var(--kiosk-easing);
 }
 .progress-pct {
-  font-family: var(--kiosk-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-secondary);
@@ -536,7 +532,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   color: var(--kiosk-ink-tertiary);
 }
 .ribbon-counters strong {
-  font-family: var(--kiosk-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-bold);
@@ -684,7 +679,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   gap: 4px;
   padding: 0 var(--kiosk-space-2);
   color: var(--kiosk-ink-on-canvas);
-  font-family: var(--kiosk-font-mono);
   min-width: 56px;
   justify-content: center;
 }
@@ -789,7 +783,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 }
 
 .thumb-no {
-  font-family: var(--kiosk-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-bold);
   color: var(--kiosk-ink-primary);

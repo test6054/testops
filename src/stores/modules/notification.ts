@@ -22,8 +22,6 @@ import type {
   InboxMessageMarkRequest,
   InboxUnreadCountResponse,
 } from '@/apis/edu/message'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 import {
   getInboxMessages,
   getUnreadCount,
@@ -32,6 +30,8 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import { getValidToken } from '@/utils/auth'
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000
@@ -115,13 +115,13 @@ export const useNotificationStore = defineStore('notification', () => {
   /**
    * 标记若干消息已读 / 未读 / 归档 / 删除；后端按操作类型处理。
    */
-  async function updateStatus(payload: InboxMessageMarkRequest): Promise<void> {
-    await updateMessageStatus(payload)
+  async function updateStatus(request: InboxMessageMarkRequest): Promise<void> {
+    await updateMessageStatus(request)
     // 已读 / 归档 / 删除都会减少未读数；统一刷新
-    if (payload.operationType === MessageOperationTypeEnum.MARK_READ
-      || payload.operationType === MessageOperationTypeEnum.ARCHIVE
-      || payload.operationType === MessageOperationTypeEnum.TRASH
-      || payload.operationType === MessageOperationTypeEnum.PURGE
+    if (request.operationType === MessageOperationTypeEnum.MARK_READ
+      || request.operationType === MessageOperationTypeEnum.ARCHIVE
+      || request.operationType === MessageOperationTypeEnum.TRASH
+      || request.operationType === MessageOperationTypeEnum.PURGE
     ) {
       await loadUnreadCount()
     }

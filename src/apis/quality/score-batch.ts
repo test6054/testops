@@ -20,14 +20,14 @@ export interface ScoreBatchVO {
   id: string
   qualityCourseId: string
   /** 后端 LEFT JOIN t_quality_course.course_code */
-  qualityCourseCode?: string
+  qualityCourseCode: string
   /** 后端 LEFT JOIN t_quality_course.course_name */
-  qualityCourseName?: string
-  assessmentItemId?: string
+  qualityCourseName: string
+  assessmentItemId: string
   /** 后端 LEFT JOIN t_quality_assessment_item.item_code */
-  assessmentItemCode?: string
+  assessmentItemCode: string
   /** 后端 LEFT JOIN t_quality_assessment_item.item_name */
-  assessmentItemName?: string
+  assessmentItemName: string
   batchCode: string
   batchName: string
   /** 取值见后端 DataSourceModeEnum */
@@ -53,7 +53,7 @@ export interface ScoreImportRowDiagnostic {
   studentNumber?: string
   studentName?: string
   className?: string
-  rawScore?: number
+  score?: number
   valid?: boolean
   errorCodes: string[]
   errorMessages: string[]
@@ -71,7 +71,7 @@ export interface ScoreImportPreviewVO {
 }
 
 /** 分页查询 - 严格对齐 ScoreBatchQueryRequest */
-export interface ScoreBatchQueryPayload extends QueryDto {
+export interface ScoreBatchQueryRequest extends QueryDto {
   qualityCourseId?: string
   assessmentItemId?: string
   status?: ScoreBatchStatus
@@ -80,7 +80,7 @@ export interface ScoreBatchQueryPayload extends QueryDto {
 }
 
 /** 创建 / 更新批次请求 - 严格对齐 ScoreBatchSaveRequest */
-export interface ScoreBatchSavePayload {
+export interface ScoreBatchSaveRequest {
   id?: string
   qualityCourseId: string
   /** 后端 ScoreBatchServiceImpl.ensureRelationsExist 强校验考核环节存在 */
@@ -95,7 +95,7 @@ export interface ScoreBatchSavePayload {
 }
 
 /** 取消请求 - 前端仅用于 PENDING / FAILED → CANCELLED */
-export interface ScoreBatchStatusUpdatePayload {
+export interface ScoreBatchStatusUpdateRequest {
   id: string
   status: ScoreBatchStatus
   totalRows?: number
@@ -105,14 +105,14 @@ export interface ScoreBatchStatusUpdatePayload {
 }
 
 export const scoreBatchApi = {
-  page: (data: ScoreBatchQueryPayload) => http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data),
+  page: (data: ScoreBatchQueryRequest) => http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data),
   detail: (id: string) => http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
   preview: (id: string) => http.post<ScoreImportPreviewVO>(`${BASE}/preview`, { id }),
   /**
    * 注册成绩批次。前端流程：先调 edu-storage 上传 Excel 得到 sourceFileId，再调本接口注册。
    */
-  create: (data: ScoreBatchSavePayload) => http.post<string>(`${BASE}/create`, data),
-  update: (data: ScoreBatchSavePayload) => http.post<void>(`${BASE}/update`, data),
+  create: (data: ScoreBatchSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: ScoreBatchSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   /** 触发解析（PENDING / FAILED 状态可用） */
   enqueueParse: (id: string) => http.post<void>(`${BASE}/enqueue-parse`, { id }),
@@ -121,6 +121,6 @@ export const scoreBatchApi = {
   /** 确认：VALIDATED → CONFIRMED */
   confirm: (id: string) => http.post<void>(`${BASE}/confirm`, { id }),
   /** 取消批次：PENDING / FAILED → CANCELLED */
-  updateStatus: (data: ScoreBatchStatusUpdatePayload) =>
+  updateStatus: (data: ScoreBatchStatusUpdateRequest) =>
     http.post<void>(`${BASE}/update-status`, data),
 }

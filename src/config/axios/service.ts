@@ -4,9 +4,9 @@
  */
 
 import type { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import axios from 'axios'
 import type { ExtendedAxiosRequestConfig, InterceptorError } from './types'
 import message from 'ant-design-vue/es/message'
-import axios from 'axios'
 import { shouldShowError, shouldUseNotification } from '@/config/error-config'
 import { AUTH_STORAGE_KEYS, STORAGE_TENANT_ID } from '@/constants/storage-keys'
 import { useAuthStore } from '@/stores/modules/auth'
@@ -213,7 +213,7 @@ function processFailedQueue(success: boolean): void {
 }
 
 service.interceptors.response.use(
-  (response: AxiosResponse<ResultInfo>) => {
+  (response: AxiosResponse<ResultInfo<unknown>>) => {
     // 清理已完成请求的记录
     removePendingRequest(response.config)
 
@@ -278,13 +278,14 @@ service.interceptors.response.use(
 
       // 创建业务错误对象
       const businessError: InterceptorError = new Error(response.data.msg || '业务处理失败')
-      businessError.code = response.data.code
+      const businessCode = response.data.code
+      businessError.code = businessCode
       businessError.response = response
 
       handleAxiosError(businessError, {
-        showMessage: shouldShowError(businessError.code),
-        useNotification: shouldUseNotification(businessError.code, false)
-      });
+        showMessage: shouldShowError(businessCode),
+        useNotification: shouldUseNotification(businessCode, false),
+      })
       businessError._handledByInterceptor = true
 
       return Promise.reject(businessError)
@@ -292,7 +293,7 @@ service.interceptors.response.use(
 
     return response
   },
-  async (error: AxiosError<ResultInfo>) => {
+  async (error: AxiosError<ResultInfo<unknown>>) => {
     if (error.config) {
       removePendingRequest(error.config as InternalAxiosRequestConfig)
     }
@@ -313,7 +314,7 @@ service.interceptors.response.use(
         if (backendMsg) {
           const authError: InterceptorError = new Error(backendMsg)
           authError.code = response?.data?.code || statusCode
-          authError.response = response as AxiosResponse<ResultInfo>
+          authError.response = response as AxiosResponse<ResultInfo<unknown>>
           authError._handledByInterceptor = true
           return Promise.reject(authError)
         }

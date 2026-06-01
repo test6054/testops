@@ -5,11 +5,11 @@ import type {
   PhoneLoginRequest,
   StudentLoginRequest,
 } from '@/apis/auth'
+import * as authApi from '@/apis/auth'
 import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import * as authApi from '@/apis/auth'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
   STORAGE_REFRESH_TOKEN,
@@ -42,8 +42,7 @@ export interface StudentLoginReq {
   captchaVerification?: string // AJ-Captcha验证码令牌
 }
 
-// JWT载荷接口（单角色模式）
-interface JWTPayload {
+interface JwtClaims {
   sub: string // 用户ID
   username: string // 用户名
   role: string // 用户角色（单角色）
@@ -52,6 +51,11 @@ interface JWTPayload {
   iat: number // 签发时间
   exp: number // 过期时间
   jti: string // JWT ID
+}
+
+type RefreshTokenError = Error & {
+  response?: { status: number }
+  code?: string
 }
 
 export const useAuthStore = defineStore(
@@ -84,9 +88,9 @@ export const useAuthStore = defineStore(
     const isAuthenticated = computed(() => {
       if (!token.value) return false
       try {
-        const payload = decodeToken(token.value)
+        const tokenClaims = decodeToken(token.value)
         const now = Date.now() / 1000
-        return payload.exp > now
+        return tokenClaims.exp > now
       } catch {
         return false
       }
@@ -117,13 +121,13 @@ export const useAuthStore = defineStore(
     })
 
     // JWT相关方法
-    const decodeToken = (tokenStr?: string): JWTPayload => {
+    const decodeToken = (tokenStr?: string): JwtClaims => {
       const targetToken = tokenStr || token.value
       if (!targetToken) {
         throw new Error('令牌不存在')
       }
       try {
-        return jwtDecode<JWTPayload>(targetToken)
+        return jwtDecode<JwtClaims>(targetToken)
       } catch {
         throw new Error('令牌格式无效')
       }
@@ -131,9 +135,9 @@ export const useAuthStore = defineStore(
 
     const isTokenExpiredCheck = (tokenStr?: string): boolean => {
       try {
-        const payload = decodeToken(tokenStr)
+        const tokenClaims = decodeToken(tokenStr)
         const now = Date.now() / 1000
-        return payload.exp <= now
+        return tokenClaims.exp <= now
       } catch {
         return true
       }
@@ -175,13 +179,13 @@ export const useAuthStore = defineStore(
       }
 
       try {
-        const payload = decodeToken(newToken)
+        const tokenClaims = decodeToken(newToken)
         token.value = newToken
         setToken(newToken)
 
-        const expireTime = payload.exp * 1000
-        tokenExpiresAt.value = payload.exp
-        localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, payload.exp.toString())
+        const expireTime = tokenClaims.exp * 1000
+        tokenExpiresAt.value = tokenClaims.exp
+        localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, tokenClaims.exp.toString())
 
         scheduleTokenRefresh(expireTime)
       } catch {
@@ -210,13 +214,13 @@ export const useAuthStore = defineStore(
       const storedRefreshToken = localStorage.getItem(STORAGE_REFRESH_TOKEN)
       const storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
       const parsedExpiresAt = storedTokenExpiresAt ? Number.parseInt(storedTokenExpiresAt) : null
-      const normalizedExpiresAt
-        = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
+      const normalizedExpiresAt =
+        parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
 
-      const hasChanged
-        = token.value !== storedToken
-          || refreshToken.value !== storedRefreshToken
-          || tokenExpiresAt.value !== normalizedExpiresAt
+      const hasChanged =
+        token.value !== storedToken ||
+        refreshToken.value !== storedRefreshToken ||
+        tokenExpiresAt.value !== normalizedExpiresAt
 
       if (!hasChanged) {
         return false
@@ -278,11 +282,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const isRetryableError = (error: {
-      response?: { status: number }
-      code?: string
-      message?: string
-    }): boolean => {
+    const isRetryableError = (error: RefreshTokenError): boolean => {
       if (!error.response && error.code !== 'ECONNABORTED') return true
       if (error.code === 'ECONNABORTED' && error.message?.includes('timeout')) return true
       if (error.response !== undefined && error.response.status >= 500) return true
@@ -320,7 +320,7 @@ export const useAuthStore = defineStore(
         if (!refreshToken.value) return false
 
         const maxRetries = 3
-        let lastError: { code?: string, response?: { status: number } } | null = null
+        let lastError: RefreshTokenError | null = null
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           const latestTokenSynced = syncTokenStateFromStorage()
@@ -353,9 +353,10 @@ export const useAuthStore = defineStore(
               })
             }
             return true
-          } catch (error: unknown) {
-            const err = error as { response?: { status: number }, code?: string, message?: string }
-            lastError = err
+          } catch (error) {
+            if (!(error instanceof Error)) throw error
+            const refreshError = error as RefreshTokenError
+            lastError = refreshError
 
             const syncedFromOtherContext = syncTokenStateFromStorage()
             if (syncedFromOtherContext && token.value && !isTokenExpiredCheck(token.value)) {
@@ -366,7 +367,7 @@ export const useAuthStore = defineStore(
               continue
             }
 
-            const shouldRetry = attempt < maxRetries && isRetryableError(err)
+            const shouldRetry = attempt < maxRetries && isRetryableError(refreshError)
             if (shouldRetry) {
               await new Promise((resolve) => setTimeout(resolve, attempt * 1000))
             } else {
@@ -377,10 +378,10 @@ export const useAuthStore = defineStore(
 
         // 网络层错误 / 5xx：不强制登出，让上层下次再试
         // axios 的网络错误 code 是 'ERR_NETWORK' / 'ECONNABORTED'，而非 'NETWORK_ERROR'
-        const isNetworkLevel
-          = lastError?.code === 'ERR_NETWORK'
-            || lastError?.code === 'ECONNABORTED'
-            || (lastError?.response !== undefined && lastError.response.status >= 500)
+        const isNetworkLevel =
+          lastError?.code === 'ERR_NETWORK' ||
+          lastError?.code === 'ECONNABORTED' ||
+          (lastError?.response !== undefined && lastError.response.status >= 500)
         if (isNetworkLevel) {
           return false
         }
@@ -397,10 +398,10 @@ export const useAuthStore = defineStore(
     const checkAndRefreshToken = async (): Promise<boolean> => {
       if (!token.value) return false
       try {
-        const payload = decodeToken(token.value)
+        const tokenClaims = decodeToken(token.value)
         const now = Date.now() / 1000
-        if (payload.exp <= now) return await refreshTokenAutomatically()
-        const timeUntilExpiry = payload.exp - now
+        if (tokenClaims.exp <= now) return await refreshTokenAutomatically()
+        const timeUntilExpiry = tokenClaims.exp - now
         if (timeUntilExpiry <= 300 && !refreshingToken.value) {
           return await refreshTokenAutomatically()
         }
@@ -485,7 +486,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const phoneLoginMethod = async (req: { phone: string, captcha: string }) => {
+    const phoneLoginMethod = async (req: { phone: string; captcha: string }) => {
       try {
         isLoading.value = true
         const phoneLoginReq: PhoneLoginRequest = {
@@ -520,7 +521,7 @@ export const useAuthStore = defineStore(
      * 邮箱验证码登录
      * 登录后需调用方通过 userStore.getInfo() 获取完整用户信息
      */
-    const emailLogin = async (req: { email: string, captcha: string }) => {
+    const emailLogin = async (req: { email: string; captcha: string }) => {
       try {
         isLoading.value = true
         const loginReq: LoginRequest = {
@@ -705,10 +706,10 @@ export const useAuthStore = defineStore(
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) return
       if (
-        event.key !== null
-        && event.key !== STORAGE_TOKEN
-        && event.key !== STORAGE_REFRESH_TOKEN
-        && event.key !== STORAGE_TOKEN_EXPIRES_AT
+        event.key !== null &&
+        event.key !== STORAGE_TOKEN &&
+        event.key !== STORAGE_REFRESH_TOKEN &&
+        event.key !== STORAGE_TOKEN_EXPIRES_AT
       ) {
         return
       }
@@ -744,8 +745,8 @@ export const useAuthStore = defineStore(
 
       if (token.value && !isTokenExpiredCheck(token.value)) {
         try {
-          const payload = decodeToken(token.value)
-          scheduleTokenRefresh(payload.exp * 1000)
+          const tokenClaims = decodeToken(token.value)
+          scheduleTokenRefresh(tokenClaims.exp * 1000)
         } catch {
           resetToken()
           return

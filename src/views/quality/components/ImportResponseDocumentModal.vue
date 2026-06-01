@@ -47,7 +47,7 @@
         <a-spin size="large" />
         <div class="ird__processing-text">
           <h4>AI 正在解析文档…</h4>
-          <p class="ird__processing-hint">任务 ID：{{ currentTaskId }}</p>
+          <p class="ird__processing-hint">解析任务已提交，系统正在处理。</p>
           <p class="ird__processing-hint">
             状态：<a-tag :color="statusColor">{{ statusLabel }}</a-tag>
             <span v-if="pollCount > 0" class="ird__poll-count">（已轮询 {{ pollCount }} 次）</span>
@@ -77,11 +77,7 @@
 
     <!-- ④ 失败 -->
     <template v-if="phase === 'failed'">
-      <a-result
-        status="error"
-        title="AI 文档解析失败"
-        :sub-title="failureReason"
-      />
+      <a-result status="error" title="AI 文档解析失败" :sub-title="failureReason" />
       <div class="ird__action-row">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 重新上传 </UiButton>
         <UiButton variant="primary" size="sm" @click="handleClose"> 关闭 </UiButton>
@@ -92,17 +88,18 @@
 
 <script setup lang="ts">
 import type { AiTaskStatus } from '@/apis/quality'
-import { InboxOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
   aiTaskApi,
   indirectResponseApi,
-  isAiTaskStatus,
 } from '@/apis/quality'
+import { InboxOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { UiButton } from '@/components/ui-guide/ui'
+import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 /**
  * 间接评价答卷 AI 文档解析面板：
@@ -146,14 +143,19 @@ const isPolling = computed(() => phase.value === 'processing')
 
 const statusLabel = computed(() => {
   const s = currentTaskStatus.value
-  if (isAiTaskStatus(s)) return AI_TASK_STATUS_LABEL[s]
-  throw new Error(`AI 任务状态存在未定义枚举值：${s}`)
+  return strictEnumLabel(AI_TASK_STATUS_LABEL, s, 'AI 任务状态')
 })
 const statusColor = computed(() => {
   const s = currentTaskStatus.value
-  if (isAiTaskStatus(s)) return AI_TASK_STATUS_COLOR[s]
-  throw new Error(`AI 任务状态存在未定义枚举值：${s}`)
+  return strictEnumTone(AI_TASK_STATUS_COLOR, s, 'AI 任务状态')
 })
+
+function aiDocumentParseFailureText(messageText?: string | null): string {
+  return getUserProcessFailureMessage(
+    messageText,
+    'AI 文档解析未完成，请检查文件内容是否清晰完整后重新上传',
+  )
+}
 
 watch(
   () => props.open,
@@ -225,7 +227,7 @@ async function pollTaskStatus() {
       message.success('AI 文档解析完成，答卷草稿已写入')
     } else if (task.status === 'FAILED') {
       stopPolling()
-      failureReason.value = task.failureReason!
+      failureReason.value = aiDocumentParseFailureText(task.failureReason)
       phase.value = 'failed'
     } else if (task.status === 'CANCELLED') {
       stopPolling()

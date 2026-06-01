@@ -62,7 +62,7 @@
           v-if="tasksLoadError"
           :error="tasksLoadError"
           title="驳回任务加载失败"
-          :helper="`考试 ID：${selectedExamId}`"
+          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
           compact
           @retry="loadTasks"
         />
@@ -81,8 +81,16 @@
           class="arbitration-table"
         >
           <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'anonymousNo'">
-              <a-typography-text strong :content="tasks[index].anonymousNo" />
+            <template v-if="column.key === 'paperDisplay'">
+              <div class="arbitration-table__paper-cell">
+                <a-typography-text strong :content="tasks[index].paperDisplay.primaryText" />
+                <span
+                  v-if="tasks[index].paperDisplay.secondaryText"
+                  class="arbitration-table__hint"
+                >
+                  {{ tasks[index].paperDisplay.secondaryText }}
+                </span>
+              </div>
             </template>
             <template v-else-if="column.key === 'questionNo'">
               <UiTag tone="blue" size="sm">{{ tasks[index].questionNo }}</UiTag>
@@ -90,14 +98,14 @@
             <template v-else-if="column.key === 'fullScore'">
               {{ tasks[index].fullScore }}
             </template>
-            <template v-else-if="column.key === 'suggestedScore'">
-              <template v-if="tasks[index].suggestedScore != null">
-                <strong>{{ tasks[index].suggestedScore }}</strong>
+            <template v-else-if="column.key === 'aiScore'">
+              <template v-if="tasks[index].aiScore != null">
+                <strong>{{ tasks[index].aiScore }}</strong>
                 <UiTag
                   v-if="getSuggestedRatio(tasks[index]) !== null"
                   :tone="getSuggestedRatioTone(tasks[index])"
                   size="sm"
-                  class="suggested-ratio-tag"
+                  class="ai-score-ratio-tag"
                 >
                   {{ getSuggestedRatio(tasks[index]) }}%
                 </UiTag>
@@ -140,7 +148,6 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -158,6 +165,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeacherReviewArbitration' })
@@ -169,6 +177,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -186,13 +195,13 @@ const markTaskStore = useMarkTaskStore()
 // 避免组件直接修改 storeToRefs 解开后的 ref。
 const { reviewTasks: tasks, reviewTasksLoading: loading } = storeToRefs(markTaskStore)
 // D-9 错误态：驳回任务加载失败时 UiErrorRetryPanel 重试 + 上报
-const tasksLoadError = ref<unknown>(null)
+const tasksLoadError = ref<Error | null>(null)
 
 const columns: ColumnType<ReviewTaskItemVO>[] = [
-  { title: '匿名号', key: 'anonymousNo', width: 140 },
+  { title: '答卷', key: 'paperDisplay', width: 180 },
   { title: '题号', key: 'questionNo', width: 100 },
   { title: '满分', key: 'fullScore', width: 80 },
-  { title: 'AI 建议分', key: 'suggestedScore', width: 140 },
+  { title: 'AI 评分', key: 'aiScore', width: 140 },
   { title: '指派教师', key: 'assignedTeacherUserId', width: 160 },
   { title: '更新时间', key: 'updateTime', width: 170 },
   { title: '操作', key: 'actions', width: 220, fixed: 'right' },
@@ -242,15 +251,15 @@ const kpiItems = computed(() => {
   ]
 })
 
-/** 建议分占满分百分比（保留 0 位整数）。当满分不存在或为 0 时返回 null。 */
+/** AI 评分占满分百分比（保留 0 位整数）。当满分不存在或为 0 时返回 null。 */
 function getSuggestedRatio(record: ReviewTaskItemVO): number | null {
   const full = record.fullScore
-  const sug = record.suggestedScore
+  const sug = record.aiScore
   if (sug == null || full <= 0) return null
   return Math.round((sug / full) * 100)
 }
 
-/** 占比着色：< 60% 紫色（建议偏低，需仲裁人复核）；≥ 80% 绿色；其余蓝色 */
+/** 占比着色：< 60% 紫色（AI 评分偏低，需仲裁人复核）；≥ 80% 绿色；其余蓝色 */
 function getSuggestedRatioTone(record: ReviewTaskItemVO): BadgeTone {
   const ratio = getSuggestedRatio(record)
   if (ratio == null) return 'gray'
@@ -270,9 +279,8 @@ async function loadTasks(): Promise<void> {
       status: 'REJECTED',
     })
   } catch (error) {
-    tasksLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '驳回任务加载失败'
-    message.error(errMsg)
+    tasksLoadError.value = toUserError(error, '复核仲裁任务加载失败')
+    showUserError(error, '驳回任务加载失败')
   }
 }
 
@@ -354,7 +362,7 @@ onMounted(async () => {
   color: var(--dp-text-muted, #64748b);
 }
 
-.suggested-ratio-tag {
+.ai-score-ratio-tag {
   margin-left: 6px;
 }
 

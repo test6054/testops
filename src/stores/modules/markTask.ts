@@ -1,4 +1,5 @@
-import type {ReviewTaskItemVO, ReviewTaskQueryPayload} from '@/apis/mark/exam'
+import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam'
+import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 /**
  * 阅卷任务 Store
  *
@@ -18,16 +19,19 @@ import type {ReviewTaskItemVO, ReviewTaskQueryPayload} from '@/apis/mark/exam'
  * 不持久化：任务状态对实时性敏感，每次进入页面需重新拉取。
  */
 import type {
-  MarkingTaskClaimPayload,
-  MarkingTaskQueryPayload,
+  MarkingTaskClaimRequest,
+  MarkingTaskQueryRequest,
   MarkingTaskVO,
-  TeacherClaimContextQueryPayload,
+  TeacherClaimContextQueryRequest,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import {defineStore} from 'pinia'
-import {computed, ref} from 'vue'
-import {claimReviewTask, listReviewTasks} from '@/apis/mark/exam'
-import {claimMarkingTasks, getTeacherClaimContext, listMarkingTasks,} from '@/apis/mark/marking-organization'
+import {
+  claimMarkingTasks,
+  getTeacherClaimContext,
+  listMarkingTasks,
+} from '@/apis/mark/marking-organization'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
@@ -45,7 +49,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
    * pagination 暴露给消费侧用于检查截断或显示分页 UI。
    */
   const REVIEW_TASKS_DEFAULT_PAGE_SIZE = 200
-  const reviewTasksPagination = ref<{ pageNum: number, pageSize: number; total: number }>({
+  const reviewTasksPagination = ref<{ pageNum: number; pageSize: number; total: number }>({
     pageNum: 1,
     pageSize: 0,
     total: 0,
@@ -71,19 +75,19 @@ export const useMarkTaskStore = defineStore('markTask', () => {
 
   /* ---------- Actions ---------- */
 
-  async function loadTasks(payload: MarkingTaskQueryPayload): Promise<MarkingTaskVO[]> {
+  async function loadTasks(request: MarkingTaskQueryRequest): Promise<MarkingTaskVO[]> {
     tasksLoading.value = true
     try {
-      tasks.value = await listMarkingTasks(payload)
-      tasksLoadedExamId.value = payload.examId
+      tasks.value = await listMarkingTasks(request)
+      tasksLoadedExamId.value = request.examId
       return tasks.value
     } finally {
       tasksLoading.value = false
     }
   }
 
-  async function claimTasks(payload: MarkingTaskClaimPayload): Promise<MarkingTaskVO[]> {
-    const claimed = await claimMarkingTasks(payload)
+  async function claimTasks(request: MarkingTaskClaimRequest): Promise<MarkingTaskVO[]> {
+    const claimed = await claimMarkingTasks(request)
     if (claimed.length > 0) {
       tasks.value = [...claimed, ...tasks.value]
     }
@@ -91,13 +95,13 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   }
 
   async function loadClaimContext(
-    payload: TeacherClaimContextQueryPayload,
+    request: TeacherClaimContextQueryRequest,
   ): Promise<TeacherClaimContextVO> {
     claimContextLoading.value = true
     try {
-      const result = await getTeacherClaimContext(payload)
+      const result = await getTeacherClaimContext(request)
       const next = new Map(claimContextByExam.value)
-      next.set(payload.examId, result)
+      next.set(request.examId, result)
       claimContextByExam.value = next
       return result
     } finally {
@@ -109,31 +113,29 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     return claimContextByExam.value.get(examId) ?? null
   }
 
-  async function loadReviewTasks(payload: ReviewTaskQueryPayload): Promise<ReviewTaskItemVO[]> {
+  async function loadReviewTasks(request: ReviewTaskQueryRequest): Promise<ReviewTaskItemVO[]> {
     reviewTasksLoading.value = true
     try {
       // 后端 QueryDto pageNum/pageSize @NotNull，调用方未传时由 store 兜底，避免 400。
       const result = await listReviewTasks({
-        ...payload,
-        pageNum: payload.pageNum ?? 1,
-        pageSize: payload.pageSize ?? REVIEW_TASKS_DEFAULT_PAGE_SIZE,
+        ...request,
+        pageNum: request.pageNum ?? 1,
+        pageSize: request.pageSize ?? REVIEW_TASKS_DEFAULT_PAGE_SIZE,
       })
+      const total = Number(result.total)
+      if (total > result.list.length) {
+        reviewTasks.value = []
+        reviewTasksPagination.value = { pageNum: 1, pageSize: 0, total: 0 }
+        reviewLoadedExamId.value = ''
+        throw new Error(`复核任务列表被分页截断：共 ${total} 条，仅返回 ${result.list.length} 条`)
+      }
       reviewTasks.value = result.list
       reviewTasksPagination.value = {
         pageNum: result.pageNum,
         pageSize: result.pageSize,
-        total: result.total,
+        total,
       }
-      reviewLoadedExamId.value = payload.examId
-      // 截断告警：当前实现仅取首页，单页 pageSize 默认 200 已足够大多数业务场景。
-      // 若 total > list.length，提示页面接入显式分页或加大 pageSize。
-      if (result.total > result.list.length) {
-        console.warn('[markTask] reviewTasks 被分页截断', {
-          total: result.total,
-          returned: result.list.length,
-          pageSize: result.pageSize,
-        })
-      }
+      reviewLoadedExamId.value = request.examId
       return reviewTasks.value
     } finally {
       reviewTasksLoading.value = false
@@ -163,7 +165,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
    * 仅清空复核任务列表（不影响 tasks / claimContextByExam）。
    *
    * 用于 review-assignment / review-arbitration 等页面在切换 examId
-   * 或考试选择器清空时，通过 action 替代直接 `tasks.value = []`，
+   * 或考试选择器清空时，通过 action 替代组件侧直接改写 ref，
    * 维持 Pinia 单向数据流。
    */
   function clearReviewTasks(): void {

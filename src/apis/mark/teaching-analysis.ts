@@ -1,3 +1,4 @@
+import type { QuestionTypeCode } from './grading-experience'
 import type { MasteryLevelCode } from './student-exam'
 /**
  * AI 教学分析 API - 对接 edu-mark 模块 TeachingAnalysisController
@@ -15,14 +16,17 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 export type TeachingAnalysisTypeCode = 'TEACHING_IMPROVEMENT' | 'CLASS_WEAKNESS' | 'STUDENT_LEARNING_PROFILE'
 
 /** 分析范围类型 */
-export type AnalysisScopeTypeCode = 'EXAM' | 'CLASS' | 'STUDENT' | 'COURSE' | 'SCHOOL'
+export type AnalysisScopeTypeCode = 'EXAM' | 'CLASS' | 'COURSE' | 'QUESTION' | 'QUESTION_TYPE' | 'STUDENT'
 
 /** AI 分析状态 */
 export type AiAnalysisStatusCode = 'PENDING' | 'SUCCESS' | 'FAILED' | 'BLOCKED'
 
+/** 教学改进严重程度 */
+export type TeachingImprovementSeverityCode = 'HIGH' | 'MEDIUM' | 'LOW'
+
 /** 教学分析类型文案映射 */
 export const TEACHING_ANALYSIS_TYPE_LABEL: Record<TeachingAnalysisTypeCode, string> = {
-  TEACHING_IMPROVEMENT: '教学改进建议',
+  TEACHING_IMPROVEMENT: '教学改进方案',
   CLASS_WEAKNESS: '班级薄弱题型',
   STUDENT_LEARNING_PROFILE: '学生个体学情',
 }
@@ -51,38 +55,38 @@ export const AI_ANALYSIS_STATUS_COLOR: Record<AiAnalysisStatusCode, BadgeTone> =
 }
 
 /** AI 分析状态中文文案，未知状态直接暴露合同错误 */
-export function aiAnalysisStatusLabel(status?: AiAnalysisStatusCode): string {
+export function aiAnalysisStatusLabel(status: AiAnalysisStatusCode): string {
   return strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, status, 'AI 分析状态')
 }
 
 /** AI 分析状态徽标颜色，未知状态直接暴露合同错误 */
-export function aiAnalysisStatusColor(status?: AiAnalysisStatusCode): BadgeTone {
+export function aiAnalysisStatusColor(status: AiAnalysisStatusCode): BadgeTone {
   return strictEnumTone(AI_ANALYSIS_STATUS_COLOR, status, 'AI 分析状态')
 }
 
-/** 教学改进建议条目 */
+/** 教学改进内容条目 */
 export interface TeachingImprovementItemVO {
-  title?: string
-  problem?: string
+  questionType?: QuestionTypeCode
+  problemDescription?: string
+  severity?: TeachingImprovementSeverityCode
   suggestion?: string
-  action?: string
-  expectedOutcome?: string
-  priority?: string
+  evidenceSummary?: string
 }
 
 /** 班级薄弱题型条目 */
 export interface ClassWeaknessItemVO {
-  questionType?: string
-  summary?: string
-  scoreRate?: string
-  lostQuestionNos?: Array<string | number>
+  questionType?: QuestionTypeCode
+  rank?: number
+  avgScoreRate?: number
+  errorRate?: number
+  affectedStudentCount?: number
   causeAnalysis?: string
   suggestion?: string
 }
 
 /** 学生学情诊断条目 */
 export interface StudentLearningDiagnosisItemVO {
-  questionType: string
+  questionType: QuestionTypeCode
   masteryLevel: MasteryLevelCode
   scoreRate: string
   lostQuestionNos?: Array<string | number>
@@ -93,27 +97,23 @@ export interface StudentLearningDiagnosisItemVO {
 /** AI 教学分析记录 - 对应 ExamTeachingAnalysisRecord */
 export interface ExamTeachingAnalysisRecordVO {
   id: string
-  tenantId?: string
   examId: string
   analysisType?: TeachingAnalysisTypeCode
   scopeType?: AnalysisScopeTypeCode
   scopeId?: string
   aiTraceId?: string
-  aiModelProfileId?: string
-  evidenceSnapshot?: string
   overallSummary?: string
-  improvementItems?: Array<TeachingImprovementItemVO | ClassWeaknessItemVO>
+  improvementItems?: TeachingImprovementItemVO[]
+  weaknessItems?: ClassWeaknessItemVO[]
   diagnosisItems?: StudentLearningDiagnosisItemVO[]
-  suggestions?: string[]
-  analysisStatus?: AiAnalysisStatusCode
+  analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
-  latencyMs?: string
+  latencyMs?: number
   createTime?: string
-  updateTime?: string
 }
 
 /**
- * 生成教学改进建议
+ * 生成教学改进方案
  * POST /api/exam/teaching-analysis/improvement/generate?examId=
  */
 export function generateTeachingImprovement(examId: string): Promise<ExamTeachingAnalysisRecordVO> {
@@ -123,7 +123,7 @@ export function generateTeachingImprovement(examId: string): Promise<ExamTeachin
 }
 
 /**
- * 查询最新教学改进建议
+ * 查询最新教学改进方案
  * GET /api/exam/teaching-analysis/improvement/latest
  */
 export function getLatestTeachingImprovement(

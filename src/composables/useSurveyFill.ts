@@ -1,4 +1,5 @@
 import type { PublicSurveyItemVO, PublicSurveyVO } from '@/apis/public-survey'
+import { publicSurveyApi } from '@/apis/public-survey'
 import { message } from 'ant-design-vue'
 /**
  * 公开问卷填写共享逻辑。
@@ -6,7 +7,7 @@ import { message } from 'ant-design-vue'
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { publicSurveyApi } from '@/apis/public-survey'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 export function useSurveyFill() {
   const route = useRoute()
@@ -123,10 +124,10 @@ export function useSurveyFill() {
       })
       .filter(
         (answer) =>
-          answer.scaleValue != null
-          || !!answer.singleChoiceValue
-          || !!answer.multipleChoiceValues?.length
-          || !!answer.openText?.trim(),
+          answer.scaleValue != null ||
+          !!answer.singleChoiceValue ||
+          !!answer.multipleChoiceValues?.length ||
+          !!answer.openText?.trim(),
       )
   }
 
@@ -134,9 +135,9 @@ export function useSurveyFill() {
     loading.value = true
     try {
       survey.value = await publicSurveyApi.getSurvey(token)
-    } catch (err: unknown) {
-      const e = err as { message?: string }
-      errorMessage.value = e.message || '问卷加载失败'
+    } catch (err) {
+      if (!(err instanceof Error)) throw err
+      errorMessage.value = getUserErrorMessage(err, '问卷加载失败，请稍后重试')
     } finally {
       loading.value = false
     }
@@ -171,9 +172,9 @@ export function useSurveyFill() {
       thankYouMessage.value = result.thankYouMessage || '感谢您的参与！'
       submitted.value = true
       return true
-    } catch (err: unknown) {
-      const e = err as { message?: string }
-      message.error(e.message || '提交失败，请重试')
+    } catch (err) {
+      if (!(err instanceof Error)) throw err
+      showUserError(err, '提交失败，请稍后重试')
       return false
     } finally {
       submitting.value = false

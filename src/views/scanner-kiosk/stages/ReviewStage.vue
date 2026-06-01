@@ -42,8 +42,11 @@ const failedPages = computed<ReviewItem[]>(() =>
       pageNo: page.pageNo,
       type: 'page-failed',
       title: `第 ${page.pageNo} 页`,
-      description: page.status === 'FAILED' ? '上传失败' : '页诊断异常',
-      detail: typeof page.diagnostic === 'string' ? page.diagnostic : undefined,
+      description: page.status === 'FAILED' ? '上传失败' : '页处理异常',
+      detail:
+        typeof page.diagnostic === 'string'
+          ? workflow.scannerDiagnosticText(page.diagnostic)
+          : undefined,
       status: page.status,
       source: 'job',
     }),
@@ -136,7 +139,7 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
           :key="item.key"
           class="issue-item"
           :class="{
-            'active': selectedItem?.key === item.key,
+            active: selectedItem?.key === item.key,
             'item-failed': item.type === 'page-failed',
             'item-attention': item.type === 'attention',
           }"
@@ -185,7 +188,7 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
 
         <!-- 选中项浮动信息条 -->
         <div v-if="selectedItem" class="preview-banner">
-          <span class="banner-no">#{{ selectedItem.pageNo }}</span>
+          <span class="banner-no">第 {{ selectedItem.pageNo }} 页</span>
           <span class="banner-title">{{ selectedItem.title }}</span>
           <span class="banner-desc">{{ selectedItem.description }}</span>
         </div>
@@ -211,9 +214,7 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
           class="op-btn"
           :disabled="!workflow.canRetryCommit.value"
           :title="
-            workflow.canRetryCommit.value
-              ? '所有页已上传，重新触发批次提交'
-              : '不满足重试 commit 条件'
+            workflow.canRetryCommit.value ? '所有页已上传，重新触发批次提交' : '不满足重试提交条件'
           "
           @click="workflow.retryCurrentCommit"
         >
@@ -224,9 +225,9 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
           type="button"
           class="op-btn op-btn--danger"
           :disabled="
-            !selectedItem
-              || selectedItem.source !== 'ledger'
-              || !workflow.canDiscardLedgerPage.value
+            !selectedItem ||
+            selectedItem.source !== 'ledger' ||
+            !workflow.canDiscardLedgerPage.value
           "
           :title="
             selectedItem
@@ -257,7 +258,7 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
         <dl class="summary-kv">
           <div>
             <dt>状态</dt>
-            <dd>{{ job.status }}</dd>
+            <dd>{{ workflow.localScanJobStatusText(job.status) }}</dd>
           </div>
           <div>
             <dt>扫描模式</dt>
@@ -273,7 +274,7 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
           </div>
           <div v-if="batch?.batchExternalNo">
             <dt>批次外部号</dt>
-            <dd class="mono">{{ batch.batchExternalNo }}</dd>
+            <dd>{{ batch.batchExternalNo }}</dd>
           </div>
         </dl>
         <div v-if="workflow.pageLedgerError.value" class="ledger-error">
@@ -517,7 +518,6 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
   backdrop-filter: blur(8px);
 }
 .banner-no {
-  font-family: var(--kiosk-font-mono);
   font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-bold);
   color: var(--kiosk-warning);
@@ -626,17 +626,12 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
 }
 .summary-kv dd {
   margin: 0;
-  font-family: var(--kiosk-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-label);
   color: var(--kiosk-ink-primary);
   text-align: right;
   word-break: break-all;
 }
-.summary-kv .mono {
-  font-family: var(--kiosk-font-mono);
-}
-
 .ledger-error {
   margin-top: var(--kiosk-space-2);
   padding: var(--kiosk-space-2) var(--kiosk-space-3);

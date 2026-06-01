@@ -63,7 +63,6 @@ withDefaults(
     events?: AuditTimelineEvent[]
     loading?: boolean
     emptyText?: string
-    showDiff?: boolean
   }>(),
   {
     title: '操作审计记录',
@@ -71,7 +70,6 @@ withDefaults(
     events: () => [],
     loading: false,
     emptyText: '暂无审计记录',
-    showDiff: false,
   },
 )
 
@@ -201,7 +199,6 @@ function handleClose() {
 }
 
 .audit-timeline__target-id {
-  font-family: var(--dp-font-mono, 'SF Mono', monospace);
   font-size: 11px;
 }
 
@@ -213,53 +210,5 @@ function handleClose() {
   background: var(--dp-gray-50, #f9fafb);
   border-radius: var(--dp-radius-control-inner, 4px);
   line-height: 1.5;
-}
-
-.audit-timeline__diff {
-  margin-top: 8px;
-}
-
-.audit-timeline__diff-details {
-  border: 1px solid var(--dp-border-light, #f1f5f9);
-  border-radius: var(--dp-radius-control-inner, 4px);
-}
-
-.audit-timeline__diff-summary {
-  padding: 6px 10px;
-  font-size: 12px;
-  color: var(--ant-color-primary, #2563eb);
-  cursor: pointer;
-  user-select: none;
-}
-
-.audit-timeline__diff-summary:hover {
-  color: var(--ant-color-primary-hover, #1d4ed8);
-}
-
-.audit-timeline__diff-block {
-  padding: 8px 10px;
-  border-top: 1px solid var(--dp-border-light, #f1f5f9);
-}
-
-.audit-timeline__diff-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--dp-text-muted, #64748b);
-  margin-bottom: 4px;
-}
-
-.audit-timeline__diff-pre {
-  margin: 0;
-  padding: 6px 8px;
-  font-family: var(--dp-font-mono, 'SF Mono', monospace);
-  font-size: 11px;
-  color: var(--dp-text-secondary, #475569);
-  background: var(--dp-gray-50, #f9fafb);
-  border-radius: 3px;
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 200px;
 }
 </style>

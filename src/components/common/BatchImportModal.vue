@@ -168,7 +168,11 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import { computed, ref, watch } from 'vue'
-import { ErrorHandler } from '@/utils/error-handler'
+import {
+  getUserProcessFailureMessage,
+  isDeveloperDiagnosticMessage,
+  showUserError,
+} from '@/utils/error-handler'
 
 type ResultStatus = 'success' | 'warning' | 'error'
 
@@ -248,7 +252,7 @@ const errorRows = computed<ErrorRow[]>(() => {
       key: `${index}-${messageText}`,
       index: index + 1,
       rowText: parsed.rowText,
-      message: parsed.message,
+      message: sanitizeImportFailureMessage(parsed.message),
     }
   })
 })
@@ -268,7 +272,7 @@ const errorColumns: TableColumnsType<ErrorRow> = [
     width: 100,
   },
   {
-    title: '异常内容',
+    title: '导入处理说明',
     dataIndex: 'message',
     key: 'message',
   },
@@ -280,7 +284,7 @@ const errorTablePagination = computed(() => {
     pageSize: 6,
     size: 'small' as const,
     showSizeChanger: false,
-    showTotal: (total: number) => `共 ${total} 条异常`,
+    showTotal: (total: number) => `共 ${total} 条失败明细`,
   }
 })
 
@@ -298,7 +302,7 @@ const resultTitle = computed(() => {
 const resultSubtitle = computed(() => {
   if (!importResult.value) return '导入失败'
   if (importResult.value.failCount > 0 && importResult.value.successCount === 0) {
-    return `发现 ${importResult.value.failCount} 条异常，本次未导入数据`
+    return `发现 ${importResult.value.failCount} 条失败明细，本次未导入数据`
   }
   if (importResult.value.successCount > 0 && importResult.value.failCount > 0) {
     return `成功 ${importResult.value.successCount} 条，失败 ${importResult.value.failCount} 条；请检查失败明细`
@@ -329,9 +333,14 @@ const parseErrorMessage = (rawMessage: string) => {
   }
 }
 
+const sanitizeImportFailureMessage = (messageText: string): string => {
+  return getUserProcessFailureMessage(messageText, '该行数据无法导入，请检查必填项和字段格式')
+}
+
 const splitBackendErrorMessages = (messageText: string): string[] => {
   const text = String(messageText || '').trim()
   if (!text) return []
+  if (isDeveloperDiagnosticMessage(text)) return ['导入失败，请检查文件格式和数据']
 
   const withoutSummary = text.replace(/^导入失败，共\s*\d+\s*条错误[：:]\s*/u, '')
   const normalized = withoutSummary.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
@@ -363,11 +372,15 @@ const extractImportFailureMessages = (error: unknown): string[] => {
       }
     }
     const responseData = obj.response?.data
-    const payload = responseData?.data
-    if (payload != null && typeof payload === 'object') {
-      const maybeResult = payload as Partial<ImportResult>
+    const resultData = responseData?.data
+    if (resultData != null && typeof resultData === 'object') {
+      const maybeResult = resultData as Partial<ImportResult>
       if (Array.isArray(maybeResult.errorMessages) && maybeResult.errorMessages.length > 0) {
-        return maybeResult.errorMessages
+        return maybeResult.errorMessages.map((item) => {
+          const parsed = parseErrorMessage(item)
+          if (parsed.rowText === '全局') return sanitizeImportFailureMessage(parsed.message)
+          return `${parsed.rowText.replace(/\s+/g, '')}：${sanitizeImportFailureMessage(parsed.message)}`
+        })
       }
     }
 
@@ -402,24 +415,29 @@ const handleDownloadTemplate = async () => {
 }
 
 const beforeUpload = (file: File) => {
-  const isExcel
-    = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      || file.type === 'application/vnd.ms-excel'
-      || file.name.endsWith('.xlsx')
-      || file.name.endsWith('.xls')
+  const isExcel =
+    file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    file.type === 'application/vnd.ms-excel' ||
+    file.name.endsWith('.xlsx') ||
+    file.name.endsWith('.xls')
 
   if (!isExcel) {
-    ErrorHandler.handle(new Error('只能上传 Excel 文件（.xlsx 或 .xls 格式）'))
+    showUserError(new Error('只能上传 Excel 文件（.xlsx 或 .xls 格式）'))
+    originalFile.value = null
+    fileList.value = []
     return false
   }
 
   const isLt30M = file.size / 1024 / 1024 < 30
   if (!isLt30M) {
-    ErrorHandler.handle(new Error('文件大小不能超过 30MB'))
+    showUserError(new Error('文件大小不能超过 30MB'))
+    originalFile.value = null
+    fileList.value = []
     return false
   }
 
-  // 返回 false 阻止自动上传，文件会通过 handleFileChange 处理
+  originalFile.value = file
+  // 返回 false 阻止自动上传，文件会通过 handleFileChange 维护展示状态
   return false
 }
 
@@ -438,9 +456,6 @@ const originalFile = ref<File | null>(null)
 const handleFileChange = (info: UploadChangeParam) => {
   // 文件选择变化处理
   if (info.file) {
-    // 存储原始文件 - Ant Design Vue 的 file 对象中包含 originFileObj
-    originalFile.value = info.file.originFileObj ?? (info.file as unknown as File)
-
     // 保存完整的 FileItem 对象
     fileList.value = [info.file]
 
@@ -458,12 +473,12 @@ const handleFileRemove = () => {
 
 const handleConfirm = async () => {
   if (fileList.value.length === 0) {
-    ErrorHandler.handle(new Error('请选择要导入的文件'))
+    showUserError(new Error('请选择要导入的文件'))
     return
   }
 
   if (!originalFile.value) {
-    ErrorHandler.handle(new Error('未找到原始文件'))
+    showUserError(new Error('当前导入文件读取失败，请重新选择文件'))
     return
   }
 
@@ -474,7 +489,7 @@ const handleConfirm = async () => {
     const result = (await props.importHandler(file)) as ImportResult
 
     if (!result || typeof result !== 'object') {
-      ErrorHandler.handle(new Error('导入失败，未返回有效结果'))
+      showUserError(new TypeError('导入结果响应格式异常'), '导入结果读取失败，请重新导入')
       return
     }
 

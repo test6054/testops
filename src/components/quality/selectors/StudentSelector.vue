@@ -6,14 +6,16 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { UserDto } from '@/types/api-types.d'
-import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { getStudentsByClass } from '@/apis/edu/class'
+import { listExamClassStudents } from '@/apis/mark/exam'
+import { showUserError } from '@/utils/error-handler'
 import { requirePageList } from './page-contract'
 
 interface Props {
   value?: string | null
   classId?: string | null
+  examId?: string | null
   placeholder?: string
   allowClear?: boolean
   disabled?: boolean
@@ -29,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: UserDto]
+  change: [value: string | null, option?: UserDto]
 }>()
 
 const options = ref<UserDto[]>([])
@@ -49,7 +51,7 @@ watch(
 )
 
 watch(
-  () => props.classId,
+  () => [props.classId, props.examId] as const,
   () => {
     if (props.classId) {
       loadOptions()
@@ -65,17 +67,24 @@ async function loadOptions(keyword?: string) {
   if (!props.classId) return
   loading.value = true
   try {
-    // 后端 UserQueryDto 模糊查询字段名为 keyword，不是 searchText；先前的 as unknown as 强制断言把字段不匹配 bug 埋住，导致搜索失效。
-    const res = await getStudentsByClass({
-      pageNum: 1,
-      pageSize: 50,
-      keyword: keyword ?? searchText.value ?? undefined,
-      classId: props.classId,
-    })
+    const res = props.examId
+      ? await listExamClassStudents({
+          examId: props.examId,
+          classId: props.classId,
+          pageNum: 1,
+          pageSize: 50,
+          keyword: keyword ?? searchText.value ?? undefined,
+        })
+      : await getStudentsByClass({
+          pageNum: 1,
+          pageSize: 50,
+          keyword: keyword ?? searchText.value ?? undefined,
+          classId: props.classId,
+        })
     options.value = requirePageList(res, '学生')
   } catch (e) {
     console.error('[StudentSelector] 加载学生列表失败', e)
-    message.error('加载学生列表失败')
+    showUserError(e, '学生列表加载失败')
   } finally {
     loading.value = false
   }
@@ -127,7 +136,9 @@ defineExpose({ reload: loadOptions })
       :label="studentDisplayName(opt)"
     >
       {{ studentDisplayName(opt) }}
-      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 font-mono text-xs">({{ opt.studentNumber }})</span>
+      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 text-xs"
+        >({{ opt.studentNumber }})</span
+      >
     </a-select-option>
   </a-select>
 </template>

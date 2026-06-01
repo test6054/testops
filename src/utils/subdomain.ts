@@ -1,19 +1,32 @@
-import type {TenantPublicInfo} from '@/apis/auth';
+import type { TenantPublicInfo } from '@/apis/auth'
+import { getTenantByCode } from '@/apis/auth'
 /**
  * 子域名检测与租户解析工具
  */
 import { ref } from 'vue'
-import { getTenantByCode } from '@/apis/auth'
+import { getUserErrorMessage } from '@/utils/error-handler'
 
 // 主域名列表（这些不算作租户子域名）
-const MAIN_DOMAINS = ['www', 'api', 'admin', 'app', 'm', 'mobile', 'localhost', 'static', 'cdn', 'img', 'mail', 'docs', 'dev', 'test', 'staging']
+const MAIN_DOMAINS = [
+  'www',
+  'api',
+  'admin',
+  'app',
+  'm',
+  'mobile',
+  'localhost',
+  'static',
+  'cdn',
+  'img',
+  'mail',
+  'docs',
+  'dev',
+  'test',
+  'staging',
+]
 
 // 支持的根域名
-const SUPPORTED_ROOT_DOMAINS = [
-  'shixunfang.com',
-  'shixunfang.local',
-  'lvh.me'
-]
+const SUPPORTED_ROOT_DOMAINS = ['shixunfang.com', 'shixunfang.local', 'lvh.me']
 
 /**
  * 从当前URL解析子域名
@@ -84,7 +97,7 @@ export async function resolveSubdomainTenant(): Promise<TenantPublicInfo | null>
     subdomainTenant.value = tenant
     return tenant
   } catch (error: unknown) {
-    subdomainError.value = error instanceof Error ? error.message : '无法识别当前学校'
+    subdomainError.value = getUserErrorMessage(error, '无法识别当前学校，请确认访问地址是否正确')
     subdomainTenant.value = null
     return null
   } finally {

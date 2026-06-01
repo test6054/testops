@@ -3,10 +3,10 @@
  * KioskSettingsDrawer - 设备设置抽屉（右侧 480px）
  *
  * 内容分组：
- *   1. Agent 状态与设备信息（只读）
+ *   1. 扫描组件状态与设备信息（只读）
  *   2. 重新激活（gateway / activationCode / endpointName + activate 按钮）
  *   3. 扫描仪选择（可用列表 + 当前选中 + 刷新）
- *   4. 维护操作（诊断导出 + 解绑一体机）
+ *   4. 维护操作（检测信息导出 + 解绑一体机）
  *
  * 由 KioskAppBar / KioskSideRail 触发 ui.openSettings() 打开；
  * 关闭通过 v-model:open 双向绑定 ui.settingsDrawerOpen。
@@ -147,42 +147,42 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
           </header>
 
           <div v-if="tokenResetRequired" class="alert-block">
-            <p>服务端要求重置一体机 token</p>
+            <p>系统要求重新激活一体机</p>
             <small>请使用下方激活码重新激活，本机当前任务在激活后会被中断。</small>
           </div>
 
           <div v-if="upgradeRequired" class="alert-block">
-            <p>服务端公告需升级 Agent / 客户端</p>
+            <p>系统提示需要升级本机扫描组件</p>
             <dl class="kv">
               <div v-if="health?.agentVersion">
-                <dt>当前 Agent</dt>
-                <dd class="mono">{{ health.agentVersion }}</dd>
+                <dt>当前组件版本</dt>
+                <dd>{{ health.agentVersion }}</dd>
               </div>
               <div v-if="minAgentVersion">
-                <dt>最低 Agent</dt>
-                <dd class="mono">{{ minAgentVersion }}</dd>
+                <dt>最低组件版本</dt>
+                <dd>{{ minAgentVersion }}</dd>
               </div>
               <div v-if="latestAgentVersion">
-                <dt>最新 Agent</dt>
-                <dd class="mono">{{ latestAgentVersion }}</dd>
+                <dt>最新组件版本</dt>
+                <dd>{{ latestAgentVersion }}</dd>
               </div>
               <div v-if="minClientVersion">
-                <dt>最低 客户端</dt>
-                <dd class="mono">{{ minClientVersion }}</dd>
+                <dt>最低客户端版本</dt>
+                <dd>{{ minClientVersion }}</dd>
               </div>
               <div v-if="latestClientVersion">
-                <dt>最新 客户端</dt>
-                <dd class="mono">{{ latestClientVersion }}</dd>
+                <dt>最新客户端版本</dt>
+                <dd>{{ latestClientVersion }}</dd>
               </div>
             </dl>
             <small> 请联系管理员或运维下载新版本安装包；升级期间一体机会自动暂停业务。 </small>
           </div>
         </section>
 
-        <!-- Section 1: Agent 状态 -->
+        <!-- Section 1: 扫描组件状态 -->
         <section class="section">
           <header class="section-head">
-            <h3>Agent 状态</h3>
+            <h3>扫描组件状态</h3>
             <span class="status-pill" :class="`tone-${agentStatusTone}`">
               <CheckCircleFilled v-if="agentStatusTone === 'success'" />
               <WarningFilled v-else-if="agentStatusTone === 'warning'" />
@@ -193,12 +193,12 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <dl class="kv">
             <div>
-              <dt>Agent 版本</dt>
+              <dt>组件版本</dt>
               <dd>{{ health?.agentVersion || '—' }}</dd>
             </div>
             <div>
               <dt>机器码</dt>
-              <dd class="mono">{{ health?.machineCode || '—' }}</dd>
+              <dd>{{ health?.machineCode || '—' }}</dd>
             </div>
             <div>
               <dt>本地超时任务</dt>
@@ -214,7 +214,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
             </div>
             <div v-if="health?.lastHeartbeatAt">
               <dt>最后心跳</dt>
-              <dd class="mono">{{ workflow.formatTime(health.lastHeartbeatAt) }}</dd>
+              <dd>{{ workflow.formatTime(health.lastHeartbeatAt) }}</dd>
             </div>
           </dl>
         </section>
@@ -224,7 +224,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
           <header class="section-head">
             <h3>
               <ApiOutlined />
-              实时流（SSE）
+              实时连接
             </h3>
             <span class="status-pill" :class="`tone-${sseStatusTone}`">
               <CheckCircleFilled v-if="sseStatusTone === 'success'" />
@@ -236,23 +236,23 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
           <dl class="kv">
             <div>
               <dt>已接收事件</dt>
-              <dd class="mono">{{ liveEventCount }}</dd>
+              <dd>{{ liveEventCount }}</dd>
             </div>
             <div>
-              <dt>事件源 URL</dt>
-              <dd class="mono small">扫描中页面 SSE 推送活跃批次增量</dd>
+              <dt>实时连接说明</dt>
+              <dd class="small">扫描中页面会自动接收活跃批次更新</dd>
             </div>
           </dl>
           <p class="section-note">
-            扫描页面账本细节请在「复核」或「封存 · 历史批次详情」页面查看； 此处仅展示 SSE
-            连接维度信息，避免与主区账本视图分裂。
+            扫描页面账本细节请在「复核」或「封存 · 历史批次详情」页面查看；
+            此处仅展示实时连接信息，避免与主区账本视图分裂。
           </p>
         </section>
 
         <!-- Section 2: 重新激活 -->
         <section class="section">
           <header class="section-head">
-            <h3>重新激活 / 切端点</h3>
+            <h3>重新激活一体机</h3>
             <small v-if="!workflow.canActivateAgent.value" class="section-hint">
               当前扫描任务未结束，无法激活
             </small>
@@ -260,12 +260,12 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <div class="form">
             <label class="form-row">
-              <span class="form-label">网关 BaseURL</span>
+              <span class="form-label">平台服务地址</span>
               <input
                 v-model="workflow.activationForm.value.gatewayBaseUrl"
                 type="text"
-                class="form-input mono"
-                placeholder="https://gateway.example.com"
+                class="form-input"
+                placeholder="由管理员提供"
                 :disabled="!workflow.canActivateAgent.value"
               />
             </label>
@@ -274,7 +274,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               <input
                 v-model="workflow.activationForm.value.activationCode"
                 type="text"
-                class="form-input mono"
+                class="form-input"
                 placeholder="由教务平台下发"
                 :disabled="!workflow.canActivateAgent.value"
               />
@@ -342,7 +342,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
                 <div class="scanner-text">
                   <strong>{{ s.displayName }}</strong>
                   <span class="scanner-meta">
-                    <span class="mono">{{ s.localScannerId }}</span>
+                    <span>{{ s.localScannerId }}</span>
                     <span class="dot" />
                     <span>{{ s.available ? '可用' : '不可用' }}</span>
                   </span>
@@ -363,12 +363,12 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <dl class="kv">
             <div>
-              <dt>Device ID</dt>
-              <dd class="mono">{{ device?.scannerDeviceId || '—' }}</dd>
+              <dt>扫描设备编号</dt>
+              <dd>{{ device?.scannerDeviceId || '—' }}</dd>
             </div>
             <div>
-              <dt>Station ID</dt>
-              <dd class="mono">{{ device?.scannerStationId || '—' }}</dd>
+              <dt>扫描站点编号</dt>
+              <dd>{{ device?.scannerStationId || '—' }}</dd>
             </div>
             <div>
               <dt>设备名称</dt>
@@ -379,7 +379,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               <dd>{{ device?.scannerStationName || '—' }}</dd>
             </div>
             <div v-if="device">
-              <dt>服务端连接</dt>
+              <dt>系统连接</dt>
               <dd>{{ device.scannerConnected ? '已连接' : '未连接' }}</dd>
             </div>
             <div v-if="device">
@@ -398,7 +398,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
           <div class="ops-row">
             <button type="button" class="ghost-btn" @click="handleDiagnosticsExport">
               <CloudDownloadOutlined />
-              <span>导出诊断包</span>
+              <span>导出检测信息包</span>
             </button>
             <button
               type="button"
@@ -557,13 +557,6 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   text-align: right;
   word-break: break-all;
 }
-.kv .mono {
-  font-family: var(--kiosk-font-mono);
-}
-.mono {
-  font-family: var(--kiosk-font-mono);
-}
-
 /* Form */
 .form {
   display: flex;

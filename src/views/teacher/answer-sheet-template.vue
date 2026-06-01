@@ -15,10 +15,10 @@
             @change="handleExamChange"
           />
           <UiTag v-if="selectedExamId && hasQuestions" tone="blue" size="sm">
-            {{ serverQuestions.length }} 道题目
+            {{ questionCount }} 道题目
           </UiTag>
           <UiTag v-if="selectedExamId" tone="gray" size="sm">
-            {{ pages.length }} / {{ form.totalPages ?? '-' }} 页
+            {{ pages.length }} / {{ totalPagesLabel }} 页
           </UiTag>
         </div>
         <div class="sheet-page__context-right">
@@ -37,7 +37,7 @@
       v-else-if="templateLoadError"
       :error="templateLoadError"
       title="答题卡模板加载失败"
-      :helper="`考试 ID：${selectedExamId}`"
+      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
       @retry="loadTemplate"
     />
 
@@ -78,9 +78,7 @@
             />
           </a-form-item>
           <a-form-item v-if="hasQuestions">
-            <UiTag tone="blue" size="sm">
-              现有题目 {{ serverQuestions.length }} 道（保存时保留）
-            </UiTag>
+            <UiTag tone="blue" size="sm"> 题目结构由试卷模板维护：{{ questionCount }} 道 </UiTag>
           </a-form-item>
         </a-form>
       </UiCard>
@@ -89,7 +87,9 @@
         <template #title>
           <FileImageOutlined />
           <span>页面文件配置</span>
-          <UiBadge tone="blue"> {{ pages.length }} / {{ form.totalPages ?? '-' }} </UiBadge>
+          <UiBadge :tone="pageCountMatched ? 'green' : 'orange'">
+            {{ pages.length }} / {{ totalPagesLabel }}
+          </UiBadge>
         </template>
         <template #extra>
           <UiButton size="sm" variant="outline" @click="addPage">
@@ -176,12 +176,17 @@
 </template>
 
 <script lang="ts" setup>
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
-  ExamPageTemplatePayload,
+  ExamPageTemplateRequest,
   ExamPaperPageTemplateVO,
-  ExamQuestionTemplatePayload,
   ExamQuestionTemplateVO,
+} from '@/apis/mark/exam'
+import {
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+  saveAnswerSheetTemplate,
 } from '@/apis/mark/exam'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
@@ -192,11 +197,6 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadFile } from '@/apis/edu/file-management'
-import {
-  getExamTemplate,
-  isPaperTemplateNotConfiguredError,
-  saveExamTemplate,
-} from '@/apis/mark/exam'
 import {
   UiAlertStrip,
   UiBadge,
@@ -209,6 +209,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'TeacherAnswerSheetTemplate' })
 
@@ -220,6 +221,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
@@ -240,19 +242,24 @@ function nextRowKey(): string {
   return `p-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
 const pages = reactive<PageRow[]>([])
 
-/** 服务器端已有题目，保存时原样带回，避免被全量替换为空 */
-const serverQuestions = ref<ExamQuestionTemplateVO[]>([])
-const hasQuestions = computed(() => serverQuestions.value.length > 0)
+const questionCount = ref(0)
+const hasQuestions = computed(() => questionCount.value > 0)
+const totalPagesLabel = computed(() =>
+  typeof form.totalPages === 'number' ? String(form.totalPages) : '未填写总页数',
+)
+const pageCountMatched = computed(
+  () => typeof form.totalPages === 'number' && pages.length === form.totalPages,
+)
 const loading = ref(false)
 const saving = ref(false)
 // D-9 错误态：仅当后端返回非“未配置”类错误时才上报
-const templateLoadError = ref<unknown>(null)
+const templateLoadError = ref<Error | null>(null)
 
 const pageColumns: ColumnType<PageRow>[] = [
   { title: '页号', key: 'pageNo', width: 100 },
@@ -266,7 +273,7 @@ function clearTemplate(): void {
   form.templateName = ''
   form.totalPages = undefined
   pages.splice(0, pages.length)
-  serverQuestions.value = []
+  questionCount.value = 0
 }
 
 function applyTemplate(
@@ -287,7 +294,7 @@ function applyTemplate(
       heightPx: p.heightPx,
     })
   })
-  serverQuestions.value = questionList
+  questionCount.value = questionList.length
 }
 
 async function loadTemplate(): Promise<void> {
@@ -299,19 +306,24 @@ async function loadTemplate(): Promise<void> {
     applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
   } catch (error) {
     clearTemplate()
+    if (!(error instanceof Error)) {
+      throw error
+    }
     if (!isPaperTemplateNotConfiguredError(error)) {
       // 真实加载失败：D-9 错误态 + 警告提示
-      templateLoadError.value = error
-      const errMsg = error instanceof Error ? error.message : '未知错误'
-      message.warning(`当前考试尚未配置完整模板：${errMsg}`)
+      templateLoadError.value = toUserError(error, '答题卡模板加载失败')
+      message.warning(getUserErrorMessage(error, '答题卡模板加载失败，请稍后重试'))
     }
   } finally {
     loading.value = false
   }
 }
 
-function handleExamChange(value: unknown, option: unknown): void {
-  onExamChange(value as never, option as never)
+function handleExamChange(
+  value: SelectValue,
+  option: DefaultOptionType | DefaultOptionType[],
+): void {
+  onExamChange(value, option)
   if (selectedExamId.value) {
     void loadTemplate()
   } else {
@@ -347,17 +359,16 @@ async function handleUploadPage(file: File, index: number): Promise<boolean> {
     row.templateFileName = result.nodeName || file.name
     message.success(`第 ${row.pageNo ?? index + 1} 页文件已上传`)
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '上传失败'
-    message.error(errMsg)
+    showUserError(error, '答题卡模板文件上传失败')
   } finally {
     row.uploading = false
   }
   return false
 }
 
-function buildPagesPayload(): ExamPageTemplatePayload[] | null {
-  const total = form.totalPages ?? 0
-  if (total <= 0) {
+function buildPagesRequest(): ExamPageTemplateRequest[] | null {
+  const total = form.totalPages
+  if (typeof total !== 'number' || total <= 0) {
     message.error('请填写总页数')
     return null
   }
@@ -367,7 +378,7 @@ function buildPagesPayload(): ExamPageTemplatePayload[] | null {
   }
   const seenPageNo = new Set<number>()
   const seenFileId = new Set<string>()
-  const payload: ExamPageTemplatePayload[] = []
+  const request: ExamPageTemplateRequest[] = []
   for (let i = 0; i < pages.length; i += 1) {
     const row = pages[i]
     if (!row.pageNo || row.pageNo <= 0) {
@@ -400,29 +411,14 @@ function buildPagesPayload(): ExamPageTemplatePayload[] | null {
       message.error(`第 ${i + 1} 行：高度像素必填且大于 0`)
       return null
     }
-    payload.push({
+    request.push({
       pageNo: row.pageNo,
       templateFileId: row.templateFileId,
       widthPx: row.widthPx,
       heightPx: row.heightPx,
     })
   }
-  return payload
-}
-
-function buildQuestionsPayload(): ExamQuestionTemplatePayload[] {
-  return serverQuestions.value.map((q) => ({
-    questionNo: q.questionNo,
-    questionType: q.questionType,
-    fullScore: typeof q.fullScore === 'number' ? q.fullScore : Number(q.fullScore),
-    pageNo: q.pageNo,
-    x: q.x,
-    y: q.y,
-    width: q.width,
-    height: q.height,
-    sortNo: q.sortNo,
-    knowledgeId: q.knowledgeId,
-  }))
+  return request
 }
 
 async function handleSave(): Promise<void> {
@@ -436,23 +432,22 @@ async function handleSave(): Promise<void> {
     message.error('当前考试尚未配置题目，请先到「试卷模板」页面录入题目结构。')
     return
   }
-  const pagesPayload = buildPagesPayload()
-  if (pagesPayload === null) return
+  const pagesRequest = buildPagesRequest()
+  if (pagesRequest === null) return
+  const totalPages = form.totalPages
 
   saving.value = true
   try {
-    await saveExamTemplate({
+    await saveAnswerSheetTemplate({
       examId: selectedExamId.value,
       templateName: name,
-      totalPages: form.totalPages,
-      pages: pagesPayload,
-      questions: buildQuestionsPayload(),
+      totalPages,
+      pages: pagesRequest,
     })
-    message.success('页面配置已保存（题目结构保持不变）')
+    message.success('答题卡页面配置已保存')
     await loadTemplate()
   } catch (error) {
-    const errMsg = error instanceof Error ? error.message : '保存失败'
-    message.error(errMsg)
+    showUserError(error, '答题卡模板保存失败')
   } finally {
     saving.value = false
   }

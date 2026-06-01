@@ -4,10 +4,10 @@
  */
 
 // UserListItemDto 已在 admin-user.ts 中定义
-import type {UserListItemDto} from './admin-user'
-import type {PageResult, QueryDto} from '@/types'
+import type { UserListItemDto } from './admin-user'
+import type { PageResult, QueryDto } from '@/types'
 // 从统一枚举导入，避免分散定义
-import type {TenantStatusEnum, TenantTypeEnum} from '@/types/enums'
+import type { TenantStatusEnum, TenantTypeEnum } from '@/types/enums'
 import http from '@/config/axios'
 
 
@@ -296,7 +296,7 @@ export function updateTenant(data: UpdateTenantRequest): Promise<TenantInfoDto> 
  * 对应后端 POST /api/admin/tenant/delete
  */
 export function deleteTenant(id: string): Promise<void> {
-    return http.post('/api/admin/tenant/delete', {id})
+    return http.post<void>('/api/admin/tenant/delete', {id})
 }
 
 /**

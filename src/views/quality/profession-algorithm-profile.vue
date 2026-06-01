@@ -12,36 +12,32 @@ import type {
   AccreditationStandardVO,
   AccreditationType,
   ConfirmationStatus,
-  ProfessionAlgorithmProfileQueryPayload,
-  ProfessionAlgorithmProfileSavePayload,
+  ProfessionAlgorithmProfileQueryRequest,
+  ProfessionAlgorithmProfileSaveRequest,
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   accreditationStandardApi,
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
-  isAccreditationType,
-  isAggregationFunction,
-  isConfirmationStatus,
   professionAlgorithmProfileApi,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
-import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ProgramSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'profileCode', key: 'profileCode', width: 140 },
   { title: '名称', dataIndex: 'profileName', key: 'profileName' },
-  { title: '专业大类', dataIndex: 'programId', key: 'programId', width: 160 },
+  { title: '专业大类', key: 'programRef', width: 160 },
   { title: '认证类型', dataIndex: 'accreditationType', key: 'accreditationType', width: 180 },
   { title: '级别', dataIndex: 'accreditationLevel', key: 'accreditationLevel', width: 100 },
   { title: '状态', dataIndex: 'confirmationStatus', key: 'confirmationStatus', width: 100 },
@@ -49,30 +45,16 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
-/* ========== 状态守卫 helper（避免 as 断言） ========== */
-
-function accreditationTypeLabel(value: unknown): string {
-  if (value == null || value === '') return '-'
-  if (isAccreditationType(value)) return ACCREDITATION_TYPE_LABEL[value]
-  throw new Error('专业算法实例认证类型不符合前后端契约')
+function accreditationTypeLabel(value: AccreditationType): string {
+  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
 }
 
-function confirmationStatusLabel(value: unknown): string {
-  if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_LABEL[value]
-  throw new Error(`专业算法实例确认状态不符合前后端契约：${String(value)}`)
+function confirmationStatusLabel(value: ConfirmationStatus): string {
+  return strictEnumLabel(CONFIRMATION_STATUS_LABEL, value, '确认状态')
 }
 
-function confirmationStatusColor(value: unknown): string {
-  if (isConfirmationStatus(value)) return CONFIRMATION_STATUS_COLOR[value]
-  throw new Error(`专业算法实例确认状态不符合前后端契约：${String(value)}`)
-}
-
-function programName(value: unknown): string {
-  if (value == null || value === '') return '-'
-  if (typeof value !== 'string') {
-    throw new TypeError(`专业算法实例专业大类 ID 不符合前后端契约：${String(value)}`)
-  }
-  return programs.value.find((p) => p.id === value)?.majorCategoryName ?? '未匹配专业大类'
+function confirmationStatusColor(value: ConfirmationStatus): string {
+  return strictEnumTone(CONFIRMATION_STATUS_COLOR, value, '确认状态')
 }
 
 const list = ref<ProfessionAlgorithmProfileVO[]>([])
@@ -80,9 +62,8 @@ const total = ref(0)
 const loading = ref(false)
 const templates = ref<ProfessionAlgorithmTemplateVO[]>([])
 const standards = ref<AccreditationStandardVO[]>([])
-const programs = ref<MajorCategoryVO[]>([])
 
-const query = reactive<ProfessionAlgorithmProfileQueryPayload>({
+const query = reactive<ProfessionAlgorithmProfileQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   programId: undefined,
@@ -110,19 +91,18 @@ const accreditationTypes: AccreditationType[] = [
 
 const accreditationOptions = accreditationTypes.map((value) => ({
   value,
-  label: ACCREDITATION_TYPE_LABEL[value],
+  label: accreditationTypeLabel(value),
 }))
 const aggregationOptions = [
   { value: 'WEIGHTED_SUM', label: '加权平均' },
   { value: 'MINIMUM', label: '取最小值' },
-  { value: 'WEIGHTED_MINIMUM_MIXED', label: '加权与最小值混合' },
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: '直接间接加权' },
 ]
 const statusOptions: ConfirmationStatus[] = ['DRAFT', 'SUBMITTED', 'CONFIRMED', 'RETURNED']
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
-const editor = reactive<ProfessionAlgorithmProfileSavePayload>({
+const editor = reactive<ProfessionAlgorithmProfileSaveRequest>({
   profileCode: '',
   profileName: '',
   templateId: '',
@@ -141,8 +121,12 @@ const editor = reactive<ProfessionAlgorithmProfileSavePayload>({
   courseGoalThreshold: 0.7,
   indicatorThreshold: 0.7,
   requirementThreshold: 0.7,
-  inheritedFields: '',
-  overriddenFields: '',
+  inheritAggregationStrategy: true,
+  inheritWeightStrategy: true,
+  inheritThresholdStrategy: true,
+  overrideAggregationStrategy: false,
+  overrideWeightStrategy: false,
+  overrideThresholdStrategy: false,
   overrideReason: '',
   enabled: true,
 })
@@ -160,21 +144,19 @@ async function loadList() {
       keyword: query.keyword?.trim() || undefined,
     })
     list.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
 async function loadDicts() {
-  const [tpl, std, majors] = await Promise.all([
+  const [tpl, std] = await Promise.all([
     professionAlgorithmTemplateApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
     accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
-    majorCategoryCatalogApi.listAll(),
   ])
   templates.value = tpl.list
   standards.value = std.list
-  programs.value = majors
 }
 
 // a-select v-model:value 是 SelectValue（string|number|undefined|array），
@@ -190,25 +172,23 @@ function applyTemplateDefaults(templateId: string) {
   editor.accreditationType = tpl.accreditationType
   editor.standardId = tpl.standardId
   editor.standardYear = tpl.standardYear || ''
-  if (!isAggregationFunction(tpl.courseGoalAggregation)) {
-    throw new Error('专业算法模板课程目标聚合函数不符合前后端契约')
-  }
-  if (!isAggregationFunction(tpl.indicatorAggregation)) {
-    throw new Error('专业算法模板观测点聚合函数不符合前后端契约')
-  }
-  if (!isAggregationFunction(tpl.requirementAggregation)) {
-    throw new Error('专业算法模板毕业要求聚合函数不符合前后端契约')
-  }
   editor.courseGoalAggregation = tpl.courseGoalAggregation
   editor.indicatorAggregation = tpl.indicatorAggregation
   editor.requirementAggregation = tpl.requirementAggregation
-  editor.directWeight = tpl.directWeightDefault ?? 0.7
-  editor.indirectWeight = tpl.indirectWeightDefault ?? 0.3
-  editor.indirectMinValidSampleCount = tpl.indirectMinValidSampleCount ?? 30
-  editor.indirectCoverageThreshold = tpl.indirectCoverageThreshold ?? 0.5
-  editor.courseGoalThreshold = tpl.courseGoalThresholdDefault ?? 0.7
-  editor.indicatorThreshold = tpl.indicatorThresholdDefault ?? 0.7
-  editor.requirementThreshold = tpl.requirementThresholdDefault ?? 0.7
+  editor.directWeight = tpl.directWeightDefault
+  editor.indirectWeight = tpl.indirectWeightDefault
+  editor.indirectMinValidSampleCount = tpl.indirectMinValidSampleCount
+  editor.indirectCoverageThreshold = tpl.indirectCoverageThreshold
+  editor.courseGoalThreshold = tpl.courseGoalThresholdDefault
+  editor.indicatorThreshold = tpl.indicatorThresholdDefault
+  editor.requirementThreshold = tpl.requirementThresholdDefault
+  editor.inheritAggregationStrategy = true
+  editor.inheritWeightStrategy = true
+  editor.inheritThresholdStrategy = true
+  editor.overrideAggregationStrategy = false
+  editor.overrideWeightStrategy = false
+  editor.overrideThresholdStrategy = false
+  editor.overrideReason = ''
 }
 
 function openCreate() {
@@ -233,8 +213,12 @@ function openCreate() {
     courseGoalThreshold: 0.7,
     indicatorThreshold: 0.7,
     requirementThreshold: 0.7,
-    inheritedFields: '',
-    overriddenFields: '',
+    inheritAggregationStrategy: true,
+    inheritWeightStrategy: true,
+    inheritThresholdStrategy: true,
+    overrideAggregationStrategy: false,
+    overrideWeightStrategy: false,
+    overrideThresholdStrategy: false,
     overrideReason: '',
     enabled: true,
   })
@@ -249,12 +233,20 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim()
-    || !editor.profileName.trim()
-    || !editor.templateId
-    || !editor.programId
+    !editor.profileCode.trim() ||
+    !editor.profileName.trim() ||
+    !editor.templateId ||
+    !editor.programId
   ) {
     message.error('请填写编码、名称、模板、专业')
+    return
+  }
+  const hasOverride =
+    editor.overrideAggregationStrategy ||
+    editor.overrideWeightStrategy ||
+    editor.overrideThresholdStrategy
+  if (hasOverride && !editor.overrideReason?.trim()) {
+    message.error('存在模板策略调整时必须填写覆盖原因')
     return
   }
   submitting.value = true
@@ -307,9 +299,9 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
@@ -333,7 +325,7 @@ const signals = computed<SignalMetric[]>(() => {
     RETURNED: 0,
   }
   for (const p of list.value) {
-    if (isConfirmationStatus(p.confirmationStatus)) buckets[p.confirmationStatus] += 1
+    buckets[p.confirmationStatus] += 1
   }
   const enabled = list.value.filter((p) => p.enabled).length
   const disabled = list.value.filter((p) => !p.enabled).length
@@ -442,21 +434,21 @@ onMounted(async () => {
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
-          <template v-if="column.key === 'programId'">
-            {{ programName(text) }}
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'programRef'">
+            {{ record.programName }}
           </template>
           <template v-else-if="column.key === 'accreditationType'">
-            {{ accreditationTypeLabel(text) }}
+            {{ accreditationTypeLabel(record.accreditationType) }}
           </template>
           <template v-else-if="column.key === 'confirmationStatus'">
-            <a-tag :color="confirmationStatusColor(text)">
-              {{ confirmationStatusLabel(text) }}
+            <a-tag :color="confirmationStatusColor(record.confirmationStatus)">
+              {{ confirmationStatusLabel(record.confirmationStatus) }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="text ? 'green' : 'default'">
-              {{ text ? '启用' : '停用' }}
+            <a-tag :color="record.enabled ? 'green' : 'default'">
+              {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -546,10 +538,7 @@ onMounted(async () => {
           </a-col>
           <a-col :span="8">
             <a-form-item label="认证级别">
-              <a-input
-                v-model:value="editor.accreditationLevel"
-                placeholder="如 LEVEL_2 / LEVEL_3"
-              />
+              <a-input v-model:value="editor.accreditationLevel" placeholder="如 二级 / 三级" />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -682,14 +671,42 @@ onMounted(async () => {
           </a-col>
         </a-row>
 
-        <a-form-item label="继承字段（备注）">
-          <a-textarea v-model:value="editor.inheritedFields" :rows="2" />
-        </a-form-item>
-        <a-form-item label="覆盖字段（备注）">
-          <a-textarea v-model:value="editor.overriddenFields" :rows="2" />
-        </a-form-item>
+        <a-divider orientation="left">模板继承与调整</a-divider>
+        <a-row :gutter="12">
+          <a-col :span="12">
+            <a-form-item label="继承模板策略">
+              <a-space direction="vertical" size="small">
+                <a-checkbox v-model:checked="editor.inheritAggregationStrategy">
+                  聚合策略
+                </a-checkbox>
+                <a-checkbox v-model:checked="editor.inheritWeightStrategy"> 权重策略 </a-checkbox>
+                <a-checkbox v-model:checked="editor.inheritThresholdStrategy">
+                  阈值策略
+                </a-checkbox>
+              </a-space>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="本专业调整项">
+              <a-space direction="vertical" size="small">
+                <a-checkbox v-model:checked="editor.overrideAggregationStrategy">
+                  调整聚合策略
+                </a-checkbox>
+                <a-checkbox v-model:checked="editor.overrideWeightStrategy">
+                  调整权重策略
+                </a-checkbox>
+                <a-checkbox v-model:checked="editor.overrideThresholdStrategy">
+                  调整阈值策略
+                </a-checkbox>
+              </a-space>
+            </a-form-item>
+          </a-col>
+        </a-row>
         <a-form-item label="覆盖原因">
-          <a-textarea v-model:value="editor.overrideReason" :rows="2" />
+          <a-input
+            v-model:value="editor.overrideReason"
+            placeholder="存在调整项时填写专业负责人确认理由"
+          />
         </a-form-item>
 
         <a-checkbox v-model:checked="editor.enabled">启用</a-checkbox>

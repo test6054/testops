@@ -54,10 +54,10 @@
 
     <StageRail :stages="stages" compact class="marking-overview__stages" />
 
-    <!-- D-1 建议优先推进的考试 top 5 -->
+    <!-- D-1 优先推进的考试 top 5 -->
     <UiCard v-if="recommendedExams.length > 0" class="marking-overview__recommend-card">
       <template #title>
-        <span>建议优先推进的考试</span>
+        <span>优先推进的考试</span>
         <UiBadge tone="orange">{{ recommendedExams.length }}</UiBadge>
       </template>
       <template #extra>
@@ -75,7 +75,9 @@
               <strong class="marking-overview__recommend-title">
                 {{ item.examName }}
               </strong>
-              <span v-if="item.examNo" class="marking-overview__recommend-no">#{{ item.examNo }}</span>
+              <span v-if="item.examNo" class="marking-overview__recommend-no">
+                考务编号 {{ item.examNo }}
+              </span>
               <UiTag v-if="item.attention > 0" tone="red" size="sm">
                 {{ item.attention }} 条扫描异常
               </UiTag>
@@ -135,14 +137,14 @@
           </template>
           <template v-else-if="column.dataIndex === 'status'">
             <UiTag :tone="examStatusTone(record.status)" size="sm">
-              {{ record.statusMessage }}
+              {{ examStatusLabel(record.status) }}
             </UiTag>
           </template>
           <template v-else-if="column.dataIndex === 'examStartTime'">
-            {{ formatTime(record.examStartTime) || '-' }}
+            {{ formatTime(record.examStartTime, '未设置开始时间') }}
           </template>
           <template v-else-if="column.dataIndex === 'examEndTime'">
-            {{ formatTime(record.examEndTime) || '-' }}
+            {{ formatTime(record.examEndTime, '未设置结束时间') }}
           </template>
           <template v-else-if="column.dataIndex === 'actions'">
             <a-space :size="4" wrap>
@@ -172,25 +174,23 @@
  * 阅卷交付 - 考试总览
  *
  * 后端契约：
- * - POST /api/mark/exams/page  分页查询 ExamPageQueryPayload（keyword / status / courseId / createUserId）
+ * - POST /api/mark/exams/page  分页查询 ExamPageQueryRequest（keyword / status / courseId / createUserId）
  *
  * 阅卷主流程阶段（作为全局引导 StageRail）：
  *   考试准备 -> 扫描识别 -> 阅卷组织 -> 批阅工作区 -> 质量控制 -> 成绩发布 -> 考后归档
  */
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO, MarkingProgressVO } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
   getMarkingProgress,
   pageExams,
 } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -202,7 +202,9 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageRail, StageWorkbenchShell } from '@/components/workbench'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingOverview' })
 
@@ -216,10 +218,14 @@ defineOptions({ name: 'TeacherMarkingOverview' })
 const URGENT_PENDING_REVIEW_THRESHOLD = 30
 
 function examStatusTone(status: ExamStatusCode): BadgeTone {
-  return EXAM_STATUS_TONE[status]
+  return strictEnumTone(EXAM_STATUS_TONE, status, '考试状态')
 }
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+function examStatusLabel(status: ExamStatusCode): string {
+  return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
+}
+
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -241,7 +247,7 @@ const pageNum = ref(1)
 const pageSize = ref(20)
 const loading = ref(false)
 // D-9 错误态：考试列表加载失败时 UiErrorRetryPanel 重试 + 上报
-const examsLoadError = ref<unknown>(null)
+const examsLoadError = ref<Error | null>(null)
 const keyword = ref('')
 const statusFilter = ref<ExamStatusCode | undefined>(undefined)
 
@@ -294,7 +300,7 @@ const statMetrics = computed(() => {
       label: '待批改任务',
       value: progressLoadError.value ? '不可用' : progressReady.value ? a.pendingReview : '…',
       unit: '份',
-      helper: '同题剩余 PENDING 总数',
+      helper: '同题剩余待批阅数量',
       tone: (a.pendingReview > 0 ? 'orange' : 'gray') as BadgeTone,
       clickable: a.pendingReview > 0,
       onClick: () => router.push({ name: 'TeacherMarkingTaskPool' }),
@@ -431,7 +437,7 @@ const stages = computed<WorkbenchStage[]>(() => {
 })
 
 /** 是否需要展示「需立即关注」红色横幅 */
-const urgentBanner = computed<{ title: string, description: string } | null>(() => {
+const urgentBanner = computed<{ title: string; description: string } | null>(() => {
   const a = aggregate.value
   if (a.scanAttention > 0) {
     return {
@@ -441,7 +447,7 @@ const urgentBanner = computed<{ title: string, description: string } | null>(() 
   }
   if (a.pendingReview >= URGENT_PENDING_REVIEW_THRESHOLD) {
     return {
-      title: `当前累计 ${a.pendingReview} 份待批阅任务，建议进入「阅卷任务池」批量推进`,
+      title: `当前累计 ${a.pendingReview} 份待批阅任务，可进入「阅卷任务池」批量推进`,
       description: '使用批阅工作区底部「提交并取下一份」可流水线接力批阅。',
     }
   }
@@ -449,11 +455,11 @@ const urgentBanner = computed<{ title: string, description: string } | null>(() 
 })
 
 /**
- * 列表场景的日期时间格式化：空值返回空串以便模板侧 `|| '-'` 兜底。
+ * 列表场景的日期时间格式化：业务空值展示明确未设置文案。
  * 委托统一 utils/format#formatDateTime。
  */
-function formatTime(value?: string): string {
-  return formatDateTime(value, '')
+function formatTime(value: string | undefined, emptyText: string): string {
+  return formatDateTime(value, emptyText)
 }
 
 async function loadExams(): Promise<void> {
@@ -467,11 +473,10 @@ async function loadExams(): Promise<void> {
       status: statusFilter.value,
     })
     exams.value = result.list
-    total.value = result.total
+    total.value = Number(result.total)
   } catch (error) {
-    examsLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : '考试列表加载失败'
-    message.error(errMsg)
+    examsLoadError.value = toUserError(error, '阅卷考试列表加载失败')
+    showUserError(error, '阅卷考试列表加载失败')
   } finally {
     loading.value = false
   }

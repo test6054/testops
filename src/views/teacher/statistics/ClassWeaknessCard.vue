@@ -37,7 +37,7 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!hasQueried" description="请输入班级ID后查看或生成。" />
+      <a-empty v-else-if="!hasQueried" description="请选择班级后查看或生成。" />
       <a-empty v-else-if="!record" description="该班级暂无 AI 薄弱题型分析。" />
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
@@ -46,17 +46,27 @@
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
             </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="班级ID">{{ record.scopeId ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="生成时间">{{
-            formatDateTime(record.createTime)
+          <a-descriptions-item label="班级编号">{{
+            analysisScopeText(record)
           }}</a-descriptions-item>
-          <a-descriptions-item label="耗时(ms)">{{ record.latencyMs ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="trace ID" :span="2">
-            <a-typography-text v-if="record.aiTraceId" :content="record.aiTraceId" copyable />
-            <span v-else class="text-muted">-</span>
+          <a-descriptions-item label="生成时间">
+            {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="record.errorMessage" label="错误信息" :span="3">
-            <a-typography-text type="danger">{{ record.errorMessage }}</a-typography-text>
+          <a-descriptions-item label="生成耗时">{{
+            analysisLatencyText(record)
+          }}</a-descriptions-item>
+          <a-descriptions-item label="处理追踪编号" :span="2">
+            <a-typography-text
+              v-if="analysisTraceId(record)"
+              :content="analysisTraceId(record)"
+              copyable
+            />
+            <span v-else class="text-muted">{{ analysisTraceText(record) }}</span>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="record.errorMessage" label="分析处理说明" :span="3">
+            <a-typography-text type="danger">
+              {{ analysisFailureMessage(record.errorMessage) }}
+            </a-typography-text>
           </a-descriptions-item>
         </a-descriptions>
 
@@ -71,29 +81,30 @@
               <a-list-item>
                 <div class="analysis-item">
                   <div class="analysis-item__header">
-                    <a-typography-text strong>#{{ index + 1 }}</a-typography-text>
+                    <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span v-if="item.questionType" class="analysis-item__title">
                       {{ item.questionType }}
                     </span>
-                    <span v-if="item.scoreRate" class="analysis-item__metric">
-                      得分率 {{ formatRate(item.scoreRate) }}
+                    <a-tag v-if="item.rank != null">排名 {{ item.rank }}</a-tag>
+                    <span v-if="item.avgScoreRate != null" class="analysis-item__metric">
+                      平均得分率 {{ formatRate(item.avgScoreRate) }}
                     </span>
                   </div>
-                  <a-typography-paragraph v-if="item.summary" class="analysis-item__text">
-                    {{ item.summary }}
+                  <a-typography-paragraph v-if="item.errorRate != null" class="analysis-item__text">
+                    <strong>错误率：</strong>{{ formatRate(item.errorRate) }}
+                  </a-typography-paragraph>
+                  <a-typography-paragraph
+                    v-if="item.affectedStudentCount != null"
+                    class="analysis-item__text"
+                  >
+                    <strong>影响学生：</strong>{{ item.affectedStudentCount }} 人
                   </a-typography-paragraph>
                   <a-typography-paragraph v-if="item.causeAnalysis" class="analysis-item__text">
                     <strong>原因分析：</strong>{{ item.causeAnalysis }}
                   </a-typography-paragraph>
                   <a-typography-paragraph v-if="item.suggestion" class="analysis-item__text">
-                    <strong>改进建议：</strong>{{ item.suggestion }}
+                    <strong>改进措施：</strong>{{ item.suggestion }}
                   </a-typography-paragraph>
-                  <div
-                    v-if="item.lostQuestionNos && item.lostQuestionNos.length > 0"
-                    class="analysis-item__text"
-                  >
-                    <strong>失分题号：</strong>{{ item.lostQuestionNos.join(', ') }}
-                  </div>
                 </div>
               </a-list-item>
             </template>
@@ -109,17 +120,18 @@ import type {
   ClassWeaknessItemVO,
   ExamTeachingAnalysisRecordVO,
 } from '@/apis/mark/teaching-analysis'
-import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
+import type { MarkClassOption } from '@/composables/useMarkExamRoster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'ClassWeaknessCard' })
@@ -142,15 +154,75 @@ const emit = defineEmits<{ (e: 'class-change', classId: string): void }>()
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
 // D-9 错误态：AI 班级薄弱题型加载失败时 UiErrorRetryPanel 重试 + 上报
-const loadError = ref<unknown>(null)
+const loadError = ref<Error | null>(null)
 const generating = ref(false)
 // 选中的班级 ID（来自下拉选择器，避免教师手输）
 const selectedClassId = ref<string | undefined>(undefined)
 const hasQueried = ref(false)
 
 const weaknessItems = computed<ClassWeaknessItemVO[]>(() => {
-  return (record.value?.improvementItems ?? []) as ClassWeaknessItemVO[]
+  return record.value?.weaknessItems ?? []
 })
+
+function analysisFailureMessage(errorMessage?: string): string {
+  return getUserProcessFailureMessage(errorMessage, 'AI 班级薄弱题型分析未完成，请稍后重新生成')
+}
+
+function acceptClassWeaknessRecord(
+  value: ExamTeachingAnalysisRecordVO | null,
+  expectedClassId: string,
+): ExamTeachingAnalysisRecordVO | null {
+  if (!value) return null
+  if (value.examId !== props.examId) throw new Error('AI 班级薄弱题型分析考试 ID 与当前考试不一致')
+  if (value.analysisType !== 'CLASS_WEAKNESS') {
+    throw new Error('AI 班级薄弱题型分析类型不符合前后端契约')
+  }
+  if (value.scopeType !== 'CLASS') throw new Error('AI 班级薄弱题型分析范围类型不符合前后端契约')
+  if (value.scopeId !== expectedClassId)
+    throw new Error('AI 班级薄弱题型分析班级 ID 与当前选择不一致')
+  if (!value.createTime?.trim()) throw new Error('AI 班级薄弱题型分析缺失生成时间')
+  if (value.analysisStatus === 'SUCCESS') {
+    if (!value.aiTraceId?.trim()) throw new Error('AI 班级薄弱题型分析成功但缺失追踪编号')
+    if (typeof value.latencyMs !== 'number')
+      throw new Error('AI 班级薄弱题型分析成功但缺失生成耗时')
+    if (!value.overallSummary?.trim()) throw new Error('AI 班级薄弱题型分析成功但缺失总体摘要')
+    if (!value.weaknessItems?.length) throw new Error('AI 班级薄弱题型分析成功但缺失薄弱题型明细')
+  }
+  if (
+    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') &&
+    !value.errorMessage?.trim()
+  ) {
+    throw new Error('AI 班级薄弱题型分析失败但缺失处理说明')
+  }
+  return value
+}
+
+function analysisScopeText(value: ExamTeachingAnalysisRecordVO): string {
+  if (!value.scopeId?.trim()) throw new Error('AI 班级薄弱题型分析缺失班级编号')
+  return value.scopeId
+}
+
+function analysisCreateTimeText(value: ExamTeachingAnalysisRecordVO): string {
+  if (!value.createTime?.trim()) throw new Error('AI 班级薄弱题型分析缺失生成时间')
+  return formatDateTime(value.createTime)
+}
+
+function analysisLatencyText(value: ExamTeachingAnalysisRecordVO): string {
+  if (typeof value.latencyMs === 'number') return `${value.latencyMs} ms`
+  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
+  if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
+  throw new Error('AI 班级薄弱题型分析成功但缺失生成耗时')
+}
+
+function analysisTraceId(value: ExamTeachingAnalysisRecordVO): string | undefined {
+  return value.aiTraceId?.trim() || undefined
+}
+
+function analysisTraceText(value: ExamTeachingAnalysisRecordVO): string {
+  if (value.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
+  if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
+  throw new Error('AI 班级薄弱题型分析成功但缺失追踪编号')
+}
 
 async function reload(): Promise<void> {
   const classId = selectedClassId.value
@@ -159,13 +231,14 @@ async function reload(): Promise<void> {
   loadError.value = null
   loading.value = true
   try {
-    record.value = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
+    const latest = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
+    record.value = acceptClassWeaknessRecord(latest, classId)
     // B-12 联动：广播当前班级，便于学生学情卡显示同班级上下文
     emit('class-change', classId)
   } catch (e) {
     record.value = null
-    loadError.value = e
-    message.error(e instanceof Error ? e.message : '加载失败')
+    loadError.value = toUserError(e, '班级薄弱题型分析加载失败')
+    showUserError(e, '班级薄弱题型分析加载失败')
   } finally {
     loading.value = false
   }
@@ -179,23 +252,23 @@ async function handleGenerate(): Promise<void> {
   }
   hasQueried.value = true
   generating.value = true
+  loadError.value = null
   try {
-    record.value = await generateClassWeaknessAnalysis({ examId: props.examId, classId })
+    const generated = await generateClassWeaknessAnalysis({ examId: props.examId, classId })
+    record.value = acceptClassWeaknessRecord(generated, classId)
     message.success('已生成最新分析')
     emit('class-change', classId)
   } catch (e) {
-    message.error(e instanceof Error ? e.message : '生成失败')
+    record.value = null
+    loadError.value = toUserError(e, '班级薄弱题型分析生成失败')
+    showUserError(e, '班级薄弱题型分析生成失败')
   } finally {
     generating.value = false
   }
 }
 
-function formatRate(rate: string): string {
-  const value = Number(rate)
-  if (!Number.isFinite(value)) {
-    return rate
-  }
-  return `${(value * 100).toFixed(1)}%`
+function formatRate(rate: number): string {
+  return `${(rate * 100).toFixed(1)}%`
 }
 
 watch(

@@ -2,7 +2,7 @@
 /**
  * KioskBottomBar - 仅扫描中显示的底部操作栏 88px
  *
- * 操作（左→右）：暂停 / 继续（互斥显示） · 结束本批次 · 重试上传 · 重试 commit · 取消（ghost）
+ * 操作（左→右）：暂停 / 继续（互斥显示） · 结束本批次 · 重试上传 · 重试提交 · 取消（ghost）
  * 计数（右）：已扫 / 已上传 / 异常
  *
  * 在 KioskLayout 中以 transition+ v-show 控制显隐。
@@ -77,10 +77,10 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
         type="button"
         class="action-btn"
         :disabled="cantRetryCommit"
-        :title="mutex.reasonOf('retryCommit') || '重试 commit'"
+        :title="mutex.reasonOf('retryCommit') || '重试提交'"
         @click="workflow.retryCurrentCommit"
       >
-        重试 commit
+        重试提交
       </button>
       <button
         type="button"
@@ -93,9 +93,15 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
       </button>
     </div>
     <div class="bottom-counters">
-      <span>已扫 <b>{{ counterScanned }}</b></span>
-      <span>已上传 <b>{{ counterUploaded }}</b></span>
-      <span class="warn">异常 <b>{{ counterException }}</b></span>
+      <span
+        >已扫 <b>{{ counterScanned }}</b></span
+      >
+      <span
+        >已上传 <b>{{ counterUploaded }}</b></span
+      >
+      <span class="warn"
+        >异常 <b>{{ counterException }}</b></span
+      >
     </div>
   </footer>
 </template>
@@ -158,7 +164,7 @@ const showResumeInsteadOfPause = computed(() => workflow.currentJob.value?.statu
   margin-left: auto;
   display: flex;
   gap: var(--kiosk-space-5);
-  font-family: var(--kiosk-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: var(--kiosk-fz-h3);
   color: var(--kiosk-ink-secondary);
 }

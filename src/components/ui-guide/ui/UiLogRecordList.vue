@@ -1,6 +1,6 @@
 <template>
   <div class="ui-log-record-list">
-    <a-spin :spinning="props.loading" style="width: 100%;">
+    <a-spin :spinning="props.loading" style="width: 100%">
       <div v-if="props.items.length" class="ui-log-record-list__items" :style="listStyle">
         <article
           v-for="item in props.items"
@@ -20,11 +20,7 @@
               >
                 {{ item.typeLabel }}
               </UiTag>
-              <UiTag
-                v-if="item.statusLabel"
-                :tone="item.statusTone || 'blue'"
-                size="sm"
-              >
+              <UiTag v-if="item.statusLabel" :tone="item.statusTone || 'blue'" size="sm">
                 {{ item.statusLabel }}
               </UiTag>
             </div>
@@ -65,8 +61,8 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { UiLogRecordItem, UiNoticeAction } from './types'
 import { computed } from 'vue'
+import type { UiLogRecordItem, UiNoticeAction } from './types'
 import UiEmpty from './Empty.vue'
 import UiTag from './Tag.vue'
 import UiActionLink from './UiActionLink.vue'
@@ -75,35 +71,36 @@ defineOptions({
   name: 'UiLogRecordList',
 })
 
-const props = withDefaults(defineProps<{
-  items?: UiLogRecordItem[]
-  loading?: boolean
-  emptyText?: string
-  itemClickable?: boolean
-  maxHeight?: string | number
-}>(), {
-  items: () => [],
-  loading: false,
-  emptyText: '暂无记录',
-  itemClickable: true,
-  maxHeight: '',
-})
+const props = withDefaults(
+  defineProps<{
+    items?: UiLogRecordItem[]
+    loading?: boolean
+    emptyText?: string
+    itemClickable?: boolean
+    maxHeight?: string | number
+  }>(),
+  {
+    items: () => [],
+    loading: false,
+    emptyText: '暂无记录',
+    itemClickable: true,
+    maxHeight: '',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'item-click', item: UiLogRecordItem): void
-  (e: 'action-click', payload: { item: UiLogRecordItem, action: UiNoticeAction }): void
+  (e: 'action-click', actionEvent: { item: UiLogRecordItem; action: UiNoticeAction }): void
 }>()
 
 const normalizeCssSize = (value?: string | number) => {
-  if (value === '' || value === undefined || value === null)
-    return undefined
+  if (value === '' || value === undefined || value === null) return undefined
   return typeof value === 'number' ? `${value}px` : value
 }
 
 const listStyle = computed<CSSProperties | undefined>(() => {
   const maxHeight = normalizeCssSize(props.maxHeight)
-  if (!maxHeight)
-    return undefined
+  if (!maxHeight) return undefined
 
   return {
     maxHeight,
@@ -113,15 +110,13 @@ const listStyle = computed<CSSProperties | undefined>(() => {
 })
 
 const handleItemClick = (item: UiLogRecordItem) => {
-  if (!props.itemClickable)
-    return
+  if (!props.itemClickable) return
 
   emit('item-click', item)
 }
 
 const handleActionClick = (item: UiLogRecordItem, action: UiNoticeAction) => {
-  if (action.disabled)
-    return
+  if (action.disabled) return
 
   emit('action-click', { item, action })
 }

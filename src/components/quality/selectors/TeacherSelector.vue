@@ -5,13 +5,14 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
-import { onMounted, ref, watch } from 'vue'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
+import { onMounted, ref, watch } from 'vue'
+import { showUserError } from '@/utils/error-handler'
 import { requirePageList } from './page-contract'
 
 interface Props {
-  value?: string | null
+  value?: string | string[] | null
+  mode?: 'multiple'
   departmentId?: string | null
   placeholder?: string
   allowClear?: boolean
@@ -27,15 +28,15 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  'update:value': [value: string | null]
-  "change": [value: string | null, option?: TeacherUserInfoDto]
+  'update:value': [value: string | string[] | null]
+  change: [value: string | string[] | null, option?: TeacherUserInfoDto | TeacherUserInfoDto[]]
 }>()
 
 const options = ref<TeacherUserInfoDto[]>([])
 const loading = ref(false)
 const searchText = ref('')
-// a-select v-model:value 不接受 null，外部 emit 仍保持 string | null。
-const internalValue = ref<string | undefined>(props.value ?? undefined)
+// a-select v-model:value 不接受 null，外部 emit 仍保持 string | string[] | null。
+const internalValue = ref<string | string[] | undefined>(props.value ?? undefined)
 
 watch(
   () => props.value,
@@ -62,7 +63,7 @@ async function loadOptions(keyword?: string) {
     options.value = requirePageList(res, '教师')
   } catch (e) {
     console.error('[TeacherSelector] 加载教师列表失败', e)
-    message.error('加载教师列表失败')
+    showUserError(e, '教师列表加载失败')
   } finally {
     loading.value = false
   }
@@ -80,9 +81,15 @@ function handleSearch(val: string) {
 }
 
 function handleChange(val: SelectValue) {
-  const next: string | null = typeof val === 'string' ? val : null
+  const next: string | string[] | null = Array.isArray(val)
+    ? val.filter((item): item is string => typeof item === 'string')
+    : typeof val === 'string'
+      ? val
+      : null
   internalValue.value = next ?? undefined
-  const option = options.value.find((o) => o.id === next)
+  const option = Array.isArray(next)
+    ? options.value.filter((o) => next.includes(o.id))
+    : options.value.find((o) => o.id === next)
   emit('update:value', next)
   emit('change', next, option)
 }
@@ -101,6 +108,7 @@ defineExpose({ reload: loadOptions })
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
+    :mode="mode"
     :style="{ width: typeof width === 'number' ? `${width}px` : width }"
     show-search
     :filter-option="false"
@@ -114,7 +122,9 @@ defineExpose({ reload: loadOptions })
       :label="teacherDisplayName(opt)"
     >
       {{ teacherDisplayName(opt) }}
-      <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 font-mono text-xs">({{ opt.teacherNumber }})</span>
+      <span v-if="opt.teacherNumber" class="text-gray-400 ml-1 text-xs"
+        >({{ opt.teacherNumber }})</span
+      >
       <span v-if="opt.department" class="text-gray-400 ml-1">{{ opt.department }}</span>
     </a-select-option>
   </a-select>

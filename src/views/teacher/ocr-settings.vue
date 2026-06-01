@@ -1,11 +1,30 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { ExamQuestionTemplateVO, ExamScoreSummaryItemVO } from '@/apis/mark/exam'
+import {
+  FINAL_SCORE_STATUS_LABEL,
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+  pageExamScoreSummary,
+} from '@/apis/mark/exam'
 import type {
   MarkOcrConfigVO,
   MarkOcrHealthStatusCode,
   MarkOcrProviderTypeCode,
   MarkOcrRecognizeVO,
   PaddleOcrInstanceVO,
+} from '@/apis/mark/ocr'
+import {
+  checkMarkOcrHealth,
+  getCurrentMarkOcrConfig,
+  listPaddleOcrInstances,
+  MARK_OCR_HEALTH_STATUS_COLOR,
+  MARK_OCR_HEALTH_STATUS_LABEL,
+  MARK_OCR_PROVIDER_DESCRIPTION,
+  MARK_OCR_PROVIDER_LABEL,
+  MARK_OCR_PROVIDER_OPTIONS,
+  recognizeMarkOcr,
+  saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
@@ -15,17 +34,6 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
-  checkMarkOcrHealth,
-  getCurrentMarkOcrConfig,
-  listPaddleOcrInstances,
-  MARK_OCR_HEALTH_STATUS_COLOR,
-  MARK_OCR_HEALTH_STATUS_LABEL,
-  MARK_OCR_PROVIDER_DESCRIPTION,
-  MARK_OCR_PROVIDER_LABEL,
-  recognizeMarkOcr,
-  saveMarkOcrConfig,
-} from '@/apis/mark/ocr'
-import {
   UiBadge,
   UiButton,
   UiCard,
@@ -34,12 +42,14 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherOcrSettings' })
 
 interface ConfigFormState {
-  providerType: MarkOcrProviderTypeCode
+  providerType?: MarkOcrProviderTypeCode
   enabled: boolean
 }
 
@@ -47,40 +57,49 @@ interface DebugFormState {
   examId?: string
   paperInstanceId?: string
   questionTemplateId?: string
-  responseSliceId?: string
-  fileId?: string
 }
 
 const configFormRef = ref<FormInstance | null>(null)
 const debugFormRef = ref<FormInstance | null>(null)
 const loading = ref(false)
 // D-9 错误态：OCR 配置加载失败时 UiErrorRetryPanel 重试 + 上报
-const configLoadError = ref<unknown>(null)
+const configLoadError = ref<Error | null>(null)
 const saving = ref(false)
 const checking = ref(false)
 const recognizing = ref(false)
 const currentConfig = ref<MarkOcrConfigVO | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
-const configForm = ref<ConfigFormState>({ providerType: 'PADDLE', enabled: false })
+const configForm = ref<ConfigFormState>({ enabled: false })
 const debugForm = ref<DebugFormState>({})
+const {
+  examOptions,
+  loading: examLoading,
+  selectedExamId,
+  init: initExamSelector,
+  onExamChange,
+} = useMarkExamSelector()
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
 const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
 const paddleInstancesLoading = ref(false)
-const paddleInstancesError = ref<unknown>(null)
+const paddleInstancesError = ref<Error | null>(null)
+const questions = ref<ExamQuestionTemplateVO[]>([])
+const questionsLoading = ref(false)
+const questionsError = ref<Error | null>(null)
+const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
+const paperCandidatesLoading = ref(false)
+const paperCandidatesError = ref<Error | null>(null)
 
-// 直接从后端真实枚举 LABEL 对象派生 select options，零 as 断言。
-const providerOptions = Object.entries(MARK_OCR_PROVIDER_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const providerOptions = MARK_OCR_PROVIDER_OPTIONS
 const configRules: Record<string, Rule[]> = {
   providerType: [{ required: true, message: '请选择 OCR 渠道', trigger: 'change' }],
   enabled: [{ required: true, type: 'boolean', message: '请选择启用状态', trigger: 'change' }],
 }
 const debugRules: Record<string, Rule[]> = {
-  examId: [{ required: true, message: '请输入考试ID', trigger: 'blur' }],
+  examId: [{ required: true, message: '请选择当前考试', trigger: 'change' }],
+  paperInstanceId: [{ required: true, message: '请选择答题卡', trigger: 'change' }],
+  questionTemplateId: [{ required: true, message: '请选择题目', trigger: 'change' }],
 }
 
 const healthStatus = computed<MarkOcrHealthStatusCode | undefined>(
@@ -96,16 +115,59 @@ const healthLabel = computed(() =>
     ? strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, healthStatus.value, 'OCR 健康状态')
     : '',
 )
-const currentProviderLabel = computed(() => providerLabel(currentConfig.value?.providerType))
-const providerIntro = computed(() => MARK_OCR_PROVIDER_DESCRIPTION[configForm.value.providerType])
+const currentProviderLabel = computed(() =>
+  currentConfig.value?.providerType ? providerLabel(currentConfig.value.providerType) : '未配置',
+)
+const providerIntro = computed(() =>
+  configForm.value.providerType ? MARK_OCR_PROVIDER_DESCRIPTION[configForm.value.providerType] : '',
+)
 const canCheckHealth = computed(() => Boolean(currentConfig.value?.providerType))
 const canRecognize = computed(() =>
   Boolean(currentConfig.value?.providerType && currentConfig.value.enabled),
 )
+const questionOptions = computed(() =>
+  questions.value.map((question) => ({
+    value: question.questionTemplateId,
+    label: `题 ${question.questionNo} · ${question.fullScore} 分`,
+  })),
+)
+const paperCandidateOptions = computed(() =>
+  paperCandidates.value
+    .filter((item) => item.paperInstanceId)
+    .map((item) => ({
+      value: item.paperInstanceId!,
+      label: [
+        `${item.studentName}（${item.studentNo}）`,
+        item.studentClassName,
+        item.bindingStatus,
+        finalScoreStatusLabel(item.finalScoreStatus),
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    })),
+)
 
-function providerLabel(providerType?: MarkOcrProviderTypeCode): string {
-  if (!providerType) return '未配置'
+function finalScoreStatusLabel(status: ExamScoreSummaryItemVO['finalScoreStatus']): string {
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
+}
+
+function providerLabel(providerType: MarkOcrProviderTypeCode): string {
   return strictEnumLabel(MARK_OCR_PROVIDER_LABEL, providerType, 'OCR 渠道')
+}
+
+/** 将 OCR 调试诊断转为可展示的识别处理说明，避免暴露引擎和接口调试细节。 */
+function ocrDiagnosticText(diagnostic?: string): string {
+  return getUserErrorMessage(
+    { message: diagnostic },
+    'OCR 识别未返回可展示说明，请检查切片图像质量或稍后重试',
+  )
+}
+
+function ocrHealthMessageText(messageText?: string): string {
+  return getUserErrorMessage(
+    { message: messageText },
+    'OCR 渠道检测未返回可展示说明，请检查渠道配置或稍后重试',
+  )
 }
 
 function applyConfig(config: MarkOcrConfigVO): void {
@@ -117,7 +179,7 @@ function applyConfig(config: MarkOcrConfigVO): void {
   }
   currentConfig.value = config
   configForm.value = {
-    providerType: config.providerType ?? 'PADDLE',
+    providerType: config.providerType,
     enabled: config.enabled,
   }
 }
@@ -128,9 +190,8 @@ async function loadConfig(): Promise<void> {
   try {
     applyConfig(await getCurrentMarkOcrConfig())
   } catch (error) {
-    configLoadError.value = error
-    const errMsg = error instanceof Error ? error.message : 'OCR 配置加载失败'
-    message.error(errMsg)
+    configLoadError.value = toUserError(error, 'OCR 配置加载失败')
+    showUserError(error, 'OCR 识别配置加载失败')
   } finally {
     loading.value = false
   }
@@ -138,9 +199,15 @@ async function loadConfig(): Promise<void> {
 
 async function handleSave(): Promise<void> {
   await configFormRef.value?.validate()
+  if (!configForm.value.providerType) {
+    throw new Error('OCR 配置表单缺少渠道类型')
+  }
   saving.value = true
   try {
-    await saveMarkOcrConfig(configForm.value)
+    await saveMarkOcrConfig({
+      providerType: configForm.value.providerType,
+      enabled: configForm.value.enabled,
+    })
     message.success('OCR 渠道配置已保存')
     recognizeResult.value = null
     await loadConfig()
@@ -153,7 +220,11 @@ async function handleHealthCheck(): Promise<void> {
   checking.value = true
   try {
     const result = await checkMarkOcrHealth()
-    message[result.healthStatus === 'HEALTHY' ? 'success' : 'warning'](result.healthMessage)
+    if (result.healthStatus === 'HEALTHY') {
+      message.success('OCR 渠道检测通过')
+    } else {
+      message.warning(ocrHealthMessageText(result.healthMessage))
+    }
     await loadConfig()
   } finally {
     checking.value = false
@@ -162,21 +233,51 @@ async function handleHealthCheck(): Promise<void> {
 
 async function handleRecognize(): Promise<void> {
   await debugFormRef.value?.validate()
-  if (!debugForm.value.fileId && !debugForm.value.responseSliceId) {
-    message.warning('文件ID和作答切片ID至少填写一项')
-    return
-  }
   recognizing.value = true
   try {
     recognizeResult.value = await recognizeMarkOcr({
       examId: debugForm.value.examId!,
-      paperInstanceId: debugForm.value.paperInstanceId,
-      questionTemplateId: debugForm.value.questionTemplateId,
-      responseSliceId: debugForm.value.responseSliceId,
-      fileId: debugForm.value.fileId,
+      paperInstanceId: debugForm.value.paperInstanceId!,
+      questionTemplateId: debugForm.value.questionTemplateId!,
     })
   } finally {
     recognizing.value = false
+  }
+}
+
+async function loadQuestions(examId: string): Promise<void> {
+  questionsLoading.value = true
+  questionsError.value = null
+  try {
+    questions.value = (await getExamTemplate(examId)).questions
+  } catch (error) {
+    questions.value = []
+    questionsError.value = toUserError(error, '考试题目加载失败')
+    if (!(error instanceof Error)) {
+      throw error
+    }
+    if (isPaperTemplateNotConfiguredError(error)) {
+      message.warning('当前考试还没有配置试卷题目，不能执行 OCR 调试')
+    } else {
+      showUserError(error, '题目列表加载失败')
+    }
+  } finally {
+    questionsLoading.value = false
+  }
+}
+
+async function loadPaperCandidates(examId: string): Promise<void> {
+  paperCandidatesLoading.value = true
+  paperCandidatesError.value = null
+  try {
+    const result = await pageExamScoreSummary({ examId, pageNum: 1, pageSize: 500 })
+    paperCandidates.value = result.list.filter((item) => item.paperInstanceId)
+  } catch (error) {
+    paperCandidates.value = []
+    paperCandidatesError.value = toUserError(error, '答卷候选列表加载失败')
+    showUserError(error, '答题卡列表加载失败')
+  } finally {
+    paperCandidatesLoading.value = false
   }
 }
 
@@ -193,7 +294,7 @@ async function loadPaddleInstances(): Promise<void> {
   try {
     paddleInstances.value = await listPaddleOcrInstances()
   } catch (error) {
-    paddleInstancesError.value = error
+    paddleInstancesError.value = toUserError(error, 'PaddleOCR 实例加载失败')
     paddleInstances.value = []
   } finally {
     paddleInstancesLoading.value = false
@@ -213,15 +314,36 @@ watch(
   { immediate: false },
 )
 
-function paddleInstanceHealthTone(status?: MarkOcrHealthStatusCode) {
+watch(
+  selectedExamId,
+  (examId) => {
+    debugForm.value.examId = examId
+    debugForm.value.paperInstanceId = undefined
+    debugForm.value.questionTemplateId = undefined
+    recognizeResult.value = null
+    if (examId) {
+      void Promise.all([loadQuestions(examId), loadPaperCandidates(examId)])
+    } else {
+      questions.value = []
+      paperCandidates.value = []
+      questionsError.value = null
+      paperCandidatesError.value = null
+    }
+  },
+  { immediate: true },
+)
+
+function paddleInstanceHealthTone(status: MarkOcrHealthStatusCode) {
   return strictEnumTone(MARK_OCR_HEALTH_STATUS_COLOR, status, 'PaddleOCR 实例健康状态')
 }
 
-function paddleInstanceHealthLabel(status?: MarkOcrHealthStatusCode): string {
+function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {
   return strictEnumLabel(MARK_OCR_HEALTH_STATUS_LABEL, status, 'PaddleOCR 实例健康状态')
 }
 
-onMounted(loadConfig)
+onMounted(async () => {
+  await Promise.all([loadConfig(), initExamSelector()])
+})
 </script>
 
 <template>
@@ -315,7 +437,7 @@ onMounted(loadConfig)
           class="state-message"
           :type="healthStatus === 'FAILED' ? 'error' : 'success'"
           show-icon
-          :message="currentConfig.lastHealthMessage"
+          :message="ocrHealthMessageText(currentConfig.lastHealthMessage)"
         />
       </UiCard>
     </div>
@@ -351,7 +473,7 @@ onMounted(loadConfig)
       <a-skeleton v-else-if="paddleInstancesLoading && paddleInstances.length === 0" active />
       <UiEmpty
         v-else-if="paddleInstances.length === 0"
-        description="后端尚未注册任何 PaddleOCR 服务实例。请检查 mark-ocr-paddle 容器是否正常启动并完成自注册。"
+        description="当前没有可用的 OCR 识别服务，请联系管理员检查识别服务状态。"
       />
       <a-list v-else :data-source="paddleInstances" item-layout="horizontal">
         <template #renderItem="{ item }: { item: PaddleOcrInstanceVO }">
@@ -367,16 +489,20 @@ onMounted(loadConfig)
               </template>
               <template #description>
                 <div class="paddle-instance__meta">
-                  <span class="paddle-instance__url">{{ item.serviceUrl }}</span>
+                  <span class="paddle-instance__url">
+                    {{ item.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
+                  </span>
                   <span class="paddle-instance__sep">·</span>
                   <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
                   <template v-if="item.consecutiveFailures > 0">
                     <span class="paddle-instance__sep">·</span>
-                    <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
+                    <span class="paddle-instance__failed"
+                      >连续失败 {{ item.consecutiveFailures }} 次</span
+                    >
                   </template>
                 </div>
                 <div v-if="item.lastHealthMessage" class="paddle-instance__msg">
-                  {{ item.lastHealthMessage }}
+                  {{ ocrHealthMessageText(item.lastHealthMessage) }}
                 </div>
               </template>
             </a-list-item-meta>
@@ -404,33 +530,48 @@ onMounted(loadConfig)
       >
         <a-row :gutter="16">
           <a-col :xs="24" :md="8">
-            <a-form-item label="考试ID" name="examId" required>
-              <a-input v-model:value="debugForm.examId" placeholder="examId" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="8">
-            <a-form-item label="试卷实例ID">
-              <a-input v-model:value="debugForm.paperInstanceId" placeholder="paperInstanceId" />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="8">
-            <a-form-item label="题目模板ID">
-              <a-input
-                v-model:value="debugForm.questionTemplateId"
-                placeholder="questionTemplateId"
+            <a-form-item label="当前考试" name="examId" required>
+              <a-select
+                :value="selectedExamId"
+                :options="examOptions"
+                :loading="examLoading"
+                show-search
+                option-filter-prop="label"
+                placeholder="请选择当前考试"
+                @change="onExamChange"
               />
             </a-form-item>
           </a-col>
-        </a-row>
-        <a-row :gutter="16">
           <a-col :xs="24" :md="8">
-            <a-form-item label="作答切片ID">
-              <a-input v-model:value="debugForm.responseSliceId" placeholder="responseSliceId" />
+            <a-form-item label="答题卡" name="paperInstanceId" required>
+              <a-select
+                v-model:value="debugForm.paperInstanceId"
+                :options="paperCandidateOptions"
+                :loading="paperCandidatesLoading"
+                :disabled="!debugForm.examId"
+                show-search
+                option-filter-prop="label"
+                placeholder="请选择答题卡"
+              />
+              <div v-if="paperCandidatesError" class="debug-form__hint debug-form__hint--error">
+                答题卡列表加载失败，请刷新后重试
+              </div>
             </a-form-item>
           </a-col>
           <a-col :xs="24" :md="8">
-            <a-form-item label="文件ID">
-              <a-input v-model:value="debugForm.fileId" placeholder="fileId" />
+            <a-form-item label="题目" name="questionTemplateId" required>
+              <a-select
+                v-model:value="debugForm.questionTemplateId"
+                :options="questionOptions"
+                :loading="questionsLoading"
+                :disabled="!debugForm.examId"
+                show-search
+                option-filter-prop="label"
+                placeholder="请选择题目"
+              />
+              <div v-if="questionsError" class="debug-form__hint debug-form__hint--error">
+                题目列表加载失败，请刷新后重试
+              </div>
             </a-form-item>
           </a-col>
         </a-row>
@@ -446,11 +587,8 @@ onMounted(loadConfig)
           <a-descriptions-item label="使用渠道">
             {{ providerLabel(recognizeResult.providerType) }}
           </a-descriptions-item>
-          <a-descriptions-item label="追踪ID">
-            {{ recognizeResult.engineTraceId }}
-          </a-descriptions-item>
-          <a-descriptions-item label="诊断信息">
-            {{ recognizeResult.diagnostic }}
+          <a-descriptions-item label="识别处理说明">
+            {{ ocrDiagnosticText(recognizeResult.diagnostic) }}
           </a-descriptions-item>
         </a-descriptions>
         <div class="result-text-block">
@@ -524,6 +662,16 @@ onMounted(loadConfig)
 
 .debug-form {
   margin-top: 12px;
+
+  &__hint {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.5;
+
+    &--error {
+      color: var(--ant-color-error);
+    }
+  }
 }
 
 .state-message {
@@ -569,10 +717,6 @@ onMounted(loadConfig)
   align-items: center;
   font-size: 12px;
   color: rgba(0, 0, 0, 0.55);
-}
-
-.paddle-instance__url {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .paddle-instance__sep {

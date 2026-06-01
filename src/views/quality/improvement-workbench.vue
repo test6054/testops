@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 持续改进与审核闭环工作台（4-in-1）
@@ -23,22 +24,28 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   - 整改任务严格状态机：PLANNED→IN_PROGRESS→SUBMITTED→(VERIFIED|RETURNED)；VERIFIED→CLOSED；RETURNED→IN_PROGRESS
  */
 import type {
-  AuditIssueQueryPayload,
-  AuditIssueSavePayload,
+  AuditIssueQueryRequest,
+  AuditIssueSaveRequest,
+  AuditIssueSeverity,
+  AuditIssueSource,
   AuditIssueStatus,
   AuditIssueVO,
-  AuditRectificationQueryPayload,
-  AuditRectificationSavePayload,
+  AuditRectificationQueryRequest,
+  AuditRectificationSaveRequest,
   AuditRectificationStatus,
   AuditRectificationVO,
-  AuditSupervisionQueryPayload,
-  AuditSupervisionSavePayload,
+  AuditSupervisionConclusion,
+  AuditSupervisionFindingItem,
+  AuditSupervisionQueryRequest,
+  AuditSupervisionSaveRequest,
+  AuditSupervisionScope,
   AuditSupervisionType,
   AuditSupervisionVO,
-  ImprovementTaskQueryPayload,
-  ImprovementTaskSavePayload,
+  ImprovementTaskQueryRequest,
+  ImprovementTaskSaveRequest,
   ImprovementTaskStatus,
   ImprovementTaskVO,
+  QualityAuditEvidenceItem,
 } from '@/apis/quality'
 import {
   aiTaskApi,
@@ -53,10 +60,6 @@ import {
   IMPROVEMENT_TASK_STATUS_COLOR,
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
-  isAuditIssueStatus,
-  isAuditRectificationStatus,
-  isAuditSupervisionType,
-  isImprovementTaskStatus,
 } from '@/apis/quality'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -79,13 +82,14 @@ import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
+import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
 const improvementColumns: ColumnsType = [
   { title: '编号', dataIndex: 'taskCode', key: 'taskCode', width: 160 },
   { title: '标题', dataIndex: 'taskTitle', key: 'taskTitle' },
-  { title: '课程 ID', dataIndex: 'qualityCourseId', key: 'qualityCourseId', width: 120 },
-  { title: '负责人', dataIndex: 'ownerUserId', key: 'ownerUserId', width: 120 },
+  { title: '关联课程', key: 'qualityCourseRef', width: 120 },
+  { title: '负责人', key: 'ownerRef', width: 120 },
   { title: '角色', dataIndex: 'ownerRole', key: 'ownerRole', width: 100 },
   { title: '截止', dataIndex: 'dueDate', key: 'dueDate', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
@@ -105,7 +109,7 @@ const issueColumns: ColumnsType = [
 const rectColumns: ColumnsType = [
   { title: '编码', dataIndex: 'rectificationCode', key: 'rectificationCode', width: 140 },
   { title: '标题', key: 'rectTitle' },
-  { title: '责任人', dataIndex: 'ownerUserId', key: 'ownerUserId', width: 140 },
+  { title: '责任人', key: 'ownerRef', width: 140 },
   { title: '截止', dataIndex: 'dueDate', key: 'dueDate', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 120 },
   { title: '操作', key: 'actions', width: 340, fixed: 'right' },
@@ -126,133 +130,60 @@ const aiTaskStore = useAiTaskStore()
 
 const activeTab = ref<'improvement' | 'issue' | 'rectification' | 'supervision'>('improvement')
 
-function improvementStatusLabel(value: unknown): string {
-  if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_LABEL[value]
-  throw new Error('改进任务状态不符合前后端契约')
+function improvementStatusLabel(value: ImprovementTaskStatus): string {
+  return strictEnumLabel(IMPROVEMENT_TASK_STATUS_LABEL, value, '持续改进任务状态')
 }
 
-function improvementStatusColor(value: unknown): string {
-  if (isImprovementTaskStatus(value)) return IMPROVEMENT_TASK_STATUS_COLOR[value]
-  throw new Error('改进任务状态不符合前后端契约')
+function improvementStatusColor(value: ImprovementTaskStatus): string {
+  return strictEnumTone(IMPROVEMENT_TASK_STATUS_COLOR, value, '持续改进任务状态')
 }
 
-function issueStatusLabel(value: unknown): string {
-  if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_LABEL[value]
-  throw new Error('审核评估问题状态不符合前后端契约')
+function issueStatusLabel(value: AuditIssueStatus): string {
+  return strictEnumLabel(AUDIT_ISSUE_STATUS_LABEL, value, '审核问题状态')
 }
 
-function issueStatusColor(value: unknown): string {
-  if (isAuditIssueStatus(value)) return AUDIT_ISSUE_STATUS_COLOR[value]
-  throw new Error('审核评估问题状态不符合前后端契约')
+function issueStatusColor(value: AuditIssueStatus): string {
+  return strictEnumTone(AUDIT_ISSUE_STATUS_COLOR, value, '审核问题状态')
 }
 
-function rectificationStatusLabel(value: unknown): string {
-  if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_LABEL[value]
-  throw new Error('审核整改状态不符合前后端契约')
+function rectificationStatusLabel(value: AuditRectificationStatus): string {
+  return strictEnumLabel(AUDIT_RECTIFICATION_STATUS_LABEL, value, '整改任务状态')
 }
 
-function rectificationStatusColor(value: unknown): string {
-  if (isAuditRectificationStatus(value)) return AUDIT_RECTIFICATION_STATUS_COLOR[value]
-  throw new Error('审核整改状态不符合前后端契约')
+function rectificationStatusColor(value: AuditRectificationStatus): string {
+  return strictEnumTone(AUDIT_RECTIFICATION_STATUS_COLOR, value, '整改任务状态')
 }
 
-function supervisionTypeLabel(value: unknown): string {
-  if (isAuditSupervisionType(value)) return AUDIT_SUPERVISION_TYPE_LABEL[value]
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('督导类型不符合前后端契约')
+function supervisionTypeLabel(value: AuditSupervisionType): string {
+  return strictEnumLabel(AUDIT_SUPERVISION_TYPE_LABEL, value, '督导类型')
 }
 
-type AuditSupervisionScope = 'COURSE' | 'PROGRAM' | 'TRAINING_PLAN' | 'COMPREHENSIVE'
-type AuditSupervisionConclusion = 'PASS' | 'NEEDS_IMPROVEMENT' | 'FAIL'
-type AuditIssueSource =
-  | 'SELF_AUDIT'
-  | 'EXPERT_AUDIT'
-  | 'ACCREDITATION_AUDIT'
-  | 'EXTERNAL_INSPECTION'
-type AuditIssueSeverity = 'MINOR' | 'MAJOR' | 'CRITICAL'
-
-function requiredContractText(value: unknown, message: string): string {
-  if (typeof value === 'string' && value.trim()) return value
-  if (typeof value === 'number') return String(value)
-  throw new Error(message)
+function issueSourceLabel(value: AuditIssueSource): string {
+  return strictEnumLabel(issueSourceLabelMap, value, '审核问题来源')
 }
 
-function isAuditIssueSource(value: unknown): value is AuditIssueSource {
-  return (
-    value === 'SELF_AUDIT' ||
-    value === 'EXPERT_AUDIT' ||
-    value === 'ACCREDITATION_AUDIT' ||
-    value === 'EXTERNAL_INSPECTION'
-  )
+function severityLabel(value: AuditIssueSeverity): string {
+  return strictEnumLabel(severityLabelMap, value, '审核问题严重度')
 }
 
-function isAuditIssueSeverity(value: unknown): value is AuditIssueSeverity {
-  return value === 'MINOR' || value === 'MAJOR' || value === 'CRITICAL'
+function severityColor(value: AuditIssueSeverity): string {
+  return strictEnumTone(severityColorMap, value, '审核问题严重度')
 }
 
-function issueSourceLabel(value: unknown): string {
-  if (isAuditIssueSource(value)) return issueSourceLabelMap[value]
-  throw new Error('审核评估问题来源不符合前后端契约')
+function supervisionScopeLabel(value: AuditSupervisionScope): string {
+  return strictEnumLabel(supScopeLabelMap, value, '督导范围')
 }
 
-function severityLabel(value: unknown): string {
-  if (isAuditIssueSeverity(value)) return severityLabelMap[value]
-  throw new Error('审核评估问题严重度不符合前后端契约')
+function supervisionConclusionLabel(value: AuditSupervisionConclusion): string {
+  return strictEnumLabel(supConclusionLabelMap, value, '督导结论')
 }
 
-function severityColor(value: unknown): string {
-  if (isAuditIssueSeverity(value)) return severityColorMap[value]
-  throw new Error('审核评估问题严重度不符合前后端契约')
-}
-
-function isAuditSupervisionScope(value: unknown): value is AuditSupervisionScope {
-  return (
-    value === 'COURSE' ||
-    value === 'PROGRAM' ||
-    value === 'TRAINING_PLAN' ||
-    value === 'COMPREHENSIVE'
-  )
-}
-
-function isAuditSupervisionConclusion(value: unknown): value is AuditSupervisionConclusion {
-  return value === 'PASS' || value === 'NEEDS_IMPROVEMENT' || value === 'FAIL'
-}
-
-function supervisionScopeLabel(value: unknown): string {
-  if (isAuditSupervisionScope(value)) {
-    return supScopeLabelMap[value]
-  }
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('督导范围不符合前后端契约')
-}
-
-function supervisionConclusionLabel(value: unknown): string {
-  if (isAuditSupervisionConclusion(value)) {
-    return supConclusionLabelMap[value]
-  }
-  if (value === null || value === undefined || value === '') return '-'
-  throw new Error('督导结论不符合前后端契约')
-}
-
-function supervisionConclusionColor(value: unknown): string {
-  if (isAuditSupervisionConclusion(value)) {
-    return supConclusionColorMap[value]
-  }
-  if (value === null || value === undefined || value === '') return 'default'
-  throw new Error('督导结论不符合前后端契约')
+function supervisionConclusionColor(value: AuditSupervisionConclusion): string {
+  return strictEnumTone(supConclusionColorMap, value, '督导结论')
 }
 
 function selectedId(value: string | null | undefined): string {
   return value ?? ''
-}
-
-function normalizeTextareaLines(value: string | null | undefined): string | undefined {
-  if (typeof value !== 'string') return undefined
-  const lines = value
-    .split('\n')
-    .map((item) => item.trim())
-    .filter(Boolean)
-  return lines.length ? lines.join('\n') : undefined
 }
 
 function normalizeTextareaLineItems(value: string | null | undefined): string[] {
@@ -263,8 +194,13 @@ function normalizeTextareaLineItems(value: string | null | undefined): string[] 
     .filter(Boolean)
 }
 
-function handleImprovementOwnerChange(value: string | null | undefined) {
-  improvementEditor.ownerUserId = selectedId(value)
+function handleImprovementOwnerChange(value: string | string[] | null) {
+  if (Array.isArray(value)) throw new Error('改进任务负责人不支持多选值')
+  improvementEditor.ownerUserId = value ?? ''
+}
+
+function handleImprovementQueryOwnerChange(value: string | string[] | null) {
+  improvementQuery.ownerUserId = typeof value === 'string' ? value : ''
 }
 
 function handleImprovementProgramChange(value: string | null | undefined) {
@@ -275,6 +211,10 @@ function handleImprovementProgramChange(value: string | null | undefined) {
 
 function handleImprovementCourseChange(value: string | null | undefined) {
   improvementEditor.qualityCourseId = selectedId(value)
+}
+
+function handleImprovementQueryCourseChange(value: string | null | undefined) {
+  improvementQuery.qualityCourseId = selectedId(value)
 }
 
 function handleImprovementAchievementResultChange(value: string | null | undefined) {
@@ -311,6 +251,10 @@ function handleIssueAchievementResultChange(value: string | null | undefined) {
   issueEditor.achievementResultId = selectedId(value)
 }
 
+function handleIssueRaisedByChange(value: string | string[] | null | undefined) {
+  issueEditor.raisedBy = Array.isArray(value) ? '' : selectedId(value)
+}
+
 function handleRectQueryAuditIssueChange(value: string | null | undefined) {
   rectQuery.auditIssueId = value ?? undefined
   loadRectList()
@@ -320,12 +264,14 @@ function handleRectEditorAuditIssueChange(value: string | null | undefined) {
   rectEditor.auditIssueId = selectedId(value)
 }
 
-function handleRectEditorOwnerChange(value: string | null | undefined) {
-  rectEditor.ownerUserId = selectedId(value)
+function handleRectEditorOwnerChange(value: string | string[] | null) {
+  if (Array.isArray(value)) throw new Error('整改责任人不支持多选值')
+  rectEditor.ownerUserId = value ?? ''
 }
 
-function handleSupSupervisorChange(value: string | null | undefined) {
-  supEditor.supervisorUserId = selectedId(value)
+function handleSupSupervisorChange(value: string | string[] | null) {
+  if (Array.isArray(value)) throw new Error('督导人不支持多选值')
+  supEditor.supervisorUserId = value ?? ''
 }
 
 function handleSupArchiveChange(value: string | null | undefined) {
@@ -353,12 +299,28 @@ function handleSupCourseChange(value: string | null | undefined) {
   supEditor.qualityCourseId = selectedId(value)
 }
 
+function handleRectEvidenceArchiveChange(index: number, value: string | null | undefined) {
+  rectEvidenceEditor.evidenceItems[index].archiveId = selectedId(value)
+}
+
+function handleRectEvidenceReportChange(index: number, value: string | null | undefined) {
+  rectEvidenceEditor.evidenceItems[index].reportId = selectedId(value)
+}
+
+function handleSupEvidenceArchiveChange(index: number, value: string | null | undefined) {
+  supEditor.evidenceItems[index].archiveId = selectedId(value)
+}
+
+function handleSupEvidenceReportChange(index: number, value: string | null | undefined) {
+  supEditor.evidenceItems[index].reportId = selectedId(value)
+}
+
 /* ========== Tab 1: 改进任务 ========== */
 
 const improvementList = ref<ImprovementTaskVO[]>([])
 const improvementTotal = ref(0)
 const improvementLoading = ref(false)
-const improvementQuery = reactive<ImprovementTaskQueryPayload>({
+const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   trainingPlanId: qualityStore.currentTrainingPlanId,
@@ -378,7 +340,7 @@ const improvementStatusOptions: Array<{ value: ImprovementTaskStatus; label: str
 
 const improvementEditorVisible = ref(false)
 const improvementEditorMode = ref<'create' | 'edit'>('create')
-const improvementEditor = reactive<ImprovementTaskSavePayload>({
+const improvementEditor = reactive<ImprovementTaskSaveRequest>({
   taskCode: '',
   taskTitle: '',
   problemSummary: '',
@@ -423,15 +385,15 @@ async function loadImprovementList() {
       keyword: improvementQuery.keyword?.trim() || undefined,
     })
     improvementList.value = page.list
-    improvementTotal.value = page.total
+    improvementTotal.value = Number(page.total)
   } finally {
     improvementLoading.value = false
   }
 }
 
-function handleImprovementPageChange(payload: { current: number; pageSize: number }) {
-  improvementQuery.pageNum = payload.current
-  improvementQuery.pageSize = payload.pageSize
+function handleImprovementPageChange(page: { current: number; pageSize: number }) {
+  improvementQuery.pageNum = page.current
+  improvementQuery.pageSize = page.pageSize
   loadImprovementList()
 }
 
@@ -469,17 +431,17 @@ function openImprovementEdit(record: ImprovementTaskVO) {
   Object.assign(improvementEditor, {
     id: record.id,
     taskCode: record.taskCode,
-    taskTitle: requiredContractText(record.taskTitle, '改进任务标题不符合前后端契约'),
-    problemSummary: requiredContractText(record.problemSummary, '改进任务问题概述不符合前后端契约'),
-    proposedAction: requiredContractText(record.proposedAction, '改进任务改进措施不符合前后端契约'),
-    programId: requiredContractText(record.programId, '改进任务专业不符合前后端契约'),
+    taskTitle: record.taskTitle,
+    problemSummary: record.problemSummary,
+    proposedAction: record.proposedAction,
+    programId: record.programId,
     trainingPlanId: record.trainingPlanId || '',
     qualityCourseId: record.qualityCourseId || '',
     achievementResultId: record.achievementResultId || '',
     reportId: record.reportId || '',
-    ownerUserId: requiredContractText(record.ownerUserId, '改进任务负责人不符合前后端契约'),
+    ownerUserId: record.ownerUserId,
     ownerRole: record.ownerRole || '',
-    dueDate: requiredContractText(record.dueDate, '改进任务截止日期不符合前后端契约'),
+    dueDate: record.dueDate,
   })
   improvementEditorVisible.value = true
 }
@@ -498,7 +460,7 @@ async function submitImprovementEditor() {
   }
   improvementEditorSubmitting.value = true
   try {
-    const payload: ImprovementTaskSavePayload = {
+    const request: ImprovementTaskSaveRequest = {
       id: improvementEditor.id,
       programId: improvementEditor.programId,
       trainingPlanId:
@@ -515,10 +477,10 @@ async function submitImprovementEditor() {
       dueDate: improvementEditor.dueDate,
     }
     if (improvementEditorMode.value === 'create') {
-      await improvementTaskApi.create(payload)
+      await improvementTaskApi.create(request)
       message.success('改进任务已创建')
     } else {
-      await improvementTaskApi.update(payload)
+      await improvementTaskApi.update(request)
       message.success('已保存修改')
     }
     improvementEditorVisible.value = false
@@ -529,10 +491,7 @@ async function submitImprovementEditor() {
 }
 
 function nextImprovementStatuses(status: ImprovementTaskStatus) {
-  if (!isImprovementTaskStatus(status)) {
-    throw new Error('改进任务状态不符合前后端契约')
-  }
-  return improvementTransitMap[status]
+  return strictEnumValue(improvementTransitMap, status, '持续改进任务状态')
 }
 
 function canEditImprovementTask(status: ImprovementTaskStatus): boolean {
@@ -561,7 +520,7 @@ async function handleImprovementTransit(record: ImprovementTaskVO, to: Improveme
   }
   const remark = await promptModal({
     title: `${improvementStatusLabel(record.status)} → ${improvementStatusLabel(to)}`,
-    placeholder: to === 'SUBMITTED' ? '整改进度说明（建议必填）' : '进度备注（可选）',
+    placeholder: to === 'SUBMITTED' ? '整改进度说明（提交时必填）' : '进度备注（可选）',
     required: false,
     okType: 'primary',
   })
@@ -591,24 +550,25 @@ async function handleImprovementTransit(record: ImprovementTaskVO, to: Improveme
 
 async function handleImprovementAiSuggestion(record: ImprovementTaskVO) {
   if (!record.achievementResultId) {
-    message.error('生成 AI 改进建议需要先关联达成度计算结果')
+    message.error('生成 AI 改进草稿需要先关联达成度计算结果')
     return
   }
+  const achievementResultId = record.achievementResultId
   void confirmAsync({
-    title: '为该改进任务生成 AI 建议草稿？',
-    content: '将提交 IMPROVEMENT_SUGGESTION_GENERATE AI 任务，完成后可在 AI 任务中心查看结果',
+    title: '为该改进任务生成 AI 改进草稿？',
+    content: '将提交改进草稿生成任务，完成后可在 AI 任务中心查看结果',
     type: 'info',
     onOk: async () => {
       const res = await aiTaskApi.submit({
         taskType: 'IMPROVEMENT_SUGGESTION_GENERATE',
         businessType: 'ACHIEVEMENT_RESULT',
-        businessId: record.achievementResultId,
+        businessId: achievementResultId,
         trainingPlanId: record.trainingPlanId,
         programId: record.programId,
         qualityCourseId: record.qualityCourseId,
-        achievementResultId: record.achievementResultId,
+        achievementResultId,
       })
-      message.success(`已提交 AI 任务 ${res.taskId}`)
+      message.success('已提交 AI 改进草稿任务')
       // 启动轮询：后续 AI 任务中心 / 详情抽屉能同步看到状态跳转。
       if (res.taskId) aiTaskStore.startPolling(res.taskId)
     },
@@ -643,7 +603,7 @@ async function openImprovementDetail(record: ImprovementTaskVO) {
 const issueList = ref<AuditIssueVO[]>([])
 const issueTotal = ref(0)
 const issueLoading = ref(false)
-const issueQuery = reactive<AuditIssueQueryPayload>({
+const issueQuery = reactive<AuditIssueQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   programId: undefined,
@@ -701,7 +661,7 @@ const issueTransitMap: Record<AuditIssueStatus, AuditIssueStatus[]> = {
 
 const issueEditorVisible = ref(false)
 const issueEditorMode = ref<'create' | 'edit'>('create')
-const issueEditor = reactive<AuditIssueSavePayload>({
+const issueEditor = reactive<AuditIssueSaveRequest>({
   programId: '',
   trainingPlanId: '',
   qualityCourseId: '',
@@ -730,15 +690,15 @@ async function loadIssueList() {
       keyword: issueQuery.keyword?.trim() || undefined,
     })
     issueList.value = page.list
-    issueTotal.value = page.total
+    issueTotal.value = Number(page.total)
   } finally {
     issueLoading.value = false
   }
 }
 
-function handleIssuePageChange(payload: { current: number; pageSize: number }) {
-  issueQuery.pageNum = payload.current
-  issueQuery.pageSize = payload.pageSize
+function handleIssuePageChange(page: { current: number; pageSize: number }) {
+  issueQuery.pageNum = page.current
+  issueQuery.pageSize = page.pageSize
   loadIssueList()
 }
 
@@ -813,7 +773,7 @@ async function submitIssueEditor() {
   }
   issueEditorSubmitting.value = true
   try {
-    const payload: AuditIssueSavePayload = {
+    const request: AuditIssueSaveRequest = {
       ...issueEditor,
       programId: issueEditor.programId || undefined,
       trainingPlanId: issueEditor.trainingPlanId || undefined,
@@ -830,10 +790,10 @@ async function submitIssueEditor() {
       raisedAt: issueEditor.raisedAt || undefined,
     }
     if (issueEditorMode.value === 'create') {
-      await auditIssueApi.create(payload)
+      await auditIssueApi.create(request)
       message.success('已登记')
     } else {
-      await auditIssueApi.update(payload)
+      await auditIssueApi.update(request)
       message.success('已保存')
     }
     issueEditorVisible.value = false
@@ -860,10 +820,7 @@ function canEditAuditIssue(status: AuditIssueStatus): boolean {
 }
 
 function nextAuditIssueStatuses(status: AuditIssueStatus): AuditIssueStatus[] {
-  if (!isAuditIssueStatus(status)) {
-    throw new Error('审核评估问题状态不符合前后端契约')
-  }
-  return issueTransitMap[status]
+  return strictEnumValue(issueTransitMap, status, '审核问题状态')
 }
 
 async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatus) {
@@ -872,11 +829,14 @@ async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatus)
   await loadIssueList()
 }
 
-function handleIssueStatusMenuClick(record: AuditIssueVO, event: { key: unknown }) {
-  if (!isAuditIssueStatus(event.key)) {
-    throw new Error('审核评估问题状态不符合前后端契约')
+function handleIssueStatusMenuClick(record: AuditIssueVO, event: MenuInfo) {
+  if (typeof event.key !== 'string') {
+    throw new TypeError(`审核问题状态菜单值必须是字符串：${String(event.key)}`)
   }
-  changeIssueStatus(record, event.key)
+  if (!nextAuditIssueStatuses(record.status).includes(event.key as AuditIssueStatus)) {
+    throw new Error(`审核问题状态不允许从 ${issueStatusLabel(record.status)} 切换到 ${event.key}`)
+  }
+  changeIssueStatus(record, event.key as AuditIssueStatus)
 }
 
 /* ========== Tab 3: 整改任务台账 ========== */
@@ -885,7 +845,7 @@ const rectList = ref<AuditRectificationVO[]>([])
 const rectTotal = ref(0)
 const rectLoading = ref(false)
 const rectIssuesCache = ref<Map<string, AuditIssueVO>>(new Map())
-const rectQuery = reactive<AuditRectificationQueryPayload>({
+const rectQuery = reactive<AuditRectificationQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   auditIssueId: undefined,
@@ -904,7 +864,7 @@ const rectStatusOptions: AuditRectificationStatus[] = [
 
 const rectEditorVisible = ref(false)
 const rectEditorMode = ref<'create' | 'edit'>('create')
-const rectEditor = reactive<AuditRectificationSavePayload>({
+const rectEditor = reactive<AuditRectificationSaveRequest>({
   auditIssueId: '',
   rectificationCode: '',
   rectificationTitle: '',
@@ -914,6 +874,24 @@ const rectEditor = reactive<AuditRectificationSavePayload>({
   dueDate: '',
 })
 const rectEditorSubmitting = ref(false)
+const rectEvidenceEditorVisible = ref(false)
+const rectEvidenceEditorSubmitting = ref(false)
+const rectEvidenceEditorRecord = ref<AuditRectificationVO | null>(null)
+const rectEvidenceEditor = reactive<{
+  progressRemark: string
+  evidenceItems: QualityAuditEvidenceItem[]
+}>({
+  progressRemark: '',
+  evidenceItems: [],
+})
+
+const auditEvidenceTypeOptions = [
+  { value: 'COURSE_ARCHIVE', label: '课程归档' },
+  { value: 'ASSESSMENT_REPORT', label: '评价报告' },
+  { value: 'REVIEW_RECORD', label: '复核记录' },
+  { value: 'SUPPORTING_FILE', label: '支撑材料' },
+  { value: 'OTHER', label: '其他' },
+]
 
 async function loadRectList() {
   rectLoading.value = true
@@ -923,7 +901,7 @@ async function loadRectList() {
       keyword: rectQuery.keyword?.trim() || undefined,
     })
     rectList.value = page.list
-    rectTotal.value = page.total
+    rectTotal.value = Number(page.total)
     const issueIds = Array.from(new Set(rectList.value.map((r) => r.auditIssueId).filter(Boolean)))
     for (const id of issueIds) {
       if (rectIssuesCache.value.has(id)) continue
@@ -935,17 +913,18 @@ async function loadRectList() {
   }
 }
 
-function rectIssueCode(value: unknown): string {
+function rectIssueCode(value: string | null | undefined): string {
   if (value == null || value === '') return '-'
-  if (typeof value !== 'string') {
-    throw new TypeError(`整改任务关联问题 ID 不符合前后端契约：${String(value)}`)
+  const issue = rectIssuesCache.value.get(value)
+  if (!issue?.issueCode) {
+    throw new Error('整改任务关联问题缺失审核问题编码')
   }
-  return rectIssuesCache.value.get(value)?.issueCode ?? '未匹配审核问题'
+  return issue.issueCode
 }
 
-function handleRectPageChange(payload: { current: number; pageSize: number }) {
-  rectQuery.pageNum = payload.current
-  rectQuery.pageSize = payload.pageSize
+function handleRectPageChange(page: { current: number; pageSize: number }) {
+  rectQuery.pageNum = page.current
+  rectQuery.pageSize = page.pageSize
   loadRectList()
 }
 
@@ -1001,17 +980,17 @@ async function submitRectEditor() {
   }
   rectEditorSubmitting.value = true
   try {
-    const payload: AuditRectificationSavePayload = {
+    const request: AuditRectificationSaveRequest = {
       ...rectEditor,
       rectificationCode: rectEditor.rectificationCode.trim(),
       rectificationTitle: rectEditor.rectificationTitle.trim(),
       ownerRole: rectEditor.ownerRole || undefined,
     }
     if (rectEditorMode.value === 'create') {
-      await auditRectificationApi.create(payload)
+      await auditRectificationApi.create(request)
       message.success('已创建')
     } else {
-      await auditRectificationApi.update(payload)
+      await auditRectificationApi.update(request)
       message.success('已保存')
     }
     rectEditorVisible.value = false
@@ -1037,33 +1016,93 @@ function canEditAuditRectification(status: AuditRectificationStatus): boolean {
   return status === 'PLANNED' || status === 'IN_PROGRESS' || status === 'RETURNED'
 }
 
+function addRectEvidenceItem() {
+  rectEvidenceEditor.evidenceItems.push({
+    evidenceType: 'REVIEW_RECORD',
+    evidenceTitle: '',
+    evidenceCode: '',
+    archiveId: '',
+    fileNodeId: '',
+    reportId: '',
+    remark: '',
+  })
+}
+
+function removeRectEvidenceItem(index: number) {
+  rectEvidenceEditor.evidenceItems.splice(index, 1)
+}
+
+async function submitRectEvidenceEditor() {
+  const record = rectEvidenceEditorRecord.value
+  if (!record) return
+  if (!rectEvidenceEditor.progressRemark.trim()) {
+    message.error('请填写提交说明')
+    return
+  }
+  if (!rectEvidenceEditor.evidenceItems.length) {
+    message.error('请至少新增一条整改证据')
+    return
+  }
+  for (const [index, item] of rectEvidenceEditor.evidenceItems.entries()) {
+    if (!item.evidenceTitle?.trim()) {
+      message.error(`第 ${index + 1} 条证据缺少标题`)
+      return
+    }
+  }
+  rectEvidenceEditorSubmitting.value = true
+  try {
+    await auditRectificationApi.updateProgress({
+      id: record.id,
+      targetStatus: 'SUBMITTED',
+      progressRemark: rectEvidenceEditor.progressRemark.trim(),
+      evidenceItems: rectEvidenceEditor.evidenceItems.map((item) => ({
+        evidenceType: item.evidenceType || undefined,
+        evidenceTitle: item.evidenceTitle?.trim(),
+        evidenceCode: item.evidenceCode?.trim() || undefined,
+        archiveId: item.archiveId || undefined,
+        fileNodeId: item.fileNodeId || undefined,
+        reportId: item.reportId || undefined,
+        remark: item.remark?.trim() || undefined,
+      })),
+    })
+    message.success('已提交复核')
+    rectEvidenceEditorVisible.value = false
+    rectEvidenceEditorRecord.value = null
+    await loadRectList()
+  } finally {
+    rectEvidenceEditorSubmitting.value = false
+  }
+}
+
 async function advanceRectProgress(
   record: AuditRectificationVO,
   target: 'IN_PROGRESS' | 'SUBMITTED',
 ) {
-  const remark = await promptModal({
-    title: target === 'IN_PROGRESS' ? '开始实施' : '提交复核',
-    placeholder: '请填写进展说明',
-    required: target === 'SUBMITTED',
-    emptyErrorMessage: '请填写提交说明',
-  })
-  if (target === 'SUBMITTED' && !remark) return
-  let evidenceAnchors: string | undefined
   if (target === 'SUBMITTED') {
-    const evidenceText = await promptModal({
-      title: '填写整改复核依据',
-      placeholder: '每行填写一条复核依据，例如：课程目标达成度复测结果',
-      required: true,
-      emptyErrorMessage: '提交复核必须填写整改证据锚点',
+    rectEvidenceEditorRecord.value = record
+    rectEvidenceEditor.progressRemark = ''
+    rectEvidenceEditor.evidenceItems.splice(0, rectEvidenceEditor.evidenceItems.length, {
+      evidenceType: 'REVIEW_RECORD',
+      evidenceTitle: '',
+      evidenceCode: '',
+      archiveId: '',
+      fileNodeId: '',
+      reportId: '',
+      remark: '',
     })
-    if (evidenceText === null || !evidenceText) return
-    evidenceAnchors = normalizeTextareaLines(evidenceText)
+    rectEvidenceEditorVisible.value = true
+    return
   }
+  const remark = await promptModal({
+    title: '开始实施',
+    placeholder: '请填写进展说明',
+    required: false,
+  })
+  if (remark === null) return
   await auditRectificationApi.updateProgress({
     id: record.id,
     targetStatus: target,
     progressRemark: remark ?? undefined,
-    evidenceAnchors,
   })
   message.success('已更新')
   await loadRectList()
@@ -1105,7 +1144,7 @@ async function closeRect(record: AuditRectificationVO) {
 const supList = ref<AuditSupervisionVO[]>([])
 const supTotal = ref(0)
 const supLoading = ref(false)
-const supQuery = reactive<AuditSupervisionQueryPayload>({
+const supQuery = reactive<AuditSupervisionQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   programId: undefined,
@@ -1151,10 +1190,27 @@ const supConclusionColorMap: Record<AuditSupervisionConclusion, string> = {
   NEEDS_IMPROVEMENT: 'orange',
   FAIL: 'red',
 }
+const supFindingTypeOptions = [
+  { value: 'PROCESS', label: '过程执行' },
+  { value: 'MATERIAL', label: '材料支撑' },
+  { value: 'OUTCOME', label: '结果达成' },
+  { value: 'GOVERNANCE', label: '治理闭环' },
+  { value: 'OTHER', label: '其他' },
+]
+const supFindingSeverityOptions = [
+  { value: 'MINOR', label: '轻微' },
+  { value: 'MAJOR', label: '严重' },
+  { value: 'CRITICAL', label: '重大' },
+]
 
 const supEditorVisible = ref(false)
 const supEditorMode = ref<'create' | 'edit'>('create')
-const supEditor = reactive<AuditSupervisionSavePayload>({
+type AuditSupervisionEditorState = AuditSupervisionSaveRequest & {
+  findingItems: AuditSupervisionFindingItem[]
+  evidenceItems: QualityAuditEvidenceItem[]
+}
+
+const supEditor = reactive<AuditSupervisionEditorState>({
   auditIssueId: '',
   rectificationId: '',
   programId: '',
@@ -1167,12 +1223,43 @@ const supEditor = reactive<AuditSupervisionSavePayload>({
   supervisorUserId: '',
   supervisedAt: '',
   summary: '',
-  findings: '',
-  conclusion: '',
+  findingItems: [],
+  conclusion: undefined,
   archiveId: '',
-  evidenceAnchors: '',
+  evidenceItems: [],
 })
 const supEditorSubmitting = ref(false)
+
+function addSupervisionFindingItem() {
+  supEditor.findingItems.push({
+    findingType: 'PROCESS',
+    findingTitle: '',
+    findingDescription: '',
+    severity: 'MINOR',
+    responsibleUnit: '',
+    improvementSuggestion: '',
+  })
+}
+
+function removeSupervisionFindingItem(index: number) {
+  supEditor.findingItems.splice(index, 1)
+}
+
+function addSupervisionEvidenceItem() {
+  supEditor.evidenceItems.push({
+    evidenceType: 'REVIEW_RECORD',
+    evidenceTitle: '',
+    evidenceCode: '',
+    archiveId: '',
+    fileNodeId: '',
+    reportId: '',
+    remark: '',
+  })
+}
+
+function removeSupervisionEvidenceItem(index: number) {
+  supEditor.evidenceItems.splice(index, 1)
+}
 
 async function loadSupList() {
   supLoading.value = true
@@ -1183,15 +1270,15 @@ async function loadSupList() {
       keyword: supQuery.keyword?.trim() || undefined,
     })
     supList.value = page.list
-    supTotal.value = page.total
+    supTotal.value = Number(page.total)
   } finally {
     supLoading.value = false
   }
 }
 
-function handleSupPageChange(payload: { current: number; pageSize: number }) {
-  supQuery.pageNum = payload.current
-  supQuery.pageSize = payload.pageSize
+function handleSupPageChange(page: { current: number; pageSize: number }) {
+  supQuery.pageNum = page.current
+  supQuery.pageSize = page.pageSize
   loadSupList()
 }
 
@@ -1220,10 +1307,10 @@ function openSupCreate() {
     supervisorUserId: '',
     supervisedAt: '',
     summary: '',
-    findings: '',
+    findingItems: [],
     conclusion: '',
     archiveId: '',
-    evidenceAnchors: '',
+    evidenceItems: [],
   })
   supEditorVisible.value = true
 }
@@ -1244,10 +1331,10 @@ function openSupEdit(record: AuditSupervisionVO) {
     supervisorUserId: record.supervisorUserId || '',
     supervisedAt: record.supervisedAt || '',
     summary: record.summary || '',
-    findings: record.findings || '',
+    findingItems: record.findingItems?.map((item) => ({ ...item })) || [],
     conclusion: record.conclusion || '',
     archiveId: record.archiveId || '',
-    evidenceAnchors: record.evidenceAnchors || '',
+    evidenceItems: record.evidenceItems?.map((item) => ({ ...item })) || [],
   })
   supEditorVisible.value = true
 }
@@ -1261,30 +1348,59 @@ async function submitSupEditor() {
     message.error('请填写编码、标题、督导类型')
     return
   }
+  for (const [index, item] of supEditor.findingItems.entries()) {
+    if (!item.findingTitle?.trim()) {
+      message.error(`第 ${index + 1} 条发现缺少标题`)
+      return
+    }
+  }
+  for (const [index, item] of supEditor.evidenceItems.entries()) {
+    if (!item.evidenceTitle?.trim()) {
+      message.error(`第 ${index + 1} 条证据缺少标题`)
+      return
+    }
+  }
   supEditorSubmitting.value = true
   try {
-    const payload: AuditSupervisionSavePayload = {
-      ...supEditor,
+    const request: AuditSupervisionSaveRequest = {
+      id: supEditor.id,
       supervisionCode: supEditor.supervisionCode.trim(),
       supervisionTitle: supEditor.supervisionTitle.trim(),
+      supervisionType: supEditor.supervisionType,
       auditIssueId: supEditor.auditIssueId || undefined,
       rectificationId: supEditor.rectificationId || undefined,
       programId: supEditor.programId || undefined,
       trainingPlanId: supEditor.trainingPlanId || undefined,
       qualityCourseId: supEditor.qualityCourseId || undefined,
+      supervisionScope: supEditor.supervisionScope || undefined,
       supervisorUserId: supEditor.supervisorUserId || undefined,
       supervisedAt: supEditor.supervisedAt || undefined,
       summary: supEditor.summary || undefined,
-      findings: supEditor.findings || undefined,
+      findingItems: supEditor.findingItems.map((item) => ({
+        findingType: item.findingType || undefined,
+        findingTitle: item.findingTitle?.trim(),
+        findingDescription: item.findingDescription?.trim() || undefined,
+        severity: item.severity || undefined,
+        responsibleUnit: item.responsibleUnit?.trim() || undefined,
+        improvementSuggestion: item.improvementSuggestion?.trim() || undefined,
+      })),
       conclusion: supEditor.conclusion || undefined,
       archiveId: supEditor.archiveId || undefined,
-      evidenceAnchors: normalizeTextareaLines(supEditor.evidenceAnchors),
+      evidenceItems: supEditor.evidenceItems.map((item) => ({
+        evidenceType: item.evidenceType || undefined,
+        evidenceTitle: item.evidenceTitle?.trim(),
+        evidenceCode: item.evidenceCode?.trim() || undefined,
+        archiveId: item.archiveId || undefined,
+        fileNodeId: item.fileNodeId || undefined,
+        reportId: item.reportId || undefined,
+        remark: item.remark?.trim() || undefined,
+      })),
     }
     if (supEditorMode.value === 'create') {
-      await auditSupervisionApi.create(payload)
+      await auditSupervisionApi.create(request)
       message.success('已创建')
     } else {
-      await auditSupervisionApi.update(payload)
+      await auditSupervisionApi.update(request)
       message.success('已保存')
     }
     supEditorVisible.value = false
@@ -1324,7 +1440,7 @@ const signals = computed<SignalMetric[]>(() => {
     CLOSED: 0,
   }
   for (const t of improvementList.value) {
-    if (isImprovementTaskStatus(t.status)) improvementBuckets[t.status] += 1
+    improvementBuckets[t.status] += 1
   }
   const now = Date.now()
   const oneWeek = 7 * 24 * 60 * 60 * 1000
@@ -1459,15 +1575,18 @@ onMounted(async () => {
           <header class="iwb__panel-header">
             <h3 class="iwb__panel-title">改进任务台账</h3>
             <div class="iwb__panel-actions">
-              <a-input
-                v-model:value="improvementQuery.qualityCourseId"
-                placeholder="课程 ID"
+              <CourseSelector
+                :value="improvementQuery.qualityCourseId || null"
+                :training-plan-id="qualityStore.currentTrainingPlanId || null"
+                placeholder="关联课程"
                 class="iwb__filter iwb__filter--xs"
+                @change="handleImprovementQueryCourseChange"
               />
-              <a-input
-                v-model:value="improvementQuery.ownerUserId"
-                placeholder="负责人 user_id"
+              <TeacherSelector
+                :value="improvementQuery.ownerUserId || null"
+                placeholder="负责人"
                 class="iwb__filter iwb__filter--xs"
+                @change="handleImprovementQueryOwnerChange"
               />
               <a-select
                 v-model:value="improvementQuery.status"
@@ -1513,19 +1632,24 @@ onMounted(async () => {
             flat
             @page-change="handleImprovementPageChange"
           >
-            <template #bodyCell="{ column, record, text }">
-              <template v-if="column.key === 'qualityCourseId' || column.key === 'ownerRole'">
-                {{ text || '-' }}
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'qualityCourseRef'">
+                <template v-if="record.qualityCourseId">
+                  {{ record.qualityCourseCode }} {{ record.qualityCourseName }}
+                </template>
               </template>
-              <template v-else-if="column.key === 'ownerUserId'">
-                {{ requiredContractText(text, '改进任务负责人不符合前后端契约') }}
+              <template v-else-if="column.key === 'ownerRole'">
+                {{ record.ownerRole || '未指定角色' }}
+              </template>
+              <template v-else-if="column.key === 'ownerRef'">
+                {{ record.ownerUserName }}
               </template>
               <template v-else-if="column.key === 'dueDate'">
-                {{ requiredContractText(text, '改进任务截止日期不符合前后端契约') }}
+                {{ record.dueDate }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="improvementStatusColor(text)">
-                  {{ improvementStatusLabel(text) }}
+                <a-tag :color="improvementStatusColor(record.status)">
+                  {{ improvementStatusLabel(record.status) }}
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -1557,7 +1681,7 @@ onMounted(async () => {
                     :disabled="!record.achievementResultId"
                     @click="handleImprovementAiSuggestion(record)"
                   >
-                    AI 建议
+                    AI 改进
                   </UiButton>
                   <UiButton
                     v-if="record.status === 'OPEN'"
@@ -1635,7 +1759,7 @@ onMounted(async () => {
             flat
             @page-change="handleIssuePageChange"
           >
-            <template #bodyCell="{ column, record, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'issueTitle'">
                 <div>{{ record.issueTitle }}</div>
                 <div v-if="record.issueDescription" class="iwb__sub-desc">
@@ -1644,16 +1768,16 @@ onMounted(async () => {
                 </div>
               </template>
               <template v-else-if="column.key === 'issueSource'">
-                {{ issueSourceLabel(text) }}
+                {{ issueSourceLabel(record.issueSource) }}
               </template>
               <template v-else-if="column.key === 'severity'">
-                <a-tag :color="severityColor(text)">
-                  {{ severityLabel(text) }}
+                <a-tag :color="severityColor(record.severity)">
+                  {{ severityLabel(record.severity) }}
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="issueStatusColor(text)">
-                  {{ issueStatusLabel(text) }}
+                <a-tag :color="issueStatusColor(record.status)">
+                  {{ issueStatusLabel(record.status) }}
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -1741,16 +1865,19 @@ onMounted(async () => {
             flat
             @page-change="handleRectPageChange"
           >
-            <template #bodyCell="{ column, record, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'rectTitle'">
                 <div>{{ record.rectificationTitle }}</div>
                 <div v-if="record.auditIssueId" class="iwb__sub-desc">
                   关联问题：{{ rectIssueCode(record.auditIssueId) }}
                 </div>
               </template>
+              <template v-else-if="column.key === 'ownerRef'">
+                {{ record.ownerUserName }}
+              </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="rectificationStatusColor(text)">
-                  {{ rectificationStatusLabel(text) }}
+                <a-tag :color="rectificationStatusColor(record.status)">
+                  {{ rectificationStatusLabel(record.status) }}
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -1876,7 +2003,7 @@ onMounted(async () => {
             flat
             @page-change="handleSupPageChange"
           >
-            <template #bodyCell="{ column, record, text }">
+            <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'supTitle'">
                 <div>{{ record.supervisionTitle }}</div>
                 <div v-if="record.summary" class="iwb__sub-desc">
@@ -1884,16 +2011,19 @@ onMounted(async () => {
                 </div>
               </template>
               <template v-else-if="column.key === 'supervisionType'">
-                <a-tag>{{ supervisionTypeLabel(text) }}</a-tag>
+                <a-tag>{{ supervisionTypeLabel(record.supervisionType) }}</a-tag>
               </template>
               <template v-else-if="column.key === 'supervisionScope'">
-                {{ supervisionScopeLabel(text) }}
+                {{ supervisionScopeLabel(record.supervisionScope) }}
               </template>
               <template v-else-if="column.key === 'conclusion'">
-                <a-tag v-if="text" :color="supervisionConclusionColor(text)">
-                  {{ supervisionConclusionLabel(text) }}
+                <a-tag
+                  v-if="record.conclusion"
+                  :color="supervisionConclusionColor(record.conclusion)"
+                >
+                  {{ supervisionConclusionLabel(record.conclusion) }}
                 </a-tag>
-                <span v-else class="iwb__muted">-</span>
+                <span v-else class="iwb__muted">未形成结论</span>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <a-space>
@@ -2045,42 +2175,22 @@ onMounted(async () => {
           </a-tag>
         </a-descriptions-item>
         <a-descriptions-item label="负责人">
-          {{
-            requiredContractText(
-              improvementDetailRecord.ownerUserId,
-              '改进任务负责人不符合前后端契约',
-            )
-          }}
+          {{ improvementDetailRecord.ownerUserName }}
         </a-descriptions-item>
         <a-descriptions-item label="角色">
-          {{ improvementDetailRecord.ownerRole || '-' }}
+          {{ improvementDetailRecord.ownerRole || '未指定角色' }}
         </a-descriptions-item>
         <a-descriptions-item label="截止">
-          {{
-            requiredContractText(
-              improvementDetailRecord.dueDate,
-              '改进任务截止日期不符合前后端契约',
-            )
-          }}
+          {{ improvementDetailRecord.dueDate }}
         </a-descriptions-item>
         <a-descriptions-item label="问题概述">
-          {{
-            requiredContractText(
-              improvementDetailRecord.problemSummary,
-              '改进任务问题概述不符合前后端契约',
-            )
-          }}
+          {{ improvementDetailRecord.problemSummary }}
         </a-descriptions-item>
         <a-descriptions-item label="改进措施">
-          {{
-            requiredContractText(
-              improvementDetailRecord.proposedAction,
-              '改进任务改进措施不符合前后端契约',
-            )
-          }}
+          {{ improvementDetailRecord.proposedAction }}
         </a-descriptions-item>
         <a-descriptions-item label="进度备注">
-          {{ improvementDetailRecord.progressRemark || '-' }}
+          {{ improvementDetailRecord.progressRemark || '未填写进度备注' }}
         </a-descriptions-item>
         <a-descriptions-item label="整改证据">
           <ul
@@ -2095,16 +2205,16 @@ onMounted(async () => {
               {{ item }}
             </li>
           </ul>
-          <span v-else>-</span>
+          <span v-else>尚未上传整改证据</span>
         </a-descriptions-item>
         <a-descriptions-item label="复评结论">
-          {{ improvementDetailRecord.reviewDecision || '-' }}
+          {{ improvementDetailRecord.reviewDecision || '尚未复评' }}
         </a-descriptions-item>
         <a-descriptions-item label="复评意见">
-          {{ improvementDetailRecord.reviewRemark || '-' }}
+          {{ improvementDetailRecord.reviewRemark || '尚未复评' }}
         </a-descriptions-item>
         <a-descriptions-item label="闭环时间">
-          {{ improvementDetailRecord.closedAt || '-' }}
+          {{ improvementDetailRecord.closedAt || '未闭环' }}
         </a-descriptions-item>
       </a-descriptions>
     </UiDrawer>
@@ -2153,8 +2263,12 @@ onMounted(async () => {
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="提出人 user_id">
-              <a-input v-model:value="issueEditor.raisedBy" placeholder="提出人 user_id（可选）" />
+            <a-form-item label="提出人">
+              <TeacherSelector
+                :value="issueEditor.raisedBy || null"
+                placeholder="选择提出人（可选）"
+                @change="handleIssueRaisedByChange"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
@@ -2281,12 +2395,84 @@ onMounted(async () => {
       </a-form>
     </a-modal>
 
+    <!-- 整改提交复核 Modal -->
+    <a-modal
+      v-model:open="rectEvidenceEditorVisible"
+      title="提交整改复核"
+      :confirm-loading="rectEvidenceEditorSubmitting"
+      width="960px"
+      @ok="submitRectEvidenceEditor"
+    >
+      <a-form layout="vertical" :model="rectEvidenceEditor">
+        <a-form-item label="提交说明" required>
+          <a-textarea v-model:value="rectEvidenceEditor.progressRemark" :rows="3" />
+        </a-form-item>
+        <a-divider orientation="left">整改证据明细</a-divider>
+        <div class="iwb__detail-toolbar">
+          <a-button type="primary" @click="addRectEvidenceItem">新增证据</a-button>
+        </div>
+        <div
+          v-for="(item, index) in rectEvidenceEditor.evidenceItems"
+          :key="index"
+          class="iwb__detail-row"
+        >
+          <div class="iwb__detail-row-head">
+            <span class="iwb__detail-row-title">证据 {{ index + 1 }}</span>
+            <a-button danger size="small" @click="removeRectEvidenceItem(index)">删除</a-button>
+          </div>
+          <a-row :gutter="12">
+            <a-col :span="6">
+              <a-form-item label="类型">
+                <a-select v-model:value="item.evidenceType" :options="auditEvidenceTypeOptions" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="10">
+              <a-form-item label="标题" required>
+                <a-input v-model:value="item.evidenceTitle" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="编号">
+                <a-input v-model:value="item.evidenceCode" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="12">
+            <a-col :span="8">
+              <a-form-item label="关联归档">
+                <ArchiveSelector
+                  :value="item.archiveId || null"
+                  @change="(value) => handleRectEvidenceArchiveChange(index, value)"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="关联报告">
+                <ReportSelector
+                  :value="item.reportId || null"
+                  @change="(value) => handleRectEvidenceReportChange(index, value)"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="文件节点 ID">
+                <a-input v-model:value="item.fileNodeId" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-form-item label="备注">
+            <a-textarea v-model:value="item.remark" :rows="2" />
+          </a-form-item>
+        </div>
+      </a-form>
+    </a-modal>
+
     <!-- 督导复查 编辑器 Modal -->
     <a-modal
       v-model:open="supEditorVisible"
       :title="supEditorMode === 'create' ? '新建督导记录' : '编辑督导记录'"
       :confirm-loading="supEditorSubmitting"
-      width="840px"
+      width="1040px"
       @ok="submitSupEditor"
     >
       <a-form layout="vertical" :model="supEditor">
@@ -2327,9 +2513,52 @@ onMounted(async () => {
         <a-form-item label="督导摘要">
           <a-textarea v-model:value="supEditor.summary" :rows="3" />
         </a-form-item>
-        <a-form-item label="发现的问题">
-          <a-textarea v-model:value="supEditor.findings" :rows="4" />
-        </a-form-item>
+        <a-divider orientation="left">发现明细</a-divider>
+        <div class="iwb__detail-toolbar">
+          <a-button type="primary" @click="addSupervisionFindingItem">新增发现</a-button>
+        </div>
+        <div v-for="(item, index) in supEditor.findingItems" :key="index" class="iwb__detail-row">
+          <div class="iwb__detail-row-head">
+            <span class="iwb__detail-row-title">发现 {{ index + 1 }}</span>
+            <a-button danger size="small" @click="removeSupervisionFindingItem(index)">
+              删除
+            </a-button>
+          </div>
+          <a-row :gutter="12">
+            <a-col :span="6">
+              <a-form-item label="类型">
+                <a-select v-model:value="item.findingType" :options="supFindingTypeOptions" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="10">
+              <a-form-item label="标题" required>
+                <a-input v-model:value="item.findingTitle" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="4">
+              <a-form-item label="严重程度">
+                <a-select v-model:value="item.severity" :options="supFindingSeverityOptions" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="4">
+              <a-form-item label="责任单位">
+                <a-input v-model:value="item.responsibleUnit" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="12">
+            <a-col :span="12">
+              <a-form-item label="问题描述">
+                <a-textarea v-model:value="item.findingDescription" :rows="2" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item label="改进措施">
+                <a-textarea v-model:value="item.improvementSuggestion" :rows="2" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+        </div>
         <a-row :gutter="12">
           <a-col :span="12">
             <a-form-item label="结论">
@@ -2398,13 +2627,61 @@ onMounted(async () => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="证据锚点">
-          <a-textarea
-            v-model:value="supEditor.evidenceAnchors"
-            :rows="3"
-            placeholder="每行填写一条证据锚点，例如：期末试卷抽检记录"
-          />
-        </a-form-item>
+        <a-divider orientation="left">证据明细</a-divider>
+        <div class="iwb__detail-toolbar">
+          <a-button type="primary" @click="addSupervisionEvidenceItem">新增证据</a-button>
+        </div>
+        <div v-for="(item, index) in supEditor.evidenceItems" :key="index" class="iwb__detail-row">
+          <div class="iwb__detail-row-head">
+            <span class="iwb__detail-row-title">证据 {{ index + 1 }}</span>
+            <a-button danger size="small" @click="removeSupervisionEvidenceItem(index)">
+              删除
+            </a-button>
+          </div>
+          <a-row :gutter="12">
+            <a-col :span="6">
+              <a-form-item label="类型">
+                <a-select v-model:value="item.evidenceType" :options="auditEvidenceTypeOptions" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="10">
+              <a-form-item label="标题" required>
+                <a-input v-model:value="item.evidenceTitle" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="编号">
+                <a-input v-model:value="item.evidenceCode" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="12">
+            <a-col :span="8">
+              <a-form-item label="关联归档">
+                <ArchiveSelector
+                  :value="item.archiveId || null"
+                  @change="(value) => handleSupEvidenceArchiveChange(index, value)"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="关联报告">
+                <ReportSelector
+                  :value="item.reportId || null"
+                  @change="(value) => handleSupEvidenceReportChange(index, value)"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="文件节点 ID">
+                <a-input v-model:value="item.fileNodeId" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-form-item label="备注">
+            <a-textarea v-model:value="item.remark" :rows="2" />
+          </a-form-item>
+        </div>
       </a-form>
     </a-modal>
   </StageWorkbenchShell>
@@ -2514,6 +2791,34 @@ onMounted(async () => {
     margin-top: 4px;
     font-size: 12px;
     color: var(--dp-text-muted, #64748b);
+  }
+
+  &__detail-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+
+  &__detail-row {
+    padding: 12px;
+    margin-bottom: 12px;
+    background: var(--dp-surface-subtle, #f8fafc);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+  }
+
+  &__detail-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  &__detail-row-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
   }
 
   &__muted {

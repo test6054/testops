@@ -1,4 +1,4 @@
-import type { AggregationFunction } from './types'
+import type { AggregationFunction, CivicDimension } from './types'
 /**
  * 毕业要求 API - 对接 edu-quality / GraduationRequirementController
  *
@@ -16,8 +16,7 @@ export interface GraduationRequirementVO {
   requirementCode: string
   requirementName: string
   description?: string
-  /** 思政维度原始串（后端 String，例如逗号分隔的代码列表） */
-  civicDimensions?: string
+  civicDimensions?: CivicDimension[]
   thresholdValue?: number
   aggregation?: AggregationFunction
   sortOrder?: number
@@ -25,35 +24,31 @@ export interface GraduationRequirementVO {
   updateTime?: string
 }
 
-export interface GraduationRequirementQueryPayload extends QueryDto {
+export interface GraduationRequirementQueryRequest extends QueryDto {
   trainingPlanId?: string
   keyword?: string
 }
 
 /** 保存请求 - 严格对齐后端 GraduationRequirementSaveRequest */
-export interface GraduationRequirementSavePayload {
+export interface GraduationRequirementSaveRequest {
   id?: string
   trainingPlanId: string
   requirementCode: string
   requirementName: string
   description?: string
-  civicDimensions?: string
+  civicDimensions?: CivicDimension[]
   thresholdValue?: number
   aggregation?: AggregationFunction
   sortOrder?: number
 }
 
 export const graduationRequirementApi = {
-  page: (data: GraduationRequirementQueryPayload) =>
+  page: (data: GraduationRequirementQueryRequest) =>
     http.post<PageResult<GraduationRequirementVO>>(`${BASE}/page`, data),
   listByPlan: (trainingPlanId: string) =>
     http.post<GraduationRequirementVO[]>(`${BASE}/list-by-plan`, { id: trainingPlanId }),
-  detail: (id: string) =>
-    http.post<GraduationRequirementVO>(`${BASE}/detail`, { id }),
-  create: (data: GraduationRequirementSavePayload) =>
-    http.post<string>(`${BASE}/create`, data),
-  update: (data: GraduationRequirementSavePayload) =>
-    http.post<void>(`${BASE}/update`, data),
-  delete: (id: string) =>
-    http.post<void>(`${BASE}/delete`, { id }),
+  detail: (id: string) => http.post<GraduationRequirementVO>(`${BASE}/detail`, { id }),
+  create: (data: GraduationRequirementSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: GraduationRequirementSaveRequest) => http.post<void>(`${BASE}/update`, data),
+  delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
 }

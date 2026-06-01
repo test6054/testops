@@ -22,10 +22,12 @@ export const TENANT_STATUS_CONFIG: Record<TenantStatusEnum, { label: string, col
 
 /** 获取租户状态标签 */
 export function getTenantStatusLabel(status: TenantStatusEnum): string {
-  return TENANT_STATUS_CONFIG[status].label
+  return strictEnumValue(TENANT_STATUS_CONFIG, status, '租户状态').label
 }
 
 /** 获取租户状态颜色 */
 export function getTenantStatusColor(status: TenantStatusEnum): string {
-  return TENANT_STATUS_CONFIG[status].color
+  return strictEnumValue(TENANT_STATUS_CONFIG, status, '租户状态').color
 }
+
+import { strictEnumValue } from '@/utils/strict-enum'

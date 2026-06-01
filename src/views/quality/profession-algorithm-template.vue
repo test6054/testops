@@ -10,22 +10,24 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AccreditationStandardVO,
   AccreditationType,
-  ProfessionAlgorithmTemplateQueryPayload,
-  ProfessionAlgorithmTemplateSavePayload,
+  AggregationFunction,
+  ProfessionAlgorithmTemplateQueryRequest,
+  ProfessionAlgorithmTemplateSaveRequest,
   ProfessionAlgorithmTemplateVO,
+} from '@/apis/quality'
+import {
+  ACCREDITATION_TYPE_LABEL,
+  accreditationStandardApi,
+  AGGREGATION_FUNCTION_LABEL,
+  professionAlgorithmTemplateApi,
 } from '@/apis/quality'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import {
-  ACCREDITATION_TYPE_LABEL,
-  accreditationStandardApi,
-  isAccreditationType,
-  professionAlgorithmTemplateApi,
-} from '@/apis/quality'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'templateCode', key: 'templateCode', width: 120 },
@@ -38,19 +40,19 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
-/* ========== 状态守卫 helper（避免 as 断言） ========== */
+function accreditationTypeLabel(value: AccreditationType): string {
+  return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
+}
 
-function accreditationTypeLabel(value: unknown): string {
-  if (value == null || value === '') return '-'
-  if (isAccreditationType(value)) return ACCREDITATION_TYPE_LABEL[value]
-  throw new Error('专业算法模板认证类型不符合前后端契约')
+function aggregationFunctionLabel(value: AggregationFunction): string {
+  return strictEnumLabel(AGGREGATION_FUNCTION_LABEL, value, '聚合函数')
 }
 
 const list = ref<ProfessionAlgorithmTemplateVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 const standards = ref<AccreditationStandardVO[]>([])
-const query = reactive<ProfessionAlgorithmTemplateQueryPayload>({
+const query = reactive<ProfessionAlgorithmTemplateQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   accreditationType: undefined,
@@ -60,7 +62,7 @@ const query = reactive<ProfessionAlgorithmTemplateQueryPayload>({
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
-const editor = reactive<ProfessionAlgorithmTemplateSavePayload>({
+const editor = reactive<ProfessionAlgorithmTemplateSaveRequest>({
   templateCode: '',
   templateName: '',
   accreditationType: 'ENGINEERING_ACCREDITATION',
@@ -102,12 +104,11 @@ const accreditationTypes: AccreditationType[] = [
 
 const accreditationOptions = accreditationTypes.map((value) => ({
   value,
-  label: ACCREDITATION_TYPE_LABEL[value],
+  label: accreditationTypeLabel(value),
 }))
 const aggregationOptions = [
   { value: 'WEIGHTED_SUM', label: '加权平均' },
   { value: 'MINIMUM', label: '取最小值' },
-  { value: 'WEIGHTED_MINIMUM_MIXED', label: '加权与最小值混合' },
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: '直接间接加权' },
 ]
 
@@ -180,15 +181,15 @@ async function loadList() {
       keyword: query.keyword?.trim() || undefined,
     })
     list.value = page.list
-    total.value = page.total
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
@@ -273,7 +274,7 @@ async function submitEditor() {
   }
   submitting.value = true
   try {
-    const payload: ProfessionAlgorithmTemplateSavePayload = {
+    const request: ProfessionAlgorithmTemplateSaveRequest = {
       id: editor.id,
       templateCode: editor.templateCode.trim(),
       templateName: editor.templateName.trim(),
@@ -296,8 +297,8 @@ async function submitEditor() {
       civicDimensionsSupported: editor.civicDimensionsSupported,
       enabled: editor.enabled,
     }
-    if (editorMode.value === 'create') await professionAlgorithmTemplateApi.create(payload)
-    else await professionAlgorithmTemplateApi.update(payload)
+    if (editorMode.value === 'create') await professionAlgorithmTemplateApi.create(request)
+    else await professionAlgorithmTemplateApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadList()
@@ -376,21 +377,21 @@ onMounted(async () => {
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'source'">
             <a-tag :color="isSharedTemplate(record) ? 'blue' : 'green'">
               {{ isSharedTemplate(record) ? '平台共享' : '租户自定义' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'accreditationType'">
-            {{ accreditationTypeLabel(text) }}
+            {{ accreditationTypeLabel(record.accreditationType) }}
           </template>
           <template v-else-if="column.key === 'weights'">
-            {{ record.directWeightDefault ?? '-' }} / {{ record.indirectWeightDefault ?? '-' }}
+            {{ record.directWeightDefault }} / {{ record.indirectWeightDefault }}
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="text ? 'green' : 'default'">
-              {{ text ? '启用' : '停用' }}
+            <a-tag :color="record.enabled ? 'green' : 'default'">
+              {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -631,37 +632,37 @@ onMounted(async () => {
             {{ accreditationTypeLabel(detailRecord.accreditationType) }}
           </a-descriptions-item>
           <a-descriptions-item label="学科分类">
-            {{ detailRecord.disciplineCategory || '-' }}
+            {{ detailRecord.disciplineCategory || '未限定学科门类' }}
           </a-descriptions-item>
           <a-descriptions-item label="标准年份">
-            {{ detailRecord.standardYear || '-' }}
+            {{ detailRecord.standardYear || '未配置标准年份' }}
           </a-descriptions-item>
-          <a-descriptions-item label="关联认证标准 ID">
-            {{ detailRecord.standardId || '-' }}
+          <a-descriptions-item label="关联认证标准">
+            {{ detailRecord.standardId ? '已关联认证标准' : '未关联认证标准' }}
           </a-descriptions-item>
           <a-descriptions-item label="课程目标聚合">
-            {{ detailRecord.courseGoalAggregation || '-' }}
+            {{ aggregationFunctionLabel(detailRecord.courseGoalAggregation) }}
           </a-descriptions-item>
           <a-descriptions-item label="观测点聚合">
-            {{ detailRecord.indicatorAggregation || '-' }}
+            {{ aggregationFunctionLabel(detailRecord.indicatorAggregation) }}
           </a-descriptions-item>
           <a-descriptions-item label="毕业要求聚合">
-            {{ detailRecord.requirementAggregation || '-' }}
+            {{ aggregationFunctionLabel(detailRecord.requirementAggregation) }}
           </a-descriptions-item>
           <a-descriptions-item label="直接 / 间接权重">
-            {{ detailRecord.directWeightDefault ?? '-' }} /
-            {{ detailRecord.indirectWeightDefault ?? '-' }}
+            {{ detailRecord.directWeightDefault }} /
+            {{ detailRecord.indirectWeightDefault }}
           </a-descriptions-item>
           <a-descriptions-item label="间接最低样本">
-            {{ detailRecord.indirectMinValidSampleCount ?? '-' }}
+            {{ detailRecord.indirectMinValidSampleCount }}
           </a-descriptions-item>
           <a-descriptions-item label="间接覆盖率阈值">
-            {{ detailRecord.indirectCoverageThreshold ?? '-' }}
+            {{ detailRecord.indirectCoverageThreshold }}
           </a-descriptions-item>
           <a-descriptions-item label="课程目标 / 观测点 / 毕业要求阈值" :span="2">
-            {{ detailRecord.courseGoalThresholdDefault ?? '-' }} /
-            {{ detailRecord.indicatorThresholdDefault ?? '-' }} /
-            {{ detailRecord.requirementThresholdDefault ?? '-' }}
+            {{ detailRecord.courseGoalThresholdDefault }} /
+            {{ detailRecord.indicatorThresholdDefault }} /
+            {{ detailRecord.requirementThresholdDefault }}
           </a-descriptions-item>
           <a-descriptions-item label="能力维度" :span="2">
             <a-space>
@@ -674,7 +675,7 @@ onMounted(async () => {
             </a-space>
           </a-descriptions-item>
           <a-descriptions-item label="描述" :span="2">
-            {{ detailRecord.description || '-' }}
+            {{ detailRecord.description || '未填写模板说明' }}
           </a-descriptions-item>
         </a-descriptions>
 

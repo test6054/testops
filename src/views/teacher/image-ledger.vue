@@ -30,27 +30,6 @@
       </div>
     </template>
 
-    <UiAlertStrip
-      v-if="attentionContext"
-      tone="warning"
-      :title="`来自扫描异常待办的处置上下文：${attentionContext.attentionType}`"
-      dense
-      class="ledger-page__attention-context"
-    >
-      <div class="ledger-page__attention-body">
-        <span v-if="attentionContext.sourceType">来源：{{ attentionContext.sourceType }}</span>
-        <span v-if="attentionContext.sourceId">来源 ID：{{ attentionContext.sourceId }}</span>
-        <span v-if="attentionContext.scanBatchId">扫描批次：{{ attentionContext.scanBatchId }}</span>
-        <span v-if="attentionContext.paperInstanceId">试卷实例：{{ attentionContext.paperInstanceId }}</span>
-        <span v-if="attentionContext.pageId">页 ID：{{ attentionContext.pageId }}</span>
-      </div>
-      <template #actions>
-        <UiButton size="sm" variant="outline" @click="goBackToScanAttention">
-          返回异常待办
-        </UiButton>
-      </template>
-    </UiAlertStrip>
-
     <UiEmpty
       v-if="!selectedExamId"
       description="请选择一场考试以查看影像账本"
@@ -62,7 +41,7 @@
       v-else-if="ledgerLoadError"
       :error="ledgerLoadError"
       title="影像账本加载失败"
-      :helper="`考试 ID：${selectedExamId}`"
+      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
       @retry="loadAll"
     />
 
@@ -97,74 +76,35 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
+import { onMounted, ref, watch } from 'vue'
 import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
 import DuplicateResolveModal from './image-ledger/DuplicateResolveModal.vue'
 import LedgerSummaryCard from './image-ledger/LedgerSummaryCard.vue'
 
 defineOptions({ name: 'TeacherImageLedger' })
 
-const route = useRoute()
-const router = useRouter()
-
 const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
-
-/** 从扫描异常待办入口进入时，处理完单条 attention 后一键回到原列表 */
-function goBackToScanAttention(): void {
-  void router.push({
-    name: 'TeacherScanAttention',
-    query: selectedExamId.value ? { examId: selectedExamId.value } : undefined,
-  })
-}
 
 const ledger = ref<ImageLedgerDetailVO | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)
 // D-9 错误态：影像账本加载失败时 UiErrorRetryPanel 重试 + 上报
-const ledgerLoadError = ref<unknown>(null)
+const ledgerLoadError = ref<Error | null>(null)
 const balanceError = ref('')
-
-interface ScanAttentionContext {
-  attentionType: string
-  sourceType?: string
-  sourceId?: string
-  scanBatchId?: string
-  paperInstanceId?: string
-  pageId?: string
-}
-
-function readQueryString(key: string): string | undefined {
-  const value = route.query[key]
-  if (typeof value !== 'string') return undefined
-  const trimmed = value.trim()
-  return trimmed || undefined
-}
-
-const attentionContext = computed<ScanAttentionContext | null>(() => {
-  const attentionType = readQueryString('attentionType')
-  if (!attentionType) return null
-  return {
-    attentionType,
-    sourceType: readQueryString('sourceType'),
-    sourceId: readQueryString('sourceId'),
-    scanBatchId: readQueryString('scanBatchId'),
-    paperInstanceId: readQueryString('paperInstanceId'),
-    pageId: readQueryString('pageId'),
-  }
-})
 
 async function loadDetail(): Promise<void> {
   if (!selectedExamId.value) return
@@ -173,9 +113,8 @@ async function loadDetail(): Promise<void> {
   try {
     ledger.value = await getImageLedgerDetail({ examId: selectedExamId.value })
   } catch (e) {
-    ledgerLoadError.value = e
-    const msg = e instanceof Error ? e.message : '账本加载失败'
-    message.error(msg)
+    ledgerLoadError.value = toUserError(e, '影像账本加载失败')
+    showUserError(e, '影像账本加载失败')
   } finally {
     loadingDetail.value = false
   }
@@ -193,9 +132,8 @@ async function handleBalance(): Promise<void> {
     ledger.value = await executeImageLedgerBalance({ examId: selectedExamId.value })
     message.success('已执行考试整体对账')
   } catch (e) {
-    const msg = e instanceof Error ? e.message : '对账失败'
-    balanceError.value = msg
-    message.error(msg)
+    balanceError.value = getUserErrorMessage(e, '考试整体对账失败')
+    showUserError(e, '考试整体对账失败')
   } finally {
     balancing.value = false
   }
@@ -255,18 +193,6 @@ onMounted(async () => {
   &__empty {
     padding: 60px 0;
   }
-}
-
-.ledger-page__attention-context {
-  margin-bottom: 16px;
-}
-
-.ledger-page__attention-body {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 13px;
 }
 
 .ledger-page__cards {

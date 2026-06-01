@@ -66,9 +66,9 @@
 
 <script setup lang="ts">
 import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evaluation'
+import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { computed, ref } from 'vue'
-import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
 
 const props = defineProps<{
   open: boolean
@@ -92,7 +92,7 @@ const importResult = ref<IndirectResponseImportResult | null>(null)
 const errorColumns = [
   { title: '行号', dataIndex: 'rowIndex', width: 60 },
   { title: '题项编码', dataIndex: 'itemCode', width: 100 },
-  { title: '错误信息', dataIndex: 'errorMessage' },
+  { title: '导入处理说明', dataIndex: 'errorMessage' },
 ]
 
 function beforeUpload(file: File) {

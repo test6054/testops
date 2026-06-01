@@ -97,28 +97,28 @@
         row-key="archiveSetId"
         size="middle"
       >
-        <template #bodyCell="{ column, index }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'archiveNo'">
-            <button type="button" class="link-cell" @click="goDetail(sets[index].archiveSetId)">
-              {{ sets[index].archiveNo }}
+            <button type="button" class="link-cell" @click="goDetail(record.archiveSetId)">
+              {{ record.archiveNo }}
             </button>
-            <div class="link-cell__sub">{{ sets[index].archiveTitle }}</div>
+            <div class="link-cell__sub">{{ record.archiveTitle }}</div>
           </template>
           <template v-else-if="column.key === 'examScope'">
-            <span v-if="sets[index].examYear">{{ sets[index].examYear }}</span>
-            <span v-if="sets[index].examTerm" class="muted"> · {{ sets[index].examTerm }}</span>
-            <div v-if="sets[index].examRound" class="muted">
-              {{ sets[index].examRound }}
+            <span v-if="record.examYear">{{ record.examYear }}</span>
+            <span v-if="record.examTerm" class="muted"> · {{ record.examTerm }}</span>
+            <div v-if="record.examRound" class="muted">
+              {{ record.examRound }}
             </div>
           </template>
           <template v-else-if="column.key === 'status'">
-            <UiTag :tone="setStatusTone(sets[index].archiveStatus)" size="sm">
-              {{ sets[index].archiveStatusMessage }}
+            <UiTag :tone="setStatusTone(record.archiveStatus)" size="sm">
+              {{ record.archiveStatusMessage }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'tags'">
             <UiTag
-              v-for="tag in sets[index].tags ?? []"
+              v-for="tag in record.tags ?? []"
               :key="tag"
               tone="purple"
               size="sm"
@@ -126,31 +126,31 @@
             >
               {{ tag }}
             </UiTag>
-            <span v-if="!sets[index].tags?.length" class="muted">-</span>
+            <span v-if="!record.tags?.length" class="muted">-</span>
           </template>
           <template v-else-if="column.key === 'retention'">
-            <span v-if="sets[index].permanentRetention">永久保管</span>
+            <span v-if="record.permanentRetention">永久保管</span>
             <span v-else>
-              {{ sets[index].retentionYears ?? '-' }} 年
-              <span v-if="sets[index].retentionUntil" class="muted">
-                · 至 {{ sets[index].retentionUntil }}
+              {{ record.retentionYears }} 年
+              <span v-if="record.retentionUntil" class="muted">
+                · 至 {{ record.retentionUntil }}
               </span>
             </span>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatDateTime(sets[index].createTime) }}
+            {{ formatDateTime(record.createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
               <UiButton
-                v-if="sets[index].archiveStatus === 'DRAFT'"
+                v-if="record.archiveStatus === 'DRAFT'"
                 size="sm"
                 variant="outline"
-                @click="confirmActivate(sets[index])"
+                @click="confirmActivate(record)"
               >
                 激活
               </UiButton>
-              <UiButton size="sm" variant="ghost" @click="goDetail(sets[index].archiveSetId)">
+              <UiButton size="sm" variant="ghost" @click="goDetail(record.archiveSetId)">
                 详情
               </UiButton>
             </a-space>
@@ -192,7 +192,7 @@
       <a-form-item label="业务编号（可选）">
         <a-input
           v-model:value="createForm.archiveNo"
-          placeholder="不填由后端按规则生成"
+          placeholder="不填则由系统按规则生成"
           :maxlength="64"
         />
       </a-form-item>
@@ -227,11 +227,11 @@
           <a-checkbox v-model:checked="createForm.permanentRetention">永久保管</a-checkbox>
         </a-space>
       </a-form-item>
-      <a-form-item label="档案 tag">
+      <a-form-item label="档案标签">
         <a-select
           v-model:value="createForm.tags"
           mode="tags"
-          placeholder="按回车添加 tag，最多 32 个"
+          placeholder="按回车添加标签，最多 32 个"
           :max-tag-count="8"
           style="width: 100%"
         />
@@ -241,24 +241,26 @@
 </template>
 
 <script setup lang="ts">
+import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/paper-archive'
+import {
+  activatePaperArchiveSet,
+  createPaperArchiveSet,
+  pagePaperArchiveSets,
+  PAPER_ARCHIVE_SET_STATUS_OPTIONS,
+  PAPER_ARCHIVE_SET_STATUS_TONE,
+} from '@/apis/mark/paper-archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  activatePaperArchiveSet,
-  createPaperArchiveSet,
-  pagePaperArchiveSets,
-  PAPER_ARCHIVE_SET_STATUS_LABEL,
-  PAPER_ARCHIVE_SET_STATUS_TONE,
-} from '@/apis/mark/paper-archive'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumTone } from '@/utils/strict-enum'
 
@@ -294,7 +296,18 @@ const filterForm = reactive<{
   archiveStatus: undefined,
 })
 
-const createForm = reactive({
+interface PaperArchiveSetCreateForm {
+  archiveNo: string
+  archiveTitle: string
+  examYear: string
+  examTerm: string
+  examRound: string
+  retentionYears: number
+  permanentRetention: boolean
+  tags: string[]
+}
+
+const createForm = reactive<PaperArchiveSetCreateForm>({
   archiveNo: '',
   archiveTitle: '',
   examYear: '',
@@ -302,15 +315,12 @@ const createForm = reactive({
   examRound: '',
   retentionYears: 10,
   permanentRetention: false,
-  tags: [] as string[],
+  tags: [],
 })
 
-const statusOptions = Object.entries(PAPER_ARCHIVE_SET_STATUS_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
+const statusOptions = PAPER_ARCHIVE_SET_STATUS_OPTIONS
 
-const columns = [
+const columns: ColumnsType<PaperArchiveSetVO> = [
   { title: '档案编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 240 },
   { title: '考期', key: 'examScope', width: 180 },
   { title: '试卷份数', key: 'paperCount', dataIndex: 'paperCount', width: 100 },
@@ -318,7 +328,7 @@ const columns = [
   { title: 'tag', key: 'tags', dataIndex: 'tags', width: 200 },
   { title: '保管期限', key: 'retention', dataIndex: 'retentionYears', width: 200 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 180, align: 'right' as const },
+  { title: '操作', key: 'actions', width: 180, align: 'right' },
 ]
 
 /**
@@ -382,7 +392,7 @@ async function loadSets(): Promise<void> {
     pagination.total = Number(result.total)
     syncPaperArchiveStageToStore()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '档案集列表加载失败')
+    showUserError(error, '试卷档案列表加载失败')
   } finally {
     loading.value = false
   }
@@ -438,7 +448,7 @@ async function submitCreate(): Promise<void> {
     pagination.pageNum = 1
     await loadSets()
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '创建档案集失败')
+    showUserError(error, '试卷档案集创建失败')
   } finally {
     creating.value = false
   }
@@ -457,7 +467,7 @@ function confirmActivate(record: PaperArchiveSetVO): void {
         message.success('档案集已激活')
         await loadSets()
       } catch (error) {
-        message.error(error instanceof Error ? error.message : '激活档案集失败')
+        showUserError(error, '试卷档案集激活失败')
       }
     },
   })
@@ -470,9 +480,7 @@ function goDetail(archiveSetId: string): void {
   })
 }
 
-
-function setStatusTone(status?: PaperArchiveSetStatusCode): BadgeTone {
-  if (!status) return 'gray'
+function setStatusTone(status: PaperArchiveSetStatusCode): BadgeTone {
   return strictEnumTone(PAPER_ARCHIVE_SET_STATUS_TONE, status, '试卷档案集状态')
 }
 

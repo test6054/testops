@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 校院两级评价工作组管理
@@ -8,23 +9,29 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   UNIVERSITY（学校级）/ COLLEGE（学院级）/ PROGRAM（专业级）/ INDUSTRY（行业企业专家组）。
  */
 import type {
-  EvaluationWorkgroupQueryPayload,
-  EvaluationWorkgroupSavePayload,
+  EvaluationWorkgroupQueryRequest,
+  EvaluationWorkgroupSaveRequest,
   EvaluationWorkgroupVO,
+  WorkgroupLevel,
   WorkgroupMember,
+  WorkgroupMemberRole,
 } from '@/apis/quality'
-import type { MajorCategoryVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import {
+  evaluationWorkgroupApi,
+  WORKGROUP_LEVEL_LABEL,
+  WORKGROUP_LEVEL_OPTIONS,
+  WORKGROUP_MEMBER_ROLE_LABEL,
+} from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { evaluationWorkgroupApi, WORKGROUP_LEVEL_LABEL } from '@/apis/quality'
-import { majorCategoryCatalogApi, teacherCatalogApi } from '@/apis/quality/user-catalog'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const filterFields: FilterField[] = [
   { key: 'programId', label: '专业大类', type: 'custom', placeholder: '专业大类', width: 220 },
@@ -39,60 +46,38 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const filterModel = ref<Record<string, unknown>>({
+interface EvaluationWorkgroupFilterModel {
+  programId?: string
+  levelCode?: WorkgroupLevel
+}
+
+const filterModel = ref<EvaluationWorkgroupFilterModel>({
   programId: undefined,
   levelCode: undefined,
 })
 
-type SearchFieldUpdate = (value: unknown) => void
+type SearchFieldUpdate = (value: string | WorkgroupLevel | undefined) => void
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'workgroupCode', key: 'workgroupCode', width: 140 },
   { title: '名称', dataIndex: 'workgroupName', key: 'workgroupName' },
-  { title: '专业大类', dataIndex: 'programId', key: 'programId', width: 160 },
+  { title: '专业大类', dataIndex: 'programName', key: 'programName', width: 160 },
   { title: '层级', dataIndex: 'levelCode', key: 'levelCode', width: 100 },
-  { title: '召集人', dataIndex: 'convenerUserId', key: 'convenerUserId', width: 120 },
+  { title: '召集人', dataIndex: 'convenerUserName', key: 'convenerUserName', width: 120 },
   { title: '成员数', key: 'memberCount', width: 90 },
   { title: '启用', dataIndex: 'enabled', key: 'enabled', width: 80 },
   { title: '操作', key: 'actions', width: 260, fixed: 'right' },
 ]
 
-/**
- * 把后端返回的 levelCode（String）渲染成中文标签。
- * - 严格对齐后端 WorkgroupLevelEnum：UNIVERSITY / COLLEGE / PROGRAM / INDUSTRY
- * - 通过字面值比较让 TS 自动缩窄类型，避免使用 as 断言
- * - 若后端落库了枚举之外的非法值，抛出前后端契约错误
- */
-function workgroupLevelLabel(value: unknown): string {
-  if (typeof value !== 'string') {
-    return ''
-  }
-  if (
-    value === 'UNIVERSITY'
-    || value === 'COLLEGE'
-    || value === 'PROGRAM'
-    || value === 'INDUSTRY'
-  ) {
-    return WORKGROUP_LEVEL_LABEL[value]
-  }
-  throw new Error(`评价工作组层级不符合前后端契约：${String(value)}`)
-}
-
-function programName(value: unknown): string {
-  if (value == null || value === '') return '-'
-  if (typeof value !== 'string') {
-    throw new TypeError(`评价工作组专业大类 ID 不符合前后端契约：${String(value)}`)
-  }
-  return programs.value.find((p) => p.id === value)?.majorCategoryName ?? '未匹配专业大类'
+function workgroupLevelLabel(value: WorkgroupLevel): string {
+  return strictEnumLabel(WORKGROUP_LEVEL_LABEL, value, '评价工作组层级')
 }
 
 const list = ref<EvaluationWorkgroupVO[]>([])
 const total = ref(0)
 const loading = ref(false)
-const programs = ref<MajorCategoryVO[]>([])
-const teacherCache = ref<Map<string, TeacherUserInfoDto>>(new Map())
 
-const query = reactive<EvaluationWorkgroupQueryPayload>({
+const query = reactive<EvaluationWorkgroupQueryRequest>({
   pageNum: 1,
   pageSize: 10,
   programId: undefined,
@@ -100,18 +85,7 @@ const query = reactive<EvaluationWorkgroupQueryPayload>({
   enabled: undefined,
 })
 
-const levelOptions = Object.entries(WORKGROUP_LEVEL_LABEL).map(([value, label]) => ({
-  value,
-  label,
-}))
-
-type WorkgroupMemberRole = 'CONVENER' | 'MEMBER' | 'EXTERNAL_EXPERT'
-
-const ROLE_LABEL: Record<WorkgroupMemberRole, string> = {
-  CONVENER: '召集人',
-  MEMBER: '成员',
-  EXTERNAL_EXPERT: '外部专家',
-}
+const levelOptions = WORKGROUP_LEVEL_OPTIONS
 
 const memberRoleOptions = [
   { value: 'CONVENER', label: '召集人' },
@@ -121,7 +95,7 @@ const memberRoleOptions = [
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
-const editor = reactive<EvaluationWorkgroupSavePayload>({
+const editor = reactive<EvaluationWorkgroupSaveRequest>({
   programId: '',
   workgroupCode: '',
   workgroupName: '',
@@ -147,39 +121,21 @@ async function loadList() {
   try {
     const page = await evaluationWorkgroupApi.page({ ...query })
     list.value = page.list
-    total.value = page.total
-    // 预热召集人姓名
-    const ids = Array.from(new Set(list.value.map((w) => w.convenerUserId).filter(Boolean)))
-    for (const uid of ids) {
-      if (teacherCache.value.has(uid)) continue
-      const res = await teacherCatalogApi.userList({
-        pageNum: 1,
-        pageSize: 1,
-        searchText: uid,
-      })
-      const t = res.list?.find((x) => String(x.id) === uid)
-      if (t) teacherCache.value.set(uid, t)
-    }
+    total.value = Number(page.total)
   } finally {
     loading.value = false
   }
 }
 
-async function loadDicts() {
-  programs.value = await majorCategoryCatalogApi.listAll()
-}
-
-function handlePageChange(payload: { current: number, pageSize: number }) {
-  query.pageNum = payload.current
-  query.pageSize = payload.pageSize
+function handlePageChange(page: { current: number; pageSize: number }) {
+  query.pageNum = page.current
+  query.pageSize = page.pageSize
   loadList()
 }
 
 function syncFilterToQuery() {
-  const programIdRaw = filterModel.value.programId
-  query.programId = typeof programIdRaw === 'string' && programIdRaw ? programIdRaw : undefined
-  const levelRaw = filterModel.value.levelCode
-  query.levelCode = typeof levelRaw === 'string' && levelRaw ? levelRaw : undefined
+  query.programId = filterModel.value.programId || undefined
+  query.levelCode = filterModel.value.levelCode
 }
 
 function handleSearch() {
@@ -198,6 +154,17 @@ function handleResetSearch() {
 
 function handleFilterProgramChange(value: string | null, update: SearchFieldUpdate) {
   update(value ?? undefined)
+}
+
+function handleFilterLevelChange(value: SelectValue, update: SearchFieldUpdate) {
+  if (value === undefined || value === null) {
+    update(undefined)
+    return
+  }
+  if (typeof value !== 'string' || !WORKGROUP_LEVEL_OPTIONS.some((item) => item.value === value)) {
+    throw new TypeError(`评价工作组层级选择值异常：${String(value)}`)
+  }
+  update(value as WorkgroupLevel)
 }
 
 function openCreate() {
@@ -225,12 +192,12 @@ function openEdit(record: EvaluationWorkgroupVO) {
     workgroupName: record.workgroupName,
     levelCode: record.levelCode,
     convenerUserId: record.convenerUserId,
-    members: (record.members ?? []).map((member) => ({
+    members: record.members.map((member) => ({
       userId: member.userId,
       userCode: member.userCode,
       userName: member.userName,
-      role: member.role || 'MEMBER',
-      note: member.note || '',
+      role: member.role,
+      note: member.note ?? '',
     })),
     responsibility: record.responsibility || '',
     enabled: record.enabled,
@@ -245,7 +212,8 @@ function handleEditorProgramChange(value: string | null) {
   editor.programId = value ?? ''
 }
 
-function handleEditorConvenerChange(value: string | null) {
+function handleEditorConvenerChange(value: string | string[] | null) {
+  if (Array.isArray(value)) throw new Error('评价工作组召集人不支持多选值')
   editor.convenerUserId = value ?? ''
 }
 
@@ -262,10 +230,10 @@ function removeMember(index: number) {
 
 async function submitEditor() {
   if (
-    !editor.programId
-    || !editor.workgroupCode.trim()
-    || !editor.workgroupName.trim()
-    || !editor.convenerUserId
+    !editor.programId ||
+    !editor.workgroupCode.trim() ||
+    !editor.workgroupName.trim() ||
+    !editor.convenerUserId
   ) {
     message.error('请填写专业、编码、名称、召集人')
     return
@@ -280,18 +248,18 @@ async function submitEditor() {
     const userCode = member.userCode.trim()
     const userName = member.userName.trim()
     if (!userCode || !userName) {
-      message.error(`请完整填写第 ${index + 1} 名成员的编号和姓名`)
+      message.error(`请完整填写第 ${index + 1} 名成员的工号和姓名`)
       return
     }
     members.push({
       userId: member.userId,
       userCode,
       userName,
-      role: member.role && member.role.trim() ? member.role : 'MEMBER',
+      role: member.role,
       note: member.note ? member.note.trim() : '',
     })
   }
-  const payload: EvaluationWorkgroupSavePayload = {
+  const request: EvaluationWorkgroupSaveRequest = {
     id: editor.id,
     programId: editor.programId,
     workgroupCode: editor.workgroupCode.trim(),
@@ -304,8 +272,8 @@ async function submitEditor() {
   }
   submitting.value = true
   try {
-    if (editorMode.value === 'create') await evaluationWorkgroupApi.create(payload)
-    else await evaluationWorkgroupApi.update(payload)
+    if (editorMode.value === 'create') await evaluationWorkgroupApi.create(request)
+    else await evaluationWorkgroupApi.update(request)
     message.success('已保存')
     editorVisible.value = false
     await loadList()
@@ -326,14 +294,6 @@ async function handleDelete(record: EvaluationWorkgroupVO) {
   })
 }
 
-function convenerDisplay(uid: string) {
-  const t = teacherCache.value.get(uid)
-  if (!t) {
-    throw new Error(`评价工作组召集人缺少教师目录数据：${uid}`)
-  }
-  return t.nickName
-}
-
 /* ========== 工作组成员 Excel 导入与查看 ========== */
 
 const importVisible = ref(false)
@@ -343,20 +303,14 @@ const membersDrawerTarget = ref<EvaluationWorkgroupVO | null>(null)
 const membersDrawerRows = computed(() => membersDrawerTarget.value?.members ?? [])
 
 const memberColumns: ColumnsType = [
-  { title: '工号/编号', dataIndex: 'userCode', key: 'userCode', width: 140 },
+  { title: '工号', dataIndex: 'userCode', key: 'userCode', width: 140 },
   { title: '姓名', dataIndex: 'userName', key: 'userName', width: 120 },
   { title: '角色', dataIndex: 'role', key: 'role', width: 140 },
   { title: '备注', dataIndex: 'note', key: 'note' },
 ]
 
-function isWorkgroupMemberRole(role: unknown): role is WorkgroupMemberRole {
-  return role === 'CONVENER' || role === 'MEMBER' || role === 'EXTERNAL_EXPERT'
-}
-
-function memberRoleLabel(role: unknown): string {
-  if (typeof role !== 'string' || !role) return '-'
-  if (isWorkgroupMemberRole(role)) return ROLE_LABEL[role]
-  return role
+function memberRoleLabel(role: WorkgroupMemberRole): string {
+  return strictEnumLabel(WORKGROUP_MEMBER_ROLE_LABEL, role, '评价工作组成员角色')
 }
 
 function memberCountOf(record: EvaluationWorkgroupVO): number {
@@ -410,7 +364,7 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadList(), loadDicts()])
+  await loadList()
 })
 </script>
 
@@ -457,7 +411,7 @@ onMounted(async () => {
             allow-clear
             class="ewg__filter"
             :options="levelOptions"
-            @update:value="(v: unknown) => update(v)"
+            @update:value="(v) => handleFilterLevelChange(v, update)"
           />
         </template>
       </UiSearchForm>
@@ -474,15 +428,15 @@ onMounted(async () => {
         flat
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, record, text }">
-          <template v-if="column.key === 'programId'">
-            {{ programName(text) }}
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'programName'">
+            {{ record.programName }}
           </template>
           <template v-else-if="column.key === 'levelCode'">
-            <a-tag>{{ workgroupLevelLabel(text) }}</a-tag>
+            <a-tag>{{ workgroupLevelLabel(record.levelCode) }}</a-tag>
           </template>
-          <template v-else-if="column.key === 'convenerUserId'">
-            {{ convenerDisplay(text) }}
+          <template v-else-if="column.key === 'convenerUserName'">
+            {{ record.convenerUserName }}
           </template>
           <template v-else-if="column.key === 'memberCount'">
             <a-tag :color="memberCountOf(record) > 0 ? 'blue' : 'default'">
@@ -490,8 +444,8 @@ onMounted(async () => {
             </a-tag>
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="text ? 'green' : 'default'">
-              {{ text ? '启用' : '停用' }}
+            <a-tag :color="record.enabled ? 'green' : 'default'">
+              {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -557,11 +511,7 @@ onMounted(async () => {
             >
               <a-row :gutter="12">
                 <a-col :span="5">
-                  <a-input
-                    v-model:value="member.userCode"
-                    :maxlength="64"
-                    placeholder="工号 / 编号"
-                  />
+                  <a-input v-model:value="member.userCode" :maxlength="64" placeholder="工号" />
                 </a-col>
                 <a-col :span="5">
                   <a-input v-model:value="member.userName" :maxlength="64" placeholder="姓名" />
@@ -609,7 +559,7 @@ onMounted(async () => {
       accept=".xlsx,.xls"
       accept-hint="支持 .xlsx / .xls 格式"
       description-title="模板说明"
-      description="Excel 列顺序：工号/编号 | 姓名 | 角色（CONVENER / MEMBER / EXTERNAL_EXPERT，留空默认 MEMBER） | 备注。前两列必填。导入后将覆盖该工作组现有成员。"
+      description="Excel 列顺序：工号 | 姓名 | 角色（召集人 / 成员 / 外部专家，留空默认成员） | 备注。前两列必填。导入后将覆盖该工作组现有成员。"
       template-button-label="下载工作组成员模板"
       template-file-name="工作组成员导入模板.xlsx"
       :template-api="importTemplateApi"

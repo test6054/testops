@@ -32,11 +32,7 @@
     </div>
 
     <div v-if="modelValue.length" class="ui-attachment-manager__list">
-      <article
-        v-for="item in modelValue"
-        :key="item.id"
-        class="ui-attachment-manager__item"
-      >
+      <article v-for="item in modelValue" :key="item.id" class="ui-attachment-manager__item">
         <div class="ui-attachment-manager__icon">
           <FileTextOutlined />
         </div>
@@ -44,11 +40,7 @@
         <div class="ui-attachment-manager__main">
           <div class="ui-attachment-manager__title-row">
             <div class="ui-attachment-manager__title">{{ item.name }}</div>
-            <UiTag
-              v-if="item.statusLabel"
-              size="sm"
-              :tone="item.statusTone || 'gray'"
-            >
+            <UiTag v-if="item.statusLabel" size="sm" :tone="item.statusTone || 'gray'">
               {{ item.statusLabel }}
             </UiTag>
           </div>
@@ -65,12 +57,7 @@
         <div class="ui-attachment-manager__actions">
           <UiActionLink text="下载" @click="emit('download', item)" />
           <UiActionLink text="预览" @click="emit('preview-item', item)" />
-          <UiActionLink
-            v-if="!props.readonly"
-            text="移除"
-            danger
-            @click="handleRemove(item)"
-          />
+          <UiActionLink v-if="!props.readonly" text="移除" danger @click="handleRemove(item)" />
         </div>
       </article>
     </div>
@@ -92,7 +79,7 @@ import UiActionLink from './UiActionLink.vue'
 import UiPanelHeader from './UiPanelHeader.vue'
 import UiUpload from './Upload.vue'
 
-interface UploadResponsePayload {
+interface UploadResponseData {
   id?: string | number
   fileId?: string | number
   fileName?: string
@@ -102,10 +89,10 @@ interface UploadResponsePayload {
 }
 
 interface UploadResponseEnvelope {
-  data?: UploadResponsePayload
+  data?: UploadResponseData
 }
 
-type UiAttachmentUploadFile = UploadFile<UploadResponseEnvelope | UploadResponsePayload>
+type UiAttachmentUploadFile = UploadFile<UploadResponseEnvelope | UploadResponseData>
 
 defineOptions({
   name: 'UiAttachmentManager',
@@ -115,41 +102,44 @@ defineOptions({
 const modelValue = defineModel<UiAttachmentItem[]>({ default: () => [] })
 const fileList = defineModel<UiAttachmentUploadFile[]>('fileList', { default: () => [] })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  readonly?: boolean
-  disabled?: boolean
-  accept?: string
-  multiple?: boolean
-  maxCount?: number
-  compact?: boolean
-  divided?: boolean
-  emptyText?: string
-  uploadTitle?: string
-  uploadDescription?: string
-  buttonText?: string
-  beforeUpload?: (file: File, files: File[]) => boolean | Promise<boolean>
-  customRequest?: (options: UploadRequestOption) => void | Promise<void>
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  readonly: false,
-  disabled: false,
-  accept: undefined,
-  multiple: true,
-  maxCount: undefined,
-  compact: false,
-  divided: false,
-  emptyText: '暂无附件',
-  uploadTitle: '上传附件',
-  uploadDescription: '支持拖拽或选择多个附件，统一附件上传和列表展示。',
-  buttonText: '选择文件',
-  beforeUpload: undefined,
-  customRequest: undefined,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    readonly?: boolean
+    disabled?: boolean
+    accept?: string
+    multiple?: boolean
+    maxCount?: number
+    compact?: boolean
+    divided?: boolean
+    emptyText?: string
+    uploadTitle?: string
+    uploadDescription?: string
+    buttonText?: string
+    beforeUpload?: (file: File, files: File[]) => boolean | Promise<boolean>
+    customRequest?: (options: UploadRequestOption) => void | Promise<void>
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    readonly: false,
+    disabled: false,
+    accept: undefined,
+    multiple: true,
+    maxCount: undefined,
+    compact: false,
+    divided: false,
+    emptyText: '暂无附件',
+    uploadTitle: '上传附件',
+    uploadDescription: '支持拖拽或选择多个附件，统一附件上传和列表展示。',
+    buttonText: '选择文件',
+    beforeUpload: undefined,
+    customRequest: undefined,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'preview', file: UiAttachmentUploadFile): void
@@ -165,43 +155,46 @@ const hasHeader = computed(() => {
   return !!props.title || !!props.description || !!props.eyebrow || !!slots.actions
 })
 
-watch(modelValue, (items) => {
-  if (fileList.value.length || !items.length)
-    return
+watch(
+  modelValue,
+  (items) => {
+    if (fileList.value.length || !items.length) return
 
-  fileList.value = items.map(item => ({
-    uid: item.id,
-    name: item.name,
-    size: item.size,
-    type: item.type,
-    status: item.status || 'done',
-  }))
-}, { immediate: true })
+    fileList.value = items.map((item) => ({
+      uid: item.id,
+      name: item.name,
+      size: item.size,
+      type: item.type,
+      status: item.status || 'done',
+    }))
+  },
+  { immediate: true },
+)
 
 function isUploadResponseEnvelope(
-  response: UploadResponseEnvelope | UploadResponsePayload,
+  response: UploadResponseEnvelope | UploadResponseData,
 ): response is UploadResponseEnvelope {
   return 'data' in response
 }
 
-function isUploadResponsePayload(response: unknown): response is UploadResponsePayload {
+function isUploadResponseData(response: unknown): response is UploadResponseData {
   return !!response && typeof response === 'object'
 }
 
-function extractUploadResponsePayload(
-  response: UploadResponseEnvelope | UploadResponsePayload | undefined,
-): UploadResponsePayload | undefined {
+function extractUploadResponseData(
+  response: UploadResponseEnvelope | UploadResponseData | undefined,
+): UploadResponseData | undefined {
   if (!response) {
     return undefined
   }
   if (isUploadResponseEnvelope(response)) {
-    return isUploadResponsePayload(response.data) ? response.data : undefined
+    return isUploadResponseData(response.data) ? response.data : undefined
   }
-  return isUploadResponsePayload(response) ? response : undefined
+  return isUploadResponseData(response) ? response : undefined
 }
 
 const normalizeAttachment = (file: UiAttachmentUploadFile, index: number): UiAttachmentItem => {
-  const responseData = extractUploadResponsePayload(file.response)
+  const responseData = extractUploadResponseData(file.response)
   const id = String(responseData?.id || responseData?.fileId || file.uid)
   const size = Number(responseData?.fileSize || file.size || 0)
 
@@ -212,9 +205,10 @@ const normalizeAttachment = (file: UiAttachmentUploadFile, index: number): UiAtt
     size,
     type: responseData?.fileType || file.type || '',
     helper: `附件 ${index + 1}`,
-    status: file.status === 'error' ? 'error' : (file.status === 'uploading' ? 'uploading' : 'done'),
-    statusLabel: file.status === 'error' ? '失败' : (file.status === 'uploading' ? '上传中' : '已上传'),
-    statusTone: file.status === 'error' ? 'red' : (file.status === 'uploading' ? 'orange' : 'green'),
+    status: file.status === 'error' ? 'error' : file.status === 'uploading' ? 'uploading' : 'done',
+    statusLabel:
+      file.status === 'error' ? '失败' : file.status === 'uploading' ? '上传中' : '已上传',
+    statusTone: file.status === 'error' ? 'red' : file.status === 'uploading' ? 'orange' : 'green',
   }
 }
 
@@ -229,17 +223,15 @@ const handlePreview = (file: UiAttachmentUploadFile) => {
 }
 
 const handleRemove = (item: UiAttachmentItem) => {
-  fileList.value = fileList.value.filter(file => file.uid !== item.id)
-  modelValue.value = modelValue.value.filter(current => current.id !== item.id)
+  fileList.value = fileList.value.filter((file) => file.uid !== item.id)
+  modelValue.value = modelValue.value.filter((current) => current.id !== item.id)
   emit('remove', item)
   emit('change', modelValue.value)
 }
 
 const resolvedSizeText = (item: UiAttachmentItem) => {
-  if (item.sizeText)
-    return item.sizeText
-  if (item.size)
-    return formatFileSize(item.size)
+  if (item.sizeText) return item.sizeText
+  if (item.size) return formatFileSize(item.size)
   return ''
 }
 </script>

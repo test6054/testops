@@ -42,7 +42,7 @@ export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
  */
 export function getSemesterDescription(code: string | null | undefined): string {
   if (!code || !SemesterDescription[code]) {
-    throw new Error(`学期编码不符合前后端契约：${String(code)}`)
+    throw new Error(`学期值不符合前后端契约：${String(code)}`)
   }
   return SemesterDescription[code]
 }
@@ -58,14 +58,29 @@ export function isValidSemesterCode(code: string | null | undefined): boolean {
 }
 
 /**
- * 学期代码宽容格式化：
+ * 学期代码格式化：
  * - 已知码（"1" / "2"）返回对应描述
- * - 空值返回空串
- * - 未知码原样返回（用于历史数据兼容展示，不抛错）
+ * - 可选字段为空时返回空串
+ * - 未知码必须暴露前后端契约错误
  *
  * @param value 学期代码或任意展示值
  */
 export function formatSemester(value: string | null | undefined): string {
   if (value === null || value === undefined || value === '') return ''
-  return SemesterDescription[value] ?? value
+  return getSemesterDescription(value)
+}
+
+/**
+ * 格式化 AI 分析场景使用的学年学期选择值。
+ * 后端存储值由考试学年和学期组成，例如 2025-2026-2。
+ *
+ * @param value 学年学期选择值
+ */
+export function formatAcademicTermCode(value: string | null | undefined): string {
+  if (value === null || value === undefined || value === '') return ''
+  const match = value.match(/^(.+)-([12])$/)
+  if (!match) {
+    throw new Error(`学年学期值不符合前后端契约：${value}`)
+  }
+  return `${match[1]} · ${getSemesterDescription(match[2])}`
 }

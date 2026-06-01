@@ -3,6 +3,8 @@
  * 统一管理答辩系统中的各种状态类型
  */
 
+import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
+
 
 /** 答辩会话状态（后端原始状态，用于详细场景） */
 export enum DefenseSessionStatus {
@@ -111,11 +113,8 @@ export const DEFENSE_TASK_STATUS_COLOR: Record<DefenseTaskStatus, string> = {
   [DefenseTaskStatus.CANCELLED]: 'gray',
 }
 
-export function getDefenseTaskStatusColor(status?: DefenseTaskStatus | string): string {
-  if (!status || !(status in DEFENSE_TASK_STATUS_COLOR)) {
-    throw new Error('答辩任务状态不符合前后端契约')
-  }
-  return DEFENSE_TASK_STATUS_COLOR[status as DefenseTaskStatus]
+export function getDefenseTaskStatusColor(status: DefenseTaskStatus): string {
+  return strictEnumTone(DEFENSE_TASK_STATUS_COLOR, status, '答辩任务状态')
 }
 
 
@@ -163,31 +162,22 @@ export enum AnswerStatus {
 /**
  * 获取会话状态文本
  */
-export function getSessionStatusText(status?: DefenseSessionStatus): string {
-  if (!status || !(status in DEFENSE_SESSION_STATUS_CONFIG)) {
-    throw new Error('答辩会话状态不符合前后端契约')
-  }
-  return DEFENSE_SESSION_STATUS_CONFIG[status].text
+export function getSessionStatusText(status: DefenseSessionStatus): string {
+  return strictEnumValue(DEFENSE_SESSION_STATUS_CONFIG, status, '答辩会话状态').text
 }
 
 /**
  * 获取会话状态颜色
  */
-export function getSessionStatusColor(status?: DefenseSessionStatus): string {
-  if (!status || !(status in DEFENSE_SESSION_STATUS_CONFIG)) {
-    throw new Error('答辩会话状态不符合前后端契约')
-  }
-  return DEFENSE_SESSION_STATUS_CONFIG[status].color
+export function getSessionStatusColor(status: DefenseSessionStatus): string {
+  return strictEnumValue(DEFENSE_SESSION_STATUS_CONFIG, status, '答辩会话状态').color
 }
 
 /**
  * 获取会话状态描述
  */
-export function getSessionStatusDescription(status?: DefenseSessionStatus): string {
-  if (!status || !(status in DEFENSE_SESSION_STATUS_CONFIG)) {
-    throw new Error('答辩会话状态不符合前后端契约')
-  }
-  return DEFENSE_SESSION_STATUS_CONFIG[status].description
+export function getSessionStatusDescription(status: DefenseSessionStatus): string {
+  return strictEnumValue(DEFENSE_SESSION_STATUS_CONFIG, status, '答辩会话状态').description
 }
 
 /**
@@ -198,7 +188,7 @@ export function getQuestionTypeText(type: DefenseQuestionType): string {
     OPEN_ENDED: '问答题',
     MULTIPLE_CHOICE: '选择题'
   }
-  return textMap[type]
+  return strictEnumLabel(textMap, type, '答辩题目类型')
 }
 
 /**
@@ -209,7 +199,7 @@ export function getQuestionTypeColor(type: DefenseQuestionType): string {
     MULTIPLE_CHOICE: 'blue',
     OPEN_ENDED: 'purple'
   }
-  return colorMap[type]
+  return strictEnumTone(colorMap, type, '答辩题目类型')
 }
 
 /**
@@ -221,7 +211,7 @@ export function getDifficultyText(difficulty: DefenseDifficulty): string {
     MEDIUM: '中等',
     HARD: '困难'
   }
-  return textMap[difficulty]
+  return strictEnumLabel(textMap, difficulty, '答辩难度')
 }
 
 /**
@@ -233,7 +223,7 @@ export function getDifficultyColor(difficulty: DefenseDifficulty): string {
     MEDIUM: 'orange',
     HARD: 'red'
   }
-  return colorMap[difficulty]
+  return strictEnumTone(colorMap, difficulty, '答辩难度')
 }
 
 /**
@@ -247,7 +237,7 @@ export function getDefenseResultText(result: DefenseResult): string {
     EXPIRED: '过期未参加',
     RESUBMITTED: '有新提交，可重新答辩'
   }
-  return textMap[result]
+  return strictEnumLabel(textMap, result, '答辩结果')
 }
 
 /**
@@ -261,7 +251,7 @@ export function getDefenseResultColor(result: DefenseResult): string {
     EXPIRED: 'gray',
     RESUBMITTED: 'blue'
   }
-  return colorMap[result]
+  return strictEnumTone(colorMap, result, '答辩结果')
 }
 
 /**

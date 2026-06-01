@@ -32,7 +32,7 @@ export interface AccreditationStandardSummaryVO {
   accreditationTypeCount: number
 }
 
-export interface AccreditationStandardSavePayload {
+export interface AccreditationStandardSaveRequest {
   id?: string
   standardCode: string
   standardName: string
@@ -46,7 +46,7 @@ export interface AccreditationStandardSavePayload {
   isPilotOnly?: boolean
 }
 
-export interface AccreditationStandardQueryPayload extends QueryDto {
+export interface AccreditationStandardQueryRequest extends QueryDto {
   accreditationType?: AccreditationType
   standardYear?: string
   enabled?: boolean
@@ -54,11 +54,11 @@ export interface AccreditationStandardQueryPayload extends QueryDto {
 }
 
 export const accreditationStandardApi = {
-  page: (data: AccreditationStandardQueryPayload) =>
+  page: (data: AccreditationStandardQueryRequest) =>
     http.post<PageResult<AccreditationStandardVO>>(`${BASE}/page`, data),
   summary: () => http.post<AccreditationStandardSummaryVO>(`${BASE}/summary`, {}),
   detail: (id: string) => http.post<AccreditationStandardVO>(`${BASE}/detail`, { id }),
-  create: (data: AccreditationStandardSavePayload) => http.post<string>(`${BASE}/create`, data),
-  update: (data: AccreditationStandardSavePayload) => http.post<void>(`${BASE}/update`, data),
+  create: (data: AccreditationStandardSaveRequest) => http.post<string>(`${BASE}/create`, data),
+  update: (data: AccreditationStandardSaveRequest) => http.post<void>(`${BASE}/update`, data),
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
 }

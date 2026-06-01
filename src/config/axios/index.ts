@@ -8,8 +8,8 @@
  * - 错误处理通过axios拦截器统一处理，业务代码只需处理成功的数据
  */
 
-import type {BlobDownloadResponse, ExtendedAxiosRequestConfig, RequestOptions,} from './types'
-import {config} from './config'
+import type { BlobDownloadResponse, ExtendedAxiosRequestConfig, RequestOptions } from './types'
+import { config } from './config'
 import service from './service'
 
 /**
@@ -23,7 +23,7 @@ import service from './service'
  *
  * 注意：这里不要直接给业务侧使用；业务侧只应通过 http.get / http.post 等门面方法。
  */
-async function request<TResponse = unknown, TData = unknown, TParams = unknown>(
+async function request<TResponse, TData = unknown, TParams = unknown>(
     options: RequestOptions<TData, TParams>,
 ): Promise<ResultInfo<TResponse>> {
     const {url, method = 'GET', data, params, headers, responseType, config: requestConfig} = options
@@ -54,7 +54,7 @@ const http = {
      * GET请求 - 用于数据查询
      * @returns 直接返回业务数据（已从ResultInfo中解包）
      */
-    async get<TResponse = unknown>(
+    async get<TResponse>(
         url: string,
         config?: Partial<ExtendedAxiosRequestConfig>,
     ): Promise<TResponse> {
@@ -71,7 +71,7 @@ const http = {
      * POST请求 - 用于数据创建、修改、删除等所有写操作
      * @returns 直接返回业务数据（已从ResultInfo中解包）
      */
-    async post<TResponse = unknown, TData = unknown>(
+    async post<TResponse, TData = unknown>(
         url: string,
         data?: TData,
         config?: Partial<ExtendedAxiosRequestConfig>,
@@ -118,7 +118,7 @@ const http = {
   /**
    * 文件上传
    */
-    async upload<TResponse = unknown>(
+    async upload<TResponse>(
         url: string,
         formData: FormData,
         config?: Partial<ExtendedAxiosRequestConfig>,
