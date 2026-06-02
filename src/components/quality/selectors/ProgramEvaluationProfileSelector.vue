@@ -11,12 +11,12 @@ import type {
   EvaluationMethod,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
 import {
   ACCREDITATION_TYPE_LABEL,
   EVALUATION_METHOD_LABEL,
   programEvaluationProfileApi,
 } from '@/apis/quality'
-import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
@@ -43,7 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: ProgramEvaluationProfileVO]
+  "change": [value: string | null, option?: ProgramEvaluationProfileVO]
 }>()
 
 const options = ref<ProgramEvaluationProfileVO[]>([])

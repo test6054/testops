@@ -4,10 +4,10 @@ import type {
   ExamStatSnapshotVO,
   SemesterGrowthItemVO,
 } from '@/apis/mark/cross-exam-analysis'
-import { COURSE_OBJECTIVE_DIMENSION_LABEL } from '@/apis/mark/cross-exam-analysis'
 import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
 import type { ReviewQuestionProgressItemVO } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import { COURSE_OBJECTIVE_DIMENSION_LABEL } from '@/apis/mark/cross-exam-analysis'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const CHART_AXIS = {
@@ -44,7 +44,7 @@ export function buildExamStatTrendChartOption(
     tooltip: {
       trigger: 'axis',
       formatter: (
-        params: Array<{ seriesName: string; value: number | null; dataIndex: number }>,
+        params: Array<{ seriesName: string, value: number | null, dataIndex: number }>,
       ) => {
         const index = params[0]?.dataIndex ?? 0
         const snapshot = snapshots[index]
@@ -150,7 +150,7 @@ export function buildErrorCausePieOption(
   return {
     tooltip: {
       trigger: 'item',
-      formatter: (params: { name: string; value: number; percent: number }) =>
+      formatter: (params: { name: string, value: number, percent: number }) =>
         `${params.name}<br/>占比 ${params.percent.toFixed(1)}%`,
     },
     legend: { type: 'scroll', bottom: 0, textStyle: { fontSize: 11 } },
@@ -321,7 +321,7 @@ export function buildScoreHistogramOption(distribution: {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: (params: Array<{ name: string; value: number }>) => {
+      formatter: (params: Array<{ name: string, value: number }>) => {
         const item = params[0]
         return `${item.name}<br/>人数 ${item.value}`
       },

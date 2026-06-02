@@ -121,13 +121,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
-import { getExamTemplate } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
-import {
-  generateAllQuestionAnalysis,
-  generateQuestionAnalysis,
-  listQuestionAnalysis,
-} from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { BarChart, ScatterChart } from 'echarts/charts'
@@ -141,7 +135,13 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
+import { getExamTemplate } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import {
+  generateAllQuestionAnalysis,
+  generateQuestionAnalysis,
+  listQuestionAnalysis,
+} from '@/apis/mark/question-analysis'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'

@@ -58,7 +58,6 @@
     />
 
     <a-spin v-else :spinning="loading" tip="加载待审核题目中...">
-
       <UiAlertStrip
         v-if="batchSummary"
         :tone="batchSummary.failureCount === 0 ? 'success' : 'warning'"

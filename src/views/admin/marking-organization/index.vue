@@ -19,10 +19,10 @@
         <div class="org-index__context-actions">
           <UiTag
             v-if="organization"
-            :tone="strictEnumTone(STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
+            :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
             size="sm"
           >
-            {{ strictEnumLabel(STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
+            {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
           </UiTag>
           <UiButton
             variant="outline"
@@ -105,10 +105,10 @@
           </a-descriptions-item>
           <a-descriptions-item label="组织状态">
             <UiTag
-              :tone="strictEnumTone(STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
+              :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
               size="sm"
             >
-              {{ strictEnumLabel(STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
+              {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
             </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="匿名阅卷">
@@ -275,21 +275,10 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
-} from '@/apis/mark/marking-organization'
-import {
-  createOrganization,
-  deleteOrganization,
-  getOrganization,
-  isMarkingOrgNotCreatedError,
-  MARKING_ORGANIZATION_STATUS_LABEL as STATUS_LABEL,
-  MARKING_ORGANIZATION_STATUS_TONE as STATUS_TONE,
-  updateOrganization,
-  validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
 import type { SignalMetric } from '@/types/workbench'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
@@ -297,6 +286,17 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
+import {
+  createOrganization,
+  deleteOrganization,
+  getOrganization,
+  isMarkingOrgNotCreatedError,
+  MARKING_ORGANIZATION_STATUS_LABEL,
+  MARKING_ORGANIZATION_STATUS_TONE,
+  updateOrganization,
+  validateMarkingOrganizationContract,
+} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,
@@ -390,8 +390,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     {
       key: 'status',
       label: '组织状态',
-      value: strictEnumLabel(STATUS_LABEL, org.organizationStatus, '阅卷组织状态'),
-      tone: strictEnumTone(STATUS_TONE, org.organizationStatus, '阅卷组织状态'),
+      value: strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, org.organizationStatus, '阅卷组织状态'),
+      tone: strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, org.organizationStatus, '阅卷组织状态'),
     },
   ]
 })

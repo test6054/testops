@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import { pageExams } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
+import { pageExams } from '@/apis/mark/exam'
 import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'

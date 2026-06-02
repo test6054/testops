@@ -1,13 +1,13 @@
 import type { Router } from 'vue-router'
 import type { RoleEnum } from '@/utils/permission'
-import { isValidRole } from '@/utils/permission'
 import type { SeoMeta } from '@/utils/seo'
-import { applySeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
 import { useAuthStore, useRouteStore, useUserStore } from '@/stores'
 import { getToken } from '@/utils/auth'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
+import { isValidRole } from '@/utils/permission'
+import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
@@ -145,9 +145,9 @@ export const setupRouterGuard = (router: Router) => {
       return getDefaultRoute(authStore.userRole)
     }
 
-    const needsSecurityRefresh =
-      to.path !== '/change-password' &&
-      (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
+    const needsSecurityRefresh
+      = to.path !== '/change-password'
+        && (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
 
     if (needsSecurityRefresh) {
       try {
@@ -162,11 +162,11 @@ export const setupRouterGuard = (router: Router) => {
         }
         const status = err?.response?.status
         const code = err?.code
-        const isNetworkLevel =
-          !err?.response ||
-          code === 'ERR_NETWORK' ||
-          code === 'ECONNABORTED' ||
-          (typeof status === 'number' && status >= 500)
+        const isNetworkLevel
+          = !err?.response
+            || code === 'ERR_NETWORK'
+            || code === 'ECONNABORTED'
+            || (typeof status === 'number' && status >= 500)
 
         if (isNetworkLevel) {
           // 本次导航继续放行

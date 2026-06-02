@@ -1,21 +1,23 @@
 <script setup lang="ts">
+import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AccreditationCockpitVO,
+  AccreditationConclusionRegisterRequest,
   AccreditationCyclePhase,
   AccreditationCycleSaveRequest,
   AccreditationCycleVO,
-  SelfAssessmentReviewDecision,
+  SelfAssessmentReviewDecisionRequest,
 } from '@/apis/quality'
+import { DownOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   ACCREDITATION_CONCLUSION_LABEL,
   ACCREDITATION_CYCLE_PHASE_LABEL,
   ACCREDITATION_CYCLE_STATUS_LABEL,
   accreditationApi,
 } from '@/apis/quality'
-import { DownOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import {
   canConclusion,
@@ -36,9 +38,17 @@ const props = defineProps<{
   cockpit?: AccreditationCockpitVO
 }>()
 
-const emit = defineEmits<{ refresh: []; 'go-ai-report': [] }>()
+const emit = defineEmits<{ "refresh": [], 'go-ai-report': [] }>()
 
-const columns: ColumnsType = [
+type AccreditationCycleMenuAction = 'application' | 'self' | 'review' | 'conclusion' | 'delete'
+
+interface AccreditationCycleMenuItem {
+  key: AccreditationCycleMenuAction
+  label: string
+  danger?: boolean
+}
+
+const columns: ColumnsType<AccreditationCycleVO> = [
   { title: '周期编码', dataIndex: 'cycleCode', key: 'cycleCode', width: 120 },
   { title: '周期名称', dataIndex: 'cycleName', key: 'cycleName' },
   { title: '阶段', dataIndex: 'currentPhase', key: 'currentPhase', width: 108 },
@@ -63,14 +73,21 @@ const form = reactive<AccreditationCycleSaveRequest>({
   cycleName: '',
 })
 
-const reviewForm = reactive({
-  reviewDecision: 'ACCEPTED' as SelfAssessmentReviewDecision,
+const reviewForm = reactive<
+  Pick<SelfAssessmentReviewDecisionRequest, 'reviewDecision' | 'reviewRemark' | 'supplementDeadline'>
+>({
+  reviewDecision: 'ACCEPTED',
   reviewRemark: '',
   supplementDeadline: '',
 })
 
-const conclusionForm = reactive({
-  conclusionType: 'FULL_6Y' as 'FULL_6Y' | 'CONDITIONAL_6Y' | 'NOT_PASS',
+const conclusionForm = reactive<
+  Pick<
+    AccreditationConclusionRegisterRequest,
+    'conclusionType' | 'validFrom' | 'validUntil' | 'conditionalDueDate' | 'conclusionRemark'
+  >
+>({
+  conclusionType: 'FULL_6Y',
   validFrom: '',
   validUntil: '',
   conditionalDueDate: '',
@@ -248,8 +265,8 @@ function phaseLabel(phase: AccreditationCyclePhase) {
   return strictEnumLabel(ACCREDITATION_CYCLE_PHASE_LABEL, phase, '认证周期阶段')
 }
 
-function buildMenuItems(row: AccreditationCycleVO) {
-  const items: { key: string; label: string; danger?: boolean }[] = []
+function buildMenuItems(row: AccreditationCycleVO): AccreditationCycleMenuItem[] {
+  const items: AccreditationCycleMenuItem[] = []
   if (canRecordApplication(row) && !row.applicationRecordedAt) {
     items.push({ key: 'application', label: '登记申请书提交' })
   }
@@ -268,19 +285,42 @@ function buildMenuItems(row: AccreditationCycleVO) {
   return items
 }
 
-async function onMenuClick(row: AccreditationCycleVO, key: string) {
-  if (key === 'application') {
+function bindCycleMenuClick(row: AccreditationCycleVO): (event: MenuInfo) => void {
+  return (event: MenuInfo) => {
+    void handleCycleMenuClick(row, event)
+  }
+}
+
+async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) {
+  if (typeof event.key !== 'string') {
+    showUserError(null, '流程操作无效，请重新选择')
+    return
+  }
+  const matchedItem = buildMenuItems(row).find((item) => item.key === event.key)
+  if (!matchedItem) {
+    showUserError(null, '当前周期不可执行该流程操作')
+    return
+  }
+  if (matchedItem.key === 'application') {
     await runAction(() => accreditationApi.recordApplication(row.id), '确认登记申请书已提交？')
-  } else if (key === 'self') {
+    return
+  }
+  if (matchedItem.key === 'self') {
     await runAction(
       () => accreditationApi.submitSelfAssessment(row.id),
       '确认提交自评报告？提交后进入自评审阅阶段。',
     )
-  } else if (key === 'review') {
+    return
+  }
+  if (matchedItem.key === 'review') {
     openReview(row)
-  } else if (key === 'conclusion') {
+    return
+  }
+  if (matchedItem.key === 'conclusion') {
     openConclusion(row)
-  } else if (key === 'delete') {
+    return
+  }
+  if (matchedItem.key === 'delete') {
     await removeCycle(row)
   }
 }
@@ -299,9 +339,9 @@ defineExpose({ openCreate, loadCycles })
         <span v-for="hint in deadlineHints" :key="hint" class="meta">{{ hint }}</span>
       </div>
       <div class="banner-actions">
-        <UiButton size="sm" variant="outline" @click="emit('go-ai-report')"
-          >AI 生成自评报告</UiButton
-        >
+        <UiButton size="sm" variant="outline" @click="emit('go-ai-report')">
+          AI 生成自评报告
+        </UiButton>
         <UiButton size="sm" @click="openDetail(activeCycle)">周期详情</UiButton>
       </div>
     </div>
@@ -331,16 +371,16 @@ defineExpose({ openCreate, loadCycles })
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiButton size="sm" variant="ghost" @click="openDetail(record)">详情</UiButton>
-          <UiButton v-if="canEditCycle(record)" size="sm" variant="ghost" @click="openEdit(record)"
-            >编辑</UiButton
-          >
+          <UiButton v-if="canEditCycle(record)" size="sm" variant="ghost" @click="openEdit(record)">
+            编辑
+          </UiButton>
           <a-dropdown v-if="buildMenuItems(record).length" trigger="click">
             <UiButton size="sm" variant="outline">
               流程操作
               <DownOutlined />
             </UiButton>
             <template #overlay>
-              <a-menu @click="({ key }) => onMenuClick(record, String(key))">
+              <a-menu @click="bindCycleMenuClick(record)">
                 <a-menu-item
                   v-for="item in buildMenuItems(record)"
                   :key="item.key"
@@ -416,10 +456,10 @@ defineExpose({ openCreate, loadCycles })
           {{
             detailRecord.conclusionType
               ? strictEnumLabel(
-                  ACCREDITATION_CONCLUSION_LABEL,
-                  detailRecord.conclusionType,
-                  '认证结论类型',
-                )
+                ACCREDITATION_CONCLUSION_LABEL,
+                detailRecord.conclusionType,
+                '认证结论类型',
+              )
               : '—'
           }}
         </dd>

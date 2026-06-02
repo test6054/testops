@@ -1,5 +1,4 @@
 import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam'
-import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 /**
  * 阅卷任务 Store
  *
@@ -25,13 +24,14 @@ import type {
   TeacherClaimContextQueryRequest,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+import { listReviewTasks } from '@/apis/mark/exam'
 import {
   claimMarkingTasks,
   getTeacherClaimContext,
   listMarkingTasks,
 } from '@/apis/mark/marking-organization'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 import { readPageList } from '@/utils/page-result'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
@@ -50,7 +50,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
    * pagination 暴露给消费侧用于检查截断或显示分页 UI。
    */
   const REVIEW_TASKS_DEFAULT_PAGE_SIZE = 200
-  const reviewTasksPagination = ref<{ pageNum: number; pageSize: number; total: number }>({
+  const reviewTasksPagination = ref<{ pageNum: number, pageSize: number, total: number }>({
     pageNum: 1,
     pageSize: 0,
     total: 0,
@@ -147,15 +147,6 @@ export const useMarkTaskStore = defineStore('markTask', () => {
       reviewTasksLoading.value = false
     }
   }
-
-  async function claimReviewTaskAction(examId: string, reviewTaskId: string): Promise<void> {
-    await claimReviewTask({ examId, reviewTaskId })
-    // 刷新当前考试的复核任务列表，保证状态推进
-    if (reviewLoadedExamId.value === examId) {
-      await loadReviewTasks({ examId })
-    }
-  }
-
   /**
    * 仅清空阅卷任务列表（不影响 reviewTasks / claimContextByExam）。
    *
@@ -212,7 +203,6 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     loadClaimContext,
     getClaimContext,
     loadReviewTasks,
-    claimReviewTaskAction,
     clearTasks,
     clearReviewTasks,
     reset,

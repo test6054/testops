@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ExamQuestionTemplateVO, ExamScoreSummaryItemVO } from '@/apis/mark/exam'
-import {
-  FINAL_SCORE_STATUS_LABEL,
-  getExamTemplate,
-  isPaperTemplateNotConfiguredError,
-  pageExamScoreSummary,
-} from '@/apis/mark/exam'
 import type {
   MarkOcrConfigVO,
   MarkOcrHealthStatusCode,
@@ -14,6 +8,19 @@ import type {
   MarkOcrRecognizeVO,
   PaddleOcrInstanceVO,
 } from '@/apis/mark/ocr'
+import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
+import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
+import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import {
+  FINAL_SCORE_STATUS_LABEL,
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+  pageExamScoreSummary,
+} from '@/apis/mark/exam'
 import {
   checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
@@ -25,13 +32,6 @@ import {
   recognizeMarkOcr,
   saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
-import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
-import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
-import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -495,9 +495,7 @@ onMounted(async () => {
                   <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
                   <template v-if="item.consecutiveFailures > 0">
                     <span class="paddle-instance__sep">·</span>
-                    <span class="paddle-instance__failed"
-                      >连续失败 {{ item.consecutiveFailures }} 次</span
-                    >
+                    <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
                   </template>
                 </div>
                 <div v-if="item.lastHealthMessage" class="paddle-instance__msg">

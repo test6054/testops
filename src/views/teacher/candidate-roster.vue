@@ -50,9 +50,7 @@
           <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
             {{ item.className }}
           </UiTag>
-          <span v-if="!scopedClassTags.length" class="roster-class-tags__empty"
-            >尚未配置班级范围</span
-          >
+          <span v-if="!scopedClassTags.length" class="roster-class-tags__empty">尚未配置班级范围</span>
         </div>
         <a-select
           v-else
@@ -233,10 +231,20 @@
 </template>
 
 <script lang="ts" setup>
-import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
+import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
 import type { ExamCandidateRosterRequest, ExamClassRefVO } from '@/apis/mark/exam'
+import type { UserDto } from '@/types/api-types.d'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
+import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
+import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { downloadUserImportTemplate, tenantBatchImportUsers } from '@/apis/edu/admin-user'
 import {
   getExamDetail,
   listExamCandidates,
@@ -248,16 +256,6 @@ import {
   removeExamCandidates,
   saveExamClassScope,
 } from '@/apis/mark/exam'
-import type { UserDto } from '@/types/api-types.d'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
-import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { downloadUserImportTemplate, tenantBatchImportUsers } from '@/apis/edu/admin-user'
 import BatchImportModal from '@/components/common/BatchImportModal.vue'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import StudentSelector from '@/components/quality/selectors/StudentSelector.vue'
@@ -292,7 +290,7 @@ const {
 
 const classIds = ref<string[]>([])
 const examClassRefs = ref<ExamClassRefVO[]>([])
-const classSelectOptions = ref<Array<{ label: string; value: string }>>([])
+const classSelectOptions = ref<Array<{ label: string, value: string }>>([])
 const classOptionsLoading = ref(false)
 const classScopeHydrating = ref(false)
 const lastSavedClassIds = ref<string[]>([])
@@ -509,7 +507,7 @@ function handleRosterReset(): void {
   void loadCandidatePage()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidatePage()
@@ -567,7 +565,7 @@ async function mergeCandidatesWithPreview(
 }
 
 function buildMergeRequest(
-  rows: Array<{ id: string; classId?: string }>,
+  rows: Array<{ id: string, classId?: string }>,
 ): ExamCandidateRosterRequest[] {
   const existing = new Set(rosterStudentUserIds.value)
   const request: ExamCandidateRosterRequest[] = []

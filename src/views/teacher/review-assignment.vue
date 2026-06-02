@@ -1,7 +1,13 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamQuestionTemplateVO, MarkingProgressVO } from '@/apis/mark/exam'
+import {
+  getExamTemplate,
+  getMarkingProgress,
+  isPaperTemplateNotConfiguredError,
+} from '@/apis/mark/exam'
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import { getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import type {
   AllocationUnitCode,
   AnonymityModeCode,
@@ -11,17 +17,6 @@ import type {
   ExamAllocationPlanVO,
   MarkingAllocationModeCode,
 } from '@/apis/mark/marking-organization'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import DeploymentUnitOutlined from '@ant-design/icons-vue/DeploymentUnitOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getExamTemplate, getMarkingProgress, isPaperTemplateNotConfiguredError } from '@/apis/mark/exam'
-import { getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import {
   ALLOCATION_UNIT_LABEL,
   ALLOCATION_UNIT_OPTIONS,
@@ -32,7 +27,16 @@ import {
   previewAllocationPlan,
   startFormalSession,
 } from '@/apis/mark/marking-organization'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeploymentUnitOutlined from '@ant-design/icons-vue/DeploymentUnitOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import { UiAlertStrip, UiBadge, UiButton, UiCard, UiEmpty } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
@@ -112,8 +116,8 @@ const anonymityModeOptions = ANONYMITY_MODE_OPTIONS
 const anonymousTokenPolicyOptions = ANONYMOUS_TOKEN_POLICY_OPTIONS
 
 const allocationModeOptions = computed(() => {
-  const allowed: MarkingAllocationModeCode[]
-    = form.allocationUnit === 'WHOLE_PAPER'
+  const allowed: MarkingAllocationModeCode[] =
+    form.allocationUnit === 'WHOLE_PAPER'
       ? ['BY_PAPER_RANDOM']
       : ['BY_QUESTION', 'ROUND_ROBIN', 'RANDOM', 'BY_CLASS']
   return allowed.map((value) => ({
@@ -130,7 +134,8 @@ const scanReadinessSummary = computed(() => {
   if (!ledgerDetail.value && !markingProgress.value) {
     return null
   }
-  const bound = ledgerDetail.value?.boundPaperCount ?? markingProgress.value?.gradablePaperCount ?? 0
+  const bound =
+    ledgerDetail.value?.boundPaperCount ?? markingProgress.value?.gradablePaperCount ?? 0
   const pendingReview = markingProgress.value?.pendingReviewTaskCount ?? 0
   const openProcessing = markingProgress.value?.openProcessingTaskCount ?? 0
   return { bound, pendingReview, openProcessing }
@@ -149,15 +154,15 @@ const selectedQuestions = computed(() =>
 
 const canSubmit = computed(
   () =>
-    Boolean(selectedExamId.value)
-    && Boolean(form.leaderUserId)
-    && form.reviewerUserIds.length > 0
-    && dualReviewContractValid.value
-    && questionScopeValid.value
-    && form.batchSize > 0
-    && form.loadLimit > 0
-    && !templateLoading.value
-    && !questionLoadError.value,
+    Boolean(selectedExamId.value) &&
+    Boolean(form.leaderUserId) &&
+    form.reviewerUserIds.length > 0 &&
+    dualReviewContractValid.value &&
+    questionScopeValid.value &&
+    form.batchSize > 0 &&
+    form.loadLimit > 0 &&
+    !templateLoading.value &&
+    !questionLoadError.value,
 )
 
 const questionScopeValid = computed(() => {
@@ -168,28 +173,28 @@ const questionScopeValid = computed(() => {
     return form.questionTemplateIds.length > 0
   }
   return (
-    form.questionTemplateIds.length > 0
-    && form.randomQuestionSampleSize !== null
-    && form.randomQuestionSampleSize > 0
-    && form.randomQuestionSampleSize <= form.questionTemplateIds.length
+    form.questionTemplateIds.length > 0 &&
+    form.randomQuestionSampleSize !== null &&
+    form.randomQuestionSampleSize > 0 &&
+    form.randomQuestionSampleSize <= form.questionTemplateIds.length
   )
 })
 
 const dualReviewContractValid = computed(() => {
   if (!form.dualReviewEnabled) {
     return (
-      form.arbitrationScoreThreshold === null
-      && form.arbitrationRatioThreshold === null
-      && form.arbitratorUserId === null
+      form.arbitrationScoreThreshold === null &&
+      form.arbitrationRatioThreshold === null &&
+      form.arbitratorUserId === null
     )
   }
   return (
-    form.allocationUnit === 'WHOLE_PAPER'
-    && form.allocationMode === 'BY_PAPER_RANDOM'
-    && form.reviewerUserIds.length >= 2
-    && Boolean(form.arbitratorUserId)
-    && !form.reviewerUserIds.includes(String(form.arbitratorUserId))
-    && (form.arbitrationScoreThreshold !== null || form.arbitrationRatioThreshold !== null)
+    form.allocationUnit === 'WHOLE_PAPER' &&
+    form.allocationMode === 'BY_PAPER_RANDOM' &&
+    form.reviewerUserIds.length >= 2 &&
+    Boolean(form.arbitratorUserId) &&
+    !form.reviewerUserIds.includes(String(form.arbitratorUserId)) &&
+    (form.arbitrationScoreThreshold !== null || form.arbitrationRatioThreshold !== null)
   )
 })
 
@@ -389,7 +394,9 @@ async function loadPlanPreview(): Promise<void> {
   }
   previewLoading.value = true
   try {
-    planPreview.value = await previewAllocationPlan(buildRequest(selectedExamId.value, form.leaderUserId))
+    planPreview.value = await previewAllocationPlan(
+      buildRequest(selectedExamId.value, form.leaderUserId),
+    )
   } catch (error) {
     planPreview.value = null
     showUserError(error, '分配预览失败')
@@ -409,9 +416,10 @@ async function submitAllocation(): Promise<void> {
   }
   submitting.value = true
   try {
-    const response = await planAllocation(buildRequest(selectedExamId.value, form.leaderUserId))
-    result.value = response
-    planPreview.value = await previewAllocationPlan(buildRequest(selectedExamId.value, form.leaderUserId))
+    result.value = await planAllocation(buildRequest(selectedExamId.value, form.leaderUserId))
+    planPreview.value = await previewAllocationPlan(
+      buildRequest(selectedExamId.value, form.leaderUserId),
+    )
     message.success('阅卷配置已保存，可在组织详情调整题组与教师后启动正评')
   } catch (error) {
     showUserError(error, '阅卷分配失败')
@@ -432,7 +440,9 @@ async function startFormalMarking(): Promise<void> {
   starting.value = true
   try {
     await startFormalSession(result.value.sessionId)
-    planPreview.value = await previewAllocationPlan(buildRequest(selectedExamId.value!, form.leaderUserId!))
+    planPreview.value = await previewAllocationPlan(
+      buildRequest(selectedExamId.value!, form.leaderUserId!),
+    )
     message.success(`正评已启动，预计生成 ${planPreview.value.expectedTaskCount ?? 0} 个阅卷任务`)
   } catch (error) {
     showUserError(error, '启动正评失败')
@@ -546,7 +556,9 @@ onMounted(async () => {
       <div class="review-assignment__context">
         <div class="review-assignment__context-main">
           <h2 class="review-assignment__title">分派批阅</h2>
-          <span class="review-assignment__subtitle">考试创建人配置阅卷负责人、评阅教师和任务生成策略</span>
+          <span class="review-assignment__subtitle"
+            >考试创建人配置阅卷负责人、评阅教师和任务生成策略</span
+          >
         </div>
         <div class="review-assignment__context-actions">
           <a-select
@@ -581,15 +593,17 @@ onMounted(async () => {
     />
 
     <template v-else>
-
       <UiAlertStrip
         v-if="scanReadinessSummary"
-        :tone="scanReadinessSummary.bound > 0 && scanReadinessSummary.pendingReview === 0 ? 'success' : 'warning'"
+        :tone="
+          scanReadinessSummary.bound > 0 && scanReadinessSummary.pendingReview === 0
+            ? 'success'
+            : 'warning'
+        "
         title="扫描就绪"
         :description="`已绑定 ${scanReadinessSummary.bound} 份答卷；待复核 ${scanReadinessSummary.pendingReview} 题；处理中 ${scanReadinessSummary.openProcessing} 项`"
         class="review-assignment__alert"
       />
-
       <UiAlertStrip
         v-if="questionLoadError"
         tone="error"
@@ -597,7 +611,6 @@ onMounted(async () => {
         :description="questionLoadError"
         class="review-assignment__alert"
       />
-
 
       <section class="review-assignment__grid">
         <UiCard class="review-assignment__panel">

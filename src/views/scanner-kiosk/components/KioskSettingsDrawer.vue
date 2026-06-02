@@ -151,9 +151,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <div v-if="kioskBrowserSessionLost" class="alert-block">
             <p>浏览器未保存一体机鉴权凭证</p>
-            <small
-              >页面刷新后需重新激活。请使用下方激活码完成激活，实时推送与批次操作才会恢复。</small
-            >
+            <small>页面刷新后需重新激活。请使用下方激活码完成激活，实时推送与批次操作才会恢复。</small>
           </div>
 
           <div v-if="tokenResetRequired" class="alert-block">

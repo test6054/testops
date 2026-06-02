@@ -193,9 +193,7 @@ watch(
                   getSemesterDescription(workflow.selectedExamOption.value.semester)
                 }}</span>
               </template>
-              <span class="dot" /><span
-                >已扫批次 {{ workflow.selectedExamOption.value.scanBatchCount }}</span
-              >
+              <span class="dot" /><span>已扫批次 {{ workflow.selectedExamOption.value.scanBatchCount }}</span>
             </span>
           </div>
         </div>
@@ -358,8 +356,7 @@ watch(
             class="class-chip"
             :class="{ missing: chip.missing }"
             :title="chip.label"
-            >{{ chip.label }}</span
-          >
+          >{{ chip.label }}</span>
         </div>
         <span v-else class="empty-inline">请先选择考试</span>
       </div>

@@ -4,20 +4,11 @@
  */
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import type {
   ExamDetailVO,
   ExamMaterialLayoutModeCode,
   ExamPrintSourceModeCode,
   ExamStatusCode,
-} from '@/apis/mark/exam'
-import {
-  EXAM_MATERIAL_LAYOUT_MODE_LABEL,
-  EXAM_PRINT_SOURCE_MODE_LABEL,
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  getExamDetail,
-  saveMaterialLayout,
 } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
@@ -28,7 +19,16 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  EXAM_MATERIAL_LAYOUT_MODE_LABEL,
+  EXAM_PRINT_SOURCE_MODE_LABEL,
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  getExamDetail,
+  saveMaterialLayout,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -46,12 +46,12 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
 
-type PrepStepKey =
-  | 'answerSheet'
-  | 'paperMaster'
-  | 'paperTemplate'
-  | 'printPackage'
-  | 'candidateRoster'
+type PrepStepKey
+  = | 'answerSheet'
+    | 'paperMaster'
+    | 'paperTemplate'
+    | 'printPackage'
+    | 'candidateRoster'
 
 interface PrepStepCard {
   key: PrepStepKey
@@ -162,8 +162,8 @@ const layoutDirty = computed(() => {
   const d = detail.value
   if (!d) return false
   return (
-    draftLayoutMode.value !== d.materialLayoutMode ||
-    (draftLayoutMode.value === 'FULL_PAPER' && draftPrintSource.value !== d.printSourceMode)
+    draftLayoutMode.value !== d.materialLayoutMode
+    || (draftLayoutMode.value === 'FULL_PAPER' && draftPrintSource.value !== d.printSourceMode)
   )
 })
 
@@ -359,9 +359,9 @@ function syncStageProgressToStore(): void {
     : pendingCount > 0
       ? 'warning'
       : 'active'
-  const examPrepHint =
-    advisoryReasons.value[0] ??
-    (allCompleted
+  const examPrepHint
+    = advisoryReasons.value[0]
+      ?? (allCompleted
       ? `准备全部就绪（${completedCount}/${steps.length}）`
       : `准备进度 ${completedCount}/${steps.length}`)
   const layoutStep = steps.find((s) => s.key === 'answerSheet' || s.key === 'paperMaster')
@@ -541,9 +541,11 @@ onMounted(async () => {
                 >
                   {{ step.primaryAction }}
                 </UiButton>
-                <UiTag v-if="step.advisoryReason" tone="orange" size="sm">{{
-                  step.advisoryReason
-                }}</UiTag>
+                <UiTag v-if="step.advisoryReason" tone="orange" size="sm">
+                  {{
+                    step.advisoryReason
+                  }}
+                </UiTag>
               </a-space>
             </UiCard>
           </section>

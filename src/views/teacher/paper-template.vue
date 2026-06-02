@@ -290,9 +290,9 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'SUBJECTIVE' ||
-            answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
-            answerForm.comparePolicy === 'REGEX'
+            answerContext.questionType === 'SUBJECTIVE'
+              || answerForm.comparePolicy === 'EXACT_NORMALIZED'
+              || answerForm.comparePolicy === 'REGEX'
           "
           :label="answerTextLabel"
           name="standardAnswer"
@@ -323,8 +323,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE' &&
-            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE'
+              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="标准值"
           name="numericExpectedValue"
@@ -337,8 +337,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE' &&
-            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE'
+              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="容差"
           name="numericTolerance"
@@ -351,8 +351,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE' &&
-            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE'
+              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="单位"
         >
@@ -472,6 +472,16 @@ import type {
   ExamStandardAnswerVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
+import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
+import type { PaperMasterObjectiveOptionVO } from '@/apis/mark/paper-master'
+import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   getExamDetail,
   getExamTemplate,
@@ -481,18 +491,8 @@ import {
   saveExamTemplate,
   saveStandardAnswer,
 } from '@/apis/mark/exam'
-import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import type { PaperMasterObjectiveOptionVO } from '@/apis/mark/paper-master'
 import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import {
   UiBadge,
@@ -568,7 +568,7 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string; totalPages?: number }>({
+const form = reactive<{ templateName: string, totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
@@ -624,11 +624,11 @@ function formatQuestionRegion(record: QuestionRow): string {
 
 function hasQuestionRegion(record: QuestionRow): boolean {
   return Boolean(
-    record.pageNo ||
-    record.x != null ||
-    record.y != null ||
-    record.width != null ||
-    record.height != null,
+    record.pageNo
+    || record.x != null
+    || record.y != null
+    || record.width != null
+    || record.height != null,
   )
 }
 
@@ -1152,10 +1152,10 @@ const answerFormRules: Record<string, Rule[]> = {
       validator: async (_rule: Rule, value: string) => {
         const trimmed = (value ?? '').trim()
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          (answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
-            answerForm.comparePolicy === 'REGEX') &&
-          !trimmed
+          answerContext.questionType === 'OBJECTIVE'
+          && (answerForm.comparePolicy === 'EXACT_NORMALIZED'
+            || answerForm.comparePolicy === 'REGEX')
+          && !trimmed
         ) {
           return Promise.reject(new Error('当前评分策略必须填写答案文本'))
         }
@@ -1171,9 +1171,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string[]) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'CHOICE_SET' &&
-          (!Array.isArray(value) || value.length === 0)
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'CHOICE_SET'
+          && (!Array.isArray(value) || value.length === 0)
         ) {
           return Promise.reject(new Error('请选择至少一个正确选项'))
         }
@@ -1197,9 +1197,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写标准值'))
         }
@@ -1212,9 +1212,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写容差'))
         }
@@ -1227,9 +1227,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE' &&
-          answerForm.comparePolicy === 'AI_GRADE' &&
-          !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE'
+          && answerForm.comparePolicy === 'AI_GRADE'
+          && !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('AI 评分策略必须填写评分细则'))
         }
@@ -1334,9 +1334,9 @@ async function handleSaveAnswer(): Promise<void> {
         return
       }
     } else if (
-      answerContext.questionType === 'SUBJECTIVE' ||
-      answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
-      answerForm.comparePolicy === 'REGEX'
+      answerContext.questionType === 'SUBJECTIVE'
+      || answerForm.comparePolicy === 'EXACT_NORMALIZED'
+      || answerForm.comparePolicy === 'REGEX'
     ) {
       standardAnswer = answerForm.standardAnswer.trim() || undefined
     }

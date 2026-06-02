@@ -6,17 +6,17 @@ import type {
   AccreditationEvidenceSaveRequest,
   AccreditationEvidenceVO,
 } from '@/apis/quality'
+import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import {
   ACCREDITATION_EVIDENCE_ANCHOR_LABEL,
   ACCREDITATION_EVIDENCE_CATEGORY_LABEL,
   accreditationApi,
 } from '@/apis/quality'
-import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import { archiveApi } from '@/apis/quality/archive'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { qualityCourseApi } from '@/apis/quality/quality-course'
 import { CourseSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
@@ -31,9 +31,9 @@ const props = defineProps<{
   trainingPlanId: string
 }>()
 
-const emit = defineEmits<{ 'count-change': [count: number]; exported: [] }>()
+const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
 
-const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategory; label: string }[] = [
+const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategory, label: string }[] = [
   { key: '', label: '全部' },
   { key: 'EXAM_PAPER', label: '试卷样本' },
   { key: 'HOMEWORK', label: '作业样本' },
@@ -61,7 +61,7 @@ const categoryFilter = ref<'' | AccreditationEvidenceCategory>('')
 const evidenceOpen = ref(false)
 const evidenceDrawerTitle = ref('登记认证证据')
 const markImportOpen = ref(false)
-const linkedExams = ref<{ examId: string; label: string }[]>([])
+const linkedExams = ref<{ examId: string, label: string }[]>([])
 const selectedExamIds = ref<string[]>([])
 
 const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
@@ -314,12 +314,12 @@ defineExpose({ loadEvidences })
         </a-radio-button>
       </a-radio-group>
       <div class="toolbar-actions">
-        <UiButton variant="primary" :disabled="!trainingPlanId" @click="openEvidenceCreate()"
-          >上传登记</UiButton
-        >
-        <UiButton variant="outline" :disabled="!trainingPlanId" @click="openMarkImport"
-          >mark 扫描页同步</UiButton
-        >
+        <UiButton variant="primary" :disabled="!trainingPlanId" @click="openEvidenceCreate()">
+          上传登记
+        </UiButton>
+        <UiButton variant="outline" :disabled="!trainingPlanId" @click="openMarkImport">
+          mark 扫描页同步
+        </UiButton>
         <UiButton
           variant="outline"
           :loading="exporting"
@@ -358,9 +358,9 @@ defineExpose({ loadEvidences })
         <template v-else-if="column.key === 'actions'">
           <UiButton size="sm" variant="ghost" @click="downloadEvidence(record)">下载</UiButton>
           <UiButton size="sm" variant="outline" @click="openEvidenceEdit(record)">编辑</UiButton>
-          <UiButton size="sm" status="danger" variant="ghost" @click="deleteEvidence(record.id)"
-            >删除</UiButton
-          >
+          <UiButton size="sm" status="danger" variant="ghost" @click="deleteEvidence(record.id)">
+            删除
+          </UiButton>
         </template>
       </template>
       <template #emptyText>

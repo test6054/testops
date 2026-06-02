@@ -7,13 +7,13 @@ import type {
   OnsiteVisitPlanSaveRequest,
   OnsiteVisitPlanVO,
 } from '@/apis/quality'
+import { message } from 'ant-design-vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   ONSITE_CHECKLIST_CATEGORY_LABEL,
   ONSITE_CHECKLIST_STATUS_LABEL,
 } from '@/apis/quality'
-import { message } from 'ant-design-vue'
-import { computed, reactive, ref, watch } from 'vue'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -45,7 +45,7 @@ const checklistColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 100 },
 ]
 
-const CATEGORY_TABS: { key: '' | OnsiteChecklistCategory; label: string }[] = [
+const CATEGORY_TABS: { key: '' | OnsiteChecklistCategory, label: string }[] = [
   { key: '', label: '全部' },
   { key: 'FACILITY', label: '设施' },
   { key: 'PAPER_SAMPLE', label: '样本' },
@@ -235,22 +235,22 @@ defineExpose({ openCreate, loadPlans })
   <div class="onsite-panel">
     <p v-if="!canCreatePlan" class="hint">请先创建认证周期；进入现场考查阶段后可新建考查计划。</p>
     <div class="toolbar">
-      <UiButton variant="primary" :disabled="!canCreatePlan" @click="openCreate"
-        >新建考查计划</UiButton
-      >
+      <UiButton variant="primary" :disabled="!canCreatePlan" @click="openCreate">
+        新建考查计划
+      </UiButton>
     </div>
     <UiDataTable :columns="planColumns" :data-source="plans" :loading="loading" row-key="id">
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'visitRange'"
-          >{{ record.visitStart }} ~ {{ record.visitEnd }}</template
-        >
+        <template v-if="column.key === 'visitRange'">
+          {{ record.visitStart }} ~ {{ record.visitEnd }}
+        </template>
         <template v-else-if="column.key === 'checklist'">
           <a-progress
             :percent="
               record.totalChecklistCount
                 ? Math.round(
-                    ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
-                  )
+                  ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
+                )
                 : 0
             "
             size="small"
@@ -262,9 +262,9 @@ defineExpose({ openCreate, loadPlans })
         <template v-else-if="column.key === 'actions'">
           <UiButton size="sm" variant="ghost" @click="selectPlan(record.id)">清单</UiButton>
           <UiButton size="sm" variant="outline" @click="openEdit(record)">编辑</UiButton>
-          <UiButton size="sm" status="danger" variant="ghost" @click="removePlan(record.id)"
-            >删除</UiButton
-          >
+          <UiButton size="sm" status="danger" variant="ghost" @click="removePlan(record.id)">
+            删除
+          </UiButton>
         </template>
       </template>
       <template #emptyText>

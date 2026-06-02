@@ -127,6 +127,10 @@ import type {
   GradeCorrectionTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   createCorrection,
   GRADE_CORRECTION_STATUS_COLOR,
@@ -135,10 +139,6 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -147,7 +147,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])
@@ -261,8 +261,8 @@ function validateCorrectionDisplayContracts(list: ExamGradeCorrectionRecordVO[])
   for (const row of list) {
     assertUserFacing(Boolean(row.studentName?.trim()) && Boolean(row.studentNo?.trim()), dataError)
     if (row.correctionType !== 'TOTAL_SCORE') {
-      const hasQuestionDisplay =
-        row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
+      const hasQuestionDisplay
+        = row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
       assertUserFacing(Boolean(hasQuestionDisplay), dataError)
     }
   }
@@ -298,8 +298,8 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.questionTemplateId &&
-    !request.questionRefs.some(
+    form.questionTemplateId
+    && !request.questionRefs.some(
       (question) => question.questionTemplateId === form.questionTemplateId,
     )
   ) {

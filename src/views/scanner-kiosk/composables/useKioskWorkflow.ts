@@ -16,7 +16,6 @@
 
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { LocationQueryValue } from 'vue-router'
-import { useRoute } from 'vue-router'
 import type {
   AgentHealthResponse,
   AgentHealthStatus,
@@ -24,8 +23,26 @@ import type {
   ScanJobResponse,
   ScannerDeviceInfo,
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBatchLifecycleVO,
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryItem,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskContextVO,
+  ExamScannerKioskExamOptionRequest,
+  ExamScannerKioskExamOptionVO,
+  ExamScannerLedgerDataSource,
+  ExamScannerPageLedgerVO,
+  ExamScannerPageRegistrationStatus,
+  ScanAttentionTypeCode,
+  ScannerKioskScanMode,
+} from '@/apis/mark/scanner-kiosk'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import {
   activateLocalAgent,
+  AGENT_HEALTH_STATUS_LABEL,
   cancelScanJob,
   deleteScanJob,
   discardScanJob,
@@ -44,20 +61,6 @@ import {
   startScanJob,
   unbindLocalAgent,
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBatchLifecycleVO,
-  ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryItem,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskContextVO,
-  ExamScannerKioskExamOptionRequest,
-  ExamScannerKioskExamOptionVO,
-  ExamScannerLedgerDataSource,
-  ExamScannerPageLedgerVO,
-  ExamScannerPageRegistrationStatus,
-  ScanAttentionTypeCode,
-  ScannerKioskScanMode,
-} from '@/apis/mark/scanner-kiosk'
 import {
   closeScannerKioskBatch,
   discardScannedPage,
@@ -70,8 +73,6 @@ import {
   sealScannerKioskBatch,
   startScannerKioskBatch,
 } from '@/apis/mark/scanner-kiosk'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
@@ -550,7 +551,7 @@ export function useKioskWorkflow() {
   }
 
   function agentHealthStatusLabel(status: AgentHealthStatus) {
-    return '运行中'
+    return strictEnumLabel(AGENT_HEALTH_STATUS_LABEL, status, '本地扫描服务状态')
   }
 
   function endpointOnlineStatusLabel(

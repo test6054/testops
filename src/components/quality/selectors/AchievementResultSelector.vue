@@ -10,14 +10,14 @@ import type {
   AchievementResultVO,
   AchievementTargetType,
 } from '@/apis/quality'
+import { Tag } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   achievementApi,
 } from '@/apis/quality'
-import { Tag } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: AchievementResultVO]
+  "change": [value: string | null, option?: AchievementResultVO]
 }>()
 
 const AuditStatusTag = Tag
@@ -195,8 +195,7 @@ defineExpose({ reload: loadOptions })
         · {{ qualityCourseText(opt) }}
       </span>
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
-        >)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
       </span>
       <AuditStatusTag
         v-if="opt.auditStatus"

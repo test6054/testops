@@ -229,14 +229,7 @@ import type {
   IncidentTypeCode,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
-import {
-  INCIDENT_LEVEL_LABEL,
-  INCIDENT_LEVEL_TONE,
-  INCIDENT_TYPE_LABEL,
-  loadDashboardOverview,
-} from '@/apis/mark/admin-dashboard'
 import type { ExamStatusCode } from '@/apis/mark/exam'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
@@ -248,6 +241,13 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { useRouter } from 'vue-router'
+import {
+  INCIDENT_LEVEL_LABEL,
+  INCIDENT_LEVEL_TONE,
+  INCIDENT_TYPE_LABEL,
+  loadDashboardOverview,
+} from '@/apis/mark/admin-dashboard'
+import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,

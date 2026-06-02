@@ -277,7 +277,6 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
-import { getExamTemplate } from '@/apis/mark/exam'
 import type {
   ExportCreateRequest,
   ExportScopeCode,
@@ -287,6 +286,15 @@ import type {
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
+import type { BadgeTone } from '@/components/ui-guide/ui'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
+import { getExamTemplate } from '@/apis/mark/exam'
 import {
   createExportTask,
   EXPORT_SCOPE_LABEL,
@@ -295,7 +303,6 @@ import {
   EXPORT_TYPE_LABEL,
   listExportTasks,
 } from '@/apis/mark/exam-export'
-import type { BadgeTone } from '@/components/ui-guide/ui'
 import {
   UiBadge,
   UiButton,
@@ -305,13 +312,6 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -342,7 +342,7 @@ const tasks = ref<ExportTaskVO[]>([])
 const loading = ref(false)
 const tasksLoadError = ref<Error | null>(null)
 const downloadingId = ref<string | undefined>(undefined)
-const questionOptions = ref<Array<{ value: string; label: string }>>([])
+const questionOptions = ref<Array<{ value: string, label: string }>>([])
 const questionLoading = ref(false)
 const taskPagination = reactive({
   pageNum: 1,
@@ -356,8 +356,8 @@ const typeFilter = ref<ExportTypeCode | undefined>(undefined)
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value) &&
-      (!typeFilter.value || t.exportType === typeFilter.value),
+      (!statusFilter.value || t.taskStatus === statusFilter.value)
+      && (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
 
@@ -450,8 +450,8 @@ function exportTaskFailureMessageText(task: ExportTaskVO): string | undefined {
 }
 
 function clippedExportTaskFailureMessage(task: ExportTaskVO): string {
-  const messageText =
-    exportTaskFailureMessageText(task) ?? '导出任务未完成，请稍后重试或重新发起导出'
+  const messageText
+    = exportTaskFailureMessageText(task) ?? '导出任务未完成，请稍后重试或重新发起导出'
   return messageText.length > 24 ? `${messageText.slice(0, 24)}…` : messageText
 }
 
@@ -486,7 +486,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function handleTaskPageChange(page: { current: number; pageSize: number }): void {
+function handleTaskPageChange(page: { current: number, pageSize: number }): void {
   taskPagination.pageNum = page.current
   taskPagination.pageSize = page.pageSize
   void loadTasks()

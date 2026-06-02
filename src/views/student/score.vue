@@ -207,14 +207,6 @@
 
 <script lang="ts" setup>
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  FINAL_SCORE_STATUS_LABEL,
-  FINAL_SCORE_STATUS_TONE,
-  listMyExams,
-  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -223,6 +215,14 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  canSubmitReview,
+  FINAL_SCORE_STATUS_LABEL,
+  FINAL_SCORE_STATUS_TONE,
+  listMyExams,
+  STUDENT_REVIEW_WINDOW_STATUS_LABEL,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import {
   UiBadge,
   UiButton,
@@ -301,7 +301,7 @@ const unpublishedCount = computed<number>(() => {
 })
 
 /** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
   const latest = requirePublishedScore(list[0])

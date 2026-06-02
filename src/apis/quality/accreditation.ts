@@ -3,12 +3,12 @@ import http from '@/config/axios'
 
 const BASE = '/api/quality/accreditation'
 
-export type AccreditationCyclePhase =
-  | 'SELF_EVALUATION'
-  | 'SELF_ASSESSMENT_REVIEW'
-  | 'ONSITE_VISIT'
-  | 'CONCLUSION'
-  | 'MAINTENANCE'
+export type AccreditationCyclePhase
+  = | 'SELF_EVALUATION'
+    | 'SELF_ASSESSMENT_REVIEW'
+    | 'ONSITE_VISIT'
+    | 'CONCLUSION'
+    | 'MAINTENANCE'
 
 export type AccreditationCycleStatus = 'ACTIVE' | 'CLOSED' | 'SUSPENDED'
 
@@ -18,13 +18,13 @@ export type AccreditationConclusionType = 'FULL_6Y' | 'CONDITIONAL_6Y' | 'NOT_PA
 
 export type OnsiteChecklistItemStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'NOT_APPLICABLE'
 
-export type OnsiteChecklistCategory =
-  | 'FACILITY'
-  | 'PAPER_SAMPLE'
-  | 'CLASS_OBSERVATION'
-  | 'INTERVIEW'
-  | 'DOCUMENT'
-  | 'OTHER'
+export type OnsiteChecklistCategory
+  = | 'FACILITY'
+    | 'PAPER_SAMPLE'
+    | 'CLASS_OBSERVATION'
+    | 'INTERVIEW'
+    | 'DOCUMENT'
+    | 'OTHER'
 
 export interface AccreditationCycleVO {
   id: string
@@ -237,23 +237,23 @@ export interface AccreditationScopeRequest {
   accreditationCycleId?: string
 }
 
-export type AccreditationEvidenceCategory =
-  | 'EXAM_PAPER'
-  | 'HOMEWORK'
-  | 'LAB_REPORT'
-  | 'GRADUATION_PROJECT'
-  | 'COURSE_MATERIAL'
-  | 'FACILITY'
-  | 'MANAGEMENT_DOC'
-  | 'OTHER'
+export type AccreditationEvidenceCategory
+  = | 'EXAM_PAPER'
+    | 'HOMEWORK'
+    | 'LAB_REPORT'
+    | 'GRADUATION_PROJECT'
+    | 'COURSE_MATERIAL'
+    | 'FACILITY'
+    | 'MANAGEMENT_DOC'
+    | 'OTHER'
 
-export type AccreditationEvidenceAnchorType =
-  | 'TRAINING_PLAN'
-  | 'QUALITY_COURSE'
-  | 'ASSESSMENT_ITEM'
-  | 'MARK_EXAM'
-  | 'MARK_SCANNED_PAGE'
-  | 'MANUAL'
+export type AccreditationEvidenceAnchorType
+  = | 'TRAINING_PLAN'
+    | 'QUALITY_COURSE'
+    | 'ASSESSMENT_ITEM'
+    | 'MARK_EXAM'
+    | 'MARK_SCANNED_PAGE'
+    | 'MANUAL'
 
 export interface AccreditationEvidenceVO {
   id: string
@@ -347,8 +347,8 @@ export const ONSITE_CHECKLIST_CATEGORY_LABEL: Record<OnsiteChecklistCategory, st
   OTHER: '其他',
 }
 
-export const ACCREDITATION_EVIDENCE_CATEGORY_LABEL: Record<AccreditationEvidenceCategory, string> =
-  {
+export const ACCREDITATION_EVIDENCE_CATEGORY_LABEL: Record<AccreditationEvidenceCategory, string>
+  = {
     EXAM_PAPER: '试卷样本',
     HOMEWORK: '作业样本',
     LAB_REPORT: '实验报告',
@@ -359,8 +359,8 @@ export const ACCREDITATION_EVIDENCE_CATEGORY_LABEL: Record<AccreditationEvidence
     OTHER: '其他',
   }
 
-export const ACCREDITATION_EVIDENCE_ANCHOR_LABEL: Record<AccreditationEvidenceAnchorType, string> =
-  {
+export const ACCREDITATION_EVIDENCE_ANCHOR_LABEL: Record<AccreditationEvidenceAnchorType, string>
+  = {
     TRAINING_PLAN: '培养方案',
     QUALITY_COURSE: '质量评价课程',
     ASSESSMENT_ITEM: '考核环节',

@@ -234,6 +234,10 @@ import type {
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_STATUS_COLOR,
@@ -246,10 +250,6 @@ import {
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -258,7 +258,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 
 type OperationAction = 'submit' | 'approve' | 'reject' | 'execute' | ''
 
@@ -323,8 +323,8 @@ const itemReviewRequestOptions = computed(() =>
   approvedReviewRequests.value
     .filter(
       (request) =>
-        form.correctionType === 'TOTAL_SCORE' ||
-        request.questionRefs.some(
+        form.correctionType === 'TOTAL_SCORE'
+        || request.questionRefs.some(
           (question) => question.questionTemplateId === form.questionTemplateId,
         ),
     )
@@ -478,8 +478,8 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       return null
     }
     if (
-      form.correctionType === 'SINGLE_QUESTION' &&
-      !request.questionRefs.some(
+      form.correctionType === 'SINGLE_QUESTION'
+      && !request.questionRefs.some(
         (question) => question.questionTemplateId === form.questionTemplateId,
       )
     ) {

@@ -60,8 +60,7 @@ async function loadProfile() {
 async function saveProfile() {
   saving.value = true
   try {
-    const id = await accreditationApi.saveSupportProfile(form)
-    form.id = id
+    form.id = await accreditationApi.saveSupportProfile(form)
     message.success('师资与支持条件档案已保存')
     await loadProfile()
     emit('refresh')

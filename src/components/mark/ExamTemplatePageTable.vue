@@ -135,7 +135,7 @@ import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
 import { getImageBlobUrl, uploadFile } from '@/apis/edu/file-management'
 import { UiButton, UiDataTable, UiTag } from '@/components/ui-guide/ui'
-import { showUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { requireUploadFileName } from '@/utils/mark-storage-file'
 
 export interface ExamTemplatePageRow {
@@ -213,8 +213,6 @@ function openEditForNew(row: ExamTemplatePageRow): void {
   openEdit(editIndex.value)
 }
 
-defineExpose({ openEditForNew })
-
 function handleEditOk(): void {
   if (!pageDraft.pageNo || pageDraft.pageNo <= 0) {
     message.error('请填写页号')
@@ -289,6 +287,11 @@ function detectPreviewKind(fileName: string, blob: Blob): 'image' | 'pdf' | 'oth
   return 'other'
 }
 
+function reportPreviewFailure(error: unknown, fallback: string): void {
+  previewError.value = getUserErrorMessage(error, fallback)
+  showUserError(error, fallback)
+}
+
 async function openPreview(
   row: Pick<ExamTemplatePageRow, 'templateFileId' | 'templateFileName'>,
 ): Promise<void> {
@@ -306,7 +309,8 @@ async function openPreview(
   try {
     const token = localStorage.getItem('token')
     if (!token) {
-      throw new Error('未登录或登录已过期')
+      reportPreviewFailure(null, '未登录或登录已过期，无法预览模板文件')
+      return
     }
     const requestUrl = new URL('/api/storage/filesystem/download', window.location.origin)
     requestUrl.searchParams.set('nodeId', row.templateFileId)
@@ -316,7 +320,8 @@ async function openPreview(
       headers: { Authorization: `Bearer ${token}` },
     })
     if (!response.ok) {
-      throw new Error('文件加载失败')
+      reportPreviewFailure(null, '模板文件加载失败')
+      return
     }
     const blob = await response.blob()
     previewKind.value = detectPreviewKind(previewFileName.value, blob)
@@ -328,8 +333,7 @@ async function openPreview(
       previewUrl.value = previewObjectUrl
     }
   } catch (error) {
-    previewError.value = error instanceof Error ? error.message : '预览加载失败'
-    showUserError(error, '模板文件预览失败')
+    reportPreviewFailure(error, '模板文件预览失败')
   } finally {
     previewLoading.value = false
   }
@@ -340,6 +344,8 @@ function openPreviewInNewTab(): void {
     window.open(previewUrl.value, '_blank', 'noopener,noreferrer')
   }
 }
+
+defineExpose({ openEditForNew })
 </script>
 
 <style lang="scss" scoped>

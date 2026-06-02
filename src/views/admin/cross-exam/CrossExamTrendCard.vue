@@ -140,18 +140,18 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisVO } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
 import {
   ANALYSIS_SCOPE_TYPE_LABEL,
   generateClassTrend,
   generateCourseTrend,
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
 import { getExamDetail } from '@/apis/mark/exam'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
@@ -172,7 +172,7 @@ const form = reactive({
 
 const record = ref<CrossExamTrendAnalysisVO | null>(null)
 const selectedExams = ref<ExamSummaryVO[]>([])
-const classOptions = ref<{ label: string; value: string }[]>([])
+const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 // D-9 错误态：AI 跨考试趋势加载失败时 UiErrorRetryPanel 重试 + 上报
@@ -199,7 +199,7 @@ watch(scopeMode, (mode) => {
   classOptions.value = []
   Promise.all(examIds.map((examId) => getExamDetail(examId)))
     .then((details) => {
-      const classCount = new Map<string, { className: string; count: number }>()
+      const classCount = new Map<string, { className: string, count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -236,7 +236,7 @@ watch(
     classLoading.value = true
     try {
       const details = await Promise.all(examIds.map((examId) => getExamDetail(examId)))
-      const classCount = new Map<string, { className: string; count: number }>()
+      const classCount = new Map<string, { className: string, count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -354,8 +354,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated =
-      scopeMode.value === 'COURSE'
+    const generated
+      = scopeMode.value === 'COURSE'
         ? await generateCourseTrend({ courseId, examIds })
         : await generateClassTrend({ courseId, classId: form.classId, examIds })
     acceptCrossExamTrendRecord(generated)

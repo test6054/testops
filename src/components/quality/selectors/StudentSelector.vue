@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  change: [value: string | null, option?: UserDto]
+  "change": [value: string | null, option?: UserDto]
 }>()
 
 const options = ref<UserDto[]>([])
@@ -135,9 +135,7 @@ defineExpose({ reload: loadOptions })
       :label="studentDisplayName(opt)"
     >
       {{ studentDisplayName(opt) }}
-      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 text-xs"
-        >({{ opt.studentNumber }})</span
-      >
+      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 text-xs">({{ opt.studentNumber }})</span>
     </a-select-option>
   </a-select>
 </template>

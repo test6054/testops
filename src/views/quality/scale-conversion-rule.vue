@@ -8,11 +8,11 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
-import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -28,7 +28,7 @@ const query = reactive<ScaleConversionRuleQueryRequest>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType; label: string }[] = [
+const scaleTypeOptions: { value: ScaleType, label: string }[] = [
   { value: 'FIVE_LEVEL', label: strictEnumLabel(SCALE_TYPE_LABEL, 'FIVE_LEVEL', '量表类型') },
   { value: 'FOUR_LEVEL', label: strictEnumLabel(SCALE_TYPE_LABEL, 'FOUR_LEVEL', '量表类型') },
   { value: 'TEN_POINT', label: strictEnumLabel(SCALE_TYPE_LABEL, 'TEN_POINT', '量表类型') },
@@ -148,7 +148,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()

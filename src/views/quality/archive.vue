@@ -2,7 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
-import { uploadFile } from '@/apis/edu/file-management'
 /**
  * 质量评价 - 材料归档与专家包导出台
  *
@@ -19,12 +18,13 @@ import type {
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality'
-import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
 import {
   AchievementResultSelector,
   AuditRectificationSelector,
@@ -81,12 +81,12 @@ const query = reactive<ArchiveQueryRequest>({
   keyword: '',
 })
 
-const businessTypeOptions: { value: ArchiveBusinessType; label: string }[] = Object.entries(
+const businessTypeOptions: { value: ArchiveBusinessType, label: string }[] = Object.entries(
   ARCHIVE_BUSINESS_TYPE_LABEL,
 ).map(([value, label]) => ({
   value,
   label,
-})) as { value: ArchiveBusinessType; label: string }[]
+})) as { value: ArchiveBusinessType, label: string }[]
 
 const filterFields: FilterField[] = [
   {
@@ -167,7 +167,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()

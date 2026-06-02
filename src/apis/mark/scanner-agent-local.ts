@@ -5,13 +5,13 @@ const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
 const LOCAL_AGENT_RESPONSE_ERROR = '本地扫描服务响应异常，请检查扫描服务后重试'
 const LOCAL_AGENT_REQUEST_ERROR = '本地扫描服务处理失败，请检查扫描服务后重试'
 
-type LocalAgentJsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | LocalAgentJsonObject
-  | LocalAgentJsonValue[]
+type LocalAgentJsonValue
+  = | string
+    | number
+    | boolean
+    | null
+    | LocalAgentJsonObject
+    | LocalAgentJsonValue[]
 
 interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
@@ -54,26 +54,30 @@ export interface AgentHealthResponse {
 
 export type AgentHealthStatus = 'RUNNING'
 
+export const AGENT_HEALTH_STATUS_LABEL: Record<AgentHealthStatus, string> = {
+  RUNNING: '运行中',
+}
+
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
 
-export type LocalScanJobStatus =
-  | 'CREATED'
-  | 'SCANNING'
-  | 'PAUSED'
-  | 'READYTOUPLOAD'
-  | 'UPLOADING'
-  | 'REPORTED'
-  | 'FAILED'
-  | 'RETRYING'
-  | 'CANCELLED'
+export type LocalScanJobStatus
+  = | 'CREATED'
+    | 'SCANNING'
+    | 'PAUSED'
+    | 'READYTOUPLOAD'
+    | 'UPLOADING'
+    | 'REPORTED'
+    | 'FAILED'
+    | 'RETRYING'
+    | 'CANCELLED'
 
-export type LocalScanPageStatus =
-  | 'CAPTURED'
-  | 'PREPROCESSED'
-  | 'UPLOADING'
-  | 'UPLOADED'
-  | 'FAILED'
-  | 'DELETED'
+export type LocalScanPageStatus
+  = | 'CAPTURED'
+    | 'PREPROCESSED'
+    | 'UPLOADING'
+    | 'UPLOADED'
+    | 'FAILED'
+    | 'DELETED'
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -516,15 +520,15 @@ function requireAgentDiagnosticStatus(
 function requireScanJobStatus(value: LocalAgentJsonObject, field: string): LocalScanJobStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CREATED' &&
-    fieldValue !== 'SCANNING' &&
-    fieldValue !== 'PAUSED' &&
-    fieldValue !== 'READYTOUPLOAD' &&
-    fieldValue !== 'UPLOADING' &&
-    fieldValue !== 'REPORTED' &&
-    fieldValue !== 'FAILED' &&
-    fieldValue !== 'RETRYING' &&
-    fieldValue !== 'CANCELLED'
+    fieldValue !== 'CREATED'
+    && fieldValue !== 'SCANNING'
+    && fieldValue !== 'PAUSED'
+    && fieldValue !== 'READYTOUPLOAD'
+    && fieldValue !== 'UPLOADING'
+    && fieldValue !== 'REPORTED'
+    && fieldValue !== 'FAILED'
+    && fieldValue !== 'RETRYING'
+    && fieldValue !== 'CANCELLED'
   ) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
@@ -534,12 +538,12 @@ function requireScanJobStatus(value: LocalAgentJsonObject, field: string): Local
 function requireScanPageStatus(value: LocalAgentJsonObject, field: string): LocalScanPageStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CAPTURED' &&
-    fieldValue !== 'PREPROCESSED' &&
-    fieldValue !== 'UPLOADING' &&
-    fieldValue !== 'UPLOADED' &&
-    fieldValue !== 'FAILED' &&
-    fieldValue !== 'DELETED'
+    fieldValue !== 'CAPTURED'
+    && fieldValue !== 'PREPROCESSED'
+    && fieldValue !== 'UPLOADING'
+    && fieldValue !== 'UPLOADED'
+    && fieldValue !== 'FAILED'
+    && fieldValue !== 'DELETED'
   ) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }

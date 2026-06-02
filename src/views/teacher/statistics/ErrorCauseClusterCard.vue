@@ -108,14 +108,14 @@
 
 <script lang="ts" setup>
 import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
-import {
-  generateErrorCauseCluster,
-  getLatestErrorCauseCluster,
-} from '@/apis/mark/error-cause-cluster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
+import {
+  generateErrorCauseCluster,
+  getLatestErrorCauseCluster,
+} from '@/apis/mark/error-cause-cluster'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'

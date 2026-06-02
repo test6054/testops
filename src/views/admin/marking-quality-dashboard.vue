@@ -397,16 +397,10 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerBatchVO } from '@/apis/mark/exam'
-import { pageScannerBatches } from '@/apis/mark/exam'
 import type {
   MarkingOrganizationVO,
   QuestionGroupReviewerVO,
   QuestionMarkingGroupVO,
-} from '@/apis/mark/marking-organization'
-import {
-  getOrganization,
-  MARKING_ORGANIZATION_STATUS_LABEL,
-  QUESTION_GROUP_STATUS_LABEL,
 } from '@/apis/mark/marking-organization'
 import type {
   BatchReprocessScopeCode,
@@ -415,18 +409,6 @@ import type {
   ProgressRiskLevelCode,
   ReviewerMetricStatusCode,
   ReviewerQualityMetricResponse,
-} from '@/apis/mark/marking-quality'
-import {
-  createSpotCheckTasks,
-  getLatestProgress,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_COLOR,
-  PROGRESS_RISK_LEVEL_LABEL,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_COLOR,
-  REVIEWER_METRIC_STATUS_LABEL,
-  takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -440,6 +422,24 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { pageScannerBatches } from '@/apis/mark/exam'
+import {
+  getOrganization,
+  MARKING_ORGANIZATION_STATUS_LABEL,
+  QUESTION_GROUP_STATUS_LABEL,
+} from '@/apis/mark/marking-organization'
+import {
+  createSpotCheckTasks,
+  getLatestProgress,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_LABEL,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_LABEL,
+  takeProgressSnapshot,
+} from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,
@@ -756,8 +756,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate =
-    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate
+    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0

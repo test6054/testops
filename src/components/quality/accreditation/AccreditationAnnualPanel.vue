@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AnnualEvaluationPlanSaveRequest, AnnualEvaluationPlanVO } from '@/apis/quality'
-import { accreditationApi } from '@/apis/quality'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
+import { accreditationApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
@@ -180,9 +180,9 @@ defineExpose({ openCreate, loadPlans })
 <template>
   <div class="annual-panel">
     <div class="toolbar">
-      <UiButton variant="primary" :disabled="!trainingPlanId" @click="openCreate"
-        >新建年度计划</UiButton
-      >
+      <UiButton variant="primary" :disabled="!trainingPlanId" @click="openCreate">
+        新建年度计划
+      </UiButton>
     </div>
     <UiDataTable :columns="planColumns" :data-source="plans" :loading="loading" row-key="id">
       <template #bodyCell="{ column, record }">
@@ -199,13 +199,13 @@ defineExpose({ openCreate, loadPlans })
           </div>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <UiButton size="sm" variant="ghost" @click.stop="selectPlan(record.id)"
-            >课程明细</UiButton
-          >
+          <UiButton size="sm" variant="ghost" @click.stop="selectPlan(record.id)">
+            课程明细
+          </UiButton>
           <UiButton size="sm" variant="outline" @click.stop="openEdit(record)">编辑</UiButton>
-          <UiButton size="sm" status="danger" variant="ghost" @click.stop="removePlan(record.id)"
-            >删除</UiButton
-          >
+          <UiButton size="sm" status="danger" variant="ghost" @click.stop="removePlan(record.id)">
+            删除
+          </UiButton>
         </template>
       </template>
       <template #emptyText>
@@ -228,12 +228,16 @@ defineExpose({ openCreate, loadPlans })
         size="small"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'required'">{{
-            record.evaluationRequired ? '是' : '否'
-          }}</template>
-          <template v-else-if="column.key === 'completed'">{{
-            record.evaluationCompleted ? '是' : '否'
-          }}</template>
+          <template v-if="column.key === 'required'">
+            {{
+              record.evaluationRequired ? '是' : '否'
+            }}
+          </template>
+          <template v-else-if="column.key === 'completed'">
+            {{
+              record.evaluationCompleted ? '是' : '否'
+            }}
+          </template>
           <template v-else-if="column.key === 'actions'">
             <UiButton
               v-if="record.evaluationRequired && !record.evaluationCompleted"

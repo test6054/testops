@@ -1,10 +1,10 @@
 import type { BindingStatusCode, ExamStatusCode } from './exam'
 import type { QuestionTypeCode } from './grading-experience'
-import { QUESTION_TYPE_LABEL } from './grading-experience'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 import { throwUserFacing } from '@/utils/contract-guard'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
+import { QUESTION_TYPE_LABEL } from './grading-experience'
 
 const STUDENT_EXAM_DATA_ERROR = '成绩数据异常，请刷新后重试'
 
@@ -13,13 +13,13 @@ const STUDENT_EXAM_STATUS_LABEL: Record<ExamStatusCode, string> = {
   CLOSED: '已关闭',
 }
 
-export type FinalScoreStatusCode =
-  | 'PENDING'
-  | 'CALCULATED'
-  | 'CONFIRMED'
-  | 'CORRECTED'
-  | 'PUBLISHED'
-  | 'WITHDRAWN'
+export type FinalScoreStatusCode
+  = | 'PENDING'
+    | 'CALCULATED'
+    | 'CONFIRMED'
+    | 'CORRECTED'
+    | 'PUBLISHED'
+    | 'WITHDRAWN'
 
 export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
   PENDING: '待计算',

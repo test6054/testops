@@ -272,13 +272,6 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import {
-  ANONYMITY_MODE_LABEL,
-  FORMAL_SESSION_STATUS_LABEL,
-  MARKING_TASK_STATUS_LABEL,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -289,6 +282,13 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  ANONYMITY_MODE_LABEL,
+  FORMAL_SESSION_STATUS_LABEL,
+  MARKING_TASK_STATUS_LABEL,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
+} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,

@@ -173,9 +173,9 @@
             <template v-else-if="column.key === 'action'">
               <a-space>
                 <a-button type="link" size="small" @click="openIdentityEdit(index)">编辑</a-button>
-                <a-button type="link" danger size="small" @click="removeIdentityArea(index)"
-                  >删除</a-button
-                >
+                <a-button type="link" danger size="small" @click="removeIdentityArea(index)">
+                  删除
+                </a-button>
               </a-space>
             </template>
           </template>
@@ -214,9 +214,9 @@
             <template v-else-if="column.key === 'action'">
               <a-space>
                 <a-button type="link" size="small" @click="openObjectiveEdit(index)">编辑</a-button>
-                <a-button type="link" danger size="small" @click="removeObjectiveArea(index)"
-                  >删除</a-button
-                >
+                <a-button type="link" danger size="small" @click="removeObjectiveArea(index)">
+                  删除
+                </a-button>
               </a-space>
             </template>
           </template>
@@ -243,18 +243,18 @@
               style="width: 100%"
             />
           </a-form-item>
-          <a-form-item label="X"
-            ><a-input-number v-model:value="identityDraft.x" :min="0" style="width: 100%"
-          /></a-form-item>
-          <a-form-item label="Y"
-            ><a-input-number v-model:value="identityDraft.y" :min="0" style="width: 100%"
-          /></a-form-item>
-          <a-form-item label="宽"
-            ><a-input-number v-model:value="identityDraft.width" :min="1" style="width: 100%"
-          /></a-form-item>
-          <a-form-item label="高"
-            ><a-input-number v-model:value="identityDraft.height" :min="1" style="width: 100%"
-          /></a-form-item>
+          <a-form-item label="X">
+            <a-input-number v-model:value="identityDraft.x" :min="0" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="Y">
+            <a-input-number v-model:value="identityDraft.y" :min="0" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="宽">
+            <a-input-number v-model:value="identityDraft.width" :min="1" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="高">
+            <a-input-number v-model:value="identityDraft.height" :min="1" style="width: 100%" />
+          </a-form-item>
           <a-form-item label="填涂格数">
             <a-input-number
               v-model:value="identityDraft.fillCellCount"
@@ -291,18 +291,18 @@
               style="width: 100%"
             />
           </a-form-item>
-          <a-form-item label="X"
-            ><a-input-number v-model:value="objectiveDraft.x" :min="0" style="width: 100%"
-          /></a-form-item>
-          <a-form-item label="Y"
-            ><a-input-number v-model:value="objectiveDraft.y" :min="0" style="width: 100%"
-          /></a-form-item>
-          <a-form-item label="框宽"
-            ><a-input-number v-model:value="objectiveDraft.boxWidth" :min="1" style="width: 100%"
-          /></a-form-item>
-          <a-form-item label="框高"
-            ><a-input-number v-model:value="objectiveDraft.boxHeight" :min="1" style="width: 100%"
-          /></a-form-item>
+          <a-form-item label="X">
+            <a-input-number v-model:value="objectiveDraft.x" :min="0" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="Y">
+            <a-input-number v-model:value="objectiveDraft.y" :min="0" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="框宽">
+            <a-input-number v-model:value="objectiveDraft.boxWidth" :min="1" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="框高">
+            <a-input-number v-model:value="objectiveDraft.boxHeight" :min="1" style="width: 100%" />
+          </a-form-item>
           <a-form-item label="选项">
             <div
               v-for="option in objectiveDraft.options"
@@ -315,12 +315,13 @@
                 danger
                 size="small"
                 @click="removeObjectiveOption(objectiveDraft, option.sortNo)"
-                >删除</a-button
               >
+                删除
+              </a-button>
             </div>
-            <a-button size="small" type="link" @click="addObjectiveOption(objectiveDraft)"
-              >添加选项</a-button
-            >
+            <a-button size="small" type="link" @click="addObjectiveOption(objectiveDraft)">
+              添加选项
+            </a-button>
           </a-form-item>
         </a-form>
       </a-modal>
@@ -332,18 +333,11 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
-import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
 import type {
   PaperMasterIdentityAreaRequest,
   PaperMasterIdentityAreaTypeCode,
   PaperMasterObjectiveAreaRequest,
   PaperMasterVO,
-} from '@/apis/mark/paper-master'
-import {
-  getPaperMaster,
-  isPaperMasterNotConfiguredError,
-  PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL,
-  savePaperMaster,
 } from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -355,6 +349,13 @@ import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
+import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
+import {
+  getPaperMaster,
+  isPaperMasterNotConfiguredError,
+  PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL,
+  savePaperMaster,
+} from '@/apis/mark/paper-master'
 import {
   UiButton,
   UiCard,

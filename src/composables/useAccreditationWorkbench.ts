@@ -3,10 +3,10 @@ import type {
   AccreditationCyclePhase,
   AccreditationCycleVO,
 } from '@/apis/quality'
-import { ACCREDITATION_CYCLE_PHASE_LABEL, accreditationApi } from '@/apis/quality'
 import type { WorkbenchStage } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ACCREDITATION_CYCLE_PHASE_LABEL, accreditationApi } from '@/apis/quality'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -191,10 +191,10 @@ export function canRecordApplication(row: AccreditationCycleVO) {
 
 export function canSubmitSelfAssessment(row: AccreditationCycleVO) {
   return (
-    row.cycleStatus === 'ACTIVE' &&
-    (row.currentPhase === 'SELF_EVALUATION' ||
-      (row.currentPhase === 'SELF_ASSESSMENT_REVIEW' &&
-        row.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'))
+    row.cycleStatus === 'ACTIVE'
+    && (row.currentPhase === 'SELF_EVALUATION'
+      || (row.currentPhase === 'SELF_ASSESSMENT_REVIEW'
+        && row.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'))
   )
 }
 
@@ -204,8 +204,8 @@ export function canReview(row: AccreditationCycleVO) {
 
 export function canConclusion(row: AccreditationCycleVO) {
   return (
-    row.cycleStatus === 'ACTIVE' &&
-    (row.currentPhase === 'ONSITE_VISIT' || row.currentPhase === 'CONCLUSION')
+    row.cycleStatus === 'ACTIVE'
+    && (row.currentPhase === 'ONSITE_VISIT' || row.currentPhase === 'CONCLUSION')
   )
 }
 

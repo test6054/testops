@@ -22,14 +22,6 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
-import {
-  assessmentItemApi,
-  DATA_SOURCE_MODE_LABEL,
-  qualityCourseApi,
-  SCORE_BATCH_STATUS_COLOR,
-  SCORE_BATCH_STATUS_LABEL,
-  scoreBatchApi,
-} from '@/apis/quality'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -40,6 +32,14 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import {
+  assessmentItemApi,
+  DATA_SOURCE_MODE_LABEL,
+  qualityCourseApi,
+  SCORE_BATCH_STATUS_COLOR,
+  SCORE_BATCH_STATUS_LABEL,
+  scoreBatchApi,
+} from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -150,9 +150,9 @@ function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
 ): boolean {
   return (
-    record.totalRows !== undefined &&
-    record.successRows !== undefined &&
-    record.errorRows !== undefined
+    record.totalRows !== undefined
+    && record.successRows !== undefined
+    && record.errorRows !== undefined
   )
 }
 
@@ -188,7 +188,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatus; title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatus, title: string }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PARSING', title: '解析中' },
     { key: 'PREVIEW_READY', title: '预览就绪' },
@@ -300,7 +300,7 @@ async function loadBatches() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadBatches()
@@ -403,9 +403,9 @@ async function openPreview(record: ScoreBatchVO) {
     const preview = await scoreBatchApi.preview(record.id)
     for (const diagnostic of preview.diagnostics) {
       if (
-        diagnostic.valid === false &&
-        diagnostic.errorMessages.length === 0 &&
-        diagnostic.errorCodes.length === 0
+        diagnostic.valid === false
+        && diagnostic.errorMessages.length === 0
+        && diagnostic.errorCodes.length === 0
       ) {
         message.error('成绩预览结果异常，请重新导入后再试')
         return
@@ -603,7 +603,7 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
   const record = batches.value.find((b) => b.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
@@ -859,9 +859,9 @@ onMounted(async () => {
           </template>
           <template
             v-else-if="
-              column.key === 'schoolYear' ||
-              column.key === 'semester' ||
-              column.key === 'createTime'
+              column.key === 'schoolYear'
+                || column.key === 'semester'
+                || column.key === 'createTime'
             "
           >
             <template v-if="column.key === 'schoolYear'">

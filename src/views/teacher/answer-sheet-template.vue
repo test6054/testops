@@ -105,19 +105,13 @@
 
 <script lang="ts" setup>
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
-import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
-import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import type {
   ExamAnswerSheetTemplateSaveRequest,
   ExamPageTemplateRequest,
   ExamPaperPageTemplateVO,
   ExamQuestionTemplateVO,
 } from '@/apis/mark/exam'
-import {
-  getExamTemplate,
-  isPaperTemplateNotConfiguredError,
-  saveAnswerSheetTemplate,
-} from '@/apis/mark/exam'
+import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -125,6 +119,12 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+  saveAnswerSheetTemplate,
+} from '@/apis/mark/exam'
+import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import {
   UiAlertStrip,
   UiBadge,
@@ -159,7 +159,7 @@ function nextRowKey(): string {
   return `p-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string; totalPages?: number }>({
+const form = reactive<{ templateName: string, totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })

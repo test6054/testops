@@ -34,13 +34,13 @@ type MarkBusinessError = Error & {
 }
 
 /** 阅卷组织状态编码 - 与后端 OrganizationStatus enum 对齐 */
-export type MarkingOrganizationStatusCode =
-  | 'ORG_DRAFT'
-  | 'ORG_CONFIGURED'
-  | 'TRIAL_MARKING'
-  | 'FORMAL_MARKING'
-  | 'QUALITY_REVIEW'
-  | 'CLOSED'
+export type MarkingOrganizationStatusCode
+  = | 'ORG_DRAFT'
+    | 'ORG_CONFIGURED'
+    | 'TRIAL_MARKING'
+    | 'FORMAL_MARKING'
+    | 'QUALITY_REVIEW'
+    | 'CLOSED'
 
 export const MARKING_ORGANIZATION_STATUS_LABEL: Record<MarkingOrganizationStatusCode, string> = {
   ORG_DRAFT: '草稿',
@@ -64,11 +64,11 @@ export const MARKING_ORGANIZATION_STATUS_TONE: Record<
 }
 
 /** 题组状态编码 - 与后端 QuestionGroupStatus enum 对齐 */
-export type QuestionMarkingGroupStatusCode =
-  | 'GROUP_DRAFT'
-  | 'GROUP_CONFIGURED'
-  | 'GROUP_ACTIVE'
-  | 'GROUP_CLOSED'
+export type QuestionMarkingGroupStatusCode
+  = | 'GROUP_DRAFT'
+    | 'GROUP_CONFIGURED'
+    | 'GROUP_ACTIVE'
+    | 'GROUP_CLOSED'
 
 export const QUESTION_GROUP_STATUS_LABEL: Record<QuestionMarkingGroupStatusCode, string> = {
   GROUP_DRAFT: '草稿',
@@ -88,12 +88,12 @@ export const QUESTION_GROUP_STATUS_TONE: Record<
 }
 
 /** 任务分配模式编码 - 与后端 AllocationMode enum 对齐 */
-export type MarkingAllocationModeCode =
-  | 'BY_QUESTION'
-  | 'BY_CLASS'
-  | 'ROUND_ROBIN'
-  | 'RANDOM'
-  | 'BY_PAPER_RANDOM'
+export type MarkingAllocationModeCode
+  = | 'BY_QUESTION'
+    | 'BY_CLASS'
+    | 'ROUND_ROBIN'
+    | 'RANDOM'
+    | 'BY_PAPER_RANDOM'
 
 export const MARKING_ALLOCATION_MODE_LABEL: Record<MarkingAllocationModeCode, string> = {
   BY_QUESTION: '按题目分配',
@@ -166,12 +166,12 @@ export const ANONYMOUS_TOKEN_POLICY_OPTIONS: Array<{
 ]
 
 /** 阅卷任务状态编码 - 与后端 MarkingTaskStatus enum 对齐 */
-export type MarkingTaskStatusCode =
-  | 'ALLOCATED'
-  | 'IN_PROGRESS'
-  | 'SUBMITTED'
-  | 'FINALIZED'
-  | 'RECYCLED'
+export type MarkingTaskStatusCode
+  = | 'ALLOCATED'
+    | 'IN_PROGRESS'
+    | 'SUBMITTED'
+    | 'FINALIZED'
+    | 'RECYCLED'
 
 export const MARKING_TASK_STATUS_LABEL: Record<MarkingTaskStatusCode, string> = {
   ALLOCATED: '已分配',
@@ -534,12 +534,12 @@ export interface MarkingTaskVO {
 }
 
 /** 试评会话状态编码 - 与后端 TrialSessionStatus enum 对齐 */
-export type TrialSessionStatusCode =
-  | 'TRIAL_CREATED'
-  | 'TRIAL_ASSIGNED'
-  | 'TRIAL_SUBMITTED'
-  | 'CALIBRATED'
-  | 'TRIAL_CLOSED'
+export type TrialSessionStatusCode
+  = | 'TRIAL_CREATED'
+    | 'TRIAL_ASSIGNED'
+    | 'TRIAL_SUBMITTED'
+    | 'CALIBRATED'
+    | 'TRIAL_CLOSED'
 
 export const TRIAL_SESSION_STATUS_LABEL: Record<TrialSessionStatusCode, string> = {
   TRIAL_CREATED: '已创建',
@@ -561,12 +561,12 @@ export const TRIAL_SESSION_STATUS_TONE: Record<
 }
 
 /** 正评会话状态编码 - 与后端 FormalSessionStatus enum 对齐 */
-export type FormalSessionStatusCode =
-  | 'SESSION_CREATED'
-  | 'SESSION_ACTIVE'
-  | 'SESSION_PAUSED'
-  | 'SESSION_COMPLETED'
-  | 'SESSION_CLOSED'
+export type FormalSessionStatusCode
+  = | 'SESSION_CREATED'
+    | 'SESSION_ACTIVE'
+    | 'SESSION_PAUSED'
+    | 'SESSION_COMPLETED'
+    | 'SESSION_CLOSED'
 
 export const FORMAL_SESSION_STATUS_LABEL: Record<FormalSessionStatusCode, string> = {
   SESSION_CREATED: '已创建',
@@ -1036,8 +1036,8 @@ export async function getMarkingScanPageDisplayBlobUrl(
     request,
   )
   const rawContentType = response.headers['content-type']
-  const contentType =
-    typeof rawContentType === 'string'
+  const contentType
+    = typeof rawContentType === 'string'
       ? rawContentType
       : Array.isArray(rawContentType)
         ? rawContentType.join(';')

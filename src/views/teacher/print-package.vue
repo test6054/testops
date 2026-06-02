@@ -174,6 +174,12 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/paper-master'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   generatePrintPackage,
   getPrintPackage,
@@ -181,12 +187,6 @@ import {
   PRINT_PACKAGE_STATUS_LABEL,
   PRINT_PACKAGE_STATUS_TONE,
 } from '@/apis/mark/paper-master'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   UiButton,
   UiCard,

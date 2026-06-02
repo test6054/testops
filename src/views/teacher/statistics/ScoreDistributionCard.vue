@@ -71,10 +71,10 @@
 
 <script lang="ts" setup>
 import type { ExamScoreDistributionVO } from '@/apis/mark/exam'
-import { getExamScoreDistribution } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
+import { getExamScoreDistribution } from '@/apis/mark/exam'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { showUserError, toUserError } from '@/utils/error-handler'

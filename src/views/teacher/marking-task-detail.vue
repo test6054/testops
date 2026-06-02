@@ -365,12 +365,6 @@ import type {
   PaperInstanceDisplayVO,
   QualityDecisionCode,
 } from '@/apis/mark/exam'
-import {
-  getExamDetail,
-  listAnnotations,
-  QUALITY_DECISION_LABEL,
-  QUALITY_DECISION_TONE,
-} from '@/apis/mark/exam'
 import type {
   AllocationUnitCode,
   AnonymityModeCode,
@@ -383,17 +377,6 @@ import type {
   MarkingTaskVO,
   QuestionMarkingGroupQuestionVO,
   ScannedPageRef,
-} from '@/apis/mark/marking-organization'
-import {
-  ALLOCATION_UNIT_LABEL,
-  ANONYMITY_MODE_LABEL,
-  getMarkingQuestionView,
-  getMarkingScanPageDisplayBlobUrl,
-  getMarkingTaskDetail,
-  getWholePaperView,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-  submitMarkingTask,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -408,6 +391,23 @@ import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import {
+  getExamDetail,
+  listAnnotations,
+  QUALITY_DECISION_LABEL,
+  QUALITY_DECISION_TONE,
+} from '@/apis/mark/exam'
+import {
+  ALLOCATION_UNIT_LABEL,
+  ANONYMITY_MODE_LABEL,
+  getMarkingQuestionView,
+  getMarkingScanPageDisplayBlobUrl,
+  getMarkingTaskDetail,
+  getWholePaperView,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+  submitMarkingTask,
+} from '@/apis/mark/marking-organization'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import RevealAnonymousModal from '@/components/mark/RevealAnonymousModal.vue'
 import {
@@ -641,11 +641,10 @@ async function openQuestionView(currentTask = task.value): Promise<void> {
   questionViewLoading.value = true
   questionViewError.value = null
   try {
-    const view = await getMarkingQuestionView({
+    questionView.value = await getMarkingQuestionView({
       examId: currentTask.examId,
       taskId: currentTask.id,
     })
-    questionView.value = view
     questionViewLoaded.value = true
   } catch (error) {
     questionViewError.value = toUserError(error, '题目视图加载失败')
@@ -811,7 +810,7 @@ function handleAnonymousRevealed(result: AnonymousRevealVO): void {
 }
 
 const formRef = ref<FormInstance>()
-const form = reactive<{ score?: number; annotationNote?: string }>({
+const form = reactive<{ score?: number, annotationNote?: string }>({
   score: undefined,
   annotationNote: '',
 })

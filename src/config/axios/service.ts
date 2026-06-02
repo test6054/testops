@@ -4,14 +4,14 @@
  */
 
 import type { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
-import axios from 'axios'
 import type { ExtendedAxiosRequestConfig, InterceptorError } from './types'
 import message from 'ant-design-vue/es/message'
+import axios from 'axios'
 import { shouldShowError, shouldUseNotification } from '@/config/error-config'
 import { AUTH_STORAGE_KEYS, STORAGE_TENANT_ID } from '@/constants/storage-keys'
 import { useAuthStore } from '@/stores/modules/auth'
-import { getValidToken } from '@/utils/auth'
 import { isLoginPath, resolveAppPath } from '@/utils/app-path'
+import { getValidToken } from '@/utils/auth'
 import { getDeviceHeaders } from '@/utils/device'
 import { handleAxiosError } from '@/utils/error-handler'
 import {

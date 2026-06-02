@@ -5,11 +5,11 @@ import type {
   PhoneLoginRequest,
   StudentLoginRequest,
 } from '@/apis/auth'
-import * as authApi from '@/apis/auth'
 import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import * as authApi from '@/apis/auth'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
   STORAGE_REFRESH_TOKEN,
@@ -215,13 +215,12 @@ export const useAuthStore = defineStore(
       const storedRefreshToken = localStorage.getItem(STORAGE_REFRESH_TOKEN)
       const storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
       const parsedExpiresAt = storedTokenExpiresAt ? Number.parseInt(storedTokenExpiresAt) : null
-      const normalizedExpiresAt =
-        parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
-
-      const hasChanged =
-        token.value !== storedToken ||
-        refreshToken.value !== storedRefreshToken ||
-        tokenExpiresAt.value !== normalizedExpiresAt
+      const normalizedExpiresAt
+        = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
+      const hasChanged
+        = token.value !== storedToken
+          || refreshToken.value !== storedRefreshToken
+          || tokenExpiresAt.value !== normalizedExpiresAt
 
       if (!hasChanged) {
         return false
@@ -380,10 +379,10 @@ export const useAuthStore = defineStore(
 
         // 网络层错误 / 5xx：不强制登出，让上层下次再试
         // axios 的网络错误 code 是 'ERR_NETWORK' / 'ECONNABORTED'，而非 'NETWORK_ERROR'
-        const isNetworkLevel =
-          lastError?.code === 'ERR_NETWORK' ||
-          lastError?.code === 'ECONNABORTED' ||
-          (lastError?.response !== undefined && lastError.response.status >= 500)
+        const isNetworkLevel
+          = lastError?.code === 'ERR_NETWORK'
+            || lastError?.code === 'ECONNABORTED'
+            || (lastError?.response !== undefined && lastError.response.status >= 500)
         if (isNetworkLevel) {
           return false
         }
@@ -488,7 +487,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const phoneLoginMethod = async (req: { phone: string; captcha: string }) => {
+    const phoneLoginMethod = async (req: { phone: string, captcha: string }) => {
       try {
         isLoading.value = true
         const phoneLoginReq: PhoneLoginRequest = {
@@ -523,7 +522,7 @@ export const useAuthStore = defineStore(
      * 邮箱验证码登录
      * 登录后需调用方通过 userStore.getInfo() 获取完整用户信息
      */
-    const emailLogin = async (req: { email: string; captcha: string }) => {
+    const emailLogin = async (req: { email: string, captcha: string }) => {
       try {
         isLoading.value = true
         const loginReq: LoginRequest = {
@@ -708,10 +707,10 @@ export const useAuthStore = defineStore(
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) return
       if (
-        event.key !== null &&
-        event.key !== STORAGE_TOKEN &&
-        event.key !== STORAGE_REFRESH_TOKEN &&
-        event.key !== STORAGE_TOKEN_EXPIRES_AT
+        event.key !== null
+        && event.key !== STORAGE_TOKEN
+        && event.key !== STORAGE_REFRESH_TOKEN
+        && event.key !== STORAGE_TOKEN_EXPIRES_AT
       ) {
         return
       }

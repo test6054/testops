@@ -12,9 +12,9 @@ export interface KioskAuthSession {
  */
 export function isMarkScannerStationApiUrl(url: string): boolean {
   return (
-    url.includes('/api/mark/scanner/kiosk/') ||
-    url.includes('/api/mark/sse/scan-live/') ||
-    url.includes('/api/mark/scan-live/')
+    url.includes('/api/mark/scanner/kiosk/')
+    || url.includes('/api/mark/sse/scan-live/')
+    || url.includes('/api/mark/scan-live/')
   )
 }
 
@@ -96,8 +96,8 @@ export function hasMarkScannerStationAuth(): boolean {
 }
 
 /** 一体机 Agent 已绑定但浏览器 sessionStorage 未缓存 push_token（常见于页面刷新）。 */
-export const KIOSK_BROWSER_SESSION_LOST_MESSAGE =
-  '浏览器会话已失效，请在设备设置中使用激活码重新激活一体机'
+export const KIOSK_BROWSER_SESSION_LOST_MESSAGE
+  = '浏览器会话已失效，请在设备设置中使用激活码重新激活一体机'
 
 export function needsKioskBrowserReactivation(agentBound: boolean | undefined): boolean {
   return Boolean(agentBound) && !hasMarkScannerJwtAuth() && !hasMarkScannerKioskAuth()

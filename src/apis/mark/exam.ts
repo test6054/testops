@@ -37,13 +37,6 @@ export const EXAM_STATUS_LABEL: Record<ExamStatusCode, string> = {
   ACTIVE: '正常',
   CLOSED: '已关闭',
 }
-
-/** 考试状态徽标颜色（统一 BadgeTone） */
-export const EXAM_STATUS_COLOR: Record<ExamStatusCode, BadgeTone> = {
-  ACTIVE: 'green',
-  CLOSED: 'red',
-}
-
 /** 考试状态 BadgeTone 映射（用于 UiTag/UiBadge） */
 export const EXAM_STATUS_TONE: Record<ExamStatusCode, BadgeTone> = {
   ACTIVE: 'green',
@@ -282,14 +275,6 @@ export interface ExamCandidateRosterRequest {
   classId: string
   studentUserId: string
 }
-
-/** 范围保存请求 - 对应 ExamScopeSaveRequest */
-export interface ExamScopeSaveRequest {
-  examId: string
-  classIds: string[]
-  candidates: ExamCandidateRosterRequest[]
-}
-
 /** 页面模板项 - 对应 ExamPageTemplateRequest */
 export interface ExamPageTemplateRequest {
   pageNo: number
@@ -429,12 +414,12 @@ function validateExamTemplateContract(record: ExamTemplateVO): ExamTemplateVO {
  *   <li>AI_GRADE：客观题未配标准答案或显式选 AI 评分时由 AI 给出评分（NEED_REVIEW），教师复核确认后落地。</li>
  * </ul>
  */
-export type ObjectiveComparePolicyCode =
-  | 'EXACT_NORMALIZED'
-  | 'CHOICE_SET'
-  | 'REGEX'
-  | 'NUMERIC_TOLERANCE'
-  | 'AI_GRADE'
+export type ObjectiveComparePolicyCode
+  = | 'EXACT_NORMALIZED'
+    | 'CHOICE_SET'
+    | 'REGEX'
+    | 'NUMERIC_TOLERANCE'
+    | 'AI_GRADE'
 
 /** 客观题比较策略选项，供前端 a-select 渲染 */
 export const OBJECTIVE_COMPARE_POLICY_OPTIONS: Array<{
@@ -606,13 +591,6 @@ export function deleteExam(request: ExamDeleteRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/delete', request)
 }
 
-/**
- * 保存考试范围（班级 + 考生名册），内部走增量 diff
- * POST /api/mark/exams/scope/save
- */
-export function saveExamScope(request: ExamScopeSaveRequest): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scope/save', request)
-}
 
 /** 增量合并考生名册 */
 export interface ExamCandidateMergeRequest {
@@ -817,13 +795,13 @@ export async function listExamCandidates(examId: string): Promise<ExamCandidateV
 // ─── 考试成绩汇总（成绩确认 / 成绩发布列表） ──────────────────────────
 
 /** 与后端 FinalScoreStatus 枚举对齐（共 6 个状态） */
-export type FinalScoreStatusCode =
-  | 'PENDING'
-  | 'CALCULATED'
-  | 'CONFIRMED'
-  | 'CORRECTED'
-  | 'PUBLISHED'
-  | 'WITHDRAWN'
+export type FinalScoreStatusCode
+  = | 'PENDING'
+    | 'CALCULATED'
+    | 'CONFIRMED'
+    | 'CORRECTED'
+    | 'PUBLISHED'
+    | 'WITHDRAWN'
 
 /** 最终成绩状态文案映射 */
 export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
@@ -834,17 +812,6 @@ export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
   PUBLISHED: '已发布',
   WITHDRAWN: '已撤回',
 }
-
-/** 最终成绩状态徽标颜色（统一 BadgeTone，cyan 不在 BadgeTone 中改为 blue） */
-export const FINAL_SCORE_STATUS_COLOR: Record<FinalScoreStatusCode, BadgeTone> = {
-  PENDING: 'gray',
-  CALCULATED: 'blue',
-  CONFIRMED: 'blue',
-  CORRECTED: 'orange',
-  PUBLISHED: 'green',
-  WITHDRAWN: 'red',
-}
-
 /** 最终成绩状态 BadgeTone 映射（用于 UiTag/UiBadge） */
 export const FINAL_SCORE_STATUS_TONE: Record<FinalScoreStatusCode, BadgeTone> = {
   PENDING: 'gray',
@@ -867,10 +834,6 @@ export const FINAL_SCORE_STATUS_OPTIONS: Array<{
   { value: 'PUBLISHED', label: FINAL_SCORE_STATUS_LABEL.PUBLISHED },
   { value: 'WITHDRAWN', label: FINAL_SCORE_STATUS_LABEL.WITHDRAWN },
 ]
-
-/** 答卷展示模式 - 对应 PaperInstanceDisplayMode */
-export type PaperInstanceDisplayModeCode = 'REAL_NAME' | 'ANONYMOUS' | 'UNBOUND'
-
 /** 答卷展示基础信息 - 对应 PaperInstanceDisplayVO 公共字段 */
 interface PaperInstanceDisplayBaseVO {
   paperInstanceId?: string
@@ -907,10 +870,10 @@ export interface UnboundPaperInstanceDisplayVO extends PaperInstanceDisplayBaseV
 }
 
 /** 答卷展示信息 - 对应 PaperInstanceDisplayVO */
-export type PaperInstanceDisplayVO =
-  | RealNamePaperInstanceDisplayVO
-  | AnonymousPaperInstanceDisplayVO
-  | UnboundPaperInstanceDisplayVO
+export type PaperInstanceDisplayVO
+  = | RealNamePaperInstanceDisplayVO
+    | AnonymousPaperInstanceDisplayVO
+    | UnboundPaperInstanceDisplayVO
 
 /** 考试成绩汇总查询请求 - 对应 ExamScoreSummaryQueryRequest */
 export interface ExamScoreSummaryQueryRequest extends QueryDto {
@@ -953,69 +916,21 @@ export function pageExamScoreSummary(
 }
 
 // ─── 扫描与导入链路 ─────────────────────────────────────────────
-
-/** 扫描页登记请求 - 对应 ExamScannedPageRegisterRequest */
-export interface ExamScannedPageRegisterRequest {
-  examId: string
-  scanBatchId: string
-  paperInstanceId?: string
-  pageSeq?: number
-  templatePageNo?: number
-  /** 扫描页文件ID（必填） */
-  fileId: string
-  qualityStatus?: QualityDecisionCode
-}
-
-/** 扫描页登记响应 - 对应 ExamScannedPageRegisterResponse */
-export interface ExamScannedPageRegisterVO {
-  pageId?: string
-  paperInstanceId?: string
-}
-
-/** 扫描来源页映射 - 对应 ExamScanSourcePageMappingRequest */
-export interface ExamScanSourcePageMappingRequest {
-  /** PDF 页号（从 1 开始），单张图片固定为 1 */
-  sourcePageNo: number
-  pageSeq?: number
-  /** 对应模板页号（必填） */
-  templatePageNo: number
-}
-
-/** 扫描来源文件导入请求 - 对应 ExamScanSourceImportRequest */
-export interface ExamScanSourceImportRequest {
-  examId: string
-  scanBatchId: string
-  paperInstanceId?: string
-  /** 扫描来源文件ID（必填） */
-  sourceFileId: string
-  startPageSeq?: number
-  startTemplatePageNo?: number
-  /** 来源页到模板页的显式映射；不传时按起始页号顺序映射 */
-  pageMappings?: ExamScanSourcePageMappingRequest[]
-}
-
-/** 扫描来源文件导入响应 - 对应 ExamScanSourceImportResponse */
-export interface ExamScanSourceImportVO {
-  paperInstanceId?: string
-  registeredPageCount?: number
-  pageIds?: string[]
-}
-
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
-export type ScanAttentionTypeCode =
-  | 'QUALITY_BLOCK'
-  | 'PROCESSING_BLOCK'
-  | 'DUPLICATE_PENDING'
-  | 'RECOGNITION_REVIEW'
-  | 'BINDING_CONFLICT'
+export type ScanAttentionTypeCode
+  = | 'QUALITY_BLOCK'
+    | 'PROCESSING_BLOCK'
+    | 'DUPLICATE_PENDING'
+    | 'RECOGNITION_REVIEW'
+    | 'BINDING_CONFLICT'
 
 /** 扫描异常来源类型 - 对应后端扫描异常聚合 SQL 固定来源 */
-export type ScanAttentionSourceTypeCode =
-  | 'SCANNED_PAGE'
-  | 'PROCESSING_TASK'
-  | 'DUPLICATE_RESOLUTION'
-  | 'GRADE_RESULT'
-  | 'PAPER_INSTANCE'
+export type ScanAttentionSourceTypeCode
+  = | 'SCANNED_PAGE'
+    | 'PROCESSING_TASK'
+    | 'DUPLICATE_RESOLUTION'
+    | 'GRADE_RESULT'
+    | 'PAPER_INSTANCE'
 
 export interface ScanAttentionQueryRequest extends QueryDto {
   examId: string
@@ -1213,27 +1128,6 @@ export function pageScannerBatches(
 ): Promise<PageResult<ExamScannerBatchVO>> {
   return http.post<PageResult<ExamScannerBatchVO>>('/api/mark/exams/scanner-batches/page', request)
 }
-
-/**
- * 登记扫描页并返回试卷实例
- * POST /api/mark/exams/scanned-pages/register
- */
-export function registerScannedPage(
-  request: ExamScannedPageRegisterRequest,
-): Promise<ExamScannedPageRegisterVO> {
-  return http.post<ExamScannedPageRegisterVO>('/api/mark/exams/scanned-pages/register', request)
-}
-
-/**
- * 导入扫描来源文件并登记扫描页
- * POST /api/mark/exams/scan-sources/import
- */
-export function importScanSource(
-  request: ExamScanSourceImportRequest,
-): Promise<ExamScanSourceImportVO> {
-  return http.post<ExamScanSourceImportVO>('/api/mark/exams/scan-sources/import', request)
-}
-
 /**
  * 查询扫描异常待办列表
  * POST /api/mark/exams/scan-attentions
@@ -1270,48 +1164,6 @@ export function bindPaper(request: ExamPaperBindRequest): Promise<boolean> {
 }
 
 // ─── 识别结果提交 ──────────────────────────────────────────────
-
-/** 题目识别结果提交请求 - 对应 ExamRecognitionSubmitRequest */
-export interface ExamRecognitionSubmitRequest {
-  examId: string
-  paperInstanceId: string
-  questionTemplateId: string
-  responseSliceId?: string
-  pageId?: string
-  sliceFileId?: string
-  recognizedAnswer?: string
-  engineTraceId?: string
-}
-
-/** 识别失败复核提交请求 - 对应 RecognitionFailureSubmitRequest */
-export interface RecognitionFailureSubmitRequest {
-  examId: string
-  paperInstanceId: string
-  questionTemplateId?: string
-  /** 失败诊断（必填） */
-  diagnostic: string
-}
-
-/**
- * 提交题目识别结果并生成批改结果
- * POST /api/mark/exams/recognition/submit
- * @returns 批改结果ID
- */
-export function submitRecognition(request: ExamRecognitionSubmitRequest): Promise<string> {
-  return http.post<string>('/api/mark/exams/recognition/submit', request)
-}
-
-/**
- * 提交识别失败复核任务
- * POST /api/mark/exams/recognition/failure
- * @returns 批改结果ID
- */
-export function submitRecognitionFailure(
-  request: RecognitionFailureSubmitRequest,
-): Promise<string> {
-  return http.post<string>('/api/mark/exams/recognition/failure', request)
-}
-
 // ─── 评分确认与试卷成绩 ─────────────────────────────────────────
 
 /** 题目成绩确认请求 - 对应 ExamGradeConfirmRequest */
@@ -1377,15 +1229,6 @@ export interface ExamGradeRejectRequest {
 export function rejectQuestionGrade(request: ExamGradeRejectRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/question-grades/reject', request)
 }
-
-/**
- * 归档关闭考试
- * POST /api/mark/exams/close
- */
-export function closeExam(request: { examId: string }): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/close', request)
-}
-
 /** 题目成绩批量确认条目 - 对应 ExamGradeBatchConfirmRequest.Item */
 export interface ExamGradeBatchConfirmItem {
   /** 题目批改结果ID */
@@ -1630,15 +1473,15 @@ export interface ReviewTaskQueryRequest extends QueryDto {
  * 复核任务类型编码 - 与后端 com.nybc.edu.common.enums.TaskType 一一对齐。
  * 仅复核任务相关 3 类（其它任务类型不会出现在复核任务列表中）。
  */
-export type ReviewTaskTypeCode =
-  | 'OBJECTIVE_AUTO_REVIEW'
-  | 'OBJECTIVE_AI_REVIEW'
-  | 'SUBJECTIVE_AI_REVIEW'
+export type ReviewTaskTypeCode
+  = | 'OBJECTIVE_AUTO_REVIEW'
+    | 'OBJECTIVE_AI_REVIEW'
+    | 'SUBJECTIVE_AI_REVIEW'
 
 /** 复核任务类型中文标签与颜色，便于前端 tag 渲染 */
 export const REVIEW_TASK_TYPE_META: Record<
   ReviewTaskTypeCode,
-  { label: string; color: 'blue' | 'green' | 'purple' }
+  { label: string, color: 'blue' | 'green' | 'purple' }
 > = {
   OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
   OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
@@ -1648,22 +1491,12 @@ export const REVIEW_TASK_TYPE_META: Record<
 /**
  * 批改来源编码 - 与后端 com.nybc.edu.common.enums.GradeSource 一一对齐。
  */
-export type GradeSourceCode =
-  | 'AUTO_OBJECTIVE'
-  | 'AUTO_OBJECTIVE_AI'
-  | 'LOCAL_SUBJECTIVE_AI'
-  | 'TEACHER'
-  | 'RECOGNITION_FAILURE'
-
-/** 批改来源中文标签 */
-export const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
-  AUTO_OBJECTIVE: '客观题硬比对',
-  AUTO_OBJECTIVE_AI: '客观题 AI 评分',
-  LOCAL_SUBJECTIVE_AI: '主观题 AI 评分',
-  TEACHER: '教师人工批改',
-  RECOGNITION_FAILURE: 'OCR 识别失败转人工',
-}
-
+export type GradeSourceCode
+  = | 'AUTO_OBJECTIVE'
+    | 'AUTO_OBJECTIVE_AI'
+    | 'LOCAL_SUBJECTIVE_AI'
+    | 'TEACHER'
+    | 'RECOGNITION_FAILURE'
 /** 复核任务状态编码 - 与后端 ReviewTaskStatus 枚举对齐 */
 export type ReviewTaskStatusCode = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED'
 
@@ -1804,12 +1637,6 @@ export interface AnnotationVO {
   correlationId?: string
   createTime?: string
 }
-
-/** 阅卷进度查询请求 - 对应 MarkingProgressQueryRequest */
-export interface MarkingProgressQueryRequest {
-  examId: string
-}
-
 /** 阅卷进度响应 - 对应 MarkingProgressResponse */
 export interface MarkingProgressVO {
   examId: string
