@@ -5,8 +5,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
-import { onMounted, ref, watch } from 'vue'
 import { getAllClasses, getClassesByDepartment } from '@/apis/edu/class'
+import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: ClassInfoDto]
+  change: [value: string | null, option?: ClassInfoDto]
 }>()
 
 const options = ref<ClassInfoDto[]>([])
@@ -61,7 +61,6 @@ async function loadOptions() {
       options.value = requireArrayResult(await getAllClasses(), '班级')
     }
   } catch (e) {
-    console.error('[ClassSelector] 加载班级列表失败', e)
     showUserError(e, '班级列表加载失败')
   } finally {
     loading.value = false
@@ -99,7 +98,9 @@ defineExpose({ reload: loadOptions })
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.className">
       {{ opt.className }}
       <span v-if="opt.majorName" class="text-gray-400 ml-1">({{ opt.majorName }})</span>
-      <span v-if="opt.studentCount != null" class="text-gray-400 ml-1">{{ opt.studentCount }} 人</span>
+      <span v-if="opt.studentCount != null" class="text-gray-400 ml-1"
+        >{{ opt.studentCount }} 人</span
+      >
     </a-select-option>
   </a-select>
 </template>

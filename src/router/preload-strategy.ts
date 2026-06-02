@@ -120,6 +120,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
 
   // ── 教学质量评价（quality 模块） ─────────────────
   QualityDashboard: () => import('@/views/quality/dashboard.vue'),
+  QualityAccreditationCockpit: () => import('@/views/quality/accreditation-cockpit.vue'),
   QualityAccreditationStandard: () => import('@/views/quality/accreditation-standard.vue'),
   QualityProfessionAlgorithmTemplate: () => import('@/views/quality/profession-algorithm-template.vue'),
   QualityScaleConversionRule: () => import('@/views/quality/scale-conversion-rule.vue'),
@@ -410,9 +411,8 @@ export class RoutePreloadManager {
           .then(() => {
             this.preloaded.add(routeName)
           })
-          .catch((err: unknown) => {
+          .catch(() => {
             // 预加载失败不抛出；用户真正导航时仍会触发 router.onError 引导刷新
-            console.warn(`[preload] 路由 ${routeName} 预加载失败，已忽略：`, err)
           })
           .finally(() => {
             this.inflight.delete(routeName)

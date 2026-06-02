@@ -32,11 +32,10 @@
 
     <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="sheet-page__empty" />
 
-    <!-- D-9 错误态：答题卡模板加载遇到非“未配置”错误时提供重试 + 上报入口 -->
     <UiErrorRetryPanel
       v-else-if="templateLoadError"
       :error="templateLoadError"
-      title="答题卡模板加载失败"
+      title="答卷页模板加载失败"
       :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
       @retry="loadTemplate"
     />
@@ -93,83 +92,12 @@
         </template>
         <template #extra>
           <UiButton size="sm" variant="outline" @click="addPage">
-            <template #icon>
-              <PlusOutlined />
-            </template>
+            <template #icon><PlusOutlined /></template>
             新增页面
           </UiButton>
         </template>
 
-        <a-alert
-          type="info"
-          show-icon
-          :closable="false"
-          message="页面数必须等于「总页数」，且页号 1 ~ 总页数 全部覆盖、不可重复。每页必须上传模板文件并填写宽高（像素）。"
-          style="margin-bottom: 12px"
-        />
-
-        <UiDataTable
-          :columns="pageColumns"
-          :data-source="pages"
-          :show-pagination="false"
-          flat
-          :total="pages.length"
-          row-key="rowKey"
-          size="middle"
-          class="sheet-table"
-          bordered
-          :scroll="{ x: 800 }"
-        >
-          <template #bodyCell="{ column, record, index }">
-            <template v-if="column.key === 'pageNo'">
-              <a-input-number
-                v-model:value="record.pageNo"
-                :min="1"
-                size="small"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="column.key === 'templateFile'">
-              <a-space>
-                <UiTag v-if="record.templateFileId" tone="green" size="sm">
-                  {{ record.templateFileName || `节点 #${record.templateFileId}` }}
-                </UiTag>
-                <UiTag v-else tone="orange" size="sm">未上传</UiTag>
-                <a-upload
-                  :show-upload-list="false"
-                  :before-upload="(file: File) => handleUploadPage(file, index)"
-                  accept="image/*,application/pdf"
-                >
-                  <UiButton size="sm" variant="outline" :loading="record.uploading">
-                    <template #icon>
-                      <UploadOutlined />
-                    </template>
-                    {{ record.templateFileId ? '替换' : '上传' }}
-                  </UiButton>
-                </a-upload>
-              </a-space>
-            </template>
-            <template v-else-if="column.key === 'widthPx'">
-              <a-input-number
-                v-model:value="record.widthPx"
-                :min="0"
-                size="small"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="column.key === 'heightPx'">
-              <a-input-number
-                v-model:value="record.heightPx"
-                :min="0"
-                size="small"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="column.key === 'pageActions'">
-              <UiButton size="sm" variant="ghost" @click="removePage(index)"> 删除 </UiButton>
-            </template>
-          </template>
-        </UiDataTable>
+        <ExamTemplatePageTable ref="pageTableRef" v-model:pages="pages" @remove="removePage" />
       </UiCard>
     </a-spin>
   </StageWorkbenchShell>
@@ -177,7 +105,8 @@
 
 <script lang="ts" setup>
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
-import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
+import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import type {
   ExamAnswerSheetTemplateSaveRequest,
   ExamPageTemplateRequest,
@@ -193,17 +122,14 @@ import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { uploadFile } from '@/apis/edu/file-management'
 import {
   UiAlertStrip,
   UiBadge,
   UiButton,
   UiCard,
-  UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
@@ -211,13 +137,13 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 
 defineOptions({ name: 'TeacherAnswerSheetTemplate' })
 
-// 保留 useRouter 仅用于跨页面跳转（goPaperTemplate）
 const router = useRouter()
+const pageTableRef = ref<InstanceType<typeof ExamTemplatePageTable> | null>(null)
 
-// B-8 统一考试选择器
 const {
   examOptions,
   loading: examLoading,
@@ -226,16 +152,6 @@ const {
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
-
-interface PageRow {
-  rowKey: string
-  pageNo?: number
-  templateFileId?: string
-  templateFileName?: string
-  widthPx?: number
-  heightPx?: number
-  uploading?: boolean
-}
 
 let rowSeq = 0
 function nextRowKey(): string {
@@ -247,7 +163,7 @@ const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
-const pages = reactive<PageRow[]>([])
+const pages = ref<ExamTemplatePageRow[]>([])
 
 const questionCount = ref(0)
 const hasQuestions = computed(() => questionCount.value > 0)
@@ -255,46 +171,35 @@ const totalPagesLabel = computed(() =>
   typeof form.totalPages === 'number' ? String(form.totalPages) : '未填写总页数',
 )
 const pageCountMatched = computed(
-  () => typeof form.totalPages === 'number' && pages.length === form.totalPages,
+  () => typeof form.totalPages === 'number' && pages.value.length === form.totalPages,
 )
 const loading = ref(false)
 const saving = ref(false)
-// D-9 错误态：仅当后端返回非“未配置”类错误时才上报
 const templateLoadError = ref<Error | null>(null)
-
-const pageColumns: ColumnType<PageRow>[] = [
-  { title: '页号', key: 'pageNo', width: 100 },
-  { title: '模板文件', key: 'templateFile', width: 320 },
-  { title: '宽度（px）', key: 'widthPx', width: 130 },
-  { title: '高度（px）', key: 'heightPx', width: 130 },
-  { title: '操作', key: 'pageActions', width: 90, fixed: 'right' },
-]
 
 function clearTemplate(): void {
   form.templateName = ''
   form.totalPages = undefined
-  pages.splice(0, pages.length)
+  pages.value = []
   questionCount.value = 0
 }
 
-function applyTemplate(
+async function applyTemplate(
   templateName: string,
   totalPages: number | undefined,
   pageList: ExamPaperPageTemplateVO[],
   questionList: ExamQuestionTemplateVO[],
-): void {
+): Promise<void> {
   form.templateName = templateName
   form.totalPages = totalPages
-  pages.splice(0, pages.length)
-  pageList.forEach((p) => {
-    pages.push({
-      rowKey: nextRowKey(),
-      pageNo: p.pageNo,
-      templateFileId: p.templateFileId,
-      widthPx: p.widthPx,
-      heightPx: p.heightPx,
-    })
-  })
+  pages.value = pageList.map((p) => ({
+    rowKey: nextRowKey(),
+    pageNo: p.pageNo,
+    templateFileId: p.templateFileId,
+    widthPx: p.widthPx,
+    heightPx: p.heightPx,
+  }))
+  await hydrateTemplatePageFileNames(pages.value)
   questionCount.value = questionList.length
 }
 
@@ -304,16 +209,12 @@ async function loadTemplate(): Promise<void> {
   templateLoadError.value = null
   try {
     const tpl = await getExamTemplate(selectedExamId.value)
-    applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
+    await applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
   } catch (error) {
     clearTemplate()
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    if (!isPaperTemplateNotConfiguredError(error)) {
-      // 真实加载失败：D-9 错误态 + 警告提示
-      templateLoadError.value = toUserError(error, '答题卡模板加载失败')
-      message.warning(getUserErrorMessage(error, '答题卡模板加载失败，请稍后重试'))
+    if (!(error instanceof Error && isPaperTemplateNotConfiguredError(error))) {
+      templateLoadError.value = toUserError(error, '答卷页模板加载失败')
+      message.warning(getUserErrorMessage(error, '答卷页模板加载失败，请稍后重试'))
     }
   } finally {
     loading.value = false
@@ -340,31 +241,16 @@ function goPaperTemplate(): void {
 }
 
 function addPage(): void {
-  pages.push({
+  const row: ExamTemplatePageRow = {
     rowKey: nextRowKey(),
-    pageNo: pages.length + 1,
-  })
+    pageNo: pages.value.length + 1,
+  }
+  pages.value = [...pages.value, row]
+  pageTableRef.value?.openEditForNew(row)
 }
 
 function removePage(index: number): void {
-  pages.splice(index, 1)
-}
-
-async function handleUploadPage(file: File, index: number): Promise<boolean> {
-  const row = pages[index]
-  if (!row) return false
-  row.uploading = true
-  try {
-    const result = await uploadFile(file, { businessType: 'mark-exam-template' })
-    row.templateFileId = result.id
-    row.templateFileName = result.nodeName || file.name
-    message.success(`第 ${row.pageNo ?? index + 1} 页文件已上传`)
-  } catch (error) {
-    showUserError(error, '答题卡模板文件上传失败')
-  } finally {
-    row.uploading = false
-  }
-  return false
+  pages.value = pages.value.filter((_, i) => i !== index)
 }
 
 interface AnswerSheetPagesBuildResult {
@@ -378,15 +264,15 @@ function buildPagesRequest(): AnswerSheetPagesBuildResult | null {
     message.error('请填写总页数')
     return null
   }
-  if (pages.length !== total) {
-    message.error(`页面数量必须等于总页数（当前 ${pages.length} / ${total}）`)
+  if (pages.value.length !== total) {
+    message.error(`页面数量必须等于总页数（当前 ${pages.value.length} / ${total}）`)
     return null
   }
   const seenPageNo = new Set<number>()
   const seenFileId = new Set<string>()
   const request: ExamPageTemplateRequest[] = []
-  for (let i = 0; i < pages.length; i += 1) {
-    const row = pages[i]
+  for (let i = 0; i < pages.value.length; i += 1) {
+    const row = pages.value[i]
     if (!row.pageNo || row.pageNo <= 0) {
       message.error(`第 ${i + 1} 行：页号必填且大于 0`)
       return null
@@ -400,7 +286,7 @@ function buildPagesRequest(): AnswerSheetPagesBuildResult | null {
       return null
     }
     seenPageNo.add(row.pageNo)
-    if (!row.templateFileId) {
+    if (!row.templateFileId || !row.templateFileName?.trim()) {
       message.error(`第 ${i + 1} 行：请上传模板文件`)
       return null
     }
@@ -449,16 +335,15 @@ async function handleSave(): Promise<void> {
       totalPages: builtPages.totalPages,
       pages: builtPages.pages,
     })
-    message.success('答题卡页面配置已保存')
+    message.success('答卷页页面配置已保存')
     await loadTemplate()
   } catch (error) {
-    showUserError(error, '答题卡模板保存失败')
+    showUserError(error, '答卷页模板保存失败')
   } finally {
     saving.value = false
   }
 }
 
-// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步，业务层只需 watch 一次
 watch(selectedExamId, (value) => {
   if (value) {
     void loadTemplate()
@@ -521,16 +406,5 @@ onMounted(async () => {
   &:last-child {
     margin-bottom: 0;
   }
-}
-
-.sheet-table {
-  :deep(.ant-table-thead > tr > th) {
-    background: var(--ant-color-fill-quaternary);
-    font-weight: 600;
-  }
-}
-
-.empty-block {
-  padding: 60px 0;
 }
 </style>

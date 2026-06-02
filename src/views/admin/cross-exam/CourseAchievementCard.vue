@@ -39,12 +39,17 @@
         <a-row :gutter="12" class="metric-row">
           <a-col :span="8">
             <a-statistic
+              v-if="record.overallAchievementRate != null"
               title="整体达成率"
-              :value="record.overallAchievementRate ?? 0"
-              :precision="2"
-              suffix=""
+              :value="record.overallAchievementRate * 100"
+              :precision="1"
+              suffix="%"
               :value-style="achievementStyle(record.overallAchievementRate)"
             />
+            <div v-else class="metric-text">
+              <span class="metric-title">整体达成率</span>
+              <span class="metric-value">—</span>
+            </div>
           </a-col>
           <a-col :span="8">
             <a-statistic title="考试数" :value="record.examCount ?? 0" />
@@ -64,9 +69,7 @@
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="课程">
-            {{
-              requiredRecordText(record.courseName, '课程名称')
-            }}
+            {{ record.courseName?.trim() || '—' }}
           </a-descriptions-item>
           <a-descriptions-item label="学年学期">
             {{
@@ -98,6 +101,20 @@
           <strong>达成度摘要：</strong>{{ record.achievementSummary }}
         </a-typography-paragraph>
 
+        <div v-if="examStatChartOption" class="ai-chart">
+          <div class="ai-chart__meta">
+            <strong>参与考试得分走势</strong>
+          </div>
+          <VChart class="ai-chart__canvas" :option="examStatChartOption" autoresize />
+        </div>
+
+        <div v-if="achievementBarOption" class="ai-chart">
+          <div class="ai-chart__meta">
+            <strong>分目标达成率</strong>
+          </div>
+          <VChart class="ai-chart__canvas" :option="achievementBarOption" autoresize />
+        </div>
+
         <div v-if="achievementItems.length > 0" class="ai-items">
           <strong>分目标达成情况：</strong>
           <a-list size="small" :data-source="achievementItems" bordered>
@@ -107,7 +124,7 @@
                   <div class="analysis-item__header">
                     <a-typography-text strong>第 {{ index + 1 }} 项</a-typography-text>
                     <span class="analysis-item__title">
-                      {{ item.objectiveDimension || '课程目标' }}
+                      {{ objectiveDimensionLabel(item) }}
                     </span>
                     <a-tag v-if="item.status" :color="achievementStatusColor(item.status)">
                       {{ achievementStatusLabel(item.status) }}
@@ -140,26 +157,34 @@
 
 <script lang="ts" setup>
 import type {
+  CourseAchievementItemVO,
   CourseAchievementStatusCode,
   CourseObjectiveAchievementVO,
+} from '@/apis/mark/cross-exam-analysis'
+import {
+  COURSE_ACHIEVEMENT_STATUS_COLOR,
+  COURSE_ACHIEVEMENT_STATUS_LABEL,
+  COURSE_OBJECTIVE_DIMENSION_LABEL,
+  generateAchievement,
+  listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
-import {
-  COURSE_ACHIEVEMENT_STATUS_COLOR,
-  COURSE_ACHIEVEMENT_STATUS_LABEL,
-  generateAchievement,
-  listAchievements,
-} from '@/apis/mark/cross-exam-analysis'
+import VChart from 'vue-echarts'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import {
+  buildAchievementBarOption,
+  buildExamStatTrendChartOption,
+} from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CourseAchievementCard' })
@@ -177,6 +202,12 @@ const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const achievementItems = computed(() => record.value?.achievementItems ?? [])
+const examStatChartOption = computed(() =>
+  buildExamStatTrendChartOption(record.value?.examStatSnapshots ?? []),
+)
+const achievementBarOption = computed(() =>
+  buildAchievementBarOption(record.value?.achievementItems ?? []),
+)
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
 )
@@ -255,13 +286,6 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
 }
 
-function requiredRecordText(value: string | undefined, fieldName: string): string {
-  if (!value?.trim()) {
-    throw new TypeError(`课程目标达成度分析缺少${fieldName}`)
-  }
-  return value
-}
-
 function latencyText(value: CourseObjectiveAchievementVO): string {
   if (value.latencyMs != null) return `${value.latencyMs} ms`
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
@@ -269,16 +293,19 @@ function latencyText(value: CourseObjectiveAchievementVO): string {
 }
 
 function assertCourseAchievementContract(value: CourseObjectiveAchievementVO): void {
-  if (!value.courseName) throw new TypeError('课程目标达成度分析缺少课程名称')
-  if (!value.aiTraceId) throw new TypeError('课程目标达成度分析缺少处理追踪编号')
-  if (!value.exams.length) throw new TypeError('课程目标达成度分析缺少考试范围')
-  if (value.analysisStatus === 'SUCCESS' && value.latencyMs == null) {
-    throw new TypeError('课程目标达成度分析成功记录缺少生成耗时')
+  const dataError = '课程目标达成度分析数据异常，请刷新后重试'
+  assertUserFacing(Boolean(value.courseName?.trim()), dataError)
+  assertUserFacing(Boolean(value.aiTraceId?.trim()), dataError)
+  assertUserFacing(value.exams.length > 0, dataError)
+  if (value.analysisStatus === 'SUCCESS') {
+    assertUserFacing(value.latencyMs != null, dataError)
   }
 }
 
 function acceptCourseAchievementRecord(value: CourseObjectiveAchievementVO | null): void {
-  if (value) assertCourseAchievementContract(value)
+  if (value) {
+    assertCourseAchievementContract(value)
+  }
   record.value = value
 }
 
@@ -288,6 +315,17 @@ function achievementStatusLabel(status: CourseAchievementStatusCode): string {
 
 function achievementStatusColor(status: CourseAchievementStatusCode): string {
   return strictEnumTone(COURSE_ACHIEVEMENT_STATUS_COLOR, status, '课程目标达成状态')
+}
+
+function objectiveDimensionLabel(item: CourseAchievementItemVO): string {
+  if (item.objectiveDimension) {
+    return strictEnumLabel(
+      COURSE_OBJECTIVE_DIMENSION_LABEL,
+      item.objectiveDimension,
+      '课程目标维度',
+    )
+  }
+  return item.objectiveDescription?.trim() || '—'
 }
 </script>
 
@@ -307,6 +345,19 @@ function achievementStatusColor(status: CourseAchievementStatusCode): string {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.ai-chart {
+  padding: 12px 16px;
+  border: 1px solid var(--dp-border, #e2e8f0);
+  border-radius: var(--dp-radius-md, 6px);
+  background: var(--dp-surface, #fff);
+}
+.ai-chart__meta {
+  margin-bottom: 8px;
+}
+.ai-chart__canvas {
+  width: 100%;
+  height: 280px;
 }
 .analysis-item {
   display: flex;

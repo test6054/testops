@@ -22,6 +22,14 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
+import {
+  assessmentItemApi,
+  DATA_SOURCE_MODE_LABEL,
+  qualityCourseApi,
+  SCORE_BATCH_STATUS_COLOR,
+  SCORE_BATCH_STATUS_LABEL,
+  scoreBatchApi,
+} from '@/apis/quality'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -32,14 +40,6 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import {
-  assessmentItemApi,
-  DATA_SOURCE_MODE_LABEL,
-  qualityCourseApi,
-  SCORE_BATCH_STATUS_COLOR,
-  SCORE_BATCH_STATUS_LABEL,
-  scoreBatchApi,
-} from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
@@ -150,9 +150,9 @@ function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
 ): boolean {
   return (
-    record.totalRows !== undefined
-    && record.successRows !== undefined
-    && record.errorRows !== undefined
+    record.totalRows !== undefined &&
+    record.successRows !== undefined &&
+    record.errorRows !== undefined
   )
 }
 
@@ -188,7 +188,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatus, title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatus; title: string }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PARSING', title: '解析中' },
     { key: 'PREVIEW_READY', title: '预览就绪' },
@@ -300,7 +300,7 @@ async function loadBatches() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadBatches()
@@ -361,7 +361,7 @@ async function handleUpload(options: UploadRequestOption) {
     const { file } = options
     if (!(file instanceof File)) {
       message.error('无效的成绩批次上传文件')
-      options.onError?.(new TypeError('无效的成绩批次上传文件'))
+      options.onError?.(new Error('无效的成绩批次上传文件'))
       return
     }
     // 步骤 1：上传 Excel 到 edu-storage 拿 sourceFileId
@@ -403,16 +403,18 @@ async function openPreview(record: ScoreBatchVO) {
     const preview = await scoreBatchApi.preview(record.id)
     for (const diagnostic of preview.diagnostics) {
       if (
-        diagnostic.valid === false
-        && diagnostic.errorMessages.length === 0
-        && diagnostic.errorCodes.length === 0
+        diagnostic.valid === false &&
+        diagnostic.errorMessages.length === 0 &&
+        diagnostic.errorCodes.length === 0
       ) {
-        throw new Error(`成绩导入第 ${diagnostic.rowIndex} 行校验失败但后端未返回错误说明`)
+        message.error('成绩预览结果异常，请重新导入后再试')
+        return
       }
     }
     diagnostics.value = preview.diagnostics
     if (preview.status !== 'FAILED' && !hasGeneratedRowStatistics(preview)) {
-      throw new Error('当前成绩批次预览结果缺少行统计')
+      message.error('成绩预览结果异常，请重新导入后再试')
+      return
     }
     previewSummary.totalRows = preview.totalRows
     previewSummary.successRows = preview.successRows
@@ -601,7 +603,7 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleBatchResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = batches.value.find((b) => b.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
@@ -857,9 +859,9 @@ onMounted(async () => {
           </template>
           <template
             v-else-if="
-              column.key === 'schoolYear'
-                || column.key === 'semester'
-                || column.key === 'createTime'
+              column.key === 'schoolYear' ||
+              column.key === 'semester' ||
+              column.key === 'createTime'
             "
           >
             <template v-if="column.key === 'schoolYear'">
@@ -1055,13 +1057,6 @@ onMounted(async () => {
       ok-text="保存"
       @ok="submitEditor"
     >
-      <a-alert
-        type="info"
-        show-icon
-        message="批次元数据编辑"
-        description="仅待处理、失败或已取消状态可修改批次编码、名称、课程、考核环节、学年学期与接入来源；进入解析、预览、校验或确认后禁止编辑。"
-        class="score-batch__editor-alert"
-      />
       <a-form layout="vertical" :model="editor">
         <a-row :gutter="12">
           <a-col :span="12">

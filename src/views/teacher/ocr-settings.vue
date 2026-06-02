@@ -1,12 +1,29 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ExamQuestionTemplateVO, ExamScoreSummaryItemVO } from '@/apis/mark/exam'
+import {
+  FINAL_SCORE_STATUS_LABEL,
+  getExamTemplate,
+  isPaperTemplateNotConfiguredError,
+  pageExamScoreSummary,
+} from '@/apis/mark/exam'
 import type {
   MarkOcrConfigVO,
   MarkOcrHealthStatusCode,
   MarkOcrProviderTypeCode,
   MarkOcrRecognizeVO,
   PaddleOcrInstanceVO,
+} from '@/apis/mark/ocr'
+import {
+  checkMarkOcrHealth,
+  getCurrentMarkOcrConfig,
+  listPaddleOcrInstances,
+  MARK_OCR_HEALTH_STATUS_COLOR,
+  MARK_OCR_HEALTH_STATUS_LABEL,
+  MARK_OCR_PROVIDER_LABEL,
+  MARK_OCR_PROVIDER_OPTIONS,
+  recognizeMarkOcr,
+  saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
@@ -15,24 +32,6 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
-import {
-  FINAL_SCORE_STATUS_LABEL,
-  getExamTemplate,
-  isPaperTemplateNotConfiguredError,
-  pageExamScoreSummary,
-} from '@/apis/mark/exam'
-import {
-  checkMarkOcrHealth,
-  getCurrentMarkOcrConfig,
-  listPaddleOcrInstances,
-  MARK_OCR_HEALTH_STATUS_COLOR,
-  MARK_OCR_HEALTH_STATUS_LABEL,
-  MARK_OCR_PROVIDER_DESCRIPTION,
-  MARK_OCR_PROVIDER_LABEL,
-  MARK_OCR_PROVIDER_OPTIONS,
-  recognizeMarkOcr,
-  saveMarkOcrConfig,
-} from '@/apis/mark/ocr'
 import {
   UiBadge,
   UiButton,
@@ -43,7 +42,9 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherOcrSettings' })
@@ -118,9 +119,7 @@ const healthLabel = computed(() =>
 const currentProviderLabel = computed(() =>
   currentConfig.value?.providerType ? providerLabel(currentConfig.value.providerType) : '未配置',
 )
-const providerIntro = computed(() =>
-  configForm.value.providerType ? MARK_OCR_PROVIDER_DESCRIPTION[configForm.value.providerType] : '',
-)
+
 const canCheckHealth = computed(() => Boolean(currentConfig.value?.providerType))
 const canRecognize = computed(() =>
   Boolean(currentConfig.value?.providerType && currentConfig.value.enabled),
@@ -171,11 +170,12 @@ function ocrHealthMessageText(messageText?: string): string {
 }
 
 function applyConfig(config: MarkOcrConfigVO): void {
-  if (config.id && !config.providerType) {
-    throw new Error('OCR 配置响应缺少已保存渠道类型')
+  const dataError = 'OCR 配置数据异常，请刷新后重试'
+  if (config.id) {
+    assertUserFacing(Boolean(config.providerType), dataError)
   }
-  if (config.enabled && !config.providerType) {
-    throw new Error('OCR 配置响应缺少已启用渠道类型')
+  if (config.enabled) {
+    assertUserFacing(Boolean(config.providerType), dataError)
   }
   currentConfig.value = config
   configForm.value = {
@@ -200,7 +200,8 @@ async function loadConfig(): Promise<void> {
 async function handleSave(): Promise<void> {
   await configFormRef.value?.validate()
   if (!configForm.value.providerType) {
-    throw new Error('OCR 配置表单缺少渠道类型')
+    showUserError(null, '请选择 OCR 识别渠道')
+    return
   }
   saving.value = true
   try {
@@ -253,10 +254,7 @@ async function loadQuestions(examId: string): Promise<void> {
   } catch (error) {
     questions.value = []
     questionsError.value = toUserError(error, '考试题目加载失败')
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    if (isPaperTemplateNotConfiguredError(error)) {
+    if (error instanceof Error && isPaperTemplateNotConfiguredError(error)) {
       message.warning('当前考试还没有配置试卷题目，不能执行 OCR 调试')
     } else {
       showUserError(error, '题目列表加载失败')
@@ -271,7 +269,9 @@ async function loadPaperCandidates(examId: string): Promise<void> {
   paperCandidatesError.value = null
   try {
     const result = await pageExamScoreSummary({ examId, pageNum: 1, pageSize: 500 })
-    paperCandidates.value = result.list.filter((item) => item.paperInstanceId)
+    paperCandidates.value = readPageList(result, '答卷候选加载失败，请稍后重试').filter(
+      (item) => item.paperInstanceId,
+    )
   } catch (error) {
     paperCandidates.value = []
     paperCandidatesError.value = toUserError(error, '答卷候选列表加载失败')
@@ -390,7 +390,6 @@ onMounted(async () => {
               </a-radio-button>
             </a-radio-group>
           </a-form-item>
-          <a-alert type="info" show-icon :message="providerIntro" />
           <a-form-item label="启用状态" name="enabled" required class="switch-row">
             <a-switch
               v-model:checked="configForm.enabled"
@@ -496,7 +495,9 @@ onMounted(async () => {
                   <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
                   <template v-if="item.consecutiveFailures > 0">
                     <span class="paddle-instance__sep">·</span>
-                    <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
+                    <span class="paddle-instance__failed"
+                      >连续失败 {{ item.consecutiveFailures }} 次</span
+                    >
                   </template>
                 </div>
                 <div v-if="item.lastHealthMessage" class="paddle-instance__msg">

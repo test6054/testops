@@ -6,14 +6,6 @@
       </div>
     </template>
 
-    <UiAlertStrip
-      tone="info"
-      title="校级质量分析说明"
-      description="校级质量分析按维度（课程 / 教师 / 班级 / 学院 / 学期）评估教学、命题和阅卷质量；经验有效性评估检测已沉淀经验在新考试中的模型漂移。"
-      dense
-      class="school-quality-dashboard__alert"
-    />
-
     <div class="school-quality-dashboard__cards">
       <SchoolQualityCard />
       <ExperienceEffectivenessCard />
@@ -22,7 +14,7 @@
 </template>
 
 <script lang="ts" setup>
-import { UiAlertStrip, UiTag } from '@/components/ui-guide/ui'
+import { UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import ExperienceEffectivenessCard from './school-quality/ExperienceEffectivenessCard.vue'
 import SchoolQualityCard from './school-quality/SchoolQualityCard.vue'

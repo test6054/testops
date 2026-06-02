@@ -101,7 +101,10 @@ const liveEventCount = computed(() => workflow.liveEvents.value.length)
 // 升级 / 维护提示派生
 const upgradeRequired = computed(() => Boolean(health.value?.upgradeRequired))
 const tokenResetRequired = computed(() => Boolean(health.value?.tokenResetRequired))
-const showMaintenanceSection = computed(() => upgradeRequired.value || tokenResetRequired.value)
+const kioskBrowserSessionLost = computed(() => workflow.kioskBrowserSessionLost.value)
+const showMaintenanceSection = computed(
+  () => upgradeRequired.value || tokenResetRequired.value || kioskBrowserSessionLost.value,
+)
 
 const minAgentVersion = computed(() => health.value?.minimumAgentVersion || '')
 const latestAgentVersion = computed(() => health.value?.latestAgentVersion || '')
@@ -145,6 +148,13 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               <span>需要处理</span>
             </span>
           </header>
+
+          <div v-if="kioskBrowserSessionLost" class="alert-block">
+            <p>浏览器未保存一体机鉴权凭证</p>
+            <small
+              >页面刷新后需重新激活。请使用下方激活码完成激活，实时推送与批次操作才会恢复。</small
+            >
+          </div>
 
           <div v-if="tokenResetRequired" class="alert-block">
             <p>系统要求重新激活一体机</p>

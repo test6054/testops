@@ -28,6 +28,8 @@ export interface AssessmentItemVO {
   isProcessOriented?: boolean
   description?: string
   sortOrder?: number
+  sourceMode?: string
+  sourceExamId?: string
   createTime?: string
   updateTime?: string
 }

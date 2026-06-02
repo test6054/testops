@@ -22,10 +22,6 @@ import type {
   ProcessEvaluationRecordVO,
   ProcessNodeType,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
@@ -35,6 +31,10 @@ import {
   processNodeApi,
   processRecordApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import {
   AssessmentItemSelector,
@@ -97,21 +97,11 @@ function dataSourceModeLabel(record: ProcessEvaluationRecordVO): string {
 
 function studentDisplay(record: ProcessEvaluationRecordVO): string {
   if (!record.studentUserId) return '未关联学生'
-  if (!record.studentName?.trim()) {
-    throw new TypeError(`过程性评价记录 ${record.id} 缺少学生姓名`)
-  }
-  return record.studentName.trim()
+  return record.studentName?.trim() || '—'
 }
 
-function assertRecordStudentContract(items: ProcessEvaluationRecordVO[], scenario: string): void {
-  for (const item of items) {
-    if (!item.sourceMode) {
-      throw new TypeError(`${scenario} ${item.id} 缺失数据来源模式`)
-    }
-    if (item.studentUserId && !item.studentName?.trim()) {
-      throw new TypeError(`${scenario} ${item.id} 缺失学生姓名`)
-    }
-  }
+function isRecordStudentContractValid(items: ProcessEvaluationRecordVO[]): boolean {
+  return items.every((item) => item.sourceMode && (!item.studentUserId || item.studentName?.trim()))
 }
 
 /* ========== 节点列表 ========== */
@@ -243,7 +233,11 @@ async function loadRecords() {
       selectedNode.value.id,
       recordStatusFilter.value,
     )
-    assertRecordStudentContract(result, '过程性评价记录')
+    if (!isRecordStudentContractValid(result)) {
+      records.value = []
+      recordsError.value = toUserError(null, '过程性评价数据异常，请刷新后重试')
+      return
+    }
     records.value = result
   } catch (err) {
     records.value = []
@@ -312,7 +306,7 @@ async function handleEvidenceFileUpload(options: UploadRequestOption): Promise<v
     const { file } = options
     if (!(file instanceof File)) {
       message.error('无效的证据文件')
-      options.onError?.(new TypeError('无效的证据文件'))
+      options.onError?.(new Error('无效的证据文件'))
       return
     }
     const uploaded = await uploadFile(file, { businessType: 'QUALITY_PROCESS_EVIDENCE' })
@@ -422,7 +416,11 @@ async function queryConfirmedByGoal() {
       qualityStore.currentQualityCourseId,
       confirmedByGoalId.value,
     )
-    assertRecordStudentContract(result, '课程目标已确认过程性评价记录')
+    if (!isRecordStudentContractValid(result)) {
+      confirmedByGoalRecords.value = []
+      confirmedByGoalError.value = toUserError(null, '课程目标已确认记录数据异常，请刷新后重试')
+      return
+    }
     confirmedByGoalRecords.value = result
   } catch (err) {
     confirmedByGoalRecords.value = []
@@ -449,15 +447,11 @@ const signals = computed<SignalMetric[]>(() => {
   let coverageCount = 0
   for (const n of nodes.value) {
     if (n.weight != null) {
-      if (!Number.isFinite(n.weight)) {
-        throw new TypeError('过程性评价节点权重字段异常')
-      }
+      if (!Number.isFinite(n.weight)) continue
       weightSum += n.weight
     }
     if (n.coverageRequired != null) {
-      if (!Number.isFinite(n.coverageRequired)) {
-        throw new TypeError('过程性评价节点覆盖率要求字段异常')
-      }
+      if (!Number.isFinite(n.coverageRequired)) continue
       coverageSum += n.coverageRequired
       coverageCount += 1
     }
@@ -725,9 +719,9 @@ function handleCourseChange(courseId: string | null) {
 
           <a-alert
             v-if="selectedNode.confirmationStatus !== 'CONFIRMED'"
-            type="info"
+            type="warning"
             show-icon
-            message="节点尚未确认，无法录入记录。请先在左侧切换节点状态到「已确认」。"
+            message="节点尚未确认，无法录入记录"
             class="pe__alert"
           />
 

@@ -112,12 +112,6 @@
       cancel-text="取消"
       @ok="handleGenerate"
     >
-      <a-alert
-        type="info"
-        show-icon
-        style="margin-bottom: 16px"
-        message="系统将基于当前试卷母版和考生名册，为每位考生自动合成含二维码、条形码和防伪码的专属印刷文件，并合并为一个印刷包 PDF。"
-      />
       <a-form layout="vertical" style="margin-top: 8px">
         <a-form-item label="印刷包编号" required>
           <a-input
@@ -180,12 +174,6 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { PrintPackageItemVO, PrintPackageVO } from '@/apis/mark/paper-master'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref, watch } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   generatePrintPackage,
   getPrintPackage,
@@ -193,6 +181,12 @@ import {
   PRINT_PACKAGE_STATUS_LABEL,
   PRINT_PACKAGE_STATUS_TONE,
 } from '@/apis/mark/paper-master'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   UiButton,
   UiCard,

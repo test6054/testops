@@ -28,14 +28,6 @@
       </a-space>
     </template>
 
-    <a-alert
-      v-if="classIdHint"
-      type="info"
-      show-icon
-      class="class-hint"
-      message="当前按所选班级筛选，学生下拉已自动过滤为该班考生。"
-    />
-
     <a-spin :spinning="loading">
       <!-- D-9 错误态：AI 学生个体学情加载失败时提供重试 + 上报入口 -->
       <UiErrorRetryPanel
@@ -55,17 +47,13 @@
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="学生编号">
-            {{
-              analysisScopeText(record)
-            }}
+            {{ analysisScopeText(record) }}
           </a-descriptions-item>
           <a-descriptions-item label="生成时间">
             {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
           <a-descriptions-item label="生成耗时">
-            {{
-              analysisLatencyText(record)
-            }}
+            {{ analysisLatencyText(record) }}
           </a-descriptions-item>
           <a-descriptions-item label="处理追踪编号" :span="2">
             <a-typography-text
@@ -123,19 +111,20 @@
 
 <script lang="ts" setup>
 import type { MasteryLevelCode } from '@/apis/mark/student-exam'
-import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
-import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
+import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
+import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -184,36 +173,30 @@ function acceptStudentLearningProfileRecord(
   expectedStudentUserId: string,
 ): ExamTeachingAnalysisRecordVO | null {
   if (!value) return null
-  if (value.examId !== props.examId) throw new Error('AI 学生学情考试 ID 与当前考试不一致')
-  if (value.analysisType !== 'STUDENT_LEARNING_PROFILE') {
-    throw new Error('AI 学生学情分析类型不符合前后端契约')
-  }
-  if (value.scopeType !== 'STUDENT') throw new Error('AI 学生学情范围类型不符合前后端契约')
-  if (value.scopeId !== expectedStudentUserId)
-    throw new Error('AI 学生学情学生 ID 与当前选择不一致')
-  if (!value.createTime?.trim()) throw new Error('AI 学生学情缺失生成时间')
+  const dataError = 'AI 学生学情数据异常，请刷新后重试'
+  assertUserFacing(value.examId === props.examId, dataError)
+  assertUserFacing(value.analysisType === 'STUDENT_LEARNING_PROFILE', dataError)
+  assertUserFacing(value.scopeType === 'STUDENT', dataError)
+  assertUserFacing(value.scopeId === expectedStudentUserId, dataError)
+  assertUserFacing(Boolean(value.createTime?.trim()), dataError)
   if (value.analysisStatus === 'SUCCESS') {
-    if (!value.aiTraceId?.trim()) throw new Error('AI 学生学情成功但缺失追踪编号')
-    if (typeof value.latencyMs !== 'number') throw new Error('AI 学生学情成功但缺失生成耗时')
-    if (!value.overallSummary?.trim()) throw new Error('AI 学生学情成功但缺失整体表现')
-    if (!value.diagnosisItems?.length) throw new Error('AI 学生学情成功但缺失诊断明细')
+    assertUserFacing(Boolean(value.aiTraceId?.trim()), dataError)
+    assertUserFacing(typeof value.latencyMs === 'number', dataError)
+    assertUserFacing(Boolean(value.overallSummary?.trim()), dataError)
+    assertUserFacing(Boolean(value.diagnosisItems?.length), dataError)
   }
-  if (
-    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED')
-    && !value.errorMessage?.trim()
-  ) {
-    throw new Error('AI 学生学情失败但缺失处理说明')
+  if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') {
+    assertUserFacing(Boolean(value.errorMessage?.trim()), dataError)
   }
   return value
 }
 
 function analysisScopeText(value: ExamTeachingAnalysisRecordVO): string {
-  if (!value.scopeId?.trim()) throw new Error('AI 学生学情缺失学生编号')
-  return value.scopeId
+  return value.scopeId?.trim() || '—'
 }
 
 function analysisCreateTimeText(value: ExamTeachingAnalysisRecordVO): string {
-  if (!value.createTime?.trim()) throw new Error('AI 学生学情缺失生成时间')
+  if (!value.createTime?.trim()) return '—'
   return formatDateTime(value.createTime)
 }
 
@@ -221,7 +204,7 @@ function analysisLatencyText(value: ExamTeachingAnalysisRecordVO): string {
   if (typeof value.latencyMs === 'number') return `${value.latencyMs} ms`
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
-  throw new Error('AI 学生学情成功但缺失生成耗时')
+  return '—'
 }
 
 function analysisTraceId(value: ExamTeachingAnalysisRecordVO): string | undefined {
@@ -231,7 +214,7 @@ function analysisTraceId(value: ExamTeachingAnalysisRecordVO): string | undefine
 function analysisTraceText(value: ExamTeachingAnalysisRecordVO): string {
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
-  throw new Error('AI 学生学情成功但缺失追踪编号')
+  return value.aiTraceId?.trim() || '—'
 }
 
 async function reload(): Promise<void> {
@@ -278,9 +261,7 @@ async function handleGenerate(): Promise<void> {
 
 function formatRate(rate: string): string {
   const value = Number(rate)
-  if (!Number.isFinite(value)) {
-    throw new TypeError(`AI 学生学情得分率必须是 0-1 小数比例：${rate}`)
-  }
+  if (!Number.isFinite(value)) return '—'
   return `${(value * 100).toFixed(1)}%`
 }
 
@@ -306,8 +287,8 @@ watch(
   (next) => {
     // 考试名册变化后，如果当前选中学生不在范围内，重置选择避免跨考试串号
     if (
-      selectedStudentUserId.value
-      && !next.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !next.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false
@@ -321,8 +302,8 @@ watch(
   () => {
     // 班级联动变化时，如果当前学生不在新班级范围内，需重置选择
     if (
-      selectedStudentUserId.value
-      && !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
+      selectedStudentUserId.value &&
+      !filteredStudentOptions.value.some((opt) => opt.value === selectedStudentUserId.value)
     ) {
       selectedStudentUserId.value = undefined
       hasQueried.value = false

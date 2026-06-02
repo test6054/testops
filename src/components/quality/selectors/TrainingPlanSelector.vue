@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TrainingPlanVO } from '@/apis/quality'
-import { onMounted, ref, watch } from 'vue'
 import { trainingPlanApi } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { requirePageList } from './page-contract'
 
@@ -68,7 +68,6 @@ async function loadOptions() {
     })
     options.value = requirePageList(res, '培养方案')
   } catch (e) {
-    console.error('[TrainingPlanSelector] 加载培养方案列表失败', e)
     showUserError(e, '培养方案列表加载失败')
   } finally {
     loading.value = false

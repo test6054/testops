@@ -10,12 +10,6 @@
   >
     <a-form v-if="resolution" layout="vertical">
       <a-alert
-        type="info"
-        show-icon
-        style="margin-bottom: 12px"
-        message="教师需要在重复影像的两份试卷中选择保留一份，处置后未保留的试卷由教师在扫描异常页主动作废。"
-      />
-      <a-alert
         v-if="submitError"
         type="error"
         show-icon
@@ -46,9 +40,9 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
+import { resolveDuplicate } from '@/apis/mark/image-ledger'
 import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
-import { resolveDuplicate } from '@/apis/mark/image-ledger'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'DuplicateResolveModal' })

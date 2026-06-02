@@ -6,12 +6,12 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditRectificationStatus, AuditRectificationVO } from '@/apis/quality'
-import { onMounted, ref, watch } from 'vue'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
   auditRectificationApi,
 } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AuditRectificationVO]
+  change: [value: string | null, option?: AuditRectificationVO]
 }>()
 
 const options = ref<AuditRectificationVO[]>([])
@@ -67,7 +67,6 @@ async function loadOptions() {
     })
     options.value = requirePageList(res, '审核评估整改任务')
   } catch (e) {
-    console.error('[AuditRectificationSelector] 加载整改任务列表失败', e)
     showUserError(e, '整改任务列表加载失败')
   } finally {
     loading.value = false

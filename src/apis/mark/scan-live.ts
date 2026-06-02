@@ -4,12 +4,26 @@
  * 后端规则：
  * - SSE 端点：GET /api/mark/sse/scan-live/subscribe（含 /sse/ 触发后端 GlobalExceptionHandler 静默处理客户端断开）
  * - 增量查询：POST /api/mark/scan-live/recent，返回扫描事件视图列表
- * - 鉴权：浏览器原生 EventSource 不支持自定义 header，必须使用 fetch-event-source 库
- *   在 fetch 请求里携带 Authorization Bearer token
+ * - 鉴权：教师 Web 使用 JWT；一体机使用 Agent 激活后的 push_token（与 kiosk API 同源）
  */
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import http from '@/config/axios'
-import { getValidToken } from '@/utils/auth'
+import {
+  buildMarkScannerStationAuthHeaders,
+  hasMarkScannerJwtAuth,
+  hasMarkScannerStationAuth,
+  KIOSK_BROWSER_SESSION_LOST_MESSAGE
+} from '@/utils/kiosk-auth'
+
+/** SSE 鉴权不可恢复失败：一体机 push_token 无效或缺失，禁止自动重连。 */
+export class ScanLiveFatalAuthError extends Error {
+  readonly fatal = true
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'ScanLiveFatalAuthError'
+  }
+}
 
 /** SSE 扫描事件状态码 - 对应后端 ScanEventStatus 枚举 */
 export type ScanEventStatusCode = 'PENDING' | 'BATCHED' | 'INVALID'
@@ -113,6 +127,11 @@ export function subscribeScanLive(
   }
   const url = `/api/mark/sse/scan-live/subscribe${params.toString() ? `?${params.toString()}` : ''}`
 
+  if (!hasMarkScannerStationAuth()) {
+    handler.onError?.(new Error('扫描实时订阅缺少鉴权，请先登录或完成一体机 Agent 激活'))
+    return controller
+  }
+
   let retryWithFreshToken = false
   void fetchEventSource(url, {
     method: 'GET',
@@ -121,7 +140,7 @@ export function subscribeScanLive(
     openWhenHidden: true,
     headers: buildAuthHeaders(),
     fetch: async (input, init) => {
-      if (retryWithFreshToken) {
+      if (retryWithFreshToken && hasMarkScannerJwtAuth()) {
         retryWithFreshToken = false
         await handler.onAuthRefreshRequired?.()
       }
@@ -134,14 +153,21 @@ export function subscribeScanLive(
       })
     },
     async onopen(response) {
-      if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
+      const contentType = response.headers.get('content-type') ?? ''
+      if (response.ok && contentType.includes('text/event-stream')) {
         return
       }
       if (response.status === 401 || response.status === 403) {
-        retryWithFreshToken = true
+        if (hasMarkScannerJwtAuth()) {
+          retryWithFreshToken = true
+          throw new Error('扫描实时连接暂时不可用，正在尝试重连')
+        }
+        const authErr = new ScanLiveFatalAuthError(KIOSK_BROWSER_SESSION_LOST_MESSAGE)
+        handler.onError?.(authErr)
+        controller.abort()
+        throw authErr
       }
-      // 非 SSE 响应抛出后由 onerror 统一进入受控重连
-      throw new Error(`SSE 订阅失败：HTTP ${response.status}`)
+      throw new Error('扫描实时连接暂时不可用，正在尝试重连')
     },
     onmessage(message) {
       if (!message.event || !message.data) {
@@ -157,13 +183,15 @@ export function subscribeScanLive(
           handler.onEvent(parsed)
         }
         catch (err) {
-          handler.onError?.(err instanceof Error ? err : new Error('SSE 扫描事件解析失败'))
+          handler.onError?.(new Error('扫描实时消息读取失败，正在等待下一次更新'))
         }
       }
     },
     onerror(err) {
+      if (err instanceof ScanLiveFatalAuthError) {
+        throw err
+      }
       handler.onError?.(err instanceof Error ? err : new Error('SSE 订阅连接失败'))
-      // 默认抛出 -> 不重连；这里返回数字 -> 库会按毫秒间隔重连。控制 5 秒重连一次
       return 5000
     },
     onclose() {
@@ -175,18 +203,12 @@ export function subscribeScanLive(
 }
 
 /**
- * 构造 SSE 请求的鉴权 header。
- * fetch-event-source 重连前会再次调用自定义 fetch，因此普通断线重连也能读取最新 token。
+ * 构造 SSE 请求的鉴权 header（JWT 或一体机 push_token）。
  */
 function buildAuthHeaders(): Record<string, string> {
-  const token = getValidToken()
-  const headers: Record<string, string> = {
+  return buildMarkScannerStationAuthHeaders({
     Accept: 'text/event-stream',
-  }
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
-  }
-  return headers
+  })
 }
 
 function normalizedHeaders(headers: HeadersInit | undefined): Record<string, string> {

@@ -243,11 +243,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   activatePaperArchiveSet,
   createPaperArchiveSet,
@@ -255,6 +250,11 @@ import {
   PAPER_ARCHIVE_SET_STATUS_OPTIONS,
   PAPER_ARCHIVE_SET_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -262,6 +262,7 @@ import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList } from '@/utils/page-result'
 import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperArchiveList' })
@@ -388,7 +389,7 @@ async function loadSets(): Promise<void> {
       examTerm: filterForm.examTerm?.trim() || undefined,
       archiveStatus: filterForm.archiveStatus,
     })
-    sets.value = result.list
+    sets.value = readPageList(result, '试卷归档集加载失败，请稍后重试')
     pagination.total = Number(result.total)
     syncPaperArchiveStageToStore()
   } catch (error) {

@@ -323,6 +323,7 @@ import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList } from '@/utils/page-result'
 
 defineOptions({ name: 'UserMessage' })
 
@@ -373,7 +374,7 @@ async function loadMessages(page = messagePageState.pageNum) {
       pageNum: page,
       pageSize: messagePageState.pageSize,
     })
-    messages.value = result.list
+    messages.value = readPageList(result, '消息列表加载失败，请稍后重试')
     messagePageState.pageNum = result.pageNum
     messagePageState.pageSize = result.pageSize
     messagePageState.total = Number(result.total)
@@ -422,7 +423,7 @@ async function loadAnnouncements(page = announcementPageState.pageNum) {
       pageNum: page,
       pageSize: announcementPageState.pageSize,
     })
-    announcements.value = result.list
+    announcements.value = readPageList(result, '公告列表加载失败，请稍后重试')
     announcementPageState.pageNum = result.pageNum
     announcementPageState.pageSize = result.pageSize
     announcementPageState.total = Number(result.total)

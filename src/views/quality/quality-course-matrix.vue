@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { RadioChangeEvent } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 /**
@@ -46,12 +47,6 @@ import type {
   RubricItemVO,
   SupportLevel,
 } from '@/apis/quality'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import {
   AGGREGATION_FUNCTION_LABEL,
   ASSESSMENT_ITEM_TYPE_LABEL,
@@ -67,6 +62,12 @@ import {
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
 } from '@/apis/quality'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
@@ -74,7 +75,6 @@ import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -562,7 +562,7 @@ async function handleSyllabusFileUpload(options: UploadRequestOption): Promise<v
     const { file } = options
     if (!(file instanceof File)) {
       message.error('无效的教学大纲附件')
-      options.onError?.(new TypeError('无效的教学大纲附件'))
+      options.onError?.(new Error('无效的教学大纲附件'))
       return
     }
     const uploaded = await uploadFile(file, { businessType: 'QUALITY_COURSE_SYLLABUS' })
@@ -607,7 +607,10 @@ function handleTrainingPlanChange(value: string | null) {
 }
 
 function handleTeacherChange(value: string | string[] | null) {
-  if (Array.isArray(value)) throw new Error('授课教师不支持多选值')
+  if (Array.isArray(value)) {
+    message.error('授课教师只能选择一位，请重新选择')
+    return
+  }
   courseEditor.teacherUserId = value ?? ''
 }
 
@@ -769,7 +772,8 @@ function openSupportCreate(rowKey: string, colKey: string) {
   if (!colMeta) return
   const courseGoal = courseGoals.value.find((g) => g.id === rowKey)
   if (!courseGoal) {
-    throw new Error(`课程目标选项缺失：${rowKey}`)
+    message.error('课程目标数据异常，请刷新后重试')
+    return
   }
   Object.assign(supportEditor, {
     id: undefined,
@@ -982,10 +986,12 @@ function openWeightCreate(itemId: string, goalId: string) {
   const item = assessmentItems.value.find((i) => i.id === itemId)
   const courseGoal = courseGoals.value.find((g) => g.id === goalId)
   if (!item) {
-    throw new Error(`考核环节选项缺失：${itemId}`)
+    message.error('考核环节数据异常，请刷新后重试')
+    return
   }
   if (!courseGoal) {
-    throw new Error(`课程目标选项缺失：${goalId}`)
+    message.error('课程目标数据异常，请刷新后重试')
+    return
   }
   const sumNow = itemWeightSum(itemId)
   const remain = Math.max(0, 1 - sumNow)
@@ -1789,12 +1795,6 @@ const itemTypeOptions: { value: AssessmentItemType; label: string }[] = [
             </a-form-item>
           </a-col>
         </a-row>
-        <a-alert
-          v-if="supportEditorMode === 'edit'"
-          :message="`默认权重：高支撑 ${SUPPORT_LEVEL_DEFAULT_FACTOR.HIGH} / 中支撑 ${SUPPORT_LEVEL_DEFAULT_FACTOR.MEDIUM} / 低支撑 ${SUPPORT_LEVEL_DEFAULT_FACTOR.LOW}`"
-          type="info"
-          show-icon
-        />
       </a-form>
       <template #footer>
         <a-space>

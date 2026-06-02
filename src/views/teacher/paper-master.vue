@@ -21,6 +21,9 @@
           >
             {{ masterData.status === 'ACTIVE' ? '已生效' : '草稿' }}
           </UiTag>
+          <UiTag v-if="masterData" :tone="pageTemplateReady ? 'green' : 'orange'" size="sm">
+            {{ pageTemplateReady ? `${examTotalPages ?? 0} 页已同步` : '拆页待同步' }}
+          </UiTag>
         </div>
         <div class="paper-master-page__context-right">
           <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
@@ -109,6 +112,38 @@
         </a-form>
       </UiCard>
 
+      <!-- 主观题区域（只读，编辑入口在试卷题目页） -->
+      <UiCard class="area-card">
+        <template #title>
+          <ProfileOutlined />
+          <span>主观题区域（{{ subjectiveQuestions.length }}）</span>
+        </template>
+        <template #extra>
+          <UiButton size="sm" variant="outline" @click="goPaperTemplate">去题目页编辑</UiButton>
+        </template>
+        <UiDataTable
+          :columns="subjectiveColumns"
+          :data-source="subjectiveQuestions"
+          :show-pagination="false"
+          flat
+          :total="subjectiveQuestions.length"
+          row-key="questionTemplateId"
+          size="small"
+          bordered
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'region'">
+              <span v-if="record.pageNo && record.width && record.height">
+                P{{ record.pageNo }} · {{ record.x }},{{ record.y }} · {{ record.width }}×{{
+                  record.height
+                }}
+              </span>
+              <UiTag v-else tone="orange" size="sm">未配置</UiTag>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+
       <!-- 身份填涂区 -->
       <UiCard class="area-card">
         <template #title>
@@ -133,40 +168,15 @@
         >
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'areaType'">
-              <a-select
-                v-model:value="record.areaType"
-                style="width: 140px"
-                :options="identityAreaTypeOptions"
-                placeholder="选择类型"
-              />
-            </template>
-            <template v-else-if="column.key === 'pageNo'">
-              <a-input-number
-                v-model:value="record.pageNo"
-                :min="1"
-                :max="99"
-                style="width: 80px"
-              />
-            </template>
-            <template v-else-if="column.key === 'x'">
-              <a-input-number v-model:value="record.x" :min="0" style="width: 80px" />
-            </template>
-            <template v-else-if="column.key === 'y'">
-              <a-input-number v-model:value="record.y" :min="0" style="width: 80px" />
-            </template>
-            <template v-else-if="column.key === 'width'">
-              <a-input-number v-model:value="record.width" :min="1" style="width: 80px" />
-            </template>
-            <template v-else-if="column.key === 'height'">
-              <a-input-number v-model:value="record.height" :min="1" style="width: 80px" />
-            </template>
-            <template v-else-if="column.key === 'fillCellCount'">
-              <a-input-number v-model:value="record.fillCellCount" :min="0" style="width: 80px" />
+              {{ formatIdentityType(record.areaType) }}
             </template>
             <template v-else-if="column.key === 'action'">
-              <a-button type="link" danger size="small" @click="removeIdentityArea(index)">
-                删除
-              </a-button>
+              <a-space>
+                <a-button type="link" size="small" @click="openIdentityEdit(index)">编辑</a-button>
+                <a-button type="link" danger size="small" @click="removeIdentityArea(index)"
+                  >删除</a-button
+                >
+              </a-space>
             </template>
           </template>
         </UiDataTable>
@@ -196,75 +206,124 @@
         >
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'questionTemplateId'">
-              <a-select
-                v-model:value="record.questionTemplateId"
-                placeholder="选择题目"
-                :options="questionOptions"
-                :loading="questionsLoading"
-                show-search
-                option-filter-prop="label"
-                style="width: 220px"
-              />
-            </template>
-            <template v-else-if="column.key === 'pageNo'">
-              <a-input-number
-                v-model:value="record.pageNo"
-                :min="1"
-                :max="99"
-                style="width: 80px"
-              />
-            </template>
-            <template v-else-if="column.key === 'options'">
-              <div class="objective-options">
-                <div
-                  v-for="option in record.options"
-                  :key="option.sortNo"
-                  class="objective-options__item"
-                >
-                  <a-input
-                    v-model:value="option.optionLabel"
-                    :maxlength="8"
-                    size="small"
-                    class="objective-options__input"
-                  />
-                  <a-button
-                    type="link"
-                    danger
-                    size="small"
-                    class="objective-options__remove"
-                    @click="removeObjectiveOption(record, option.sortNo)"
-                  >
-                    删除
-                  </a-button>
-                </div>
-                <a-button size="small" type="link" @click="addObjectiveOption(record)">
-                  添加选项
-                </a-button>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'x'">
-              <a-input-number v-model:value="record.x" :min="0" style="width: 80px" />
-            </template>
-            <template v-else-if="column.key === 'y'">
-              <a-input-number v-model:value="record.y" :min="0" style="width: 80px" />
-            </template>
-            <template v-else-if="column.key === 'boxWidth'">
-              <a-input-number v-model:value="record.boxWidth" :min="1" style="width: 80px" />
-            </template>
-            <template v-else-if="column.key === 'boxHeight'">
-              <a-input-number v-model:value="record.boxHeight" :min="1" style="width: 80px" />
+              {{ resolveQuestionLabel(record.questionTemplateId) }}
             </template>
             <template v-else-if="column.key === 'optionsSummary'">
-              <UiTag size="sm" tone="blue"> {{ record.options.length }} 项 </UiTag>
+              <UiTag size="sm" tone="blue">{{ record.options.length }} 项</UiTag>
             </template>
             <template v-else-if="column.key === 'action'">
-              <a-button type="link" danger size="small" @click="removeObjectiveArea(index)">
-                删除
-              </a-button>
+              <a-space>
+                <a-button type="link" size="small" @click="openObjectiveEdit(index)">编辑</a-button>
+                <a-button type="link" danger size="small" @click="removeObjectiveArea(index)"
+                  >删除</a-button
+                >
+              </a-space>
             </template>
           </template>
         </UiDataTable>
       </UiCard>
+
+      <a-modal
+        v-model:open="identityEditOpen"
+        :title="identityEditIndex === null ? '新增身份填涂区' : '编辑身份填涂区'"
+        :destroy-on-close="true"
+        :mask-closable="false"
+        width="520px"
+        @ok="handleIdentityEditOk"
+      >
+        <a-form layout="vertical">
+          <a-form-item label="区域类型" required>
+            <a-select v-model:value="identityDraft.areaType" :options="identityAreaTypeOptions" />
+          </a-form-item>
+          <a-form-item label="页号" required>
+            <a-input-number
+              v-model:value="identityDraft.pageNo"
+              :min="1"
+              :max="99"
+              style="width: 100%"
+            />
+          </a-form-item>
+          <a-form-item label="X"
+            ><a-input-number v-model:value="identityDraft.x" :min="0" style="width: 100%"
+          /></a-form-item>
+          <a-form-item label="Y"
+            ><a-input-number v-model:value="identityDraft.y" :min="0" style="width: 100%"
+          /></a-form-item>
+          <a-form-item label="宽"
+            ><a-input-number v-model:value="identityDraft.width" :min="1" style="width: 100%"
+          /></a-form-item>
+          <a-form-item label="高"
+            ><a-input-number v-model:value="identityDraft.height" :min="1" style="width: 100%"
+          /></a-form-item>
+          <a-form-item label="填涂格数">
+            <a-input-number
+              v-model:value="identityDraft.fillCellCount"
+              :min="0"
+              style="width: 100%"
+            />
+          </a-form-item>
+        </a-form>
+      </a-modal>
+
+      <a-modal
+        v-model:open="objectiveEditOpen"
+        :title="objectiveEditIndex === null ? '新增客观题填涂区' : '编辑客观题填涂区'"
+        :destroy-on-close="true"
+        :mask-closable="false"
+        width="560px"
+        @ok="handleObjectiveEditOk"
+      >
+        <a-form layout="vertical">
+          <a-form-item label="题目" required>
+            <a-select
+              v-model:value="objectiveDraft.questionTemplateId"
+              :options="questionOptions"
+              :loading="questionsLoading"
+              show-search
+              option-filter-prop="label"
+            />
+          </a-form-item>
+          <a-form-item label="页号" required>
+            <a-input-number
+              v-model:value="objectiveDraft.pageNo"
+              :min="1"
+              :max="99"
+              style="width: 100%"
+            />
+          </a-form-item>
+          <a-form-item label="X"
+            ><a-input-number v-model:value="objectiveDraft.x" :min="0" style="width: 100%"
+          /></a-form-item>
+          <a-form-item label="Y"
+            ><a-input-number v-model:value="objectiveDraft.y" :min="0" style="width: 100%"
+          /></a-form-item>
+          <a-form-item label="框宽"
+            ><a-input-number v-model:value="objectiveDraft.boxWidth" :min="1" style="width: 100%"
+          /></a-form-item>
+          <a-form-item label="框高"
+            ><a-input-number v-model:value="objectiveDraft.boxHeight" :min="1" style="width: 100%"
+          /></a-form-item>
+          <a-form-item label="选项">
+            <div
+              v-for="option in objectiveDraft.options"
+              :key="option.sortNo"
+              class="objective-options__item"
+            >
+              <a-input v-model:value="option.optionLabel" :maxlength="8" size="small" />
+              <a-button
+                type="link"
+                danger
+                size="small"
+                @click="removeObjectiveOption(objectiveDraft, option.sortNo)"
+                >删除</a-button
+              >
+            </div>
+            <a-button size="small" type="link" @click="addObjectiveOption(objectiveDraft)"
+              >添加选项</a-button
+            >
+          </a-form-item>
+        </a-form>
+      </a-modal>
     </a-spin>
   </StageWorkbenchShell>
 </template>
@@ -273,10 +332,18 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
 import type {
   PaperMasterIdentityAreaRequest,
+  PaperMasterIdentityAreaTypeCode,
   PaperMasterObjectiveAreaRequest,
   PaperMasterVO,
+} from '@/apis/mark/paper-master'
+import {
+  getPaperMaster,
+  isPaperMasterNotConfiguredError,
+  PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL,
+  savePaperMaster,
 } from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -286,13 +353,8 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
-import { getExamTemplate } from '@/apis/mark/exam'
-import {
-  getPaperMaster,
-  isPaperMasterNotConfiguredError,
-  savePaperMaster,
-} from '@/apis/mark/paper-master'
 import {
   UiButton,
   UiCard,
@@ -306,6 +368,8 @@ import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'TeacherPaperMaster' })
+
+const router = useRouter()
 
 // ─── B-8 统一考试选择器：复用 useMarkExamSelector，支持 URL/全局上下文同步 ─────
 const {
@@ -326,6 +390,15 @@ const masterLoadError = ref<Error | null>(null)
 const uploading = ref(false)
 const uploadedFileName = ref('')
 const masterData = ref<PaperMasterVO | null>(null)
+const pageTemplateReady = ref(false)
+const examTotalPages = ref<number | undefined>()
+
+const subjectiveQuestions = computed(() =>
+  questions.value.filter((item) => item.questionType === 'SUBJECTIVE'),
+)
+
+const identityEditOpen = ref(false)
+const identityEditIndex = ref<number | null>(null)
 
 const form = reactive({
   masterName: '',
@@ -342,26 +415,14 @@ interface IdentityAreaRow extends PaperMasterIdentityAreaRequest {
 const identityAreas = ref<IdentityAreaRow[]>([])
 let identitySeq = 0
 
-const identityAreaTypeOptions = [
-  { label: '学号', value: 'STUDENT_NO' },
-  { label: '姓名', value: 'NAME' },
-  { label: '准考证号', value: 'ADMISSION_NO' },
-  { label: '条形码', value: 'BARCODE' },
-  { label: '二维码', value: 'QRCODE' },
-]
+const identityAreaTypeOptions = (
+  Object.entries(PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL) as Array<
+    [PaperMasterIdentityAreaTypeCode, string]
+  >
+).map(([value, label]) => ({ value, label }))
 
 function addIdentityArea() {
-  identitySeq++
-  identityAreas.value.push({
-    rowKey: `id-${identitySeq}`,
-    areaType: 'STUDENT_NO',
-    pageNo: 1,
-    x: 0,
-    y: 0,
-    width: 100,
-    height: 50,
-    fillCellCount: undefined,
-  })
+  openIdentityCreate()
 }
 
 function removeIdentityArea(index: number) {
@@ -369,14 +430,14 @@ function removeIdentityArea(index: number) {
 }
 
 const identityColumns: ColumnType[] = [
-  { title: '区域类型', key: 'areaType', width: 160 },
-  { title: '页号', key: 'pageNo', width: 90 },
-  { title: 'X', key: 'x', width: 90 },
-  { title: 'Y', key: 'y', width: 90 },
-  { title: '宽', key: 'width', width: 90 },
-  { title: '高', key: 'height', width: 90 },
-  { title: '填涂格数', key: 'fillCellCount', width: 100 },
-  { title: '操作', key: 'action', width: 80 },
+  { title: '区域类型', key: 'areaType', width: 120 },
+  { title: '页号', dataIndex: 'pageNo', width: 72 },
+  { title: 'X', dataIndex: 'x', width: 72 },
+  { title: 'Y', dataIndex: 'y', width: 72 },
+  { title: '宽', dataIndex: 'width', width: 72 },
+  { title: '高', dataIndex: 'height', width: 72 },
+  { title: '填涂格数', dataIndex: 'fillCellCount', width: 88 },
+  { title: '操作', key: 'action', width: 120 },
 ]
 
 // ─── 客观题填涂区 ────────────────────────────────────────────────────
@@ -410,10 +471,78 @@ function createObjectiveOptions(labels: string[] = DEFAULT_OBJECTIVE_OPTIONS) {
   }))
 }
 
-function addObjectiveArea() {
-  objectiveSeq++
-  objectiveAreas.value.push({
-    rowKey: `obj-${objectiveSeq}`,
+const identityDraft = reactive<IdentityAreaRow>({
+  rowKey: '',
+  areaType: 'STUDENT_NO',
+  pageNo: 1,
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 50,
+})
+
+const objectiveEditOpen = ref(false)
+const objectiveEditIndex = ref<number | null>(null)
+const objectiveDraft = reactive<ObjectiveAreaRow>({
+  rowKey: '',
+  questionTemplateId: '',
+  pageNo: 1,
+  options: createObjectiveOptions(),
+  x: 0,
+  y: 0,
+  boxWidth: 20,
+  boxHeight: 10,
+})
+
+function openIdentityEdit(index: number) {
+  const row = identityAreas.value[index]
+  Object.assign(identityDraft, { ...row })
+  identityEditIndex.value = index
+  identityEditOpen.value = true
+}
+
+function openIdentityCreate() {
+  identityEditIndex.value = null
+  Object.assign(identityDraft, {
+    rowKey: '',
+    areaType: 'STUDENT_NO',
+    pageNo: 1,
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 50,
+    fillCellCount: undefined,
+  })
+  identityEditOpen.value = true
+}
+
+function handleIdentityEditOk() {
+  if (identityEditIndex.value === null) {
+    identitySeq++
+    identityAreas.value.push({ ...identityDraft, rowKey: `id-${identitySeq}` })
+  } else {
+    identityAreas.value[identityEditIndex.value] = {
+      ...identityAreas.value[identityEditIndex.value],
+      ...identityDraft,
+    }
+  }
+  identityEditOpen.value = false
+}
+
+function openObjectiveEdit(index: number) {
+  const row = objectiveAreas.value[index]
+  Object.assign(objectiveDraft, {
+    ...row,
+    options: row.options.map((option) => ({ ...option })),
+  })
+  objectiveEditIndex.value = index
+  objectiveEditOpen.value = true
+}
+
+function openObjectiveCreate() {
+  objectiveEditIndex.value = null
+  Object.assign(objectiveDraft, {
+    rowKey: '',
     questionTemplateId: '',
     pageNo: 1,
     options: createObjectiveOptions(),
@@ -422,6 +551,39 @@ function addObjectiveArea() {
     boxWidth: 20,
     boxHeight: 10,
   })
+  objectiveEditOpen.value = true
+}
+
+function handleObjectiveEditOk() {
+  if (objectiveEditIndex.value === null) {
+    objectiveSeq++
+    objectiveAreas.value.push({ ...objectiveDraft, rowKey: `obj-${objectiveSeq}` })
+  } else {
+    objectiveAreas.value[objectiveEditIndex.value] = {
+      ...objectiveAreas.value[objectiveEditIndex.value],
+      ...objectiveDraft,
+      options: objectiveDraft.options.map((option) => ({ ...option })),
+    }
+  }
+  objectiveEditOpen.value = false
+}
+
+function goPaperTemplate() {
+  if (!selectedExamId.value) return
+  void router.push({ name: 'TeacherPaperTemplate', query: { examId: selectedExamId.value } })
+}
+
+function formatIdentityType(type: PaperMasterIdentityAreaTypeCode): string {
+  return PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL[type]
+}
+
+function resolveQuestionLabel(questionTemplateId: string): string {
+  const question = questions.value.find((item) => item.questionTemplateId === questionTemplateId)
+  return question ? `第 ${question.questionNo} 题` : questionTemplateId
+}
+
+function addObjectiveArea() {
+  openObjectiveCreate()
 }
 
 function removeObjectiveArea(index: number) {
@@ -445,15 +607,20 @@ function removeObjectiveOption(row: ObjectiveAreaRow, sortNo: number) {
 }
 
 const objectiveColumns: ColumnType[] = [
-  { title: '题目', key: 'questionTemplateId', width: 240 },
-  { title: '页号', key: 'pageNo', width: 90 },
-  { title: '选项', key: 'options', width: 180 },
-  { title: 'X', key: 'x', width: 90 },
-  { title: 'Y', key: 'y', width: 90 },
-  { title: '框宽', key: 'boxWidth', width: 90 },
-  { title: '框高', key: 'boxHeight', width: 90 },
-  { title: '选项数', key: 'optionsSummary', width: 100 },
-  { title: '操作', key: 'action', width: 80 },
+  { title: '题目', key: 'questionTemplateId', width: 120 },
+  { title: '页号', dataIndex: 'pageNo', width: 72 },
+  { title: 'X', dataIndex: 'x', width: 72 },
+  { title: 'Y', dataIndex: 'y', width: 72 },
+  { title: '框宽', dataIndex: 'boxWidth', width: 72 },
+  { title: '框高', dataIndex: 'boxHeight', width: 72 },
+  { title: '选项数', key: 'optionsSummary', width: 88 },
+  { title: '操作', key: 'action', width: 120 },
+]
+
+const subjectiveColumns: ColumnType[] = [
+  { title: '题号', dataIndex: 'questionNo', width: 88 },
+  { title: '满分', dataIndex: 'fullScore', width: 72 },
+  { title: '区域', key: 'region', width: 220 },
 ]
 
 // ─── 数据加载 ────────────────────────────────────────────────────────
@@ -467,7 +634,6 @@ async function loadQuestions() {
   } catch (error) {
     questions.value = []
     showUserError(error, '题目列表加载失败')
-    throw error
   } finally {
     questionsLoading.value = false
   }
@@ -478,6 +644,9 @@ async function loadMasterData() {
   loading.value = true
   masterLoadError.value = null
   try {
+    const detail = await getExamDetail(selectedExamId.value)
+    pageTemplateReady.value = detail.pageTemplateReady === true
+    examTotalPages.value = detail.totalPages
     await loadQuestions()
     const res = await getPaperMaster(selectedExamId.value)
     masterData.value = res
@@ -528,11 +697,7 @@ async function loadMasterData() {
     }
   } catch (error) {
     masterData.value = null
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    if (!isPaperMasterNotConfiguredError(error)) {
-      // 真实加载失败：D-9 错误态 + 警告提示
+    if (!(error instanceof Error && isPaperMasterNotConfiguredError(error))) {
       masterLoadError.value = toUserError(error, '试卷主数据加载失败')
     }
   } finally {

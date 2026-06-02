@@ -86,12 +86,6 @@
             </a-form-item>
           </a-col>
         </a-row>
-        <a-alert
-          type="info"
-          show-icon
-          message="选择题目后按单题更正执行，题目统计会同步重算；总分复核申请按总分更正执行。"
-          style="margin-bottom: 12px"
-        />
         <a-row :gutter="12">
           <a-col :span="14">
             <a-form-item label="更正题目">
@@ -133,10 +127,6 @@ import type {
   GradeCorrectionTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   createCorrection,
   GRADE_CORRECTION_STATUS_COLOR,
@@ -145,14 +135,19 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CorrectionsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])
@@ -262,26 +257,25 @@ async function loadApprovedReviewRequests(): Promise<void> {
 
 /** 校验成绩更正记录列表所需展示字段，缺失时进入组件错误态。 */
 function validateCorrectionDisplayContracts(list: ExamGradeCorrectionRecordVO[]): void {
+  const dataError = '成绩更正记录加载失败，请刷新后重试'
   for (const row of list) {
-    if (!row.studentName.trim() || !row.studentNo.trim()) {
-      throw new Error(`成绩更正记录学生信息缺失：${row.id}`)
-    }
+    assertUserFacing(Boolean(row.studentName?.trim()) && Boolean(row.studentNo?.trim()), dataError)
     if (row.correctionType !== 'TOTAL_SCORE') {
-      const hasQuestionDisplay
-        = row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
-      if (!hasQuestionDisplay) {
-        throw new Error(`成绩更正记录题目信息缺失：${row.id}`)
-      }
+      const hasQuestionDisplay =
+        row.questionNo?.trim() && row.questionType?.trim() && typeof row.fullScore === 'number'
+      assertUserFacing(Boolean(hasQuestionDisplay), dataError)
     }
   }
 }
 
 /** 校验可更正复核申请所需学生展示字段，缺失时中断弹窗数据源。 */
 function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemResponse[]): void {
+  const dataError = '复核申请加载失败，请刷新后重试'
   for (const request of list) {
-    if (!request.studentName.trim() || !request.studentNo.trim()) {
-      throw new Error(`复核申请学生信息缺失：${request.id}`)
-    }
+    assertUserFacing(
+      Boolean(request.studentName?.trim()) && Boolean(request.studentNo?.trim()),
+      dataError,
+    )
   }
 }
 
@@ -304,8 +298,8 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.questionTemplateId
-    && !request.questionRefs.some(
+    form.questionTemplateId &&
+    !request.questionRefs.some(
       (question) => question.questionTemplateId === form.questionTemplateId,
     )
   ) {

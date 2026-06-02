@@ -3,6 +3,7 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
+import { uploadFile } from '@/apis/edu/file-management'
 /**
  * 质量评价 / AI 能力 - AI 任务与结果审计台
  *
@@ -26,18 +27,6 @@ import type {
   AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
-import type {
-  AuditTimelineEvent,
-  SignalMetric,
-  TaskResultItem,
-  WorkbenchStage,
-  WorkbenchStageStatus,
-} from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { uploadFile } from '@/apis/edu/file-management'
-import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   AI_MANUAL_HANDLING_STATUS_LABEL,
   AI_OUTPUT_VALIDATION_COLOR,
@@ -49,6 +38,17 @@ import {
   aiResultApi,
   aiTaskApi,
 } from '@/apis/quality'
+import type {
+  AuditTimelineEvent,
+  SignalMetric,
+  TaskResultItem,
+  WorkbenchStage,
+  WorkbenchStageStatus,
+} from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import {
   AchievementResultSelector,
   CourseSelector,
@@ -99,13 +99,13 @@ function validationColor(value: AiOutputValidation): string {
 }
 
 function sensitiveCheckStatusLabel(value: string | undefined): string {
-  if (!value) throw new Error('AI 结果缺失敏感信息校验状态')
+  if (!value) return '—'
   if (value === 'CLEAN') return '未发现敏感信息'
   return '需要人工复核'
 }
 
 function sensitiveCheckStatusColor(value: string | undefined): string {
-  if (!value) throw new Error('AI 结果缺失敏感信息校验状态')
+  if (!value) return 'default'
   return value === 'CLEAN' ? 'green' : 'red'
 }
 
@@ -117,17 +117,18 @@ function aiResultSeverityLabel(value: AiResultSeverity): string {
   if (value === 'HIGH') return '高影响'
   if (value === 'MEDIUM') return '中影响'
   if (value === 'LOW') return '低影响'
-  throw new Error('AI 问题影响等级不符合前后端契约')
+  return '—'
 }
 
 function aiResultPriorityLabel(value: AiResultPriority): string {
   if (value === 'HIGH') return '高优先级'
   if (value === 'MEDIUM') return '中优先级'
   if (value === 'LOW') return '低优先级'
-  throw new Error('AI 改进任务优先级不符合前后端契约')
+  return '—'
 }
 
 const qualityStore = useQualityStore()
+const route = useRoute()
 const router = useRouter()
 
 const list = ref<AiTaskVO[]>([])
@@ -184,7 +185,7 @@ const auditDrawerOpen = ref(false)
 const auditEvents = ref<AuditTimelineEvent[]>([])
 const auditLoading = ref(false)
 
-const taskTypeOptions: Array<{ value: AiTaskType, label: string }> = [
+const taskTypeOptions: Array<{ value: AiTaskType; label: string }> = [
   { value: 'SYLLABUS_PARSE', label: AI_TASK_TYPE_LABEL.SYLLABUS_PARSE },
   { value: 'TRAINING_PLAN_PARSE', label: AI_TASK_TYPE_LABEL.TRAINING_PLAN_PARSE },
   { value: 'ACHIEVEMENT_DIAGNOSIS', label: AI_TASK_TYPE_LABEL.ACHIEVEMENT_DIAGNOSIS },
@@ -200,14 +201,14 @@ const taskTypeOptions: Array<{ value: AiTaskType, label: string }> = [
     label: AI_TASK_TYPE_LABEL.INDIRECT_RESPONSE_DOC_PARSE,
   },
 ]
-const statusOptions: Array<{ value: AiTaskStatus, label: string }> = [
+const statusOptions: Array<{ value: AiTaskStatus; label: string }> = [
   { value: 'PENDING', label: AI_TASK_STATUS_LABEL.PENDING },
   { value: 'PROCESSING', label: AI_TASK_STATUS_LABEL.PROCESSING },
   { value: 'SUCCEEDED', label: AI_TASK_STATUS_LABEL.SUCCEEDED },
   { value: 'FAILED', label: AI_TASK_STATUS_LABEL.FAILED },
   { value: 'CANCELLED', label: AI_TASK_STATUS_LABEL.CANCELLED },
 ]
-const businessTypeOptions: { value: AiTaskBusinessType, label: string }[] = [
+const businessTypeOptions: { value: AiTaskBusinessType; label: string }[] = [
   { value: 'ACHIEVEMENT_RESULT', label: AI_TASK_BUSINESS_TYPE_LABEL.ACHIEVEMENT_RESULT },
   { value: 'QUALITY_COURSE', label: AI_TASK_BUSINESS_TYPE_LABEL.QUALITY_COURSE },
   { value: 'TRAINING_PLAN', label: AI_TASK_BUSINESS_TYPE_LABEL.TRAINING_PLAN },
@@ -224,12 +225,12 @@ const taskBusinessTypeMap: Record<AiTaskType, AiTaskBusinessType> = {
   SYLLABUS_PARSE: 'QUALITY_COURSE',
   TRAINING_PLAN_PARSE: 'TRAINING_PLAN',
 }
-const validationOptions: { value: AiOutputValidation, label: string, color: string }[] = [
+const validationOptions: { value: AiOutputValidation; label: string; color: string }[] = [
   { value: 'PASSED', label: '通过（接受）', color: 'green' },
   { value: 'WARN', label: '警告（需人工审核）', color: 'orange' },
   { value: 'REJECTED', label: '退回（拒绝）', color: 'red' },
 ]
-const manualHandlingOptions: { value: AiManualHandlingStatus, label: string }[] = [
+const manualHandlingOptions: { value: AiManualHandlingStatus; label: string }[] = [
   { value: 'NONE', label: AI_MANUAL_HANDLING_STATUS_LABEL.NONE },
   { value: 'PENDING', label: AI_MANUAL_HANDLING_STATUS_LABEL.PENDING },
   { value: 'IN_PROGRESS', label: AI_MANUAL_HANDLING_STATUS_LABEL.IN_PROGRESS },
@@ -285,7 +286,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -323,10 +324,12 @@ function handleQueryBusinessTypeChange(value: SelectValue) {
     return
   }
   if (typeof value !== 'string' || Array.isArray(value)) {
-    throw new TypeError('AI 任务业务类型筛选不支持多选值')
+    showUserError(null, '业务类型筛选无效，请重新选择')
+    return
   }
   if (!businessTypeOptions.some((option) => option.value === value)) {
-    throw new Error('AI 任务业务类型筛选值不符合前后端契约')
+    showUserError(null, '业务类型筛选无效，请重新选择')
+    return
   }
   query.businessType = value as AiTaskBusinessType
 }
@@ -336,7 +339,10 @@ function handleQueryBusinessObjectChange(value: string | null): void {
 }
 
 function handleQueryOperatorChange(value: string | string[] | null): void {
-  if (Array.isArray(value)) throw new Error('AI 任务操作人筛选不支持多选值')
+  if (Array.isArray(value)) {
+    showUserError(null, '操作人筛选只能单选，请重新选择')
+    return
+  }
   query.operatorUserId = value ?? ''
 }
 
@@ -356,13 +362,20 @@ function handleQueryReportChange(value: string | null): void {
   query.reportId = value ?? ''
 }
 
-function openSubmit() {
+function openSubmitPrefill(
+  taskType?: AiTaskType,
+  scope?: { programId?: string; trainingPlanId?: string },
+) {
+  const resolvedType =
+    taskType && taskTypeOptions.some((o) => o.value === taskType)
+      ? taskType
+      : 'ACHIEVEMENT_DIAGNOSIS'
   Object.assign(submitForm, {
-    taskType: 'ACHIEVEMENT_DIAGNOSIS',
-    businessType: taskBusinessTypeMap.ACHIEVEMENT_DIAGNOSIS,
-    businessId: '',
-    programId: '',
-    trainingPlanId: qualityStore.currentTrainingPlanId || '',
+    taskType: resolvedType,
+    businessType: taskBusinessTypeMap[resolvedType],
+    businessId: scope?.trainingPlanId || qualityStore.currentTrainingPlanId || '',
+    programId: scope?.programId || qualityStore.currentProgramId || '',
+    trainingPlanId: scope?.trainingPlanId || qualityStore.currentTrainingPlanId || '',
     qualityCourseId: '',
     achievementResultId: '',
     reportId: '',
@@ -371,6 +384,28 @@ function openSubmit() {
   })
   uploadedMaterial.value = null
   submitVisible.value = true
+}
+
+function openSubmit() {
+  openSubmitPrefill()
+}
+
+function applyAccreditationRoutePrefill() {
+  const taskTypeRaw = route.query.taskType
+  if (typeof taskTypeRaw !== 'string' || !taskTypeOptions.some((o) => o.value === taskTypeRaw)) {
+    return
+  }
+  const programId = typeof route.query.programId === 'string' ? route.query.programId : undefined
+  const trainingPlanId =
+    typeof route.query.trainingPlanId === 'string' ? route.query.trainingPlanId : undefined
+  if (programId) qualityStore.setProgram(programId)
+  if (trainingPlanId) qualityStore.setTrainingPlan(trainingPlanId)
+  query.taskType = taskTypeRaw as AiTaskType
+  query.trainingPlanId = trainingPlanId || qualityStore.currentTrainingPlanId || ''
+  query.programId = programId || qualityStore.currentProgramId || ''
+  if (route.query.openSubmit === '1') {
+    openSubmitPrefill(taskTypeRaw as AiTaskType, { programId, trainingPlanId })
+  }
 }
 
 function handleTrainingPlanChange(value: string | null) {
@@ -392,10 +427,12 @@ function handleReportChange(value: string | null) {
 function handleSubmitTaskTypeChange(value: SelectValue) {
   submitForm.businessId = ''
   if (typeof value !== 'string' || Array.isArray(value)) {
-    throw new TypeError('AI 任务类型提交不支持多选值')
+    showUserError(null, '任务类型选择无效，请重新选择')
+    return
   }
   if (!taskTypeOptions.some((option) => option.value === value)) {
-    throw new Error('AI 任务类型提交值不符合前后端契约')
+    showUserError(null, '任务类型选择无效，请重新选择')
+    return
   }
   submitForm.taskType = value as AiTaskType
   submitForm.businessType = taskBusinessTypeMap[submitForm.taskType]
@@ -435,7 +472,7 @@ async function handleMaterialUpload(options: UploadRequestOption): Promise<void>
     const { file } = options
     if (!(file instanceof File)) {
       message.error('无效的材料文件')
-      options.onError?.(new TypeError('无效的材料文件'))
+      options.onError?.(new Error('无效的材料文件'))
       return
     }
     const uploaded = await uploadFile(file, { businessType: 'QUALITY_AI_TASK_MATERIAL' })
@@ -506,7 +543,8 @@ async function cancelTask(record: AiTaskVO) {
 
 function openManualHandle(record: AiTaskVO) {
   if (record.manualHandlingStatus == null) {
-    throw new Error('AI 任务缺失人工处置状态')
+    message.warning('该任务暂不支持人工处置，请刷新列表后重试')
+    return
   }
   Object.assign(manualHandleForm, {
     id: record.id,
@@ -579,10 +617,10 @@ watch(
     if (cached.id !== detailRecord.value.id) return
     // 仅在状态变化时赋值，避免不必要的引用改变
     if (
-      cached.status !== detailRecord.value.status
-      || cached.failurePhase !== detailRecord.value.failurePhase
-      || cached.failureReason !== detailRecord.value.failureReason
-      || cached.finishedAt !== detailRecord.value.finishedAt
+      cached.status !== detailRecord.value.status ||
+      cached.failurePhase !== detailRecord.value.failurePhase ||
+      cached.failureReason !== detailRecord.value.failureReason ||
+      cached.finishedAt !== detailRecord.value.finishedAt
     ) {
       detailRecord.value = { ...detailRecord.value, ...cached }
       // 达到终态后重拉一次结果 + 快照，避免抽屉中“状态已成功但 result 为空”的错误
@@ -678,7 +716,7 @@ const taskResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleTaskResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleTaskResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((t) => t.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -701,7 +739,7 @@ const statusBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: AiTaskStatus, title: string, completed?: boolean }> = [
+  const order: Array<{ key: AiTaskStatus; title: string; completed?: boolean }> = [
     { key: 'PENDING', title: '待处理' },
     { key: 'PROCESSING', title: '运行中' },
     { key: 'SUCCEEDED', title: '成功', completed: true },
@@ -757,6 +795,7 @@ onMounted(async () => {
     if (qualityStore.trainingPlanOptions.length)
       qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
   }
+  applyAccreditationRoutePrefill()
   await loadList()
 })
 </script>
@@ -1213,9 +1252,9 @@ onMounted(async () => {
             {{
               detailRecord.failureReason
                 ? getUserProcessFailureMessage(
-                  detailRecord.failureReason,
-                  'AI 分析未完成，请稍后重试或联系管理员查看任务处理情况',
-                )
+                    detailRecord.failureReason,
+                    'AI 分析未完成，请稍后重试或联系管理员查看任务处理情况',
+                  )
                 : '无未完成说明'
             }}
           </span>

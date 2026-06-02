@@ -16,6 +16,7 @@
 
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { LocationQueryValue } from 'vue-router'
+import { useRoute } from 'vue-router'
 import type {
   AgentHealthResponse,
   AgentHealthStatus,
@@ -23,22 +24,6 @@ import type {
   ScanJobResponse,
   ScannerDeviceInfo,
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBatchLifecycleVO,
-  ExamScannerKioskBatchHistoryItem,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskContextVO,
-  ExamScannerKioskExamOptionRequest,
-  ExamScannerKioskExamOptionVO,
-  ExamScannerLedgerDataSource,
-  ExamScannerPageLedgerVO,
-  ExamScannerPageRegistrationStatus,
-  ScanAttentionTypeCode,
-  ScannerKioskScanMode,
-} from '@/apis/mark/scanner-kiosk'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import {
   activateLocalAgent,
   cancelScanJob,
@@ -59,22 +44,46 @@ import {
   startScanJob,
   unbindLocalAgent,
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBatchLifecycleVO,
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryItem,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskContextVO,
+  ExamScannerKioskExamOptionRequest,
+  ExamScannerKioskExamOptionVO,
+  ExamScannerLedgerDataSource,
+  ExamScannerPageLedgerVO,
+  ExamScannerPageRegistrationStatus,
+  ScanAttentionTypeCode,
+  ScannerKioskScanMode,
+} from '@/apis/mark/scanner-kiosk'
 import {
   closeScannerKioskBatch,
   discardScannedPage,
   discardScannerKioskBatch,
   fetchScannerPageLedger,
   getScannerKioskContext,
+  listScannerKioskBoundPapers,
   pageScannerKioskBatchHistory,
   pageScannerKioskExamOptions,
   sealScannerKioskBatch,
   startScannerKioskBatch,
 } from '@/apis/mark/scanner-kiosk'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { getSemesterDescription, SemesterOptions } from '@/types/enums'
-import { getUserErrorMessage } from '@/utils/error-handler'
+import { getUserErrorMessage, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
+import {
+  clearKioskAuthSession,
+  KIOSK_BROWSER_SESSION_LOST_MESSAGE,
+  needsKioskBrowserReactivation,
+  saveKioskAuthSession,
+} from '@/utils/kiosk-auth'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { promptModal } from '@/views/quality/_helpers'
 
@@ -128,6 +137,9 @@ export function useKioskWorkflow() {
   const scanners = ref<ScannerDeviceInfo[]>([])
   const selectedScannerId = ref('')
   const kioskContext = ref<ExamScannerKioskContextVO | null>(null)
+  const boundPapers = ref<ExamScannerBoundPaperItemVO[]>([])
+  const boundPapersLoading = ref(false)
+  const boundPapersError = ref<Error | null>(null)
   const currentJob = ref<ScanJobResponse | null>(null)
   const loading = ref(false)
   const errorMessage = ref('')
@@ -263,6 +275,14 @@ export function useKioskWorkflow() {
     },
   })
 
+  function syncKioskBrowserAuthState(): void {
+    if (!needsKioskBrowserReactivation(health.value?.bound)) {
+      return
+    }
+    stopSse()
+    errorMessage.value = KIOSK_BROWSER_SESSION_LOST_MESSAGE
+  }
+
   // -------------------------------------------------------------
   // computed - 派生 state（保留旧 demo 全部 computed）
   // -------------------------------------------------------------
@@ -368,6 +388,9 @@ export function useKioskWorkflow() {
   })
   const scanBlockedReason = computed(() => {
     if (!examId.value) return '请先在顶部下拉中选择考试'
+    if (needsKioskBrowserReactivation(health.value?.bound)) {
+      return KIOSK_BROWSER_SESSION_LOST_MESSAGE
+    }
     if (!health.value?.bound) return '一体机未激活'
     if (health.value?.tokenResetRequired) return '一体机需要重新激活'
     if (health.value?.upgradeRequired) return '本机扫描组件需要升级'
@@ -398,6 +421,9 @@ export function useKioskWorkflow() {
   const canActivateAgent = computed(() => !currentJobBlocksWorkspace.value)
   const canUnbindAgent = computed(() => !currentJobBlocksWorkspace.value)
   const canDiscardLedgerPage = computed(() => !currentJobBlocksWorkspace.value)
+  const kioskBrowserSessionLost = computed(() =>
+    needsKioskBrowserReactivation(health.value?.bound),
+  )
 
   const workState = computed(() => {
     const job = currentJob.value
@@ -549,7 +575,7 @@ export function useKioskWorkflow() {
     if (source === 'DATABASE') return '已落库'
     if (source === 'REDIS_PENDING') return '等待提交'
     if (source === 'NONE') return '空批次'
-    throw new Error(`扫描账本来源不在后端枚举内：${String(source)}`)
+    throw toUserError(null, '扫描账本来源无法识别，请刷新后重试')
   }
 
   function registrationStatusText(status: ExamScannerPageRegistrationStatus) {
@@ -557,7 +583,7 @@ export function useKioskWorkflow() {
     if (status === 'PENDING') return '等待识别'
     if (status === 'DISCARDED') return '已废弃'
     if (status === 'SUPERSEDED') return '已替换'
-    throw new Error(`扫描页登记状态不在后端枚举内：${String(status)}`)
+    throw toUserError(null, '扫描页登记状态无法识别，请刷新后重试')
   }
 
   function attentionTypeText(type: ScanAttentionTypeCode) {
@@ -565,7 +591,8 @@ export function useKioskWorkflow() {
     if (type === 'PROCESSING_BLOCK') return '处理阻断'
     if (type === 'DUPLICATE_PENDING') return '重复待裁决'
     if (type === 'RECOGNITION_REVIEW') return '识别复核'
-    throw new Error(`扫描异常类型不在后端枚举内：${String(type)}`)
+    if (type === 'BINDING_CONFLICT') return '身份绑定冲突'
+    throw toUserError(null, '扫描异常类型无法识别，请刷新后重试')
   }
 
   function ledgerErrorText(err: Error) {
@@ -585,7 +612,7 @@ export function useKioskWorkflow() {
     const sha = item.sha256 ?? ''
     const pageNo = item.pageNo
     if (!Number.isFinite(pageNo)) {
-      throw new TypeError('页级账本缺少页号')
+      throw toUserError(null, '页级账本缺少页号，请刷新后重试')
     }
     const local = item.localPageId ?? ''
     return `${batchNo}#${pageNo}#${sha || local || 'nokey'}`
@@ -595,7 +622,7 @@ export function useKioskWorkflow() {
     return formatDateTimeWithSeconds(value)
   }
 
-  function handleError(error: Error) {
+  function handleError(error: unknown) {
     errorMessage.value = getUserErrorMessage(error, '扫描一体机操作失败')
   }
 
@@ -655,18 +682,18 @@ export function useKioskWorkflow() {
     const gatewayBaseUrl = activationForm.value.gatewayBaseUrl.trim().replace(/\/+$/, '')
     const activationCode = activationForm.value.activationCode.trim()
     const endpointName = activationForm.value.endpointName.trim()
-    if (!gatewayBaseUrl) throw new Error('系统服务地址不能为空')
+    if (!gatewayBaseUrl) throw toUserError(null, '系统服务地址不能为空')
     let url: URL
     try {
       url = new URL(gatewayBaseUrl)
     } catch {
-      throw new Error('系统服务地址格式不正确')
+      throw toUserError(null, '系统服务地址格式不正确')
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      throw new Error('系统服务地址必须以 http:// 或 https:// 开头')
+      throw toUserError(null, '系统服务地址必须以 http:// 或 https:// 开头')
     }
-    if (!activationCode) throw new Error('激活码不能为空')
-    if (!endpointName) throw new Error('端点名称不能为空')
+    if (!activationCode) throw toUserError(null, '激活码不能为空')
+    if (!endpointName) throw toUserError(null, '端点名称不能为空')
     return { gatewayBaseUrl, activationCode, endpointName }
   }
 
@@ -681,7 +708,6 @@ export function useKioskWorkflow() {
       await Promise.all([refreshHealth(), refreshScanners(), refreshKioskContext()])
       await recoverLocalScanJob()
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -690,6 +716,7 @@ export function useKioskWorkflow() {
 
   async function refreshHealth() {
     health.value = await getAgentHealth()
+    syncKioskBrowserAuthState()
   }
 
   async function refreshScanners() {
@@ -707,6 +734,7 @@ export function useKioskWorkflow() {
   async function refreshKioskContext() {
     if (!examId.value) {
       kioskContext.value = null
+      boundPapers.value = []
       return
     }
     kioskContext.value = await getScannerKioskContext({
@@ -715,6 +743,29 @@ export function useKioskWorkflow() {
       scannerStationId: queryScannerStationId.value || undefined,
       scanMode: scanMode.value,
     })
+    await refreshBoundPapers()
+  }
+
+  async function refreshBoundPapers() {
+    if (!examId.value) {
+      boundPapers.value = []
+      boundPapersError.value = null
+      return
+    }
+    boundPapersLoading.value = true
+    boundPapersError.value = null
+    try {
+      const scanBatchId = kioskContext.value?.latestBatch?.scanBatchId
+      boundPapers.value = await listScannerKioskBoundPapers({
+        examId: examId.value,
+        ...(scanBatchId ? { scanBatchId } : {}),
+      })
+    } catch (error) {
+      boundPapersError.value = toUserError(error, '已绑定学生列表加载失败')
+      boundPapers.value = []
+    } finally {
+      boundPapersLoading.value = false
+    }
   }
 
   async function refreshScannersByUser() {
@@ -739,8 +790,8 @@ export function useKioskWorkflow() {
       if (examOptionFilter.semester) request.semester = examOptionFilter.semester
       if (examOptionFilter.classId) request.classId = examOptionFilter.classId
       const result = await pageScannerKioskExamOptions(request)
-      examOptions.value = result.list
-      examOptionTotal.value = Number(result.total)
+      examOptions.value = readPageList(result, '考试列表加载失败，请稍后重试')
+      examOptionTotal.value = readPageTotal(result)
     } finally {
       examOptionLoading.value = false
     }
@@ -756,7 +807,6 @@ export function useKioskWorkflow() {
     if (examSelectSearchDebounce) window.clearTimeout(examSelectSearchDebounce)
     examSelectSearchDebounce = window.setTimeout(() => {
       loadExamOptions().catch((error) => {
-        if (!(error instanceof Error)) throw error
         handleError(error)
       })
     }, 300)
@@ -768,7 +818,6 @@ export function useKioskWorkflow() {
       return
     }
     loadExamOptions().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
   }
@@ -779,7 +828,6 @@ export function useKioskWorkflow() {
       return
     }
     loadExamOptions().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
   }
@@ -827,7 +875,7 @@ export function useKioskWorkflow() {
       const toIso = normalizeDatetimeLocal(batchHistoryFilter.scanStartTimeTo)
       if (toIso) request.scanStartTimeTo = toIso
       const result = await pageScannerKioskBatchHistory(request)
-      batchHistoryList.value = result.list
+      batchHistoryList.value = readPageList(result, '扫描批次历史加载失败，请稍后重试')
       batchHistoryTotal.value = Number(result.total)
     } finally {
       batchHistoryLoading.value = false
@@ -837,7 +885,6 @@ export function useKioskWorkflow() {
   function changeBatchHistoryPage(page: number) {
     batchHistoryFilter.pageNum = Math.max(1, Math.floor(page))
     loadBatchHistory().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
   }
@@ -846,7 +893,6 @@ export function useKioskWorkflow() {
     batchHistoryFilter.includeDiscarded = Boolean(value)
     batchHistoryFilter.pageNum = 1
     loadBatchHistory().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
   }
@@ -860,7 +906,6 @@ export function useKioskWorkflow() {
   function applyBatchHistoryTimeRange() {
     batchHistoryFilter.pageNum = 1
     loadBatchHistory().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
   }
@@ -873,7 +918,6 @@ export function useKioskWorkflow() {
     batchHistoryFilter.scanStartTimeTo = ''
     batchHistoryFilter.pageNum = 1
     loadBatchHistory().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
   }
@@ -893,10 +937,7 @@ export function useKioskWorkflow() {
     historyLedgerError.value = ''
     historyLedgerLoading.value = true
     try {
-      // 历史项内 scannerStationId 应存在（后端 t_exam_scan_batch.scanner_station_id 非空），
-      // 兜底使用当前一体机 station：覆盖极少数旧数据缺该字段的容错路径。
-      const stationId = item.scannerStationId || getActiveScannerStationId()
-      if (!stationId) {
+      if (!item.scannerStationId) {
         historyLedgerError.value = '历史批次缺少扫描站点信息，无法查询账本'
         return
       }
@@ -904,11 +945,10 @@ export function useKioskWorkflow() {
       historyLedgerSnapshot.value = await fetchScannerPageLedger({
         examId: examId.value,
         scannerDeviceId: item.scannerDeviceId,
-        scannerStationId: stationId,
+        scannerStationId: item.scannerStationId,
         batchExternalNo: item.batchExternalNo,
       })
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       historyLedgerError.value = getUserErrorMessage(error, '历史批次账本查询失败')
     } finally {
       historyLedgerLoading.value = false
@@ -937,12 +977,10 @@ export function useKioskWorkflow() {
   function startScannersPolling(intervalMs = 5000) {
     if (scannersTimer) window.clearInterval(scannersTimer)
     refreshScanners().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
     scannersTimer = window.setInterval(() => {
       refreshScanners().catch((error) => {
-        if (!(error instanceof Error)) throw error
         handleError(error)
       })
     }, Math.max(2000, intervalMs))
@@ -1052,23 +1090,23 @@ export function useKioskWorkflow() {
     replaceTargetPage: boolean
   } {
     if (!lifecycle.scanMode) {
-      throw new Error('扫描批次缺少扫描模式，已阻断本地扫描启动')
+      throw toUserError(null, '扫描批次缺少扫描模式，已阻断本地扫描启动')
     }
     if (
       lifecycle.declaredClassIds
       && !sameOrderedStringList(lifecycle.declaredClassIds, context.classIds)
     ) {
-      throw new Error('扫描批次班级范围与当前考试不一致，请刷新后重新启动扫描')
+      throw toUserError(null, '扫描批次班级范围与当前考试不一致，请刷新后重新启动扫描')
     }
     if (lifecycle.scanMode !== 'SUPPLEMENT') {
       return { scanMode: lifecycle.scanMode, replaceTargetPage: false }
     }
     if (!lifecycle.targetPageNo || lifecycle.targetPageNo <= 0) {
-      throw new TypeError('补扫任务缺少目标页号，已阻断本地扫描启动')
+      throw toUserError(null, '补扫任务缺少目标页号，已阻断本地扫描启动')
     }
     const reason = lifecycle.supplementReason?.trim()
     if (!reason) {
-      throw new Error('补扫任务缺少补扫原因，已阻断本地扫描启动')
+      throw toUserError(null, '补扫任务缺少补扫原因，已阻断本地扫描启动')
     }
     return {
       scanMode: lifecycle.scanMode,
@@ -1128,7 +1166,6 @@ export function useKioskWorkflow() {
       })
       startJobPolling(currentJob.value.scanJobId)
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       if (activeBatchExternalNo.value) {
         try {
           await closeActiveBatch(true)
@@ -1165,7 +1202,6 @@ export function useKioskWorkflow() {
       await refreshPageLedger()
       successMessage.value = '扫描任务已取消，请删除任务完成清理'
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1180,7 +1216,6 @@ export function useKioskWorkflow() {
       currentJob.value = await retryUpload(currentJob.value.scanJobId)
       startJobPolling(currentJob.value.scanJobId)
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1195,7 +1230,6 @@ export function useKioskWorkflow() {
       currentJob.value = await pauseScanJob(currentJob.value.scanJobId)
       successMessage.value = '当前任务已暂停'
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1211,7 +1245,6 @@ export function useKioskWorkflow() {
       startJobPolling(currentJob.value.scanJobId)
       successMessage.value = '当前任务已恢复'
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1241,7 +1274,6 @@ export function useKioskWorkflow() {
       startJobPolling(currentJob.value.scanJobId)
       successMessage.value = '本批次已结束，正在提交'
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1257,7 +1289,6 @@ export function useKioskWorkflow() {
       startJobPolling(currentJob.value.scanJobId)
       successMessage.value = '已重新进入提交队列'
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1313,7 +1344,6 @@ export function useKioskWorkflow() {
         await refreshKioskContext()
         await refreshPageLedger()
       } catch (error) {
-        if (!(error instanceof Error)) throw error
         handleError(error)
       } finally {
         loading.value = false
@@ -1336,7 +1366,6 @@ export function useKioskWorkflow() {
       await refreshKioskContext()
       await refreshPageLedger()
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1376,7 +1405,6 @@ export function useKioskWorkflow() {
       await refreshKioskContext()
       await refreshPageLedger()
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1385,7 +1413,7 @@ export function useKioskWorkflow() {
 
   async function discardLedgerPage(item: { localPageId?: string, pageNo: number }) {
     if (!Number.isFinite(item.pageNo)) {
-      throw new TypeError('页级账本缺少页号')
+      throw toUserError(null, '页级账本缺少页号，请刷新后重试')
     }
     if (!canDiscardLedgerPage.value) {
       errorMessage.value = '当前扫描任务未结束，不能废弃已落库扫描页'
@@ -1426,7 +1454,6 @@ export function useKioskWorkflow() {
       await refreshKioskContext()
       await refreshPageLedger()
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1447,11 +1474,11 @@ export function useKioskWorkflow() {
     successMessage.value = ''
     try {
       const request = validateActivationForm()
-      await activateLocalAgent(request)
+      const activation = await activateLocalAgent(request)
+      saveKioskAuthSession(activation)
       successMessage.value = '一体机已激活'
       await refreshAll()
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1468,11 +1495,11 @@ export function useKioskWorkflow() {
     successMessage.value = ''
     try {
       await unbindLocalAgent()
+      clearKioskAuthSession()
       currentJob.value = null
       successMessage.value = '一体机绑定已清除'
       await refreshAll()
     } catch (error) {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     } finally {
       loading.value = false
@@ -1485,7 +1512,6 @@ export function useKioskWorkflow() {
 
   function onManualRefreshLedger() {
     refreshPageLedger().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
   }
@@ -1512,7 +1538,6 @@ export function useKioskWorkflow() {
           await handleTerminalBatchClosure(currentJob.value)
         }
       } catch (error) {
-        if (!(error instanceof Error)) throw error
         jobPollFailureCount += 1
         if (jobPollFailureCount >= 3) {
           if (jobTimer) window.clearInterval(jobTimer)
@@ -1530,13 +1555,13 @@ export function useKioskWorkflow() {
     const scannerDeviceId = getActiveScannerDeviceId()
     const scannerStationId = getActiveScannerStationId()
     if (!examId.value) {
-      throw new Error('当前扫描批次缺少考试信息，无法关闭批次')
+      throw toUserError(null, '当前扫描批次缺少考试信息，无法关闭批次')
     }
     if (!scannerDeviceId) {
-      throw new Error('当前扫描批次缺少扫描设备，无法关闭批次')
+      throw toUserError(null, '当前扫描批次缺少扫描设备，无法关闭批次')
     }
     if (!scannerStationId) {
-      throw new Error('当前扫描批次缺少扫描站点，无法关闭批次')
+      throw toUserError(null, '当前扫描批次缺少扫描站点，无法关闭批次')
     }
     const lifecycle = await closeScannerKioskBatch({
       examId: examId.value,
@@ -1550,7 +1575,7 @@ export function useKioskWorkflow() {
         typeof lifecycle.pendingPageCount !== 'number'
         || !Number.isFinite(lifecycle.pendingPageCount)
       ) {
-        throw new TypeError('扫描批次关闭结果缺少待处理页数')
+        throw toUserError(null, '扫描批次关闭结果异常，请刷新后重试')
       }
       if (lifecycle.pendingPageCount > 0) {
         errorMessage.value = lifecycle.pendingPagesDiagnostic!
@@ -1612,8 +1637,7 @@ export function useKioskWorkflow() {
           successMessage.value = '上一扫描任务已结束'
         }
       }
-    } catch (error) {
-      if (!(error instanceof Error)) throw error
+    } catch {
       busyPollFailureCount += 1
       errorMessage.value
         = busyPollFailureCount >= 3
@@ -1622,7 +1646,6 @@ export function useKioskWorkflow() {
       if (busyPollFailureCount >= 3 && busyPollTimer) {
         window.clearInterval(busyPollTimer)
         busyPollTimer = undefined
-        console.error('本地扫描 Agent 状态连续查询失败', error)
       }
     }
   }
@@ -1652,12 +1675,10 @@ export function useKioskWorkflow() {
       jobTimer = undefined
     }
     refreshKioskContext().then(recoverLocalScanJob).catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
     if (newVal) {
       refreshSse().catch((error) => {
-        if (!(error instanceof Error)) throw error
         handleError(error)
       })
     } else {
@@ -1685,7 +1706,6 @@ export function useKioskWorkflow() {
     (newBatchNo, oldBatchNo) => {
       if (newBatchNo === oldBatchNo) return
       refreshPageLedger().catch((error) => {
-        if (!(error instanceof Error)) throw error
         handleError(error)
       })
     },
@@ -1699,11 +1719,12 @@ export function useKioskWorkflow() {
         sseRefreshDebounce = window.setTimeout(() => {
           // SSE 推送增量页 → 节流刷新工作台上下文 + 页级账本
           refreshKioskContext().catch((error) => {
-            if (!(error instanceof Error)) throw error
             handleError(error)
           })
           refreshPageLedger().catch((error) => {
-            if (!(error instanceof Error)) throw error
+            handleError(error)
+          })
+          refreshBoundPapers().catch((error) => {
             handleError(error)
           })
         }, 800)
@@ -1719,25 +1740,21 @@ export function useKioskWorkflow() {
   onMounted(async () => {
     // 先加载考试下拉，保证用户可以在工作台首屏立即看到可选考试列表。
     await loadExamOptions().catch((error) => {
-      if (!(error instanceof Error)) throw error
       handleError(error)
     })
     await refreshAll()
     healthTimer = window.setInterval(() => {
       refreshHealth().catch((error) => {
-        if (!(error instanceof Error)) throw error
         handleError(error)
       })
     }, 5000)
     contextTimer = window.setInterval(() => {
       refreshKioskContext().then(recoverLocalScanJob).catch((error) => {
-        if (!(error instanceof Error)) throw error
         handleError(error)
       })
     }, 15000)
     if (examId.value) {
       startSse().catch((error) => {
-        if (!(error instanceof Error)) throw error
         handleError(error)
       })
     }
@@ -1764,6 +1781,9 @@ export function useKioskWorkflow() {
     scanners,
     selectedScannerId,
     kioskContext,
+    boundPapers,
+    boundPapersLoading,
+    boundPapersError,
     currentJob,
     loading,
     errorMessage,
@@ -1821,6 +1841,7 @@ export function useKioskWorkflow() {
     canActivateAgent,
     canUnbindAgent,
     canDiscardLedgerPage,
+    kioskBrowserSessionLost,
     workState,
     uploadStage,
     latestBatchText,
@@ -1852,6 +1873,7 @@ export function useKioskWorkflow() {
     refreshAll,
     refreshScannersByUser,
     refreshPageLedger,
+    refreshBoundPapers,
     onManualRefreshLedger,
     loadExamOptions,
     onExamSelectSearch,

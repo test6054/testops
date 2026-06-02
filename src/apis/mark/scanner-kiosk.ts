@@ -32,11 +32,11 @@ export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
 export type ExamScannerPageServerReceiveStatus = 'RECEIVED'
-export type ExamScannerPageRegistrationStatus
-  = | 'REGISTERED'
-    | 'PENDING'
-    | 'DISCARDED'
-    | 'SUPERSEDED'
+export type ExamScannerPageRegistrationStatus =
+  | 'REGISTERED'
+  | 'PENDING'
+  | 'DISCARDED'
+  | 'SUPERSEDED'
 
 export interface ExamScannerKioskContextRequest {
   examId: string
@@ -422,6 +422,30 @@ export function fetchScannerPageLedger(
   request: ExamScannerPageLedgerRequest,
 ): Promise<ExamScannerPageLedgerVO> {
   return http.post<ExamScannerPageLedgerVO>('/api/mark/scanner/kiosk/page-ledger', request)
+}
+
+export interface ExamScannerBoundPaperListRequest {
+  examId: string
+  scanBatchId?: string
+}
+
+export interface ExamScannerBoundPaperItemVO {
+  paperInstanceId: string
+  scanBatchId: string
+  scanBatchDisplayName: string
+  candidateRosterId: string
+  studentNo: string
+  studentName: string
+  classId?: string
+  className?: string
+  registeredPageCount: number
+  boundTime: string
+}
+
+export function listScannerKioskBoundPapers(
+  request: ExamScannerBoundPaperListRequest,
+): Promise<ExamScannerBoundPaperItemVO[]> {
+  return http.post<ExamScannerBoundPaperItemVO[]>('/api/mark/scanner/kiosk/bound-papers', request)
 }
 
 // ============================================================================

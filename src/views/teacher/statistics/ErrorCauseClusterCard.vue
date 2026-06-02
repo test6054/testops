@@ -31,9 +31,7 @@
             {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
           <a-descriptions-item label="生成耗时">
-            {{
-              analysisLatencyText(record)
-            }}
+            {{ analysisLatencyText(record) }}
           </a-descriptions-item>
           <a-descriptions-item label="处理追踪编号" :span="2">
             <a-typography-text
@@ -53,6 +51,17 @@
         <a-typography-paragraph v-if="record.overallSummary" class="ai-summary">
           <strong>总体摘要：</strong>{{ record.overallSummary }}
         </a-typography-paragraph>
+
+        <div v-if="clusterPieOption" class="ai-chart">
+          <div class="ai-chart__meta">
+            <strong>错因占比分布</strong>
+          </div>
+          <VChart
+            class="ai-chart__canvas ai-chart__canvas--pie"
+            :option="clusterPieOption"
+            autoresize
+          />
+        </div>
 
         <div v-if="clusterItems.length > 0" class="ai-items">
           <strong>错因聚类：</strong>
@@ -99,21 +108,24 @@
 
 <script lang="ts" setup>
 import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildErrorCausePieOption } from '@/utils/mark-statistics-chart'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)
@@ -122,6 +134,7 @@ const generating = ref(false)
 const loadError = ref<Error | null>(null)
 
 const clusterItems = computed(() => record.value?.clusterItems ?? [])
+const clusterPieOption = computed(() => buildErrorCausePieOption(record.value?.clusterItems ?? []))
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 错因聚类分析未完成，请稍后重新生成')
@@ -131,20 +144,18 @@ function acceptErrorCauseClusterRecord(
   value: ExamErrorCauseClusterVO | null,
 ): ExamErrorCauseClusterVO | null {
   if (!value) return null
-  if (value.examId !== props.examId) throw new Error('AI 错因聚类考试 ID 与当前考试不一致')
-  if (!value.createTime?.trim()) throw new Error('AI 错因聚类缺失生成时间')
+  const dataError = 'AI 错因聚类数据异常，请刷新后重试'
+  assertUserFacing(value.examId === props.examId, dataError)
+  assertUserFacing(Boolean(value.createTime?.trim()), dataError)
   if (value.analysisStatus === 'SUCCESS') {
-    if (!value.aiTraceId?.trim()) throw new Error('AI 错因聚类成功但缺失追踪编号')
-    if (typeof value.latencyMs !== 'number') throw new Error('AI 错因聚类成功但缺失生成耗时')
-    if (typeof value.clusterCount !== 'number') throw new Error('AI 错因聚类成功但缺失聚类数')
-    if (!value.overallSummary?.trim()) throw new Error('AI 错因聚类成功但缺失总体摘要')
-    if (!value.clusterItems?.length) throw new Error('AI 错因聚类成功但缺失聚类明细')
+    assertUserFacing(Boolean(value.aiTraceId?.trim()), dataError)
+    assertUserFacing(typeof value.latencyMs === 'number', dataError)
+    assertUserFacing(typeof value.clusterCount === 'number', dataError)
+    assertUserFacing(Boolean(value.overallSummary?.trim()), dataError)
+    assertUserFacing(Boolean(value.clusterItems?.length), dataError)
   }
-  if (
-    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED')
-    && !value.errorMessage?.trim()
-  ) {
-    throw new Error('AI 错因聚类失败但缺失处理说明')
+  if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') {
+    assertUserFacing(Boolean(value.errorMessage?.trim()), dataError)
   }
   return value
 }
@@ -153,11 +164,11 @@ function clusterCountText(value: ExamErrorCauseClusterVO): string {
   if (typeof value.clusterCount === 'number') return String(value.clusterCount)
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成聚类'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
-  throw new Error('AI 错因聚类成功但缺失聚类数')
+  return '—'
 }
 
 function analysisCreateTimeText(value: ExamErrorCauseClusterVO): string {
-  if (!value.createTime?.trim()) throw new Error('AI 错因聚类缺失生成时间')
+  if (!value.createTime?.trim()) return '—'
   return formatDateTime(value.createTime)
 }
 
@@ -165,7 +176,7 @@ function analysisLatencyText(value: ExamErrorCauseClusterVO): string {
   if (typeof value.latencyMs === 'number') return `${value.latencyMs} ms`
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
-  throw new Error('AI 错因聚类成功但缺失生成耗时')
+  return '—'
 }
 
 function analysisTraceId(value: ExamErrorCauseClusterVO): string | undefined {
@@ -175,7 +186,7 @@ function analysisTraceId(value: ExamErrorCauseClusterVO): string | undefined {
 function analysisTraceText(value: ExamErrorCauseClusterVO): string {
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
-  throw new Error('AI 错因聚类成功但缺失追踪编号')
+  return value.aiTraceId?.trim() || '—'
 }
 
 function formatPercent(value: number): string {
@@ -236,6 +247,22 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.ai-chart {
+  padding: 12px 16px;
+  border: 1px solid var(--dp-border, #e2e8f0);
+  border-radius: var(--dp-radius-md, 6px);
+  background: var(--dp-surface, #fff);
+}
+.ai-chart__meta {
+  margin-bottom: 8px;
+}
+.ai-chart__canvas {
+  width: 100%;
+  height: 320px;
+}
+.ai-chart__canvas--pie {
+  height: 280px;
 }
 .analysis-item {
   display: flex;

@@ -175,7 +175,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'change', changeEvent: UiDataTableChangeEvent): void
-  (e: 'page-change', pageEvent: { current: number, pageSize: number }): void
+  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
 }>()
 
@@ -293,10 +293,10 @@ const handlePageChange = (page: number, size: number) => {
   padding-inline: 8px !important;
 }
 
-.ui-data-table__table,
-:deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-table-selection),
-.ui-data-table__table,
-:deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox-wrapper),
+.ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-table-selection),
+.ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox-wrapper),
 .ui-data-table__table :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox) {
   display: flex;
   align-items: center;
@@ -305,30 +305,35 @@ const handlePageChange = (page: number, size: number) => {
   margin: 0 !important;
 }
 
-.ui-data-table__table,
-:deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox::after) {
+.ui-data-table__table
+  :deep(.ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox::after) {
   display: none !important;
   animation: none !important;
 }
 
-.ui-data-table__table,
-:deep(
-  .ant-table-thead,
-  > tr,
-  > th.ant-table-selection-column .ant-checkbox-input:focus-visible + .ant-checkbox-inner
-) {
+.ui-data-table__table
+  :deep(
+    .ant-table-thead
+      > tr
+      > th.ant-table-selection-column
+      .ant-checkbox-input:focus-visible
+      + .ant-checkbox-inner
+  ) {
   box-shadow: none !important;
 }
 
-.ui-data-table__table,
-:deep(
-  .ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox:hover .ant-checkbox-inner
-),
-.ui-data-table__table,
-:deep(
-  .ant-table-thead,
-  > tr > th.ant-table-selection-column .ant-checkbox-wrapper:hover .ant-checkbox-inner
-) {
+.ui-data-table__table
+  :deep(
+    .ant-table-thead > tr > th.ant-table-selection-column .ant-checkbox:hover .ant-checkbox-inner
+  ),
+.ui-data-table__table
+  :deep(
+    .ant-table-thead
+      > tr
+      > th.ant-table-selection-column
+      .ant-checkbox-wrapper:hover
+      .ant-checkbox-inner
+  ) {
   border-color: var(--dp-border, #e5e7eb) !important;
 }
 

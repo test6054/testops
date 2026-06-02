@@ -1,3 +1,4 @@
+export * from './accreditation'
 export * from './accreditation-standard'
 export * from './achievement'
 export * from './achievement-audit'

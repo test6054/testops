@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AssessmentItemVO } from '@/apis/quality'
-import { computed, onMounted, ref, watch } from 'vue'
 import { assessmentItemApi } from '@/apis/quality'
+import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
@@ -32,7 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AssessmentItemVO]
+  change: [value: string | null, option?: AssessmentItemVO]
 }>()
 
 const options = ref<AssessmentItemVO[]>([])
@@ -78,7 +78,6 @@ async function loadOptions() {
       '考核环节',
     )
   } catch (e) {
-    console.error('[AssessmentItemSelector] 加载考核环节列表失败', e)
     showUserError(e, '考核环节列表加载失败')
   } finally {
     loading.value = false

@@ -38,6 +38,19 @@
       />
     </div>
 
+    <div v-if="correctRatioBarOption" class="question-analysis-card__chart-wrap">
+      <div class="question-analysis-card__chart-meta">
+        <strong>各题正确率</strong>
+        <span class="question-analysis-card__chart-hint">按题号展示已批阅学生的正确率</span>
+      </div>
+      <VChart
+        class="question-analysis-card__chart"
+        :option="correctRatioBarOption"
+        autoresize
+        :init-options="{ renderer: 'canvas' }"
+      />
+    </div>
+
     <!-- D-9 错误态：题目质量分析加载失败时提供重试 + 上报入口 -->
     <UiErrorRetryPanel
       v-if="loadError"
@@ -61,7 +74,7 @@
         <template v-if="column.key === 'question'">
           <div class="question-analysis-card__question-cell">
             <div class="question-analysis-card__question-title">
-              题{{ rows[index].questionNo }} · {{ rows[index].questionType }} ·
+              题{{ rows[index].questionNo }} · {{ questionTypeLabel(rows[index].questionType) }} ·
               {{ fmtNum(rows[index].fullScore) }} 分
             </div>
             <div v-if="rows[index].questionStem" class="question-analysis-card__question-stem">
@@ -108,10 +121,16 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import { getExamTemplate } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import {
+  generateAllQuestionAnalysis,
+  generateQuestionAnalysis,
+  listQuestionAnalysis,
+} from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import { ScatterChart } from 'echarts/charts'
+import { BarChart, ScatterChart } from 'echarts/charts'
 import {
   GridComponent,
   LegendComponent,
@@ -122,19 +141,16 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
-import { getExamTemplate } from '@/apis/mark/exam'
-import {
-  generateAllQuestionAnalysis,
-  generateQuestionAnalysis,
-  listQuestionAnalysis,
-} from '@/apis/mark/question-analysis'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildCorrectRatioBarOption } from '@/utils/mark-statistics-chart'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
@@ -142,6 +158,7 @@ const emit = defineEmits<{ (e: 'generated'): void }>()
 use([
   CanvasRenderer,
   ScatterChart,
+  BarChart,
   GridComponent,
   LegendComponent,
   TitleComponent,
@@ -156,7 +173,7 @@ const generatingAll = ref(false)
 const generatingId = ref<string>('')
 const selectedQuestionTemplateId = ref<string>()
 const questionLoading = ref(false)
-const questionOptions = ref<{ value: string, label: string }[]>([])
+const questionOptions = ref<{ value: string; label: string }[]>([])
 
 const columns: ColumnType<ExamQuestionAnalysisRecordVO>[] = [
   { title: '题目', key: 'question', width: 260 },
@@ -263,6 +280,12 @@ function getCorrectRatioType(r: ExamQuestionAnalysisRecordVO): 'danger' | 'warni
   if (ratio < 0.6) return 'warning'
   return undefined
 }
+
+function questionTypeLabel(questionType: ExamQuestionAnalysisRecordVO['questionType']): string {
+  return strictEnumLabel(QUESTION_TYPE_LABEL, questionType, '题型')
+}
+
+const correctRatioBarOption = computed(() => buildCorrectRatioBarOption(rows.value))
 
 // ─── D-5 难度-区分度散点图派生 ──────────────────────────────
 /** 单个散点：[难度系数, 区分度, 已批人数, 题号, 题型] */

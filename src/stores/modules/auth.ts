@@ -5,11 +5,11 @@ import type {
   PhoneLoginRequest,
   StudentLoginRequest,
 } from '@/apis/auth'
+import * as authApi from '@/apis/auth'
 import type { RefreshTokenResponse } from '@/types/auth'
 import { jwtDecode } from 'jwt-decode'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import * as authApi from '@/apis/auth'
 import { resetAuthState } from '@/config/axios/auth-state'
 import {
   STORAGE_REFRESH_TOKEN,
@@ -22,6 +22,7 @@ import { resetRouter } from '@/router'
 import { resetHasMenuFlag } from '@/router/guard'
 import { RoleEnum } from '@/types/enums'
 import { clearToken, getToken, setToken } from '@/utils/auth'
+import { throwUserFacing } from '@/utils/contract-guard'
 import { getDeviceId } from '@/utils/device'
 import mittBus from '@/utils/mitt'
 import { useTenantStore } from './tenant'
@@ -124,12 +125,12 @@ export const useAuthStore = defineStore(
     const decodeToken = (tokenStr?: string): JwtClaims => {
       const targetToken = tokenStr || token.value
       if (!targetToken) {
-        throw new Error('令牌不存在')
+        throwUserFacing('登录状态已失效，请重新登录')
       }
       try {
         return jwtDecode<JwtClaims>(targetToken)
       } catch {
-        throw new Error('令牌格式无效')
+        throwUserFacing('登录状态已失效，请重新登录')
       }
     }
 
@@ -214,13 +215,13 @@ export const useAuthStore = defineStore(
       const storedRefreshToken = localStorage.getItem(STORAGE_REFRESH_TOKEN)
       const storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
       const parsedExpiresAt = storedTokenExpiresAt ? Number.parseInt(storedTokenExpiresAt) : null
-      const normalizedExpiresAt
-        = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
+      const normalizedExpiresAt =
+        parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
 
-      const hasChanged
-        = token.value !== storedToken
-          || refreshToken.value !== storedRefreshToken
-          || tokenExpiresAt.value !== normalizedExpiresAt
+      const hasChanged =
+        token.value !== storedToken ||
+        refreshToken.value !== storedRefreshToken ||
+        tokenExpiresAt.value !== normalizedExpiresAt
 
       if (!hasChanged) {
         return false
@@ -354,8 +355,9 @@ export const useAuthStore = defineStore(
             }
             return true
           } catch (error) {
-            if (!(error instanceof Error)) throw error
-            const refreshError = error as RefreshTokenError
+            const refreshError = (
+              error instanceof Error ? error : new Error(String(error))
+            ) as RefreshTokenError
             lastError = refreshError
 
             const syncedFromOtherContext = syncTokenStateFromStorage()
@@ -378,10 +380,10 @@ export const useAuthStore = defineStore(
 
         // 网络层错误 / 5xx：不强制登出，让上层下次再试
         // axios 的网络错误 code 是 'ERR_NETWORK' / 'ECONNABORTED'，而非 'NETWORK_ERROR'
-        const isNetworkLevel
-          = lastError?.code === 'ERR_NETWORK'
-            || lastError?.code === 'ECONNABORTED'
-            || (lastError?.response !== undefined && lastError.response.status >= 500)
+        const isNetworkLevel =
+          lastError?.code === 'ERR_NETWORK' ||
+          lastError?.code === 'ECONNABORTED' ||
+          (lastError?.response !== undefined && lastError.response.status >= 500)
         if (isNetworkLevel) {
           return false
         }
@@ -486,7 +488,7 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const phoneLoginMethod = async (req: { phone: string, captcha: string }) => {
+    const phoneLoginMethod = async (req: { phone: string; captcha: string }) => {
       try {
         isLoading.value = true
         const phoneLoginReq: PhoneLoginRequest = {
@@ -521,7 +523,7 @@ export const useAuthStore = defineStore(
      * 邮箱验证码登录
      * 登录后需调用方通过 userStore.getInfo() 获取完整用户信息
      */
-    const emailLogin = async (req: { email: string, captcha: string }) => {
+    const emailLogin = async (req: { email: string; captcha: string }) => {
       try {
         isLoading.value = true
         const loginReq: LoginRequest = {
@@ -589,14 +591,14 @@ export const useAuthStore = defineStore(
       }
     }
 
-    const queryStringValue = (value: LocationQuery[string], fieldName: string) => {
+    const queryStringValue = (value: LocationQuery[string]) => {
       if (typeof value === 'string' && value.trim()) {
         return value.trim()
       }
       if (Array.isArray(value) && typeof value[0] === 'string' && value[0].trim()) {
         return value[0].trim()
       }
-      throw new Error(`微信登录回调缺少${fieldName}`)
+      throwUserFacing('微信登录失败，请重新发起授权')
     }
 
     const socialLogin = async (source: string, req: LocationQuery) => {
@@ -606,8 +608,8 @@ export const useAuthStore = defineStore(
           resetAuthState()
 
           const result = await authApi.wechatCallback({
-            code: queryStringValue(req.code, '授权码'),
-            state: queryStringValue(req.state, '状态参数'),
+            code: queryStringValue(req.code),
+            state: queryStringValue(req.state),
           })
 
           if (result.status !== 'success' || !result.accessToken) {
@@ -625,7 +627,7 @@ export const useAuthStore = defineStore(
         }
         return
       }
-      throw new Error(`只支持微信登录，不支持: ${source}`)
+      throwUserFacing('当前登录方式暂不可用，请重新选择')
     }
 
     const logoutCallBack = async () => {
@@ -684,7 +686,7 @@ export const useAuthStore = defineStore(
           setRefreshToken(refreshData.refreshToken)
         }
       } else {
-        throw new Error('Token刷新响应数据无效')
+        throw new Error('登录状态已失效，请重新登录')
       }
       return refreshData
     }
@@ -706,10 +708,10 @@ export const useAuthStore = defineStore(
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) return
       if (
-        event.key !== null
-        && event.key !== STORAGE_TOKEN
-        && event.key !== STORAGE_REFRESH_TOKEN
-        && event.key !== STORAGE_TOKEN_EXPIRES_AT
+        event.key !== null &&
+        event.key !== STORAGE_TOKEN &&
+        event.key !== STORAGE_REFRESH_TOKEN &&
+        event.key !== STORAGE_TOKEN_EXPIRES_AT
       ) {
         return
       }
@@ -717,6 +719,7 @@ export const useAuthStore = defineStore(
     }
 
     const initializeAuth = async () => {
+      syncTokenStateFromStorage()
       const storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
       const storedRememberMe = localStorage.getItem(STORAGE_REMEMBER_ME)
 

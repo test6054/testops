@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: UserDto]
+  change: [value: string | null, option?: UserDto]
 }>()
 
 const options = ref<UserDto[]>([])
@@ -83,7 +83,6 @@ async function loadOptions(keyword?: string) {
         })
     options.value = requirePageList(res, '学生')
   } catch (e) {
-    console.error('[StudentSelector] 加载学生列表失败', e)
     showUserError(e, '学生列表加载失败')
   } finally {
     loading.value = false
@@ -136,7 +135,9 @@ defineExpose({ reload: loadOptions })
       :label="studentDisplayName(opt)"
     >
       {{ studentDisplayName(opt) }}
-      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 text-xs">({{ opt.studentNumber }})</span>
+      <span v-if="opt.studentNumber" class="text-gray-400 ml-1 text-xs"
+        >({{ opt.studentNumber }})</span
+      >
     </a-select-option>
   </a-select>
 </template>

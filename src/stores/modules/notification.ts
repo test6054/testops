@@ -22,8 +22,6 @@ import type {
   InboxMessageMarkRequest,
   InboxUnreadCountResponse,
 } from '@/apis/edu/message'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
 import {
   getInboxMessages,
   getUnreadCount,
@@ -32,7 +30,10 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 import { getValidToken } from '@/utils/auth'
+import { readPageList } from '@/utils/page-result'
 
 const DEFAULT_POLL_INTERVAL_MS = 60_000
 
@@ -104,7 +105,7 @@ export const useNotificationStore = defineStore('notification', () => {
         folder: query.folder ?? MessageFolderEnum.INBOX,
         messageType: query.messageType,
       })
-      recentMessages.value = result.list
+      recentMessages.value = readPageList(result, '消息列表加载失败，请稍后重试')
       return recentMessages.value
     }
     finally {

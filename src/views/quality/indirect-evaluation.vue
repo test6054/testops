@@ -24,9 +24,6 @@ import type {
   RespondentType,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   INDIRECT_FORM_TYPE_LABEL,
@@ -36,6 +33,9 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ClassSelector,
   CourseGoalSelector,
@@ -52,9 +52,13 @@ import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { throwUserFacing } from '@/utils/contract-guard'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ImportResponseDocumentModal from './components/ImportResponseDocumentModal.vue'
 import ImportResponseExcelModal from './components/ImportResponseExcelModal.vue'
+
+const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'
+const RESPONSE_DATA_ERROR = '答卷数据异常，请刷新后重试'
 
 const qualityStore = useQualityStore()
 
@@ -92,7 +96,7 @@ function respondentTypeLabel(value: RespondentType): string {
   return strictEnumLabel(RESPONDENT_TYPE_LABEL, value, '应答人类型')
 }
 
-const formTypeOptions: { value: IndirectFormType, label: string }[] = [
+const formTypeOptions: { value: IndirectFormType; label: string }[] = [
   {
     value: 'STUDENT_SELF',
     label: strictEnumLabel(INDIRECT_FORM_TYPE_LABEL, 'STUDENT_SELF', '间接评价问卷类型'),
@@ -119,7 +123,7 @@ const formTypeOptions: { value: IndirectFormType, label: string }[] = [
   },
 ]
 
-const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
+const targetTypeOptions: { value: AchievementTargetType; label: string }[] = [
   {
     value: 'COURSE_GOAL',
     label: strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, 'COURSE_GOAL', '达成目标类型'),
@@ -153,7 +157,7 @@ const targetTypeOptions: { value: AchievementTargetType, label: string }[] = [
     ),
   },
 ]
-const respondentTypeOptions: { value: RespondentType, label: string }[] = [
+const respondentTypeOptions: { value: RespondentType; label: string }[] = [
   { value: 'STUDENT', label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'STUDENT', '应答人类型') },
   { value: 'GRADUATE', label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'GRADUATE', '应答人类型') },
   { value: 'EMPLOYER', label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'EMPLOYER', '应答人类型') },
@@ -164,7 +168,7 @@ const respondentTypeOptions: { value: RespondentType, label: string }[] = [
     label: strictEnumLabel(RESPONDENT_TYPE_LABEL, 'SUPERVISOR', '应答人类型'),
   },
 ]
-const itemTypeOptions: { value: IndirectEvaluationItemType, label: string }[] = [
+const itemTypeOptions: { value: IndirectEvaluationItemType; label: string }[] = [
   { value: 'SCALE', label: '量表题' },
   { value: 'SINGLE_CHOICE', label: '单选题' },
   { value: 'MULTI_CHOICE', label: '多选题' },
@@ -209,9 +213,9 @@ function handleFormTargetTypeChange() {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === 'PROGRAM_SUMMARY'
-    || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    formEditor.targetType === 'PROGRAM_SUMMARY' ||
+    formEditor.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+    formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
   ) {
     formEditor.targetId = formEditor.programId || ''
   }
@@ -243,9 +247,9 @@ function handleFormProgramChange(value: string | null | undefined) {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === 'PROGRAM_SUMMARY'
-    || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    formEditor.targetType === 'PROGRAM_SUMMARY' ||
+    formEditor.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+    formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
   ) {
     formEditor.targetId = id
   } else if (formEditor.targetType !== 'COURSE_GOAL') {
@@ -259,9 +263,9 @@ function handleItemTargetTypeChange() {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === 'PROGRAM_SUMMARY'
-    || itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    itemEditor.value.targetType === 'PROGRAM_SUMMARY' ||
+    itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+    itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
   ) {
     itemEditor.value.targetId = formEditor.programId || qualityStore.currentProgramId
   }
@@ -295,9 +299,9 @@ function handleItemProgramChange(value: string | null | undefined) {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === 'PROGRAM_SUMMARY'
-    || itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE'
-    || itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+    itemEditor.value.targetType === 'PROGRAM_SUMMARY' ||
+    itemEditor.value.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+    itemEditor.value.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
   ) {
     itemEditor.value.targetId = value ?? ''
   } else if (itemEditor.value.targetType !== 'COURSE_GOAL') {
@@ -311,7 +315,10 @@ function handleResponseClassChange(value: string | null | undefined) {
 }
 
 function handleResponseRespondentChange(value: string | string[] | null) {
-  if (Array.isArray(value)) throw new Error('间接评价应答人不支持多选值')
+  if (Array.isArray(value)) {
+    message.warning('请单选应答人')
+    return
+  }
   responseEditor.value.respondentId = value ?? ''
 }
 
@@ -402,7 +409,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(page: { current: number, pageSize: number }) {
+function handleFormPageChange(page: { current: number; pageSize: number }) {
   formQuery.pageNum = page.current
   formQuery.pageSize = page.pageSize
   loadForms()
@@ -468,28 +475,28 @@ function defaultScaleLabels(min: number, max: number) {
 
 function assertScaleLabelsComplete(record: IndirectEvaluationItemVO) {
   if (record.scaleMin == null || record.scaleMax == null || record.scaleMin >= record.scaleMax) {
-    throw new Error(`量表题 ${record.itemCode} 缺少有效的量表范围`)
+    throwUserFacing(ITEM_CONFIG_ERROR)
   }
   const labels = record.scaleLabels
-  if (!labels?.length) throw new Error(`量表题 ${record.itemCode} 缺少档位标签`)
+  if (!labels?.length) throwUserFacing(ITEM_CONFIG_ERROR)
   const values = new Set(labels.map((label) => label.scaleValue))
   for (let value = record.scaleMin; value <= record.scaleMax; value++) {
-    if (!values.has(value)) throw new Error(`量表题 ${record.itemCode} 的档位标签不完整`)
+    if (!values.has(value)) throwUserFacing(ITEM_CONFIG_ERROR)
   }
 }
 
 function assertChoiceOptionsComplete(record: IndirectEvaluationItemVO) {
   const options = record.choiceOptions
   if (!options || options.length < 2) {
-    throw new Error(`选择题 ${record.itemCode} 至少需要 2 个选项`)
+    throwUserFacing(ITEM_CONFIG_ERROR)
   }
   const values = new Set<string>()
   for (const option of options) {
     if (!option.optionValue.trim() || !option.optionLabel.trim()) {
-      throw new Error(`选择题 ${record.itemCode} 存在不完整选项`)
+      throwUserFacing(ITEM_CONFIG_ERROR)
     }
     if (values.has(option.optionValue.trim())) {
-      throw new Error(`选择题 ${record.itemCode} 存在重复选项值`)
+      throwUserFacing(ITEM_CONFIG_ERROR)
     }
     values.add(option.optionValue.trim())
   }
@@ -497,7 +504,7 @@ function assertChoiceOptionsComplete(record: IndirectEvaluationItemVO) {
 
 function assertEditableItemContract(record: IndirectEvaluationItemVO) {
   if (record.required == null) {
-    throw new Error(`题项 ${record.itemCode} 缺少是否必填标记`)
+    throwUserFacing(ITEM_CONFIG_ERROR)
   }
   if (record.itemType === 'SCALE') {
     assertScaleLabelsComplete(record)
@@ -511,10 +518,10 @@ function assertEditableItemContract(record: IndirectEvaluationItemVO) {
 function openItemCreate() {
   if (!selectedForm.value) return
   itemEditorMode.value = 'create'
-  itemEditorQualityCourseId.value
-    = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
-  itemEditorTrainingPlanId.value
-    = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
+  itemEditorQualityCourseId.value =
+    formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
+  itemEditorTrainingPlanId.value =
+    formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = formEditorGraduationRequirementId.value
   itemEditor.value = {
     formId: selectedForm.value.id,
@@ -538,10 +545,10 @@ function openItemCreate() {
 function openItemEdit(record: IndirectEvaluationItemVO) {
   assertEditableItemContract(record)
   itemEditorMode.value = 'edit'
-  itemEditorQualityCourseId.value
-    = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
-  itemEditorTrainingPlanId.value
-    = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
+  itemEditorQualityCourseId.value =
+    formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
+  itemEditorTrainingPlanId.value =
+    formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = ''
   itemEditor.value = {
     ...record,
@@ -598,8 +605,8 @@ async function submitItem() {
   } else if (v.itemType === 'SINGLE_CHOICE' || v.itemType === 'MULTI_CHOICE') {
     const options = v.choiceOptions ?? []
     if (
-      options.length < 2
-      || options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+      options.length < 2 ||
+      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
     ) {
       message.error('选择题至少配置 2 个完整选项')
       return
@@ -703,15 +710,15 @@ function openResponseCreate() {
 
 function openResponseEdit(record: IndirectEvaluationResponseVO) {
   responseEditorMode.value = 'edit'
-  responseMultiChoiceValues.value
-    = record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
+  responseMultiChoiceValues.value =
+    record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
   responseEditorClassId.value = ''
-  responseIdentityName.value
-    = record.identityValues?.find((item) => item.fieldKey === 'name')?.fieldValue ?? ''
-  responseIdentityOrganization.value
-    = record.identityValues?.find((item) => item.fieldKey === 'organization')?.fieldValue ?? ''
-  responseIdentityContact.value
-    = record.identityValues?.find((item) => item.fieldKey === 'contact')?.fieldValue ?? ''
+  responseIdentityName.value =
+    record.identityValues?.find((item) => item.fieldKey === 'name')?.fieldValue ?? ''
+  responseIdentityOrganization.value =
+    record.identityValues?.find((item) => item.fieldKey === 'organization')?.fieldValue ?? ''
+  responseIdentityContact.value =
+    record.identityValues?.find((item) => item.fieldKey === 'contact')?.fieldValue ?? ''
   responseEditor.value = {
     ...record,
     multipleChoiceValues: record.multipleChoiceValues?.map((option) => ({ ...option })) ?? [],
@@ -727,11 +734,11 @@ async function submitResponse() {
     return
   }
   if (
-    (v.respondentType === 'STUDENT'
-      || v.respondentType === 'TEACHER'
-      || v.respondentType === 'EXPERT'
-      || v.respondentType === 'SUPERVISOR')
-    && !v.respondentId?.trim()
+    (v.respondentType === 'STUDENT' ||
+      v.respondentType === 'TEACHER' ||
+      v.respondentType === 'EXPERT' ||
+      v.respondentType === 'SUPERVISOR') &&
+    !v.respondentId?.trim()
   ) {
     message.error('请选择应答人')
     return
@@ -751,7 +758,8 @@ async function submitResponse() {
     v.identityValues = []
   }
   if (!selectedItem.value) {
-    throw new Error('当前未选择题项，无法提交答卷')
+    message.warning('请先选择题项')
+    return
   }
   if (selectedItem.value.itemType === 'SCALE' && v.scaleValue == null) {
     message.error('请填写量表分值')
@@ -762,16 +770,16 @@ async function submitResponse() {
     return
   }
   if (
-    selectedItem.value.itemType === 'MULTI_CHOICE'
-    && responseMultiChoiceValues.value.length === 0
+    selectedItem.value.itemType === 'MULTI_CHOICE' &&
+    responseMultiChoiceValues.value.length === 0
   ) {
     message.error('请至少选择一个多选答案')
     return
   }
   if (
-    selectedItem.value.itemType === 'OPEN_TEXT'
-    && selectedItem.value.required
-    && !v.openText?.trim()
+    selectedItem.value.itemType === 'OPEN_TEXT' &&
+    selectedItem.value.required &&
+    !v.openText?.trim()
   ) {
     message.error('请填写开放回答')
     return
@@ -816,9 +824,6 @@ async function submitResponse() {
 
 function responseChoiceValues(record: IndirectEvaluationResponseVO): string {
   if (!record.multipleChoiceValues?.length) {
-    if (selectedItem.value?.required) {
-      throw new Error(`必答多选题缺少答卷选项：${record.id}`)
-    }
     return '未作答'
   }
   return record.multipleChoiceValues.map((option) => option.optionLabel).join(' | ')
@@ -827,27 +832,18 @@ function responseChoiceValues(record: IndirectEvaluationResponseVO): string {
 function responseScaleAnswerText(record: IndirectEvaluationResponseVO): string {
   if (record.answerSummary?.trim()) return record.answerSummary
   if (record.scaleValue != null) return `${record.scaleValue}分`
-  if (selectedItem.value?.required) {
-    throw new Error(`必答量表题缺少答卷分值：${record.id}`)
-  }
   return '未作答'
 }
 
 function responseSingleChoiceAnswerText(record: IndirectEvaluationResponseVO): string {
   if (record.answerSummary?.trim()) return record.answerSummary
   if (record.singleChoiceValue?.trim()) return record.singleChoiceValue
-  if (selectedItem.value?.required) {
-    throw new Error(`必答单选题缺少答卷选项：${record.id}`)
-  }
   return '未作答'
 }
 
 function responseOpenText(record: IndirectEvaluationResponseVO): string {
   const text = record.openText?.trim()
   if (text) return text
-  if (selectedItem.value?.required) {
-    throw new Error(`必答开放题缺少开放回答：${record.id}`)
-  }
   return '未填写开放文本'
 }
 
@@ -920,7 +916,7 @@ const validCountLoading = ref(false)
 function countTextToNumber(value: string): number {
   const count = Number(value)
   if (!Number.isFinite(count)) {
-    throw new TypeError('题项有效样本数不符合前后端契约')
+    throwUserFacing(RESPONSE_DATA_ERROR)
   }
   return count
 }
@@ -929,7 +925,7 @@ function validCountText(itemId: string): string {
   const count = validCountMap.value.get(itemId)
   if (count === undefined) {
     if (validCountLoading.value) return '加载中'
-    throw new Error('题项有效样本数缺失')
+    return '—'
   }
   return count
 }
@@ -963,8 +959,8 @@ const signals = computed<SignalMetric[]>(() => {
   const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample ?? 0), 0)
   const validResponses = responses.value.filter((r) => r.validFlag).length
   const invalidResponses = responses.value.filter((r) => !r.validFlag).length
-  const sampleRatio
-    = expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
+  const sampleRatio =
+    expectedSampleSum > 0 ? Number((totalValid / expectedSampleSum).toFixed(2)) : 0
 
   return [
     { key: 'forms-total', label: '问卷总数', value: forms.value.length, tone: 'blue' },
@@ -1286,10 +1282,10 @@ onMounted(async () => {
           </a-col>
           <a-col
             v-if="
-              formEditor.targetType === 'COURSE_GOAL'
-                || formEditor.targetType === 'GRADUATION_REQUIREMENT'
-                || formEditor.targetType === 'REQUIREMENT_INDICATOR'
-                || formEditor.targetType === 'TRAINING_OBJECTIVE'
+              formEditor.targetType === 'COURSE_GOAL' ||
+              formEditor.targetType === 'GRADUATION_REQUIREMENT' ||
+              formEditor.targetType === 'REQUIREMENT_INDICATOR' ||
+              formEditor.targetType === 'TRAINING_OBJECTIVE'
             "
             :span="8"
           >
@@ -1316,9 +1312,9 @@ onMounted(async () => {
           <a-col :span="8">
             <a-form-item
               :label="
-                formEditor.targetType === 'PROGRAM_SUMMARY'
-                  || formEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-                  || formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+                formEditor.targetType === 'PROGRAM_SUMMARY' ||
+                formEditor.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+                formEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
                   ? '所属专业'
                   : '目标对象'
               "
@@ -1370,9 +1366,9 @@ onMounted(async () => {
           </a-col>
           <a-col
             v-if="
-              formEditor.targetType !== 'PROGRAM_SUMMARY'
-                && formEditor.targetType !== 'CIVIC_GOAL_AGGREGATE'
-                && formEditor.targetType !== 'COMPLEX_ENGINEERING_AGGREGATE'
+              formEditor.targetType !== 'PROGRAM_SUMMARY' &&
+              formEditor.targetType !== 'CIVIC_GOAL_AGGREGATE' &&
+              formEditor.targetType !== 'COMPLEX_ENGINEERING_AGGREGATE'
             "
             :span="8"
           >
@@ -1460,9 +1456,9 @@ onMounted(async () => {
               />
               <ProgramSelector
                 v-else-if="
-                  itemEditor.targetType === 'PROGRAM_SUMMARY'
-                    || itemEditor.targetType === 'CIVIC_GOAL_AGGREGATE'
-                    || itemEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
+                  itemEditor.targetType === 'PROGRAM_SUMMARY' ||
+                  itemEditor.targetType === 'CIVIC_GOAL_AGGREGATE' ||
+                  itemEditor.targetType === 'COMPLEX_ENGINEERING_AGGREGATE'
                 "
                 :value="itemEditor.targetId || null"
                 placeholder="选择专业"
@@ -1480,10 +1476,10 @@ onMounted(async () => {
         </a-row>
         <a-form-item
           v-if="
-            itemEditor.targetType === 'COURSE_GOAL'
-              || itemEditor.targetType === 'GRADUATION_REQUIREMENT'
-              || itemEditor.targetType === 'REQUIREMENT_INDICATOR'
-              || itemEditor.targetType === 'TRAINING_OBJECTIVE'
+            itemEditor.targetType === 'COURSE_GOAL' ||
+            itemEditor.targetType === 'GRADUATION_REQUIREMENT' ||
+            itemEditor.targetType === 'REQUIREMENT_INDICATOR' ||
+            itemEditor.targetType === 'TRAINING_OBJECTIVE'
           "
           label="目标对象"
           required
@@ -1635,9 +1631,9 @@ onMounted(async () => {
           </a-col>
           <a-col
             v-else-if="
-              responseEditor.respondentType === 'TEACHER'
-                || responseEditor.respondentType === 'EXPERT'
-                || responseEditor.respondentType === 'SUPERVISOR'
+              responseEditor.respondentType === 'TEACHER' ||
+              responseEditor.respondentType === 'EXPERT' ||
+              responseEditor.respondentType === 'SUPERVISOR'
             "
             :span="12"
           >
@@ -1660,8 +1656,8 @@ onMounted(async () => {
         </a-form-item>
         <a-row
           v-if="
-            responseEditor.respondentType === 'GRADUATE'
-              || responseEditor.respondentType === 'EMPLOYER'
+            responseEditor.respondentType === 'GRADUATE' ||
+            responseEditor.respondentType === 'EMPLOYER'
           "
           :gutter="12"
         >

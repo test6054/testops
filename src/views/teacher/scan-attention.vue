@@ -13,6 +13,10 @@
             show-search
             option-filter-prop="label"
             allow-clear
+            popup-class-name="ui-select-dropdown"
+            :dropdown-match-select-width="false"
+            :dropdown-style="scanAttentionSelectDropdownStyle"
+            :get-popup-container="scanAttentionSelectPopupContainer"
             @change="onExamChange"
           />
         </div>
@@ -45,7 +49,7 @@
         <UiStatPanel
           title="异常概览"
           :items="statPanelMetrics"
-          :columns="4"
+          :columns="5"
           variant="grid"
           compact
           class="scan-attention__stats"
@@ -78,6 +82,10 @@
               :options="attentionTypeOptions"
               allow-clear
               class="scan-attention__type-select"
+              popup-class-name="ui-select-dropdown"
+              :dropdown-match-select-width="false"
+              :dropdown-style="scanAttentionSelectDropdownStyle"
+              :get-popup-container="scanAttentionSelectPopupContainer"
               @change="onAttentionTypeChange"
             />
           </a-form-item>
@@ -91,6 +99,10 @@
               option-filter-prop="label"
               allow-clear
               class="scan-attention__filter-select"
+              popup-class-name="ui-select-dropdown"
+              :dropdown-match-select-width="false"
+              :dropdown-style="scanAttentionSelectDropdownStyle"
+              :get-popup-container="scanAttentionSelectPopupContainer"
               @change="loadAttentions"
             />
           </a-form-item>
@@ -104,6 +116,10 @@
               option-filter-prop="label"
               allow-clear
               class="scan-attention__filter-select"
+              popup-class-name="ui-select-dropdown"
+              :dropdown-match-select-width="false"
+              :dropdown-style="scanAttentionSelectDropdownStyle"
+              :get-popup-container="scanAttentionSelectPopupContainer"
               @change="loadAttentions"
             />
           </a-form-item>
@@ -197,7 +213,7 @@
             <template v-else-if="column.key === 'actions'">
               <a-space>
                 <UiButton
-                  v-if="record.attentionType === 'RECOGNITION_REVIEW'"
+                  v-if="record.attentionType === 'BINDING_CONFLICT'"
                   size="sm"
                   :disabled="!record.paperInstanceId || !record.scanBatchId"
                   @click="openBindDrawer(record)"
@@ -235,13 +251,6 @@
       @confirm="handleBind"
     >
       <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
-        <UiAlertStrip
-          tone="warning"
-          title="操作提示"
-          description="请从考生名册中选择正确的考生并提交绑定。绑定后将自动完成该试卷与考生的身份关联。"
-          dense
-          class="scan-attention__bind-alert"
-        />
         <UiErrorRetryPanel
           v-if="candidatesLoadError"
           :error="candidatesLoadError"
@@ -315,13 +324,6 @@
       @close="closeBatchBindDrawer"
       @confirm="submitBatchBind"
     >
-      <UiAlertStrip
-        tone="warning"
-        title="逐卷确认"
-        description="批量绑定会直接写入试卷与考生名册关系，请逐张卷面选择正确考生后提交。"
-        dense
-        class="scan-attention__bind-alert"
-      />
       <UiErrorRetryPanel
         v-if="candidatesLoadError"
         :error="candidatesLoadError"
@@ -488,7 +490,7 @@
  * 阅卷交付 - 扫描异常队列
  *
  * 后端契约：
- * - listScanAttentions(examId, attentionType?, scanBatchId?, paperInstanceId?)
+ * - listScanAttentions(examId, pageNum, pageSize, attentionType?, scanBatchId?, paperInstanceId?)
  * - bindPaper(...)、batchBindPapers(...)、listExamCandidates(examId)
  *
  * attentionType 枚举：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW
@@ -539,9 +541,18 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
+import { readArrayResponse, readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanAttention' })
+
+const scanAttentionSelectDropdownStyle = {
+  minWidth: '360px',
+}
+
+function scanAttentionSelectPopupContainer(): HTMLElement {
+  return document.body
+}
 
 const router = useRouter()
 
@@ -604,6 +615,7 @@ const attentionTypeOptions: { label: string, value: ScanAttentionTypeCode }[] = 
   { label: '处理阻断', value: 'PROCESSING_BLOCK' },
   { label: '重复影像', value: 'DUPLICATE_PENDING' },
   { label: '识别复核', value: 'RECOGNITION_REVIEW' },
+  { label: '身份绑定冲突', value: 'BINDING_CONFLICT' },
 ]
 
 function scanBatchStatusLabel(batch: ExamScannerBatchVO): string {
@@ -632,17 +644,13 @@ async function loadAttentions(): Promise<void> {
   try {
     const result = await listScanAttentions({
       examId: selectedExamId.value,
+      pageNum: 1,
+      pageSize: 500,
       attentionType: filterForm.attentionType || undefined,
       scanBatchId: filterForm.scanBatchId?.trim() || undefined,
       paperInstanceId: filterForm.paperInstanceId?.trim() || undefined,
     })
-    if (!Array.isArray(result)) {
-      const error = new TypeError('扫描异常列表接口返回格式错误')
-      attentionsLoadError.value = toUserError(error, '扫描异常列表加载失败')
-      showUserError(error, '扫描异常列表加载失败')
-      return
-    }
-    attentions.value = result
+    attentions.value = readPageList(result, '扫描异常列表加载失败')
   } catch (error) {
     attentionsLoadError.value = toUserError(error, '扫描异常列表加载失败')
     showUserError(error, '扫描异常列表加载失败')
@@ -668,7 +676,7 @@ async function loadScanBatches(): Promise<void> {
       pageSize: 200,
       includeDiscarded: false,
     })
-    scanBatches.value = result.list
+    scanBatches.value = readPageList(result, '扫描批次加载失败，请稍后重试')
   } catch (error) {
     scanBatches.value = []
     showUserError(error, '扫描批次加载失败')
@@ -689,7 +697,8 @@ async function loadPaperCandidates(): Promise<void> {
       pageNum: 1,
       pageSize: 500,
     })
-    paperCandidates.value = result.list.filter((item) => item.paperInstanceId)
+    paperCandidates.value = readPageList(result, '答题卡名单加载失败，请稍后重试')
+      .filter((item) => item.paperInstanceId)
   } catch (error) {
     paperCandidates.value = []
     showUserError(error, '答题卡列表加载失败')
@@ -699,11 +708,12 @@ async function loadPaperCandidates(): Promise<void> {
 }
 
 // ─── 类型色彩编码 ─────────────────────────────────
-const ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, 'red' | 'orange' | 'purple' | 'blue'> = {
+const ATTENTION_TYPE_TONE: Record<ScanAttentionTypeCode, 'red' | 'orange' | 'purple' | 'blue' | 'gray'> = {
   QUALITY_BLOCK: 'red',
   PROCESSING_BLOCK: 'orange',
   DUPLICATE_PENDING: 'purple',
   RECOGNITION_REVIEW: 'blue',
+  BINDING_CONFLICT: 'gray',
 }
 
 const ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
@@ -711,9 +721,10 @@ const ATTENTION_TYPE_LABEL: Record<ScanAttentionTypeCode, string> = {
   PROCESSING_BLOCK: '处理阻断',
   DUPLICATE_PENDING: '重复影像',
   RECOGNITION_REVIEW: '识别复核',
+  BINDING_CONFLICT: '身份绑定冲突',
 }
 
-function attentionTypeTone(type: ScanAttentionTypeCode): 'red' | 'orange' | 'purple' | 'blue' {
+function attentionTypeTone(type: ScanAttentionTypeCode): 'red' | 'orange' | 'purple' | 'blue' | 'gray' {
   return strictEnumTone(ATTENTION_TYPE_TONE, type, '扫描异常类型')
 }
 
@@ -726,14 +737,15 @@ const SCAN_ATTENTION_SOURCE_TYPE_LABEL: Record<ScanAttentionSourceTypeCode, stri
   PROCESSING_TASK: '处理任务',
   DUPLICATE_RESOLUTION: '重复扫描处置',
   GRADE_RESULT: '批改结果',
+  PAPER_INSTANCE: '试卷实例',
 }
 
 function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {
   return strictEnumLabel(SCAN_ATTENTION_SOURCE_TYPE_LABEL, type, '扫描异常来源类型')
 }
 
-function assertNeverScanAttentionType(type: never): never {
-  throw new Error(`扫描异常类型前后端合同不一致：${type}`)
+function assertNeverScanAttentionType(_type: never): never {
+  throw toUserError(null, '扫描异常类型无法识别，请刷新后重试')
 }
 
 const QUALITY_DECISION_LABEL: Record<QualityDecisionCode, string> = {
@@ -798,6 +810,8 @@ function scanAttentionStatusLabel(record: ScanAttentionItemVO): string {
       )
     case 'RECOGNITION_REVIEW':
       return strictEnumLabel(GRADE_STATUS_LABEL, record.gradeStatus, '题目批改状态')
+    case 'BINDING_CONFLICT':
+      return '待人工绑定'
     default:
       return assertNeverScanAttentionType(record.attentionType)
   }
@@ -817,6 +831,8 @@ function scanAttentionStatusTone(record: ScanAttentionItemVO): BadgeTone {
       )
     case 'RECOGNITION_REVIEW':
       return strictEnumTone(GRADE_STATUS_TONE, record.gradeStatus, '题目批改状态')
+    case 'BINDING_CONFLICT':
+      return 'orange'
     default:
       return assertNeverScanAttentionType(record.attentionType)
   }
@@ -828,6 +844,7 @@ const typeCounts = computed(() => {
     PROCESSING_BLOCK: 0,
     DUPLICATE_PENDING: 0,
     RECOGNITION_REVIEW: 0,
+    BINDING_CONFLICT: 0,
   }
   for (const a of attentions.value) {
     counts[a.attentionType] += 1
@@ -860,6 +877,12 @@ const statPanelMetrics = computed(() => [
     unit: '条',
     tone: typeCounts.value.RECOGNITION_REVIEW > 0 ? ('blue' as const) : ('gray' as const),
   },
+  {
+    label: '绑定冲突',
+    value: typeCounts.value.BINDING_CONFLICT,
+    unit: '条',
+    tone: typeCounts.value.BINDING_CONFLICT > 0 ? ('gray' as const) : ('green' as const),
+  },
 ])
 
 const donutItems = computed<UiChartSliceItem[]>(() => [
@@ -881,6 +904,12 @@ const donutItems = computed<UiChartSliceItem[]>(() => [
     label: '识别复核',
     value: typeCounts.value.RECOGNITION_REVIEW,
     tone: 'blue',
+  },
+  {
+    key: 'binding',
+    label: '绑定冲突',
+    value: typeCounts.value.BINDING_CONFLICT,
+    tone: 'gray',
   },
 ])
 
@@ -1025,13 +1054,7 @@ async function ensureCandidatesLoaded(): Promise<boolean> {
   candidatesLoadError.value = null
   try {
     const result = await listExamCandidates(selectedExamId.value)
-    if (!Array.isArray(result)) {
-      const error = new TypeError('考生名册接口返回格式错误')
-      candidatesLoadError.value = toUserError(error, '考生名册加载失败')
-      showUserError(error, '考生名册加载失败')
-      return false
-    }
-    candidates.value = result
+    candidates.value = readArrayResponse(result, '考生名册加载失败')
     return true
   } catch (error) {
     candidatesLoadError.value = toUserError(error, '考生名册加载失败')
@@ -1055,7 +1078,7 @@ function openBindDrawer(record: ScanAttentionItemVO): void {
   bindForm.scanBatchDisplayName = record.scanBatchDisplayName
   bindForm.paperInstanceId = record.paperInstanceId
   bindForm.paperDisplayName = record.paperDisplay.primaryText
-  bindForm.recognizedStudentNo = ''
+  bindForm.recognizedStudentNo = record.studentNo?.trim() || ''
   bindForm.confirmedCandidateRosterId = undefined
   bindForm.attemptStatus = 'NORMAL'
   bindForm.attemptNo = ''
@@ -1141,7 +1164,7 @@ function parseBindAttemptStatus(value: string): BatchBindAttemptStatus | null {
   return null
 }
 
-/** 将扫描异常诊断转为教师可执行的处置提示，避免展示接口、字段或识别链路调试信息。 */
+/** 将扫描异常诊断转为教师可执行的处置提示，避免展示接口、字段或识别链路内部细节。 */
 function scanAttentionDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
@@ -1179,7 +1202,7 @@ const rowSelection = computed(() => ({
   },
   getCheckboxProps: (record: ScanAttentionItemVO) => ({
     disabled:
-      record.attentionType !== 'RECOGNITION_REVIEW'
+      record.attentionType !== 'BINDING_CONFLICT'
       || !record.paperInstanceId
       || !record.scanBatchId,
   }),
@@ -1193,12 +1216,12 @@ async function handleBatchBind(): Promise<void> {
   const selected = attentions.value.filter(
     (item) =>
       selectedRowKeys.value.includes(item.id)
-      && item.attentionType === 'RECOGNITION_REVIEW'
+      && item.attentionType === 'BINDING_CONFLICT'
       && item.paperInstanceId
       && item.scanBatchId,
   )
   if (selected.length === 0) {
-    message.error('请选择可身份绑定的识别复核异常项')
+    message.error('请选择可身份绑定的绑定冲突异常项')
     return
   }
   const scanBatchIds = new Set(selected.map((item) => item.scanBatchId))
@@ -1222,7 +1245,7 @@ async function handleBatchBind(): Promise<void> {
     scanBatchDisplayName: item.scanBatchDisplayName,
     paperInstanceId: item.paperInstanceId!,
     paperDisplayName: item.paperDisplay.primaryText,
-    recognizedStudentNo: '',
+    recognizedStudentNo: item.studentNo?.trim() || '',
     confirmedCandidateRosterId: undefined,
     attemptStatus: 'NORMAL',
     attemptNo: '',
@@ -1414,10 +1437,21 @@ onMounted(async () => {
 
   &__filter-form {
     margin: 0;
+
+    :deep(.ant-form-item) {
+      margin-inline-end: 16px;
+      margin-bottom: 8px;
+    }
   }
 
   &__type-select {
     width: 240px;
+    min-width: 240px;
+  }
+
+  &__filter-select {
+    width: 320px;
+    min-width: 320px;
   }
 
   &__filter-input {

@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
-const { workflow } = useKioskCtx()
+const { workflow, ui } = useKioskCtx()
 
 const visible = computed(
   () => Boolean(workflow.errorMessage.value) || Boolean(workflow.successMessage.value),
@@ -20,12 +20,23 @@ function clearError() {
 function clearSuccess() {
   workflow.successMessage.value = ''
 }
+function openReactivationSettings() {
+  ui.openSettings()
+}
 </script>
 
 <template>
   <div v-if="visible" class="notice-band">
     <div v-if="workflow.errorMessage.value" class="notice notice-danger" role="alert">
       <span>{{ workflow.errorMessage.value }}</span>
+      <button
+        v-if="workflow.kioskBrowserSessionLost.value"
+        type="button"
+        class="notice-action"
+        @click="openReactivationSettings"
+      >
+        打开设备设置
+      </button>
       <button type="button" class="notice-dismiss" title="按 Esc 关闭" @click="clearError">
         关闭
       </button>
@@ -89,7 +100,23 @@ function clearSuccess() {
   opacity: 0.75;
   transition: opacity var(--kiosk-dur-fast) var(--kiosk-easing);
 }
+.notice-action {
+  height: 32px;
+  padding: 0 var(--kiosk-space-3);
+  background: var(--kiosk-surface);
+  border: 1px solid currentColor;
+  border-radius: var(--kiosk-radius-sm);
+  color: inherit;
+  font-family: inherit;
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-medium);
+  cursor: pointer;
+  white-space: nowrap;
+}
 .notice-dismiss:hover {
   opacity: 1;
+}
+.notice-action:hover {
+  background: var(--kiosk-surface-alt);
 }
 </style>

@@ -1,8 +1,9 @@
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
+import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { deleteExportJob, queryExportJobs } from '@/apis/edu/export'
 import { showUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 
 /**
  * 导出任务中心 Store
@@ -44,12 +45,11 @@ export const useExportTaskStore = defineStore('export-task', () => {
       // 轮询刷新不显示 loading，但失败必须暴露，避免任务状态停滞后继续误导用户。
       try {
         const result = await queryExportJobs(lastFetchParams.value)
-        tasks.value = result.list
-        pagination.value = { total: Number(result.total), pages: result.pages }
+        tasks.value = readPageList(result, '导出任务加载失败，请稍后重试')
+        pagination.value = { total: readPageTotal(result), pages: result.pages }
       } catch (error) {
         stopPolling()
         showUserError(error, '导出任务状态刷新失败，请稍后重试')
-        throw error
       }
     }, POLLING_INTERVAL)
   }
@@ -71,8 +71,8 @@ export const useExportTaskStore = defineStore('export-task', () => {
       }
       lastFetchParams.value = query
       const result = await queryExportJobs(query)
-      tasks.value = result.list
-      pagination.value = { total: Number(result.total), pages: result.pages }
+      tasks.value = readPageList(result, '导出任务加载失败，请稍后重试')
+      pagination.value = { total: readPageTotal(result), pages: result.pages }
     } finally {
       loading.value = false
     }

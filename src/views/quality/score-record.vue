@@ -17,10 +17,6 @@ import type {
   ScoreRecordSaveRequest,
   ScoreRecordVO,
 } from '@/apis/quality'
-import type { UserDto } from '@/types/api-types.d'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   rubricItemApi,
@@ -29,6 +25,10 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
+import type { UserDto } from '@/types/api-types.d'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   ClassSelector,
   CourseSelector,
@@ -39,7 +39,7 @@ import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const batchColumns: ColumnsType = [
@@ -159,15 +159,11 @@ const signals = computed<SignalMetric[]>(() => {
   const invalid = list.length - valid
   const errored = list.filter((r) => r.errorCodes && r.errorCodes.length > 0).length
   const totalScore = list.reduce((sum, r) => {
-    if (!Number.isFinite(r.score)) {
-      throw new TypeError(`成绩明细得分字段异常：${String(r.score)}`)
-    }
+    if (!Number.isFinite(r.score)) return sum
     return sum + r.score
   }, 0)
   const totalFull = list.reduce((sum, r) => {
-    if (!Number.isFinite(r.fullScore)) {
-      throw new TypeError(`成绩明细满分字段异常：${String(r.fullScore)}`)
-    }
+    if (!Number.isFinite(r.fullScore)) return sum
     return sum + r.fullScore
   }, 0)
   const ratio = totalFull > 0 ? Math.round((totalScore / totalFull) * 100) : 0
@@ -206,9 +202,7 @@ const editor = ref<ScoreRecordSaveRequest>({
 
 const editorRubricTotal = computed(() =>
   editorRubricScores.value.reduce((sum, item) => {
-    if (!Number.isFinite(item.score)) {
-      throw new TypeError(`成绩明细评分项得分字段异常：${String(item.score)}`)
-    }
+    if (!Number.isFinite(item.score)) return sum
     return sum + item.score
   }, 0),
 )
@@ -224,9 +218,7 @@ async function loadEditorRubrics(assessmentItemId: string, record?: ScoreRecordV
     const rubrics = await rubricItemApi.listByItem(assessmentItemId)
     const existingScores = new Map<string, number>()
     for (const item of record?.rubricScores ?? []) {
-      if (!Number.isFinite(item.score)) {
-        throw new TypeError(`成绩明细评分项得分字段异常：${String(item.score)}`)
-      }
+      if (!Number.isFinite(item.score)) continue
       existingScores.set(item.rubricItemId, item.score)
     }
     editorRubrics.value = rubrics
@@ -241,11 +233,13 @@ async function loadEditorRubrics(assessmentItemId: string, record?: ScoreRecordV
 
 async function handleEditorAssessmentChange(value: SelectValue): Promise<void> {
   if (typeof value !== 'string') {
-    throw new TypeError(`考核环节选择值必须是字符串：${String(value)}`)
+    showUserError(null, '考核环节选择无效，请重新选择')
+    return
   }
   const selected = assessmentItems.value.find((item) => item.id === value)
   if (!selected) {
-    throw new Error(`考核环节不存在：${value}`)
+    showUserError(null, '所选考核环节不存在，请重新选择')
+    return
   }
   editor.value.fullScore = selected.fullScore
   await loadEditorRubrics(value)

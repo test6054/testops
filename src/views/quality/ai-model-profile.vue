@@ -18,15 +18,15 @@ import type {
   AiModelProfileVO,
   AiProviderType,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AI_HEALTH_STATUS_COLOR,
   AI_HEALTH_STATUS_LABEL,
   AI_PROVIDER_TYPE_LABEL,
   aiModelProfileApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -279,10 +279,7 @@ async function handleHealthCheck(record: AiModelProfileVO) {
 
 function apiKeyDisplayText(record: AiModelProfileVO): string {
   if (!record.apiKeyConfigured) return '未配置'
-  if (record.apiKeyMasked !== '****') {
-    throw new Error('AI 模型密钥掩码不符合前后端契约')
-  }
-  return record.apiKeyMasked
+  return record.apiKeyMasked?.trim() || '****'
 }
 
 /* ========== 信号指标 ========== */
@@ -472,13 +469,6 @@ onMounted(() => {
       ok-text="保存"
       @ok="submitEditor"
     >
-      <a-alert
-        v-if="editor.enabled"
-        type="info"
-        show-icon
-        message="提交后本条配置将成为当前租户唯一启用模型，其它模型配置会自动停用。"
-        class="ai-model__editor-alert"
-      />
       <a-form layout="vertical" :model="editor">
         <a-form-item label="配置名称" required>
           <a-input v-model:value="editor.profileName" placeholder="例如：DeepSeek-V3 主跳" />

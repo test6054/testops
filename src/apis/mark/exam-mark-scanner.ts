@@ -12,18 +12,16 @@ import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 /** 接入模式编码 - 对应后端 ScannerInterfaceMode 枚举 */
-export type ScannerInterfaceModeCode = 'HTTP_PUSH' | 'SANE_PULL'
+export type ScannerInterfaceModeCode = 'HTTP_PUSH'
 
 /** 接入模式文案映射 */
 export const SCANNER_INTERFACE_MODE_LABEL: Record<ScannerInterfaceModeCode, string> = {
-  HTTP_PUSH: 'HTTP 推送',
-  SANE_PULL: 'SANE 主动采集',
+  HTTP_PUSH: '一体机 Agent',
 }
 
 /** 接入模式徽标颜色（统一 BadgeTone） */
 export const SCANNER_INTERFACE_MODE_COLOR: Record<ScannerInterfaceModeCode, BadgeTone> = {
   HTTP_PUSH: 'blue',
-  SANE_PULL: 'green',
 }
 
 /** 设备状态编码 */
@@ -87,12 +85,6 @@ export interface ExamScannerDeviceVO {
   status: ScannerDeviceStatusCode
   interfaceMode: ScannerInterfaceModeCode
   pushTokenMasked?: string
-  saneHost?: string
-  sanePort?: number
-  saneDeviceName?: string
-  saneResolution?: number
-  saneColorMode?: ScannerColorModeCode
-  saneDuplexMode?: ScannerDuplexModeCode
   defaultExamId?: string
   defaultClassRefs: ExamClassRefVO[]
   manufacturer?: string
@@ -152,24 +144,14 @@ export interface ExamScannerDeviceCreateRequest {
   scannerDeviceId: string
   scannerStationId: string
   deviceName: string
-  interfaceMode: ScannerInterfaceModeCode
   scannerIp?: string
   status?: ScannerDeviceStatusCode
-  /** SANE_PULL 模式必填 */
-  saneHost?: string
-  sanePort?: number
-  saneDeviceName?: string
-  saneResolution?: number
-  saneColorMode?: ScannerColorModeCode
-  saneDuplexMode?: ScannerDuplexModeCode
-  /** HTTP_PUSH 模式可选 */
   defaultExamId?: string
   defaultClassIds?: string[]
   manufacturer?: string
   model?: string
   location?: string
   remark?: string
-  /** 一体机 Kiosk 锁是否启用 */
   kioskLockEnabled: boolean
 }
 
@@ -177,44 +159,15 @@ export interface ExamScannerDeviceCreateRequest {
 export interface ExamScannerDeviceUpdateRequest {
   id: string
   deviceName: string
-  interfaceMode: ScannerInterfaceModeCode
   scannerIp?: string
   status?: ScannerDeviceStatusCode
-  saneHost?: string
-  sanePort?: number
-  saneDeviceName?: string
-  saneResolution?: number
-  saneColorMode?: ScannerColorModeCode
-  saneDuplexMode?: ScannerDuplexModeCode
   defaultExamId?: string
   defaultClassIds?: string[]
   manufacturer?: string
   model?: string
   location?: string
   remark?: string
-  /** 一体机 Kiosk 锁是否启用 */
   kioskLockEnabled: boolean
-}
-
-/** SANE 主动采集触发请求 - 对应 ExamScannerSaneTriggerRequest */
-export interface ExamScannerSaneTriggerRequest {
-  deviceId: string
-  examId: string
-  declaredClassIds: string[]
-  expectedPages: number
-  batchExternalNo?: string
-  resolutionOverride?: number
-  colorModeOverride?: ScannerColorModeCode
-  duplexModeOverride?: ScannerDuplexModeCode
-}
-
-/** SANE 主动采集触发响应 - 对应 ExamScannerSaneTriggerResponse */
-export interface ExamScannerSaneTriggerVO {
-  scanBatchId: string
-  fileId?: string
-  fileIds?: string[]
-  pageCount: number
-  fileHash?: string
 }
 
 // ScanAttentionQueryRequest / ScanAttentionItemVO 定义在 @/apis/mark/exam，避免重复
@@ -329,16 +282,6 @@ export function createScannerActivationCode(
     '/api/mark/exams/scan-devices/activation-code/create',
     request,
   )
-}
-
-/**
- * 触发 SANE 主动采集（仅 SANE_PULL 模式可用）
- * POST /api/mark/exams/scan-devices/sane-scan
- */
-export function triggerSaneScan(
-  request: ExamScannerSaneTriggerRequest,
-): Promise<ExamScannerSaneTriggerVO> {
-  return http.post<ExamScannerSaneTriggerVO>('/api/mark/exams/scan-devices/sane-scan', request)
 }
 
 // listScanAttentions 定义在 @/apis/mark/exam，避免重复

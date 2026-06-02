@@ -43,12 +43,7 @@
 
     <template v-else>
       <a-card title="出勤核对摘要" :bordered="false" size="small">
-        <a-alert
-          v-if="!reconcileVO"
-          type="info"
-          show-icon
-          message="尚未执行出勤核对，请点击右上角“出勤核对”按钮"
-        />
+        <UiEmpty v-if="!reconcileVO" description="尚未执行出勤核对" />
         <div v-else class="absence-page__summary">
           <div class="absence-page__summary-ring">
             <UiRingProgress
@@ -258,14 +253,6 @@ import type {
   AbsentStudentSnapshotVO,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -276,6 +263,14 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -453,7 +448,7 @@ async function loadRecords(): Promise<void> {
   }
 }
 
-function handleRecordPageChange(page: { current: number, pageSize: number }): void {
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
   recordPagination.pageNum = page.current
   recordPagination.pageSize = page.pageSize
   void loadRecords()
@@ -533,7 +528,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })

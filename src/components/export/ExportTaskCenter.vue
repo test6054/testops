@@ -191,6 +191,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
+import { ExportBusinessType } from '@/apis/edu/export'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleFilled from '@ant-design/icons-vue/CheckCircleFilled'
@@ -205,7 +206,6 @@ import LoadingOutlined from '@ant-design/icons-vue/LoadingOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ExportBusinessType } from '@/apis/edu/export'
 import { UiFilterBar } from '@/components/ui-guide/ui'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { AsyncTaskStatusEnum, ExportFormatEnum } from '@/types/enums'
@@ -468,7 +468,6 @@ const deleteTask = async (jobId: string) => {
     message.success('删除成功')
   } catch (error) {
     showUserError(error, '导出任务删除失败，请稍后重试')
-    throw error
   }
 }
 

@@ -17,6 +17,9 @@ import type { UserDto } from '@/types/api-types.d'
 import http from '@/config/axios'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
+const EXAM_TEMPLATE_DATA_ERROR = '试卷模板数据异常，请刷新后重试'
+const STANDARD_ANSWER_DATA_ERROR = '标准答案数据异常，请刷新后重试'
+
 /** 试卷模板未配置业务码 - 与后端 ResultCodeEnum.EXAM_MARK_PAPER_TEMPLATE_NOT_CONFIGURED 对齐 */
 export const PAPER_TEMPLATE_NOT_CONFIGURED_CODE = 20014
 
@@ -72,6 +75,31 @@ export type BindingStatusCode = 'UNBOUND' | 'BOUND' | 'CONFLICT' | 'DISCARDED'
 
 /** 扫描页质量判定 - 与后端 QualityDecision 枚举完全一致 */
 export type QualityDecisionCode = 'PASS' | 'BLOCKED'
+
+/** 扫描页质量判定文案 */
+export const QUALITY_DECISION_LABEL: Record<QualityDecisionCode, string> = {
+  PASS: '质量通过',
+  BLOCKED: '质量阻断',
+}
+
+/** 扫描页质量判定徽标色调 */
+export const QUALITY_DECISION_TONE: Record<
+  QualityDecisionCode,
+  import('@/components/ui-guide/ui/types').BadgeTone
+> = {
+  PASS: 'green',
+  BLOCKED: 'red',
+}
+
+/** 阅卷原始扫描页引用 - 与后端 ScannedPageRef 字段对齐 */
+export interface MarkingScanPageRefVO {
+  pageId: string
+  pageSeq: number
+  templatePageNo: number
+  fileId?: string
+  qualityStatus: QualityDecisionCode
+  identityMaskedView?: boolean
+}
 
 /** 批改处理任务状态 - 与后端 TaskStatus 枚举完全一致 */
 export type TaskStatusCode = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'BLOCKED' | 'FAILED'
@@ -161,6 +189,49 @@ export interface ExamDetailVO {
   answerCount: number
   /** 当前考生名册数量 */
   candidateCount: number
+  /** 制卷形态 */
+  materialLayoutMode?: ExamMaterialLayoutModeCode
+  materialLayoutModeMessage?: string
+  /** 整卷印刷来源 */
+  printSourceMode?: ExamPrintSourceModeCode
+  printSourceModeMessage?: string
+  layoutModeLocked?: boolean
+  pageTemplateReady?: boolean
+  masterConfigured?: boolean
+  masterName?: string
+  masterRegionReady?: boolean
+  subjectiveRegionReady?: boolean
+  subjectiveQuestionCount?: number
+  subjectiveRegionConfiguredCount?: number
+  printPackageReady?: boolean
+  printPackageCount?: number
+  /** 准备待完善项（提示能力缺口，不阻断扫描；字段名与后端 prepBlockingReasons 对齐） */
+  prepBlockingReasons?: string[]
+}
+
+/** 制卷形态 - 对应 ExamMaterialLayoutMode */
+export type ExamMaterialLayoutModeCode = 'ANSWER_SHEET' | 'FULL_PAPER'
+
+/** 制卷形态文案 */
+export const EXAM_MATERIAL_LAYOUT_MODE_LABEL: Record<ExamMaterialLayoutModeCode, string> = {
+  ANSWER_SHEET: '独立答卷页',
+  FULL_PAPER: '整卷作答',
+}
+
+/** 整卷印刷来源 - 对应 ExamPrintSourceMode */
+export type ExamPrintSourceModeCode = 'SYSTEM_PRINT' | 'EXTERNAL_PRINT'
+
+/** 整卷印刷来源文案 */
+export const EXAM_PRINT_SOURCE_MODE_LABEL: Record<ExamPrintSourceModeCode, string> = {
+  SYSTEM_PRINT: '系统制卷',
+  EXTERNAL_PRINT: '外带已印试卷',
+}
+
+/** 保存制卷形态请求 - 对应 ExamMaterialLayoutSaveRequest */
+export interface ExamMaterialLayoutSaveRequest {
+  examId: string
+  materialLayoutMode: ExamMaterialLayoutModeCode
+  printSourceMode?: ExamPrintSourceModeCode
 }
 
 /** 考试模式枚举编码 - 对应后端 ExamMode */
@@ -302,46 +373,46 @@ export interface ExamTemplateVO {
   subjectiveAnonymityMode: AnonymityModeCode
 }
 
-function requireTemplateText(value: string | undefined, fieldName: string): void {
+function requireTemplateText(value: string | undefined, message: string): void {
   if (!value) {
-    throw new Error(`${fieldName}不能为空`)
+    throw new Error(message)
   }
 }
 
-function requireTemplateNumber(value: number | undefined, fieldName: string): void {
+function requireTemplateNumber(value: number | undefined, message: string): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`${fieldName}不能为空`)
+    throw new TypeError(message)
   }
 }
 
 function validateExamPaperPageTemplateContract(record: ExamPaperPageTemplateVO): void {
-  requireTemplateText(record.pageTemplateId, '模板页面ID')
-  requireTemplateNumber(record.pageNo, '模板页号')
-  requireTemplateText(record.templateFileId, '模板页文件ID')
-  requireTemplateNumber(record.widthPx, '模板页宽度')
-  requireTemplateNumber(record.heightPx, '模板页高度')
+  requireTemplateText(record.pageTemplateId, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateNumber(record.pageNo, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateText(record.templateFileId, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateNumber(record.widthPx, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateNumber(record.heightPx, EXAM_TEMPLATE_DATA_ERROR)
 }
 
 function validateExamQuestionTemplateContract(record: ExamQuestionTemplateVO): void {
-  requireTemplateText(record.questionTemplateId, '题目模板ID')
-  requireTemplateText(record.questionNo, '题号')
+  requireTemplateText(record.questionTemplateId, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateText(record.questionNo, EXAM_TEMPLATE_DATA_ERROR)
   strictEnumLabel({ OBJECTIVE: '客观题', SUBJECTIVE: '主观题' }, record.questionType, '题型')
-  requireTemplateNumber(record.fullScore, '题目满分')
-  requireTemplateNumber(record.sortNo, '题目排序号')
+  requireTemplateNumber(record.fullScore, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateNumber(record.sortNo, EXAM_TEMPLATE_DATA_ERROR)
 }
 
 function validateExamTemplateContract(record: ExamTemplateVO): ExamTemplateVO {
-  requireTemplateText(record.templateId, '试卷模板ID')
-  requireTemplateText(record.examId, '考试ID')
-  requireTemplateText(record.templateName, '试卷模板名称')
-  requireTemplateNumber(record.totalPages, '试卷模板总页数')
+  requireTemplateText(record.templateId, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateText(record.examId, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateText(record.templateName, EXAM_TEMPLATE_DATA_ERROR)
+  requireTemplateNumber(record.totalPages, EXAM_TEMPLATE_DATA_ERROR)
   strictEnumLabel(EFFECTIVE_STATUS_LABEL, record.status, '试卷模板生效状态')
   strictEnumLabel(SUBJECTIVE_ANONYMITY_MODE_LABEL, record.subjectiveAnonymityMode, '主观题匿名模式')
   if (!Array.isArray(record.pages)) {
-    throw new TypeError('模板页面集合不能为空')
+    throw new TypeError(EXAM_TEMPLATE_DATA_ERROR)
   }
   if (!Array.isArray(record.questions)) {
-    throw new TypeError('题目模板集合不能为空')
+    throw new TypeError(EXAM_TEMPLATE_DATA_ERROR)
   }
   record.pages.forEach(validateExamPaperPageTemplateContract)
   record.questions.forEach(validateExamQuestionTemplateContract)
@@ -358,12 +429,12 @@ function validateExamTemplateContract(record: ExamTemplateVO): ExamTemplateVO {
  *   <li>AI_GRADE：客观题未配标准答案或显式选 AI 评分时由 AI 给出评分（NEED_REVIEW），教师复核确认后落地。</li>
  * </ul>
  */
-export type ObjectiveComparePolicyCode
-  = | 'EXACT_NORMALIZED'
-    | 'CHOICE_SET'
-    | 'REGEX'
-    | 'NUMERIC_TOLERANCE'
-    | 'AI_GRADE'
+export type ObjectiveComparePolicyCode =
+  | 'EXACT_NORMALIZED'
+  | 'CHOICE_SET'
+  | 'REGEX'
+  | 'NUMERIC_TOLERANCE'
+  | 'AI_GRADE'
 
 /** 客观题比较策略选项，供前端 a-select 渲染 */
 export const OBJECTIVE_COMPARE_POLICY_OPTIONS: Array<{
@@ -436,29 +507,35 @@ export interface ExamStandardAnswerVO {
 }
 
 function validateStandardAnswerOptionContract(record: ExamQuestionStandardAnswerOptionVO): void {
-  requireTemplateText(record.optionId, '标准答案选项ID')
-  requireTemplateText(record.optionLabel, '标准答案选项标签')
-  requireTemplateNumber(record.sortNo, '标准答案选项排序号')
+  requireTemplateText(record.optionId, STANDARD_ANSWER_DATA_ERROR)
+  requireTemplateText(record.optionLabel, STANDARD_ANSWER_DATA_ERROR)
+  requireTemplateNumber(record.sortNo, STANDARD_ANSWER_DATA_ERROR)
 }
 
-function validateStandardAnswerContract(record: ExamStandardAnswerVO | null): ExamStandardAnswerVO | null {
+function validateStandardAnswerContract(
+  record: ExamStandardAnswerVO | null,
+): ExamStandardAnswerVO | null {
   if (record === null) {
     return null
   }
-  requireTemplateText(record.standardAnswerId, '标准答案ID')
-  requireTemplateText(record.examId, '考试ID')
-  requireTemplateText(record.questionTemplateId, '题目模板ID')
+  requireTemplateText(record.standardAnswerId, STANDARD_ANSWER_DATA_ERROR)
+  requireTemplateText(record.examId, STANDARD_ANSWER_DATA_ERROR)
+  requireTemplateText(record.questionTemplateId, STANDARD_ANSWER_DATA_ERROR)
   if (record.comparePolicy) {
-    strictEnumLabel({
-      EXACT_NORMALIZED: '规范化精确比较',
-      CHOICE_SET: '选择题集合判等',
-      REGEX: '正则匹配',
-      NUMERIC_TOLERANCE: '数值容差',
-      AI_GRADE: 'AI 评分',
-    }, record.comparePolicy, '客观题比较策略')
+    strictEnumLabel(
+      {
+        EXACT_NORMALIZED: '规范化精确比较',
+        CHOICE_SET: '选择题集合判等',
+        REGEX: '正则匹配',
+        NUMERIC_TOLERANCE: '数值容差',
+        AI_GRADE: 'AI 评分',
+      },
+      record.comparePolicy,
+      '客观题比较策略',
+    )
   }
   if (!Array.isArray(record.choiceOptions)) {
-    throw new TypeError('标准答案选择项集合不能为空')
+    throw new TypeError(STANDARD_ANSWER_DATA_ERROR)
   }
   record.choiceOptions.forEach(validateStandardAnswerOptionContract)
   if (record.effectiveStatus) {
@@ -484,9 +561,7 @@ export interface ExamCandidateVO {
  * 分页查询考试列表
  * POST /api/mark/exams/page
  */
-export function pageExams(
-  request: ExamPageQueryRequest,
-): Promise<PageResult<ExamSummaryVO>> {
+export function pageExams(request: ExamPageQueryRequest): Promise<PageResult<ExamSummaryVO>> {
   return http.post<PageResult<ExamSummaryVO>>('/api/mark/exams/page', request)
 }
 
@@ -496,6 +571,14 @@ export function pageExams(
  */
 export function getExamDetail(examId: string): Promise<ExamDetailVO> {
   return http.post<ExamDetailVO>('/api/mark/exams/detail', { examId })
+}
+
+/**
+ * 保存考试制卷形态与整卷印刷来源
+ * POST /api/mark/exams/material-layout/save
+ */
+export function saveMaterialLayout(request: ExamMaterialLayoutSaveRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/material-layout/save', request)
 }
 
 /**
@@ -579,7 +662,9 @@ export interface ExamCandidatePreviewRequest {
   candidates: ExamCandidateRosterRequest[]
 }
 
-export function previewExamCandidates(request: ExamCandidatePreviewRequest): Promise<ExamCandidateVO[]> {
+export function previewExamCandidates(
+  request: ExamCandidatePreviewRequest,
+): Promise<ExamCandidateVO[]> {
   return http.post<ExamCandidateVO[]>('/api/mark/exams/scope/candidates/preview', request)
 }
 
@@ -620,7 +705,9 @@ export interface ExamStudentTreeRequest {
   classIds?: string[]
 }
 
-export function listExamStudentTree(request: ExamStudentTreeRequest): Promise<ExamClassStudentTreeNodeVO[]> {
+export function listExamStudentTree(
+  request: ExamStudentTreeRequest,
+): Promise<ExamClassStudentTreeNodeVO[]> {
   return http.post<ExamClassStudentTreeNodeVO[]>('/api/mark/exams/scope/student-tree', request)
 }
 
@@ -628,9 +715,7 @@ export function listExamStudentTree(request: ExamStudentTreeRequest): Promise<Ex
  * 保存试卷模板（含页面 + 题目），全量替换
  * POST /api/mark/exams/template/save
  */
-export function saveExamTemplate(
-  request: ExamTemplateSaveRequest,
-): Promise<string> {
+export function saveExamTemplate(request: ExamTemplateSaveRequest): Promise<string> {
   return http.post<string>('/api/mark/exams/template/save', request)
 }
 
@@ -651,7 +736,8 @@ export function saveAnswerSheetTemplate(
  * 注意：模板不存在、缺少页面或缺少题目时，后端返回 PAPER_TEMPLATE_NOT_CONFIGURED_CODE。
  */
 export function getExamTemplate(examId: string): Promise<ExamTemplateVO> {
-  return http.post<ExamTemplateVO>('/api/mark/exams/template', { examId })
+  return http
+    .post<ExamTemplateVO>('/api/mark/exams/template', { examId })
     .then(validateExamTemplateContract)
 }
 
@@ -668,9 +754,7 @@ export function isPaperTemplateNotConfiguredError(error: MarkBusinessError): boo
  * 保存题目标准答案
  * POST /api/mark/exams/standard-answer/save
  */
-export function saveStandardAnswer(
-  request: ExamStandardAnswerSaveRequest,
-): Promise<string> {
+export function saveStandardAnswer(request: ExamStandardAnswerSaveRequest): Promise<string> {
   return http.post<string>('/api/mark/exams/standard-answer/save', request)
 }
 
@@ -681,8 +765,29 @@ export function saveStandardAnswer(
 export function getStandardAnswer(
   request: ExamStandardAnswerQueryRequest,
 ): Promise<ExamStandardAnswerVO | null> {
-  return http.post<ExamStandardAnswerVO | null>('/api/mark/exams/standard-answer/get', request)
+  return http
+    .post<ExamStandardAnswerVO | null>('/api/mark/exams/standard-answer/get', request)
     .then(validateStandardAnswerContract)
+}
+
+/**
+ * 分页查询考试考生名单
+ * POST /api/mark/exams/candidates
+ */
+export interface ExamCandidatePageQueryRequest {
+  examId: string
+  /** 班级 ID 过滤 */
+  classId?: string
+  /** 学号或姓名关键词 */
+  keyword?: string
+  pageNum: number
+  pageSize: number
+}
+
+export function pageExamCandidates(
+  request: ExamCandidatePageQueryRequest,
+): Promise<PageResult<ExamCandidateVO>> {
+  return http.post<PageResult<ExamCandidateVO>>('/api/mark/exams/candidates', request)
 }
 
 /**
@@ -695,12 +800,11 @@ export async function listExamCandidates(examId: string): Promise<ExamCandidateV
   const all: ExamCandidateVO[] = []
   let pageNum = 1
   while (true) {
-    const page = await http
-      .post<PageResult<ExamCandidateVO>>('/api/mark/exams/candidates', {
-        examId,
-        pageNum,
-        pageSize: EXAM_CANDIDATE_PAGE_SIZE,
-      })
+    const page = await pageExamCandidates({
+      examId,
+      pageNum,
+      pageSize: EXAM_CANDIDATE_PAGE_SIZE,
+    })
     all.push(...page.list)
     if (pageNum >= page.pages || page.list.length === 0) {
       break
@@ -713,13 +817,13 @@ export async function listExamCandidates(examId: string): Promise<ExamCandidateV
 // ─── 考试成绩汇总（成绩确认 / 成绩发布列表） ──────────────────────────
 
 /** 与后端 FinalScoreStatus 枚举对齐（共 6 个状态） */
-export type FinalScoreStatusCode
-  = | 'PENDING'
-    | 'CALCULATED'
-    | 'CONFIRMED'
-    | 'CORRECTED'
-    | 'PUBLISHED'
-    | 'WITHDRAWN'
+export type FinalScoreStatusCode =
+  | 'PENDING'
+  | 'CALCULATED'
+  | 'CONFIRMED'
+  | 'CORRECTED'
+  | 'PUBLISHED'
+  | 'WITHDRAWN'
 
 /** 最终成绩状态文案映射 */
 export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
@@ -803,10 +907,10 @@ export interface UnboundPaperInstanceDisplayVO extends PaperInstanceDisplayBaseV
 }
 
 /** 答卷展示信息 - 对应 PaperInstanceDisplayVO */
-export type PaperInstanceDisplayVO
-  = | RealNamePaperInstanceDisplayVO
-    | AnonymousPaperInstanceDisplayVO
-    | UnboundPaperInstanceDisplayVO
+export type PaperInstanceDisplayVO =
+  | RealNamePaperInstanceDisplayVO
+  | AnonymousPaperInstanceDisplayVO
+  | UnboundPaperInstanceDisplayVO
 
 /** 考试成绩汇总查询请求 - 对应 ExamScoreSummaryQueryRequest */
 export interface ExamScoreSummaryQueryRequest extends QueryDto {
@@ -898,20 +1002,22 @@ export interface ExamScanSourceImportVO {
 }
 
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
-export type ScanAttentionTypeCode
-  = | 'QUALITY_BLOCK'
-    | 'PROCESSING_BLOCK'
-    | 'DUPLICATE_PENDING'
-    | 'RECOGNITION_REVIEW'
+export type ScanAttentionTypeCode =
+  | 'QUALITY_BLOCK'
+  | 'PROCESSING_BLOCK'
+  | 'DUPLICATE_PENDING'
+  | 'RECOGNITION_REVIEW'
+  | 'BINDING_CONFLICT'
 
 /** 扫描异常来源类型 - 对应后端扫描异常聚合 SQL 固定来源 */
-export type ScanAttentionSourceTypeCode
-  = | 'SCANNED_PAGE'
-    | 'PROCESSING_TASK'
-    | 'DUPLICATE_RESOLUTION'
-    | 'GRADE_RESULT'
+export type ScanAttentionSourceTypeCode =
+  | 'SCANNED_PAGE'
+  | 'PROCESSING_TASK'
+  | 'DUPLICATE_RESOLUTION'
+  | 'GRADE_RESULT'
+  | 'PAPER_INSTANCE'
 
-export interface ScanAttentionQueryRequest {
+export interface ScanAttentionQueryRequest extends QueryDto {
   examId: string
   scanBatchId?: string
   paperInstanceId?: string
@@ -957,12 +1063,7 @@ export interface ScanAttentionItemVO {
  * - DISCARDED：教师在扫描审阅 / 异常处置时显式废弃整批，与封存（sealed_at）互斥；
  *   状态机进入 DISCARDED 后不再产生新页、不再纳入归档与统计。
  */
-export type ScanBatchStatusCode
-  = | 'RECEIVED'
-    | 'BLOCKED'
-    | 'BOUND'
-    | 'COMPLETED'
-    | 'DISCARDED'
+export type ScanBatchStatusCode = 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED' | 'DISCARDED'
 
 /** 扫描批次状态文案映射 - 与后端 ScanBatchStatus.message 完整一致 */
 export const SCAN_BATCH_STATUS_LABEL: Record<ScanBatchStatusCode, string> = {
@@ -1047,8 +1148,6 @@ export interface ExamScannerBatchCreateRequest {
   scanStartTime: string
   /** 扫描时间窗口终点 */
   scanEndTime: string
-  /** 教师备注的批次外部编号（可选） */
-  batchExternalNo?: string
 }
 
 /** 扫描批次分页查询请求 - 对应 ExamScannerBatchQueryRequest */
@@ -1141,8 +1240,12 @@ export function importScanSource(
  */
 export function listScanAttentions(
   request: ScanAttentionQueryRequest,
-): Promise<ScanAttentionItemVO[]> {
-  return http.post<ScanAttentionItemVO[]>('/api/mark/exams/scan-attentions', request)
+): Promise<PageResult<ScanAttentionItemVO>> {
+  return http.post<PageResult<ScanAttentionItemVO>>('/api/mark/exams/scan-attentions', {
+    ...request,
+    pageNum: request.pageNum ?? 1,
+    pageSize: request.pageSize ?? 500,
+  })
 }
 
 // ─── 试卷身份绑定 ────────────────────────────────────────
@@ -1260,6 +1363,29 @@ export function confirmQuestionGrade(request: ExamGradeConfirmRequest): Promise<
   return http.post<boolean>('/api/mark/exams/question-grades/confirm', request)
 }
 
+/** 题目成绩驳回请求 - 对应 ExamGradeRejectRequest */
+export interface ExamGradeRejectRequest {
+  examId: string
+  gradeResultId: string
+  rejectReason: string
+}
+
+/**
+ * 教师驳回题目复核
+ * POST /api/mark/exams/question-grades/reject
+ */
+export function rejectQuestionGrade(request: ExamGradeRejectRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/question-grades/reject', request)
+}
+
+/**
+ * 归档关闭考试
+ * POST /api/mark/exams/close
+ */
+export function closeExam(request: { examId: string }): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/close', request)
+}
+
 /** 题目成绩批量确认条目 - 对应 ExamGradeBatchConfirmRequest.Item */
 export interface ExamGradeBatchConfirmItem {
   /** 题目批改结果ID */
@@ -1368,9 +1494,7 @@ export function rescoreQuestionByAi(
 }
 
 /** AI 能力编码 - 17B 文档定义；首次整卷 AI / 教师异议单题 AI 复评 */
-export type AiAbilityCode
-  = | 'PAPER_GRADE_SUGGESTION'
-    | 'SUBJECTIVE_GRADE_SUGGESTION'
+export type AiAbilityCode = 'PAPER_GRADE_SUGGESTION' | 'SUBJECTIVE_GRADE_SUGGESTION'
 
 /** AI 能力编码 -> 来源中文文案 */
 export const AI_ABILITY_LABEL: Record<AiAbilityCode, string> = {
@@ -1506,15 +1630,15 @@ export interface ReviewTaskQueryRequest extends QueryDto {
  * 复核任务类型编码 - 与后端 com.nybc.edu.common.enums.TaskType 一一对齐。
  * 仅复核任务相关 3 类（其它任务类型不会出现在复核任务列表中）。
  */
-export type ReviewTaskTypeCode
-  = | 'OBJECTIVE_AUTO_REVIEW'
-    | 'OBJECTIVE_AI_REVIEW'
-    | 'SUBJECTIVE_AI_REVIEW'
+export type ReviewTaskTypeCode =
+  | 'OBJECTIVE_AUTO_REVIEW'
+  | 'OBJECTIVE_AI_REVIEW'
+  | 'SUBJECTIVE_AI_REVIEW'
 
 /** 复核任务类型中文标签与颜色，便于前端 tag 渲染 */
 export const REVIEW_TASK_TYPE_META: Record<
   ReviewTaskTypeCode,
-  { label: string, color: 'blue' | 'green' | 'purple' }
+  { label: string; color: 'blue' | 'green' | 'purple' }
 > = {
   OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
   OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
@@ -1524,12 +1648,12 @@ export const REVIEW_TASK_TYPE_META: Record<
 /**
  * 批改来源编码 - 与后端 com.nybc.edu.common.enums.GradeSource 一一对齐。
  */
-export type GradeSourceCode
-  = | 'AUTO_OBJECTIVE'
-    | 'AUTO_OBJECTIVE_AI'
-    | 'LOCAL_SUBJECTIVE_AI'
-    | 'TEACHER'
-    | 'RECOGNITION_FAILURE'
+export type GradeSourceCode =
+  | 'AUTO_OBJECTIVE'
+  | 'AUTO_OBJECTIVE_AI'
+  | 'LOCAL_SUBJECTIVE_AI'
+  | 'TEACHER'
+  | 'RECOGNITION_FAILURE'
 
 /** 批改来源中文标签 */
 export const GRADE_SOURCE_LABEL: Record<GradeSourceCode, string> = {
@@ -1618,6 +1742,8 @@ export interface ReviewTaskDetailVO {
   questionType: QuestionTypeCode
   fullScore: number
   sliceFileId?: string
+  /** 原始扫描页引用，供教师对照整页扫描影像 */
+  sourceScanPage?: MarkingScanPageRefVO
   recognizedAnswer?: string
   gradeResultId: string
   aiScore?: number
@@ -1630,7 +1756,9 @@ export interface ReviewTaskDetailVO {
  * 查询匿名批阅任务列表
  * POST /api/mark/exams/review-tasks
  */
-export function listReviewTasks(request: ReviewTaskQueryRequest): Promise<PageResult<ReviewTaskItemVO>> {
+export function listReviewTasks(
+  request: ReviewTaskQueryRequest,
+): Promise<PageResult<ReviewTaskItemVO>> {
   return http.post<PageResult<ReviewTaskItemVO>>('/api/mark/exams/review-tasks', request)
 }
 
@@ -1660,14 +1788,20 @@ export interface AnnotationQueryRequest extends QueryDto {
   gradeResultId?: string
 }
 
+/** 批注范围 - 与后端 AnnotationScope 枚举一致 */
+export type AnnotationScopeCode = 'QUESTION' | 'PAGE'
+
 /** 批注响应 - 对应 AnnotationResponse */
 export interface AnnotationVO {
   annotationId: string
   examId?: string
   paperInstanceId?: string
   questionTemplateId?: string
+  pageId?: string
   gradeResultId?: string
+  annotationScope?: AnnotationScopeCode
   annotationText?: string
+  correlationId?: string
   createTime?: string
 }
 
@@ -1717,7 +1851,9 @@ export interface ReviewQuestionProgressItemVO {
  * 查询批注记录
  * POST /api/mark/exams/annotations
  */
-export function listAnnotations(request: AnnotationQueryRequest): Promise<PageResult<AnnotationVO>> {
+export function listAnnotations(
+  request: AnnotationQueryRequest,
+): Promise<PageResult<AnnotationVO>> {
   return http.post<PageResult<AnnotationVO>>('/api/mark/exams/annotations', request)
 }
 
@@ -1727,4 +1863,36 @@ export function listAnnotations(request: AnnotationQueryRequest): Promise<PageRe
  */
 export function getMarkingProgress(examId: string): Promise<MarkingProgressVO> {
   return http.post<MarkingProgressVO>('/api/mark/exams/marking-progress', { examId })
+}
+
+/** 考试分数分布查询请求 */
+export interface ExamScoreDistributionQueryRequest {
+  examId: string
+  classId?: string
+}
+
+/** 考试分数分布响应 */
+export interface ExamScoreDistributionVO {
+  examId: string
+  classId?: string
+  fullScore: number
+  passScore: number
+  participantCount: number
+  passCount: number
+  avgScore: number
+  maxScore: number
+  minScore: number
+  stdDev: number
+  ranges: string[]
+  counts: number[]
+}
+
+/**
+ * 查询考试分数分布（五级分段直方图）
+ * POST /api/mark/exams/score-distribution
+ */
+export function getExamScoreDistribution(
+  request: ExamScoreDistributionQueryRequest,
+): Promise<ExamScoreDistributionVO> {
+  return http.post<ExamScoreDistributionVO>('/api/mark/exams/score-distribution', request)
 }

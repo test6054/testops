@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { CourseGoalVO } from '@/apis/quality'
-import { computed, onMounted, ref, watch } from 'vue'
 import { courseGoalApi } from '@/apis/quality'
+import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: CourseGoalVO]
+  change: [value: string | null, option?: CourseGoalVO]
 }>()
 
 const options = ref<CourseGoalVO[]>([])
@@ -71,7 +71,6 @@ async function loadOptions() {
       '课程目标',
     )
   } catch (e) {
-    console.error('[CourseGoalSelector] 加载课程目标列表失败', e)
     showUserError(e, '课程目标列表加载失败')
   } finally {
     loading.value = false

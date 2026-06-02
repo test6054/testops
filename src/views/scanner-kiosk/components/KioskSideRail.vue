@@ -131,6 +131,33 @@ function handleOpenSettings() {
       </ul>
     </article>
 
+    <!-- 已绑定学生 -->
+    <article class="rail-card rail-card--bound">
+      <header class="rail-card-head">
+        <h4>已绑定学生</h4>
+        <button
+          type="button"
+          class="rail-link rail-link--inline"
+          :disabled="workflow.boundPapersLoading.value"
+          @click="workflow.refreshBoundPapers()"
+        >
+          刷新
+        </button>
+      </header>
+      <p v-if="workflow.boundPapersError.value" class="rail-bound-error">
+        {{ workflow.boundPapersError.value.message }}
+      </p>
+      <p v-else-if="workflow.boundPapersLoading.value" class="rail-empty">加载中…</p>
+      <p v-else-if="workflow.boundPapers.value.length === 0" class="rail-empty">暂无已绑定学生</p>
+      <ul v-else class="rail-bound-list">
+        <li v-for="item in workflow.boundPapers.value" :key="item.paperInstanceId">
+          <strong>{{ item.studentName }}（{{ item.studentNo }}）</strong>
+          <span v-if="item.className">{{ item.className }}</span>
+          <small>{{ item.registeredPageCount }} 页 · {{ item.scanBatchDisplayName }}</small>
+        </li>
+      </ul>
+    </article>
+
     <!-- 最近批次 -->
     <article class="rail-card rail-card--last">
       <header class="rail-card-head">
@@ -294,5 +321,60 @@ function handleOpenSettings() {
 
 .rail-card--last {
   margin-bottom: var(--kiosk-space-2);
+}
+
+.rail-bound-error {
+  margin: 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-danger);
+}
+
+.rail-bound-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kiosk-space-2);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.rail-bound-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: var(--kiosk-space-2);
+  border-bottom: 1px solid var(--kiosk-divider);
+}
+
+.rail-bound-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.rail-bound-list strong {
+  font-size: var(--kiosk-fz-label);
+  font-weight: var(--kiosk-fw-semibold);
+  color: var(--kiosk-ink-primary);
+}
+
+.rail-bound-list span,
+.rail-bound-list small {
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+}
+
+.rail-link--inline {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: var(--kiosk-fz-caption);
+  cursor: pointer;
+  color: var(--kiosk-accent);
+}
+
+.rail-card--bound {
+  flex-shrink: 0;
 }
 </style>

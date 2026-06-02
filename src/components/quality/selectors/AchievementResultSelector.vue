@@ -10,14 +10,14 @@ import type {
   AchievementResultVO,
   AchievementTargetType,
 } from '@/apis/quality'
-import { Tag } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
   ACHIEVEMENT_TARGET_TYPE_LABEL,
   achievementApi,
 } from '@/apis/quality'
+import { Tag } from 'ant-design-vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
@@ -31,7 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AchievementResultVO]
+  change: [value: string | null, option?: AchievementResultVO]
 }>()
 
 const AuditStatusTag = Tag
@@ -96,7 +96,6 @@ async function loadOptions() {
     })
     options.value = requirePageList(res, '达成度结果')
   } catch (e) {
-    console.error('[AchievementResultSelector] 加载达成度结果列表失败', e)
     showUserError(e, '达成度结果列表加载失败')
   } finally {
     loading.value = false
@@ -147,10 +146,10 @@ function labelOf(opt: AchievementResultVO) {
 
 function qualityCourseText(opt: AchievementResultVO) {
   if (!opt.qualityCourseId) return ''
-  if (!opt.qualityCourseCode?.trim() || !opt.qualityCourseName?.trim()) {
-    throw new Error('达成度结果质量课程展示字段不符合前后端契约')
-  }
-  return `${opt.qualityCourseCode} ${opt.qualityCourseName}`
+  const code = opt.qualityCourseCode?.trim()
+  const name = opt.qualityCourseName?.trim()
+  if (!code && !name) return '—'
+  return [code, name].filter(Boolean).join(' ')
 }
 
 function achievementTargetTypeLabel(value: AchievementTargetType) {
@@ -196,7 +195,8 @@ defineExpose({ reload: loadOptions })
         · {{ qualityCourseText(opt) }}
       </span>
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
+        >)
       </span>
       <AuditStatusTag
         v-if="opt.auditStatus"

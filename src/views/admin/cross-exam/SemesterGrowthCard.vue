@@ -63,7 +63,7 @@
           </a-descriptions-item>
           <a-descriptions-item label="范围">
             {{ scopeTypeLabel(record.scopeType) }} ·
-            {{ requiredRecordText(record.scopeName, '范围名称') }}
+            {{ record.scopeName?.trim() || '—' }}
           </a-descriptions-item>
           <a-descriptions-item label="考试数">{{ record.examCount }}</a-descriptions-item>
           <a-descriptions-item label="趋势">
@@ -92,6 +92,22 @@
             </a-typography-text>
           </a-descriptions-item>
         </a-descriptions>
+
+        <div v-if="examStatChartOption" class="ai-chart">
+          <div class="ai-chart__meta">
+            <strong>学期考试得分走势</strong>
+            <span class="ai-chart__hint">按考试时间序列展示得分率与及格率</span>
+          </div>
+          <VChart class="ai-chart__canvas" :option="examStatChartOption" autoresize />
+        </div>
+
+        <div v-if="growthBarChartOption" class="ai-chart">
+          <div class="ai-chart__meta">
+            <strong>能力点起止对比</strong>
+            <span class="ai-chart__hint">各能力维度起始值与结束值</span>
+          </div>
+          <VChart class="ai-chart__canvas" :option="growthBarChartOption" autoresize />
+        </div>
 
         <a-typography-paragraph v-if="record.growthSummary" class="ai-summary">
           <strong>成长摘要：</strong>{{ record.growthSummary }}
@@ -143,10 +159,6 @@ import type {
   SemesterAbilityGrowthVO,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   ANALYSIS_SCOPE_TYPE_LABEL,
   generateClassGrowth,
@@ -154,14 +166,24 @@ import {
   SEMESTER_GROWTH_TREND_COLOR,
   SEMESTER_GROWTH_TREND_LABEL,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
 import { getExamDetail } from '@/apis/mark/exam'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import {
+  buildExamStatTrendChartOption,
+  buildGrowthItemsBarOption,
+} from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SemesterGrowthCard' })
@@ -174,7 +196,7 @@ const form = reactive({
 
 const record = ref<SemesterAbilityGrowthVO | null>(null)
 const selectedExams = ref<ExamSummaryVO[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 // D-9 错误态：AI 学期成长加载失败时 UiErrorRetryPanel 重试 + 上报
@@ -182,6 +204,12 @@ const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const growthItems = computed(() => record.value?.growthItems ?? [])
+const examStatChartOption = computed(() =>
+  buildExamStatTrendChartOption(record.value?.examStatSnapshots ?? []),
+)
+const growthBarChartOption = computed(() =>
+  buildGrowthItemsBarOption(record.value?.growthItems ?? []),
+)
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
 )
@@ -195,7 +223,7 @@ watch(
     classLoading.value = true
     try {
       const details = await Promise.all(examIds.map((examId) => getExamDetail(examId)))
-      const classCount = new Map<string, { className: string, count: number }>()
+      const classCount = new Map<string, { className: string; count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -306,13 +334,6 @@ function scopeTypeLabel(scopeType: SemesterAbilityGrowthVO['scopeType']): string
   return strictEnumLabel(ANALYSIS_SCOPE_TYPE_LABEL, scopeType, '分析范围类型')
 }
 
-function requiredRecordText(value: string | undefined, fieldName: string): string {
-  if (!value?.trim()) {
-    throw new TypeError(`学期能力成长分析缺少${fieldName}`)
-  }
-  return value
-}
-
 function latencyText(value: SemesterAbilityGrowthVO): string {
   if (value.latencyMs != null) return `${value.latencyMs} ms`
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
@@ -320,23 +341,22 @@ function latencyText(value: SemesterAbilityGrowthVO): string {
 }
 
 function assertSemesterGrowthContract(value: SemesterAbilityGrowthVO): void {
-  if (!value.scopeName) throw new TypeError('学期能力成长分析缺少范围名称')
-  if (!value.aiTraceId) throw new TypeError('学期能力成长分析缺少处理追踪编号')
-  if (!value.exams.length) throw new TypeError('学期能力成长分析缺少考试范围')
-  if (value.analysisStatus === 'SUCCESS' && value.latencyMs == null) {
-    throw new TypeError('学期能力成长分析成功记录缺少生成耗时')
-  }
+  const dataError = '学期能力成长分析数据异常，请刷新后重试'
+  assertUserFacing(Boolean(value.scopeName?.trim()), dataError)
+  assertUserFacing(Boolean(value.aiTraceId?.trim()), dataError)
+  assertUserFacing(value.exams.length > 0, dataError)
   if (value.analysisStatus === 'SUCCESS') {
+    assertUserFacing(value.latencyMs != null, dataError)
     for (const item of value.growthItems ?? []) {
-      if (item.startValue == null || item.endValue == null) {
-        throw new TypeError('学期能力成长成功记录条目缺少起止值')
-      }
+      assertUserFacing(item.startValue != null && item.endValue != null, dataError)
     }
   }
 }
 
 function acceptSemesterGrowthRecord(value: SemesterAbilityGrowthVO | null): void {
-  if (value) assertSemesterGrowthContract(value)
+  if (value) {
+    assertSemesterGrowthContract(value)
+  }
   record.value = value
 }
 
@@ -361,6 +381,27 @@ function growthValueText(value: number | undefined): string {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.ai-chart {
+  padding: 12px 16px;
+  border: 1px solid var(--dp-border, #e2e8f0);
+  border-radius: var(--dp-radius-md, 6px);
+  background: var(--dp-surface, #fff);
+}
+.ai-chart__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ai-chart__hint {
+  font-size: 12px;
+  color: var(--dp-text-secondary, #475569);
+}
+.ai-chart__canvas {
+  width: 100%;
+  height: 320px;
 }
 .analysis-item {
   display: flex;

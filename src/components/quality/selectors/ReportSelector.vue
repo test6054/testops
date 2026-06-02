@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ReportStatus, ReportType, ReportVO } from '@/apis/quality'
-import { onMounted, ref, watch } from 'vue'
 import { REPORT_TYPE_LABEL, reportApi } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: ReportVO]
+  change: [value: string | null, option?: ReportVO]
 }>()
 
 const options = ref<ReportVO[]>([])
@@ -79,7 +79,6 @@ async function loadOptions() {
     })
     options.value = requirePageList(res, '教学质量评价报告')
   } catch (e) {
-    console.error('[ReportSelector] 加载报告列表失败', e)
     showUserError(e, '教学质量评价报告列表加载失败')
   } finally {
     loading.value = false
@@ -119,9 +118,12 @@ defineExpose({ reload: loadOptions })
   >
     <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.title">
       {{ opt.title }}
-      <span v-if="opt.reportType" class="text-gray-400 ml-1">· {{ reportTypeLabel(opt.reportType) }}</span>
+      <span v-if="opt.reportType" class="text-gray-400 ml-1"
+        >· {{ reportTypeLabel(opt.reportType) }}</span
+      >
       <span v-if="opt.schoolYear" class="text-gray-400 ml-1">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span>)
+        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ opt.semester }}</span
+        >)
       </span>
     </a-select-option>
   </a-select>

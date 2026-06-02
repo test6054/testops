@@ -1,4 +1,5 @@
 import Antd from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { createApp } from 'vue'
 // ECharts全局配置
 import { setupECharts } from '@/config/echarts'
@@ -7,9 +8,6 @@ import { DEV_ERROR_CONFIG, initGlobalErrorHandler, PROD_ERROR_CONFIG } from '@/c
 // 状态管理
 import pinia, { useAuthStore } from '@/stores'
 import { getToken } from '@/utils/auth'
-
-// 版本信息
-import { printVersionInfo } from '@/utils/version'
 
 import App from './App.vue'
 import router from './router'
@@ -65,9 +63,6 @@ if (typeof window !== 'undefined') {
 const isDevelopment = import.meta.env.DEV
 initGlobalErrorHandler(isDevelopment ? DEV_ERROR_CONFIG : PROD_ERROR_CONFIG)
 
-// 打印版本信息到控制台
-printVersionInfo()
-
 // 初始化ECharts（必须在创建Vue应用之前）
 setupECharts()
 
@@ -95,20 +90,11 @@ const initializeApp = async () => {
 }
 
 // 启动应用
-initializeApp().catch((err) => {
-  console.error('Failed to initialize app:', err)
+initializeApp().catch(() => {
+  message.error('应用初始化失败，请刷新页面后重试')
 })
 
 // 全局错误处理
-app.config.errorHandler = (err, vm, info) => {
-  console.error('Vue全局错误:', err, info)
-}
-
-// 配置Vue警告过滤器，过滤Suspense实验性警告
-app.config.warnHandler = (msg, instance, trace) => {
-  // 过滤掉Suspense实验性功能警告
-  if (msg.includes('Suspense is an experimental feature')) {
-    return
-  }
-  console.warn(msg, trace)
+app.config.errorHandler = () => {
+  message.error('页面运行异常，请刷新页面后重试')
 }

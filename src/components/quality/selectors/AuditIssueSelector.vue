@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditIssueStatus, AuditIssueVO } from '@/apis/quality'
-import { onMounted, ref, watch } from 'vue'
 import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL, auditIssueApi } from '@/apis/quality'
+import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
@@ -34,7 +34,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: AuditIssueVO]
+  change: [value: string | null, option?: AuditIssueVO]
 }>()
 
 const options = ref<AuditIssueVO[]>([])
@@ -73,7 +73,6 @@ async function loadOptions() {
     })
     options.value = requirePageList(res, '审核评估问题')
   } catch (e) {
-    console.error('[AuditIssueSelector] 加载审核问题列表失败', e)
     showUserError(e, '审核问题列表加载失败')
   } finally {
     loading.value = false

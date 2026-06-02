@@ -207,14 +207,6 @@
 
 <script lang="ts" setup>
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   canSubmitReview,
   FINAL_SCORE_STATUS_LABEL,
@@ -223,6 +215,14 @@ import {
   STUDENT_REVIEW_WINDOW_STATUS_LABEL,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   UiBadge,
   UiButton,
@@ -233,6 +233,7 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -300,7 +301,7 @@ const unpublishedCount = computed<number>(() => {
 })
 
 /** 最近两次发布的分数差（最新 - 上一次），无足够数据返回 null */
-const scoreTrend = computed<{ diff: number, latest: number, previous: number } | null>(() => {
+const scoreTrend = computed<{ diff: number; latest: number; previous: number } | null>(() => {
   const list = publishedExamsSorted.value
   if (list.length < 2) return null
   const latest = requirePublishedScore(list[0])
@@ -413,12 +414,11 @@ async function loadExams() {
 
 /** 校验学生成绩列表的发布态合同，避免模板渲染阶段才暴露缺失字段。 */
 function validatePublishedExamContracts(list: StudentExamItemVO[]): void {
+  const dataError = '成绩数据异常，请刷新后重试'
   for (const item of list) {
-    if (item.finalScoreStatus === 'PUBLISHED' && item.finalScore == null) {
-      throw new Error(`已发布成绩缺少发布成绩：examId=${item.examId}`)
-    }
-    if (item.finalScoreStatus === 'PUBLISHED' && !item.publishedTime) {
-      throw new Error(`已发布成绩缺少发布时间：examId=${item.examId}`)
+    if (item.finalScoreStatus === 'PUBLISHED') {
+      assertUserFacing(item.finalScore != null, dataError)
+      assertUserFacing(Boolean(item.publishedTime), dataError)
     }
   }
 }

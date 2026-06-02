@@ -58,12 +58,6 @@
     />
 
     <a-spin v-else :spinning="loading" tip="加载待审核题目中...">
-      <UiAlertStrip
-        tone="info"
-        title="批量审核说明"
-        description="自动判分客观题、AI 评分客观题、AI 评分主观题统一在此批量审核确认。可逐行调整教师复核评分；默认沿用 AI 评分。任意单题失败不阻塞其余条目，提交后查看提交结果汇总。"
-        dense
-      />
 
       <UiAlertStrip
         v-if="batchSummary"
@@ -159,6 +153,7 @@ import { UiAlertStrip, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-
 import { StageWorkbenchShell } from '@/components/workbench'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { readPageList } from '@/utils/page-result'
 
 const router = useRouter()
 const examLoading = ref(false)
@@ -218,8 +213,8 @@ async function loadExamOptions() {
   examLoading.value = true
   try {
     const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    validateExamOptionContracts(result.list)
-    examOptions.value = result.list.map((exam: ExamSummaryVO) => ({
+    const list = readPageList(result, '考试列表加载失败，请稍后重试')
+    examOptions.value = list.map((exam: ExamSummaryVO) => ({
       label: [formatExamOptionLabel(exam), formatAcademicTerm(exam)].filter(Boolean).join(' · '),
       value: exam.examId,
     }))
@@ -230,21 +225,13 @@ async function loadExamOptions() {
   }
 }
 
-/** 校验考试下拉所需编号字段，缺失时中断选项渲染。 */
-function validateExamOptionContracts(list: ExamSummaryVO[]): void {
-  for (const exam of list) {
-    if (!exam.examNo) {
-      throw new Error(`考试列表缺少考试编号：examId=${exam.examId}`)
-    }
-  }
+function formatExamOptionLabel(exam: ExamSummaryVO): string {
+  if (!exam.examNo) return exam.examName
+  return `${exam.examName} (${exam.examNo})`
 }
 
 function formatAcademicTerm(exam: ExamSummaryVO): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
-}
-
-function formatExamOptionLabel(exam: ExamSummaryVO): string {
-  return `${exam.examName}（${exam.examNo}）`
 }
 
 async function loadTasks() {

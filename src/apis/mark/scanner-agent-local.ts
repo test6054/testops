@@ -1,14 +1,17 @@
 import type { ExamScannerKioskContextVO, ScannerKioskScanMode } from './scanner-kiosk'
+import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
+const LOCAL_AGENT_RESPONSE_ERROR = '本地扫描服务响应异常，请检查扫描服务后重试'
+const LOCAL_AGENT_REQUEST_ERROR = '本地扫描服务处理失败，请检查扫描服务后重试'
 
-type LocalAgentJsonValue
-  = | string
-    | number
-    | boolean
-    | null
-    | LocalAgentJsonObject
-    | LocalAgentJsonValue[]
+type LocalAgentJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | LocalAgentJsonObject
+  | LocalAgentJsonValue[]
 
 interface LocalAgentJsonObject {
   [key: string]: LocalAgentJsonValue | undefined
@@ -53,24 +56,24 @@ export type AgentHealthStatus = 'RUNNING'
 
 export type AgentDiagnosticStatus = 'OK' | 'WARNING'
 
-export type LocalScanJobStatus
-  = | 'CREATED'
-    | 'SCANNING'
-    | 'PAUSED'
-    | 'READYTOUPLOAD'
-    | 'UPLOADING'
-    | 'REPORTED'
-    | 'FAILED'
-    | 'RETRYING'
-    | 'CANCELLED'
+export type LocalScanJobStatus =
+  | 'CREATED'
+  | 'SCANNING'
+  | 'PAUSED'
+  | 'READYTOUPLOAD'
+  | 'UPLOADING'
+  | 'REPORTED'
+  | 'FAILED'
+  | 'RETRYING'
+  | 'CANCELLED'
 
-export type LocalScanPageStatus
-  = | 'CAPTURED'
-    | 'PREPROCESSED'
-    | 'UPLOADING'
-    | 'UPLOADED'
-    | 'FAILED'
-    | 'DELETED'
+export type LocalScanPageStatus =
+  | 'CAPTURED'
+  | 'PREPROCESSED'
+  | 'UPLOADING'
+  | 'UPLOADED'
+  | 'FAILED'
+  | 'DELETED'
 
 export interface ScannerDeviceInfo {
   localScannerId: string
@@ -223,31 +226,35 @@ export function getLocalAgentBaseUrl() {
 }
 
 export async function getAgentHealth(): Promise<AgentHealthResponse> {
-  return validateAgentHealthResponse(await localAgentGet('/api/agent/health'))
+  const payload = await localAgentGet('/api/agent/health')
+  return normalizeAgentPayload(() => validateAgentHealthResponse(payload))
 }
 
 export async function listLocalScanners(): Promise<ScannerListResponse> {
-  return validateScannerListResponse(await localAgentGet('/api/scanners'))
+  const payload = await localAgentGet('/api/scanners')
+  return normalizeAgentPayload(() => validateScannerListResponse(payload))
 }
 
 export async function activateLocalAgent(
   request: ActivateLocalAgentRequest,
 ): Promise<ScannerAgentActivateResponse> {
-  return validateScannerAgentActivateResponse(await localAgentPost('/api/agent/activate', request))
+  const payload = await localAgentPost('/api/agent/activate', request)
+  return normalizeAgentPayload(() => validateScannerAgentActivateResponse(payload))
 }
 
 export async function unbindLocalAgent(): Promise<{ success: boolean }> {
-  return validateSuccessObject(await localAgentPost('/api/agent/unbind', {}))
+  const payload = await localAgentPost('/api/agent/unbind', {})
+  return normalizeAgentPayload(() => validateSuccessObject(payload))
 }
 
 export async function startScanJob(request: StartScanJobRequest): Promise<ScanJobResponse> {
-  return validateScanJobResponse(await localAgentPost('/api/scan-jobs/start', request))
+  const payload = await localAgentPost('/api/scan-jobs/start', request)
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
 export async function getScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return validateScanJobResponse(
-    await localAgentGet(`/api/scan-jobs/${encodeURIComponent(scanJobId)}`),
-  )
+  const payload = await localAgentGet(`/api/scan-jobs/${encodeURIComponent(scanJobId)}`)
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
 export async function listScanJobs(params: ListScanJobsParams = {}): Promise<ScanJobListResponse> {
@@ -265,19 +272,21 @@ export async function listScanJobs(params: ListScanJobsParams = {}): Promise<Sca
     query.set('includeTerminal', String(params.includeTerminal))
   }
   const suffix = query.toString() ? `?${query.toString()}` : ''
-  return validateScanJobListResponse(await localAgentGet(`/api/scan-jobs${suffix}`))
+  const payload = await localAgentGet(`/api/scan-jobs${suffix}`)
+  return normalizeAgentPayload(() => validateScanJobListResponse(payload))
 }
 
 export async function cancelScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return validateScanJobResponse(
-    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`, {}),
-  )
+  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/cancel`, {})
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
 export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
-  return validateScanJobResponse(
-    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`, {}),
+  const payload = await localAgentPost(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-upload`,
+    {},
   )
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
 /**
@@ -285,18 +294,16 @@ export async function retryUpload(scanJobId: string): Promise<ScanJobResponse> {
  * UploadWorker 也跳过该任务，直到调用 resumeScanJob 恢复。
  */
 export async function pauseScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return validateScanJobResponse(
-    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/pause`, {}),
-  )
+  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/pause`, {})
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
 /**
  * 恢复被暂停的扫描任务。仅 Paused 任务可被恢复；其它状态原样返回。
  */
 export async function resumeScanJob(scanJobId: string): Promise<ScanJobResponse> {
-  return validateScanJobResponse(
-    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`, {}),
-  )
+  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`, {})
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
 /**
@@ -304,9 +311,11 @@ export async function resumeScanJob(scanJobId: string): Promise<ScanJobResponse>
  * 不丢弃已扫页面（与 cancelScanJob 不同）。
  */
 export async function endBatch(scanJobId: string): Promise<ScanJobResponse> {
-  return validateScanJobResponse(
-    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/end-batch`, {}),
+  const payload = await localAgentPost(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/end-batch`,
+    {},
   )
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
 /**
@@ -314,9 +323,11 @@ export async function endBatch(scanJobId: string): Promise<ScanJobResponse> {
  * 利用后端 reportId / batchExternalNo 唯一约束的幂等性。
  */
 export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
-  return validateScanJobResponse(
-    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-commit`, {}),
+  const payload = await localAgentPost(
+    `/api/scan-jobs/${encodeURIComponent(scanJobId)}/retry-commit`,
+    {},
   )
+  return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
 /**
@@ -324,9 +335,8 @@ export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
  * 不调用后端废弃接口；已上报任务必须先由前端废弃服务端批次，成功后再清理 Agent 本地任务。
  */
 export async function deleteScanJob(scanJobId: string): Promise<boolean> {
-  return validateBooleanResult(
-    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {}),
-  )
+  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {})
+  return normalizeAgentPayload(() => validateBooleanResult(payload))
 }
 
 /**
@@ -337,11 +347,10 @@ export async function deleteScanJob(scanJobId: string): Promise<boolean> {
  * @param discardReason 废弃原因（必填，1-255 字）
  */
 export async function discardScanJob(scanJobId: string, discardReason: string): Promise<boolean> {
-  return validateBooleanResult(
-    await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/discard`, {
-      discardReason,
-    }),
-  )
+  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/discard`, {
+    discardReason,
+  })
+  return normalizeAgentPayload(() => validateBooleanResult(payload))
 }
 
 export function getPageImageUrl(scanJobId: string, pageNo: number): string {
@@ -376,30 +385,38 @@ async function parseLocalAgentResponse(response: Response): Promise<LocalAgentJs
   try {
     parsed = JSON.parse(text) as LocalAgentJsonValue
   } catch {
-    throw new Error(text || '本地 Scanner Agent 响应格式错误')
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
-  const envelope = validateLocalApiResult(parsed, response)
+  const envelope = normalizeAgentPayload(() => validateLocalApiResult(parsed, response))
   if (!response.ok || !envelope.success) {
-    const message = envelope.message || '本地 Scanner Agent 请求失败'
+    const message = envelope.message
     const busyError = tryParseBusyError(message)
     if (busyError) {
       throw busyError
     }
-    throw new Error(message)
+    throwUserFacing(LOCAL_AGENT_REQUEST_ERROR)
   }
   if (!Object.hasOwn(envelope, 'data')) {
-    throw new TypeError('本地 Scanner Agent 成功响应缺少 data 字段')
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   const data = envelope.data
   if (data === undefined) {
-    throw new TypeError('本地 Scanner Agent 成功响应 data 字段不能为空')
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return data
 }
 
+function normalizeAgentPayload<T>(action: () => T): T {
+  let result!: T
+  runContractGuard(() => {
+    result = action()
+  }, LOCAL_AGENT_RESPONSE_ERROR)
+  return result
+}
+
 function requireObject(value: LocalAgentJsonValue, field: string): LocalAgentJsonObject {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是对象`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return value
 }
@@ -407,7 +424,7 @@ function requireObject(value: LocalAgentJsonValue, field: string): LocalAgentJso
 function requireString(value: LocalAgentJsonObject, field: string): string {
   const fieldValue = value[field]
   if (typeof fieldValue !== 'string') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -415,7 +432,7 @@ function requireString(value: LocalAgentJsonObject, field: string): string {
 function requireBoolean(value: LocalAgentJsonObject, field: string): boolean {
   const fieldValue = value[field]
   if (typeof fieldValue !== 'boolean') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是布尔值`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -423,7 +440,7 @@ function requireBoolean(value: LocalAgentJsonObject, field: string): boolean {
 function requireNumber(value: LocalAgentJsonObject, field: string): number {
   const fieldValue = value[field]
   if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue)) {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是有效数字`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -431,7 +448,7 @@ function requireNumber(value: LocalAgentJsonObject, field: string): number {
 function requireStringArray(value: LocalAgentJsonObject, field: string): string[] {
   const fieldValue = value[field]
   if (!Array.isArray(fieldValue) || fieldValue.some((item) => typeof item !== 'string')) {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串数组`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue as string[]
 }
@@ -442,7 +459,7 @@ function requireOptionalString(value: LocalAgentJsonObject, field: string): stri
     return undefined
   }
   if (typeof fieldValue !== 'string') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -453,7 +470,7 @@ function requireOptionalNumber(value: LocalAgentJsonObject, field: string): numb
     return undefined
   }
   if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue)) {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是有效数字`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -464,7 +481,7 @@ function requireNullableString(value: LocalAgentJsonObject, field: string): stri
     return null
   }
   if (typeof fieldValue !== 'string') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是字符串或 null`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -472,7 +489,7 @@ function requireNullableString(value: LocalAgentJsonObject, field: string): stri
 function requireScanMode(value: LocalAgentJsonObject, field: string): ScannerKioskScanMode {
   const fieldValue = value[field]
   if (fieldValue !== 'DIRECT' && fieldValue !== 'SUPPLEMENT' && fieldValue !== 'ARCHIVE') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 扫描模式不合法`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -480,7 +497,7 @@ function requireScanMode(value: LocalAgentJsonObject, field: string): ScannerKio
 function requireAgentHealthStatus(value: LocalAgentJsonObject, field: string): AgentHealthStatus {
   const fieldValue = value[field]
   if (fieldValue !== 'RUNNING') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 运行状态不合法`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -491,7 +508,7 @@ function requireAgentDiagnosticStatus(
 ): AgentDiagnosticStatus {
   const fieldValue = value[field]
   if (fieldValue !== 'OK' && fieldValue !== 'WARNING') {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 诊断状态不合法`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -499,17 +516,17 @@ function requireAgentDiagnosticStatus(
 function requireScanJobStatus(value: LocalAgentJsonObject, field: string): LocalScanJobStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CREATED'
-    && fieldValue !== 'SCANNING'
-    && fieldValue !== 'PAUSED'
-    && fieldValue !== 'READYTOUPLOAD'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'REPORTED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'RETRYING'
-    && fieldValue !== 'CANCELLED'
+    fieldValue !== 'CREATED' &&
+    fieldValue !== 'SCANNING' &&
+    fieldValue !== 'PAUSED' &&
+    fieldValue !== 'READYTOUPLOAD' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'REPORTED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'RETRYING' &&
+    fieldValue !== 'CANCELLED'
   ) {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描任务状态`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -517,14 +534,14 @@ function requireScanJobStatus(value: LocalAgentJsonObject, field: string): Local
 function requireScanPageStatus(value: LocalAgentJsonObject, field: string): LocalScanPageStatus {
   const fieldValue = value[field]
   if (
-    fieldValue !== 'CAPTURED'
-    && fieldValue !== 'PREPROCESSED'
-    && fieldValue !== 'UPLOADING'
-    && fieldValue !== 'UPLOADED'
-    && fieldValue !== 'FAILED'
-    && fieldValue !== 'DELETED'
+    fieldValue !== 'CAPTURED' &&
+    fieldValue !== 'PREPROCESSED' &&
+    fieldValue !== 'UPLOADING' &&
+    fieldValue !== 'UPLOADED' &&
+    fieldValue !== 'FAILED' &&
+    fieldValue !== 'DELETED'
   ) {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field} 必须是合法扫描页状态`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return fieldValue
 }
@@ -541,7 +558,7 @@ function validateLocalApiResult(value: LocalAgentJsonValue, response: Response):
     envelope.data = result.data
   }
   if (response.ok && envelope.success && !Object.hasOwn(result, 'data')) {
-    throw new TypeError('本地 Scanner Agent 成功响应缺少 data 字段')
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return envelope
 }
@@ -572,7 +589,7 @@ function validateScannerListResponse(value: LocalAgentJsonValue): ScannerListRes
   const result = requireObject(value, 'scannerList')
   const devices = result.devices
   if (!Array.isArray(devices)) {
-    throw new TypeError('本地 Scanner Agent 响应字段 devices 必须是数组')
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return {
     devices: devices.map((item, index) => validateScannerDeviceInfo(item, `devices[${index}]`)),
@@ -644,7 +661,7 @@ function validateScanJobListResponse(value: LocalAgentJsonValue): ScanJobListRes
   const result = requireObject(value, 'scanJobList')
   const jobs = result.jobs
   if (!Array.isArray(jobs)) {
-    throw new TypeError('本地 Scanner Agent 响应字段 jobs 必须是数组')
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return {
     jobs: jobs.map((item, index) => validateScanJobResponsePayload(item, `jobs[${index}]`)),
@@ -658,7 +675,7 @@ function validateScanJobResponsePayload(
   const result = requireObject(value, field)
   const pages = result.pages
   if (!Array.isArray(pages)) {
-    throw new TypeError(`本地 Scanner Agent 响应字段 ${field}.pages 必须是数组`)
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   const payload: ScanJobResponse = {
     scanJobId: requireString(result, 'scanJobId'),
@@ -716,7 +733,7 @@ function validateScanPageInfo(value: LocalAgentJsonValue, field: string): ScanPa
 
 function validateBooleanResult(value: LocalAgentJsonValue): boolean {
   if (typeof value !== 'boolean') {
-    throw new TypeError('本地 Scanner Agent 响应 data 必须是布尔值')
+    throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return value
 }

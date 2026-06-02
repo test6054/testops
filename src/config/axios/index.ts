@@ -104,7 +104,7 @@ const http = {
   },
     async downloadByPost(
         url: string,
-        data?: Record<string, unknown>,
+        data?: object,
         config?: Partial<ExtendedAxiosRequestConfig>,
     ): Promise<BlobDownloadResponse> {
       return await service({

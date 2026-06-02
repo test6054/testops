@@ -62,27 +62,42 @@
         <a-row :gutter="12" class="metric-row">
           <a-col :span="8">
             <a-statistic
+              v-if="record.teachingQualityScore != null"
               title="教学质量"
-              :value="record.teachingQualityScore ?? 0"
-              :precision="2"
+              :value="record.teachingQualityScore"
+              :precision="1"
               :value-style="scoreStyle(record.teachingQualityScore)"
             />
+            <div v-else class="metric-text">
+              <span class="metric-title">教学质量</span>
+              <span class="metric-value">—</span>
+            </div>
           </a-col>
           <a-col :span="8">
             <a-statistic
+              v-if="record.questionQualityScore != null"
               title="命题质量"
-              :value="record.questionQualityScore ?? 0"
-              :precision="2"
+              :value="record.questionQualityScore"
+              :precision="1"
               :value-style="scoreStyle(record.questionQualityScore)"
             />
+            <div v-else class="metric-text">
+              <span class="metric-title">命题质量</span>
+              <span class="metric-value">—</span>
+            </div>
           </a-col>
           <a-col :span="8">
             <a-statistic
+              v-if="record.markingQualityScore != null"
               title="阅卷质量"
-              :value="record.markingQualityScore ?? 0"
-              :precision="2"
+              :value="record.markingQualityScore"
+              :precision="1"
               :value-style="scoreStyle(record.markingQualityScore)"
             />
+            <div v-else class="metric-text">
+              <span class="metric-title">阅卷质量</span>
+              <span class="metric-value">—</span>
+            </div>
           </a-col>
         </a-row>
 
@@ -130,6 +145,14 @@
           <strong>质量摘要：</strong>{{ record.qualitySummary }}
         </a-typography-paragraph>
 
+        <div v-if="examStatChartOption" class="ai-chart">
+          <div class="ai-chart__meta">
+            <strong>参与考试得分走势</strong>
+            <span class="ai-chart__hint">多考试对比：得分率、及格率与平均分</span>
+          </div>
+          <VChart class="ai-chart__canvas" :option="examStatChartOption" autoresize />
+        </div>
+
         <div v-if="qualityItems.length > 0" class="ai-items">
           <strong>分项评估：</strong>
           <a-list size="small" :data-source="qualityItems" bordered>
@@ -141,7 +164,9 @@
                     <span class="analysis-item__title">
                       {{ item.qualityDimension || item.metricName || '质量指标' }}
                     </span>
-                    <a-tag v-if="item.rating">{{ item.rating }}</a-tag>
+                    <a-tag v-if="item.rating" :color="qualityRatingColor(item.rating)">
+                      {{ qualityRatingLabel(item.rating) }}
+                    </a-tag>
                     <span v-if="item.metricValue != null" class="analysis-item__metric">
                       {{ item.metricValue.toFixed(2) }}
                     </span>
@@ -172,15 +197,19 @@
 import type {
   SchoolQualityAnalysisVO,
   SchoolQualityDimensionCode,
+  SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
   SCHOOL_QUALITY_DIMENSION_LABEL,
+  SCHOOL_QUALITY_RATING_COLOR,
+  SCHOOL_QUALITY_RATING_LABEL,
 } from '@/apis/mark/school-quality'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
@@ -190,7 +219,8 @@ import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { buildExamStatTrendChartOption } from '@/utils/mark-statistics-chart'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SchoolQualityCard' })
 
@@ -214,6 +244,17 @@ const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const qualityItems = computed(() => record.value?.qualityItems ?? [])
+const examStatChartOption = computed(() =>
+  buildExamStatTrendChartOption(record.value?.examStatSnapshots ?? []),
+)
+
+function qualityRatingLabel(rating: SchoolQualityRatingCode): string {
+  return strictEnumLabel(SCHOOL_QUALITY_RATING_LABEL, rating, '校级质量评价等级')
+}
+
+function qualityRatingColor(rating: SchoolQualityRatingCode): string {
+  return strictEnumTone(SCHOOL_QUALITY_RATING_COLOR, rating, '校级质量评价等级')
+}
 
 watch(
   () => form.analysisDimension,
@@ -310,6 +351,41 @@ function scoreStyle(score?: number): Record<string, string> {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.ai-chart {
+  padding: 12px 16px;
+  border: 1px solid var(--dp-border, #e2e8f0);
+  border-radius: var(--dp-radius-md, 6px);
+  background: var(--dp-surface, #fff);
+}
+.ai-chart__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ai-chart__hint {
+  font-size: 12px;
+  color: var(--dp-text-secondary, #475569);
+}
+.ai-chart__canvas {
+  width: 100%;
+  height: 320px;
+}
+.metric-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.metric-title {
+  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+  font-size: 14px;
+}
+.metric-value {
+  color: var(--gi-color-text-1, rgba(0, 0, 0, 0.88));
+  font-size: 24px;
+  line-height: 1.2;
 }
 .analysis-item {
   display: flex;

@@ -42,7 +42,6 @@
       v-if="staleExamCount > 0"
       tone="warning"
       :title="`${staleExamCount} 场进行中考试创建超过 7 天，请核查推进状态`"
-      description="未配置考试时间窗或长期未关闭的考试可能存在配置疏漏，请进入「准备工作台」检查模板、答案、考生名册是否完整。"
       dense
       class="exam-list-page__alert"
     />
@@ -328,6 +327,14 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ExamCreateRequest, ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import {
+  createExam,
+  deleteExam,
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  pageExams,
+  updateExam,
+} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -338,14 +345,6 @@ import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createExam,
-  deleteExam,
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  pageExams,
-  updateExam,
-} from '@/apis/mark/exam'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import {
   UiAlertStrip,
@@ -365,6 +364,7 @@ import { RoleEnum } from '@/types/enums'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamList' })
@@ -405,7 +405,7 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -465,8 +465,8 @@ async function loadExams(): Promise<void> {
       endTime: endTime || undefined,
       createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
     })
-    dataSource.value = result.list
-    pagination.total = Number(result.total)
+    dataSource.value = readPageList(result, '考试列表加载失败，请稍后重试')
+    pagination.total = readPageTotal(result)
   } catch (error) {
     examsLoadError.value = toUserError(error, '考试列表加载失败')
     showUserError(error, '考试列表加载失败')
@@ -489,7 +489,7 @@ function handleReset(): void {
   pagination.current = 1
   void loadExams()
 }
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadExams()
@@ -689,17 +689,18 @@ function openEditModal(exam: ExamSummaryVO): void {
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow
-    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.examWindow =
+    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.gradingStrategy = exam.gradingStrategy ?? ''
   examForm.remark = exam.remark ?? ''
   formModalOpen.value = true
 }
 
-function buildExamRequest(): ExamCreateRequest {
+function buildExamRequest(): ExamCreateRequest | null {
   const [startTime, endTime] = examForm.examWindow ?? []
   if (!examForm.courseId || !startTime || !endTime) {
-    throw new Error('考试课程与时间窗不能为空')
+    message.error('请选择考试课程与考试时间')
+    return null
   }
   return {
     courseId: examForm.courseId,
@@ -725,6 +726,9 @@ async function handleSave(): Promise<void> {
   saving.value = true
   try {
     const request = buildExamRequest()
+    if (!request) {
+      return
+    }
     if (editingExamId.value) {
       // 考试模式一旦创建不可改，update 链路不传 examMode（后端 ExamUpdateRequest 也无此字段）
       const { examMode: _examMode, ...updateRequest } = request

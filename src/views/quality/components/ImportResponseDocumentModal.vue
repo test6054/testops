@@ -9,14 +9,6 @@
   >
     <!-- ① 上传区：选择文件 + 提交 -->
     <template v-if="phase === 'upload'">
-      <a-alert message="AI 文档解析说明" type="info" show-icon class="ird__alert">
-        <template #description>
-          <p>支持 PDF、Word（DOCX）、图片（JPG / PNG / WEBP / BMP / TIFF）。</p>
-          <p>上传后系统自动执行：文本提取 → AI 结构化解析 → 写入答卷草稿。</p>
-          <p>解析通常需要 30 秒 ~ 2 分钟，期间可关闭弹窗，完成后答卷自动出现在列表中。</p>
-        </template>
-      </a-alert>
-
       <a-upload-dragger :before-upload="beforeUpload" :show-upload-list="false" :accept="ACCEPT">
         <p class="ant-upload-drag-icon">
           <InboxOutlined />
@@ -88,15 +80,15 @@
 
 <script setup lang="ts">
 import type { AiTaskStatus } from '@/apis/quality'
-import { InboxOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   AI_TASK_STATUS_COLOR,
   AI_TASK_STATUS_LABEL,
   aiTaskApi,
   indirectResponseApi,
 } from '@/apis/quality'
+import { InboxOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { UiButton } from '@/components/ui-guide/ui'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'

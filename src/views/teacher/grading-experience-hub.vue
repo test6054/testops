@@ -445,14 +445,6 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -468,6 +460,14 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -701,29 +701,32 @@ function questionTypeLabel(value: QuestionTypeCode): string {
   return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题型')
 }
 
-function requireText(value: string | undefined, fieldName: string): string {
+function requireText(value: string | undefined, _fieldName: string): string {
   const normalized = value?.trim()
   if (!normalized) {
-    throw new TypeError(`后端批改经验合同缺失：${fieldName}`)
+    throw toUserError(null, '批改经验数据不完整，请刷新后重试')
   }
   return normalized
 }
 
-function requireNumber(value: number | undefined, fieldName: string): number {
+function requireNumber(value: number | undefined, _fieldName: string): number {
   if (value == null || !Number.isFinite(value)) {
-    throw new TypeError(`后端批改经验合同缺失：${fieldName}`)
+    throw toUserError(null, '批改经验数据不完整，请刷新后重试')
   }
   return value
 }
 
-function requireArray<T>(value: T[] | undefined, fieldName: string): T[] {
+function requireArray<T>(value: T[] | undefined, _fieldName: string): T[] {
   if (!Array.isArray(value)) {
-    throw new TypeError(`后端批改经验合同缺失：${fieldName}`)
+    throw toUserError(null, '批改经验数据不完整，请刷新后重试')
   }
   return value
 }
 
-function ellipsis(text: QuestionSignatureVO['questionDigest'] | GradingExperienceCaseVO['experienceSummary'], len = 60): string {
+function ellipsis(
+  text: QuestionSignatureVO['questionDigest'] | GradingExperienceCaseVO['experienceSummary'],
+  len = 60,
+): string {
   if (!text) return '-'
   return text.length > len ? `${text.slice(0, len)}…` : text
 }

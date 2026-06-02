@@ -83,15 +83,6 @@
     />
 
     <a-spin v-else :spinning="loading" tip="加载组织中...">
-      <UiAlertStrip
-        v-if="selectedExamId && !canManageSelectedExam"
-        class="org-index__owner-alert"
-        tone="info"
-        title="只读查看"
-        description="你可查看该考试阅卷组织；批阅任务分配由考试创建人执行。"
-        dense
-      />
-
       <SignalBand v-if="organization" :metrics="signalMetrics" compact class="org-index__signals" />
 
       <section v-if="organization" class="org-index__panel">
@@ -284,18 +275,12 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type {
   MarkingOrganizationVO,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import {
   createOrganization,
   deleteOrganization,
@@ -306,8 +291,13 @@ import {
   updateOrganization,
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
-  UiAlertStrip,
   UiBadge,
   UiButton,
   UiDrawer,
@@ -320,6 +310,7 @@ import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingOrganizationIndex' })
@@ -376,10 +367,7 @@ async function loadOrganization(): Promise<void> {
     organization.value = nextOrganization
   } catch (error) {
     organization.value = null
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    if (!isMarkingOrgNotCreatedError(error)) {
+    if (!(error instanceof Error && isMarkingOrgNotCreatedError(error))) {
       organizationLoadError.value = toUserError(error, '阅卷组织加载失败')
     }
   } finally {
@@ -426,7 +414,7 @@ async function loadTeachers(): Promise<void> {
       pageSize: 200,
       roleKey: 'SCH_TECH',
     })
-    teacherList.value = result.list
+    teacherList.value = readPageList(result, '阅卷教师列表加载失败，请稍后重试')
   } catch (error) {
     showUserError(error, '阅卷教师列表加载失败')
   } finally {

@@ -6,14 +6,6 @@
       </div>
     </template>
 
-    <UiAlertStrip
-      tone="info"
-      title="跨考试纵向分析说明"
-      description="跨考试纵向分析适用于同一课程或同一班级的多次考试，至少选择 2 次考试才能体现趋势。"
-      dense
-      class="cross-exam-dashboard__alert"
-    />
-
     <div class="cross-exam-dashboard__cards">
       <CrossExamTrendCard />
       <SemesterGrowthCard />
@@ -23,7 +15,7 @@
 </template>
 
 <script lang="ts" setup>
-import { UiAlertStrip, UiTag } from '@/components/ui-guide/ui'
+import { UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import CourseAchievementCard from './cross-exam/CourseAchievementCard.vue'
 import CrossExamTrendCard from './cross-exam/CrossExamTrendCard.vue'

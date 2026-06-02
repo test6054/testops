@@ -246,7 +246,16 @@ import type {
   GradeReviewRequestStatusCode,
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
+import {
+  GRADE_REVIEW_REASON_TYPE_LABEL,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_LABEL,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
+import { canSubmitReview, getMyScoreDetail, listMyExams } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
@@ -257,15 +266,6 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  GRADE_REVIEW_REASON_TYPE_LABEL,
-  GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_LABEL,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import { canSubmitReview, getMyScoreDetail, listMyExams } from '@/apis/mark/student-exam'
-import {
   UiBadge,
   UiButton,
   UiCard,
@@ -275,6 +275,7 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -318,7 +319,7 @@ const sourceQuestionId = ref<string | undefined>(undefined)
 
 const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
 
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode; label: string }> = [
   { value: 'PENDING', label: '待处理' },
   { value: 'IN_REVIEW', label: '处理中' },
   { value: 'APPROVED', label: '通过' },
@@ -394,9 +395,10 @@ async function loadExams() {
 
 /** 校验学生复核入口依赖的已发布成绩字段，合同缺失时进入页面错误态。 */
 function validateAppealableExamContracts(list: StudentExamItemVO[]): void {
+  const dataError = '成绩数据异常，请刷新后重试'
   for (const exam of list) {
-    if (exam.finalScoreStatus === 'PUBLISHED' && exam.finalScore == null) {
-      throw new Error(`已发布成绩缺少发布成绩：examId=${exam.examId}`)
+    if (exam.finalScoreStatus === 'PUBLISHED') {
+      assertUserFacing(exam.finalScore != null, dataError)
     }
   }
 }

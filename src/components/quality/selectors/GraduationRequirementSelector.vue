@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { GraduationRequirementVO } from '@/apis/quality'
-import { computed, onMounted, ref, watch } from 'vue'
 import { graduationRequirementApi } from '@/apis/quality'
+import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
@@ -29,7 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: GraduationRequirementVO]
+  change: [value: string | null, option?: GraduationRequirementVO]
 }>()
 
 const options = ref<GraduationRequirementVO[]>([])
@@ -74,7 +74,6 @@ async function loadOptions() {
       '毕业要求',
     )
   } catch (e) {
-    console.error('[GraduationRequirementSelector] 加载毕业要求列表失败', e)
     showUserError(e, '毕业要求列表加载失败')
   } finally {
     loading.value = false

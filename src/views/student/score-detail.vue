@@ -49,13 +49,6 @@
     />
 
     <template v-else-if="detail">
-      <UiAlertStrip
-        v-if="detail.finalScoreStatus !== 'PUBLISHED'"
-        tone="info"
-        title="成绩尚未发布"
-        description="教师在确认并发布后，您将能在此页面看到本场考试的总分与每道题的得分明细。"
-      />
-
       <UiCard v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__questions-card">
         <template #title>
           <BarChartOutlined />
@@ -265,9 +258,9 @@
 
             <section
               v-if="
-                currentDetail.improvementSuggestion
-                  || currentDetail.mistakeClusterLabel
-                  || currentDetail.aiDiagnostic
+                currentDetail.improvementSuggestion ||
+                currentDetail.mistakeClusterLabel ||
+                currentDetail.aiDiagnostic
               "
               class="answer-drawer__section"
             >
@@ -284,7 +277,8 @@
                   <UiTag tone="orange" size="sm">{{ currentDetail.mistakeClusterLabel }}</UiTag>
                 </p>
                 <p v-if="currentDetail.aiDiagnostic" class="answer-drawer__ai-line">
-                  <strong>AI 处理说明：</strong>{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
+                  <strong>AI 处理说明：</strong
+                  >{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
                 </p>
               </div>
             </section>
@@ -337,16 +331,13 @@
             :description="reportLoadError"
             dense
           />
-          <UiAlertStrip
+          <UiEmpty
             v-else-if="!reportLoading && !learningReport"
-            tone="info"
-            title="尚未生成 AI 学习报告"
-            description="教师生成后，此处会显示知识掌握分析、改进内容和错题聚类。"
-            dense
+            description="尚未生成 AI 学习报告"
           />
           <UiAlertStrip
             v-else-if="learningReport && !learningReport.available"
-            tone="info"
+            tone="warning"
             title="暂无可展示的 AI 学习内容"
             :description="unavailableLearningReportMessage(learningReport)"
             dense
@@ -457,17 +448,6 @@ import type {
   StudentQuestionScoreVO,
   StudentScoreDetailVO,
 } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -484,6 +464,17 @@ import {
   OBJECTIVE_RESULT_LABEL,
   OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/student-exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   UiAlertStrip,
   UiBadge,
@@ -494,6 +485,7 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -514,7 +506,7 @@ const selectedClusterLabel = ref<string | undefined>(undefined)
  * 从题目明细中提取所有出现过的 mistakeClusterLabel，供顶部下拉选择。
  * 学生可以按错题聚类快速查看同一类型的错题。
  */
-const clusterLabelOptions = computed<Array<{ value: string, label: string }>>(() => {
+const clusterLabelOptions = computed<Array<{ value: string; label: string }>>(() => {
   const labels = new Set<string>()
   for (const question of detailQuestions.value) {
     if (question.mistakeClusterLabel) {
@@ -678,18 +670,11 @@ async function loadDetail() {
 /** 校验已发布成绩详情的必需字段，避免题目表格渲染时整页崩溃。 */
 function validateScoreDetailContract(item: StudentScoreDetailVO): void {
   if (item.finalScoreStatus !== 'PUBLISHED') return
-  if (item.totalScore == null) {
-    throw new Error(`已发布成绩详情缺少总分：examId=${item.examId}`)
-  }
-  if (item.fullScore == null) {
-    throw new Error(`已发布成绩详情缺少满分：examId=${item.examId}`)
-  }
+  const dataError = '成绩详情数据异常，请刷新后重试'
+  assertUserFacing(item.totalScore != null, dataError)
+  assertUserFacing(item.fullScore != null, dataError)
   for (const question of item.questions) {
-    if (question.teacherReviewScore == null) {
-      throw new Error(
-        `已发布题目缺少题目得分：examId=${item.examId}, questionTemplateId=${question.questionTemplateId}`,
-      )
-    }
+    assertUserFacing(question.teacherReviewScore != null, dataError)
   }
 }
 
@@ -755,7 +740,7 @@ async function loadLearningReport(): Promise<void> {
 /** 校验 AI 学习报告不可用态必须返回原因，合同缺失进入报告错误态。 */
 function validateLearningReportContract(report: StudentAiLearningReportVO): void {
   if (!report.available && !report.profileMessage && !report.clusterMessage) {
-    throw new Error(`AI 学习报告不可用但缺少提示信息：examId=${report.examId}`)
+    assertUserFacing(false, 'AI 学习报告暂不可用，请稍后重试')
   }
 }
 
@@ -763,7 +748,7 @@ function unavailableLearningReportMessage(report: StudentAiLearningReportVO): st
   return (report.profileMessage || report.clusterMessage) as string
 }
 
-/** 将 AI 明细诊断转为学生侧学习提示，不暴露模型或接口调试信息。 */
+/** 将 AI 明细诊断转为学生侧学习提示，不暴露模型或接口内部细节。 */
 function aiLearningDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
@@ -773,9 +758,7 @@ function aiLearningDiagnosticText(diagnostic?: string): string {
 
 function formatRate(rate: string): string {
   const value = Number(rate)
-  if (!Number.isFinite(value)) {
-    throw new TypeError(`AI 学习报告得分率必须是 0-1 小数比例：${rate}`)
-  }
+  if (!Number.isFinite(value)) return '—'
   return `${(value * 100).toFixed(1)}%`
 }
 

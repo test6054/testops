@@ -55,7 +55,16 @@ defineOptions({
 
 const modelValue = defineModel<string | number | undefined>({ default: '' })
 
-const { type = 'text', size = 'md', status = 'default', disabled = false, readonly = false, placeholder = '', maxlength = undefined, clearable = false } = defineProps<{
+const {
+  type = 'text',
+  size = 'md',
+  status = 'default',
+  disabled = false,
+  readonly = false,
+  placeholder = '',
+  maxlength = undefined,
+  clearable = false,
+} = defineProps<{
   type?: string
   size?: UiComponentSize
   status?: UiFieldStatus
@@ -81,8 +90,7 @@ const displayValue = computed(() => modelValue.value ?? '')
 
 const normalizeValue = (nextValue: string) => {
   if (type === 'number') {
-    if (nextValue === '')
-      return undefined
+    if (nextValue === '') return undefined
     return nextValue
   }
   return nextValue
@@ -96,7 +104,7 @@ const handleCompositionEnd = (event: CompositionEvent) => {
   isComposing.value = false
   // 组合结束后手动更新值
   if (!(event.target instanceof HTMLInputElement)) {
-    throw new TypeError('输入框组合事件来源不符合前端组件契约')
+    return
   }
   const nextValue = event.target.value
   modelValue.value = normalizeValue(nextValue)
@@ -106,7 +114,7 @@ const handleInput = (event: Event) => {
   // 中文输入组合中不更新，等组合结束再更新
   if (isComposing.value) return
   if (!(event.target instanceof HTMLInputElement)) {
-    throw new TypeError('输入框输入事件来源不符合前端组件契约')
+    return
   }
   const nextValue = event.target.value
   modelValue.value = normalizeValue(nextValue)
@@ -147,7 +155,10 @@ const handleClear = () => {
   background-color: var(--dp-bg-control, #f3f4f6);
   font-size: 14px;
   color: var(--dp-text-primary, #0f172a);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
   font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
   box-sizing: border-box;
 }
@@ -244,7 +255,9 @@ const handleClear = () => {
   background: transparent;
   color: var(--dp-text-muted, #6b7280);
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .dp-input__clear:hover {

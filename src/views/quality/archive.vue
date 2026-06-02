@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileSystemNodeResponseDTO } from '@/apis/edu/file-management'
+import { uploadFile } from '@/apis/edu/file-management'
 /**
  * 质量评价 - 材料归档与专家包导出台
  *
@@ -18,13 +19,12 @@ import type {
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality'
+import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
-import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
 import {
   AchievementResultSelector,
   AuditRectificationSelector,
@@ -81,12 +81,12 @@ const query = reactive<ArchiveQueryRequest>({
   keyword: '',
 })
 
-const businessTypeOptions: { value: ArchiveBusinessType, label: string }[] = Object.entries(
+const businessTypeOptions: { value: ArchiveBusinessType; label: string }[] = Object.entries(
   ARCHIVE_BUSINESS_TYPE_LABEL,
 ).map(([value, label]) => ({
   value,
   label,
-})) as { value: ArchiveBusinessType, label: string }[]
+})) as { value: ArchiveBusinessType; label: string }[]
 
 const filterFields: FilterField[] = [
   {
@@ -167,7 +167,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -364,7 +364,7 @@ async function handleArchiveFileUpload(options: UploadRequestOption): Promise<vo
     const { file } = options
     if (!(file instanceof File)) {
       message.error('无效的归档文件')
-      options.onError?.(new TypeError('无效的归档文件'))
+      options.onError?.(new Error('无效的归档文件'))
       return
     }
     const uploaded = await uploadFile(file, { businessType: 'QUALITY_ARCHIVE_FILE' })
@@ -572,12 +572,6 @@ onMounted(async () => {
       ok-text="触发导出"
       @ok="submitExport"
     >
-      <a-alert
-        type="info"
-        show-icon
-        message="毕业要求材料包面向单条毕业要求；专业认证材料包面向一套培养方案。导出完成后将生成归档记录，并向接收人发送站内通知。"
-        class="archive__alert"
-      />
       <a-form layout="vertical" :model="exportForm">
         <a-form-item label="材料包类型" required>
           <a-radio-group v-model:value="exportForm.packageType">

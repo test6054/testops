@@ -29,13 +29,6 @@
           @press-enter="handleSearch"
         />
         <a-select
-          v-model:value="searchForm.interfaceMode"
-          placeholder="接入模式"
-          allow-clear
-          style="width: 160px; margin-right: 12px"
-          :options="interfaceModeOptions"
-        />
-        <a-select
           v-model:value="searchForm.status"
           placeholder="设备状态"
           allow-clear
@@ -85,12 +78,7 @@
         bordered
       >
         <template #bodyCell="{ column, index }">
-          <template v-if="column.key === 'interfaceMode'">
-            <a-tag :color="interfaceModeColorOf(devices[index].interfaceMode)">
-              {{ interfaceModeLabelOf(devices[index].interfaceMode) }}
-            </a-tag>
-          </template>
-          <template v-else-if="column.key === 'status'">
+          <template v-if="column.key === 'status'">
             <a-tag :color="statusColorOf(devices[index].status)">
               {{ statusLabelOf(devices[index].status) }}
             </a-tag>
@@ -118,27 +106,8 @@
             <div class="operations-cell">
               <a class="op-link" @click="handleViewDetail(devices[index])">详情</a>
               <a class="op-link" @click="handleEdit(devices[index])">编辑</a>
-              <a
-                v-if="devices[index].interfaceMode === 'HTTP_PUSH'"
-                class="op-link"
-                @click="handleResetToken(devices[index])"
-              >
-                重置设备接入密钥
-              </a>
-              <a
-                v-if="devices[index].interfaceMode === 'HTTP_PUSH'"
-                class="op-link"
-                @click="handleCreateActivationCode(devices[index])"
-              >
-                激活码
-              </a>
-              <a
-                v-if="devices[index].interfaceMode === 'SANE_PULL'"
-                class="op-link"
-                @click="handleOpenSaneTrigger(devices[index])"
-              >
-                采集
-              </a>
+              <a class="op-link" @click="handleResetToken(devices[index])"> 重置设备接入密钥 </a>
+              <a class="op-link" @click="handleCreateActivationCode(devices[index])"> 激活码 </a>
               <a
                 v-if="devices[index].endpointMachineCode"
                 class="op-link op-link--danger"
@@ -205,17 +174,6 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item name="interfaceMode" label="接入模式">
-              <a-select
-                v-model:value="formData.interfaceMode"
-                :options="interfaceModeOptions"
-                placeholder="选择接入模式"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="16">
-          <a-col :span="12">
             <a-form-item name="status" label="设备状态">
               <a-select v-model:value="formData.status" :options="statusOptions" />
             </a-form-item>
@@ -241,99 +199,36 @@
           </a-col>
         </a-row>
 
-        <!-- HTTP_PUSH 专属字段 -->
-        <template v-if="formData.interfaceMode === 'HTTP_PUSH'">
-          <a-divider orientation="left">HTTP 推送配置</a-divider>
-          <a-row :gutter="16">
-            <a-col :span="12">
-              <a-form-item name="defaultExamId" label="默认归属考试">
-                <a-select
-                  v-model:value="formData.defaultExamId"
-                  placeholder="可空，扫描仪未指定时使用"
-                  :loading="examListLoading"
-                  :options="examOptions"
-                  show-search
-                  allow-clear
-                  :filter-option="filterExamOption"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item name="defaultClassIds" label="默认归属班级">
-                <a-select
-                  v-model:value="formData.defaultClassIds"
-                  mode="multiple"
-                  placeholder="请选择默认归属班级"
-                  :loading="classListLoading"
-                  :options="classOptions"
-                  show-search
-                  allow-clear
-                  :filter-option="filterClassOption"
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </template>
-
-        <!-- SANE_PULL 专属字段 -->
-        <template v-if="formData.interfaceMode === 'SANE_PULL'">
-          <a-divider orientation="left">主动扫描采集配置</a-divider>
-          <a-row :gutter="16">
-            <a-col :span="12">
-              <a-form-item name="saneHost" label="采集主机">
-                <a-input v-model:value="formData.saneHost" placeholder="如 192.168.1.20" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item name="sanePort" label="采集端口">
-                <a-input-number
-                  v-model:value="formData.sanePort"
-                  :min="1"
-                  :max="65535"
-                  placeholder="默认 6566"
-                  style="width: 100%"
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="16">
-            <a-col :span="12">
-              <a-form-item name="saneDeviceName" label="扫描设备名">
-                <a-input
-                  v-model:value="formData.saneDeviceName"
-                  placeholder="如 epson2:net:192.168.1.20"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item
-                name="saneResolution"
-                label="扫描分辨率"
-                extra="阅卷影像采集下限为 300 DPI；低于该阈值会影响手写体识别。"
-              >
-                <a-input-number
-                  v-model:value="formData.saneResolution"
-                  :min="300"
-                  :max="1200"
-                  placeholder="默认 300；不能低于 300"
-                  style="width: 100%"
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="16">
-            <a-col :span="12">
-              <a-form-item name="saneColorMode" label="色彩模式">
-                <a-select v-model:value="formData.saneColorMode" :options="colorModeOptions" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item name="saneDuplexMode" label="双面模式">
-                <a-select v-model:value="formData.saneDuplexMode" :options="duplexModeOptions" />
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </template>
+        <a-divider orientation="left">Agent 默认配置</a-divider>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item name="defaultExamId" label="默认归属考试">
+              <a-select
+                v-model:value="formData.defaultExamId"
+                placeholder="可空，扫描仪未指定时使用"
+                :loading="examListLoading"
+                :options="examOptions"
+                show-search
+                allow-clear
+                :filter-option="filterExamOption"
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item name="defaultClassIds" label="默认归属班级">
+              <a-select
+                v-model:value="formData.defaultClassIds"
+                mode="multiple"
+                placeholder="请选择默认归属班级"
+                :loading="classListLoading"
+                :options="classOptions"
+                show-search
+                allow-clear
+                :filter-option="filterClassOption"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
         <a-divider orientation="left">运维信息（可选）</a-divider>
         <a-row :gutter="16">
@@ -441,24 +336,15 @@
           {{ detailInfo.scannerDeviceId }}
         </a-descriptions-item>
         <a-descriptions-item label="扫描站点编号">
-          {{
-            detailInfo.scannerStationId
-          }}
+          {{ detailInfo.scannerStationId }}
         </a-descriptions-item>
         <a-descriptions-item label="设备状态">
           <a-tag :color="statusColorOf(detailInfo.status)">
             {{ statusLabelOf(detailInfo.status) }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="接入模式">
-          <a-tag :color="interfaceModeColorOf(detailInfo.interfaceMode)">
-            {{ interfaceModeLabelOf(detailInfo.interfaceMode) }}
-          </a-tag>
-        </a-descriptions-item>
         <a-descriptions-item label="设备地址">
-          {{
-            detailInfo.scannerIp || '—'
-          }}
+          {{ detailInfo.scannerIp || '—' }}
         </a-descriptions-item>
         <a-descriptions-item label="Kiosk 防误触锁">
           <a-tag :color="detailInfo.kioskLockEnabled === false ? 'warning' : 'success'">
@@ -494,51 +380,35 @@
             scannerDeviceDiagnosticText(detailInfo.diagnosticMessage, detailInfo.diagnosticStatus)
           }}
         </a-descriptions-item>
-        <template v-if="detailInfo.interfaceMode === 'HTTP_PUSH'">
-          <a-descriptions-item label="默认归属考试">
-            {{ detailInfo.defaultExamId || '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="默认归属班级">
-            <a-space v-if="detailInfo.defaultClassRefs.length" wrap>
-              <a-tag v-for="classRef in detailInfo.defaultClassRefs" :key="classRef.classId">
-                {{ classRef.className }}
-              </a-tag>
-            </a-space>
-            <span v-else>—</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="完整设备接入密钥" :span="2">
-            <div class="token-row">
-              <span class="token-text">{{ detailInfo.pushToken || '—' }}</span>
-              <a-button
-                v-if="detailInfo.pushToken"
-                size="small"
-                @click="copyText(detailInfo.pushToken)"
-              >
-                复制
-              </a-button>
-            </div>
-          </a-descriptions-item>
-          <a-descriptions-item label="上报地址" :span="2">
-            <span class="token-text">{{ buildAbsolutePushUrl(detailInfo.pushUrl) }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="设备接入授权" :span="2">
-            <span class="token-text">{{ detailInfo.authorizationHeader || '—' }}</span>
-          </a-descriptions-item>
-        </template>
-        <template v-if="detailInfo.interfaceMode === 'SANE_PULL'">
-          <a-descriptions-item label="采集主机">
-            {{ formatSaneEndpoint(detailInfo) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="扫描设备名">
-            {{ detailInfo.saneDeviceName || '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="分辨率">
-            {{ detailInfo.saneResolution || '—' }} DPI
-          </a-descriptions-item>
-          <a-descriptions-item label="色彩 / 双面">
-            {{ detailInfo.saneColorMode || '—' }} / {{ detailInfo.saneDuplexMode || '—' }}
-          </a-descriptions-item>
-        </template>
+        <a-descriptions-item label="默认归属考试">
+          {{ detailInfo.defaultExamId || '—' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="默认归属班级">
+          <a-space v-if="detailInfo.defaultClassRefs.length" wrap>
+            <a-tag v-for="classRef in detailInfo.defaultClassRefs" :key="classRef.classId">
+              {{ classRef.className }}
+            </a-tag>
+          </a-space>
+          <span v-else>—</span>
+        </a-descriptions-item>
+        <a-descriptions-item label="完整设备接入密钥" :span="2">
+          <div class="token-row">
+            <span class="token-text">{{ detailInfo.pushToken || '—' }}</span>
+            <a-button
+              v-if="detailInfo.pushToken"
+              size="small"
+              @click="copyText(detailInfo.pushToken)"
+            >
+              复制
+            </a-button>
+          </div>
+        </a-descriptions-item>
+        <a-descriptions-item label="上报地址" :span="2">
+          <span class="token-text">{{ buildAbsolutePushUrl(detailInfo.pushUrl) }}</span>
+        </a-descriptions-item>
+        <a-descriptions-item label="设备接入授权" :span="2">
+          <span class="token-text">{{ detailInfo.authorizationHeader || '—' }}</span>
+        </a-descriptions-item>
         <a-descriptions-item label="厂商">{{ detailInfo.manufacturer || '—' }}</a-descriptions-item>
         <a-descriptions-item label="型号">{{ detailInfo.model || '—' }}</a-descriptions-item>
         <a-descriptions-item label="物理位置" :span="2">
@@ -597,103 +467,6 @@
         </a-space>
       </div>
     </a-modal>
-
-    <!-- 主动扫描采集弹窗 -->
-    <a-modal
-      v-model:open="showSaneModal"
-      title="主动扫描采集"
-      width="640px"
-      :confirm-loading="saneSubmitting"
-      destroy-on-close
-      @ok="handleSaneSubmit"
-      @cancel="showSaneModal = false"
-    >
-      <a-alert
-        type="info"
-        show-icon
-        message="系统会连接扫描设备并按期望页数采集，每页生成扫描影像并登记入库。"
-        style="margin-bottom: 16px"
-      />
-      <UiErrorRetryPanel
-        v-if="saneSubmitError"
-        :error="saneSubmitError"
-        title="主动扫描采集失败"
-        compact
-        :show-retry="false"
-        style="margin-bottom: 16px"
-      />
-      <UiErrorRetryPanel
-        v-if="classListLoadError"
-        :error="classListLoadError"
-        title="班级列表加载失败"
-        compact
-        @retry="loadClassList"
-        style="margin-bottom: 16px"
-      />
-      <UiErrorRetryPanel
-        v-if="examListLoadError"
-        :error="examListLoadError"
-        title="考试列表加载失败"
-        compact
-        @retry="loadExamList"
-        style="margin-bottom: 16px"
-      />
-      <a-form
-        ref="saneFormRef"
-        :model="saneFormData"
-        :rules="saneFormRules"
-        :label-col="{ span: 7 }"
-        :wrapper-col="{ span: 16 }"
-      >
-        <a-form-item label="设备">
-          <span>{{ saneTargetDevice?.deviceName }} ({{ saneTargetDevice?.scannerDeviceId }})</span>
-        </a-form-item>
-        <a-form-item name="examId" label="考试">
-          <a-select
-            v-model:value="saneFormData.examId"
-            placeholder="请选择考试"
-            :loading="examListLoading"
-            :options="examOptions"
-            show-search
-            allow-clear
-            :filter-option="filterExamOption"
-          />
-        </a-form-item>
-        <a-form-item name="declaredClassIds" label="上报班级">
-          <a-select
-            v-model:value="saneFormData.declaredClassIds"
-            mode="multiple"
-            placeholder="请选择上报班级"
-            :loading="classListLoading"
-            :options="classOptions"
-            show-search
-            allow-clear
-            :filter-option="filterClassOption"
-          />
-        </a-form-item>
-        <a-form-item name="expectedPages" label="期望采集页数">
-          <a-input-number
-            v-model:value="saneFormData.expectedPages"
-            :min="1"
-            :max="500"
-            placeholder="ADF 进纸时请设置上限"
-            style="width: 100%"
-          />
-        </a-form-item>
-        <a-form-item label="批次外部编号（可选）">
-          <a-input v-model:value="saneFormData.batchExternalNo" placeholder="留空由服务端生成" />
-        </a-form-item>
-        <a-form-item label="临时分辨率覆盖（可选）">
-          <a-input-number
-            v-model:value="saneFormData.resolutionOverride"
-            :min="300"
-            :max="1200"
-            placeholder="留空使用设备默认；低于 300 DPI 会被阻断"
-            style="width: 100%"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
   </StageWorkbenchShell>
 </template>
 
@@ -701,6 +474,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
+import { getAllClasses } from '@/apis/edu/class'
 import type {
   ExamScannerActivationCodeVO,
   ExamScannerDeviceCreateRequest,
@@ -711,17 +485,9 @@ import type {
   ExamScannerDeviceVO,
   MarkExamSummaryVO,
   ScannerAgentDiagnosticStatusCode,
-  ScannerColorModeCode,
   ScannerDeviceStatusCode,
-  ScannerDuplexModeCode,
   ScannerEndpointOnlineStatusCode,
-  ScannerInterfaceModeCode,
 } from '@/apis/mark/exam-mark-scanner'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { getAllClasses } from '@/apis/edu/class'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -734,12 +500,13 @@ import {
   SCANNER_DEVICE_STATUS_LABEL,
   SCANNER_ENDPOINT_ONLINE_STATUS_COLOR,
   SCANNER_ENDPOINT_ONLINE_STATUS_LABEL,
-  SCANNER_INTERFACE_MODE_COLOR,
-  SCANNER_INTERFACE_MODE_LABEL,
-  triggerSaneScan,
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -748,6 +515,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { readArrayResponse, readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrinterManagement' })
@@ -783,33 +551,16 @@ const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
 const activationCodeDeviceName = ref('')
 const activationCodeError = ref<Error | null>(null)
 
-const interfaceModeOptions = [
-  { value: 'HTTP_PUSH', label: SCANNER_INTERFACE_MODE_LABEL.HTTP_PUSH },
-  { value: 'SANE_PULL', label: SCANNER_INTERFACE_MODE_LABEL.SANE_PULL },
-]
-
 const statusOptions = [
   { value: 'ACTIVE', label: SCANNER_DEVICE_STATUS_LABEL.ACTIVE },
   { value: 'INACTIVE', label: SCANNER_DEVICE_STATUS_LABEL.INACTIVE },
   { value: 'DISABLED', label: SCANNER_DEVICE_STATUS_LABEL.DISABLED },
 ]
 
-const colorModeOptions = [
-  { value: 'COLOR', label: '彩色 COLOR' },
-  { value: 'GRAY', label: '灰度 GRAY' },
-  { value: 'LINEART', label: '黑白 LINEART' },
-]
-
-const duplexModeOptions = [
-  { value: 'SIMPLEX', label: '单面 SIMPLEX' },
-  { value: 'DUPLEX', label: '双面 DUPLEX' },
-]
-
 const columns = [
   { title: '设备名称', dataIndex: 'deviceName', key: 'deviceName', width: 160 },
   { title: '扫描设备编号', dataIndex: 'scannerDeviceId', key: 'scannerDeviceId', width: 160 },
   { title: '站点', dataIndex: 'scannerStationId', key: 'scannerStationId', width: 120 },
-  { title: '接入模式', dataIndex: 'interfaceMode', key: 'interfaceMode', width: 130 },
   { title: '设备地址', dataIndex: 'scannerIp', key: 'scannerIp', width: 130 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 90 },
   { title: '扫描组件', dataIndex: 'endpointOnlineStatus', key: 'endpointOnlineStatus', width: 100 },
@@ -826,12 +577,6 @@ function statusLabelOf(status: ScannerDeviceStatusCode): string {
 }
 function statusColorOf(status: ScannerDeviceStatusCode): string {
   return strictEnumTone(SCANNER_DEVICE_STATUS_COLOR, status, '扫描设备状态')
-}
-function interfaceModeLabelOf(mode: ScannerInterfaceModeCode): string {
-  return strictEnumLabel(SCANNER_INTERFACE_MODE_LABEL, mode, '扫描接入模式')
-}
-function interfaceModeColorOf(mode: ScannerInterfaceModeCode): string {
-  return strictEnumTone(SCANNER_INTERFACE_MODE_COLOR, mode, '扫描接入模式')
 }
 function endpointOnlineStatusLabelOf(status: ScannerEndpointOnlineStatusCode): string {
   return strictEnumLabel(SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, status, '扫描端点在线状态')
@@ -857,12 +602,7 @@ async function loadDevices(): Promise<void> {
   deviceDeleteError.value = null
   try {
     const result = await listScannerDevices(searchForm.value)
-    if (!Array.isArray(result)) {
-      devicesLoadError.value = new TypeError('扫描设备列表响应格式异常')
-      showUserError(devicesLoadError.value, '扫描设备列表加载失败')
-      return
-    }
-    devices.value = result
+    devices.value = readArrayResponse(result, '扫描设备列表加载失败')
   } catch (error) {
     devicesLoadError.value = toUserError(error, '扫描设备列表加载失败')
     showUserError(error, '扫描设备列表加载失败')
@@ -892,15 +632,8 @@ interface FormState {
   scannerDeviceId: string
   scannerStationId: string
   deviceName: string
-  interfaceMode: ScannerInterfaceModeCode
   scannerIp?: string
   status: ScannerDeviceStatusCode
-  saneHost?: string
-  sanePort?: number
-  saneDeviceName?: string
-  saneResolution?: number
-  saneColorMode?: ScannerColorModeCode
-  saneDuplexMode?: ScannerDuplexModeCode
   defaultExamId?: string
   defaultClassIds?: string[]
   manufacturer?: string
@@ -915,13 +648,8 @@ function defaultFormState(): FormState {
     scannerDeviceId: '',
     scannerStationId: '',
     deviceName: '',
-    interfaceMode: 'HTTP_PUSH',
     scannerIp: '',
     status: 'ACTIVE',
-    sanePort: 6566,
-    saneResolution: 300,
-    saneColorMode: 'COLOR',
-    saneDuplexMode: 'SIMPLEX',
     defaultClassIds: [],
     kioskLockEnabled: true,
   }
@@ -933,7 +661,6 @@ const formRules: Record<string, Rule[]> = {
   scannerDeviceId: [{ required: true, message: '请输入扫描设备编号' }],
   scannerStationId: [{ required: true, message: '请输入扫描站点编号' }],
   deviceName: [{ required: true, message: '请输入设备名称' }],
-  interfaceMode: [{ required: true, message: '请选择接入模式' }],
   status: [{ required: true, message: '请选择设备状态' }],
 }
 
@@ -958,15 +685,8 @@ function handleEdit(record: ExamScannerDeviceVO): void {
     scannerDeviceId: record.scannerDeviceId,
     scannerStationId: record.scannerStationId,
     deviceName: record.deviceName,
-    interfaceMode: record.interfaceMode,
     scannerIp: record.scannerIp ?? '',
     status: record.status,
-    saneHost: record.saneHost ?? '',
-    sanePort: record.sanePort,
-    saneDeviceName: record.saneDeviceName ?? '',
-    saneResolution: record.saneResolution,
-    saneColorMode: record.saneColorMode,
-    saneDuplexMode: record.saneDuplexMode,
     defaultExamId: record.defaultExamId ?? '',
     defaultClassIds: record.defaultClassRefs.map((classRef) => classRef.classId),
     manufacturer: record.manufacturer ?? '',
@@ -981,12 +701,6 @@ function handleEdit(record: ExamScannerDeviceVO): void {
 async function handleFormSubmit(): Promise<void> {
   await formRef.value?.validate()
   formSubmitError.value = null
-  if (formData.interfaceMode === 'SANE_PULL') {
-    if (!formData.saneHost || !formData.saneDeviceName) {
-      message.error('扫描采集设备配置不完整，请补齐采集主机与设备名称')
-      return
-    }
-  }
   formSubmitting.value = true
   try {
     if (formMode.value === 'create') {
@@ -994,15 +708,8 @@ async function handleFormSubmit(): Promise<void> {
         scannerDeviceId: formData.scannerDeviceId.trim(),
         scannerStationId: formData.scannerStationId.trim(),
         deviceName: formData.deviceName.trim(),
-        interfaceMode: formData.interfaceMode,
         scannerIp: emptyToUndefined(formData.scannerIp),
         status: formData.status,
-        saneHost: emptyToUndefined(formData.saneHost),
-        sanePort: formData.sanePort,
-        saneDeviceName: emptyToUndefined(formData.saneDeviceName),
-        saneResolution: formData.saneResolution,
-        saneColorMode: formData.saneColorMode,
-        saneDuplexMode: formData.saneDuplexMode,
         defaultExamId: emptyToUndefined(formData.defaultExamId),
         defaultClassIds: formData.defaultClassIds,
         manufacturer: emptyToUndefined(formData.manufacturer),
@@ -1011,26 +718,19 @@ async function handleFormSubmit(): Promise<void> {
         kioskLockEnabled: formData.kioskLockEnabled,
         remark: emptyToUndefined(formData.remark),
       }
-      const tokenInfo = await createScannerDevice(request)
+      const createdToken = await createScannerDevice(request)
       message.success('扫描设备创建成功')
       showFormModal.value = false
-      if (formData.interfaceMode === 'HTTP_PUSH' && tokenInfo.pushToken) {
-        openTokenModal(tokenInfo)
+      if (createdToken.pushToken) {
+        openTokenModal(createdToken)
       }
       await loadDevices()
     } else {
       const request: ExamScannerDeviceUpdateRequest = {
         id: formData.id!,
         deviceName: formData.deviceName.trim(),
-        interfaceMode: formData.interfaceMode,
         scannerIp: emptyToUndefined(formData.scannerIp),
         status: formData.status,
-        saneHost: emptyToUndefined(formData.saneHost),
-        sanePort: formData.sanePort,
-        saneDeviceName: emptyToUndefined(formData.saneDeviceName),
-        saneResolution: formData.saneResolution,
-        saneColorMode: formData.saneColorMode,
-        saneDuplexMode: formData.saneDuplexMode,
         defaultExamId: emptyToUndefined(formData.defaultExamId),
         defaultClassIds: formData.defaultClassIds,
         manufacturer: emptyToUndefined(formData.manufacturer),
@@ -1193,90 +893,6 @@ function handleDelete(record: ExamScannerDeviceVO): void {
   })
 }
 
-// ─── SANE 主动采集弹窗 ────────────────────────────────
-const showSaneModal = ref(false)
-const saneSubmitting = ref(false)
-const saneSubmitError = ref<Error | null>(null)
-const saneFormRef = ref<FormInstance | null>(null)
-const saneTargetDevice = ref<ExamScannerDeviceVO | null>(null)
-
-interface SaneFormState {
-  examId: string
-  declaredClassIds: string[]
-  expectedPages: number
-  batchExternalNo?: string
-  resolutionOverride?: number
-}
-
-const saneFormData = reactive<SaneFormState>({
-  examId: '',
-  declaredClassIds: [],
-  expectedPages: 1,
-})
-
-const saneFormRules: Record<string, Rule[]> = {
-  examId: [{ required: true, message: '请选择考试' }],
-  declaredClassIds: [{ required: true, message: '请至少选择一个上报班级' }],
-  expectedPages: [{ required: true, type: 'number', message: '请输入期望采集页数' }],
-}
-
-function handleOpenSaneTrigger(record: ExamScannerDeviceVO): void {
-  if (record.interfaceMode !== 'SANE_PULL') {
-    message.error('仅主动采集设备支持此操作')
-    return
-  }
-  if (record.status !== 'ACTIVE') {
-    message.error('设备未启用，不能触发扫描采集')
-    return
-  }
-  if (!record.saneHost || !record.saneDeviceName) {
-    message.error('扫描采集设备配置不完整，请先补齐采集主机与设备名称')
-    return
-  }
-  if (record.saneResolution !== undefined && record.saneResolution < 300) {
-    message.error('设备默认分辨率低于阅卷影像采集要求，请先修正设备配置')
-    return
-  }
-  saneTargetDevice.value = record
-  saneSubmitError.value = null
-  Object.assign(saneFormData, {
-    examId: record.defaultExamId ?? '',
-    declaredClassIds: record.defaultClassRefs.map((classRef) => classRef.classId),
-    expectedPages: 1,
-    batchExternalNo: undefined,
-    resolutionOverride: undefined,
-  })
-  showSaneModal.value = true
-}
-
-async function handleSaneSubmit(): Promise<void> {
-  await saneFormRef.value?.validate()
-  saneSubmitError.value = null
-  if (!saneTargetDevice.value) {
-    message.error('未选择扫描设备，请重新打开采集窗口')
-    return
-  }
-  saneSubmitting.value = true
-  try {
-    const result = await triggerSaneScan({
-      deviceId: saneTargetDevice.value.id,
-      examId: saneFormData.examId,
-      declaredClassIds: saneFormData.declaredClassIds,
-      expectedPages: saneFormData.expectedPages,
-      batchExternalNo: saneFormData.batchExternalNo,
-      resolutionOverride: saneFormData.resolutionOverride,
-    })
-    message.success(`采集完成：批次 ${result.scanBatchId}，共 ${result.pageCount} 页`, 4)
-    showSaneModal.value = false
-    await loadDevices()
-  } catch (error) {
-    saneSubmitError.value = toUserError(error, '扫描设备主动采集失败')
-    showUserError(error, '扫描设备主动采集失败')
-  } finally {
-    saneSubmitting.value = false
-  }
-}
-
 async function loadClassList(): Promise<void> {
   classListLoading.value = true
   try {
@@ -1298,20 +914,15 @@ async function loadExamList(): Promise<void> {
     // 仅平台超管 + 企业管理员享有全租户读视角；租户管理员（含普通教师）走自己创建 + 被分配范围。
     // 注：后端 listExamPage 切面会忽略前端教师视角传值，本处 createUserId 仅作为 UI 下钻入口。
     const role = authStore.userRole
-    const isAdminView
-      = role === RoleEnum.SUPER_ADMIN || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER
+    const isAdminView =
+      role === RoleEnum.SUPER_ADMIN || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER
     const result = await pageMarkExams({
       pageNum: 1,
       pageSize: 200,
       status: 'ACTIVE',
       createUserId: isAdminView ? null : userStore.userInfo.userId || undefined,
     })
-    if (!Array.isArray(result.list)) {
-      examListLoadError.value = new TypeError('考试列表接口返回格式错误')
-      showUserError(examListLoadError.value, '考试列表加载失败')
-      return
-    }
-    examList.value = result.list
+    examList.value = readPageList(result, '考试列表加载失败，请稍后重试')
   } catch (error) {
     examListLoadError.value = toUserError(error, '考试列表加载失败')
     showUserError(error, '考试列表加载失败')
@@ -1334,13 +945,6 @@ function filterExamOption(input: string, option?: DefaultOptionType): boolean {
 
 function formatAcademicTerm(exam: MarkExamSummaryVO): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
-}
-
-function formatSaneEndpoint(device: ExamScannerDeviceDetailVO): string {
-  if (!device.saneHost && device.sanePort === undefined) return '—'
-  if (!device.saneHost) return `未返回主机:${device.sanePort}`
-  if (device.sanePort === undefined) return `${device.saneHost}:未返回端口`
-  return `${device.saneHost}:${device.sanePort}`
 }
 
 function formatExamOptionLabel(exam: MarkExamSummaryVO): string {

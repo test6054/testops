@@ -45,15 +45,6 @@
         class="score-finalize__signals"
       />
 
-      <!-- B-2 核定状态机引导：计算 → 确认 → 发布 -->
-      <UiProgressStepList
-        :items="finalizeStepItems"
-        title="核定流程引导"
-        description="按状态机推进：计算总分 → 确认核定 → 发布到学生侧"
-        compact
-        class="score-finalize__guide"
-      />
-
       <!-- D-3 当前页偏差提示：z-score >= 1.5 的考生需要复核 -->
       <UiAlertStrip
         v-if="biasAlert.visible"
@@ -321,13 +312,6 @@
       @confirm="handleConfirm"
     >
       <a-form layout="vertical">
-        <UiAlertStrip
-          tone="info"
-          title="确认说明"
-          description="系统将以题目确认得分重新汇总为教师复核评分。确认后状态进入「已确认」，需要进一步「发布」才会通知学生。"
-          dense
-          class="score-finalize__alert"
-        />
         <a-form-item label="考生">
           <a-input
             :value="confirmCandidate ? confirmCandidate.paperDisplay.primaryText : ''"
@@ -458,7 +442,6 @@ import {
   UiDrawer,
   UiEmpty,
   UiErrorRetryPanel,
-  UiProgressStepList,
   UiStatPanel,
   UiTag,
   UiTrendChart,
@@ -467,6 +450,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScoreFinalize' })
@@ -530,13 +514,8 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
-    if (!Array.isArray(result.list)) {
-      candidatesLoadError.value = toUserError(null, '成绩确认名单加载失败，请稍后重试')
-      showUserError(candidatesLoadError.value, '成绩确认名单加载失败，请稍后重试')
-      return
-    }
-    candidates.value = result.list
-    pagination.total = Number(result.total)
+    candidates.value = readPageList(result, '成绩确认名单加载失败，请稍后重试')
+    pagination.total = readPageTotal(result)
   } catch (error) {
     candidatesLoadError.value = toUserError(error, '成绩确认名单加载失败，请稍后重试')
     showUserError(error, '成绩确认名单加载失败，请稍后重试')
@@ -728,65 +707,6 @@ function biasDelta(score: number | undefined): string {
   const sign = delta > 0 ? '+' : ''
   return `${sign}${delta.toFixed(1)} 分`
 }
-
-/**
- * B-2 核定状态机引导：把 6 桶状态收敛为 3 步可视化（计算 / 确认 / 发布）。
- * - 已计算 = CALCULATED + CONFIRMED + CORRECTED + PUBLISHED + WITHDRAWN（凡进入流程都已完成"计算"）
- * - 已确认 = CONFIRMED + CORRECTED + PUBLISHED + WITHDRAWN
- * - 已发布 = PUBLISHED
- * 当 candidates 为空时三步均为 pending，避免 0/0 派生 NaN。
- */
-const finalizeStepItems = computed(() => {
-  const b = candidateBuckets.value
-  const total = pagination.total ?? 0
-  const calculated = b.CALCULATED + b.CONFIRMED + b.CORRECTED + b.PUBLISHED + b.WITHDRAWN
-  const confirmed = b.CONFIRMED + b.CORRECTED + b.PUBLISHED + b.WITHDRAWN
-  const published = b.PUBLISHED
-  const calcPercent = total > 0 ? Math.round((calculated / total) * 100) : 0
-  const confirmPercent = total > 0 ? Math.round((confirmed / total) * 100) : 0
-  const publishPercent = total > 0 ? Math.round((published / total) * 100) : 0
-  function deriveStatus(percent: number, doneTrigger: number): 'pending' | 'active' | 'completed' {
-    if (total === 0) return 'pending'
-    if (doneTrigger >= total) return 'completed'
-    if (percent > 0) return 'active'
-    return 'pending'
-  }
-  return [
-    {
-      key: 'calculate',
-      title: '1. 计算总分',
-      description: '系统按题目得分汇总为试卷总分；进入此步后教师可点击「确认」。',
-      meta: total > 0 ? `${calculated} / ${total}` : '-',
-      percent: calcPercent,
-      status: deriveStatus(calcPercent, calculated),
-      helper: b.PENDING > 0 ? `${b.PENDING} 人尚未计算` : '所有考生已完成总分计算',
-    },
-    {
-      key: 'confirm',
-      title: '2. 教师确认',
-      description: '确认即冻结当前总分；订正/撤回后需要重新确认才能发布。',
-      meta: total > 0 ? `${confirmed} / ${total}` : '-',
-      percent: confirmPercent,
-      status: deriveStatus(confirmPercent, confirmed),
-      helper: b.CALCULATED > 0 ? `${b.CALCULATED} 人已计算待确认` : '所有候选已通过确认环节',
-    },
-    {
-      key: 'publish',
-      title: '3. 发布给学生',
-      description:
-        '发布后学生侧成绩入口可见；撤回后学生侧不再可见。可使用列表中的「批量发布」一次推进。',
-      meta: total > 0 ? `${published} / ${total}` : '-',
-      percent: publishPercent,
-      status: deriveStatus(publishPercent, published),
-      helper:
-        b.WITHDRAWN > 0
-          ? `${b.WITHDRAWN} 人已撤回，需重新发布`
-          : confirmed - published > 0
-            ? `${confirmed - published} 人已确认待发布`
-            : '已发布人数已覆盖确认队列',
-    },
-  ]
-})
 
 function canWithdraw(record: ExamScoreSummaryItemVO): boolean {
   if (!record.paperInstanceId) return false

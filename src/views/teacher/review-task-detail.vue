@@ -79,22 +79,14 @@
           <UiCard class="info-card">
             <template #title>
               <PictureOutlined />
-              <span>作答切片</span>
+              <span>阅卷影像</span>
             </template>
-            <UiEmpty v-if="!detail?.sliceFileId" description="该题目暂无切片图" />
-            <div v-else class="slice-viewer">
-              <a-spin :spinning="sliceLoading" tip="加载切片中...">
-                <a-image
-                  v-if="sliceImageUrl"
-                  :src="sliceImageUrl"
-                  :preview="{}"
-                  class="slice-image"
-                >
-                  <template #previewMask>点击查看原图</template>
-                </a-image>
-                <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
-              </a-spin>
-            </div>
+            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage" description="该题目暂无阅卷影像" />
+            <MarkingScanMaterialPanel
+              v-else
+              :slice-file-id="detail?.sliceFileId"
+              :source-scan-page="detail?.sourceScanPage"
+            />
           </UiCard>
 
           <UiCard class="info-card">
@@ -156,15 +148,15 @@ import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   getReviewTaskDetail,
   listAnnotations,
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam'
+import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import {
   UiBadge,
   UiButton,
@@ -188,7 +180,7 @@ function reviewStatusLabel(value: ReviewTaskStatusCode): string {
   return strictEnumLabel(REVIEW_TASK_STATUS_LABEL, value, '复核任务状态')
 }
 
-/** 将 AI 复评诊断转为教师可处理的评分提示，避免展示模型或接口调试信息。 */
+/** 将 AI 复评诊断转为教师可处理的评分提示，避免展示模型或接口内部细节。 */
 function aiReviewDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
@@ -215,29 +207,6 @@ const canEnterWorkspace = computed(() => {
   const status = detail.value?.status
   return status === 'PENDING' || status === 'IN_PROGRESS'
 })
-
-// 切片图
-const sliceImageUrl = ref<string | null>(null)
-const sliceLoading = ref(false)
-
-async function loadSliceImage(fileId: string): Promise<void> {
-  releaseSliceImage()
-  sliceLoading.value = true
-  try {
-    sliceImageUrl.value = await getImageBlobUrl(fileId)
-  } catch (error) {
-    showUserError(error, '答题切片加载失败')
-  } finally {
-    sliceLoading.value = false
-  }
-}
-
-function releaseSliceImage(): void {
-  if (sliceImageUrl.value) {
-    URL.revokeObjectURL(sliceImageUrl.value)
-    sliceImageUrl.value = null
-  }
-}
 
 // 批注
 const annotations = ref<AnnotationVO[]>([])
@@ -268,9 +237,6 @@ async function loadTask(): Promise<void> {
       examId: examId.value,
       reviewTaskId: taskId.value,
     })
-    if (detail.value?.sliceFileId) {
-      void loadSliceImage(detail.value.sliceFileId)
-    }
     await loadAnnotations()
   } catch (error) {
     taskLoadError.value = toUserError(error, '复核任务详情加载失败')
@@ -297,10 +263,6 @@ watch(
 
 onMounted(() => {
   if (hasParams.value) void loadTask()
-})
-
-onBeforeUnmount(() => {
-  releaseSliceImage()
 })
 </script>
 

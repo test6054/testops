@@ -59,15 +59,11 @@
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="维度">
-            {{
-              scopeTypeLabel(record.scopeType)
-            }}
+            {{ scopeTypeLabel(record.scopeType) }}
           </a-descriptions-item>
           <a-descriptions-item label="考试数">{{ record.examCount }}</a-descriptions-item>
           <a-descriptions-item label="课程">
-            {{
-              requiredRecordText(record.courseName, '课程名称')
-            }}
+            {{ record.courseName?.trim() || '—' }}
           </a-descriptions-item>
           <a-descriptions-item label="班级">{{ classNameText(record) }}</a-descriptions-item>
           <a-descriptions-item label="生成耗时">{{ latencyText(record) }}</a-descriptions-item>
@@ -91,6 +87,14 @@
             </a-typography-text>
           </a-descriptions-item>
         </a-descriptions>
+
+        <div v-if="examStatChartOption" class="ai-chart">
+          <div class="ai-chart__meta">
+            <strong>考试得分趋势</strong>
+            <span class="ai-chart__hint">得分率 / 及格率折线与平均分柱状对比</span>
+          </div>
+          <VChart class="ai-chart__canvas" :option="examStatChartOption" autoresize />
+        </div>
 
         <a-typography-paragraph v-if="record.trendSummary" class="ai-summary">
           <strong>趋势摘要：</strong>{{ record.trendSummary }}
@@ -136,22 +140,25 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisVO } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryVO } from '@/apis/mark/exam'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   ANALYSIS_SCOPE_TYPE_LABEL,
   generateClassTrend,
   generateCourseTrend,
   listTrends,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryVO } from '@/apis/mark/exam'
 import { getExamDetail } from '@/apis/mark/exam'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildExamStatTrendChartOption } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CrossExamTrendCard' })
@@ -165,7 +172,7 @@ const form = reactive({
 
 const record = ref<CrossExamTrendAnalysisVO | null>(null)
 const selectedExams = ref<ExamSummaryVO[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 // D-9 错误态：AI 跨考试趋势加载失败时 UiErrorRetryPanel 重试 + 上报
@@ -173,6 +180,9 @@ const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const trendItems = computed(() => record.value?.trendItems ?? [])
+const examStatChartOption = computed(() =>
+  buildExamStatTrendChartOption(record.value?.examStatSnapshots ?? []),
+)
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
 )
@@ -189,7 +199,7 @@ watch(scopeMode, (mode) => {
   classOptions.value = []
   Promise.all(examIds.map((examId) => getExamDetail(examId)))
     .then((details) => {
-      const classCount = new Map<string, { className: string, count: number }>()
+      const classCount = new Map<string, { className: string; count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -226,7 +236,7 @@ watch(
     classLoading.value = true
     try {
       const details = await Promise.all(examIds.map((examId) => getExamDetail(examId)))
-      const classCount = new Map<string, { className: string, count: number }>()
+      const classCount = new Map<string, { className: string; count: number }>()
       for (const detail of details) {
         for (const classRef of detail.classRefs) {
           const current = classCount.get(classRef.classId)
@@ -268,16 +278,9 @@ function scopeTypeLabel(scopeType: CrossExamTrendAnalysisVO['scopeType']): strin
   return strictEnumLabel(ANALYSIS_SCOPE_TYPE_LABEL, scopeType, '分析范围类型')
 }
 
-function requiredRecordText(value: string | undefined, fieldName: string): string {
-  if (!value?.trim()) {
-    throw new TypeError(`AI 跨考试趋势分析缺少${fieldName}`)
-  }
-  return value
-}
-
 function classNameText(value: CrossExamTrendAnalysisVO): string {
   if (value.scopeType === 'COURSE') return '不限定班级'
-  return requiredRecordText(value.className, '班级名称')
+  return value.className?.trim() || '—'
 }
 
 function latencyText(value: CrossExamTrendAnalysisVO): string {
@@ -287,18 +290,22 @@ function latencyText(value: CrossExamTrendAnalysisVO): string {
 }
 
 function assertCrossExamTrendContract(value: CrossExamTrendAnalysisVO): void {
-  if (!value.courseName) throw new TypeError('跨考试趋势分析缺少课程名称')
-  if (!value.aiTraceId) throw new TypeError('跨考试趋势分析缺少处理追踪编号')
-  if (value.scopeType === 'CLASS' && !value.className)
-    throw new TypeError('班级维度趋势分析缺少班级名称')
-  if (!value.exams.length) throw new TypeError('跨考试趋势分析缺少考试范围')
-  if (value.analysisStatus === 'SUCCESS' && value.latencyMs == null) {
-    throw new TypeError('跨考试趋势分析成功记录缺少生成耗时')
+  const dataError = '跨考试趋势分析数据异常，请刷新后重试'
+  assertUserFacing(Boolean(value.courseName?.trim()), dataError)
+  assertUserFacing(Boolean(value.aiTraceId?.trim()), dataError)
+  if (value.scopeType === 'CLASS') {
+    assertUserFacing(Boolean(value.className?.trim()), dataError)
+  }
+  assertUserFacing(value.exams.length > 0, dataError)
+  if (value.analysisStatus === 'SUCCESS') {
+    assertUserFacing(value.latencyMs != null, dataError)
   }
 }
 
 function acceptCrossExamTrendRecord(value: CrossExamTrendAnalysisVO | null): void {
-  if (value) assertCrossExamTrendContract(value)
+  if (value) {
+    assertCrossExamTrendContract(value)
+  }
   record.value = value
 }
 
@@ -347,8 +354,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated
-      = scopeMode.value === 'COURSE'
+    const generated =
+      scopeMode.value === 'COURSE'
         ? await generateCourseTrend({ courseId, examIds })
         : await generateClassTrend({ courseId, classId: form.classId, examIds })
     acceptCrossExamTrendRecord(generated)
@@ -377,6 +384,27 @@ async function handleGenerate(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.ai-chart {
+  padding: 12px 16px;
+  border: 1px solid var(--dp-border, #e2e8f0);
+  border-radius: var(--dp-radius-md, 6px);
+  background: var(--dp-surface, #fff);
+}
+.ai-chart__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ai-chart__hint {
+  font-size: 12px;
+  color: var(--dp-text-secondary, #475569);
+}
+.ai-chart__canvas {
+  width: 100%;
+  height: 320px;
 }
 .analysis-item {
   display: flex;

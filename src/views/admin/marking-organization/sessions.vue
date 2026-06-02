@@ -57,15 +57,6 @@
     <a-spin v-else :spinning="loading">
       <SignalBand :metrics="signalMetrics" compact class="org-sessions__signals" />
 
-      <UiAlertStrip
-        v-if="organization && !canManageOrganization"
-        class="org-sessions__owner-alert"
-        tone="info"
-        title="只读查看"
-        description="你可查看试评 / 正评会话；会话创建和生命周期调整由考试创建人执行。"
-        dense
-      />
-
       <a-row :gutter="16">
         <a-col :xs="24" :lg="12">
           <TrialSessionPanel
@@ -102,17 +93,14 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
+import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type {
   FormalSessionVO,
   MarkingOrganizationVO,
   TrialSessionVO,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { getExamDetail } from '@/apis/mark/exam'
 import {
   getOrganizationById,
   listFormalSessions,
@@ -123,13 +111,16 @@ import {
   validateMarkingOrganizationContract,
   validateTrialSessionContract,
 } from '@/apis/mark/marking-organization'
-import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import FormalSessionPanel from './components/FormalSessionPanel.vue'
-import SessionLifecycleReasonModal from './components/SessionLifecycleReasonModal.vue'
 import TrialSessionPanel from './components/TrialSessionPanel.vue'
 
 defineOptions({ name: 'AdminMarkingOrganizationSessions' })

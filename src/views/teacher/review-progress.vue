@@ -138,6 +138,10 @@
           <UiBadge tone="blue">{{ questionRows.length }} 道</UiBadge>
         </template>
 
+        <div v-if="reviewProgressBarOption" class="progress-page__chart">
+          <VChart class="progress-page__chart-canvas" :option="reviewProgressBarOption" autoresize />
+        </div>
+
         <UiEmpty v-if="!loading && questionRows.length === 0" description="暂无题目复核数据" />
 
         <UiDataTable
@@ -156,7 +160,7 @@
             <template v-if="column.key === 'questionNo'">
               <div class="question-cell">
                 <UiTag tone="blue" size="sm">题{{ record.questionNo }}</UiTag>
-                <span class="question-type">{{ record.questionType }}</span>
+                <span class="question-type">{{ questionTypeLabel(record.questionType) }}</span>
               </div>
             </template>
             <template v-else-if="column.key === 'progress'">
@@ -217,11 +221,13 @@ import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
 import {
   getMarkingProgress,
   REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/exam'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   UiBadge,
   UiButton,
@@ -233,7 +239,8 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { captureLoadFailure, showUserError } from '@/utils/error-handler'
+import { buildReviewProgressBarOption } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewProgress' })
@@ -286,6 +293,11 @@ const statusBreakdown = computed(() => {
 const questionRows = computed<ReviewQuestionProgressItemVO[]>(
   () => progress.value?.reviewQuestionProgressList ?? [],
 )
+const reviewProgressBarOption = computed(() => buildReviewProgressBarOption(questionRows.value))
+
+function questionTypeLabel(questionType: ReviewQuestionProgressItemVO['questionType']): string {
+  return strictEnumLabel(QUESTION_TYPE_LABEL, questionType, '题型')
+}
 
 const questionColumns: ColumnType<ReviewQuestionProgressItemVO>[] = [
   { title: '题目', dataIndex: 'questionNo', key: 'questionNo', width: 180 },
@@ -302,8 +314,7 @@ async function loadAll(): Promise<void> {
   try {
     progress.value = await getMarkingProgress(selectedExamId.value)
   } catch (error) {
-    progressLoadError.value
-      = error instanceof Error ? error : new Error(getUserErrorMessage(error, '复核进度加载失败'))
+    progressLoadError.value = captureLoadFailure(error, '复核进度加载失败')
     showUserError(error, '复核进度加载失败')
   } finally {
     loading.value = false
@@ -435,6 +446,19 @@ onMounted(async () => {
     background: var(--ant-color-fill-quaternary);
     font-weight: 600;
   }
+}
+
+.progress-page__chart {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--dp-radius-md, 6px);
+  background: var(--ant-color-bg-container);
+}
+
+.progress-page__chart-canvas {
+  width: 100%;
+  height: 300px;
 }
 
 .question-cell {

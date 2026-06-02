@@ -71,7 +71,15 @@
         </a-form>
       </UiCard>
 
-      <UiCard class="info-card">
+      <UiCard v-if="isFullPaperLayout" class="info-card">
+        <a-alert
+          type="info"
+          show-icon
+          message="整卷作答模式下，扫描页模板由试卷母版 PDF 自动拆页同步，请前往「试卷母版」维护。"
+        />
+      </UiCard>
+
+      <UiCard v-if="!isFullPaperLayout" class="info-card">
         <template #title>
           <FileImageOutlined />
           <span>页面文件配置</span>
@@ -88,81 +96,13 @@
           </UiButton>
         </template>
 
-        <a-alert
-          type="info"
-          show-icon
-          :closable="false"
-          message="页面数必须等于「总页数」，且页号 1 ~ 总页数 全部覆盖、不可重复。每页必须上传模板文件并填写宽高（像素）。"
-          style="margin-bottom: 12px"
-        />
-
-        <UiDataTable
-          :columns="pageColumns"
-          :data-source="pages"
-          :show-pagination="false"
-          flat
-          :total="pages.length"
-          row-key="rowKey"
-          size="middle"
-          bordered
-          :scroll="{ x: 800 }"
-        >
-          <template #bodyCell="{ column, record, index }">
-            <template v-if="column.key === 'pageNo'">
-              <a-input-number
-                v-model:value="record.pageNo"
-                :min="1"
-                size="small"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="column.key === 'templateFile'">
-              <a-space>
-                <UiTag v-if="record.templateFileId" tone="green" size="sm">
-                  {{ record.templateFileName || `节点 #${record.templateFileId}` }}
-                </UiTag>
-                <UiTag v-else tone="orange" size="sm">未上传</UiTag>
-                <a-upload
-                  :show-upload-list="false"
-                  :before-upload="(file: File) => handleUploadPage(file, index)"
-                  accept="image/*,application/pdf"
-                >
-                  <a-button size="small" :loading="record.uploading">
-                    <template #icon>
-                      <UploadOutlined />
-                    </template>
-                    {{ record.templateFileId ? '替换' : '上传' }}
-                  </a-button>
-                </a-upload>
-              </a-space>
-            </template>
-            <template v-else-if="column.key === 'widthPx'">
-              <a-input-number
-                v-model:value="record.widthPx"
-                :min="0"
-                size="small"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="column.key === 'heightPx'">
-              <a-input-number
-                v-model:value="record.heightPx"
-                :min="0"
-                size="small"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="column.key === 'pageActions'">
-              <a-button type="link" danger size="small" @click="removePage(index)"> 删除 </a-button>
-            </template>
-          </template>
-        </UiDataTable>
+        <ExamTemplatePageTable ref="pageTableRef" v-model:pages="pages" @remove="removePage" />
       </UiCard>
 
       <UiCard class="info-card">
         <template #title>
           <ProfileOutlined />
-          <span>题目列表</span>
+          <span>题目与标准答案</span>
           <UiBadge tone="blue">{{ questions.length }} 题</UiBadge>
           <UiBadge tone="green">总分 {{ totalScore }}</UiBadge>
         </template>
@@ -175,14 +115,6 @@
           </UiButton>
         </template>
 
-        <a-alert
-          type="info"
-          show-icon
-          :closable="false"
-          message="题号、排序号必须唯一；满分必填且不可为负。题目区域坐标可在批阅前置任务中再细化。"
-          style="margin-bottom: 12px"
-        />
-
         <UiDataTable
           :columns="questionColumns"
           :data-source="questions"
@@ -192,89 +124,114 @@
           row-key="rowKey"
           size="middle"
           bordered
-          :scroll="{ x: 1280 }"
+          :scroll="{ x: 1100 }"
+          v-model:expanded-row-keys="expandedQuestionRowKeys"
+          @expand="handleQuestionExpand"
         >
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'questionNo'">
-              <a-input v-model:value="record.questionNo" placeholder="如 1 / 1.1" size="small" />
+              <span class="question-cell__primary">{{ record.questionNo || '—' }}</span>
             </template>
             <template v-else-if="column.key === 'questionType'">
-              <a-select
-                v-model:value="record.questionType"
-                :options="questionTypeOptions"
-                size="small"
-                style="width: 100%"
-              />
+              {{ questionTypeLabel(record.questionType) }}
             </template>
             <template v-else-if="column.key === 'fullScore'">
-              <a-input-number
-                v-model:value="record.fullScore"
-                :min="0"
-                :step="0.5"
-                size="small"
-                style="width: 100%"
-              />
+              {{ formatScore(record.fullScore) }}
             </template>
-            <template v-else-if="column.key === 'pageNo'">
-              <a-input-number
-                v-model:value="record.pageNo"
-                :min="1"
-                size="small"
-                style="width: 100%"
-              />
+            <template v-else-if="column.key === 'questionStem'">
+              <span v-if="record.questionStem" class="question-cell__stem">{{
+                record.questionStem
+              }}</span>
+              <span v-else class="question-cell__muted">未录入</span>
             </template>
-            <template v-else-if="column.key === 'x'">
-              <a-input-number v-model:value="record.x" :min="0" size="small" style="width: 100%" />
-            </template>
-            <template v-else-if="column.key === 'y'">
-              <a-input-number v-model:value="record.y" :min="0" size="small" style="width: 100%" />
-            </template>
-            <template v-else-if="column.key === 'width'">
-              <a-input-number
-                v-model:value="record.width"
-                :min="0"
-                size="small"
-                style="width: 100%"
-              />
-            </template>
-            <template v-else-if="column.key === 'height'">
-              <a-input-number
-                v-model:value="record.height"
-                :min="0"
-                size="small"
-                style="width: 100%"
-              />
+            <template v-else-if="column.key === 'region'">
+              {{ formatQuestionRegion(record) }}
             </template>
             <template v-else-if="column.key === 'sortNo'">
-              <a-input-number
-                v-model:value="record.sortNo"
-                :min="1"
-                size="small"
-                style="width: 100%"
-              />
+              {{ record.sortNo ?? '—' }}
             </template>
             <template v-else-if="column.key === 'serverStatus'">
               <UiTag v-if="record.questionTemplateId" tone="green" size="sm">已存在</UiTag>
               <UiTag v-else tone="orange" size="sm">未保存</UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-space>
-                <a-button type="link" size="small" @click="openStemModal(index)">
-                  {{ questions[index].questionStem ? '编辑题干' : '录入题干' }}
-                </a-button>
-                <a-button
-                  type="link"
-                  size="small"
-                  :disabled="!questions[index].questionTemplateId"
-                  @click="openAnswerModal(questions[index])"
-                >
-                  标准答案
-                </a-button>
-                <a-button type="link" danger size="small" @click="removeQuestion(index)">
+              <a-space :size="4">
+                <UiButton size="sm" variant="ghost" @click="openQuestionEdit(index)">编辑</UiButton>
+                <UiButton size="sm" variant="ghost" status="danger" @click="removeQuestion(index)">
                   删除
-                </a-button>
+                </UiButton>
               </a-space>
             </template>
+          </template>
+          <template #expandedRowRender="{ record }">
+            <div class="question-expand">
+              <div class="question-expand__layout">
+                <section class="question-expand__panel">
+                  <header class="question-expand__head">
+                    <span class="question-expand__title">区域坐标</span>
+                  </header>
+                  <div v-if="hasQuestionRegion(record)" class="question-expand__meta">
+                    <UiTag v-if="record.pageNo" tone="gray" size="sm">P{{ record.pageNo }}</UiTag>
+                    <UiTag v-if="record.x != null && record.y != null" tone="gray" size="sm">
+                      {{ record.x }}, {{ record.y }}
+                    </UiTag>
+                    <UiTag
+                      v-if="record.width != null && record.height != null"
+                      tone="gray"
+                      size="sm"
+                    >
+                      {{ record.width }}×{{ record.height }}
+                    </UiTag>
+                  </div>
+                  <span v-else class="question-cell__muted">未配置</span>
+                </section>
+                <section class="question-expand__panel question-expand__panel--answer">
+                  <header class="question-expand__head">
+                    <span class="question-expand__title">标准答案</span>
+                    <UiButton
+                      v-if="record.questionTemplateId"
+                      size="sm"
+                      variant="ghost"
+                      @click="openAnswerModal(record)"
+                    >
+                      编辑
+                    </UiButton>
+                  </header>
+                  <a-spin v-if="isAnswerPreviewLoading(record)" size="small" />
+                  <span v-else-if="!record.questionTemplateId" class="question-cell__muted">
+                    保存模板后可配置
+                  </span>
+                  <div
+                    v-else-if="getAnswerPreview(record)?.data"
+                    class="question-expand__answer-body"
+                  >
+                    <UiTag
+                      v-if="getAnswerPreview(record)?.data?.comparePolicy"
+                      tone="blue"
+                      size="sm"
+                    >
+                      {{ formatComparePolicy(getAnswerPreview(record)!.data!.comparePolicy!) }}
+                    </UiTag>
+                    <div
+                      v-if="formatAnswerText(record, getAnswerPreview(record)!.data!)"
+                      class="question-expand__answer-value"
+                    >
+                      {{ formatAnswerText(record, getAnswerPreview(record)!.data!) }}
+                    </div>
+                    <p
+                      v-if="getAnswerPreview(record)?.data?.answerExplain"
+                      class="question-expand__explain"
+                    >
+                      {{ getAnswerPreview(record)!.data!.answerExplain }}
+                    </p>
+                    <p v-if="getAnswerPreview(record)?.data?.aiHint" class="question-expand__hint">
+                      {{ getAnswerPreview(record)!.data!.aiHint }}
+                    </p>
+                  </div>
+                  <span v-else class="question-cell__muted">未配置标准答案</span>
+                </section>
+              </div>
+            </div>
           </template>
         </UiDataTable>
       </UiCard>
@@ -333,9 +290,9 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'SUBJECTIVE'
-              || answerForm.comparePolicy === 'EXACT_NORMALIZED'
-              || answerForm.comparePolicy === 'REGEX'
+            answerContext.questionType === 'SUBJECTIVE' ||
+            answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
+            answerForm.comparePolicy === 'REGEX'
           "
           :label="answerTextLabel"
           name="standardAnswer"
@@ -366,8 +323,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE'
-              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE' &&
+            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="标准值"
           name="numericExpectedValue"
@@ -380,8 +337,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE'
-              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE' &&
+            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="容差"
           name="numericTolerance"
@@ -394,8 +351,8 @@
         </a-form-item>
         <a-form-item
           v-if="
-            answerContext.questionType === 'OBJECTIVE'
-              && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
+            answerContext.questionType === 'OBJECTIVE' &&
+            answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
           "
           label="单位"
         >
@@ -430,27 +387,74 @@
   </a-modal>
 
   <a-modal
-    v-model:open="stemModalOpen"
-    title="录入题干"
+    v-model:open="questionEditOpen"
+    :title="questionEditIndex === null ? '新增题目' : '编辑题目'"
     :destroy-on-close="true"
     :mask-closable="false"
     width="640px"
-    @ok="handleSaveStem"
+    @ok="handleSaveQuestionEdit"
   >
-    <a-alert
-      type="info"
-      show-icon
-      message="题干用于 AI 评分上下文圈定"
-      description="教师在制卷阶段录入；保存后随顶部「保存模板」一同落库。AI 评分链路缺失题干时按 QUESTION_CONTEXT_MISSING 阻断。"
-      style="margin-bottom: 12px"
-    />
-    <a-textarea
-      v-model:value="stemDraft"
-      :rows="8"
-      :maxlength="4000"
-      placeholder="请录入完整题干（含选项、图表说明等关键上下文）；多空题请保留空格占位以便 OCR 识别"
-      show-count
-    />
+    <a-form layout="vertical">
+      <a-form-item label="题号" required>
+        <a-input
+          v-model:value="questionDraft.questionNo"
+          placeholder="如 Q1 / 1.1"
+          :maxlength="32"
+        />
+      </a-form-item>
+      <a-form-item label="题型" required>
+        <a-select v-model:value="questionDraft.questionType" :options="questionTypeOptions" />
+      </a-form-item>
+      <a-form-item label="满分" required>
+        <a-input-number
+          v-model:value="questionDraft.fullScore"
+          :min="0"
+          :step="0.5"
+          style="width: 100%"
+        />
+      </a-form-item>
+      <a-form-item label="题干">
+        <a-textarea
+          v-model:value="questionDraft.questionStem"
+          :rows="4"
+          :maxlength="4000"
+          placeholder="完整题干（含选项、图表说明等）；保存模板后落库"
+          show-count
+        />
+      </a-form-item>
+      <a-row :gutter="12">
+        <a-col :span="8">
+          <a-form-item label="页号">
+            <a-input-number v-model:value="questionDraft.pageNo" :min="1" style="width: 100%" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="排序">
+            <a-input-number v-model:value="questionDraft.sortNo" :min="1" style="width: 100%" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="X">
+            <a-input-number v-model:value="questionDraft.x" :min="0" style="width: 100%" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="Y">
+            <a-input-number v-model:value="questionDraft.y" :min="0" style="width: 100%" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="宽">
+            <a-input-number v-model:value="questionDraft.width" :min="0" style="width: 100%" />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8">
+          <a-form-item label="高">
+            <a-input-number v-model:value="questionDraft.height" :min="0" style="width: 100%" />
+          </a-form-item>
+        </a-col>
+      </a-row>
+    </a-form>
   </a-modal>
 </template>
 
@@ -459,6 +463,7 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
+  ExamMaterialLayoutModeCode,
   ExamPageTemplateRequest,
   ExamPaperPageTemplateVO,
   ExamQuestionStandardAnswerOptionRequest,
@@ -467,18 +472,8 @@ import type {
   ExamStandardAnswerVO,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam'
-import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
-import type { PaperMasterObjectiveOptionVO } from '@/apis/mark/paper-master'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import {
+  getExamDetail,
   getExamTemplate,
   getStandardAnswer,
   isPaperTemplateNotConfiguredError,
@@ -486,8 +481,19 @@ import {
   saveExamTemplate,
   saveStandardAnswer,
 } from '@/apis/mark/exam'
+import type { QuestionTypeCode } from '@/apis/mark/grading-experience'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import type { PaperMasterObjectiveOptionVO } from '@/apis/mark/paper-master'
 import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import type { ExamTemplatePageRow } from '@/components/mark/ExamTemplatePageTable.vue'
+import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import {
   UiBadge,
   UiButton,
@@ -500,6 +506,7 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperTemplate' })
@@ -514,15 +521,7 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
-interface PageRow {
-  rowKey: string
-  pageNo?: number
-  templateFileId?: string
-  templateFileName?: string
-  widthPx?: number
-  heightPx?: number
-  uploading?: boolean
-}
+const pageTableRef = ref<InstanceType<typeof ExamTemplatePageTable> | null>(null)
 
 interface QuestionRow {
   rowKey: string
@@ -545,14 +544,20 @@ interface ObjectiveOptionRow {
   options: PaperMasterObjectiveOptionVO[]
 }
 
+interface AnswerPreviewState {
+  loading: boolean
+  data: ExamStandardAnswerVO | null
+}
+
 const questionTypeOptions = [
   { label: '客观题', value: 'OBJECTIVE' as const },
   { label: '主观题', value: 'SUBJECTIVE' as const },
 ]
 
-function requireQuestionType(value: string): QuestionTypeCode {
+function resolveQuestionType(value: string): QuestionTypeCode | null {
   if (value !== 'OBJECTIVE' && value !== 'SUBJECTIVE') {
-    throw new Error(`题型存在未定义枚举值：${value}`)
+    message.error('试卷题型数据异常，请刷新后重试')
+    return null
   }
   return value
 }
@@ -563,18 +568,22 @@ function nextRowKey(prefix: string): string {
   return `${prefix}-${rowSeq}-${Date.now()}`
 }
 
-const form = reactive<{ templateName: string, totalPages?: number }>({
+const form = reactive<{ templateName: string; totalPages?: number }>({
   templateName: '',
   totalPages: undefined,
 })
-const pages = reactive<PageRow[]>([])
+const pages = ref<ExamTemplatePageRow[]>([])
 const questions = reactive<QuestionRow[]>([])
 const objectiveOptions = reactive<ObjectiveOptionRow[]>([])
+const expandedQuestionRowKeys = ref<string[]>([])
+const answerPreviewMap = reactive(new Map<string, AnswerPreviewState>())
 
 const loading = ref(false)
 const saving = ref(false)
 // D-9 错误态：仅当后端返回非“未配置”类错误时才上报（“未配置模板”是合法空态）
 const templateLoadError = ref<Error | null>(null)
+const layoutMode = ref<ExamMaterialLayoutModeCode | undefined>()
+const isFullPaperLayout = computed(() => layoutMode.value === 'FULL_PAPER')
 
 const totalScore = computed(() =>
   questions.reduce((sum, row) => sum + (Number(row.fullScore) || 0), 0).toFixed(2),
@@ -583,64 +592,151 @@ const totalPagesLabel = computed(() =>
   typeof form.totalPages === 'number' ? String(form.totalPages) : '未填写总页数',
 )
 const pageCountMatched = computed(
-  () => typeof form.totalPages === 'number' && pages.length === form.totalPages,
+  () => typeof form.totalPages === 'number' && pages.value.length === form.totalPages,
 )
 
-const pageColumns: ColumnType<PageRow>[] = [
-  { title: '页号', key: 'pageNo', width: 100 },
-  { title: '模板文件', key: 'templateFile', width: 320 },
-  { title: '宽度（px）', key: 'widthPx', width: 130 },
-  { title: '高度（px）', key: 'heightPx', width: 130 },
-  { title: '操作', key: 'pageActions', width: 90, fixed: 'right' },
+const questionColumns: ColumnType<QuestionRow>[] = [
+  { title: '题号', key: 'questionNo', width: 88, ellipsis: true },
+  { title: '题型', key: 'questionType', width: 88 },
+  { title: '满分', key: 'fullScore', width: 72 },
+  { title: '题干', key: 'questionStem', ellipsis: true },
+  { title: '区域', key: 'region', width: 120, ellipsis: true },
+  { title: '排序', key: 'sortNo', width: 64 },
+  { title: '状态', key: 'serverStatus', width: 88 },
+  { title: '操作', key: 'actions', width: 120, fixed: 'right' },
 ]
 
-const questionColumns: ColumnType<QuestionRow>[] = [
-  { title: '题号', key: 'questionNo', width: 120 },
-  { title: '题型', key: 'questionType', width: 110 },
-  { title: '满分', key: 'fullScore', width: 90 },
-  { title: '页号', key: 'pageNo', width: 80 },
-  { title: 'X', key: 'x', width: 80 },
-  { title: 'Y', key: 'y', width: 80 },
-  { title: '宽', key: 'width', width: 80 },
-  { title: '高', key: 'height', width: 80 },
-  { title: '排序', key: 'sortNo', width: 80 },
-  { title: '状态', key: 'serverStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 180, fixed: 'right' },
-]
+function questionTypeLabel(type: QuestionTypeCode): string {
+  return strictEnumLabel(QUESTION_TYPE_LABEL, type, '题型')
+}
+
+function formatScore(value: number | undefined): string {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) return '—'
+  return Number(value).toFixed(1).replace(/\.0$/, '')
+}
+
+function formatQuestionRegion(record: QuestionRow): string {
+  const parts: string[] = []
+  if (record.pageNo) parts.push(`P${record.pageNo}`)
+  if (record.x != null && record.y != null) parts.push(`${record.x},${record.y}`)
+  return parts.length > 0 ? parts.join(' · ') : '—'
+}
+
+function hasQuestionRegion(record: QuestionRow): boolean {
+  return Boolean(
+    record.pageNo ||
+    record.x != null ||
+    record.y != null ||
+    record.width != null ||
+    record.height != null,
+  )
+}
+
+function formatComparePolicy(code: ObjectiveComparePolicyCode): string {
+  const matched = OBJECTIVE_COMPARE_POLICY_OPTIONS.find((item) => item.value === code)
+  return matched?.label ?? code
+}
+
+function formatAnswerText(record: QuestionRow, answer: ExamStandardAnswerVO): string {
+  if (answer.comparePolicy === 'CHOICE_SET') {
+    const labels = answer.choiceOptions.map((item) => item.optionLabel)
+    return labels.length > 0 ? labels.join('、') : '—'
+  }
+  if (answer.comparePolicy === 'NUMERIC_TOLERANCE') {
+    const parts = [answer.numericExpectedValue, answer.numericTolerance, answer.numericUnit].filter(
+      (item) => item !== undefined && item !== null && String(item).trim() !== '',
+    )
+    return parts.length > 0 ? parts.join(' / ') : '—'
+  }
+  if (answer.comparePolicy === 'AI_GRADE') {
+    return answer.gradingRubric?.trim() || 'AI 评分细则'
+  }
+  if (record.questionType === 'SUBJECTIVE') {
+    return answer.standardAnswer?.trim() || '—'
+  }
+  return answer.standardAnswer?.trim() || '—'
+}
+
+function getAnswerPreview(record: QuestionRow): AnswerPreviewState | undefined {
+  if (!record.questionTemplateId) return undefined
+  return answerPreviewMap.get(record.questionTemplateId)
+}
+
+function isAnswerPreviewLoading(record: QuestionRow): boolean {
+  return getAnswerPreview(record)?.loading === true
+}
+
+async function loadAnswerPreview(questionTemplateId: string): Promise<void> {
+  if (!selectedExamId.value) return
+  const cached = answerPreviewMap.get(questionTemplateId)
+  if (cached && !cached.loading) return
+  answerPreviewMap.set(questionTemplateId, { loading: true, data: null })
+  try {
+    const data = await getStandardAnswer({
+      examId: selectedExamId.value,
+      questionTemplateId,
+    })
+    answerPreviewMap.set(questionTemplateId, { loading: false, data })
+  } catch (error) {
+    answerPreviewMap.set(questionTemplateId, { loading: false, data: null })
+    showUserError(error, '标准答案加载失败')
+  }
+}
+
+function handleQuestionExpand(expanded: boolean, record: QuestionRow): void {
+  if (expanded) {
+    if (!expandedQuestionRowKeys.value.includes(record.rowKey)) {
+      expandedQuestionRowKeys.value = [...expandedQuestionRowKeys.value, record.rowKey]
+    }
+    if (record.questionTemplateId) {
+      void loadAnswerPreview(record.questionTemplateId)
+    }
+    return
+  }
+  expandedQuestionRowKeys.value = expandedQuestionRowKeys.value.filter(
+    (key) => key !== record.rowKey,
+  )
+}
+
+function clearAnswerPreviewCache(): void {
+  answerPreviewMap.clear()
+  expandedQuestionRowKeys.value = []
+}
 
 function clearTemplate(): void {
   form.templateName = ''
   form.totalPages = undefined
-  pages.splice(0, pages.length)
+  pages.value = []
   questions.splice(0, questions.length)
   objectiveOptions.splice(0, objectiveOptions.length)
+  clearAnswerPreviewCache()
 }
 
-function applyTemplate(
+async function applyTemplate(
   templateName: string,
   totalPages: number | undefined,
   pageList: ExamPaperPageTemplateVO[],
   questionList: ExamQuestionTemplateVO[],
-): void {
+): Promise<void> {
   form.templateName = templateName
   form.totalPages = totalPages
-  pages.splice(0, pages.length)
-  pageList.forEach((p) => {
-    pages.push({
-      rowKey: nextRowKey('p'),
-      pageNo: p.pageNo,
-      templateFileId: p.templateFileId,
-      widthPx: p.widthPx,
-      heightPx: p.heightPx,
-    })
-  })
+  pages.value = pageList.map((p) => ({
+    rowKey: nextRowKey('p'),
+    pageNo: p.pageNo,
+    templateFileId: p.templateFileId,
+    widthPx: p.widthPx,
+    heightPx: p.heightPx,
+  }))
+  await hydrateTemplatePageFileNames(pages.value)
   questions.splice(0, questions.length)
   questionList.forEach((q) => {
+    const questionType = resolveQuestionType(q.questionType)
+    if (!questionType) return
     questions.push({
       rowKey: nextRowKey('q'),
       questionTemplateId: q.questionTemplateId,
       questionNo: q.questionNo,
-      questionType: requireQuestionType(q.questionType),
+      questionType,
       fullScore: typeof q.fullScore === 'number' ? q.fullScore : Number(q.fullScore),
       pageNo: q.pageNo,
       x: q.x,
@@ -657,9 +753,12 @@ async function loadTemplate(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
   templateLoadError.value = null
+  clearAnswerPreviewCache()
   try {
+    const examDetail = await getExamDetail(selectedExamId.value)
+    layoutMode.value = examDetail.materialLayoutMode
     const tpl = await getExamTemplate(selectedExamId.value)
-    applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
+    await applyTemplate(tpl.templateName, tpl.totalPages, tpl.pages, tpl.questions)
     objectiveOptions.splice(0, objectiveOptions.length)
     try {
       const master = await getPaperMaster(selectedExamId.value)
@@ -674,27 +773,13 @@ async function loadTemplate(): Promise<void> {
         })
       })
     } catch (error) {
-      if (!(error instanceof Error)) {
-        message.warning(
-          getUserErrorMessage(error, '客观题选项读取失败，选择题标准答案暂不可录入'),
-        )
-        return
-      }
-      if (!isPaperMasterNotConfiguredError(error)) {
-        message.warning(
-          getUserErrorMessage(error, '客观题选项读取失败，选择题标准答案暂不可录入'),
-        )
+      if (!(error instanceof Error && isPaperMasterNotConfiguredError(error))) {
+        message.warning(getUserErrorMessage(error, '客观题选项读取失败，选择题标准答案暂不可录入'))
       }
     }
   } catch (error) {
     clearTemplate()
-    if (!(error instanceof Error)) {
-      templateLoadError.value = toUserError(error, '试卷模板加载失败')
-      message.warning(getUserErrorMessage(error, '题目模板加载失败，请稍后重试'))
-      return
-    }
-    if (!isPaperTemplateNotConfiguredError(error)) {
-      // 真实加载失败：D-9 错误态 + 警告提示
+    if (!(error instanceof Error && isPaperTemplateNotConfiguredError(error))) {
       templateLoadError.value = toUserError(error, '试卷模板加载失败')
       message.warning(getUserErrorMessage(error, '题目模板加载失败，请稍后重试'))
     }
@@ -713,32 +798,16 @@ function handleExamChange(value: SelectValue): void {
 }
 
 function addPage(): void {
-  pages.push({
+  const row: ExamTemplatePageRow = {
     rowKey: nextRowKey('p'),
-    pageNo: pages.length + 1,
-  })
+    pageNo: pages.value.length + 1,
+  }
+  pages.value = [...pages.value, row]
+  pageTableRef.value?.openEditForNew(row)
 }
 
 function removePage(index: number): void {
-  pages.splice(index, 1)
-}
-
-async function handleUploadPage(file: File, index: number): Promise<boolean> {
-  const row = pages[index]
-  if (!row) return false
-  row.uploading = true
-  try {
-    const result = await uploadFile(file, { businessType: 'mark-exam-template' })
-    row.templateFileId = result.id
-    row.templateFileName = result.nodeName || file.name
-    message.success(`第 ${row.pageNo ?? index + 1} 页文件已上传`)
-  } catch (error) {
-    showUserError(error, '模板文件上传失败')
-  } finally {
-    row.uploading = false
-  }
-  // 阻止 a-upload 默认行为
-  return false
+  pages.value = pages.value.filter((_, i) => i !== index)
 }
 
 function addQuestion(): void {
@@ -749,11 +818,112 @@ function addQuestion(): void {
     fullScore: undefined,
     pageNo: undefined,
     sortNo: questions.length + 1,
+    questionStem: undefined,
   })
+  openQuestionEdit(questions.length - 1)
 }
 
 function removeQuestion(index: number): void {
+  const row = questions[index]
+  if (row?.questionTemplateId) {
+    answerPreviewMap.delete(row.questionTemplateId)
+  }
+  expandedQuestionRowKeys.value = expandedQuestionRowKeys.value.filter((key) => key !== row?.rowKey)
   questions.splice(index, 1)
+}
+
+const questionEditOpen = ref(false)
+const questionEditIndex = ref<number | null>(null)
+const questionDraft = reactive<QuestionRow>({
+  rowKey: '',
+  questionNo: '',
+  questionType: 'OBJECTIVE',
+})
+
+function resetQuestionDraft(row?: QuestionRow): void {
+  questionDraft.rowKey = row?.rowKey ?? nextRowKey('q')
+  questionDraft.questionTemplateId = row?.questionTemplateId
+  questionDraft.questionNo = row?.questionNo ?? ''
+  questionDraft.questionType = row?.questionType ?? 'OBJECTIVE'
+  questionDraft.fullScore = row?.fullScore
+  questionDraft.pageNo = row?.pageNo
+  questionDraft.x = row?.x
+  questionDraft.y = row?.y
+  questionDraft.width = row?.width
+  questionDraft.height = row?.height
+  questionDraft.sortNo = row?.sortNo
+  questionDraft.questionStem = row?.questionStem
+}
+
+function openQuestionEdit(index: number): void {
+  if (index < 0 || index >= questions.length) return
+  questionEditIndex.value = index
+  resetQuestionDraft(questions[index])
+  questionEditOpen.value = true
+}
+
+function validateQuestionDraft(): boolean {
+  const no = questionDraft.questionNo.trim()
+  if (!no) {
+    message.error('题号必填')
+    return false
+  }
+  const duplicate = questions.some(
+    (row, idx) => idx !== questionEditIndex.value && row.questionNo.trim() === no,
+  )
+  if (duplicate) {
+    message.error(`题号 ${no} 重复`)
+    return false
+  }
+  if (questionDraft.fullScore === undefined || questionDraft.fullScore === null) {
+    message.error('满分必填')
+    return false
+  }
+  if (Number(questionDraft.fullScore) < 0) {
+    message.error('满分不能为负')
+    return false
+  }
+  if (!questionDraft.sortNo || questionDraft.sortNo <= 0) {
+    message.error('排序号必填且大于 0')
+    return false
+  }
+  const sortDuplicate = questions.some(
+    (row, idx) => idx !== questionEditIndex.value && row.sortNo === questionDraft.sortNo,
+  )
+  if (sortDuplicate) {
+    message.error(`排序号 ${questionDraft.sortNo} 重复`)
+    return false
+  }
+  const stem = questionDraft.questionStem?.trim()
+  if (stem && stem.length > 4000) {
+    message.error('题干最多 4000 个字符')
+    return false
+  }
+  return true
+}
+
+function handleSaveQuestionEdit(): void {
+  const idx = questionEditIndex.value
+  if (idx == null || idx < 0 || idx >= questions.length) {
+    questionEditOpen.value = false
+    return
+  }
+  if (!validateQuestionDraft()) return
+  const stem = questionDraft.questionStem?.trim()
+  Object.assign(questions[idx], {
+    questionNo: questionDraft.questionNo.trim(),
+    questionType: questionDraft.questionType,
+    fullScore: questionDraft.fullScore,
+    pageNo: questionDraft.pageNo,
+    x: questionDraft.x,
+    y: questionDraft.y,
+    width: questionDraft.width,
+    height: questionDraft.height,
+    sortNo: questionDraft.sortNo,
+    questionStem: stem || undefined,
+  })
+  questionEditOpen.value = false
+  questionEditIndex.value = null
 }
 
 function buildPagesRequest(): ExamPageTemplateRequest[] | null {
@@ -762,15 +932,15 @@ function buildPagesRequest(): ExamPageTemplateRequest[] | null {
     message.error('请填写总页数')
     return null
   }
-  if (pages.length !== total) {
-    message.error(`页面数量必须等于总页数（当前 ${pages.length} / ${total}）`)
+  if (pages.value.length !== total) {
+    message.error(`页面数量必须等于总页数（当前 ${pages.value.length} / ${total}）`)
     return null
   }
   const seenPageNo = new Set<number>()
   const seenFileId = new Set<string>()
   const request: ExamPageTemplateRequest[] = []
-  for (let i = 0; i < pages.length; i += 1) {
-    const row = pages[i]
+  for (let i = 0; i < pages.value.length; i += 1) {
+    const row = pages.value[i]
     if (!row.pageNo || row.pageNo <= 0) {
       message.error(`第 ${i + 1} 行：页号必填且大于 0`)
       return null
@@ -784,7 +954,7 @@ function buildPagesRequest(): ExamPageTemplateRequest[] | null {
       return null
     }
     seenPageNo.add(row.pageNo)
-    if (!row.templateFileId) {
+    if (!row.templateFileId || !row.templateFileName?.trim()) {
       message.error(`第 ${i + 1} 行：请上传模板文件`)
       return null
     }
@@ -982,10 +1152,10 @@ const answerFormRules: Record<string, Rule[]> = {
       validator: async (_rule: Rule, value: string) => {
         const trimmed = (value ?? '').trim()
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && (answerForm.comparePolicy === 'EXACT_NORMALIZED'
-            || answerForm.comparePolicy === 'REGEX')
-          && !trimmed
+          answerContext.questionType === 'OBJECTIVE' &&
+          (answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
+            answerForm.comparePolicy === 'REGEX') &&
+          !trimmed
         ) {
           return Promise.reject(new Error('当前评分策略必须填写答案文本'))
         }
@@ -1001,9 +1171,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string[]) => {
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy === 'CHOICE_SET'
-          && (!Array.isArray(value) || value.length === 0)
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'CHOICE_SET' &&
+          (!Array.isArray(value) || value.length === 0)
         ) {
           return Promise.reject(new Error('请选择至少一个正确选项'))
         }
@@ -1027,9 +1197,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
-          && !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
+          !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写标准值'))
         }
@@ -1042,9 +1212,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy === 'NUMERIC_TOLERANCE'
-          && !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'NUMERIC_TOLERANCE' &&
+          !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('数值容差策略必须填写容差'))
         }
@@ -1057,9 +1227,9 @@ const answerFormRules: Record<string, Rule[]> = {
     {
       validator: async (_rule: Rule, value: string) => {
         if (
-          answerContext.questionType === 'OBJECTIVE'
-          && answerForm.comparePolicy === 'AI_GRADE'
-          && !(value ?? '').trim()
+          answerContext.questionType === 'OBJECTIVE' &&
+          answerForm.comparePolicy === 'AI_GRADE' &&
+          !(value ?? '').trim()
         ) {
           return Promise.reject(new Error('AI 评分策略必须填写评分细则'))
         }
@@ -1070,39 +1240,6 @@ const answerFormRules: Record<string, Rule[]> = {
   ],
 }
 
-/**
- * 题干编辑 modal 状态。题干在制卷阶段录入后随试卷模板一同保存，所以本 modal 只写内存，
- * 不调用独立 API；老师保存后需点顶部“保存模板”全量落库。
- */
-const stemModalOpen = ref(false)
-const stemEditingIndex = ref<number | null>(null)
-const stemDraft = ref('')
-
-function openStemModal(index: number): void {
-  if (index < 0 || index >= questions.length) return
-  stemEditingIndex.value = index
-  stemDraft.value = questions[index].questionStem ?? ''
-  stemModalOpen.value = true
-}
-
-function handleSaveStem(): void {
-  const idx = stemEditingIndex.value
-  if (idx == null) {
-    stemModalOpen.value = false
-    return
-  }
-  const trimmed = stemDraft.value.trim()
-  if (trimmed.length > 4000) {
-    message.error('题干最多 4000 个字符')
-    return
-  }
-  questions[idx].questionStem = trimmed || undefined
-  stemModalOpen.value = false
-  stemEditingIndex.value = null
-  message.success('题干已暂存，请点顶部“保存模板”提交落库')
-}
-
-// 入参就是表格 data-source（QuestionRow[]）中的真实视图模型，不是后端 ExamQuestionTemplateVO。
 async function openAnswerModal(row: QuestionRow): Promise<void> {
   if (!row.questionTemplateId) {
     message.warning('请先保存模板，题目编号生成后再录入标准答案')
@@ -1151,7 +1288,9 @@ async function openAnswerModal(row: QuestionRow): Promise<void> {
       const invalidLabel = answerLabels.find((optionLabel) => !declaredLabels.has(optionLabel))
       if (invalidLabel) {
         showUserError(
-          new Error(`标准答案选项“${invalidLabel}”与当前试卷客观题选项不一致，请先核对试卷母版配置`),
+          new Error(
+            `标准答案选项“${invalidLabel}”与当前试卷客观题选项不一致，请先核对试卷母版配置`,
+          ),
           '标准答案加载失败',
         )
         return
@@ -1191,13 +1330,13 @@ async function handleSaveAnswer(): Promise<void> {
           sortNo: index + 1,
         }))
       if (!choiceOptions || choiceOptions.length !== answerForm.choiceAnswers.length) {
-        showUserError(new Error('所选正确选项与当前试卷客观题选项不一致，请重新选择'), '标准答案保存失败')
+        showUserError(null, '标准答案保存失败')
         return
       }
     } else if (
-      answerContext.questionType === 'SUBJECTIVE'
-      || answerForm.comparePolicy === 'EXACT_NORMALIZED'
-      || answerForm.comparePolicy === 'REGEX'
+      answerContext.questionType === 'SUBJECTIVE' ||
+      answerForm.comparePolicy === 'EXACT_NORMALIZED' ||
+      answerForm.comparePolicy === 'REGEX'
     ) {
       standardAnswer = answerForm.standardAnswer.trim() || undefined
     }
@@ -1227,6 +1366,8 @@ async function handleSaveAnswer(): Promise<void> {
       aiHint: answerForm.aiHint?.trim() || undefined,
       effectiveNow: answerForm.effectiveNow,
     })
+    answerPreviewMap.delete(answerContext.questionTemplateId)
+    await loadAnswerPreview(answerContext.questionTemplateId)
     message.success('标准答案已保存')
     answerModalOpen.value = false
   } catch (error) {
@@ -1299,5 +1440,111 @@ onMounted(async () => {
 
 .empty-block {
   padding: 60px 0;
+}
+
+.question-cell {
+  &__primary {
+    font-weight: 500;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__stem {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__muted {
+    font-size: 13px;
+    color: var(--dp-text-muted, #94a3b8);
+  }
+}
+
+.question-expand {
+  padding: 12px 16px 12px 48px;
+  background: var(--dp-bg-muted, #f5f5f5);
+
+  &__layout {
+    display: grid;
+    grid-template-columns: minmax(168px, 220px) 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+
+  &__panel {
+    padding: 12px;
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e5e7eb);
+    border-radius: var(--dp-radius-control, 8px);
+
+    &--answer {
+      min-width: 0;
+    }
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  &__title {
+    font-size: var(--dp-font-size-xs, 12px);
+    font-weight: 600;
+    color: var(--dp-text-secondary, #64748b);
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__answer-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__answer-value {
+    padding: 8px 12px;
+    font-size: var(--dp-font-size-lg, 16px);
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--dp-text-primary, #0f172a);
+    background: var(--dp-surface-subtle, #f8fafc);
+    border: 1px solid var(--dp-border, #e5e7eb);
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  &__explain {
+    margin: 0;
+    padding-left: 10px;
+    font-size: var(--dp-font-size-sm, 13px);
+    line-height: 1.6;
+    color: var(--dp-text-secondary, #475569);
+    border-left: 2px solid var(--dp-border, #e5e7eb);
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: var(--dp-font-size-xs, 12px);
+    line-height: 1.5;
+    color: var(--dp-text-muted, #94a3b8);
+  }
+}
+
+@media (max-width: 768px) {
+  .question-expand__layout {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

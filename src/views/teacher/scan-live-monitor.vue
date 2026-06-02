@@ -36,7 +36,12 @@
     <!-- 实时监控概览 -->
     <div class="scan-live__overview">
       <div class="scan-live__health-ring">
-        <UiRingProgress :percent="healthPercent" size="lg" :color="healthColor" label="健康度" />
+        <UiRingProgress
+          :percent="healthPercent"
+          size="lg"
+          :color="healthColor"
+          :label="healthRingLabel"
+        />
       </div>
       <UiStatPanel
         :items="statMetrics"
@@ -292,21 +297,54 @@ const pendingCount = computed(() => events.value.filter((e) => e.status === 'PEN
 
 const totalPageCount = computed(() => events.value.reduce((sum, e) => sum + e.pageCount, 0))
 
+/**
+ * 聚合健康度：仅在 SSE ready（实时连接成功）后，按当前事件流中已聚合占比计算。
+ * 历史回填数据在连接未就绪前不参与健康度，避免 REST 有数据但 SSE 未连上时误显示 100%。
+ */
 const healthPercent = computed(() => {
-  if (!ready.value && !isStreaming.value) return 0
-  if (error.value) return 20
-  if (!ready.value) return 50
+  if (error.value || !ready.value) {
+    return 0
+  }
   const total = events.value.length
-  if (total === 0) return 100
-  const batchedRatio = total > 0 ? (batchedCount.value / total) * 100 : 100
-  return Math.round(batchedRatio)
+  if (total === 0) {
+    return 0
+  }
+  return Math.round((batchedCount.value / total) * 100)
 })
 
 const healthColor = computed(() => {
-  if (healthPercent.value >= 80) return '#16a34a'
-  if (healthPercent.value >= 50) return '#3b82f6'
-  if (healthPercent.value >= 30) return '#f59e0b'
+  if (error.value) {
+    return '#dc2626'
+  }
+  if (!ready.value) {
+    return '#94a3b8'
+  }
+  if (events.value.length === 0) {
+    return '#94a3b8'
+  }
+  if (healthPercent.value >= 80) {
+    return '#16a34a'
+  }
+  if (healthPercent.value >= 50) {
+    return '#3b82f6'
+  }
+  if (healthPercent.value >= 30) {
+    return '#f59e0b'
+  }
   return '#dc2626'
+})
+
+const healthRingLabel = computed(() => {
+  if (error.value) {
+    return '连接异常'
+  }
+  if (!ready.value) {
+    return isStreaming.value ? '等待实时连接' : '未连接'
+  }
+  if (events.value.length === 0) {
+    return '暂无扫描事件'
+  }
+  return '聚合健康度'
 })
 
 function scanEventStatusLabel(status: ScanEventStatusCode): string {

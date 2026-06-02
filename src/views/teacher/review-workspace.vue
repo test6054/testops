@@ -88,22 +88,14 @@
           <UiCard class="review-workspace__card">
             <template #title>
               <FileImageOutlined />
-              <span>作答切片</span>
+              <span>阅卷影像</span>
             </template>
-            <UiEmpty v-if="!detail?.sliceFileId" description="该题目暂无切片图" />
-            <div v-else class="review-workspace__slice-viewer">
-              <a-spin :spinning="sliceLoading" tip="加载切片中...">
-                <a-image
-                  v-if="sliceImageUrl"
-                  :src="sliceImageUrl"
-                  :preview="{}"
-                  class="review-workspace__slice-image"
-                >
-                  <template #previewMask>点击查看原图</template>
-                </a-image>
-                <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
-              </a-spin>
-            </div>
+            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage" description="该题目暂无阅卷影像" />
+            <MarkingScanMaterialPanel
+              v-else
+              :slice-file-id="detail?.sliceFileId"
+              :source-scan-page="detail?.sourceScanPage"
+            />
           </UiCard>
 
           <UiCard class="review-workspace__card">
@@ -156,9 +148,8 @@
             </div>
             <UiAlertStrip
               v-if="!canRescoreByAi && detail"
-              tone="info"
+              tone="warning"
               :title="rescoreBlockReason || '当前状态不允许重新生成 AI 复评'"
-              description="仅待处理或处理中状态的复核任务在教师异议时可以重新调用单题 AI 复评。"
               dense
             />
             <div class="review-workspace__ai-actions">
@@ -268,12 +259,9 @@
                 :description="analysisLoadError"
                 dense
               />
-              <UiAlertStrip
+              <UiEmpty
                 v-else-if="!analysisLoading && !questionAnalysis"
-                tone="info"
-                title="尚未生成本题质量分析"
-                description="教师可在「成绩统计 → 题目质量分析」中为本场考试一键生成；生成后此处会展示难度、区分度与分数分布。"
-                dense
+                description="尚未生成本题质量分析"
               />
               <a-descriptions
                 v-else-if="questionAnalysis"
@@ -314,14 +302,6 @@
               <span>教师给分</span>
             </template>
 
-            <UiAlertStrip
-              v-if="!canConfirm"
-              tone="info"
-              title="任务状态限制"
-              description="当前任务状态不允许提交批改，仅待处理或处理中状态可提交。"
-              dense
-              class="review-workspace__alert"
-            />
             <a-form
               ref="gradeFormRef"
               :model="gradeForm"
@@ -410,6 +390,15 @@
           仅提交
         </UiButton>
         <UiButton
+          variant="outline"
+          size="md"
+          :disabled="!canConfirm || !detail.gradeResultId"
+          :loading="rejecting"
+          @click="openRejectConfirm"
+        >
+          驳回
+        </UiButton>
+        <UiButton
           variant="primary"
           size="md"
           :disabled="!canConfirm || !detail.gradeResultId || queueTotal <= 1"
@@ -444,9 +433,8 @@ import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getImageBlobUrl } from '@/apis/edu/file-management'
 import {
   AI_ABILITY_LABEL,
   AI_ABILITY_TONE,
@@ -459,11 +447,13 @@ import {
   listAiExecutionsForQuestion,
   listAnnotations,
   listReviewTasks,
+  rejectQuestionGrade,
   rescoreQuestionByAi,
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam'
 import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
+import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import {
   UiAlertStrip,
   UiBadge,
@@ -476,6 +466,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -515,33 +506,9 @@ const canSubmit = computed(() => !!examId.value && !!taskId.value)
 
 /** 当前任务是否允许提交批改（PENDING / IN_PROGRESS） */
 const canConfirm = computed(() => {
-  // detail.value?.status 是 string | undefined，字面值 === 比较会自动缩窄类型，无需 cast。
   const status = detail.value?.status
   return status === 'PENDING' || status === 'IN_PROGRESS'
 })
-
-// ─── 切片图像 ─────────────────────────────
-const sliceImageUrl = ref<string | null>(null)
-const sliceLoading = ref(false)
-
-async function loadSliceImage(fileId: string): Promise<void> {
-  releaseSliceImage()
-  sliceLoading.value = true
-  try {
-    sliceImageUrl.value = await getImageBlobUrl(fileId)
-  } catch (error) {
-    showUserError(error, '答题切片加载失败')
-  } finally {
-    sliceLoading.value = false
-  }
-}
-
-function releaseSliceImage(): void {
-  if (sliceImageUrl.value) {
-    URL.revokeObjectURL(sliceImageUrl.value)
-    sliceImageUrl.value = null
-  }
-}
 
 // ─── 批注列表 ─────────────────────────────
 const annotations = ref<AnnotationVO[]>([])
@@ -698,11 +665,6 @@ async function loadTask(): Promise<void> {
     })
     validateReviewTaskDetailContract(taskDetail)
     detail.value = taskDetail
-    // 切片图
-    if (detail.value?.sliceFileId) {
-      void loadSliceImage(detail.value.sliceFileId)
-    }
-    // 批注 + 题目质量分析 + 同题队列：并行加载，互不阻塞
     await Promise.all([loadAnnotations(), loadQuestionAnalysis(), loadReviewQueue()])
     // 默认填充 AI 评分（仅当表单空时；避免覆盖教师正在编辑的值）
     if (
@@ -761,6 +723,7 @@ const gradeFormRules: Record<string, Rule[]> = {
 }
 
 const submitting = ref(false)
+const rejecting = ref(false)
 
 // 单题 AI 复评状态：17B 文档设定仅在教师异议阶段允许调用，服务端守门 CONFIRMED 不可复评
 const rescoring = ref(false)
@@ -840,7 +803,7 @@ const currentAiSourceTone = computed<BadgeTone>(() => {
   return strictEnumTone(AI_ABILITY_TONE, abilityCode, 'AI 能力编码')
 })
 
-/** 将 AI 执行诊断转为阅卷员可理解的业务提示，避免直接暴露接口或模型调试信息。 */
+/** 将 AI 执行诊断转为阅卷员可理解的业务提示，避免直接暴露接口或模型内部细节。 */
 function executionDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
@@ -940,7 +903,7 @@ function timelineColor(status: AiExecutionStatusCode): string {
 
 function validateReviewTaskDetailContract(record: ReviewTaskDetailVO): void {
   if (record.aiTraceId && !record.aiAbilityCode) {
-    throw new Error(`复核任务 AI trace 缺少能力编码：reviewTaskId=${record.reviewTaskId}`)
+    assertUserFacing(false, '复核任务详情加载失败，请刷新后重试')
   }
   if (record.aiAbilityCode) {
     strictEnumLabel(AI_ABILITY_LABEL, record.aiAbilityCode, 'AI 能力编码')
@@ -1011,6 +974,36 @@ async function submitGrade(): Promise<boolean> {
   }
 }
 
+function openRejectConfirm(): void {
+  if (!examId.value || !detail.value?.gradeResultId) return
+  void confirmAsync({
+    title: '确认驳回复核？',
+    content: '驳回后任务进入仲裁队列，需仲裁教师重新处理。',
+    type: 'error',
+    okText: '确认驳回',
+    cancelText: '取消',
+    onOk: () => handleReject(),
+  })
+}
+
+async function handleReject(): Promise<void> {
+  if (!examId.value || !detail.value?.gradeResultId) return
+  rejecting.value = true
+  try {
+    await rejectQuestionGrade({
+      examId: examId.value,
+      gradeResultId: detail.value.gradeResultId,
+      rejectReason: gradeForm.commentText?.trim() || '教师驳回复核结论',
+    })
+    message.success('已驳回，任务已进入仲裁队列')
+    goBack()
+  } catch (error) {
+    showUserError(error, '驳回复核失败')
+  } finally {
+    rejecting.value = false
+  }
+}
+
 /** 仅提交：保留在当前任务页（任务状态会变为 APPROVED/REJECTED） */
 async function handleSubmit(): Promise<void> {
   const ok = await submitGrade()
@@ -1054,7 +1047,6 @@ async function takeNextTask(): Promise<void> {
     })
     // 切换路由前清空表单 + 释放上一份切片图，避免视觉残留
     resetGradeForm()
-    releaseSliceImage()
     void router.replace({
       query: {
         ...route.query,
@@ -1116,10 +1108,6 @@ onMounted(() => {
   if (canSubmit.value) {
     void loadTask()
   }
-})
-
-onBeforeUnmount(() => {
-  releaseSliceImage()
 })
 </script>
 

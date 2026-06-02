@@ -155,7 +155,7 @@ export interface UploadFileOptions extends UploadFileRequestDTO {
 export function uploadFile(file: File, options: UploadFileOptions): Promise<FileSystemNodeResponseDTO> {
   // 检查文件对象
   if (!file || !(file instanceof File)) {
-    throw new Error('无效的文件对象')
+    throw new Error('请选择要上传的文件')
   }
 
   const formData = new FormData()
@@ -293,20 +293,13 @@ export async function getFileArrayBuffer(data: DownloadFileRequestDTO): Promise<
   })
 
   if (!response.ok) {
-    // 尝试解析错误响应
-    const contentType = response.headers.get('content-type')
-    if (contentType?.includes('application/json')) {
-      const errorData = await response.json()
-      throw new Error(errorData.msg || `文件下载失败: HTTP ${response.status}`)
-    }
-    throw new Error(`文件下载失败: HTTP ${response.status}`)
+    throw new Error('文件下载失败，请稍后重试')
   }
 
   // 检查响应类型，确保不是接口错误响应
   const contentType = response.headers.get('content-type')
   if (contentType?.includes('application/json')) {
-    const errorData = await response.json()
-    throw new Error(errorData.msg || '文件下载失败：服务器返回接口错误')
+    throw new Error('文件下载失败，请稍后重试')
   }
 
   return await response.arrayBuffer()
@@ -336,7 +329,7 @@ export async function getImageBlobUrl(nodeId: string): Promise<string> {
   })
 
   if (!response.ok) {
-    throw new Error(`图片加载失败: HTTP ${response.status}`)
+    throw new Error('图片加载失败，请稍后重试')
   }
 
   const blob = await response.blob()

@@ -8,15 +8,14 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
+import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
 import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { getUserErrorMessage } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<ScaleConversionRuleVO[]>([])
@@ -29,7 +28,7 @@ const query = reactive<ScaleConversionRuleQueryRequest>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleType, label: string }[] = [
+const scaleTypeOptions: { value: ScaleType; label: string }[] = [
   { value: 'FIVE_LEVEL', label: strictEnumLabel(SCALE_TYPE_LABEL, 'FIVE_LEVEL', '量表类型') },
   { value: 'FOUR_LEVEL', label: strictEnumLabel(SCALE_TYPE_LABEL, 'FOUR_LEVEL', '量表类型') },
   { value: 'TEN_POINT', label: strictEnumLabel(SCALE_TYPE_LABEL, 'TEN_POINT', '量表类型') },
@@ -149,7 +148,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -192,7 +191,8 @@ function openCreate() {
 function openEdit(record: ScaleConversionRuleVO) {
   editorMode.value = 'edit'
   if (!Array.isArray(record.items) || !record.items.length) {
-    throw new Error(`换算规则缺少条目数据：${record.ruleCode}`)
+    message.error('换算规则数据异常，请刷新后重试')
+    return
   }
   Object.assign(editor, {
     id: record.id,
@@ -208,7 +208,8 @@ function openEdit(record: ScaleConversionRuleVO) {
 
 function handleScaleTypeChange(value: SelectValue) {
   if (typeof value !== 'string' || !scaleTypeOptions.some((item) => item.value === value)) {
-    throw new TypeError(`量表类型选择值异常：${String(value)}`)
+    message.error('量表类型选择无效，请重新选择')
+    return
   }
   const scaleType = value as ScaleType
   editor.scaleType = scaleType
@@ -236,7 +237,7 @@ function formatScore(value: number): string {
 
 function formatItems(items: ScaleConversionRuleItem[]): string {
   if (!Array.isArray(items) || !items.length) {
-    throw new Error('换算规则缺少条目数据')
+    return '换算规则数据异常'
   }
   return items
     .map((item) => `${item.sourceValue} -> ${formatScore(Number(item.normalizedScore))}`)
@@ -257,37 +258,37 @@ function validateEditor(): ScaleConversionRuleItem[] | null {
     return null
   }
   const normalizedSourceValues = new Set<string>()
-  return editor.items.map((item, index) => {
+  const items: ScaleConversionRuleItem[] = []
+  for (const [index, item] of editor.items.entries()) {
     const sourceValue = item.sourceValue.trim()
     if (!sourceValue) {
-      throw new Error(`第 ${index + 1} 条原始值不能为空`)
+      message.error(`第 ${index + 1} 条原始值不能为空`)
+      return null
     }
     if (item.normalizedScore === null || item.normalizedScore === undefined) {
-      throw new Error(`第 ${index + 1} 条换算分值不能为空`)
+      message.error(`第 ${index + 1} 条换算分值不能为空`)
+      return null
     }
     if (Number.isNaN(Number(item.normalizedScore))) {
-      throw new TypeError(`第 ${index + 1} 条换算分值不能为空`)
+      message.error(`第 ${index + 1} 条换算分值不能为空`)
+      return null
     }
     if (normalizedSourceValues.has(sourceValue)) {
-      throw new Error(`原始值重复：${sourceValue}`)
+      message.error(`原始值重复：${sourceValue}`)
+      return null
     }
     normalizedSourceValues.add(sourceValue)
-    return {
+    items.push({
       sourceValue,
       normalizedScore: Number(item.normalizedScore),
       sortOrder: item.sortOrder ?? index + 1,
-    }
-  })
+    })
+  }
+  return items
 }
 
 async function submitEditor() {
-  let items: ScaleConversionRuleItem[] | null = null
-  try {
-    items = validateEditor()
-  } catch (error) {
-    message.error(getUserErrorMessage(error, '换算规则校验失败'))
-    return
-  }
+  const items = validateEditor()
   if (!items) {
     return
   }

@@ -33,20 +33,13 @@
 
     <template v-else>
       <!-- B-12 教学分析联动上下文：跨卡片打通班级 / 学生维度，避免子卡片各自孤立 -->
-      <UiAlertStrip
-        v-if="hasLinkageContext"
-        tone="info"
-        title="教学分析联动上下文"
-        :description="linkageDescription"
-        dense
-        class="stats-page__linkage"
-      >
-        <template #actions>
-          <UiButton variant="ghost" size="sm" @click="clearLinkage"> 清空联动 </UiButton>
-        </template>
-      </UiAlertStrip>
+      <div v-if="hasLinkageContext" class="stats-page__linkage">
+        <UiTag tone="blue" size="sm">{{ linkageDescription }}</UiTag>
+        <UiButton variant="ghost" size="sm" @click="clearLinkage">清空联动</UiButton>
+      </div>
 
       <div class="stats-page__cards">
+        <ScoreDistributionCard :exam-id="selectedExamId" :reload-token="scoreDistToken" />
         <QuestionAnalysisCard
           :exam-id="selectedExamId"
           :reload-token="qaToken"
@@ -78,7 +71,7 @@
 <script lang="ts" setup>
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
-import { UiAlertStrip, UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -86,6 +79,7 @@ import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
 import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
 import QuestionAnalysisCard from './statistics/QuestionAnalysisCard.vue'
 import RejudgePlanCard from './statistics/RejudgePlanCard.vue'
+import ScoreDistributionCard from './statistics/ScoreDistributionCard.vue'
 import StudentLearningProfileCard from './statistics/StudentLearningProfileCard.vue'
 import TeachingImprovementCard from './statistics/TeachingImprovementCard.vue'
 
@@ -109,6 +103,7 @@ const {
 } = useMarkExamRoster()
 
 const qaToken = ref(0)
+const scoreDistToken = ref(0)
 const rejudgeToken = ref(0)
 const improvementToken = ref(0)
 const weaknessToken = ref(0)
@@ -142,6 +137,7 @@ function clearLinkage(): void {
 }
 
 function reloadAll(): void {
+  scoreDistToken.value += 1
   qaToken.value += 1
   rejudgeToken.value += 1
   improvementToken.value += 1

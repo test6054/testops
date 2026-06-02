@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
-import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import type { ExamQuestionTemplateVO, MarkingProgressVO } from '@/apis/mark/exam'
+import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
 import type {
   AllocationUnitCode,
   AnonymityModeCode,
   AnonymousTokenPolicyCode,
+  ExamAllocationPlanPreviewVO,
   ExamAllocationPlanRequest,
   ExamAllocationPlanVO,
   MarkingAllocationModeCode,
@@ -18,7 +20,8 @@ import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getExamTemplate, isPaperTemplateNotConfiguredError } from '@/apis/mark/exam'
+import { getExamTemplate, getMarkingProgress, isPaperTemplateNotConfiguredError } from '@/apis/mark/exam'
+import { getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import {
   ALLOCATION_UNIT_LABEL,
   ALLOCATION_UNIT_OPTIONS,
@@ -26,6 +29,8 @@ import {
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
   MARKING_ALLOCATION_MODE_LABEL,
   planAllocation,
+  previewAllocationPlan,
+  startFormalSession,
 } from '@/apis/mark/marking-organization'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
@@ -71,12 +76,18 @@ const {
 } = useMarkExamSelector({ maxLoad: 200 })
 
 const templateLoading = ref(false)
+const scanReadinessLoading = ref(false)
 const submitting = ref(false)
+const previewLoading = ref(false)
+const starting = ref(false)
 const questionLoadError = ref<string | null>(null)
 const questions = ref<ExamQuestionTemplateVO[]>([])
 const teacherOptions = ref<TeacherUserInfoDto[]>([])
 const teacherLoading = ref(false)
 const result = ref<ExamAllocationPlanVO | null>(null)
+const planPreview = ref<ExamAllocationPlanPreviewVO | null>(null)
+const ledgerDetail = ref<ImageLedgerDetailVO | null>(null)
+const markingProgress = ref<MarkingProgressVO | null>(null)
 
 const form = reactive<AllocationForm>({
   leaderUserId: userStore.userInfo.userId || null,
@@ -104,11 +115,25 @@ const allocationModeOptions = computed(() => {
   const allowed: MarkingAllocationModeCode[]
     = form.allocationUnit === 'WHOLE_PAPER'
       ? ['BY_PAPER_RANDOM']
-      : ['BY_QUESTION', 'ROUND_ROBIN', 'RANDOM']
+      : ['BY_QUESTION', 'ROUND_ROBIN', 'RANDOM', 'BY_CLASS']
   return allowed.map((value) => ({
     value,
     label: allocationModeLabel(value),
   }))
+})
+
+const canStartFormal = computed(
+  () => Boolean(result.value?.sessionId) && Boolean(planPreview.value?.ready) && !starting.value,
+)
+
+const scanReadinessSummary = computed(() => {
+  if (!ledgerDetail.value && !markingProgress.value) {
+    return null
+  }
+  const bound = ledgerDetail.value?.boundPaperCount ?? markingProgress.value?.gradablePaperCount ?? 0
+  const pendingReview = markingProgress.value?.pendingReviewTaskCount ?? 0
+  const openProcessing = markingProgress.value?.openProcessingTaskCount ?? 0
+  return { bound, pendingReview, openProcessing }
 })
 
 const questionOptions = computed(() =>
@@ -196,8 +221,9 @@ const allocationPreview = computed(() => {
 
 watch(selectedExamId, async () => {
   result.value = null
+  planPreview.value = null
   form.questionTemplateIds = []
-  await loadExamQuestions()
+  await Promise.all([loadExamQuestions(), loadScanReadiness()])
 })
 
 watch(
@@ -243,10 +269,7 @@ async function loadExamQuestions(): Promise<void> {
     const template = await getExamTemplate(selectedExamId.value)
     questions.value = template.questions
   } catch (error) {
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    if (isPaperTemplateNotConfiguredError(error)) {
+    if (error instanceof Error && isPaperTemplateNotConfiguredError(error)) {
       questionLoadError.value = '当前考试尚未配置有效试卷模板，不能生成真实阅卷任务。'
       return
     }
@@ -338,6 +361,43 @@ function clearSelectedQuestions(): void {
   form.randomQuestionSampleSize = null
 }
 
+async function loadScanReadiness(): Promise<void> {
+  ledgerDetail.value = null
+  markingProgress.value = null
+  if (!selectedExamId.value) {
+    return
+  }
+  scanReadinessLoading.value = true
+  try {
+    const [ledger, progress] = await Promise.all([
+      getImageLedgerDetail({ examId: selectedExamId.value }),
+      getMarkingProgress(selectedExamId.value),
+    ])
+    ledgerDetail.value = ledger
+    markingProgress.value = progress
+  } catch (error) {
+    showUserError(error, '扫描就绪状态加载失败')
+  } finally {
+    scanReadinessLoading.value = false
+  }
+}
+
+async function loadPlanPreview(): Promise<void> {
+  if (!selectedExamId.value || !form.leaderUserId || !canSubmit.value) {
+    message.error('请补齐分配合同字段后再预览')
+    return
+  }
+  previewLoading.value = true
+  try {
+    planPreview.value = await previewAllocationPlan(buildRequest(selectedExamId.value, form.leaderUserId))
+  } catch (error) {
+    planPreview.value = null
+    showUserError(error, '分配预览失败')
+  } finally {
+    previewLoading.value = false
+  }
+}
+
 async function submitAllocation(): Promise<void> {
   if (!selectedExamId.value || !form.leaderUserId) {
     message.error('请选择考试和阅卷负责人')
@@ -351,11 +411,33 @@ async function submitAllocation(): Promise<void> {
   try {
     const response = await planAllocation(buildRequest(selectedExamId.value, form.leaderUserId))
     result.value = response
-    message.success(`已生成 ${response.taskCount} 个阅卷任务`)
+    planPreview.value = await previewAllocationPlan(buildRequest(selectedExamId.value, form.leaderUserId))
+    message.success('阅卷配置已保存，可在组织详情调整题组与教师后启动正评')
   } catch (error) {
     showUserError(error, '阅卷分配失败')
   } finally {
     submitting.value = false
+  }
+}
+
+async function startFormalMarking(): Promise<void> {
+  if (!result.value?.sessionId) {
+    message.error('请先保存阅卷配置')
+    return
+  }
+  if (!planPreview.value?.ready) {
+    message.error(planPreview.value?.readinessMessage || '当前不满足启动正评条件')
+    return
+  }
+  starting.value = true
+  try {
+    await startFormalSession(result.value.sessionId)
+    planPreview.value = await previewAllocationPlan(buildRequest(selectedExamId.value!, form.leaderUserId!))
+    message.success(`正评已启动，预计生成 ${planPreview.value.expectedTaskCount ?? 0} 个阅卷任务`)
+  } catch (error) {
+    showUserError(error, '启动正评失败')
+  } finally {
+    starting.value = false
   }
 }
 
@@ -453,7 +535,7 @@ function formatDualReviewRule(): string {
 onMounted(async () => {
   await Promise.all([initExamSelector(), loadTeachers()])
   if (selectedExamId.value) {
-    await loadExamQuestions()
+    await Promise.all([loadExamQuestions(), loadScanReadiness()])
   }
 })
 </script>
@@ -499,11 +581,12 @@ onMounted(async () => {
     />
 
     <template v-else>
+
       <UiAlertStrip
-        v-if="selectedExamLabel"
-        tone="info"
-        title="分配合同"
-        :description="`当前考试：${selectedExamLabel}。提交后后端将创建或复用阅卷组织、生成题组、保存策略并启动正评任务。`"
+        v-if="scanReadinessSummary"
+        :tone="scanReadinessSummary.bound > 0 && scanReadinessSummary.pendingReview === 0 ? 'success' : 'warning'"
+        title="扫描就绪"
+        :description="`已绑定 ${scanReadinessSummary.bound} 份答卷；待复核 ${scanReadinessSummary.pendingReview} 题；处理中 ${scanReadinessSummary.openProcessing} 项`"
         class="review-assignment__alert"
       />
 
@@ -515,13 +598,6 @@ onMounted(async () => {
         class="review-assignment__alert"
       />
 
-      <UiAlertStrip
-        v-if="form.dualReviewEnabled"
-        tone="info"
-        title="整卷双评仲裁"
-        description="开启后每份答卷生成两轮整卷任务；两名评阅教师分差超过阈值时生成仲裁教师第三轮任务，否则按逐题平均分写入最终成绩。"
-        class="review-assignment__alert"
-      />
 
       <section class="review-assignment__grid">
         <UiCard class="review-assignment__panel">
@@ -776,16 +852,55 @@ onMounted(async () => {
               <dt>题目范围</dt>
               <dd>{{ allocationPreview.questionScope || '表单尚未选择题目范围' }}</dd>
             </div>
+            <template v-if="planPreview">
+              <div>
+                <dt>已绑定答卷</dt>
+                <dd>{{ planPreview.boundPaperCount }} 份</dd>
+              </div>
+              <div v-if="planPreview.registeredSliceCount !== undefined">
+                <dt>可派发切片</dt>
+                <dd>{{ planPreview.registeredSliceCount }} 个</dd>
+              </div>
+              <div v-if="planPreview.expectedTaskCount !== undefined">
+                <dt>预计任务数</dt>
+                <dd>{{ planPreview.expectedTaskCount }} 个</dd>
+              </div>
+              <div v-if="planPreview.coverageMessage">
+                <dt>覆盖说明</dt>
+                <dd>{{ planPreview.coverageMessage }}</dd>
+              </div>
+              <div v-if="planPreview.readinessMessage">
+                <dt>启动条件</dt>
+                <dd>{{ planPreview.readinessMessage }}</dd>
+              </div>
+            </template>
           </dl>
 
           <div class="review-assignment__actions">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :disabled="!canSubmit"
+              :loading="previewLoading"
+              @click="loadPlanPreview"
+            >
+              预览分配
+            </UiButton>
             <UiButton
               size="sm"
               :disabled="!canSubmit"
               :loading="submitting"
               @click="submitAllocation"
             >
-              提交并启动正评
+              保存配置
+            </UiButton>
+            <UiButton
+              size="sm"
+              :disabled="!canStartFormal"
+              :loading="starting"
+              @click="startFormalMarking"
+            >
+              启动正评
             </UiButton>
             <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="goTaskPool">
               查看任务池
@@ -795,13 +910,13 @@ onMounted(async () => {
           <div v-if="result" class="review-assignment__result">
             <CheckCircleOutlined />
             <div>
-              <strong>已生成 {{ result.taskCount }} 个任务</strong>
+              <strong>配置已保存</strong>
               <p>
-                组织 {{ result.organizationId }}，题组 {{ result.groupId }}，正评会话
+                组织 {{ result.organizationId }}，题组 {{ result.groupId }}，正评草稿会话
                 {{ result.sessionId }}
               </p>
               <UiButton size="sm" variant="outline" @click="goOrganizationDetail">
-                查看组织详情
+                调整题组与教师
               </UiButton>
             </div>
           </div>

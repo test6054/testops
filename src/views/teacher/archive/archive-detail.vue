@@ -88,7 +88,9 @@
         </a-descriptions-item>
         <a-descriptions-item label="归档校验码">
           <span v-if="archive.archiveChecksum">
-            <span class="archive-inline-value">{{ archive.archiveChecksum.substring(0, 16) }}…</span>
+            <span class="archive-inline-value"
+              >{{ archive.archiveChecksum.substring(0, 16) }}…</span
+            >
           </span>
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">
@@ -318,15 +320,6 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
-import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   appraiseArchive,
   approveDestruction,
@@ -342,6 +335,15 @@ import {
   requestAppraisal,
   requestDestruction,
 } from '@/apis/mark/archive'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
+import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   UiBadge,
   UiButton,
@@ -438,16 +440,13 @@ const itemColumns = [
 const showProgressCard = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'PACKAGING'
-    || archive.value.archiveStatus === 'PACKAGING_FAILED'
+    archive.value.archiveStatus === 'PACKAGING' ||
+    archive.value.archiveStatus === 'PACKAGING_FAILED'
   )
 })
 
 const progressPackagingPhase = computed<ArchivePackagingPhase>(() => {
-  if (!archive.value?.packagingPhase) {
-    throw new Error('归档处于打包状态但缺少打包阶段')
-  }
-  return archive.value.packagingPhase
+  return archive.value?.packagingPhase ?? 'QUEUED'
 })
 
 const progressStatus = computed<'normal' | 'success' | 'exception' | 'active'>(() => {
@@ -468,20 +467,20 @@ const canPackage = computed(() => {
 const canRequestDestruction = computed(() => {
   if (!archive.value) return false
   return (
-    archive.value.archiveStatus === 'APPRAISAL_DECIDED'
-    && archive.value.appraisalDecision === 'DESTROY'
+    archive.value.archiveStatus === 'APPRAISAL_DECIDED' &&
+    archive.value.appraisalDecision === 'DESTROY'
   )
 })
 
 const hasAnyAction = computed(() => {
   if (!archive.value) return false
   return (
-    canPackage.value
-    || archive.value.archiveStatus === 'ACTIVE'
-    || archive.value.archiveStatus === 'APPRAISAL_PENDING'
-    || canRequestDestruction.value
-    || archive.value.archiveStatus === 'DESTRUCTION_PENDING'
-    || archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
+    canPackage.value ||
+    archive.value.archiveStatus === 'ACTIVE' ||
+    archive.value.archiveStatus === 'APPRAISAL_PENDING' ||
+    canRequestDestruction.value ||
+    archive.value.archiveStatus === 'DESTRUCTION_PENDING' ||
+    archive.value.archiveStatus === 'DESTRUCTION_APPROVED'
   )
 })
 
@@ -504,8 +503,8 @@ function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
     case 'PACKAGING_FAILED':
     case 'DESTRUCTION_FAILED':
       status = 'blocked'
-      hint
-        = pkg.archiveStatus === 'PACKAGING_FAILED'
+      hint =
+        pkg.archiveStatus === 'PACKAGING_FAILED'
           ? archivePackagingDiagnosticText(pkg.packagingDiagnostic)
           : archiveStatusLabel(pkg.archiveStatus)
       break
@@ -571,9 +570,9 @@ async function loadDetail(): Promise<void> {
 }
 
 function syncPolling(): void {
-  const shouldPoll
-    = archive.value?.archiveStatus === 'PACKAGING'
-      || archive.value?.archiveStatus === 'DESTRUCTION_EXECUTING'
+  const shouldPoll =
+    archive.value?.archiveStatus === 'PACKAGING' ||
+    archive.value?.archiveStatus === 'DESTRUCTION_EXECUTING'
   if (shouldPoll && !pollTimer) {
     pollTimer = setInterval(() => {
       void loadDetail()
@@ -730,7 +729,7 @@ function goBack(): void {
 
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) {
-    throw new Error(`归档文件大小非法：${bytes}`)
+    return '—'
   }
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   let size = bytes

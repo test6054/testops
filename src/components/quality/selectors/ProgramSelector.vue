@@ -6,8 +6,8 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { MajorCategoryVO } from '@/apis/quality/user-catalog'
-import { onMounted, ref, watch } from 'vue'
 import { majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import { onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: MajorCategoryVO]
+  change: [value: string | null, option?: MajorCategoryVO]
 }>()
 
 const options = ref<MajorCategoryVO[]>([])
@@ -48,7 +48,6 @@ async function loadOptions() {
   try {
     options.value = requireArrayResult(await majorCategoryCatalogApi.listAll(), '专业大类')
   } catch (e) {
-    console.error('[ProgramSelector] 加载专业大类列表失败', e)
     showUserError(e, '专业大类列表加载失败')
   } finally {
     loading.value = false
@@ -89,7 +88,9 @@ defineExpose({ reload: loadOptions })
       :label="opt.majorCategoryName"
     >
       {{ opt.majorCategoryName }}
-      <span v-if="opt.courseCount != null" class="text-gray-400 ml-1">({{ opt.courseCount }} 课)</span>
+      <span v-if="opt.courseCount != null" class="text-gray-400 ml-1"
+        >({{ opt.courseCount }} 课)</span
+      >
     </a-select-option>
   </a-select>
 </template>

@@ -68,9 +68,9 @@
               type="link"
               size="small"
               :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'APPROVED')"
             >
@@ -81,9 +81,9 @@
               size="small"
               danger
               :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
+                rows[index].requestStatus === 'APPROVED' ||
+                rows[index].requestStatus === 'REJECTED' ||
+                rows[index].requestStatus === 'CORRECTED'
               "
               @click="openHandleModal(rows[index], 'REJECTED')"
             >
@@ -154,10 +154,6 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   GRADE_REVIEW_REASON_TYPE_LABEL,
   handleReviewRequest,
@@ -166,14 +162,19 @@ import {
   REVIEW_REQUEST_STATUS_LABEL,
   REVIEW_REQUEST_STATUS_OPTIONS,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
 const rows = ref<GradeReviewRequestItemResponse[]>([])
@@ -245,10 +246,12 @@ async function reload(): Promise<void> {
 
 /** 校验复核申请列表所需学生展示字段，缺失时进入组件错误态。 */
 function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemResponse[]): void {
+  const dataError = '复核申请加载失败，请刷新后重试'
   for (const record of list) {
-    if (!record.studentName.trim() || !record.studentNo.trim()) {
-      throw new Error(`复核申请 ${record.id} 缺失学生展示信息`)
-    }
+    assertUserFacing(
+      Boolean(record.studentName?.trim()) && Boolean(record.studentNo?.trim()),
+      dataError,
+    )
   }
 }
 

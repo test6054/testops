@@ -92,12 +92,9 @@
               </a-space>
             </template>
 
-            <UiAlertStrip
+            <UiEmpty
               v-if="!scopeValid"
-              tone="info"
-              title="请选择阅卷组织"
-              description="进度监控按考试、阅卷组织和题组维度统计；题组留空表示组织级合计。"
-              dense
+              description="请选择阅卷组织"
               class="quality-dashboard__alert"
             />
             <!-- D-9 错误态：进度快照加载失败时给出可恢复 + 可上报路径 -->
@@ -109,12 +106,9 @@
               compact
               @retry="loadProgress"
             />
-            <UiAlertStrip
+            <UiEmpty
               v-else-if="!progress"
-              tone="info"
-              title="尚无进度快照"
-              description="点击「立即快照」实时计算并保存。"
-              dense
+              description="尚无进度快照"
               class="quality-dashboard__alert"
             />
             <a-descriptions v-else :column="3" bordered size="small">
@@ -286,14 +280,6 @@
               <span>创建抽检任务</span>
             </template>
 
-            <UiAlertStrip
-              tone="info"
-              title="抽检规则"
-              description="按阅卷组织、题组和抽检比例创建任务。可选指定教师；不指定则全组抽检。系统将按抽检比例随机生成待处理记录，由组长在「抽检处理」入口处理结论。"
-              dense
-              class="quality-dashboard__alert"
-            />
-
             <a-form layout="vertical" class="quality-dashboard__form">
               <a-form-item label="阅卷组织" required>
                 <a-select :value="selectedOrganizationId" :options="organizationOptions" disabled />
@@ -411,10 +397,16 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerBatchVO } from '@/apis/mark/exam'
+import { pageScannerBatches } from '@/apis/mark/exam'
 import type {
   MarkingOrganizationVO,
   QuestionGroupReviewerVO,
   QuestionMarkingGroupVO,
+} from '@/apis/mark/marking-organization'
+import {
+  getOrganization,
+  MARKING_ORGANIZATION_STATUS_LABEL,
+  QUESTION_GROUP_STATUS_LABEL,
 } from '@/apis/mark/marking-organization'
 import type {
   BatchReprocessScopeCode,
@@ -423,6 +415,18 @@ import type {
   ProgressRiskLevelCode,
   ReviewerMetricStatusCode,
   ReviewerQualityMetricResponse,
+} from '@/apis/mark/marking-quality'
+import {
+  createSpotCheckTasks,
+  getLatestProgress,
+  listReviewerMetrics,
+  PROGRESS_RISK_LEVEL_COLOR,
+  PROGRESS_RISK_LEVEL_LABEL,
+  refreshReviewerMetrics,
+  reprocessBatch,
+  REVIEWER_METRIC_STATUS_COLOR,
+  REVIEWER_METRIC_STATUS_LABEL,
+  takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -436,24 +440,6 @@ import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { pageScannerBatches } from '@/apis/mark/exam'
-import {
-  getOrganization,
-  MARKING_ORGANIZATION_STATUS_LABEL,
-  QUESTION_GROUP_STATUS_LABEL,
-} from '@/apis/mark/marking-organization'
-import {
-  createSpotCheckTasks,
-  getLatestProgress,
-  listReviewerMetrics,
-  PROGRESS_RISK_LEVEL_COLOR,
-  PROGRESS_RISK_LEVEL_LABEL,
-  refreshReviewerMetrics,
-  reprocessBatch,
-  REVIEWER_METRIC_STATUS_COLOR,
-  REVIEWER_METRIC_STATUS_LABEL,
-  takeProgressSnapshot,
-} from '@/apis/mark/marking-quality'
 import {
   UiAlertStrip,
   UiBadge,
@@ -770,8 +756,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     (r) => r.metricStatus === 'SUSPENDED',
   ).length
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0

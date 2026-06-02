@@ -47,9 +47,6 @@ import type {
   ImprovementTaskVO,
   QualityAuditEvidenceItem,
 } from '@/apis/quality'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -64,6 +61,9 @@ import {
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
 } from '@/apis/quality'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,
@@ -82,6 +82,7 @@ import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
+import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -195,7 +196,10 @@ function normalizeTextareaLineItems(value: string | null | undefined): string[] 
 }
 
 function handleImprovementOwnerChange(value: string | string[] | null) {
-  if (Array.isArray(value)) throw new Error('改进任务负责人不支持多选值')
+  if (Array.isArray(value)) {
+    showUserError(null, '负责人只能单选，请重新选择')
+    return
+  }
   improvementEditor.ownerUserId = value ?? ''
 }
 
@@ -265,12 +269,18 @@ function handleRectEditorAuditIssueChange(value: string | null | undefined) {
 }
 
 function handleRectEditorOwnerChange(value: string | string[] | null) {
-  if (Array.isArray(value)) throw new Error('整改责任人不支持多选值')
+  if (Array.isArray(value)) {
+    showUserError(null, '整改责任人只能单选，请重新选择')
+    return
+  }
   rectEditor.ownerUserId = value ?? ''
 }
 
 function handleSupSupervisorChange(value: string | string[] | null) {
-  if (Array.isArray(value)) throw new Error('督导人不支持多选值')
+  if (Array.isArray(value)) {
+    showUserError(null, '督导人只能单选，请重新选择')
+    return
+  }
   supEditor.supervisorUserId = value ?? ''
 }
 
@@ -348,7 +358,7 @@ const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatus; label: string }> = [
   { value: 'OPEN', label: IMPROVEMENT_TASK_STATUS_LABEL.OPEN },
   { value: 'IN_PROGRESS', label: IMPROVEMENT_TASK_STATUS_LABEL.IN_PROGRESS },
   { value: 'SUBMITTED', label: IMPROVEMENT_TASK_STATUS_LABEL.SUBMITTED },
@@ -409,7 +419,7 @@ async function loadImprovementList() {
   }
 }
 
-function handleImprovementPageChange(page: { current: number, pageSize: number }) {
+function handleImprovementPageChange(page: { current: number; pageSize: number }) {
   improvementQuery.pageNum = page.current
   improvementQuery.pageSize = page.pageSize
   loadImprovementList()
@@ -466,12 +476,12 @@ function openImprovementEdit(record: ImprovementTaskVO) {
 
 async function submitImprovementEditor() {
   if (
-    !improvementEditor.taskTitle.trim()
-    || !improvementEditor.problemSummary.trim()
-    || !improvementEditor.proposedAction.trim()
-    || !improvementEditor.programId
-    || !improvementEditor.ownerUserId
-    || !improvementEditor.dueDate
+    !improvementEditor.taskTitle.trim() ||
+    !improvementEditor.problemSummary.trim() ||
+    !improvementEditor.proposedAction.trim() ||
+    !improvementEditor.programId ||
+    !improvementEditor.ownerUserId ||
+    !improvementEditor.dueDate
   ) {
     message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
     return
@@ -714,7 +724,7 @@ async function loadIssueList() {
   }
 }
 
-function handleIssuePageChange(page: { current: number, pageSize: number }) {
+function handleIssuePageChange(page: { current: number; pageSize: number }) {
   issueQuery.pageNum = page.current
   issueQuery.pageSize = page.pageSize
   loadIssueList()
@@ -781,10 +791,10 @@ function openIssueEdit(record: AuditIssueVO) {
 
 async function submitIssueEditor() {
   if (
-    !issueEditor.issueCode.trim()
-    || !issueEditor.issueTitle.trim()
-    || !issueEditor.issueSource
-    || !issueEditor.severity
+    !issueEditor.issueCode.trim() ||
+    !issueEditor.issueTitle.trim() ||
+    !issueEditor.issueSource ||
+    !issueEditor.severity
   ) {
     message.error('请填写编码、标题、来源、严重程度')
     return
@@ -849,10 +859,12 @@ async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatus)
 
 function handleIssueStatusMenuClick(record: AuditIssueVO, event: MenuInfo) {
   if (typeof event.key !== 'string') {
-    throw new TypeError(`审核问题状态菜单值必须是字符串：${String(event.key)}`)
+    showUserError(null, '状态切换无效，请重新操作')
+    return
   }
   if (!nextAuditIssueStatuses(record.status).includes(event.key as AuditIssueStatus)) {
-    throw new Error(`审核问题状态不允许从 ${issueStatusLabel(record.status)} 切换到 ${event.key}`)
+    showUserError(null, `当前状态无法切换到「${issueStatusLabel(event.key as AuditIssueStatus)}」`)
+    return
   }
   changeIssueStatus(record, event.key as AuditIssueStatus)
 }
@@ -934,13 +946,10 @@ async function loadRectList() {
 function rectIssueCode(value: string | null | undefined): string {
   if (value == null || value === '') return '-'
   const issue = rectIssuesCache.value.get(value)
-  if (!issue?.issueCode) {
-    throw new Error('整改任务关联问题缺失审核问题编码')
-  }
-  return issue.issueCode
+  return issue?.issueCode?.trim() || '—'
 }
 
-function handleRectPageChange(page: { current: number, pageSize: number }) {
+function handleRectPageChange(page: { current: number; pageSize: number }) {
   rectQuery.pageNum = page.current
   rectQuery.pageSize = page.pageSize
   loadRectList()
@@ -987,11 +996,11 @@ function openRectEdit(record: AuditRectificationVO) {
 
 async function submitRectEditor() {
   if (
-    !rectEditor.auditIssueId
-    || !rectEditor.rectificationCode.trim()
-    || !rectEditor.rectificationTitle.trim()
-    || !rectEditor.ownerUserId
-    || !rectEditor.dueDate
+    !rectEditor.auditIssueId ||
+    !rectEditor.rectificationCode.trim() ||
+    !rectEditor.rectificationTitle.trim() ||
+    !rectEditor.ownerUserId ||
+    !rectEditor.dueDate
   ) {
     message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
@@ -1171,7 +1180,7 @@ const supQuery = reactive<AuditSupervisionQueryRequest>({
   keyword: '',
 })
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionType, label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionType; label: string }> = [
   { value: 'DAILY', label: AUDIT_SUPERVISION_TYPE_LABEL.DAILY },
   { value: 'SPECIAL', label: AUDIT_SUPERVISION_TYPE_LABEL.SPECIAL },
   { value: 'PRE_AUDIT', label: AUDIT_SUPERVISION_TYPE_LABEL.PRE_AUDIT },
@@ -1294,7 +1303,7 @@ async function loadSupList() {
   }
 }
 
-function handleSupPageChange(page: { current: number, pageSize: number }) {
+function handleSupPageChange(page: { current: number; pageSize: number }) {
   supQuery.pageNum = page.current
   supQuery.pageSize = page.pageSize
   loadSupList()
@@ -1359,9 +1368,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim()
-    || !supEditor.supervisionTitle.trim()
-    || !supEditor.supervisionType
+    !supEditor.supervisionCode.trim() ||
+    !supEditor.supervisionTitle.trim() ||
+    !supEditor.supervisionType
   ) {
     message.error('请填写编码、标题、督导类型')
     return

@@ -9,6 +9,7 @@ import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import type { IdRequest, PageResult, QueryDto } from '@/types'
 import type { UserDto } from '@/types/api-types.d'
 import http from '@/config/axios'
+import { throwUserFacing } from '@/utils/contract-guard'
 
 
 /** 班级信息DTO - 与后端ClassInfoDto完全对齐 */
@@ -130,7 +131,7 @@ export function createClass(data: ClassInfoDto) {
 export function updateClass(data: ClassInfoDto) {
   // 确保data中包含id字段
   if (!data.id) {
-    throw new Error('更新班级时必须提供ID')
+    throwUserFacing('班级信息保存失败，请刷新后重试')
   }
   return http.post<void>(`/api/user/admin/classes/update`, data)
 }

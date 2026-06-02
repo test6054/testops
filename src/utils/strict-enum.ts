@@ -1,44 +1,36 @@
+import { throwUserFacing } from '@/utils/contract-guard'
+
+const ENUM_DATA_FALLBACK = '数据异常，请刷新后重试'
+
 export function strictEnumLabel<TCode extends string>(
   labels: Record<TCode, string>,
   code: TCode | undefined | null,
-  fieldName: string,
+  _fieldName: string,
 ): string {
-  if (!code) {
-    throw new Error(`${fieldName}不能为空`)
+  if (!code || !labels[code]) {
+    throwUserFacing(ENUM_DATA_FALLBACK)
   }
-  const label = labels[code]
-  if (!label) {
-    throw new Error(`${fieldName}存在未定义枚举值：${code}`)
-  }
-  return label
+  return labels[code]
 }
 
 export function strictEnumTone<TCode extends string, TTone extends string>(
   tones: Record<TCode, TTone>,
   code: TCode | undefined | null,
-  fieldName: string,
+  _fieldName: string,
 ): TTone {
-  if (!code) {
-    throw new Error(`${fieldName}不能为空`)
+  if (!code || tones[code] === undefined) {
+    throwUserFacing(ENUM_DATA_FALLBACK)
   }
-  const tone = tones[code]
-  if (!tone) {
-    throw new Error(`${fieldName}存在未定义枚举值：${code}`)
-  }
-  return tone
+  return tones[code]
 }
 
 export function strictEnumValue<TCode extends string, TValue>(
   values: Record<TCode, TValue>,
   code: TCode | undefined | null,
-  fieldName: string,
+  _fieldName: string,
 ): TValue {
-  if (!code) {
-    throw new Error(`${fieldName}不能为空`)
+  if (!code || values[code] === undefined) {
+    throwUserFacing(ENUM_DATA_FALLBACK)
   }
-  const value = values[code]
-  if (value === undefined) {
-    throw new Error(`${fieldName}存在未定义枚举值：${code}`)
-  }
-  return value
+  return values[code]
 }

@@ -6,6 +6,7 @@
  * @author 庆之
  * @version 1.0
  */
+import { throwUserFacing } from '@/utils/contract-guard'
 
 /**
  * 学期代码枚举
@@ -38,13 +39,17 @@ export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
  * 根据学期代码获取描述文本
  *
  * @param code 学期代码 "1" 或 "2"
- * @returns 学期描述文本，如 "秋季学期"
+ * @returns 学期描述文本；空值返回空串，未知码显式失败
  */
 export function getSemesterDescription(code: string | null | undefined): string {
-  if (!code || !SemesterDescription[code]) {
-    throw new Error(`学期值不符合前后端契约：${String(code)}`)
+  if (code === null || code === undefined || code === '') {
+    return ''
   }
-  return SemesterDescription[code]
+  const label = SemesterDescription[code]
+  if (!label) {
+    throwUserFacing('数据异常，请刷新后重试')
+  }
+  return label
 }
 
 /**
@@ -61,12 +66,11 @@ export function isValidSemesterCode(code: string | null | undefined): boolean {
  * 学期代码格式化：
  * - 已知码（"1" / "2"）返回对应描述
  * - 可选字段为空时返回空串
- * - 未知码必须暴露前后端契约错误
+ * - 未知码显式失败
  *
  * @param value 学期代码或任意展示值
  */
 export function formatSemester(value: string | null | undefined): string {
-  if (value === null || value === undefined || value === '') return ''
   return getSemesterDescription(value)
 }
 
@@ -80,7 +84,8 @@ export function formatAcademicTermCode(value: string | null | undefined): string
   if (value === null || value === undefined || value === '') return ''
   const match = value.match(/^(.+)-([12])$/)
   if (!match) {
-    throw new Error(`学年学期值不符合前后端契约：${value}`)
+    return value
   }
-  return `${match[1]} · ${getSemesterDescription(match[2])}`
+  const semesterLabel = getSemesterDescription(match[2])
+  return `${match[1]} · ${semesterLabel}`
 }

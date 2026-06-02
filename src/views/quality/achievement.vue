@@ -20,6 +20,15 @@ import type {
   AchievementStatus,
   AchievementTargetType,
 } from '@/apis/quality'
+import {
+  ACHIEVEMENT_AUDIT_STATUS_COLOR,
+  ACHIEVEMENT_AUDIT_STATUS_LABEL,
+  ACHIEVEMENT_STATUS_COLOR,
+  ACHIEVEMENT_STATUS_LABEL,
+  ACHIEVEMENT_TARGET_TYPE_LABEL,
+  achievementApi,
+  achievementAuditApi,
+} from '@/apis/quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -31,15 +40,6 @@ import type {
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ACHIEVEMENT_AUDIT_STATUS_COLOR,
-  ACHIEVEMENT_AUDIT_STATUS_LABEL,
-  ACHIEVEMENT_STATUS_COLOR,
-  ACHIEVEMENT_STATUS_LABEL,
-  ACHIEVEMENT_TARGET_TYPE_LABEL,
-  achievementApi,
-  achievementAuditApi,
-} from '@/apis/quality'
 import {
   ClassSelector,
   CourseGoalSelector,
@@ -135,7 +135,7 @@ function handleTrainingObjectiveChange(value: string | null) {
   triggerForm.trainingObjectiveId = value ?? ''
 }
 
-const targetTypeOptions: Array<{ value: AchievementTargetType, label: string }> = [
+const targetTypeOptions: Array<{ value: AchievementTargetType; label: string }> = [
   { value: 'COURSE_GOAL', label: ACHIEVEMENT_TARGET_TYPE_LABEL.COURSE_GOAL },
   { value: 'REQUIREMENT_INDICATOR', label: ACHIEVEMENT_TARGET_TYPE_LABEL.REQUIREMENT_INDICATOR },
   { value: 'GRADUATION_REQUIREMENT', label: ACHIEVEMENT_TARGET_TYPE_LABEL.GRADUATION_REQUIREMENT },
@@ -147,7 +147,7 @@ const targetTypeOptions: Array<{ value: AchievementTargetType, label: string }> 
     label: ACHIEVEMENT_TARGET_TYPE_LABEL.COMPLEX_ENGINEERING_AGGREGATE,
   },
 ]
-const auditStatusOptions: Array<{ value: AchievementAuditStatus, label: string }> = [
+const auditStatusOptions: Array<{ value: AchievementAuditStatus; label: string }> = [
   { value: 'DRAFT', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.DRAFT },
   { value: 'CALCULATED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.CALCULATED },
   { value: 'SUBMITTED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.SUBMITTED },
@@ -155,7 +155,7 @@ const auditStatusOptions: Array<{ value: AchievementAuditStatus, label: string }
   { value: 'RETURNED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.RETURNED },
   { value: 'ARCHIVED', label: ACHIEVEMENT_AUDIT_STATUS_LABEL.ARCHIVED },
 ]
-const achievementStatusOptions: Array<{ value: AchievementStatus, label: string }> = [
+const achievementStatusOptions: Array<{ value: AchievementStatus; label: string }> = [
   { value: 'ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.ACHIEVED },
   { value: 'PARTIALLY_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.PARTIALLY_ACHIEVED },
   { value: 'NOT_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.NOT_ACHIEVED },
@@ -189,7 +189,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -229,13 +229,13 @@ function resetQuery() {
  *  - compute-civic-goal-aggregate     课程思政独立汇总
  *  - compute-complex-engineering-aggregate  复杂工程问题专项
  */
-type AchievementComputeResult
-  = | Awaited<ReturnType<typeof achievementApi.computeCourseGoal>>
-    | Awaited<ReturnType<typeof achievementApi.computeRequirement>>
-    | Awaited<ReturnType<typeof achievementApi.computeProgram>>
-    | Awaited<ReturnType<typeof achievementApi.computeTrainingObjective>>
-    | Awaited<ReturnType<typeof achievementApi.computeCivicGoalAggregate>>
-    | Awaited<ReturnType<typeof achievementApi.computeComplexEngineeringAggregate>>
+type AchievementComputeResult =
+  | Awaited<ReturnType<typeof achievementApi.computeCourseGoal>>
+  | Awaited<ReturnType<typeof achievementApi.computeRequirement>>
+  | Awaited<ReturnType<typeof achievementApi.computeProgram>>
+  | Awaited<ReturnType<typeof achievementApi.computeTrainingObjective>>
+  | Awaited<ReturnType<typeof achievementApi.computeCivicGoalAggregate>>
+  | Awaited<ReturnType<typeof achievementApi.computeComplexEngineeringAggregate>>
 
 const triggerButtons: Array<{
   key: string
@@ -347,10 +347,10 @@ async function handleTrigger(key: string, handler: () => Promise<AchievementComp
   } catch (err) {
     // 计算被用户取消（如未填 courseGoalId）静默忽略
     if (
-      err instanceof Error
-      && (err.message === 'cancelled'
-        || err.message === 'missing courseGoalId'
-        || err.message === 'missing trainingObjectiveId')
+      err instanceof Error &&
+      (err.message === 'cancelled' ||
+        err.message === 'missing courseGoalId' ||
+        err.message === 'missing trainingObjectiveId')
     ) {
       return
     }
@@ -411,7 +411,7 @@ const auditBuckets = computed(() => {
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = auditBuckets.value
-  const order: Array<{ key: AchievementAuditStatus, title: string }> = [
+  const order: Array<{ key: AchievementAuditStatus; title: string }> = [
     { key: 'DRAFT', title: '草稿' },
     { key: 'CALCULATED', title: '已计算' },
     { key: 'SUBMITTED', title: '已提交' },
@@ -522,7 +522,7 @@ const achievementResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') goDetail(record)
 }
@@ -687,15 +687,17 @@ onMounted(async () => {
               <span
                 class="achievement__value"
                 :class="[
-                  record.finalValue !== null
-                    && record.thresholdValue !== null
-                    && record.finalValue >= record.thresholdValue
+                  record.finalValue !== null &&
+                  record.thresholdValue !== null &&
+                  record.finalValue >= record.thresholdValue
                     ? 'achievement__value--ok'
                     : 'achievement__value--bad',
                 ]"
-              >{{ formatValue(record.finalValue) }}</span>
+                >{{ formatValue(record.finalValue) }}</span
+              >
               <span class="achievement__threshold">
-                / {{ formatValue(record.thresholdValue) }}</span>
+                / {{ formatValue(record.thresholdValue) }}</span
+              >
             </template>
             <template v-else-if="column.key === 'sample'">
               {{ record.sampleValid }} / {{ record.sampleTotal }}
@@ -734,13 +736,6 @@ onMounted(async () => {
     </template>
 
     <UiDrawer v-model:open="triggerVisible" title="触发达成度计算" :width="720" :hide-footer="true">
-      <a-alert
-        type="info"
-        show-icon
-        message="确定性计算"
-        description="计算口径以专业评价口径与培养方案为准；计算后结果进入草稿或已计算状态，需人工提交进入审核闭环。"
-        class="achievement__editor-alert"
-      />
       <a-form layout="vertical" :model="triggerForm">
         <a-row :gutter="12">
           <a-col :span="12">

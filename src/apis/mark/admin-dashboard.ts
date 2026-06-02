@@ -63,6 +63,7 @@ export type IncidentSourceTypeCode
     | 'PROCESSING_TASK'
     | 'DUPLICATE_RESOLUTION'
     | 'GRADE_RESULT'
+    | 'PAPER_INSTANCE'
 
 /** 重大事件级别文案映射 */
 export const INCIDENT_LEVEL_LABEL: Record<IncidentLevelCode, string> = {
@@ -144,7 +145,7 @@ export type DashboardFinalScoreStatusCode = FinalScoreStatusCode
  * Dashboard 聚合响应 - 对应 MarkDashboardResponse
  *
  * 字段契约：
- * - examMetrics 当前 UI 未消费，保留为可选；
+ * - examMetrics 供管理员 Dashboard 考试规模卡片与环形图消费；
  * - gradingMetrics / incidentMetrics / recentExams / recentIncidents 为前端必需字段，
  *   缺失会在 validateDashboardOverview 抛 TypeError，由调用方 catch 走错误面板。
  */

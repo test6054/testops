@@ -46,11 +46,6 @@ import type {
   TrainingPlanSaveRequest,
   TrainingPlanVO,
 } from '@/apis/quality'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { uploadFile } from '@/apis/edu/file-management'
 import {
   accreditationStandardApi,
   AGGREGATION_FUNCTION_LABEL,
@@ -64,11 +59,16 @@ import {
   trainingObjectiveRequirementApi,
   trainingPlanApi,
 } from '@/apis/quality'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench'
+import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { uploadFile } from '@/apis/edu/file-management'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -302,8 +302,8 @@ const planConfirmationStatus = computed<ConfirmationStatus | undefined>(() => {
 
 const canConfirmPlan = computed(
   () =>
-    !!currentPlan.value
-    && (planConfirmationStatus.value === 'DRAFT' || planConfirmationStatus.value === 'RETURNED'),
+    !!currentPlan.value &&
+    (planConfirmationStatus.value === 'DRAFT' || planConfirmationStatus.value === 'RETURNED'),
 )
 
 const canRevokePlan = computed(
@@ -454,10 +454,10 @@ function openPlanEdit() {
 
 async function submitPlan() {
   if (
-    !planEditor.programId.trim()
-    || !planEditor.planCode.trim()
-    || !planEditor.planName.trim()
-    || !planEditor.schoolYear.trim()
+    !planEditor.programId.trim() ||
+    !planEditor.planCode.trim() ||
+    !planEditor.planName.trim() ||
+    !planEditor.schoolYear.trim()
   ) {
     message.error('请选择专业，并填写方案编码、方案名称和入学学年')
     return
@@ -486,7 +486,7 @@ async function handlePlanFileUpload(options: UploadRequestOption): Promise<void>
     const { file } = options
     if (!(file instanceof File)) {
       message.error('无效的培养方案附件')
-      options.onError?.(new TypeError('无效的培养方案附件'))
+      options.onError?.(new Error('无效的培养方案附件'))
       return
     }
     const uploaded = await uploadFile(file, { businessType: 'QUALITY_TRAINING_PLAN_FILE' })
@@ -683,8 +683,8 @@ function handleObjectiveRequirementCellClick(cellEvent: {
   if (cellEvent.cell) {
     const mapping = objectiveRequirementMappings.value.find(
       (item) =>
-        item.trainingObjectiveId === cellEvent.row.key
-        && item.graduationRequirementId === cellEvent.col.key,
+        item.trainingObjectiveId === cellEvent.row.key &&
+        item.graduationRequirementId === cellEvent.col.key,
     )
     if (mapping) openObjMappingEdit(mapping)
     return
@@ -709,9 +709,9 @@ async function submitObjMapping() {
     return
   }
   if (
-    objMappingEditor.weight == null
-    || objMappingEditor.weight < 0
-    || objMappingEditor.weight > 1
+    objMappingEditor.weight == null ||
+    objMappingEditor.weight < 0 ||
+    objMappingEditor.weight > 1
   ) {
     message.error('权重必须在 0~1 之间')
     return
@@ -888,9 +888,9 @@ async function submitIndicator() {
     return
   }
   if (
-    indicatorEditor.requirementWeight == null
-    || indicatorEditor.requirementWeight <= 0
-    || indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null ||
+    indicatorEditor.requirementWeight <= 0 ||
+    indicatorEditor.requirementWeight > 1
   ) {
     message.error('观测点权重必须在 (0, 1] 之间')
     return
@@ -1030,7 +1030,7 @@ const aggregationOptions = [
   { value: 'DIRECT_INDIRECT_WEIGHTED', label: AGGREGATION_FUNCTION_LABEL.DIRECT_INDIRECT_WEIGHTED },
 ]
 
-const civicDimensionOptions: Array<{ value: CivicDimension, label: string }> = [
+const civicDimensionOptions: Array<{ value: CivicDimension; label: string }> = [
   { value: 'MORAL', label: CIVIC_DIMENSION_LABEL.MORAL },
   { value: 'INTELLECTUAL', label: CIVIC_DIMENSION_LABEL.INTELLECTUAL },
   { value: 'PHYSICAL', label: CIVIC_DIMENSION_LABEL.PHYSICAL },
@@ -1067,20 +1067,20 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             :color="
               planConfirmationStatus
                 ? strictEnumTone(
-                  CONFIRMATION_STATUS_COLOR,
-                  planConfirmationStatus,
-                  '培养方案确认状态',
-                )
+                    CONFIRMATION_STATUS_COLOR,
+                    planConfirmationStatus,
+                    '培养方案确认状态',
+                  )
                 : 'default'
             "
           >
             {{
               planConfirmationStatus
                 ? strictEnumLabel(
-                  CONFIRMATION_STATUS_LABEL,
-                  planConfirmationStatus,
-                  '培养方案确认状态',
-                )
+                    CONFIRMATION_STATUS_LABEL,
+                    planConfirmationStatus,
+                    '培养方案确认状态',
+                  )
                 : '未提交'
             }}
           </a-tag>
@@ -1377,8 +1377,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <a-space>
                     <a-tag
                       :color="
-                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1)
-                          < WEIGHT_EPSILON
+                        Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1) <
+                        WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "
@@ -1412,7 +1412,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                         <a-tag v-for="d in record.civicDimensions ?? []" :key="d" color="purple">
                           {{ strictEnumLabel(CIVIC_DIMENSION_LABEL, d, '课程思政维度') }}
                         </a-tag>
-                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted">-</span>
+                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted"
+                          >-</span
+                        >
                       </a-space>
                     </template>
                     <template v-else-if="column.key === 'actions'">

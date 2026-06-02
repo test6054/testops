@@ -11,6 +11,8 @@ import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
+const PRINT_PACKAGE_DATA_ERROR = '印刷包数据异常，请刷新后重试'
+
 /** 试卷母版未配置业务码 - 与后端 ResultCodeEnum.EXAM_MARK_PAPER_MASTER_NOT_CONFIGURED 对齐 */
 export const PAPER_MASTER_NOT_CONFIGURED_CODE = 20015
 
@@ -39,8 +41,20 @@ export const PRINT_PACKAGE_STATUS_TONE: Record<PrintPackageStatusCode, BadgeTone
 /** 印刷包明细状态编码 */
 export type PrintPackageItemStatusCode = 'READY'
 
-/** 身份填涂区类型编码 */
-export type PaperMasterIdentityAreaTypeCode = 'STUDENT_NO'
+/** 身份填涂区类型编码 - 与后端 PaperMasterIdentityAreaType 完整一致 */
+export type PaperMasterIdentityAreaTypeCode
+  = | 'STUDENT_NO'
+    | 'CLASS_NAME'
+    | 'STUDENT_NAME'
+
+export const PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL: Record<
+  PaperMasterIdentityAreaTypeCode,
+  string
+> = {
+  STUDENT_NO: '学号',
+  CLASS_NAME: '班级名称',
+  STUDENT_NAME: '学生姓名',
+}
 
 // ─── 身份填涂区 ────────────────────────────────────────────────────────
 
@@ -250,47 +264,47 @@ export interface PrintPackagePageRequest extends QueryDto {
   examId: string
 }
 
-function requirePrintPackageText(value: string | undefined, fieldName: string): void {
+function requirePrintPackageText(value: string | undefined): void {
   if (!value) {
-    throw new Error(`${fieldName}不能为空`)
+    throw new Error(PRINT_PACKAGE_DATA_ERROR)
   }
 }
 
-function requirePrintPackageNumber(value: number | undefined, fieldName: string): void {
+function requirePrintPackageNumber(value: number | undefined): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`${fieldName}不能为空`)
+    throw new TypeError(PRINT_PACKAGE_DATA_ERROR)
   }
 }
 
 function requirePrintPackageRemark(value: string | null | undefined): void {
   if (value === undefined) {
-    throw new Error('印刷包封装备注字段不能为空')
+    throw new Error(PRINT_PACKAGE_DATA_ERROR)
   }
 }
 
 function validatePrintPackageItemContract(record: PrintPackageItemVO): void {
-  requirePrintPackageText(record.printPackageItemId, '印刷包明细ID')
-  requirePrintPackageText(record.studentUserId, '印刷包明细学生ID')
-  requirePrintPackageText(record.studentNo, '印刷包明细学号')
-  requirePrintPackageText(record.studentName, '印刷包明细姓名')
-  requirePrintPackageText(record.qrCode, '印刷包明细二维码')
-  requirePrintPackageText(record.barCode, '印刷包明细条形码')
-  requirePrintPackageText(record.securityCode, '印刷包明细防伪码')
-  requirePrintPackageText(record.printFileId, '印刷包明细文件ID')
+  requirePrintPackageText(record.printPackageItemId)
+  requirePrintPackageText(record.studentUserId)
+  requirePrintPackageText(record.studentNo)
+  requirePrintPackageText(record.studentName)
+  requirePrintPackageText(record.qrCode)
+  requirePrintPackageText(record.barCode)
+  requirePrintPackageText(record.securityCode)
+  requirePrintPackageText(record.printFileId)
   strictEnumLabel({ READY: '待印刷' }, record.status, '印刷包明细状态')
 }
 
 export function validatePrintPackageContract(record: PrintPackageVO): void {
-  requirePrintPackageText(record.printPackageId, '印刷包ID')
-  requirePrintPackageText(record.examId, '印刷包考试ID')
-  requirePrintPackageText(record.masterId, '印刷包母版ID')
-  requirePrintPackageText(record.packageNo, '印刷包编号')
-  requirePrintPackageText(record.packageName, '印刷包名称')
-  requirePrintPackageText(record.packageFileId, '印刷包文件ID')
-  requirePrintPackageNumber(record.itemCount, '印刷包生成人数')
+  requirePrintPackageText(record.printPackageId)
+  requirePrintPackageText(record.examId)
+  requirePrintPackageText(record.masterId)
+  requirePrintPackageText(record.packageNo)
+  requirePrintPackageText(record.packageName)
+  requirePrintPackageText(record.packageFileId)
+  requirePrintPackageNumber(record.itemCount)
   strictEnumLabel(PRINT_PACKAGE_STATUS_LABEL, record.status, '印刷包状态')
   strictEnumTone(PRINT_PACKAGE_STATUS_TONE, record.status, '印刷包状态')
-  requirePrintPackageText(record.generatedTime, '印刷包生成时间')
+  requirePrintPackageText(record.generatedTime)
   requirePrintPackageRemark(record.sealRemark)
   record.items?.forEach(validatePrintPackageItemContract)
 }

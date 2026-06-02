@@ -117,106 +117,6 @@ const DEFAULT_ERROR_MESSAGES: Record<ErrorType, string> = {
 }
 
 /**
- * 前端合同诊断消息特征
- * 这类消息用于开发排查接口契约，不直接展示给教师、阅卷员或学生。
- */
-const DEVELOPER_DIAGNOSTIC_PATTERNS: RegExp[] = [
-  /接口返回格式错误/,
-  /接口缺少/,
-  /接口 .*缺少/,
-  /接口 .*返回格式错误/,
-  /列表接口返回格式错误/,
-  /分页接口返回格式错误/,
-  /响应格式异常/,
-  /返回格式错误/,
-  /返回格式异常/,
-  /响应缺少/,
-  /响应 data 必须是/,
-  /缺少 .*字段/,
-  /缺少 .*数组/,
-  /缺少 .*列表/,
-  /缺少 .*ID/,
-  /缺少 .*Id/,
-  /缺少 .*id/,
-  /缺少 data 字段/,
-  /缺少 list 数组/,
-  /分页响应缺少 list 数组/,
-  /列表响应不是数组/,
-  /成功响应缺少 data 字段/,
-  /不符合 ResultInfo/,
-  /不符合前后端契约/,
-  /存在未定义枚举值/,
-  /必须是结构化数组/,
-  /必须是结构化对象/,
-  /必须是数组/,
-  /必须是对象/,
-  /必须是字符串/,
-  /必须是数字/,
-  /必须是布尔值/,
-  /必须是有效数字/,
-  /必须是合法/,
-  /格式错误/,
-  /字段异常/,
-  /字段 .*异常/,
-  /字段 .*格式错误/,
-  /字段 .*必须是/,
-  /枚举格式错误/,
-  /接口 .*格式错误/,
-  /响应字段 .*不合法/,
-  /响应字段 .*必须是/,
-  /不符合前后端数值契约/,
-  /事件来源不符合前端组件契约/,
-  /^TypeError:/,
-  /^Error:/,
-  /响应格式异常/,
-  /列表响应格式错误/,
-  /聚合明细接口返回格式错误/,
-  /考生名册接口返回格式错误/,
-  /扫描异常列表接口返回格式错误/,
-  /扫描批次列表接口返回格式错误/,
-  /设备聚合明细接口返回格式错误/,
-  /导入结果响应格式异常/,
-  /Agent 诊断信息/,
-  /Agent 检测信息/
-]
-
-/**
- * 后台处理失败原因中的系统诊断特征。
- * 异步导出、AI 分析等失败原因来自服务端持久化字段，不能默认作为用户文案透出。
- */
-const PROCESS_FAILURE_TECHNICAL_PATTERNS: RegExp[] = [
-  /\b[A-Za-z]+Exception\b/,
-  /\bTypeError\b/,
-  /\bAxiosError\b/,
-  /\bStackTrace\b/,
-  /\bat\s+[\w.$]+/,
-  /\bjava\./,
-  /\borg\.springframework\b/,
-  /\borg\.postgresql\b/,
-  /\bPSQLException\b/,
-  /\bSQLException\b/,
-  /\bNullPointerException\b/,
-  /\bundefined\b/,
-  /\bnull\b/,
-  /\bNaN\b/,
-  /\bResultInfo\b/,
-  /\bexportErrorMessage\b/,
-  /\berrorMessage\b/,
-  /\btenantId\b/,
-  /\buserId\b/,
-  /\bfileId\b/,
-  /\btraceId\b/,
-  /https?:\/\//,
-  /\/api\//,
-  /\/Users\//,
-  /[A-Z]:\\/i,
-  /\bSQL\b/i,
-  /\bselect\b.+\bfrom\b/i,
-  /\binsert\s+into\b/i,
-  /\bupdate\b.+\bset\b/i
-]
-
-/**
  * 错误消息标题
  * 与 ERROR_TYPE_ICONS 配合使用，作为通知/Message 的标题文案
  */
@@ -288,12 +188,7 @@ function getErrorMessage(error: HandledError, errorType: ErrorType): string {
   }
 
   // 1. 使用后端返回的具体消息（仅对业务错误）
-  if (
-    backendMessage
-    && statusCode != null
-    && statusCode < 500
-    && !isDeveloperDiagnosticMessage(backendMessage)
-  ) {
+  if (backendMessage && statusCode != null && statusCode < 500) {
     return backendMessage
   }
 
@@ -304,21 +199,6 @@ function getErrorMessage(error: HandledError, errorType: ErrorType): string {
 
   // 3. 使用默认消息
   return DEFAULT_ERROR_MESSAGES[errorType]
-}
-
-/**
- * 判断消息是否属于开发诊断，不应作为用户可见文案。
- */
-export function isDeveloperDiagnosticMessage(messageText: string): boolean {
-  const normalized = messageText.trim()
-  if (!normalized) return false
-  return DEVELOPER_DIAGNOSTIC_PATTERNS.some(pattern => pattern.test(normalized))
-}
-
-function isTechnicalProcessFailureMessage(messageText: string): boolean {
-  const normalized = messageText.trim()
-  if (!normalized) return false
-  return PROCESS_FAILURE_TECHNICAL_PATTERNS.some(pattern => pattern.test(normalized))
 }
 
 function getResponseMessage(error: unknown): string | undefined {
@@ -336,29 +216,14 @@ function getResponseMessage(error: unknown): string | undefined {
   return typeof backendMsg === 'string' && backendMsg.trim() ? backendMsg : undefined
 }
 
-function getDirectMessage(error: unknown): string | undefined {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  if (error != null && typeof error === 'object') {
-    const messageText = (error as Record<string, unknown>).message
-    if (typeof messageText === 'string' && messageText.trim()) return messageText
-  }
-  return undefined
-}
-
 /**
  * 提取用户可见错误文案。
- * 保留后端业务错误，屏蔽接口契约、类型校验、组件事件来源等开发诊断。
+ * 仅使用后端业务消息或调用方提供的 fallback，不展示前端 Error.message。
  */
 export function getUserErrorMessage(error: unknown, fallback = '操作失败，请稍后重试'): string {
   const backendMessage = getResponseMessage(error)
-  if (backendMessage && !isDeveloperDiagnosticMessage(backendMessage)) {
+  if (backendMessage) {
     return backendMessage
-  }
-
-  const directMessage = getDirectMessage(error)
-  if (directMessage && !isDeveloperDiagnosticMessage(directMessage)) {
-    return directMessage
   }
 
   return fallback
@@ -368,10 +233,22 @@ export function getUserErrorMessage(error: unknown, fallback = '操作失败，�
  * 将协议边界捕获到的异常收敛为页面错误态可直接持有的 Error。
  */
 export function toUserError(error: unknown, fallback = '操作失败，请稍后重试'): Error {
-  if (error instanceof Error && !isDeveloperDiagnosticMessage(error.message)) {
-    return error
-  }
   return new Error(getUserErrorMessage(error, fallback))
+}
+
+/**
+ * 加载失败时收敛为页面 error ref 可绑定的 Error，不弹出 toast。
+ */
+export function captureLoadFailure(error: unknown, fallback: string): Error {
+  return toUserError(error, fallback)
+}
+
+/**
+ * 加载失败时弹出用户可见提示，并返回可绑定 error ref 的 Error。
+ */
+export function reportLoadFailure(error: unknown, fallback: string): Error {
+  showUserError(error, fallback)
+  return captureLoadFailure(error, fallback)
 }
 
 /**
@@ -379,14 +256,10 @@ export function toUserError(error: unknown, fallback = '操作失败，请稍后
  * 这类字段是持久化失败原因，默认比普通接口业务错误更保守，避免把堆栈、字段名、路径或接口合同诊断展示给用户。
  */
 export function getUserProcessFailureMessage(
-  messageText: string | undefined | null,
+  _messageText: string | undefined | null,
   fallback = '处理未完成，请稍后重试或联系管理员',
 ): string {
-  const normalized = messageText?.trim()
-  if (!normalized) return fallback
-  if (isDeveloperDiagnosticMessage(normalized)) return fallback
-  if (isTechnicalProcessFailureMessage(normalized)) return fallback
-  return normalized
+  return fallback
 }
 
 /**
@@ -412,16 +285,13 @@ function formatErrorCode(_error: HandledError): string {
  */
 function toHandledError(error: unknown): HandledError {
   if (error != null && typeof error === 'object') return error as HandledError
-  if (typeof error === 'string') return { message: error }
-  return { message: '无法识别的错误对象' }
+  if (typeof error === 'string') return { message: '操作未完成，请稍后重试' }
+  return { message: '操作未完成，请稍后重试' }
 }
 
 function resolveErrorCode(error: HandledError): number | string {
   const code = error.code ?? error.response?.data?.code ?? error.response?.status ?? error.message
-  if (code == null || code === '') {
-    throw new Error('错误对象缺少可感知的错误码或错误消息')
-  }
-  return code
+  return code == null || code === '' ? ErrorType.UNKNOWN : code
 }
 
 /**
@@ -508,15 +378,6 @@ export function handleError(error: unknown, config: ErrorHandlerConfig = {}): St
 
   // 标准化错误
   const standardError = standardizeError(handled)
-
-  // 记录错误日志（仅未被拦截器处理的错误）
-  console.error('[错误处理]', {
-    type: standardError.type,
-    code: standardError.code,
-    message: standardError.message,
-    detail: standardError.detail,
-    originalError: error
-  })
 
   // 显示错误提示
   showErrorMessage(standardError, config)

@@ -11,9 +11,9 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
  *   onMounted(init)
  */
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
@@ -21,6 +21,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
+import { readPageList } from '@/utils/page-result'
 
 export interface MarkExamSelectorOptions {
   /** 是否在切换时自动回写 URL query，默认 true */
@@ -49,8 +50,8 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const loading = ref(false)
 
   // 应用优先级：URL > 全局 Store > 空
-  const initialId
-    = (route.query.examId ? String(route.query.examId) : '') || examContext.currentExamId || ''
+  const initialId =
+    (route.query.examId ? String(route.query.examId) : '') || examContext.currentExamId || ''
   const selectedExamId = ref<string | undefined>(initialId || undefined)
 
   // 页面本地选择变化 → 同步到全局 Store，使跨页面访问保持一致
@@ -103,7 +104,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
         status: 'ACTIVE',
         createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
       })
-      exams.value = result.list
+      exams.value = readPageList(result, '考试列表加载失败，请稍后重试')
       // 同步考试列表到全局 Store，供跨页面下拉复用
       examContext.exams = exams.value
       // URL / Store 都未指定时默认选第一个
@@ -148,9 +149,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   }
 
   function formatExamOptionLabel(exam: ExamSummaryVO): string {
-    if (!exam.examNo) {
-      throw new Error(`考试列表缺少考试编号：examId=${exam.examId}`)
-    }
+    if (!exam.examNo) return exam.examName
     return `${exam.examName} (${exam.examNo})`
   }
 

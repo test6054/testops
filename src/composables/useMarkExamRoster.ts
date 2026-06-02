@@ -1,4 +1,5 @@
 import type { ExamCandidateVO } from '@/apis/mark/exam'
+import { listExamCandidates } from '@/apis/mark/exam'
 /**
  * 批改主链：考试考生名册 composable
  *
@@ -18,7 +19,6 @@ import type { ExamCandidateVO } from '@/apis/mark/exam'
  * ```
  */
 import { computed, ref } from 'vue'
-import { listExamCandidates } from '@/apis/mark/exam'
 import { showUserError, toUserError } from '@/utils/error-handler'
 
 export interface MarkClassOption {
@@ -53,14 +53,12 @@ export function useMarkExamRoster() {
   const loadError = ref<Error | null>(null)
 
   const classOptions = computed<MarkClassOption[]>(() => {
-    const grouped = new Map<string, { className: string, count: number }>()
+    const grouped = new Map<string, { className: string; count: number }>()
     for (const item of candidates.value) {
       const cid = item.classId
       if (!cid) continue
       const current = grouped.get(cid)
-      if (!item.className) {
-        throw new TypeError(`考生名册缺少班级名称：classId=${cid}`)
-      }
+      if (!item.className) continue
       grouped.set(cid, {
         className: item.className,
         count: (current?.count ?? 0) + 1,

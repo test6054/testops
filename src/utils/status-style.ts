@@ -3,8 +3,8 @@ import { StudentTaskStatusEnum } from '@/types/enums/student-task-status'
 import { TeacherReviewStatusEnum } from '@/types/enums/teacher-review-status'
 import { strictEnumTone } from '@/utils/strict-enum'
 
-export type StatusVariant
-  = | 'neutral'
+export type StatusVariant =
+  | 'neutral'
   | 'info'
   | 'pending'
   | 'success'
@@ -65,11 +65,13 @@ export const PRACTICE_STATUS_VARIANT_MAP: Record<PracticeStatusEnum, StatusVaria
 }
 
 export function mapPracticeStatusToVariant(status?: string | null): StatusVariant {
-  if (!status) {
-    throw new Error('实践状态不符合前后端契约')
-  }
+  if (!status) return 'neutral'
   const upper = status.toUpperCase() as PracticeStatusEnum
-  return strictEnumTone(PRACTICE_STATUS_VARIANT_MAP, upper, '实践状态')
+  try {
+    return strictEnumTone(PRACTICE_STATUS_VARIANT_MAP, upper, 'practice')
+  } catch {
+    return 'neutral'
+  }
 }
 
 export const STUDENT_STATUS_VARIANT_MAP: Record<StudentTaskStatusEnum, StatusVariant> = {
@@ -82,25 +84,25 @@ export const STUDENT_STATUS_VARIANT_MAP: Record<StudentTaskStatusEnum, StatusVar
 }
 
 export function mapStudentStatusToVariant(status?: string | null): StatusVariant {
-  if (!status) {
-    throw new Error('学生任务状态不符合前后端契约')
-  }
+  if (!status) return 'neutral'
 
-  // 先检查前端自定义状态（GradingCenterTab使用的状态）
   const customStatusMap: Record<string, StatusVariant> = {
-    "pending": 'pending', // 待审核 - 橙色
-    "completed": 'success', // 已通过 - 绿色
-    'review-needed': 'danger', // 已驳回 - 红色
-    'not-submitted': 'neutral', // 未提交 - 灰色
+    pending: 'pending',
+    completed: 'success',
+    'review-needed': 'danger',
+    'not-submitted': 'neutral',
   }
 
   if (customStatusMap[status]) {
     return customStatusMap[status]
   }
 
-  // 再检查后端枚举状态
   const upper = status.toUpperCase() as StudentTaskStatusEnum
-  return strictEnumTone(STUDENT_STATUS_VARIANT_MAP, upper, '学生任务状态')
+  try {
+    return strictEnumTone(STUDENT_STATUS_VARIANT_MAP, upper, 'student')
+  } catch {
+    return 'neutral'
+  }
 }
 
 export const TEACHER_REVIEW_STATUS_VARIANT_MAP: Record<TeacherReviewStatusEnum, StatusVariant> = {
@@ -111,9 +113,11 @@ export const TEACHER_REVIEW_STATUS_VARIANT_MAP: Record<TeacherReviewStatusEnum, 
 }
 
 export function mapTeacherReviewStatusToVariant(status?: string | null): StatusVariant {
-  if (!status) {
-    throw new Error('教师评阅状态不符合前后端契约')
-  }
+  if (!status) return 'neutral'
   const upper = status.toUpperCase() as TeacherReviewStatusEnum
-  return strictEnumTone(TEACHER_REVIEW_STATUS_VARIANT_MAP, upper, '教师评阅状态')
+  try {
+    return strictEnumTone(TEACHER_REVIEW_STATUS_VARIANT_MAP, upper, 'teacher')
+  } catch {
+    return 'neutral'
+  }
 }

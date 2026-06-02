@@ -10,6 +10,28 @@ import type { AiAnalysisStatusCode, AnalysisScopeTypeCode } from './teaching-ana
  */
 import http from '@/config/axios'
 
+/** 考试维度统计快照 - 对应 ExamStatSnapshot */
+export interface ExamStatSnapshotVO {
+  examId?: string
+  examName?: string
+  examTime?: string
+  participantCount?: number
+  avgScore?: number
+  totalFullScore?: number
+  scoreRate?: number
+  stdDev?: number
+  maxScore?: number
+  minScore?: number
+  passRate?: number
+}
+
+/** 课程目标维度文案 - 与后端 CourseObjectiveDimension 完整一致 */
+export const COURSE_OBJECTIVE_DIMENSION_LABEL: Record<CourseObjectiveDimensionCode, string> = {
+  OVERALL_SCORE_RATE: '总体得分率',
+  PASS_RATE: '及格率',
+  SCORE_STABILITY: '成绩稳定性',
+}
+
 /** 跨考试趋势条目 */
 export interface CrossExamTrendItemVO {
   dimension?: string
@@ -111,6 +133,7 @@ export interface CrossExamTrendAnalysisVO {
   aiTraceId?: string
   trendSummary?: string
   trendItems?: CrossExamTrendItemVO[]
+  examStatSnapshots?: ExamStatSnapshotVO[]
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
   latencyMs?: number
@@ -131,6 +154,7 @@ export interface SemesterAbilityGrowthVO {
   aiTraceId?: string
   growthSummary?: string
   growthItems?: SemesterGrowthItemVO[]
+  examStatSnapshots?: ExamStatSnapshotVO[]
   growthTrend?: SemesterGrowthTrendCode
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
@@ -149,6 +173,7 @@ export interface CourseObjectiveAchievementVO {
   aiTraceId?: string
   achievementSummary?: string
   achievementItems?: CourseAchievementItemVO[]
+  examStatSnapshots?: ExamStatSnapshotVO[]
   overallAchievementRate?: number
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string

@@ -285,13 +285,6 @@
       cancel-text="取消"
       @ok="runBulkPublish"
     >
-      <UiAlertStrip
-        tone="info"
-        title="本次将按列表顺序逐条发布"
-        :description="`共 ${bulkCandidates.length} 名候选；发布后会向学生发送成绩通知，仅订正/已确认/已撤回状态可重新发布。`"
-        dense
-        class="score-publish__alert"
-      />
       <div v-if="bulkProgress.total > 0" class="score-publish__bulk-progress">
         <a-progress
           :percent="
@@ -375,6 +368,7 @@ import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScorePublish' })
@@ -440,13 +434,8 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
-    if (!Array.isArray(result.list)) {
-      candidatesLoadError.value = toUserError(null, '成绩发布名单加载失败，请稍后重试')
-      showUserError(candidatesLoadError.value, '成绩发布名单加载失败，请稍后重试')
-      return
-    }
-    candidates.value = result.list
-    pagination.total = Number(result.total)
+    candidates.value = readPageList(result, '成绩发布名单加载失败，请稍后重试')
+    pagination.total = readPageTotal(result)
   } catch (error) {
     candidatesLoadError.value = toUserError(error, '成绩发布名单加载失败，请稍后重试')
     showUserError(error, '成绩发布名单加载失败，请稍后重试')

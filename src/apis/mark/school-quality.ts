@@ -1,4 +1,4 @@
-import type { AnalysisExamScopeVO } from './cross-exam-analysis'
+import type { AnalysisExamScopeVO, ExamStatSnapshotVO } from './cross-exam-analysis'
 import type { QuestionTypeCode } from './grading-experience'
 import type { AiAnalysisStatusCode } from './teaching-analysis'
 
@@ -25,6 +25,22 @@ export const SCHOOL_QUALITY_DIMENSION_LABEL: Record<SchoolQualityDimensionCode, 
   SEMESTER: '学期维度',
 }
 
+/** 校级质量评价文案 - 与后端 SchoolQualityRating 完整一致 */
+export const SCHOOL_QUALITY_RATING_LABEL: Record<SchoolQualityRatingCode, string> = {
+  EXCELLENT: '优秀',
+  GOOD: '良好',
+  ACCEPTABLE: '可接受',
+  POOR: '较差',
+}
+
+/** 校级质量评价颜色 */
+export const SCHOOL_QUALITY_RATING_COLOR: Record<SchoolQualityRatingCode, string> = {
+  EXCELLENT: 'green',
+  GOOD: 'blue',
+  ACCEPTABLE: 'orange',
+  POOR: 'red',
+}
+
 /** 校级质量分析条目 */
 export interface SchoolQualityItemVO {
   qualityDimension?: string
@@ -48,6 +64,7 @@ export interface SchoolQualityAnalysisVO {
   aiTraceId?: string
   qualitySummary?: string
   qualityItems?: SchoolQualityItemVO[]
+  examStatSnapshots?: ExamStatSnapshotVO[]
   teachingQualityScore?: number
   questionQualityScore?: number
   markingQualityScore?: number

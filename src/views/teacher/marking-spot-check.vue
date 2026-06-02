@@ -27,14 +27,6 @@
       </div>
     </template>
 
-    <UiAlertStrip
-      tone="info"
-      title="抽检处理说明"
-      description="此处展示当前账号作为「被抽检教师」尚未处理或处理中的抽检记录。点击行尾「处理结论」可直接完成结论提交。"
-      dense
-      class="spot-check-page__alert"
-    />
-
     <UiCard class="info-card">
       <template #title>
         <AimOutlined />
@@ -190,19 +182,18 @@ import type {
   MyPendingSpotCheckStatusCode,
   SpotCheckConclusionCode,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import AimOutlined from '@ant-design/icons-vue/AimOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   handleSpotCheck,
   listMyPendingSpotChecks,
   SPOT_CHECK_STATUS_LABEL,
   SPOT_CHECK_STATUS_TONE,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import AimOutlined from '@ant-design/icons-vue/AimOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
-  UiAlertStrip,
   UiBadge,
   UiButton,
   UiCard,

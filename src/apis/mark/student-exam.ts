@@ -1,22 +1,25 @@
 import type { BindingStatusCode, ExamStatusCode } from './exam'
 import type { QuestionTypeCode } from './grading-experience'
+import { QUESTION_TYPE_LABEL } from './grading-experience'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
+import { throwUserFacing } from '@/utils/contract-guard'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
-import { QUESTION_TYPE_LABEL } from './grading-experience'
+
+const STUDENT_EXAM_DATA_ERROR = '成绩数据异常，请刷新后重试'
 
 const STUDENT_EXAM_STATUS_LABEL: Record<ExamStatusCode, string> = {
   ACTIVE: '正常',
   CLOSED: '已关闭',
 }
 
-export type FinalScoreStatusCode
-  = | 'PENDING'
-    | 'CALCULATED'
-    | 'CONFIRMED'
-    | 'CORRECTED'
-    | 'PUBLISHED'
-    | 'WITHDRAWN'
+export type FinalScoreStatusCode =
+  | 'PENDING'
+  | 'CALCULATED'
+  | 'CONFIRMED'
+  | 'CORRECTED'
+  | 'PUBLISHED'
+  | 'WITHDRAWN'
 
 export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
   PENDING: '待计算',
@@ -242,15 +245,15 @@ export interface StudentQuestionAnswerDetailVO {
   aiDiagnostic?: string
 }
 
-function requireStudentExamText(value: string | undefined, fieldName: string): void {
+function requireStudentExamText(value: string | undefined): void {
   if (!value) {
-    throw new Error(`${fieldName}不能为空`)
+    throwUserFacing(STUDENT_EXAM_DATA_ERROR)
   }
 }
 
-function requireStudentExamNumber(value: number | undefined, fieldName: string): void {
+function requireStudentExamNumber(value: number | undefined): void {
   if (value === undefined || value === null) {
-    throw new Error(`${fieldName}不能为空`)
+    throwUserFacing(STUDENT_EXAM_DATA_ERROR)
   }
 }
 
@@ -260,36 +263,36 @@ function validateStudentReviewWindowContract(
   strictEnumLabel(STUDENT_REVIEW_WINDOW_STATUS_LABEL, record.reviewWindowStatus, '成绩复核窗口状态')
   strictEnumTone(STUDENT_REVIEW_WINDOW_STATUS_TONE, record.reviewWindowStatus, '成绩复核窗口状态')
   if (record.reviewWindowStatus === 'ACTIVE') {
-    requireStudentExamText(record.reviewWindowOpenTime, '成绩复核窗口开放时间')
-    requireStudentExamText(record.reviewWindowCloseTime, '成绩复核窗口关闭时间')
+    requireStudentExamText(record.reviewWindowOpenTime)
+    requireStudentExamText(record.reviewWindowCloseTime)
   }
 }
 
 export function validateStudentExamItemContract(record: StudentExamItemVO): void {
-  requireStudentExamText(record.candidateRosterId, '考生名单ID')
-  requireStudentExamText(record.studentUserId, '学生用户ID')
-  requireStudentExamText(record.studentNo, '学号')
-  requireStudentExamText(record.studentName, '学生姓名')
-  requireStudentExamText(record.examId, '考试ID')
-  requireStudentExamText(record.examName, '考试名称')
-  requireStudentExamText(record.examNo, '考试编号')
-  requireStudentExamText(record.examStartTime, '考试开始时间')
-  requireStudentExamText(record.examEndTime, '考试结束时间')
+  requireStudentExamText(record.candidateRosterId)
+  requireStudentExamText(record.studentUserId)
+  requireStudentExamText(record.studentNo)
+  requireStudentExamText(record.studentName)
+  requireStudentExamText(record.examId)
+  requireStudentExamText(record.examName)
+  requireStudentExamText(record.examNo)
+  requireStudentExamText(record.examStartTime)
+  requireStudentExamText(record.examEndTime)
   strictEnumLabel(STUDENT_EXAM_STATUS_LABEL, record.examStatus, '考试状态')
   strictEnumLabel(FINAL_SCORE_STATUS_LABEL, record.finalScoreStatus, '最终成绩状态')
   strictEnumTone(FINAL_SCORE_STATUS_TONE, record.finalScoreStatus, '最终成绩状态')
   validateStudentReviewWindowContract(record)
   if (record.finalScoreStatus === 'PUBLISHED') {
-    requireStudentExamNumber(record.finalScore, '已发布成绩')
-    requireStudentExamText(record.publishedTime, '成绩发布时间')
+    requireStudentExamNumber(record.finalScore)
+    requireStudentExamText(record.publishedTime)
   }
 }
 
 function validateStudentQuestionScoreContract(record: StudentQuestionScoreVO): void {
-  requireStudentExamText(record.questionTemplateId, '题目模板ID')
-  requireStudentExamText(record.questionNo, '题号')
-  requireStudentExamNumber(record.fullScore, '题目满分')
-  requireStudentExamNumber(record.teacherReviewScore, '教师评分')
+  requireStudentExamText(record.questionTemplateId)
+  requireStudentExamText(record.questionNo)
+  requireStudentExamNumber(record.fullScore)
+  requireStudentExamNumber(record.teacherReviewScore)
   strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
   strictEnumLabel(GRADE_STATUS_LABEL, record.gradeStatus, '题目评分状态')
   strictEnumTone(GRADE_STATUS_TONE, record.gradeStatus, '题目评分状态')
@@ -300,23 +303,23 @@ function validateStudentQuestionScoreContract(record: StudentQuestionScoreVO): v
 }
 
 export function validateStudentScoreDetailContract(record: StudentScoreDetailVO): void {
-  requireStudentExamText(record.examId, '考试ID')
-  requireStudentExamText(record.examName, '考试名称')
-  requireStudentExamText(record.examNo, '考试编号')
-  requireStudentExamText(record.examStartTime, '考试开始时间')
-  requireStudentExamText(record.examEndTime, '考试结束时间')
-  requireStudentExamText(record.candidateRosterId, '考生名单ID')
-  requireStudentExamText(record.studentUserId, '学生用户ID')
-  requireStudentExamText(record.studentNo, '学号')
-  requireStudentExamText(record.studentName, '学生姓名')
+  requireStudentExamText(record.examId)
+  requireStudentExamText(record.examName)
+  requireStudentExamText(record.examNo)
+  requireStudentExamText(record.examStartTime)
+  requireStudentExamText(record.examEndTime)
+  requireStudentExamText(record.candidateRosterId)
+  requireStudentExamText(record.studentUserId)
+  requireStudentExamText(record.studentNo)
+  requireStudentExamText(record.studentName)
   strictEnumLabel(STUDENT_EXAM_STATUS_LABEL, record.examStatus, '考试状态')
   strictEnumLabel(FINAL_SCORE_STATUS_LABEL, record.finalScoreStatus, '最终成绩状态')
   strictEnumTone(FINAL_SCORE_STATUS_TONE, record.finalScoreStatus, '最终成绩状态')
   validateStudentReviewWindowContract(record)
   if (record.finalScoreStatus === 'PUBLISHED') {
-    requireStudentExamNumber(record.totalScore, '总分')
-    requireStudentExamNumber(record.fullScore, '满分')
-    requireStudentExamText(record.publishedTime, '成绩发布时间')
+    requireStudentExamNumber(record.totalScore)
+    requireStudentExamNumber(record.fullScore)
+    requireStudentExamText(record.publishedTime)
   }
   record.questions.forEach(validateStudentQuestionScoreContract)
 }
@@ -325,19 +328,19 @@ function validateStudentAiDiagnosisContract(record: StudentAiDiagnosisItemVO): v
   strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, 'AI诊断题型')
   strictEnumLabel(MASTERY_LEVEL_LABEL, record.masteryLevel, '掌握层级')
   strictEnumTone(MASTERY_LEVEL_TONE, record.masteryLevel, '掌握层级')
-  requireStudentExamText(record.scoreRate, 'AI诊断得分率')
+  requireStudentExamText(record.scoreRate)
 }
 
 function validateStudentAiErrorClusterContract(record: StudentAiErrorClusterVO): void {
-  requireStudentExamText(record.causeName, '错因名称')
-  requireStudentExamText(record.causeDescription, '错因描述')
-  requireStudentExamNumber(record.affectedCount, '错因影响题数')
+  requireStudentExamText(record.causeName)
+  requireStudentExamText(record.causeDescription)
+  requireStudentExamNumber(record.affectedCount)
   strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '错因题型')
-  requireStudentExamText(record.suggestion, '错因改进建议')
+  requireStudentExamText(record.suggestion)
 }
 
 export function validateStudentAiLearningReportContract(record: StudentAiLearningReportVO): void {
-  requireStudentExamText(record.examId, '考试ID')
+  requireStudentExamText(record.examId)
   if (record.profileStatus) {
     strictEnumLabel(AI_ANALYSIS_STATUS_LABEL, record.profileStatus, 'AI学习画像状态')
     strictEnumTone(AI_ANALYSIS_STATUS_COLOR, record.profileStatus, 'AI学习画像状态')
@@ -353,12 +356,12 @@ export function validateStudentAiLearningReportContract(record: StudentAiLearnin
 export function validateStudentQuestionAnswerDetailContract(
   record: StudentQuestionAnswerDetailVO,
 ): void {
-  requireStudentExamText(record.examId, '考试ID')
-  requireStudentExamText(record.paperInstanceId, '答卷实例ID')
-  requireStudentExamText(record.questionTemplateId, '题目模板ID')
-  requireStudentExamText(record.questionNo, '题号')
-  requireStudentExamNumber(record.fullScore, '题目满分')
-  requireStudentExamNumber(record.teacherReviewScore, '教师评分')
+  requireStudentExamText(record.examId)
+  requireStudentExamText(record.paperInstanceId)
+  requireStudentExamText(record.questionTemplateId)
+  requireStudentExamText(record.questionNo)
+  requireStudentExamNumber(record.fullScore)
+  requireStudentExamNumber(record.teacherReviewScore)
   strictEnumLabel(QUESTION_TYPE_LABEL, record.questionType, '题型')
   strictEnumLabel(GRADE_STATUS_LABEL, record.gradeStatus, '题目评分状态')
   strictEnumTone(GRADE_STATUS_TONE, record.gradeStatus, '题目评分状态')
@@ -430,7 +433,7 @@ export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailVO):
     return false
   }
   if (!item.reviewWindowOpenTime || !item.reviewWindowCloseTime) {
-    throw new Error('复核窗口已开放但缺少开放时间或关闭时间')
+    throwUserFacing(STUDENT_EXAM_DATA_ERROR)
   }
   const now = Date.now()
   const open = new Date(item.reviewWindowOpenTime).getTime()

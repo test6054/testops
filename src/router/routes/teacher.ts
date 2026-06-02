@@ -2,13 +2,12 @@
  * 教师（SCH_TECH / CROP_ADMIN / CROP_USER）路由
  *
  * 阅卷端教师工作台按真实使用流程组织：
- *   ① 考试管理   menuGroupOrder=1：考试列表 → 试卷模板 → 答题卡模板 → 考生名册
- *   ② 制卷管理   menuGroupOrder=2：试卷母版 → 印刷包管理
- *   ③ 扫描与识别 menuGroupOrder=3：扫描录入 → 实时看板 → 异常待办 → 影像账本 → 设备管理 → OCR 配置
- *   ④ 批阅流程   menuGroupOrder=4：分派批阅 → 匿名批阅 → 进度看板 → 仲裁裁定
- *   ⑤ 阅卷任务   menuGroupOrder=5：阅卷任务池 → 抽检处理 → 批改经验库
- *   ⑥ 成绩与发布 menuGroupOrder=6：缺考确认 → 成绩确认 → 成绩发布 → 复核处理 → 成绩统计 → 导出任务
- *   ⑦ 考后归档   menuGroupOrder=7：归档列表 → 纸质档案库
+ *   ① 考试管理   menuGroupOrder=1：准备工作台 → 考试列表 → 题目/名册 →（形态专属）答卷页/母版/印刷包
+ *   ② 扫描与识别 menuGroupOrder=2
+ *   ③ 批阅流程   menuGroupOrder=3
+ *   ④ 阅卷任务   menuGroupOrder=4
+ *   ⑤ 成绩与发布 menuGroupOrder=5
+ *   ⑥ 考后归档   menuGroupOrder=6
  */
 import type { RouteRecordRaw } from 'vue-router'
 import { RoleEnum } from '@/utils/permission'
@@ -80,7 +79,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherPaperTemplate',
         component: () => import('@/views/teacher/paper-template.vue'),
         meta: {
-          title: '试卷模板',
+          title: '试卷题目',
           roles: TEACHER_ROLES,
           icon: 'file-text',
           hideInMenu: false,
@@ -96,10 +95,10 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherAnswerSheetTemplate',
         component: () => import('@/views/teacher/answer-sheet-template.vue'),
         meta: {
-          title: '答题卡模板',
+          title: '答卷页模板',
           roles: TEACHER_ROLES,
           icon: 'form',
-          hideInMenu: false,
+          hideInMenu: true,
           keepAlive: true,
           menuGroup: 'exam',
           menuGroupTitle: '考试管理',
@@ -136,7 +135,6 @@ export const teacherRoutes: RouteRecordRaw[] = [
         },
       },
 
-      // ─── ② 制卷管理 ──────────────────────────────────────
       {
         path: 'paper-master',
         name: 'TeacherPaperMaster',
@@ -145,12 +143,12 @@ export const teacherRoutes: RouteRecordRaw[] = [
           title: '试卷母版',
           roles: TEACHER_ROLES,
           icon: 'file-pdf',
-          hideInMenu: false,
+          hideInMenu: true,
           keepAlive: true,
-          menuGroup: 'paper-making',
-          menuGroupTitle: '制卷管理',
-          menuGroupIcon: 'printer',
-          menuGroupOrder: 2,
+          menuGroup: 'exam',
+          menuGroupTitle: '考试管理',
+          menuGroupIcon: 'schedule',
+          menuGroupOrder: 1,
         },
       },
       {
@@ -161,16 +159,16 @@ export const teacherRoutes: RouteRecordRaw[] = [
           title: '印刷包管理',
           roles: TEACHER_ROLES,
           icon: 'container',
-          hideInMenu: false,
+          hideInMenu: true,
           keepAlive: true,
-          menuGroup: 'paper-making',
-          menuGroupTitle: '制卷管理',
-          menuGroupIcon: 'printer',
-          menuGroupOrder: 2,
+          menuGroup: 'exam',
+          menuGroupTitle: '考试管理',
+          menuGroupIcon: 'schedule',
+          menuGroupOrder: 1,
         },
       },
 
-      // ─── ③ 扫描与识别 ────────────────────────────────────
+      // ─── ② 扫描与识别 ────────────────────────────────────
       {
         path: 'scan-upload',
         name: 'TeacherScanUpload',
@@ -183,7 +181,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 3,
+          menuGroupOrder: 2,
         },
       },
       {
@@ -201,7 +199,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 3,
+          menuGroupOrder: 2,
         },
       },
       {
@@ -217,7 +215,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 3,
+          menuGroupOrder: 2,
         },
       },
       {
@@ -233,7 +231,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 3,
+          menuGroupOrder: 2,
         },
       },
       {
@@ -249,7 +247,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 3,
+          menuGroupOrder: 2,
         },
       },
       {
@@ -265,7 +263,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'scan',
           menuGroupTitle: '扫描与识别',
           menuGroupIcon: 'scan',
-          menuGroupOrder: 3,
+          menuGroupOrder: 2,
         },
       },
 
@@ -282,7 +280,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 4,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -298,7 +296,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 4,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -337,7 +335,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 4,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -353,7 +351,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 4,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -368,7 +366,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 4,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -383,7 +381,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'review',
           menuGroupTitle: '批阅流程',
           menuGroupIcon: 'edit',
-          menuGroupOrder: 4,
+          menuGroupOrder: 3,
         },
       },
       {
@@ -412,7 +410,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'marking-task',
           menuGroupTitle: '阅卷任务',
           menuGroupIcon: 'highlight',
-          menuGroupOrder: 5,
+          menuGroupOrder: 4,
         },
       },
       {
@@ -428,7 +426,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'marking-task',
           menuGroupTitle: '阅卷任务',
           menuGroupIcon: 'highlight',
-          menuGroupOrder: 5,
+          menuGroupOrder: 4,
         },
       },
       {
@@ -444,7 +442,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'marking-task',
           menuGroupTitle: '阅卷任务',
           menuGroupIcon: 'highlight',
-          menuGroupOrder: 5,
+          menuGroupOrder: 4,
         },
       },
       {
@@ -474,7 +472,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 6,
+          menuGroupOrder: 5,
         },
       },
       {
@@ -489,7 +487,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 6,
+          menuGroupOrder: 5,
         },
       },
       {
@@ -504,7 +502,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 6,
+          menuGroupOrder: 5,
         },
       },
       {
@@ -520,7 +518,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 6,
+          menuGroupOrder: 5,
         },
       },
       {
@@ -536,7 +534,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 6,
+          menuGroupOrder: 5,
         },
       },
       {
@@ -552,7 +550,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'score',
           menuGroupTitle: '成绩与发布',
           menuGroupIcon: 'trophy',
-          menuGroupOrder: 6,
+          menuGroupOrder: 5,
         },
       },
 
@@ -570,7 +568,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'archive',
           menuGroupTitle: '考后归档',
           menuGroupIcon: 'safety-certificate',
-          menuGroupOrder: 7,
+          menuGroupOrder: 6,
         },
       },
       {
@@ -599,7 +597,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
           menuGroup: 'archive',
           menuGroupTitle: '考后归档',
           menuGroupIcon: 'safety-certificate',
-          menuGroupOrder: 7,
+          menuGroupOrder: 6,
         },
       },
       {

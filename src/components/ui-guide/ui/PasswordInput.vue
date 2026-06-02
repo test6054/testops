@@ -93,25 +93,28 @@ defineOptions({
 
 const modelValue = defineModel<string | undefined>({ default: '' })
 
-const props = withDefaults(defineProps<{
-  placeholder?: string
-  disabled?: boolean
-  readonly?: boolean
-  maxlength?: number
-  clearable?: boolean
-  visibilityToggle?: boolean
-  size?: UiComponentSize
-  status?: UiFieldStatus
-}>(), {
-  placeholder: '请输入密码',
-  disabled: false,
-  readonly: false,
-  maxlength: undefined,
-  clearable: false,
-  visibilityToggle: true,
-  size: 'md',
-  status: 'default',
-})
+const props = withDefaults(
+  defineProps<{
+    placeholder?: string
+    disabled?: boolean
+    readonly?: boolean
+    maxlength?: number
+    clearable?: boolean
+    visibilityToggle?: boolean
+    size?: UiComponentSize
+    status?: UiFieldStatus
+  }>(),
+  {
+    placeholder: '请输入密码',
+    disabled: false,
+    readonly: false,
+    maxlength: undefined,
+    clearable: false,
+    visibilityToggle: true,
+    size: 'md',
+    status: 'default',
+  },
+)
 
 const emit = defineEmits<{
   (e: 'focus', event: FocusEvent): void
@@ -125,11 +128,11 @@ const passwordVisible = ref(false)
 
 const displayValue = computed(() => modelValue.value ?? '')
 
-const inputType = computed(() => passwordVisible.value ? 'text' : 'password')
+const inputType = computed(() => (passwordVisible.value ? 'text' : 'password'))
 
 const handleInput = (event: Event) => {
   if (!(event.target instanceof HTMLInputElement)) {
-    throw new TypeError('密码输入框事件来源不符合前端组件契约')
+    return
   }
   modelValue.value = event.target.value
 }
@@ -170,7 +173,10 @@ const toggleVisibility = () => {
   border: 1px solid var(--dp-border, #e5e7eb);
   background-color: var(--dp-bg-control, #f3f4f6);
   color: var(--dp-text-primary, #0f172a);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
   font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
   box-sizing: border-box;
 }
@@ -262,7 +268,9 @@ const toggleVisibility = () => {
   background: transparent;
   color: var(--dp-text-muted, #6b7280);
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
   flex-shrink: 0;
 }
 

@@ -186,6 +186,14 @@
                 </a-typography-text>
               </a-space>
             </template>
+            <template v-else-if="column.key === 'anonymityMode'">
+              <UiTag
+                :tone="tasks[index].anonymityMode === 'ANONYMOUS' ? 'purple' : 'gray'"
+                size="sm"
+              >
+                {{ anonymityModeLabel(tasks[index].anonymityMode) }}
+              </UiTag>
+            </template>
             <template v-else-if="column.key === 'paperDisplay'">
               <a-space direction="vertical" :size="2">
                 <a-typography-text strong>
@@ -232,9 +240,18 @@
               <UiButton
                 v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus)"
                 size="sm"
+                variant="primary"
                 @click="goDetail(tasks[index])"
               >
                 进入批阅
+              </UiButton>
+              <UiButton
+                v-else-if="tasks[index].taskStatus === 'FINALIZED'"
+                size="sm"
+                variant="outline"
+                @click="goDetail(tasks[index])"
+              >
+                查看阅卷
               </UiButton>
               <span v-else class="muted">已结束</span>
             </template>
@@ -248,11 +265,19 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
+  AnonymityModeCode,
   MarkingTaskClaimRequest,
   MarkingTaskQueryRequest,
   MarkingTaskStatusCode,
   MarkingTaskVO,
   TeacherClaimContextVO,
+} from '@/apis/mark/marking-organization'
+import {
+  ANONYMITY_MODE_LABEL,
+  FORMAL_SESSION_STATUS_LABEL,
+  MARKING_TASK_STATUS_LABEL,
+  MARKING_TASK_STATUS_OPTIONS,
+  MARKING_TASK_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
@@ -264,12 +289,6 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  FORMAL_SESSION_STATUS_LABEL,
-  MARKING_TASK_STATUS_LABEL,
-  MARKING_TASK_STATUS_OPTIONS,
-  MARKING_TASK_STATUS_TONE,
-} from '@/apis/mark/marking-organization'
 import {
   UiBadge,
   UiButton,
@@ -283,7 +302,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
-import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
+import { captureLoadFailure, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -336,6 +355,7 @@ const inProgressCount = computed(
 
 const columns: ColumnType<MarkingTaskVO>[] = [
   { title: '题目', key: 'question', width: 190 },
+  { title: '匿名', key: 'anonymityMode', width: 72 },
   { title: '答卷', key: 'paperDisplay', width: 220 },
   { title: '题组', key: 'groupName', width: 150 },
   { title: '阅卷教师', key: 'reviewerName', width: 120 },
@@ -372,8 +392,7 @@ async function loadTasks(): Promise<void> {
     }
     await markTaskStore.loadTasks(request)
   } catch (error) {
-    tasksLoadError.value
-      = error instanceof Error ? error : new Error(getUserErrorMessage(error, '阅卷任务列表加载失败'))
+    tasksLoadError.value = captureLoadFailure(error, '阅卷任务列表加载失败')
     showUserError(error, '阅卷任务列表加载失败')
   }
 }
@@ -480,6 +499,10 @@ function goDetail(task: MarkingTaskVO): void {
  */
 function taskStatusLabel(value: MarkingTaskStatusCode): string {
   return strictEnumLabel(MARKING_TASK_STATUS_LABEL, value, '阅卷任务状态')
+}
+
+function anonymityModeLabel(mode: AnonymityModeCode): string {
+  return strictEnumLabel(ANONYMITY_MODE_LABEL, mode, '匿名模式')
 }
 
 /**

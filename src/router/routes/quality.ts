@@ -45,6 +45,18 @@ export const qualityRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
         },
       },
+      {
+        path: 'accreditation-cockpit',
+        name: 'QualityAccreditationCockpit',
+        component: () => import('@/views/quality/accreditation-cockpit.vue'),
+        meta: {
+          title: '工程认证驾驶舱',
+          roles: ALL_ROLES,
+          icon: 'cluster',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
 
       // ─── ① 顶层配置 ──────────────────────────────
       {

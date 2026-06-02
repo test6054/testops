@@ -48,7 +48,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  success: []
 }>()
 
 const reason = ref('')
@@ -97,7 +97,7 @@ function handleOpenChange(value: boolean): void {
 
 async function confirm(): Promise<void> {
   if (!props.action) {
-    showUserError(new Error('不支持的会话生命周期动作'), '会话状态调整失败')
+    showUserError(null, '会话状态调整失败')
     return
   }
   if (!props.canManage) {

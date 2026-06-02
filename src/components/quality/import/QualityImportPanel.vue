@@ -2,15 +2,6 @@
   <a-modal v-model:open="visible" :title="title" :width="640" :footer="null" @cancel="handleClose">
     <!-- 上传区 -->
     <template v-if="!importResult">
-      <a-alert
-        v-if="description"
-        :message="descriptionTitle || '模板说明'"
-        :description="description"
-        type="info"
-        show-icon
-        class="qip__alert"
-      />
-
       <div class="qip__template-row">
         <span class="qip__template-text">下载模板：</span>
         <UiButton variant="ghost" size="sm" :loading="downloading" @click="handleDownloadTemplate">

@@ -14,7 +14,7 @@
             allow-clear
             @change="handleExamChange"
           />
-          <UiTag v-if="selectedExamId" tone="blue" size="sm">{{ candidates.length }} 名考生</UiTag>
+          <UiTag v-if="selectedExamId" tone="blue" size="sm">{{ candidateTotal }} 名考生</UiTag>
         </div>
       </div>
     </template>
@@ -26,36 +26,40 @@
       :error="rosterLoadError"
       title="考生名册加载失败"
       :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      @retry="loadRoster"
+      @retry="reloadExamContext"
     />
 
-    <a-spin v-else :spinning="loading">
-      <UiAlertStrip
-        v-if="showSetupGuide"
-        type="info"
-        title="请完成考生名册配置"
-        description="① 选择参考班级 → ② 从学生库勾选或批量导入学生后勾选 → ③ 单个添加"
-        closable
-        class="roster-setup-guide"
-        @close="dismissSetupGuide"
-      />
+    <a-spin v-else :spinning="contextLoading">
       <UiCard class="info-card">
         <template #title>
           <TeamOutlined />
           <span>班级范围</span>
           <UiBadge tone="blue">{{ classIds.length }}</UiBadge>
+          <UiTag v-if="rosterLocked" tone="orange" size="sm">扫描已开始</UiTag>
+          <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
         </template>
-        <a-alert
-          type="info"
-          show-icon
-          message="选定参考班级后立即保存；名册增删即时落库，无需再点保存名册。"
-          class="info-card__hint"
+        <UiAlertStrip
+          v-if="classScopeReadOnly && !rosterLocked"
+          tone="warning"
+          title="当前账号无权维护该考试名册"
+          description="班级范围与考生名册仅可查看，不可修改。"
+          dense
+          class="info-card__alert"
         />
+        <div v-if="classScopeReadOnly" class="roster-class-tags">
+          <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
+            {{ item.className }}
+          </UiTag>
+          <span v-if="!scopedClassTags.length" class="roster-class-tags__empty"
+            >尚未配置班级范围</span
+          >
+        </div>
         <a-select
+          v-else
           v-model:value="classIds"
           mode="multiple"
           placeholder="选择参考班级（可多选）"
-          :options="classOptions"
+          :options="classSelectOptions"
           :loading="classOptionsLoading"
           show-search
           option-filter-prop="label"
@@ -68,10 +72,10 @@
         <template #title>
           <UserOutlined />
           <span>考生名册</span>
-          <UiBadge tone="blue">{{ candidates.length }}</UiBadge>
+          <UiBadge tone="blue">{{ pagination.total ?? 0 }}</UiBadge>
         </template>
         <template #extra>
-          <a-space>
+          <a-space v-if="!classScopeReadOnly">
             <UiButton
               size="sm"
               variant="outline"
@@ -92,16 +96,60 @@
           </a-space>
         </template>
 
+        <a-form layout="inline" class="roster-filter">
+          <a-form-item>
+            <a-input
+              v-model:value="rosterKeyword"
+              placeholder="按学号 / 姓名搜索"
+              allow-clear
+              class="roster-filter__keyword"
+              @press-enter="handleRosterSearch"
+            >
+              <template #prefix>
+                <SearchOutlined />
+              </template>
+            </a-input>
+          </a-form-item>
+          <a-form-item>
+            <a-select
+              v-model:value="rosterClassFilter"
+              placeholder="按班级筛选"
+              allow-clear
+              show-search
+              option-filter-prop="label"
+              class="roster-filter__class"
+              :options="rosterClassFilterOptions"
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <UiButton size="sm" @click="handleRosterSearch">查询</UiButton>
+              <UiButton size="sm" variant="outline" @click="handleRosterReset">重置</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+
+        <UiErrorRetryPanel
+          v-if="tableLoadError"
+          :error="tableLoadError"
+          title="考生列表加载失败"
+          compact
+          @retry="loadCandidatePage"
+        />
         <UiDataTable
+          v-else
+          v-model:current="pagination.current"
+          v-model:page-size="pagination.pageSize"
           :columns="columns"
-          :data-source="candidates"
-          :show-pagination="false"
-          flat
-          :total="candidates.length"
+          :data-source="tableCandidates"
+          :loading="tableLoading"
+          :total="pagination.total"
           row-key="rowKey"
           size="middle"
+          flat
           class="roster-table"
           bordered
+          @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'student'">
@@ -117,6 +165,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
+                v-if="!classScopeReadOnly"
                 size="sm"
                 variant="ghost"
                 :loading="removingStudentUserId === (record as CandidateRow).studentUserId"
@@ -124,11 +173,10 @@
               >
                 移除
               </UiButton>
+              <span v-else class="roster-cell roster-cell--muted">—</span>
             </template>
           </template>
         </UiDataTable>
-
-        <div class="roster-summary">共 {{ candidates.length }} 名考生</div>
       </UiCard>
     </a-spin>
 
@@ -164,7 +212,7 @@
           <a-select
             v-model:value="singleAddClassId"
             placeholder="请选择班级"
-            :options="classOptions"
+            :options="classSelectOptions"
             show-search
             option-filter-prop="label"
             style="width: 100%"
@@ -185,29 +233,31 @@
 </template>
 
 <script lang="ts" setup>
+import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
-import type { ColumnType } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
-import type { ExamCandidateRosterRequest } from '@/apis/mark/exam'
-import type { UserDto } from '@/types/api-types.d'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
-import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadUserImportTemplate, tenantBatchImportUsers } from '@/apis/edu/admin-user'
+import type { ExamCandidateRosterRequest, ExamClassRefVO } from '@/apis/mark/exam'
 import {
   getExamDetail,
   listExamCandidates,
   listExamClassOptions,
   mergeExamCandidates,
+  pageExamCandidates,
+  pageScannerBatches,
   previewExamCandidates,
   removeExamCandidates,
   saveExamClassScope,
 } from '@/apis/mark/exam'
+import type { UserDto } from '@/types/api-types.d'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
+import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
+import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { downloadUserImportTemplate, tenantBatchImportUsers } from '@/apis/edu/admin-user'
 import BatchImportModal from '@/components/common/BatchImportModal.vue'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import StudentSelector from '@/components/quality/selectors/StudentSelector.vue'
@@ -224,14 +274,12 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { RoleEnum } from '@/types/enums'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { ErrorType, handleError, showUserError, toUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
+import { buildScopedClassTags, mergeClassSelectOptions } from './candidate-roster/class-scope'
 import { toCandidateRow } from './candidate-roster/roster-merge'
 
 defineOptions({ name: 'TeacherCandidateRoster' })
-
-const route = useRoute()
-const router = useRouter()
-const setupDismissed = ref(false)
 
 const {
   examOptions,
@@ -243,17 +291,36 @@ const {
 } = useMarkExamSelector()
 
 const classIds = ref<string[]>([])
-const classOptions = ref<Array<{ label: string, value: string }>>([])
+const examClassRefs = ref<ExamClassRefVO[]>([])
+const classSelectOptions = ref<Array<{ label: string; value: string }>>([])
 const classOptionsLoading = ref(false)
 const classScopeHydrating = ref(false)
 const lastSavedClassIds = ref<string[]>([])
+const rosterLocked = ref(false)
+const rosterWriteForbidden = ref(false)
+const candidateTotal = ref(0)
 let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
+let loadContextSeq = 0
+let loadTableSeq = 0
 
-const candidates = reactive<CandidateRow[]>([])
-const loading = ref(false)
+const tableCandidates = ref<CandidateRow[]>([])
+const rosterStudentUserIds = ref<string[]>([])
+const contextLoading = ref(false)
+const tableLoading = ref(false)
 const rosterLoadError = ref<Error | null>(null)
+const tableLoadError = ref<Error | null>(null)
 const removingStudentUserId = ref<string | null>(null)
 const singleAddSubmitting = ref(false)
+
+const rosterKeyword = ref('')
+const rosterClassFilter = ref<string | undefined>(undefined)
+const pagination = reactive<TablePaginationConfig>({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+  showSizeChanger: true,
+  showTotal: (total: number) => `共 ${total} 条`,
+})
 
 const selectDrawerOpen = ref(false)
 const showImportModal = ref(false)
@@ -262,9 +329,17 @@ const singleAddClassId = ref<string | undefined>(undefined)
 const singleAddStudentUserId = ref<string | null>(null)
 const singleAddStudent = ref<UserDto | null>(null)
 
-const rosterStudentUserIds = computed(() => candidates.map((c) => c.studentUserId))
-const showSetupGuide = computed(
-  () => !setupDismissed.value && route.query.setup === '1' && Boolean(selectedExamId.value),
+const classScopeReadOnly = computed(() => rosterLocked.value || rosterWriteForbidden.value)
+
+const scopedClassTags = computed(() =>
+  buildScopedClassTags(classIds.value, examClassRefs.value, classSelectOptions.value),
+)
+
+const rosterClassFilterOptions = computed(() =>
+  scopedClassTags.value.map((item) => ({
+    value: item.classId,
+    label: item.className,
+  })),
 )
 
 const importRequirements: string[] = [
@@ -273,72 +348,171 @@ const importRequirements: string[] = [
   '学号不能重复；班级按院系名称匹配',
 ]
 
-function dismissSetupGuide(): void {
-  setupDismissed.value = true
-  if (route.query.setup) {
-    const { setup: _setup, ...rest } = route.query
-    void router.replace({ query: rest })
-  }
-}
-
 const columns: ColumnType<CandidateRow>[] = [
   { title: '考生', key: 'student', width: 220 },
   { title: '班级', key: 'className', width: 200 },
   { title: '操作', key: 'actions', width: 80, fixed: 'right' },
 ]
 
+function isPermissionError(error: unknown): boolean {
+  return handleError(error, { silent: true }).type === ErrorType.PERMISSION
+}
+
+function sameClassIds(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+  const sortedLeft = [...left].sort()
+  const sortedRight = [...right].sort()
+  return sortedLeft.every((value, index) => value === sortedRight[index])
+}
+
+async function probeRosterLocked(examId: string): Promise<boolean> {
+  const result = await pageScannerBatches({ examId, pageNum: 1, pageSize: 1 })
+  return readPageTotal(result) > 0
+}
+
 async function loadClassOptionsForExam(examId: string): Promise<void> {
   classOptionsLoading.value = true
   try {
     const list = await listExamClassOptions(examId)
-    classOptions.value = list.map((item) => ({
-      label: item.className,
-      value: item.classId,
-    }))
+    classSelectOptions.value = mergeClassSelectOptions(
+      examClassRefs.value,
+      list.map((item) => ({
+        label: item.className,
+        value: item.classId,
+      })),
+    )
   } catch (error) {
+    if (isPermissionError(error)) {
+      rosterWriteForbidden.value = true
+      classSelectOptions.value = mergeClassSelectOptions(examClassRefs.value, [])
+      return
+    }
     showUserError(error, '班级范围加载失败')
   } finally {
     classOptionsLoading.value = false
   }
 }
 
-async function loadRoster(): Promise<void> {
+async function loadRosterStudentIds(examId: string): Promise<void> {
+  const list = await listExamCandidates(examId)
+  rosterStudentUserIds.value = list.map((item) => item.studentUserId)
+}
+
+async function loadCandidatePage(): Promise<void> {
   if (!selectedExamId.value) {
     return
   }
-  loading.value = true
+  const examId = selectedExamId.value
+  const seq = ++loadTableSeq
+  tableLoading.value = true
+  tableLoadError.value = null
+  try {
+    const result = await pageExamCandidates({
+      examId,
+      keyword: rosterKeyword.value.trim() || undefined,
+      classId: rosterClassFilter.value,
+      pageNum: pagination.current ?? 1,
+      pageSize: pagination.pageSize ?? 20,
+    })
+    if (seq !== loadTableSeq) {
+      return
+    }
+    tableCandidates.value = readPageList(result, '考生列表加载失败').map((item) =>
+      toCandidateRow(
+        {
+          studentNo: item.studentNo,
+          studentName: item.studentName,
+          studentUserId: item.studentUserId,
+          classId: item.classId ?? '',
+          className: item.className,
+        },
+        item.candidateRosterId,
+      ),
+    )
+    pagination.total = readPageTotal(result)
+  } catch (error) {
+    if (seq !== loadTableSeq) {
+      return
+    }
+    tableLoadError.value = toUserError(error, '考生列表加载失败')
+    showUserError(error, '考生列表加载失败')
+  } finally {
+    if (seq === loadTableSeq) {
+      tableLoading.value = false
+    }
+  }
+}
+
+async function reloadExamContext(): Promise<void> {
+  if (!selectedExamId.value) {
+    return
+  }
+  await loadExamContext()
+  await loadCandidatePage()
+}
+
+async function loadExamContext(): Promise<void> {
+  if (!selectedExamId.value) {
+    return
+  }
+  const examId = selectedExamId.value
+  const seq = ++loadContextSeq
+  contextLoading.value = true
   rosterLoadError.value = null
+  rosterWriteForbidden.value = false
   classScopeHydrating.value = true
   try {
-    const [detail, list] = await Promise.all([
-      getExamDetail(selectedExamId.value),
-      listExamCandidates(selectedExamId.value),
-    ])
-    await loadClassOptionsForExam(selectedExamId.value)
+    const [detail, locked] = await Promise.all([getExamDetail(examId), probeRosterLocked(examId)])
+    if (seq !== loadContextSeq) {
+      return
+    }
+    rosterLocked.value = locked
+    examClassRefs.value = [...(detail.classRefs ?? [])]
+    candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...(detail.classIds ?? [])]
     lastSavedClassIds.value = [...classIds.value]
-    candidates.splice(0, candidates.length)
-    for (const item of list) {
-      candidates.push(
-        toCandidateRow(
-          {
-            studentNo: item.studentNo,
-            studentName: item.studentName,
-            studentUserId: item.studentUserId,
-            classId: item.classId ?? '',
-            className: item.className,
-          },
-          item.candidateRosterId,
-        ),
-      )
+    await loadClassOptionsForExam(examId)
+    if (seq !== loadContextSeq) {
+      return
     }
+    classSelectOptions.value = mergeClassSelectOptions(
+      examClassRefs.value,
+      classSelectOptions.value,
+    )
+    await loadRosterStudentIds(examId)
   } catch (error) {
+    if (seq !== loadContextSeq) {
+      return
+    }
     rosterLoadError.value = toUserError(error, '考生名册加载失败')
     showUserError(error, '考生名册加载失败')
   } finally {
-    classScopeHydrating.value = false
-    loading.value = false
+    if (seq === loadContextSeq) {
+      await nextTick()
+      classScopeHydrating.value = false
+      contextLoading.value = false
+    }
   }
+}
+
+function handleRosterSearch(): void {
+  pagination.current = 1
+  void loadCandidatePage()
+}
+
+function handleRosterReset(): void {
+  rosterKeyword.value = ''
+  rosterClassFilter.value = undefined
+  pagination.current = 1
+  void loadCandidatePage()
+}
+
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
+  void loadCandidatePage()
 }
 
 function handleExamChange(
@@ -346,13 +520,6 @@ function handleExamChange(
   option: DefaultOptionType | DefaultOptionType[],
 ): void {
   onExamChange(value, option)
-  if (selectedExamId.value) {
-    void loadRoster()
-  } else {
-    classIds.value = []
-    candidates.splice(0, candidates.length)
-    classOptions.value = []
-  }
 }
 
 function openSelectDrawer(): void {
@@ -400,7 +567,7 @@ async function mergeCandidatesWithPreview(
 }
 
 function buildMergeRequest(
-  rows: Array<{ id: string, classId?: string }>,
+  rows: Array<{ id: string; classId?: string }>,
 ): ExamCandidateRosterRequest[] {
   const existing = new Set(rosterStudentUserIds.value)
   const request: ExamCandidateRosterRequest[] = []
@@ -433,16 +600,15 @@ async function handleStudentsSelected(selection: {
     message.warning('所选学生均已在名册中或缺少班级信息')
     return
   }
-  loading.value = true
+  contextLoading.value = true
   try {
     const mergedCount = await mergeCandidatesWithPreview(mergeRequest)
     message.success(`已纳入 ${mergedCount} 名考生`)
-    dismissSetupGuide()
-    await loadRoster()
+    await reloadExamContext()
   } catch (error) {
     showUserError(error, '纳入考生失败')
   } finally {
-    loading.value = false
+    contextLoading.value = false
   }
 }
 
@@ -480,8 +646,7 @@ async function handleSingleAddSubmit(): Promise<void> {
     await mergeCandidatesWithPreview([{ classId: singleAddClassId.value, studentUserId }])
     message.success('已加入名册')
     singleAddOpen.value = false
-    dismissSetupGuide()
-    await loadRoster()
+    await reloadExamContext()
   } catch (error) {
     showUserError(error, '加入考生失败')
   } finally {
@@ -500,7 +665,7 @@ async function removeCandidate(studentUserId: string): Promise<void> {
       studentUserIds: [studentUserId],
     })
     message.success('已移除')
-    await loadRoster()
+    await reloadExamContext()
   } catch (error) {
     showUserError(error, '移除考生失败')
   } finally {
@@ -509,7 +674,10 @@ async function removeCandidate(studentUserId: string): Promise<void> {
 }
 
 watch(classIds, (ids) => {
-  if (classScopeHydrating.value || !selectedExamId.value) {
+  if (classScopeHydrating.value || !selectedExamId.value || classScopeReadOnly.value) {
+    return
+  }
+  if (sameClassIds(ids, lastSavedClassIds.value)) {
     return
   }
   if (classScopeSaveTimer) {
@@ -517,17 +685,35 @@ watch(classIds, (ids) => {
   }
   const previous = [...lastSavedClassIds.value]
   classScopeSaveTimer = setTimeout(() => {
+    classScopeSaveTimer = null
     void saveExamClassScope({
       examId: selectedExamId.value!,
       classIds: [...ids],
     })
       .then(async () => {
         lastSavedClassIds.value = [...ids]
-        await loadRoster()
+        examClassRefs.value = ids.map((classId) => {
+          const existing = examClassRefs.value.find((item) => item.classId === classId)
+          const option = classSelectOptions.value.find((item) => item.value === classId)
+          return {
+            classId,
+            className: existing?.className ?? option?.label ?? classId,
+          }
+        })
+        classSelectOptions.value = mergeClassSelectOptions(
+          examClassRefs.value,
+          classSelectOptions.value,
+        )
+        await loadCandidatePage()
       })
-      .catch((error) => {
+      .catch(async (error) => {
+        if (isPermissionError(error)) {
+          rosterWriteForbidden.value = true
+        }
         classScopeHydrating.value = true
         classIds.value = [...previous]
+        lastSavedClassIds.value = [...previous]
+        await nextTick()
         classScopeHydrating.value = false
         showUserError(error, '保存班级范围失败')
       })
@@ -535,28 +721,39 @@ watch(classIds, (ids) => {
 })
 
 watch(selectedExamId, (value) => {
+  if (classScopeSaveTimer) {
+    clearTimeout(classScopeSaveTimer)
+    classScopeSaveTimer = null
+  }
+  rosterLocked.value = false
+  rosterWriteForbidden.value = false
+  rosterKeyword.value = ''
+  rosterClassFilter.value = undefined
+  pagination.current = 1
   if (value) {
-    void loadRoster()
+    void loadExamContext().then(() => loadCandidatePage())
   } else {
     classIds.value = []
-    candidates.splice(0, candidates.length)
-    classOptions.value = []
+    examClassRefs.value = []
+    lastSavedClassIds.value = []
+    tableCandidates.value = []
+    rosterStudentUserIds.value = []
+    classSelectOptions.value = []
+    candidateTotal.value = 0
+    pagination.total = 0
   }
 })
 
 onMounted(async () => {
   await initExamSelector()
   if (selectedExamId.value) {
-    await loadRoster()
+    await loadExamContext()
+    await loadCandidatePage()
   }
 })
 </script>
 
 <style lang="scss" scoped>
-.roster-setup-guide {
-  margin-bottom: 12px;
-}
-
 .roster-page {
   &__context {
     display: flex;
@@ -595,7 +792,7 @@ onMounted(async () => {
     margin-bottom: 0;
   }
 
-  &__hint {
+  &__alert {
     margin-bottom: 12px;
   }
 
@@ -604,18 +801,34 @@ onMounted(async () => {
   }
 }
 
+.roster-class-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  &__empty {
+    font-size: 13px;
+    color: var(--ant-color-text-secondary);
+  }
+}
+
+.roster-filter {
+  margin-bottom: 12px;
+
+  &__keyword {
+    width: 220px;
+  }
+
+  &__class {
+    width: 200px;
+  }
+}
+
 .roster-table {
   :deep(.ant-table-thead > tr > th) {
     background: var(--ant-color-fill-quaternary);
     font-weight: 600;
   }
-}
-
-.roster-summary {
-  margin-top: 12px;
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
-  text-align: right;
 }
 
 .roster-cell--muted {

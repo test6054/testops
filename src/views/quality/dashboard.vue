@@ -17,10 +17,6 @@ import type {
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_AUDIT_STATUS_LABEL,
@@ -38,10 +34,16 @@ import {
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
 } from '@/apis/quality'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import { storeToRefs } from 'pinia'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
+import { showUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const recentAchievementColumns: ColumnsType = [
@@ -129,11 +131,11 @@ const planConfirmationColor = computed(() => {
 const stages = computed<WorkbenchStage[]>(() => {
   const planSelected = !!trainingPlanId.value
   const planConfirmed = planConfirmationStatus.value === 'CONFIRMED'
-  const dataReached
-    = achievementCounts.calculated > 0
-      || achievementCounts.submitted > 0
-      || achievementCounts.confirmed > 0
-      || achievementCounts.archived > 0
+  const dataReached =
+    achievementCounts.calculated > 0 ||
+    achievementCounts.submitted > 0 ||
+    achievementCounts.confirmed > 0 ||
+    achievementCounts.archived > 0
   const calcDone = dataReached
   const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
   const improvementActive = improvementCounts.total > 0
@@ -273,8 +275,8 @@ async function loadAchievement() {
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
     })
-    recentAchievements.value = page.list
-    achievementCounts.total = Number(page.total)
+    recentAchievements.value = readPageList(page, '达成度结果加载失败，请稍后重试')
+    achievementCounts.total = readPageTotal(page)
 
     const [calculated, submitted, confirmed, archived, notAchieved] = await Promise.all([
       achievementApi.page({
@@ -327,8 +329,8 @@ async function loadImprovement() {
       pageSize: 5,
       trainingPlanId: trainingPlanId.value,
     })
-    recentImprovements.value = page.list
-    improvementCounts.total = Number(page.total)
+    recentImprovements.value = readPageList(page, '改进任务加载失败，请稍后重试')
+    improvementCounts.total = readPageTotal(page)
 
     const [open, inProgress, submitted, closed] = await Promise.all([
       improvementTaskApi.page({
@@ -375,8 +377,8 @@ async function loadAiTasks() {
       pageSize: 5,
       trainingPlanId: plan,
     })
-    recentAiTasks.value = page.list
-    aiCounts.total = Number(page.total)
+    recentAiTasks.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
+    aiCounts.total = readPageTotal(page)
 
     const [pending, processing, succeeded, failed] = await Promise.all([
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'PENDING' }),
@@ -413,7 +415,8 @@ function handlePlanChange(value: SelectValue) {
     return
   }
   if (typeof value !== 'string') {
-    throw new TypeError(`培养方案选择值必须是字符串：${String(value)}`)
+    showUserError(null, '培养方案选择无效，请重新选择')
+    return
   }
   qualityStore.setTrainingPlan(value)
   reload()
@@ -522,9 +525,9 @@ function goScoreBatch() {
                 <span
                   class="quality-dashboard__value"
                   :class="[
-                    record.finalValue !== null
-                      && record.thresholdValue !== null
-                      && record.finalValue >= record.thresholdValue
+                    record.finalValue !== null &&
+                    record.thresholdValue !== null &&
+                    record.finalValue >= record.thresholdValue
                       ? 'quality-dashboard__value--ok'
                       : 'quality-dashboard__value--bad',
                   ]"

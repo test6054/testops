@@ -1,8 +1,8 @@
 import Modal from 'ant-design-vue/es/modal'
-import {createRouter, createWebHistory} from 'vue-router'
-import {setupRouterGuard} from '@/router/guard'
-import {allRoutes} from '@/router/routes'
-import {setupRoutePreload} from './preload-strategy'
+import { createRouter, createWebHistory } from 'vue-router'
+import { setupRouterGuard } from '@/router/guard'
+import { allRoutes } from '@/router/routes'
+import { setupRoutePreload } from './preload-strategy'
 
 function isChunkLoadError(message: string) {
   const chunkLoadPatterns = [
@@ -11,7 +11,7 @@ function isChunkLoadError(message: string) {
     /Importing a module script failed/i,
   ]
 
-  return chunkLoadPatterns.some(pattern => pattern.test(message))
+  return chunkLoadPatterns.some((pattern) => pattern.test(message))
 }
 
 /** 防止重复弹窗：发版升级期间多个动态 import 都会失败，但只能引导用户刷一次 */
@@ -22,9 +22,9 @@ let chunkReloadPrompted = false
  * 使用静态路由配置，不依赖动态路由生成
  */
 const router = createRouter({
-  history: createWebHistory('/'),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: allRoutes,
-  scrollBehavior: () => ({left: 0, top: 0}),
+  scrollBehavior: () => ({ left: 0, top: 0 }),
 })
 
 /**
@@ -41,8 +41,6 @@ router.onError((error) => {
   if (!isChunkLoadError(message)) {
     return
   }
-
-  console.error('路由资源加载失败（chunk load failed）。', error)
 
   if (chunkReloadPrompted) {
     return

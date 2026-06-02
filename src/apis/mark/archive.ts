@@ -12,6 +12,8 @@ import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
+const ARCHIVE_DATA_ERROR = '归档数据异常，请刷新后重试'
+
 // ─── 状态枚举与文案 ───────────────────────────────────────────
 
 /** 归档包状态编码 - 与后端 ArchivePackageStatus 完整一致。 */
@@ -313,38 +315,38 @@ export const ARCHIVE_PACKAGING_PHASE_CODES: ArchivePackagingPhase[] = [
   'FAILED',
 ]
 
-function requireArchiveText(value: string | undefined, fieldName: string): void {
+function requireArchiveText(value: string | undefined): void {
   if (!value) {
-    throw new Error(`${fieldName}不能为空`)
+    throw new Error(ARCHIVE_DATA_ERROR)
   }
 }
 
-function requireArchiveBoolean(value: boolean | undefined, fieldName: string): void {
+function requireArchiveBoolean(value: boolean | undefined): void {
   if (typeof value !== 'boolean') {
-    throw new TypeError(`${fieldName}不能为空`)
+    throw new TypeError(ARCHIVE_DATA_ERROR)
   }
 }
 
-function requireArchiveNumber(value: number | undefined, fieldName: string): number {
+function requireArchiveNumber(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`${fieldName}不能为空`)
+    throw new TypeError(ARCHIVE_DATA_ERROR)
   }
   return value
 }
 
-function requireArchiveNonNegativeNumber(value: number | undefined, fieldName: string): number {
-  const numberValue = requireArchiveNumber(value, fieldName)
+function requireArchiveNonNegativeNumber(value: number | undefined): number {
+  const numberValue = requireArchiveNumber(value)
   if (numberValue < 0) {
-    throw new Error(`${fieldName}不能小于0`)
+    throw new Error(ARCHIVE_DATA_ERROR)
   }
   return numberValue
 }
 
-function requireArchivePositiveSize(value: string | undefined, fieldName: string): void {
-  requireArchiveText(value, fieldName)
+function requireArchivePositiveSize(value: string | undefined): void {
+  requireArchiveText(value)
   const size = Number(value)
   if (!Number.isFinite(size) || size <= 0) {
-    throw new Error(`${fieldName}必须为正数字节数`)
+    throw new Error(ARCHIVE_DATA_ERROR)
   }
 }
 
@@ -365,40 +367,39 @@ function isArchiveFileReadyStatus(status: ArchivePackageStatusCode): boolean {
 }
 
 export function validateArchivePackageContract(record: ArchivePackageVO): void {
-  requireArchiveText(record.archiveId, '归档包ID')
-  requireArchiveText(record.examId, '考试ID')
-  requireArchiveText(record.examName, '考试名称')
-  requireArchiveText(record.archiveNo, '归档编号')
-  requireArchiveText(record.archiveTitle, '归档标题')
-  requireArchiveBoolean(record.permanentRetention, '归档是否永久保管')
+  requireArchiveText(record.archiveId)
+  requireArchiveText(record.examId)
+  requireArchiveText(record.examName)
+  requireArchiveText(record.archiveNo)
+  requireArchiveText(record.archiveTitle)
+  requireArchiveBoolean(record.permanentRetention)
   strictEnumLabel(ARCHIVE_STATUS_LABEL, record.archiveStatus, '归档状态')
   strictEnumTone(ARCHIVE_STATUS_TONE, record.archiveStatus, '归档状态')
   if (!record.permanentRetention) {
-    requireArchiveNumber(record.retentionYears, '归档保管年限')
+    requireArchiveNumber(record.retentionYears)
   }
   if (record.packagingPhase) {
     strictEnumLabel(ARCHIVE_PHASE_LABEL, record.packagingPhase, '归档打包阶段')
   }
   if (record.archiveStatus === 'PACKAGING' || record.archiveStatus === 'PACKAGING_FAILED') {
     if (!record.packagingPhase) {
-      throw new Error('归档处于打包状态但缺少打包阶段')
+      throw new Error(ARCHIVE_DATA_ERROR)
     }
     const packagingProgressPercent = requireArchiveNonNegativeNumber(
       record.packagingProgressPercent,
-      '归档打包进度百分比',
     )
-    requireArchiveText(record.packagingProgressMessage, '归档打包阶段说明')
+    requireArchiveText(record.packagingProgressMessage)
     if (packagingProgressPercent > 100) {
-      throw new Error('归档打包进度百分比不能超过100')
+      throw new Error(ARCHIVE_DATA_ERROR)
     }
   }
   if (isArchiveFileReadyStatus(record.archiveStatus)) {
-    requireArchivePositiveSize(record.archiveFileSize, '归档文件大小')
-    requireArchiveText(record.archiveChecksum, '归档文件校验码')
-    requireArchiveNonNegativeNumber(record.itemCount, '归档清单数')
-    requireArchiveNonNegativeNumber(record.originalScanCount, '原始扫描件数量')
-    requireArchiveNonNegativeNumber(record.markedSliceCount, '批改切片数量')
-    requireArchiveNonNegativeNumber(record.answerBookletCount, '标准答案与评分细则文件数量')
+    requireArchivePositiveSize(record.archiveFileSize)
+    requireArchiveText(record.archiveChecksum)
+    requireArchiveNonNegativeNumber(record.itemCount)
+    requireArchiveNonNegativeNumber(record.originalScanCount)
+    requireArchiveNonNegativeNumber(record.markedSliceCount)
+    requireArchiveNonNegativeNumber(record.answerBookletCount)
   }
   if (record.appraisalDecision) {
     strictEnumLabel(ARCHIVE_APPRAISAL_LABEL, record.appraisalDecision, '归档鉴定决议')
@@ -409,13 +410,13 @@ export function validateArchivePackageContract(record: ArchivePackageVO): void {
 }
 
 function validateArchiveItemContract(record: ArchiveItemVO): void {
-  requireArchiveText(record.itemId, '归档清单项ID')
-  requireArchiveText(record.relativePath, '归档清单相对路径')
+  requireArchiveText(record.itemId)
+  requireArchiveText(record.relativePath)
   strictEnumValue(ARCHIVE_ITEM_CATEGORY_LABEL, record.itemCategory, '归档清单项类别')
 }
 
 function validateArchiveEventContract(record: ArchiveEventVO): void {
-  requireArchiveText(record.eventId, '归档事件ID')
+  requireArchiveText(record.eventId)
   strictEnumTone(ARCHIVE_EVENT_TONE, record.eventType, '归档事件类型')
 }
 

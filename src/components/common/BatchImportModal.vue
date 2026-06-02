@@ -168,11 +168,7 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import { computed, ref, watch } from 'vue'
-import {
-  getUserProcessFailureMessage,
-  isDeveloperDiagnosticMessage,
-  showUserError,
-} from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 
 type ResultStatus = 'success' | 'warning' | 'error'
 
@@ -340,7 +336,6 @@ const sanitizeImportFailureMessage = (messageText: string): string => {
 const splitBackendErrorMessages = (messageText: string): string[] => {
   const text = String(messageText || '').trim()
   if (!text) return []
-  if (isDeveloperDiagnosticMessage(text)) return ['导入失败，请检查文件格式和数据']
 
   const withoutSummary = text.replace(/^导入失败，共\s*\d+\s*条错误[：:]\s*/u, '')
   const normalized = withoutSummary.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
@@ -415,14 +410,14 @@ const handleDownloadTemplate = async () => {
 }
 
 const beforeUpload = (file: File) => {
-  const isExcel
-    = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      || file.type === 'application/vnd.ms-excel'
-      || file.name.endsWith('.xlsx')
-      || file.name.endsWith('.xls')
+  const isExcel =
+    file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    file.type === 'application/vnd.ms-excel' ||
+    file.name.endsWith('.xlsx') ||
+    file.name.endsWith('.xls')
 
   if (!isExcel) {
-    showUserError(new Error('只能上传 Excel 文件（.xlsx 或 .xls 格式）'))
+    showUserError(null, '只能上传 Excel 文件（.xlsx 或 .xls 格式）')
     originalFile.value = null
     fileList.value = []
     return false
@@ -430,7 +425,7 @@ const beforeUpload = (file: File) => {
 
   const isLt30M = file.size / 1024 / 1024 < 30
   if (!isLt30M) {
-    showUserError(new Error('文件大小不能超过 30MB'))
+    showUserError(null, '文件大小不能超过 30MB')
     originalFile.value = null
     fileList.value = []
     return false
@@ -473,12 +468,12 @@ const handleFileRemove = () => {
 
 const handleConfirm = async () => {
   if (fileList.value.length === 0) {
-    showUserError(new Error('请选择要导入的文件'))
+    showUserError(null, '请选择要导入的文件')
     return
   }
 
   if (!originalFile.value) {
-    showUserError(new Error('当前导入文件读取失败，请重新选择文件'))
+    showUserError(null, '当前导入文件读取失败，请重新选择文件')
     return
   }
 
@@ -489,7 +484,7 @@ const handleConfirm = async () => {
     const result = (await props.importHandler(file)) as ImportResult
 
     if (!result || typeof result !== 'object') {
-      showUserError(new TypeError('导入结果响应格式异常'), '导入结果读取失败，请重新导入')
+      showUserError(null, '导入结果读取失败，请重新导入')
       return
     }
 

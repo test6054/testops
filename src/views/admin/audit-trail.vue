@@ -320,12 +320,6 @@ import type {
   OperationLogVO,
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
-import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -337,7 +331,13 @@ import {
   OPERATION_TYPE_OPTIONS,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
+import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -349,8 +349,9 @@ import {
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { showUserError } from '@/utils/error-handler'
+import { captureLoadFailure, showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
+import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminAuditTrail' })
@@ -370,7 +371,7 @@ const logLoading = ref(false)
 const logsLoadError = ref<Error | null>(null)
 const operationLogs = ref<OperationLogVO[]>([])
 const logFilter = reactive<{ operationType?: OperationTypeCode }>({})
-const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(
+const operationTypeOptions = computed<Array<{ value: OperationTypeCode; label: string }>>(
   () => OPERATION_TYPE_OPTIONS,
 )
 const logColumns = [
@@ -393,10 +394,9 @@ async function loadLogs() {
       pageNum: 1,
       pageSize: 200,
     })
-    operationLogs.value = page.list
+    operationLogs.value = readPageList(page, '审计日志加载失败，请稍后重试')
   } catch (error) {
-    if (!(error instanceof Error)) throw error
-    logsLoadError.value = error
+    logsLoadError.value = captureLoadFailure(error, '审计日志加载失败')
     showUserError(error, '审计日志加载失败')
   } finally {
     logLoading.value = false
@@ -429,8 +429,7 @@ async function loadIncidents() {
       unresolvedOnly: incidentFilter.unresolvedOnly,
     })
   } catch (error) {
-    if (!(error instanceof Error)) throw error
-    incidentsLoadError.value = error
+    incidentsLoadError.value = captureLoadFailure(error, '重大事件加载失败')
     showUserError(error, '重大事件加载失败')
   } finally {
     incidentLoading.value = false
@@ -466,7 +465,6 @@ async function submitResolve() {
     resolveModalOpen.value = false
     await loadIncidents()
   } catch (error) {
-    if (!(error instanceof Error)) throw error
     showUserError(error, '重大事件处置失败')
   } finally {
     resolving.value = false
@@ -479,7 +477,7 @@ const samplesLoadError = ref<Error | null>(null)
 const diagnosticSamples = ref<DiagnosticSampleVO[]>([])
 const sampleFilter = reactive<{ sampleType?: DiagnosticSampleTypeCode }>({})
 const diagnosticSampleTypeOptions = computed<
-  Array<{ value: DiagnosticSampleTypeCode, label: string }>
+  Array<{ value: DiagnosticSampleTypeCode; label: string }>
 >(() => DIAGNOSTIC_SAMPLE_TYPE_OPTIONS)
 const sampleColumns = [
   { title: '样本类型', key: 'sampleType', dataIndex: 'sampleType', width: 160 },
@@ -498,8 +496,7 @@ async function loadDiagnosticSamples() {
       sampleType: sampleFilter.sampleType,
     })
   } catch (error) {
-    if (!(error instanceof Error)) throw error
-    samplesLoadError.value = error
+    samplesLoadError.value = captureLoadFailure(error, '异常留痕样本加载失败')
     showUserError(error, '异常留痕样本加载失败')
   } finally {
     sampleLoading.value = false

@@ -1,13 +1,13 @@
 import type { Router } from 'vue-router'
 import type { RoleEnum } from '@/utils/permission'
+import { isValidRole } from '@/utils/permission'
 import type { SeoMeta } from '@/utils/seo'
+import { applySeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
 import { useAuthStore, useRouteStore, useUserStore } from '@/stores'
 import { getToken } from '@/utils/auth'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
-import { isValidRole } from '@/utils/permission'
-import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
@@ -33,29 +33,42 @@ export const setupRouterGuard = (router: Router) => {
     const authStore = useAuthStore()
     const userStore = useUserStore()
 
-    // 根路径根据登录状态动态重定向
-    if (to.path === '/') {
+    const getAuthenticatedDefaultRoute = async () => {
       await authStore.initializeAuth().catch(() => {})
       const token = getToken()
 
-      if (token) {
-        // 有token，尝试获取用户信息
-        if (!userStore.userInfo.userId) {
-          try {
-            await userStore.getInfo()
-          } catch {
-            // 获取用户信息失败，清除token并跳转登录
-            await authStore.logoutCallBack()
-            return '/login'
-          }
-        }
+      if (!token) {
+        return ''
+      }
 
-        // 已登录，重定向到对应工作台
-        return getDefaultRoute(authStore.userRole)
-      } else {
-        // 未登录，重定向到登录页
+      if (!userStore.userInfo.userId) {
+        try {
+          await userStore.getInfo()
+        } catch {
+          await authStore.logoutCallBack()
+          return ''
+        }
+      }
+
+      if (!authStore.userRole && userStore.userInfo.roleKey) {
+        authStore.setRole(userStore.userInfo.roleKey)
+      }
+
+      const defaultRoute = getDefaultRoute(authStore.userRole)
+      return defaultRoute === '/login' ? '' : defaultRoute
+    }
+
+    if (to.path === '/' || to.path === '/login') {
+      const defaultRoute = await getAuthenticatedDefaultRoute()
+      if (defaultRoute) {
+        return defaultRoute
+      }
+
+      if (to.path === '/') {
         return '/login'
       }
+
+      return
     }
 
     // 检查是否需要认证
@@ -81,10 +94,11 @@ export const setupRouterGuard = (router: Router) => {
     const promises: Promise<unknown>[] = []
 
     // 只有在用户信息缺失时才获取
+    let userInfoLoadFailed = false
     if (!userStore.userInfo.userId) {
       promises.push(
         userStore.getInfo().catch(() => {
-          throw new Error('USER_INFO_FAILED')
+          userInfoLoadFailed = true
         }),
       )
     } else {
@@ -102,14 +116,11 @@ export const setupRouterGuard = (router: Router) => {
 
     // 等待用户信息和权限加载完成
     if (promises.length > 0) {
-      try {
-        await Promise.all(promises)
-      } catch (error: unknown) {
-        if (error instanceof Error && error.message === 'USER_INFO_FAILED') {
-          // 用户信息获取失败，重新登录
-          await authStore.logoutCallBack()
-          return `/login?redirect=${encodeURIComponent(to.fullPath)}`
-        }
+      await Promise.all(promises)
+      if (userInfoLoadFailed) {
+        // 用户信息获取失败，重新登录
+        await authStore.logoutCallBack()
+        return `/login?redirect=${encodeURIComponent(to.fullPath)}`
       }
     }
 
@@ -134,9 +145,9 @@ export const setupRouterGuard = (router: Router) => {
       return getDefaultRoute(authStore.userRole)
     }
 
-    const needsSecurityRefresh
-      = to.path !== '/change-password'
-        && (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
+    const needsSecurityRefresh =
+      to.path !== '/change-password' &&
+      (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
 
     if (needsSecurityRefresh) {
       try {
@@ -151,15 +162,14 @@ export const setupRouterGuard = (router: Router) => {
         }
         const status = err?.response?.status
         const code = err?.code
-        const isNetworkLevel
-          = !err?.response
-            || code === 'ERR_NETWORK'
-            || code === 'ECONNABORTED'
-            || (typeof status === 'number' && status >= 500)
+        const isNetworkLevel =
+          !err?.response ||
+          code === 'ERR_NETWORK' ||
+          code === 'ECONNABORTED' ||
+          (typeof status === 'number' && status >= 500)
 
         if (isNetworkLevel) {
-          // 仅记录日志，本次导航继续放行
-          console.warn('[Router Guard] 安全状态刷新失败（网络/5xx），本次导航沿用本地缓存。', error)
+          // 本次导航继续放行
         } else {
           await authStore.logoutCallBack()
           return `/login?redirect=${encodeURIComponent(to.fullPath)}`

@@ -73,15 +73,6 @@
 
     <a-spin v-else :spinning="loading">
       <section v-if="organization" class="org-detail__panel">
-        <UiAlertStrip
-          v-if="!canManageOrganization"
-          class="org-detail__owner-alert"
-          tone="info"
-          title="只读查看"
-          description="你可查看该阅卷组织、题组和策略；批阅任务分配由考试创建人执行。"
-          dense
-        />
-
         <a-tabs v-model:active-key="activeTab" class="detail-tabs">
           <a-tab-pane key="info" tab="基本信息 + 题组">
             <a-descriptions
@@ -384,12 +375,6 @@
           </a-tab-pane>
 
           <a-tab-pane key="status" tab="状态推进">
-            <a-alert
-              type="info"
-              show-icon
-              message="阅卷组织按业务阶段推进；每次只能推进到允许的下一状态。"
-              style="margin-bottom: 16px"
-            />
             <a-form layout="vertical" class="status-form">
               <a-form-item label="当前状态">
                 <UiTag
@@ -462,7 +447,12 @@
             placeholder="从教师中选择"
           />
         </a-form-item>
-        <a-form-item label="负责题目" name="questionTemplateIds" required>
+        <a-form-item
+          v-if="!groupForm.wholePaperGroup"
+          label="负责题目"
+          name="questionTemplateIds"
+          required
+        >
           <a-select
             v-model:value="groupForm.questionTemplateIds"
             mode="multiple"
@@ -533,7 +523,9 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type { ExamDetailVO } from '@/apis/mark/exam'
+import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
 import type {
   AllocationPolicySaveRequest,
   AllocationUnitCode,
@@ -549,16 +541,6 @@ import type {
   QuestionMarkingGroupVO,
   RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
-import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
   ALLOCATION_UNIT_LABEL,
   ANONYMITY_MODE_LABEL,
@@ -581,8 +563,15 @@ import {
   updateOrganizationStatus,
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import ArrowRightOutlined from '@ant-design/icons-vue/ArrowRightOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
-  UiAlertStrip,
   UiButton,
   UiDataTable,
   UiDrawer,
@@ -594,6 +583,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
@@ -666,10 +656,7 @@ async function loadOrganization(): Promise<void> {
   } catch (error) {
     organization.value = null
     examDetail.value = null
-    if (!(error instanceof Error)) {
-      throw error
-    }
-    if (!isMarkingOrgNotCreatedError(error)) {
+    if (!(error instanceof Error && isMarkingOrgNotCreatedError(error))) {
       organizationLoadError.value = toUserError(error, '阅卷组织详情加载失败')
     }
   } finally {
@@ -702,7 +689,7 @@ async function loadTeachers(): Promise<void> {
   teacherLoading.value = true
   try {
     const result = await adminGetUserPage({ pageNum: 1, pageSize: 200, roleKey: 'SCH_TECH' })
-    teacherList.value = result.list
+    teacherList.value = readPageList(result, '阅卷教师列表加载失败，请稍后重试')
   } catch (error) {
     showUserError(error, '阅卷教师列表加载失败')
   } finally {
@@ -749,6 +736,7 @@ interface GroupForm {
   leaderUserId?: string
   questionTemplateIds: string[]
   reviewerUserIds: string[]
+  wholePaperGroup: boolean
 }
 
 const groupForm = reactive<GroupForm>({
@@ -757,6 +745,7 @@ const groupForm = reactive<GroupForm>({
   leaderUserId: undefined,
   questionTemplateIds: [],
   reviewerUserIds: [],
+  wholePaperGroup: false,
 })
 const groupModalTitle = computed(() => (groupForm.groupId ? '编辑题组' : '新建题组'))
 const groupActionLoadingId = ref<string>()
@@ -768,7 +757,18 @@ const groupRules: Record<string, Rule[]> = {
   ],
   leaderUserId: [{ required: true, message: '请选择题组组长', trigger: 'change' }],
   questionTemplateIds: [
-    { required: true, type: 'array', min: 1, message: '请至少选择 1 道题目', trigger: 'change' },
+    {
+      validator: (_rule, value: string[]) => {
+        if (groupForm.wholePaperGroup) {
+          return Promise.resolve()
+        }
+        if (!value || value.length === 0) {
+          return Promise.reject(new Error('请至少选择 1 道题目'))
+        }
+        return Promise.resolve()
+      },
+      trigger: 'change',
+    },
   ],
   reviewerUserIds: [
     {
@@ -788,6 +788,7 @@ function openGroupModal(): void {
   groupForm.leaderUserId = undefined
   groupForm.questionTemplateIds = []
   groupForm.reviewerUserIds = []
+  groupForm.wholePaperGroup = false
   groupModalOpen.value = true
   void loadTeachers()
   void loadQuestionTemplates()
@@ -800,6 +801,7 @@ function openGroupEdit(record: QuestionMarkingGroupVO): void {
   groupForm.leaderUserId = record.leaderUserId
   groupForm.questionTemplateIds = record.questions.map((question) => question.questionTemplateId)
   groupForm.reviewerUserIds = record.reviewers.map((reviewer) => reviewer.reviewerUserId)
+  groupForm.wholePaperGroup = record.questions.length === 0 && record.groupName.includes('整卷')
   groupModalOpen.value = true
   void loadTeachers()
   void loadQuestionTemplates()
@@ -820,7 +822,8 @@ async function submitGroup(): Promise<void> {
       groupId: groupForm.groupId,
       groupName: groupForm.groupName,
       leaderUserId: groupForm.leaderUserId!,
-      questionTemplateIds: groupForm.questionTemplateIds,
+      questionTemplateIds: groupForm.wholePaperGroup ? [] : groupForm.questionTemplateIds,
+      wholePaperGroup: groupForm.wholePaperGroup || undefined,
       reviewerUserIds: groupForm.reviewerUserIds,
     }
     await saveQuestionGroup(request)
@@ -845,8 +848,8 @@ function canDeleteGroup(record: QuestionMarkingGroupVO): boolean {
 
 function canCloseGroup(record: QuestionMarkingGroupVO): boolean {
   return (
-    canManageOrganization.value
-    && (record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED')
+    canManageOrganization.value &&
+    (record.groupStatus === 'GROUP_ACTIVE' || record.groupStatus === 'GROUP_CONFIGURED')
   )
 }
 

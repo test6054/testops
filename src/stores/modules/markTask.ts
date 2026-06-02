@@ -1,4 +1,5 @@
 import type { ReviewTaskItemVO, ReviewTaskQueryRequest } from '@/apis/mark/exam'
+import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 /**
  * 阅卷任务 Store
  *
@@ -24,14 +25,14 @@ import type {
   TeacherClaimContextQueryRequest,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-import { claimReviewTask, listReviewTasks } from '@/apis/mark/exam'
 import {
   claimMarkingTasks,
   getTeacherClaimContext,
   listMarkingTasks,
 } from '@/apis/mark/marking-organization'
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+import { readPageList } from '@/utils/page-result'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
@@ -49,7 +50,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
    * pagination 暴露给消费侧用于检查截断或显示分页 UI。
    */
   const REVIEW_TASKS_DEFAULT_PAGE_SIZE = 200
-  const reviewTasksPagination = ref<{ pageNum: number, pageSize: number, total: number }>({
+  const reviewTasksPagination = ref<{ pageNum: number; pageSize: number; total: number }>({
     pageNum: 1,
     pageSize: 0,
     total: 0,
@@ -116,23 +117,28 @@ export const useMarkTaskStore = defineStore('markTask', () => {
   async function loadReviewTasks(request: ReviewTaskQueryRequest): Promise<ReviewTaskItemVO[]> {
     reviewTasksLoading.value = true
     try {
-      // 后端 QueryDto pageNum/pageSize @NotNull，调用方未传时由 store 兜底，避免 400。
-      const result = await listReviewTasks({
-        ...request,
-        pageNum: request.pageNum ?? 1,
-        pageSize: request.pageSize ?? REVIEW_TASKS_DEFAULT_PAGE_SIZE,
-      })
-      const total = Number(result.total)
-      if (total > result.list.length) {
-        reviewTasks.value = []
-        reviewTasksPagination.value = { pageNum: 1, pageSize: 0, total: 0 }
-        reviewLoadedExamId.value = ''
-        throw new Error(`复核任务列表被分页截断：共 ${total} 条，仅返回 ${result.list.length} 条`)
+      const pageSize = request.pageSize ?? REVIEW_TASKS_DEFAULT_PAGE_SIZE
+      let pageNum = request.pageNum ?? 1
+      const merged: ReviewTaskItemVO[] = []
+      let total = 0
+      while (true) {
+        const result = await listReviewTasks({
+          ...request,
+          pageNum,
+          pageSize,
+        })
+        const list = readPageList(result, '复核任务列表加载失败，请稍后重试')
+        total = Number(result.total)
+        merged.push(...list)
+        if (merged.length >= total || list.length === 0) {
+          break
+        }
+        pageNum += 1
       }
-      reviewTasks.value = result.list
+      reviewTasks.value = merged
       reviewTasksPagination.value = {
-        pageNum: result.pageNum,
-        pageSize: result.pageSize,
+        pageNum: 1,
+        pageSize: merged.length,
         total,
       }
       reviewLoadedExamId.value = request.examId

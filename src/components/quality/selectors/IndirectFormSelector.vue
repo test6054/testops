@@ -9,8 +9,8 @@ import type {
   IndirectEvaluationFormVO,
   IndirectFormType,
 } from '@/apis/quality'
-import { computed, onMounted, ref, watch } from 'vue'
 import { INDIRECT_FORM_TYPE_LABEL, indirectFormApi } from '@/apis/quality'
+import { computed, onMounted, ref, watch } from 'vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { requirePageList } from './page-contract'
@@ -37,7 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:value': [value: string | null]
-  "change": [value: string | null, option?: IndirectEvaluationFormVO]
+  change: [value: string | null, option?: IndirectEvaluationFormVO]
 }>()
 
 const options = ref<IndirectEvaluationFormVO[]>([])
@@ -71,7 +71,6 @@ async function loadOptions() {
     })
     options.value = requirePageList(res, '间接评价问卷')
   } catch (e) {
-    console.error('[IndirectFormSelector] 加载间接评价问卷列表失败', e)
     showUserError(e, '间接评价问卷列表加载失败')
   } finally {
     loading.value = false
@@ -132,7 +131,9 @@ defineExpose({ reload: loadOptions })
     >
       <span class="text-xs text-gray-500 mr-1">{{ opt.formCode }}</span>
       {{ opt.formName }}
-      <span v-if="opt.formType" class="text-gray-400 ml-1">· {{ formTypeLabel(opt.formType) }}</span>
+      <span v-if="opt.formType" class="text-gray-400 ml-1"
+        >· {{ formTypeLabel(opt.formType) }}</span
+      >
     </a-select-option>
   </a-select>
 </template>

@@ -119,16 +119,7 @@
             </a-col>
           </a-row>
           <a-row :gutter="16">
-            <a-col :xs="24" :md="12">
-              <a-form-item label="批次外部编号（可选）" name="batchExternalNo">
-                <a-input
-                  v-model:value="batchForm.batchExternalNo"
-                  placeholder="为本批次取个便于人工识别的编号，留空则用系统批次号"
-                  :maxlength="100"
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :md="12">
+            <a-col :xs="24">
               <a-form-item label="操作">
                 <a-space>
                   <UiButton
@@ -240,15 +231,9 @@
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'batchNo'">
               <a-typography-text strong :content="batches[index].batchNo" />
-              <div
-                v-if="
-                  batches[index].batchExternalNo
-                    && batches[index].batchExternalNo !== batches[index].batchNo
-                "
-                class="muted"
-              >
-                外部编号：{{ batches[index].batchExternalNo }}
-              </div>
+            </template>
+            <template v-else-if="column.key === 'scannerDevice'">
+              {{ formatDeviceLabel(batches[index].scannerDeviceId) }}
             </template>
             <template v-else-if="column.key === 'status'">
               <UiTag :tone="batchStatusTone(batches[index])" size="sm">
@@ -423,6 +408,7 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
+import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanUpload' })
@@ -561,11 +547,18 @@ const deviceSelectOptions = computed(() =>
     .filter((d) => !!d.scannerDeviceId)
     .map((d) => ({
       value: d.scannerDeviceId!,
-      label: d.scannerIp
-        ? `${d.deviceName || d.scannerDeviceId} (${d.scannerIp})`
-        : d.deviceName || d.scannerDeviceId!,
+      label: formatDeviceLabel(d.scannerDeviceId),
     })),
 )
+
+function formatDeviceLabel(deviceId?: string): string {
+  if (!deviceId) return '—'
+  const device = devices.value.find((d) => d.scannerDeviceId === deviceId)
+  if (!device) return deviceId
+  return device.scannerIp
+    ? `${device.deviceName || deviceId} (${device.scannerIp})`
+    : device.deviceName || deviceId
+}
 
 async function loadDevices(): Promise<void> {
   devicesLoading.value = true
@@ -587,11 +580,9 @@ const formRef = ref<FormInstance>()
 const batchForm = reactive<{
   scannerDeviceIds: string[]
   scanWindow?: [string, string]
-  batchExternalNo?: string
 }>({
   scannerDeviceIds: [],
   scanWindow: undefined,
-  batchExternalNo: '',
 })
 
 const batchFormRules: Record<string, Rule[]> = {
@@ -623,10 +614,10 @@ const previewTimeSpan = ref('未执行预览')
 const deviceBreakdownColumns: ColumnType<ExamScannerBatchDeviceBreakdownVO>[] = [
   {
     title: '扫描设备',
-    dataIndex: 'scannerDeviceId',
-    key: 'scannerDeviceId',
-    width: 200,
+    key: 'scannerDevice',
+    width: 240,
     ellipsis: true,
+    customRender: ({ record }) => formatDeviceLabel(record.scannerDeviceId),
   },
   { title: '设备地址', dataIndex: 'scannerIp', key: 'scannerIp', width: 160 },
   { title: '事件数', dataIndex: 'eventCount', key: 'eventCount', width: 100 },
@@ -686,7 +677,6 @@ async function handleCreateBatch(): Promise<void> {
       scannerDeviceIds: batchForm.scannerDeviceIds,
       scanStartTime: batchForm.scanWindow[0],
       scanEndTime: batchForm.scanWindow[1],
-      batchExternalNo: batchForm.batchExternalNo?.trim() || undefined,
     }
     const result = await createScanBatchByCondition(request)
     message.success(
@@ -695,7 +685,6 @@ async function handleCreateBatch(): Promise<void> {
     previewLoaded.value = false
     previewData.value = null
     pendingEventTotal.value = 0
-    batchForm.batchExternalNo = ''
     await loadBatches(1)
     await loadProgress()
   } catch (error) {
@@ -722,9 +711,8 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '状态', key: 'status', width: 110 },
   {
     title: '主扫描设备',
-    dataIndex: 'scannerDeviceId',
-    key: 'scannerDeviceId',
-    width: 150,
+    key: 'scannerDevice',
+    width: 240,
     ellipsis: true,
   },
   { title: '扫描时间窗', key: 'scanWindow', width: 220 },
@@ -817,7 +805,7 @@ async function loadBatches(pageNum?: number): Promise<void> {
       pageSize: batchQuery.pageSize,
     }
     const result = await pageScannerBatches(request)
-    batches.value = result.list
+    batches.value = readPageList(result, '扫描批次加载失败，请稍后重试')
     batchTotal.value = Number(result.total)
   } catch (error) {
     batchesLoadError.value = toUserError(error, '扫描批次列表加载失败')

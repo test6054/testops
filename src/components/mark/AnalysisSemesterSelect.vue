@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import { pageExams } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
-import { pageExams } from '@/apis/mark/exam'
 import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
+import { readPageList } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisSemesterSelect' })
 
@@ -22,7 +23,7 @@ withDefaults(
 )
 
 const loading = ref(false)
-const semesterOptions = ref<{ label: string, value: string }[]>([])
+const semesterOptions = ref<{ label: string; value: string }[]>([])
 
 /** 加载考试中的学年学期范围，供 AI 分析卡片按业务周期选择。 */
 async function loadSemesterOptions(): Promise<void> {
@@ -30,10 +31,8 @@ async function loadSemesterOptions(): Promise<void> {
   try {
     const result = await pageExams({ pageNum: 1, pageSize: 200 })
     const termMap = new Map<string, string>()
-    result.list.forEach((exam: ExamSummaryVO) => {
-      if (!exam.academicYear || !exam.semester) {
-        throw new Error('考试列表缺少学年学期，请先完善考试配置')
-      }
+    readPageList(result, '考试列表加载失败，请稍后重试').forEach((exam: ExamSummaryVO) => {
+      if (!exam.academicYear || !exam.semester) return
       const value = `${exam.academicYear}-${exam.semester}`
       termMap.set(value, `${exam.academicYear} · ${getSemesterDescription(exam.semester)}`)
     })

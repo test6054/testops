@@ -25,16 +25,21 @@
  *   对账，不通过数组下标猜测。
  */
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { ScanLiveEventVO, ScanLiveSubscribeFilter } from '@/apis/mark/scan-live'
+import {
+  listRecentScanEvents,
+  ScanLiveFatalAuthError,
+  subscribeScanLive,
+} from '@/apis/mark/scan-live'
 import type {
   ExamScannerPageLedgerRequest,
   ExamScannerPageLedgerVO,
 } from '@/apis/mark/scanner-kiosk'
-import { computed, ref } from 'vue'
-import { listRecentScanEvents, subscribeScanLive } from '@/apis/mark/scan-live'
 import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
 import { toUserError } from '@/utils/error-handler'
+import { hasMarkScannerJwtAuth } from '@/utils/kiosk-auth'
 import mittBus from '@/utils/mitt'
 
 export interface UseScanLiveStreamOptions {
@@ -58,11 +63,11 @@ export interface UseScanLiveStreamReturn {
   ready: Ref<boolean>
   /** SSE 是否在订阅中（start 后到 stop/onError 之前） */
   isStreaming: Ref<boolean>
-  /** 最近一次错误（仅诊断用） */
+  /** 最近一次错误 */
   error: Ref<Error | null>
   /** 已收到的最大 eventId，用作断线补差游标 */
   lastEventId: Ref<string | undefined>
-  /** 是否已注册 token 刷新事件监听，仅诊断用 */
+  /** 是否已注册 token 刷新事件监听 */
   tokenRefreshListenerActive: Ref<boolean>
   /** 当前批次页级账本快照；options.ledgerFilter 缺省或返回 null 时为 null */
   ledger: Ref<ExamScannerPageLedgerVO | null>
@@ -133,9 +138,7 @@ export function useScanLiveStream(
     }
     const merged: ScanLiveEventVO[] = [...events.value]
     for (const event of incoming) {
-      if (!event.eventId) {
-        throw new TypeError('扫描实时事件缺少 eventId')
-      }
+      if (!event.eventId) continue
       if (knownEventIds.has(event.eventId)) {
         continue
       }
@@ -247,9 +250,8 @@ export function useScanLiveStream(
     ready.value = false
     error.value = null
 
-    // 启动时订阅 token 刷新事件，在 token 续期后立即用新 token 重新订阅 SSE。
-    // 反复 start/stop 时不会重复注册。
-    if (!tokenRefreshListenerActive.value) {
+    // 教师 Web 才订阅 JWT 续期；一体机 push_token 无 refresh 语义。
+    if (!tokenRefreshListenerActive.value && hasMarkScannerJwtAuth()) {
       mittBus.on('auth:token-refreshed', onTokenRefreshed)
       tokenRefreshListenerActive.value = true
     }
@@ -271,14 +273,21 @@ export function useScanLiveStream(
       onError: (err) => {
         error.value = toUserError(err, '扫描实时订阅失败')
         ready.value = false
+        if (err instanceof ScanLiveFatalAuthError) {
+          stop()
+        }
       },
       onClose: () => {
         ready.value = false
       },
       onAuthRefreshRequired: async () => {
+        if (!hasMarkScannerJwtAuth()) {
+          return
+        }
         const refreshed = await authStore.refreshTokenAutomatically()
         if (!refreshed) {
-          throw new Error('SSE 鉴权已过期，自动续期失败')
+          error.value = toUserError(null, '扫描实时订阅失败，请刷新页面后重试')
+          stop()
         }
       },
     })

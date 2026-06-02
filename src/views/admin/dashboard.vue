@@ -41,9 +41,22 @@
       @retry="loadOverview"
     />
 
-    <!-- 批改进度 + 异常告警 -->
+    <!-- 考试规模 + 批改进度 + 异常告警 -->
     <a-row v-if="gradingMetrics && incidentMetrics && !overviewLoadError" :gutter="16">
-      <a-col :xs="24" :lg="14">
+      <a-col v-if="examMetrics && examScaleChartOption" :xs="24" :lg="6">
+        <UiCard class="metric-card">
+          <template #title>
+            <PieChartOutlined />
+            <span>考试规模</span>
+          </template>
+          <div class="exam-scale-metrics">
+            <a-statistic title="考试总数" :value="examMetrics.totalExamCount" suffix="场" />
+            <a-statistic title="考生总数" :value="examMetrics.totalCandidateCount" suffix="人" />
+          </div>
+          <VChart class="exam-scale-chart" :option="examScaleChartOption" autoresize />
+        </UiCard>
+      </a-col>
+      <a-col :xs="24" :lg="examMetrics && examScaleChartOption ? 10 : 14">
         <UiCard class="metric-card">
           <template #title>
             <BarChartOutlined />
@@ -81,7 +94,7 @@
         </UiCard>
       </a-col>
 
-      <a-col :xs="24" :lg="10">
+      <a-col :xs="24" :lg="examMetrics && examScaleChartOption ? 8 : 10">
         <UiCard class="metric-card">
           <template #title>
             <ExclamationCircleOutlined />
@@ -207,6 +220,7 @@
 
 <script lang="ts" setup>
 import type {
+  DashboardExamMetricsVO,
   DashboardGradingMetricsVO,
   DashboardIncidentMetricsVO,
   DashboardIncidentRecordVO,
@@ -215,23 +229,25 @@ import type {
   IncidentTypeCode,
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
-import type { ExamStatusCode } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
-import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
-import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
-import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   INCIDENT_LEVEL_LABEL,
   INCIDENT_LEVEL_TONE,
   INCIDENT_TYPE_LABEL,
   loadDashboardOverview,
 } from '@/apis/mark/admin-dashboard'
+import type { ExamStatusCode } from '@/apis/mark/exam'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
+import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
+import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { computed, onMounted, ref, watch } from 'vue'
+import VChart from 'vue-echarts'
+import { useRouter } from 'vue-router'
 import {
   UiBadge,
   UiButton,
@@ -243,6 +259,7 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildExamScalePieOption } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminDashboard' })
@@ -267,6 +284,13 @@ const overview = ref<MarkDashboardOverviewVO | null>(null)
 const gradingMetrics = computed<DashboardGradingMetricsVO | null>(
   () => overview.value?.gradingMetrics ?? null,
 )
+const examMetrics = computed<DashboardExamMetricsVO | null>(
+  () => overview.value?.examMetrics ?? null,
+)
+const examScaleChartOption = computed(() => {
+  if (!examMetrics.value) return null
+  return buildExamScalePieOption(examMetrics.value)
+})
 const incidentMetrics = computed<DashboardIncidentMetricsVO | null>(
   () => overview.value?.incidentMetrics ?? null,
 )
@@ -345,6 +369,18 @@ onMounted(loadOverview)
 
 .metric-card {
   height: 100%;
+}
+
+.exam-scale-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.exam-scale-chart {
+  width: 100%;
+  height: 220px;
 }
 
 .metric-grid {

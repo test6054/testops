@@ -34,13 +34,13 @@ type MarkBusinessError = Error & {
 }
 
 /** 阅卷组织状态编码 - 与后端 OrganizationStatus enum 对齐 */
-export type MarkingOrganizationStatusCode
-  = | 'ORG_DRAFT'
-    | 'ORG_CONFIGURED'
-    | 'TRIAL_MARKING'
-    | 'FORMAL_MARKING'
-    | 'QUALITY_REVIEW'
-    | 'CLOSED'
+export type MarkingOrganizationStatusCode =
+  | 'ORG_DRAFT'
+  | 'ORG_CONFIGURED'
+  | 'TRIAL_MARKING'
+  | 'FORMAL_MARKING'
+  | 'QUALITY_REVIEW'
+  | 'CLOSED'
 
 export const MARKING_ORGANIZATION_STATUS_LABEL: Record<MarkingOrganizationStatusCode, string> = {
   ORG_DRAFT: '草稿',
@@ -64,11 +64,11 @@ export const MARKING_ORGANIZATION_STATUS_TONE: Record<
 }
 
 /** 题组状态编码 - 与后端 QuestionGroupStatus enum 对齐 */
-export type QuestionMarkingGroupStatusCode
-  = | 'GROUP_DRAFT'
-    | 'GROUP_CONFIGURED'
-    | 'GROUP_ACTIVE'
-    | 'GROUP_CLOSED'
+export type QuestionMarkingGroupStatusCode =
+  | 'GROUP_DRAFT'
+  | 'GROUP_CONFIGURED'
+  | 'GROUP_ACTIVE'
+  | 'GROUP_CLOSED'
 
 export const QUESTION_GROUP_STATUS_LABEL: Record<QuestionMarkingGroupStatusCode, string> = {
   GROUP_DRAFT: '草稿',
@@ -88,12 +88,12 @@ export const QUESTION_GROUP_STATUS_TONE: Record<
 }
 
 /** 任务分配模式编码 - 与后端 AllocationMode enum 对齐 */
-export type MarkingAllocationModeCode
-  = | 'BY_QUESTION'
-    | 'BY_CLASS'
-    | 'ROUND_ROBIN'
-    | 'RANDOM'
-    | 'BY_PAPER_RANDOM'
+export type MarkingAllocationModeCode =
+  | 'BY_QUESTION'
+  | 'BY_CLASS'
+  | 'ROUND_ROBIN'
+  | 'RANDOM'
+  | 'BY_PAPER_RANDOM'
 
 export const MARKING_ALLOCATION_MODE_LABEL: Record<MarkingAllocationModeCode, string> = {
   BY_QUESTION: '按题目分配',
@@ -166,12 +166,12 @@ export const ANONYMOUS_TOKEN_POLICY_OPTIONS: Array<{
 ]
 
 /** 阅卷任务状态编码 - 与后端 MarkingTaskStatus enum 对齐 */
-export type MarkingTaskStatusCode
-  = | 'ALLOCATED'
-    | 'IN_PROGRESS'
-    | 'SUBMITTED'
-    | 'FINALIZED'
-    | 'RECYCLED'
+export type MarkingTaskStatusCode =
+  | 'ALLOCATED'
+  | 'IN_PROGRESS'
+  | 'SUBMITTED'
+  | 'FINALIZED'
+  | 'RECYCLED'
 
 export const MARKING_TASK_STATUS_LABEL: Record<MarkingTaskStatusCode, string> = {
   ALLOCATED: '已分配',
@@ -296,6 +296,8 @@ export interface QuestionGroupSaveRequest {
   groupId?: string
   groupName: string
   questionTemplateIds: string[]
+  /** 整卷批阅题组标记；为 true 时题目范围可为空 */
+  wholePaperGroup?: boolean
   leaderUserId: string
   reviewerUserIds: string[]
 }
@@ -408,6 +410,7 @@ export interface MarkingTaskQueryRequest {
   sessionId?: string
   reviewerUserId?: string
   taskStatus?: MarkingTaskStatusCode
+  reviewRound?: number
 }
 
 // ─── 响应模型类型 ───────────────────────────────────────────
@@ -471,7 +474,29 @@ export interface ExamAllocationPlanVO {
   anonymityMode: AnonymityModeCode
 }
 
+/** 考试阅卷分配规划预览响应 - 对应后端 ExamAllocationPlanPreviewResponse */
+export interface ExamAllocationPlanPreviewVO {
+  allocationUnit: AllocationUnitCode
+  boundPaperCount: number
+  questionScopeCount?: number
+  randomSampleSize?: number
+  registeredSliceCount?: number
+  expectedTaskCount?: number
+  reviewerCount: number
+  ready: boolean
+  readinessMessage?: string
+  coverageMessage?: string
+}
+
 /** 阅卷任务详情响应 - 对应后端 MarkingTaskResponse */
+/** 已定稿阅卷任务逐题给分回显 - 对应 MarkingTaskSubmittedQuestionScoreResponse */
+export interface MarkingTaskSubmittedQuestionScoreVO {
+  questionTemplateId: string
+  questionNo: string
+  score: number
+  annotationText?: string
+}
+
 export interface MarkingTaskVO {
   id: string
   examId: string
@@ -504,15 +529,17 @@ export interface MarkingTaskVO {
   questionTypeMessage: string | null
   allocatedAt?: string
   submittedAt?: string
+  /** 已定稿任务的逐题给分回显；非 FINALIZED 为 undefined */
+  submittedQuestionScores?: MarkingTaskSubmittedQuestionScoreVO[]
 }
 
 /** 试评会话状态编码 - 与后端 TrialSessionStatus enum 对齐 */
-export type TrialSessionStatusCode
-  = | 'TRIAL_CREATED'
-    | 'TRIAL_ASSIGNED'
-    | 'TRIAL_SUBMITTED'
-    | 'CALIBRATED'
-    | 'TRIAL_CLOSED'
+export type TrialSessionStatusCode =
+  | 'TRIAL_CREATED'
+  | 'TRIAL_ASSIGNED'
+  | 'TRIAL_SUBMITTED'
+  | 'CALIBRATED'
+  | 'TRIAL_CLOSED'
 
 export const TRIAL_SESSION_STATUS_LABEL: Record<TrialSessionStatusCode, string> = {
   TRIAL_CREATED: '已创建',
@@ -534,12 +561,12 @@ export const TRIAL_SESSION_STATUS_TONE: Record<
 }
 
 /** 正评会话状态编码 - 与后端 FormalSessionStatus enum 对齐 */
-export type FormalSessionStatusCode
-  = | 'SESSION_CREATED'
-    | 'SESSION_ACTIVE'
-    | 'SESSION_PAUSED'
-    | 'SESSION_COMPLETED'
-    | 'SESSION_CLOSED'
+export type FormalSessionStatusCode =
+  | 'SESSION_CREATED'
+  | 'SESSION_ACTIVE'
+  | 'SESSION_PAUSED'
+  | 'SESSION_COMPLETED'
+  | 'SESSION_CLOSED'
 
 export const FORMAL_SESSION_STATUS_LABEL: Record<FormalSessionStatusCode, string> = {
   SESSION_CREATED: '已创建',
@@ -708,11 +735,24 @@ export function updateOrganizationStatus(
 }
 
 /**
- * 一站式规划并启动考试阅卷分配。
+ * 一站式规划考试阅卷分配（创建组织、题组、策略与正评草稿会话，不立即生成任务）。
  * POST /api/mark/organization/allocation/plan
  */
 export function planAllocation(request: ExamAllocationPlanRequest): Promise<ExamAllocationPlanVO> {
   return http.post<ExamAllocationPlanVO>('/api/mark/organization/allocation/plan', request)
+}
+
+/**
+ * 预览阅卷分配覆盖范围与预计任务量。
+ * POST /api/mark/organization/allocation/preview
+ */
+export function previewAllocationPlan(
+  request: ExamAllocationPlanRequest,
+): Promise<ExamAllocationPlanPreviewVO> {
+  return http.post<ExamAllocationPlanPreviewVO>(
+    '/api/mark/organization/allocation/preview',
+    request,
+  )
 }
 
 // ===================== 题组管理 =====================
@@ -913,8 +953,11 @@ export interface ScannedPageRef {
   pageId: string
   pageSeq: number
   templatePageNo: number
-  fileId: string
+  /** 实名整卷直链 storage；匿名整卷为 undefined */
+  fileId?: string
   qualityStatus: QualityDecisionCode
+  /** 匿名整卷需走 scan-page/display 遮罩展示 */
+  identityMaskedView?: boolean
 }
 
 /** 整卷视图响应 - 对应后端 WholePaperViewResponse */
@@ -950,6 +993,8 @@ export interface MarkingQuestionViewVO {
   sliceFileId: string
   pageId: string
   effectiveStatus: EffectiveStatusCode
+  /** 原始扫描页引用，供教师查看整页扫描影像 */
+  sourceScanPage?: ScannedPageRef
 }
 
 /**
@@ -970,6 +1015,37 @@ export function getMarkingQuestionView(
   request: MarkingQuestionViewRequest,
 ): Promise<MarkingQuestionViewVO> {
   return http.post<MarkingQuestionViewVO>('/api/mark/organization/task/question-view', request)
+}
+
+/** 匿名整卷扫描页遮罩展示请求 - 对应后端 MarkingScanPageDisplayRequest */
+export interface MarkingScanPageDisplayRequest {
+  examId: string
+  taskId: string
+  pageId: string
+}
+
+/**
+ * 获取匿名整卷阅卷遮罩扫描页 Blob URL。
+ * POST /api/mark/organization/task/scan-page/display
+ */
+export async function getMarkingScanPageDisplayBlobUrl(
+  request: MarkingScanPageDisplayRequest,
+): Promise<string> {
+  const response = await http.downloadByPost(
+    '/api/mark/organization/task/scan-page/display',
+    request,
+  )
+  const rawContentType = response.headers['content-type']
+  const contentType =
+    typeof rawContentType === 'string'
+      ? rawContentType
+      : Array.isArray(rawContentType)
+        ? rawContentType.join(';')
+        : ''
+  if (contentType.includes('application/json')) {
+    throw new Error('扫描页遮罩展示加载失败')
+  }
+  return URL.createObjectURL(response.data)
 }
 
 /**

@@ -4,15 +4,23 @@
  */
 
 import type { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import axios from 'axios'
 import type { ExtendedAxiosRequestConfig, InterceptorError } from './types'
 import message from 'ant-design-vue/es/message'
-import axios from 'axios'
 import { shouldShowError, shouldUseNotification } from '@/config/error-config'
 import { AUTH_STORAGE_KEYS, STORAGE_TENANT_ID } from '@/constants/storage-keys'
 import { useAuthStore } from '@/stores/modules/auth'
 import { getValidToken } from '@/utils/auth'
+import { isLoginPath, resolveAppPath } from '@/utils/app-path'
 import { getDeviceHeaders } from '@/utils/device'
 import { handleAxiosError } from '@/utils/error-handler'
+import {
+  buildMarkScannerStationAuthHeaders,
+  clearKioskAuthSession,
+  hasMarkScannerJwtAuth,
+  isMarkScannerStationApiUrl,
+  KIOSK_BROWSER_SESSION_LOST_MESSAGE
+} from '@/utils/kiosk-auth'
 import { getTraceHeaders } from '@/utils/trace'
 import { authRuntimeState } from './auth-state'
 import { AUTH_FAILURE_BUSINESS_CODES, AUTH_FAILURE_STATUS, BUSINESS_CODE, config } from './config'
@@ -93,12 +101,14 @@ service.interceptors.request.use(
 
     const url = requestConfig.url || ''
     const isAuthRequest = url.includes('/login') || url.includes('/oauth2/refresh') || url.includes('/oauth2/token')
+    const isScannerStationApi = isMarkScannerStationApiUrl(url)
     // 公开接口白名单：不需要认证的API
     const isPublicApi = url.includes('/public/')
       || url.includes('/api/auth/tenant-list') // 租户列表（学号登录学校选择器）
       || url.includes('/api/auth/tenant-by-code') // 租户编码查询（网关子域名解析）
       || url.includes('/api/auth/tenants-by-student-no') // 学号查询租户（学号登录学校选择）
       || url.includes('/captcha/') // 验证码
+      || isScannerStationApi
 
     // 如果认证已失败，拒绝所有非登录相关和非公开的请求
     if (authRuntimeState.authFailed && !extendedConfig.skipAuth) {
@@ -115,7 +125,7 @@ service.interceptors.request.use(
     }
 
     // 添加认证token（除非明确跳过）
-    if (!extendedConfig.skipAuth) {
+    if (!extendedConfig.skipAuth && !isScannerStationApi) {
       // 如果认证已失败，只允许登录相关请求和公开API
       if (authRuntimeState.authFailed && !isAuthRequest && !isPublicApi) {
         return Promise.reject(new Error('认证已失败，请重新登录'))
@@ -148,10 +158,22 @@ service.interceptors.request.use(
             authRuntimeState.authFailed = true
             cancelAllPendingRequests()
             AUTH_STORAGE_KEYS.forEach(key => localStorage.removeItem(key))
-            window.location.href = '/login'
+            window.location.href = resolveAppPath('login')
           }
           return Promise.reject(new Error('无有效认证信息，正在跳转登录页'))
         }
+      }
+    }
+
+    // 扫描工位链路（kiosk + scan-live）使用 JWT 或 Agent push_token，不走教师登录跳转。
+    if (isScannerStationApi) {
+      const scannerStationAuthHeaders = buildMarkScannerStationAuthHeaders()
+      if (!scannerStationAuthHeaders.Authorization) {
+        return Promise.reject(new Error('扫描工位缺少鉴权，请先登录或完成一体机 Agent 激活'))
+      }
+      requestConfig.headers.Authorization = scannerStationAuthHeaders.Authorization
+      if (scannerStationAuthHeaders['X-Tenant-Id']) {
+        requestConfig.headers['X-Tenant-Id'] = scannerStationAuthHeaders['X-Tenant-Id']
       }
     }
 
@@ -166,7 +188,7 @@ service.interceptors.request.use(
           authRuntimeState.authFailed = true
           cancelAllPendingRequests()
           AUTH_STORAGE_KEYS.forEach(key => localStorage.removeItem(key))
-          window.location.href = '/login'
+          window.location.href = resolveAppPath('login')
         }
         return Promise.reject(new Error('缺少租户信息，正在跳转登录页'))
       }
@@ -206,7 +228,7 @@ function processFailedQueue(success: boolean): void {
     if (success) {
       resolve(service(config))
     } else {
-      reject(new Error('Token 刷新失败'))
+      reject(new Error('登录状态已失效，请重新登录'))
     }
   })
   failedRequestsQueue = []
@@ -219,7 +241,7 @@ service.interceptors.response.use(
 
     // 处理304 Not Modified状态码
     if (response.status === 304) {
-      return Promise.reject(new Error('后端返回 304，不符合 ResultInfo 响应合同'))
+      return Promise.reject(new Error('服务响应异常，请稍后重试'))
     }
 
     // 如果是blob响应（文件下载），直接返回，不进行JSON解析
@@ -229,14 +251,14 @@ service.interceptors.response.use(
 
     // 处理空响应体的情况（如logout返回204或200但无内容）
     if (!response.data || (response.data as unknown) === '' || typeof response.data !== 'object') {
-      return Promise.reject(new Error('后端响应体缺失，不符合 ResultInfo 响应合同'))
+      return Promise.reject(new Error('服务响应异常，请稍后重试'))
     }
 
     // 特殊处理：退出登录接口 (logout)
     const isLogoutRequest = response.config?.url?.includes('/logout')
     if (isLogoutRequest && response.status === 200) {
       if (!response.data.code || response.data.code !== config.successCode) {
-        return Promise.reject(new Error('退出登录接口响应码不符合 ResultInfo 成功合同'))
+        return Promise.reject(new Error('退出登录失败，请稍后重试'))
       }
     }
 
@@ -246,6 +268,7 @@ service.interceptors.response.use(
       if (AUTH_FAILURE_BUSINESS_CODES.includes(response.data.code)) {
         const url = response.config?.url || ''
         const isAuthRequest = url.includes('/login') || url.includes('/oauth2/refresh') || url.includes('/oauth2/token')
+        const isScannerStationApi = isMarkScannerStationApiUrl(url)
 
         if (isAuthRequest) {
           const authError: InterceptorError = new Error(response.data.msg || '认证失败')
@@ -253,6 +276,17 @@ service.interceptors.response.use(
           authError.response = response
           authError._handledByInterceptor = true
           return Promise.reject(authError)
+        }
+
+        if (isScannerStationApi && !hasMarkScannerJwtAuth()) {
+          clearKioskAuthSession()
+          const kioskAuthError: InterceptorError = new Error(
+            response.data.msg || KIOSK_BROWSER_SESSION_LOST_MESSAGE,
+          )
+          kioskAuthError.code = response.data.code
+          kioskAuthError.response = response
+          kioskAuthError._handledByInterceptor = true
+          return Promise.reject(kioskAuthError)
         }
 
         // TOKEN_KICKED 特殊处理：被踢出不可恢复，直接清除
@@ -308,6 +342,7 @@ service.interceptors.response.use(
       const isAuthRequest = url.includes('/login') || url.includes('/oauth2/refresh') || url.includes('/oauth2/token')
       const isLogoutRequest = url.includes('/logout')
       const isPublicApi = url.includes('/public/')
+      const isScannerStationApi = isMarkScannerStationApiUrl(url)
 
       if (isAuthRequest || isLogoutRequest || isPublicApi) {
         const backendMsg = response?.data?.msg
@@ -331,6 +366,15 @@ service.interceptors.response.use(
         })
         clearAuthAndRedirect()
         return Promise.reject(error)
+      }
+
+      if (isScannerStationApi && !hasMarkScannerJwtAuth()) {
+        clearKioskAuthSession()
+        const kioskAuthError: InterceptorError = new Error(KIOSK_BROWSER_SESSION_LOST_MESSAGE)
+        kioskAuthError.code = response?.data?.code || statusCode
+        kioskAuthError.response = response as AxiosResponse<ResultInfo<unknown>>
+        kioskAuthError._handledByInterceptor = true
+        return Promise.reject(kioskAuthError)
       }
 
       // 尝试用 refresh token 自动续期
@@ -377,15 +421,6 @@ service.interceptors.response.use(
       const isNetworkError = !response
 
       if (isNetworkError || errorStatusCode >= 500) {
-        console.error('[Axios错误] 请求失败:', {
-          url: error.config?.url,
-          method: error.config?.method,
-          status: errorStatusCode,
-          isNetworkError,
-          message: error.message,
-          stack: error.stack
-        })
-
         handleAxiosError(error, {
           showMessage: shouldShowError(errorStatusCode),
           useNotification: shouldUseNotification(errorStatusCode, isNetworkError)
@@ -441,13 +476,13 @@ function clearAuthAndRedirect(): void {
   }
 
   // 跳转到登录页，保留当前路径用于登录后重定向
+  const loginPath = resolveAppPath('login')
   const currentPath = window.location.pathname + window.location.search
-  const redirectPath = currentPath !== '/login' ? `?redirect=${encodeURIComponent(currentPath)}` : ''
+  const redirectPath = !isLoginPath(window.location.pathname) ? `?redirect=${encodeURIComponent(currentPath)}` : ''
 
   // 延迟一小段时间，确保所有请求都被取消
   setTimeout(() => {
-    // 立即跳转到登录页
-    window.location.href = `/login${redirectPath}`
+    window.location.href = `${loginPath}${redirectPath}`
   }, 100)
 }
 

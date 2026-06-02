@@ -66,13 +66,6 @@
             </div>
           </a-col>
         </a-row>
-        <a-alert
-          v-else
-          type="info"
-          show-icon
-          :message="analysisPendingText(record)"
-          class="ai-status-alert"
-        />
 
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -126,19 +119,20 @@
 
 <script lang="ts" setup>
 import type { GradingExperienceCaseVO, QuestionTypeCode } from '@/apis/mark/grading-experience'
-import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   EXPERIENCE_CASE_STATUS_LABEL,
   listExperiences,
   QUESTION_TYPE_LABEL,
 } from '@/apis/mark/grading-experience'
+import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
 import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { runContractGuard } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -186,24 +180,24 @@ function experienceCaseStatusLabel(value: GradingExperienceCaseVO['caseStatus'])
   return strictEnumLabel(EXPERIENCE_CASE_STATUS_LABEL, value, '经验案例状态')
 }
 
-function requireText(value: string | undefined, fieldName: string): string {
+function requireText(value: string | undefined, _fieldName: string): string {
   const normalized = value?.trim()
   if (!normalized) {
-    throw new TypeError(`后端经验有效性评估合同缺失：${fieldName}`)
+    throw toUserError(null, '经验有效性评估数据不完整，请刷新后重试')
   }
   return normalized
 }
 
-function requireNumber(value: number | undefined, fieldName: string): number {
+function requireNumber(value: number | undefined, _fieldName: string): number {
   if (value == null || !Number.isFinite(value)) {
-    throw new TypeError(`后端经验有效性评估合同缺失：${fieldName}`)
+    throw toUserError(null, '经验有效性评估数据不完整，请刷新后重试')
   }
   return value
 }
 
-function requireBoolean(value: boolean | undefined, fieldName: string): boolean {
+function requireBoolean(value: boolean | undefined, _fieldName: string): boolean {
   if (value == null) {
-    throw new TypeError(`后端经验有效性评估合同缺失：${fieldName}`)
+    throw toUserError(null, '经验有效性评估数据不完整，请刷新后重试')
   }
   return value
 }
@@ -211,34 +205,38 @@ function requireBoolean(value: boolean | undefined, fieldName: string): boolean 
 function acceptExperienceEffectivenessRecord(
   item: ExperienceEffectivenessEvalVO,
 ): ExperienceEffectivenessEvalVO {
-  strictEnumLabel(QUESTION_TYPE_LABEL, item.questionType, '题目类型')
-  aiAnalysisStatusLabel(item.analysisStatus)
-  if (item.analysisStatus === 'SUCCESS') {
-    requireText(item.sourceExamName, 'sourceExamName')
-    requireText(item.evalExamName, 'evalExamName')
-    requireText(item.experienceSummary, 'experienceSummary')
-    requireText(item.evalSummary, 'evalSummary')
-    requireText(item.aiTraceId, 'aiTraceId')
-    requireNumber(item.consistencyRate, 'consistencyRate')
-    requireNumber(item.reuseCount, 'reuseCount')
-    requireNumber(item.latencyMs, 'latencyMs')
-    requireBoolean(item.driftDetected, 'driftDetected')
-  } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
-    requireText(item.errorMessage, 'errorMessage')
-  }
+  runContractGuard(() => {
+    strictEnumLabel(QUESTION_TYPE_LABEL, item.questionType, '题目类型')
+    aiAnalysisStatusLabel(item.analysisStatus)
+    if (item.analysisStatus === 'SUCCESS') {
+      requireText(item.sourceExamName, 'sourceExamName')
+      requireText(item.evalExamName, 'evalExamName')
+      requireText(item.experienceSummary, 'experienceSummary')
+      requireText(item.evalSummary, 'evalSummary')
+      requireText(item.aiTraceId, 'aiTraceId')
+      requireNumber(item.consistencyRate, 'consistencyRate')
+      requireNumber(item.reuseCount, 'reuseCount')
+      requireNumber(item.latencyMs, 'latencyMs')
+      requireBoolean(item.driftDetected, 'driftDetected')
+    } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
+      requireText(item.errorMessage, 'errorMessage')
+    }
+  }, '经验有效性评估数据异常，请刷新后重试')
   return item
 }
 
 function acceptExperienceCase(item: GradingExperienceCaseVO): GradingExperienceCaseVO {
-  questionTypeLabel(item.questionType)
-  experienceCaseStatusLabel(item.caseStatus)
-  aiAnalysisStatusLabel(item.analysisStatus)
-  if (item.analysisStatus === 'SUCCESS') {
-    requireText(item.id, 'experienceCaseId')
-    requireText(item.experienceSummary, 'experienceSummary')
-  } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
-    requireText(item.errorMessage, 'errorMessage')
-  }
+  runContractGuard(() => {
+    questionTypeLabel(item.questionType)
+    experienceCaseStatusLabel(item.caseStatus)
+    aiAnalysisStatusLabel(item.analysisStatus)
+    if (item.analysisStatus === 'SUCCESS') {
+      requireText(item.id, 'experienceCaseId')
+      requireText(item.experienceSummary, 'experienceSummary')
+    } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
+      requireText(item.errorMessage, 'errorMessage')
+    }
+  }, '批改经验案例数据异常，请刷新后重试')
   return item
 }
 
@@ -302,12 +300,6 @@ async function handleGenerate(): Promise<void> {
   } finally {
     generating.value = false
   }
-}
-
-function analysisPendingText(item: ExperienceEffectivenessEvalVO): string {
-  if (item.analysisStatus === 'PENDING')
-    return 'AI 经验案例有效性评估处理中，完成后展示一致性、复用和漂移指标'
-  return analysisFailureMessage(item.errorMessage)
 }
 
 function rateStyle(rate?: number): Record<string, string> {

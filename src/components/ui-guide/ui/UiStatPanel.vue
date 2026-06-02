@@ -61,23 +61,26 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<{
-  title?: string
-  description?: string
-  eyebrow?: string
-  items?: UiStatPanelItem[]
-  variant?: Variant
-  columns?: 2 | 3 | 4
-  compact?: boolean
-}>(), {
-  title: '',
-  description: '',
-  eyebrow: '',
-  items: () => [],
-  variant: 'grid',
-  columns: 4,
-  compact: false,
-})
+const props = withDefaults(
+  defineProps<{
+    title?: string
+    description?: string
+    eyebrow?: string
+    items?: UiStatPanelItem[]
+    variant?: Variant
+    columns?: 2 | 3 | 4 | 5
+    compact?: boolean
+  }>(),
+  {
+    title: '',
+    description: '',
+    eyebrow: '',
+    items: () => [],
+    variant: 'grid',
+    columns: 4,
+    compact: false,
+  },
+)
 type Variant = 'grid' | 'strip' | 'compact'
 
 const slots = useSlots()
@@ -116,6 +119,11 @@ const hasHeader = computed(() => {
 .ui-stat-panel--grid.ui-stat-panel--4col .ui-stat-panel__list,
 .ui-stat-panel--compact.ui-stat-panel--4col .ui-stat-panel__list {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ui-stat-panel--grid.ui-stat-panel--5col .ui-stat-panel__list,
+.ui-stat-panel--compact.ui-stat-panel--5col .ui-stat-panel__list {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .ui-stat-panel--strip .ui-stat-panel__list {

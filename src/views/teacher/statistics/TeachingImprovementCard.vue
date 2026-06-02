@@ -29,7 +29,9 @@
           <a-descriptions-item label="生成时间">
             {{ analysisCreateTimeText(record) }}
           </a-descriptions-item>
-          <a-descriptions-item label="生成耗时">{{analysisLatencyText(record) }}</a-descriptions-item>
+          <a-descriptions-item label="生成耗时">{{
+            analysisLatencyText(record)
+          }}</a-descriptions-item>
           <a-descriptions-item label="处理追踪编号" :span="3">
             <a-typography-text
               v-if="analysisTraceId(record)"
@@ -89,22 +91,23 @@ import type {
   ExamTeachingAnalysisRecordVO,
   TeachingImprovementItemVO,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
   generateTeachingImprovement,
   getLatestTeachingImprovement,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 
 defineOptions({ name: 'TeachingImprovementCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
@@ -124,29 +127,25 @@ function acceptTeachingImprovementRecord(
   value: ExamTeachingAnalysisRecordVO | null,
 ): ExamTeachingAnalysisRecordVO | null {
   if (!value) return null
-  if (value.examId !== props.examId) throw new Error('AI 教学改进方案考试 ID 与当前考试不一致')
-  if (value.analysisType !== 'TEACHING_IMPROVEMENT') {
-    throw new Error('AI 教学改进方案分析类型不符合前后端契约')
-  }
-  if (value.scopeType !== 'EXAM') throw new Error('AI 教学改进方案范围类型不符合前后端契约')
-  if (!value.createTime?.trim()) throw new Error('AI 教学改进方案缺失生成时间')
+  const dataError = 'AI 教学改进方案数据异常，请刷新后重试'
+  assertUserFacing(value.examId === props.examId, dataError)
+  assertUserFacing(value.analysisType === 'TEACHING_IMPROVEMENT', dataError)
+  assertUserFacing(value.scopeType === 'EXAM', dataError)
+  assertUserFacing(Boolean(value.createTime?.trim()), dataError)
   if (value.analysisStatus === 'SUCCESS') {
-    if (!value.aiTraceId?.trim()) throw new Error('AI 教学改进方案成功但缺失追踪编号')
-    if (typeof value.latencyMs !== 'number') throw new Error('AI 教学改进方案成功但缺失生成耗时')
-    if (!value.overallSummary?.trim()) throw new Error('AI 教学改进方案成功但缺失总体摘要')
-    if (!value.improvementItems?.length) throw new Error('AI 教学改进方案成功但缺失改进明细')
+    assertUserFacing(Boolean(value.aiTraceId?.trim()), dataError)
+    assertUserFacing(typeof value.latencyMs === 'number', dataError)
+    assertUserFacing(Boolean(value.overallSummary?.trim()), dataError)
+    assertUserFacing(Boolean(value.improvementItems?.length), dataError)
   }
-  if (
-    (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED')
-    && !value.errorMessage?.trim()
-  ) {
-    throw new Error('AI 教学改进方案失败但缺失处理说明')
+  if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') {
+    assertUserFacing(Boolean(value.errorMessage?.trim()), dataError)
   }
   return value
 }
 
 function analysisCreateTimeText(value: ExamTeachingAnalysisRecordVO): string {
-  if (!value.createTime?.trim()) throw new Error('AI 教学改进方案缺失生成时间')
+  if (!value.createTime?.trim()) return '—'
   return formatDateTime(value.createTime)
 }
 
@@ -154,7 +153,7 @@ function analysisLatencyText(value: ExamTeachingAnalysisRecordVO): string {
   if (typeof value.latencyMs === 'number') return `${value.latencyMs} ms`
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
-  throw new Error('AI 教学改进方案成功但缺失生成耗时')
+  return '—'
 }
 
 function analysisTraceId(value: ExamTeachingAnalysisRecordVO): string | undefined {
@@ -164,7 +163,7 @@ function analysisTraceId(value: ExamTeachingAnalysisRecordVO): string | undefine
 function analysisTraceText(value: ExamTeachingAnalysisRecordVO): string {
   if (value.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') return '分析未完成'
-  throw new Error('AI 教学改进方案成功但缺失追踪编号')
+  return value.aiTraceId?.trim() || '—'
 }
 
 async function reload(): Promise<void> {

@@ -8,10 +8,13 @@
           </UiTag>
           <UiTag v-if="task" tone="blue" size="sm">第 {{ task.reviewRound }} 轮</UiTag>
           <template v-if="task">
+            <UiTag tone="purple" size="sm">{{ anonymityModeLabel(task.anonymityMode) }}</UiTag>
+            <UiTag tone="gray" size="sm">{{ allocationUnitLabel(task.taskUnit) }}</UiTag>
             <UiTag tone="gray" size="sm">{{ task.paperDisplay.primaryText }}</UiTag>
             <UiTag v-if="task.paperDisplay.secondaryText" tone="blue" size="sm">
               {{ task.paperDisplay.secondaryText }}
             </UiTag>
+            <UiTag v-if="isReadOnly" tone="green" size="sm">已定稿 · 只读查看</UiTag>
           </template>
           <template v-if="task?.anonymousToken">
             <UiTag v-if="revealedIdentity" tone="orange" size="sm">
@@ -38,7 +41,7 @@
               @click="goToTask(prevTaskId)"
             >
               <template #icon><LeftOutlined /></template>
-              上一题
+              {{ navPrevLabel }}
             </UiButton>
             <span class="marking-task-detail-page__progress">
               {{ batchProgress.current }} / {{ batchProgress.total }}
@@ -49,7 +52,7 @@
               :disabled="!nextTaskId"
               @click="goToTask(nextTaskId)"
             >
-              下一题
+              {{ navNextLabel }}
               <template #icon><RightOutlined /></template>
             </UiButton>
           </template>
@@ -88,12 +91,9 @@
           <UiCard class="info-card">
             <template #title>
               <FileImageOutlined />
-              <span>题目级批阅视图</span>
+              <span>阅卷影像</span>
             </template>
-            <UiEmpty
-              v-if="task.taskUnit === 'WHOLE_PAPER'"
-              description="当前任务为整卷批阅，请使用下方整卷视图加载扫描页"
-            />
+            <UiEmpty v-if="isWholePaperTask" description="整卷批阅在下方原始扫描页区域查看与给分" />
             <UiErrorRetryPanel
               v-else-if="questionViewError"
               :error="questionViewError"
@@ -101,10 +101,10 @@
               compact
               @retry="reloadQuestionView"
             />
-            <a-spin v-else :spinning="questionViewLoading" tip="加载题目切片中...">
+            <a-spin v-else :spinning="questionViewLoading" tip="加载题目信息中...">
               <UiEmpty
                 v-if="!questionViewLoaded && !questionViewLoading"
-                description="题目切片尚未加载"
+                description="题目信息尚未加载"
               />
               <div v-else-if="questionView" class="question-viewer">
                 <div class="question-viewer__header">
@@ -118,42 +118,34 @@
                 >
                   {{ questionView.questionStem }}
                 </a-typography-paragraph>
-                <a-image
-                  v-if="questionImageUrl"
-                  :src="questionImageUrl"
-                  :preview="{}"
-                  class="question-viewer__image"
+                <MarkingScanMaterialPanel
+                  :slice-file-id="questionView.sliceFileId"
+                  :source-scan-page="questionView.sourceScanPage"
                 />
-                <UiEmpty v-else description="题目切片图片加载中..." />
               </div>
             </a-spin>
           </UiCard>
 
-          <UiCard v-if="task.taskUnit === 'WHOLE_PAPER'" class="info-card">
+          <UiCard v-if="isWholePaperTask" class="info-card">
             <template #title>
               <FileImageOutlined />
-              <span>整卷视图</span>
+              <span>原始扫描页</span>
             </template>
             <template #extra>
               <UiButton
-                v-if="!wholePagesLoaded"
                 size="sm"
                 variant="outline"
                 :loading="wholePagesLoading"
                 :disabled="!task.id || !task.examId"
-                @click="openWholePaperView"
+                @click="reloadWholePaperView"
               >
-                <template #icon><FileImageOutlined /></template>
-                加载整卷扫描页
-              </UiButton>
-              <UiButton v-else size="sm" variant="outline" @click="reloadWholePaperView">
                 <template #icon><ReloadOutlined /></template>
-                重新加载
+                刷新整卷
               </UiButton>
             </template>
             <UiEmpty
               v-if="!wholePagesLoaded && !wholePagesLoading"
-              description="点击右上角加载本试卷所有扫描页"
+              description="正在加载整卷扫描页…"
             />
             <UiErrorRetryPanel
               v-else-if="wholePagesError"
@@ -176,18 +168,31 @@
                   <div class="whole-paper-gallery__page-header">
                     <UiTag tone="blue" size="sm">第 {{ page.pageSeq }} 页</UiTag>
                     <UiTag tone="gray" size="sm">模板页 {{ page.templatePageNo }}</UiTag>
+                    <UiTag :tone="scanPageQualityTone(page.qualityStatus)" size="sm">
+                      {{ scanPageQualityLabel(page.qualityStatus) }}
+                    </UiTag>
                   </div>
+                  <UiAlertStrip
+                    v-if="page.qualityStatus === 'BLOCKED'"
+                    tone="warning"
+                    title="扫描页质量阻断"
+                    description="该页扫描质量未通过自动检测，请结合原始影像谨慎批阅。"
+                    dense
+                  />
                   <a-image
                     v-if="wholePageImageUrls[page.pageId]"
                     :src="wholePageImageUrls[page.pageId]"
                     :preview="{}"
                     class="whole-paper-gallery__image"
-                  />
+                  >
+                    <template #previewMask>点击查看原始扫描页</template>
+                  </a-image>
                   <UiEmpty v-else description="扫描页图片加载中..." />
                   <a-textarea
                     v-model:value="wholePageAnnotationForms[page.pageId]"
                     :rows="3"
                     :maxlength="1000"
+                    :disabled="isReadOnly"
                     class="whole-paper-gallery__annotation"
                     placeholder="页面级批注，可选"
                     show-count
@@ -217,9 +222,7 @@
               </a-descriptions-item>
               <a-descriptions-item label="题组编号">
                 <a-typography-text v-if="task.groupId" copyable>
-                  {{
-                    task.groupId
-                  }}
+                  {{ task.groupId }}
                 </a-typography-text>
                 <UiTag v-else tone="gray" size="sm">组织级任务</UiTag>
               </a-descriptions-item>
@@ -266,14 +269,13 @@
             </template>
 
             <a-alert
-              v-if="!canSubmit"
-              type="info"
+              v-if="isReadOnly"
+              type="success"
               show-icon
-              message="当前任务状态不允许提交"
-              description="仅已分配或批改中状态可以提交批改。"
+              message="阅卷已提交，当前为只读查看"
+              :description="readOnlyHint"
               style="margin-bottom: 12px"
             />
-
             <a-form
               ref="formRef"
               :model="form"
@@ -281,7 +283,7 @@
               layout="vertical"
               :disabled="!canSubmit"
             >
-              <template v-if="task.taskUnit === 'WHOLE_PAPER'">
+              <template v-if="isWholePaperTask">
                 <UiEmpty
                   v-if="wholeQuestions.length === 0"
                   description="请先加载整卷扫描页和题目清单后再提交"
@@ -301,6 +303,7 @@
                     :min="0"
                     :max="question.fullScore"
                     :step="0.5"
+                    :disabled="isReadOnly"
                     style="width: 100%; margin-bottom: 8px"
                     placeholder="本题给分"
                   />
@@ -308,6 +311,7 @@
                     v-model:value="getWholeQuestionForm(question.questionTemplateId).annotationText"
                     :rows="3"
                     :maxlength="1000"
+                    :disabled="isReadOnly"
                     placeholder="题目批注，可选"
                     show-count
                   />
@@ -323,11 +327,7 @@
                   placeholder="按题目满分给分"
                 />
               </a-form-item>
-              <a-form-item
-                v-if="task.taskUnit !== 'WHOLE_PAPER'"
-                label="批改批注"
-                name="annotationNote"
-              >
+              <a-form-item v-if="!isWholePaperTask" label="批改批注" name="annotationNote">
                 <a-textarea
                   v-model:value="form.annotationNote"
                   :rows="6"
@@ -336,14 +336,8 @@
                   show-count
                 />
               </a-form-item>
-              <a-form-item>
-                <UiButton
-                  block
-                  size="md"
-                  :disabled="!canSubmit"
-                  :loading="submitting"
-                  @click="submit"
-                >
+              <a-form-item v-if="canSubmit">
+                <UiButton block size="md" :loading="submitting" @click="submit">
                   确认给分并提交
                 </UiButton>
               </a-form-item>
@@ -365,7 +359,18 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { ExamDetailVO } from '@/apis/mark/exam'
+import type {
+  AnnotationVO,
+  ExamDetailVO,
+  PaperInstanceDisplayVO,
+  QualityDecisionCode,
+} from '@/apis/mark/exam'
+import {
+  getExamDetail,
+  listAnnotations,
+  QUALITY_DECISION_LABEL,
+  QUALITY_DECISION_TONE,
+} from '@/apis/mark/exam'
 import type {
   AllocationUnitCode,
   AnonymityModeCode,
@@ -374,9 +379,21 @@ import type {
   MarkingQuestionScoreSubmitItem,
   MarkingQuestionViewVO,
   MarkingTaskStatusCode,
+  MarkingTaskSubmittedQuestionScoreVO,
   MarkingTaskVO,
   QuestionMarkingGroupQuestionVO,
   ScannedPageRef,
+} from '@/apis/mark/marking-organization'
+import {
+  ALLOCATION_UNIT_LABEL,
+  ANONYMITY_MODE_LABEL,
+  getMarkingQuestionView,
+  getMarkingScanPageDisplayBlobUrl,
+  getMarkingTaskDetail,
+  getWholePaperView,
+  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
+  MARKING_TASK_STATUS_TONE as STATUS_TONE,
+  submitMarkingTask,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
@@ -391,25 +408,23 @@ import { storeToRefs } from 'pinia'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
-import { getExamDetail } from '@/apis/mark/exam'
-import {
-  ALLOCATION_UNIT_LABEL,
-  ANONYMITY_MODE_LABEL,
-  getMarkingQuestionView,
-  getMarkingTaskDetail,
-  getWholePaperView,
-  MARKING_TASK_STATUS_LABEL as STATUS_LABEL,
-  MARKING_TASK_STATUS_TONE as STATUS_TONE,
-  submitMarkingTask,
-} from '@/apis/mark/marking-organization'
+import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import RevealAnonymousModal from '@/components/mark/RevealAnonymousModal.vue'
-import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import {
+  UiAlertStrip,
+  UiButton,
+  UiCard,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingTaskDetail' })
@@ -432,6 +447,14 @@ function anonymityModeLabel(mode: AnonymityModeCode): string {
   return strictEnumLabel(ANONYMITY_MODE_LABEL, mode, '匿名模式')
 }
 
+function scanPageQualityLabel(status: QualityDecisionCode): string {
+  return strictEnumLabel(QUALITY_DECISION_LABEL, status, '扫描页质量判定')
+}
+
+function scanPageQualityTone(status: QualityDecisionCode): BadgeTone {
+  return strictEnumTone(QUALITY_DECISION_TONE, status, '扫描页质量判定')
+}
+
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 
 const task = ref<MarkingTaskVO | null>(null)
@@ -441,11 +464,69 @@ const loading = ref(false)
 // D-9 错误态：阅卷任务详情加载失败时 UiErrorRetryPanel 重试 + 上报
 const taskLoadError = ref<Error | null>(null)
 
+const isReadOnly = computed(() => task.value?.taskStatus === 'FINALIZED')
+
+const isWholePaperTask = computed(() => task.value?.taskUnit === 'WHOLE_PAPER')
+
 const canSubmit = computed(() => {
-  // task.value?.taskStatus 本身就是 MarkingTaskStatusCode | undefined，无需任何 cast。
   const status = task.value?.taskStatus
   return status === 'ALLOCATED' || status === 'IN_PROGRESS'
 })
+
+const navPrevLabel = computed(() => (isWholePaperTask.value ? '上一份' : '上一题'))
+
+const navNextLabel = computed(() => (isWholePaperTask.value ? '下一份' : '下一题'))
+
+const readOnlyHint = computed(() => {
+  if (!task.value?.submittedAt) return '可查看扫描页、逐题给分与页面批注，不可再次修改。'
+  return `提交于 ${formatDateTime(task.value.submittedAt)}，可查看扫描页、逐题给分与页面批注，不可再次修改。`
+})
+
+function resolvePaperInstanceId(display: PaperInstanceDisplayVO): string | undefined {
+  if (display.displayMode === 'REAL_NAME' || display.displayMode === 'ANONYMOUS') {
+    return display.paperInstanceId
+  }
+  return undefined
+}
+
+const paperInstanceId = computed(() => {
+  if (!task.value) return undefined
+  return resolvePaperInstanceId(task.value.paperDisplay)
+})
+
+function applySubmittedQuestionScores(scores: MarkingTaskSubmittedQuestionScoreVO[]): void {
+  if (!scores.length) return
+  if (isWholePaperTask.value) {
+    for (const item of scores) {
+      const questionForm = getWholeQuestionForm(item.questionTemplateId)
+      questionForm.score = Number(item.score)
+      questionForm.annotationText = item.annotationText || ''
+    }
+    return
+  }
+  const first = scores[0]
+  form.score = Number(first.score)
+  form.annotationNote = first.annotationText || ''
+}
+
+async function loadSubmittedPageAnnotations(): Promise<void> {
+  const examId = task.value?.examId
+  const paperId = paperInstanceId.value
+  if (!examId || !paperId || !wholePages.value.length) return
+  const page = await listAnnotations({
+    examId,
+    paperInstanceId: paperId,
+    pageNum: 1,
+    pageSize: 500,
+  })
+  const pageAnnotations = readPageList(page, '批注列表加载失败，请刷新后重试').filter(
+    (item: AnnotationVO) => item.annotationScope === 'PAGE',
+  )
+  for (const annotation of pageAnnotations) {
+    if (!annotation.pageId || !annotation.annotationText) continue
+    wholePageAnnotationForms[annotation.pageId] = annotation.annotationText
+  }
+}
 
 // ─── P2 上下题快捷导航 ─────────────────────────────────
 // 来源：markTaskStore.tasks（教师在该考试下已加载的本批阅卷任务列表）
@@ -508,7 +589,15 @@ async function loadTask(): Promise<void> {
     }
     // 详情加载成功后回灌本批任务到 store，让上下题导航在直链刷新场景下也可用
     void ensureBatchLoaded(detail.examId)
-    if (detail.taskUnit !== 'WHOLE_PAPER') {
+    if (detail.submittedQuestionScores?.length) {
+      applySubmittedQuestionScores(detail.submittedQuestionScores)
+    }
+    if (detail.taskUnit === 'WHOLE_PAPER') {
+      await openWholePaperView()
+      if (detail.taskStatus === 'FINALIZED') {
+        await loadSubmittedPageAnnotations()
+      }
+    } else {
       await openQuestionView(detail)
     }
   } catch (error) {
@@ -544,7 +633,6 @@ const questionView = ref<MarkingQuestionViewVO | null>(null)
 const questionViewLoaded = ref(false)
 const questionViewLoading = ref(false)
 const questionViewError = ref<Error | null>(null)
-const questionImageUrl = ref('')
 
 async function openQuestionView(currentTask = task.value): Promise<void> {
   if (!currentTask?.examId || !currentTask.id) {
@@ -557,10 +645,8 @@ async function openQuestionView(currentTask = task.value): Promise<void> {
       examId: currentTask.examId,
       taskId: currentTask.id,
     })
-    releaseQuestionImage()
     questionView.value = view
     questionViewLoaded.value = true
-    questionImageUrl.value = await getImageBlobUrl(view.sliceFileId)
   } catch (error) {
     questionViewError.value = toUserError(error, '题目视图加载失败')
     showUserError(error, '题目级批阅视图加载失败')
@@ -569,15 +655,7 @@ async function openQuestionView(currentTask = task.value): Promise<void> {
   }
 }
 
-function releaseQuestionImage(): void {
-  if (questionImageUrl.value) {
-    URL.revokeObjectURL(questionImageUrl.value)
-    questionImageUrl.value = ''
-  }
-}
-
 async function reloadQuestionView(): Promise<void> {
-  releaseQuestionImage()
   questionView.value = null
   questionViewLoaded.value = false
   await openQuestionView()
@@ -599,6 +677,24 @@ interface WholeQuestionForm {
 const wholeQuestionForms = reactive<Record<string, WholeQuestionForm>>({})
 const wholePageAnnotationForms = reactive<Record<string, string>>({})
 
+async function loadWholePageImage(
+  page: ScannedPageRef,
+  examId: string,
+  taskId: string,
+): Promise<string> {
+  if (page.identityMaskedView) {
+    return getMarkingScanPageDisplayBlobUrl({
+      examId,
+      taskId,
+      pageId: page.pageId,
+    })
+  }
+  if (!page.fileId) {
+    throw new Error('扫描页缺少展示文件ID')
+  }
+  return getImageBlobUrl(page.fileId)
+}
+
 async function openWholePaperView(): Promise<void> {
   if (!task.value?.examId || !task.value?.id) {
     return
@@ -613,10 +709,13 @@ async function openWholePaperView(): Promise<void> {
     wholePages.value = view.pages
     wholeQuestions.value = view.questions
     syncWholePaperForms(view.questions, view.pages)
-    // 整卷视图缺任意扫描页图片都属于阅卷材料不完整，直接进入错误态暴露合同/文件链路问题。
     await Promise.all(
       view.pages.map(async (page) => {
-        wholePageImageUrls[page.pageId] = await getImageBlobUrl(page.fileId)
+        wholePageImageUrls[page.pageId] = await loadWholePageImage(
+          page,
+          task.value!.examId,
+          task.value!.id,
+        )
       }),
     )
     wholePagesLoaded.value = true
@@ -705,13 +804,14 @@ function handleAnonymousRevealed(result: AnonymousRevealVO): void {
   }
   const expireAt = Date.parse(result.revealExpireTime)
   if (!Number.isFinite(expireAt)) {
-    throw new TypeError('解匿名响应.revealExpireTime 不是合法时间')
+    showUserError(null, '身份查看时间异常，请稍后重试')
+    return
   }
   revealExpireTimer = window.setTimeout(clearRevealedIdentity, Math.max(expireAt - Date.now(), 0))
 }
 
 const formRef = ref<FormInstance>()
-const form = reactive<{ score?: number, annotationNote?: string }>({
+const form = reactive<{ score?: number; annotationNote?: string }>({
   score: undefined,
   annotationNote: '',
 })
@@ -739,7 +839,7 @@ function createCorrelationId(scope: 'question' | 'page', id: string): string {
 
 function buildQuestionSubmitRequest(): MarkingQuestionScoreSubmitItem {
   if (!questionView.value) {
-    throw new Error('题目级批阅视图未加载，无法提交')
+    throw new Error('题目视图未加载，请刷新后重试')
   }
   if (form.score === undefined) {
     throw new Error('请填写教师给分')
@@ -757,7 +857,7 @@ function buildWholePaperSubmitRequest(): {
   pageAnnotations: MarkingPageAnnotationSubmitItem[]
 } {
   if (wholeQuestions.value.length === 0) {
-    throw new Error('整卷题目清单未加载，无法提交')
+    throw new Error('整卷题目清单未加载，请刷新后重试')
   }
   const questionScores: MarkingQuestionScoreSubmitItem[] = wholeQuestions.value.map((question) => {
     const questionForm = getWholeQuestionForm(question.questionTemplateId)
@@ -785,7 +885,7 @@ function buildWholePaperSubmitRequest(): {
 
 async function submit(): Promise<void> {
   if (!taskId.value || !task.value || !formRef.value) return
-  if (task.value.taskUnit !== 'WHOLE_PAPER') {
+  if (!isWholePaperTask.value) {
     try {
       await formRef.value.validate()
     } catch {
@@ -794,13 +894,12 @@ async function submit(): Promise<void> {
   }
   submitting.value = true
   try {
-    const submitRequest
-      = task.value.taskUnit === 'WHOLE_PAPER'
-        ? buildWholePaperSubmitRequest()
-        : {
-            questionScores: [buildQuestionSubmitRequest()],
-            pageAnnotations: [],
-          }
+    const submitRequest = isWholePaperTask.value
+      ? buildWholePaperSubmitRequest()
+      : {
+          questionScores: [buildQuestionSubmitRequest()],
+          pageAnnotations: [],
+        }
     await submitMarkingTask({ taskId: taskId.value, ...submitRequest })
     message.success('阅卷任务已提交')
     await loadTask()
@@ -818,7 +917,6 @@ watch(taskId, () => {
   task.value = null
   examDetail.value = null
   // 切题时同步重置视图 + 解匿名状态，防止跨试卷数据串扰
-  releaseQuestionImage()
   questionView.value = null
   questionViewLoaded.value = false
   questionViewLoading.value = false
@@ -843,7 +941,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearRevealedIdentity()
-  releaseQuestionImage()
   releaseWholePageImages()
 })
 </script>
