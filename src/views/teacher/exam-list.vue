@@ -316,15 +316,6 @@ import type {
   ExamSummaryVO,
   GradingStrategyCode,
 } from '@/apis/mark/exam'
-import {
-  createExam,
-  deleteExam,
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  GRADING_STRATEGY_LABEL,
-  pageExams,
-  updateExam,
-} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -335,6 +326,15 @@ import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  createExam,
+  deleteExam,
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  GRADING_STRATEGY_LABEL,
+  pageExams,
+  updateExam,
+} from '@/apis/mark/exam'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import {
   UiAlertStrip,
@@ -395,7 +395,7 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -482,7 +482,7 @@ function handleReset(): void {
   pagination.current = 1
   void loadExams()
 }
-function handleUiPageChange(page: { current: number; pageSize: number }): void {
+function handleUiPageChange(page: { current: number, pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadExams()
@@ -678,8 +678,8 @@ function openEditModal(exam: ExamSummaryVO): void {
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow =
-    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.examWindow
+    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.gradingStrategy = exam.gradingStrategy
   examForm.remark = exam.remark ?? ''
   formModalOpen.value = true

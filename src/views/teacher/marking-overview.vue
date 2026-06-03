@@ -192,16 +192,16 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO, MarkingProgressVO } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
   getMarkingProgress,
   pageExams,
 } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -231,7 +231,7 @@ function examStatusLabel(status: ExamStatusCode): string {
   return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
 }
 
-const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -441,7 +441,7 @@ const stages = computed<WorkbenchStage[]>(() => {
   ]
 })
 
-const urgentBanner = computed<{ title: string; description: string } | null>(() => {
+const urgentBanner = computed<{ title: string, description: string } | null>(() => {
   const a = aggregate.value
   if (!progressReady.value || progressLoadError.value) return null
   if (a.scanAttention > 0) {
@@ -526,7 +526,7 @@ function resetQuery(): void {
   void loadExams()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }): void {
+function handlePageChange(page: { current: number, pageSize: number }): void {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadExams()

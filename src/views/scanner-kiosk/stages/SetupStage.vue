@@ -15,7 +15,8 @@ import {
   SyncOutlined,
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
-import { getSemesterDescription, SemesterCode, SemesterOptions } from '@/types'
+import type { SemesterCode} from '@/types';
+import { getSemesterDescription, SemesterOptions } from '@/types'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, mutex } = useKioskCtx()

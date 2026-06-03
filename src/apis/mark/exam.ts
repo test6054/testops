@@ -416,12 +416,12 @@ function validateExamTemplateContract(record: ExamTemplateVO): ExamTemplateVO {
  *   <li>AI_GRADE：客观题未配标准答案或显式选 AI 评分时由 AI 给出评分（NEED_REVIEW），教师复核确认后落地。</li>
  * </ul>
  */
-export type ObjectiveComparePolicyCode =
-  | 'EXACT_NORMALIZED'
-  | 'CHOICE_SET'
-  | 'REGEX'
-  | 'NUMERIC_TOLERANCE'
-  | 'AI_GRADE'
+export type ObjectiveComparePolicyCode
+  = | 'EXACT_NORMALIZED'
+    | 'CHOICE_SET'
+    | 'REGEX'
+    | 'NUMERIC_TOLERANCE'
+    | 'AI_GRADE'
 
 /** 客观题比较策略选项，供前端 a-select 渲染 */
 export const OBJECTIVE_COMPARE_POLICY_OPTIONS: Array<{
@@ -796,13 +796,13 @@ export async function listExamCandidates(examId: string): Promise<ExamCandidateV
 // ─── 考试成绩汇总（成绩确认 / 成绩发布列表） ──────────────────────────
 
 /** 与后端 FinalScoreStatus 枚举对齐（共 6 个状态） */
-export type FinalScoreStatusCode =
-  | 'PENDING'
-  | 'CALCULATED'
-  | 'CONFIRMED'
-  | 'CORRECTED'
-  | 'PUBLISHED'
-  | 'WITHDRAWN'
+export type FinalScoreStatusCode
+  = | 'PENDING'
+    | 'CALCULATED'
+    | 'CONFIRMED'
+    | 'CORRECTED'
+    | 'PUBLISHED'
+    | 'WITHDRAWN'
 
 /** 最终成绩状态文案映射 */
 export const FINAL_SCORE_STATUS_LABEL: Record<FinalScoreStatusCode, string> = {
@@ -871,10 +871,10 @@ export interface UnboundPaperInstanceDisplayVO extends PaperInstanceDisplayBaseV
 }
 
 /** 答卷展示信息 - 对应 PaperInstanceDisplayVO */
-export type PaperInstanceDisplayVO =
-  | RealNamePaperInstanceDisplayVO
-  | AnonymousPaperInstanceDisplayVO
-  | UnboundPaperInstanceDisplayVO
+export type PaperInstanceDisplayVO
+  = | RealNamePaperInstanceDisplayVO
+    | AnonymousPaperInstanceDisplayVO
+    | UnboundPaperInstanceDisplayVO
 
 /** 考试成绩汇总查询请求 - 对应 ExamScoreSummaryQueryRequest */
 export interface ExamScoreSummaryQueryRequest extends QueryDto {
@@ -918,20 +918,20 @@ export function pageExamScoreSummary(
 
 // ─── 扫描与导入链路 ─────────────────────────────────────────────
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
-export type ScanAttentionTypeCode =
-  | 'QUALITY_BLOCK'
-  | 'PROCESSING_BLOCK'
-  | 'DUPLICATE_PENDING'
-  | 'RECOGNITION_REVIEW'
-  | 'BINDING_CONFLICT'
+export type ScanAttentionTypeCode
+  = | 'QUALITY_BLOCK'
+    | 'PROCESSING_BLOCK'
+    | 'DUPLICATE_PENDING'
+    | 'RECOGNITION_REVIEW'
+    | 'BINDING_CONFLICT'
 
 /** 扫描异常来源类型 - 对应后端扫描异常聚合 SQL 固定来源 */
-export type ScanAttentionSourceTypeCode =
-  | 'SCANNED_PAGE'
-  | 'PROCESSING_TASK'
-  | 'DUPLICATE_RESOLUTION'
-  | 'GRADE_RESULT'
-  | 'PAPER_INSTANCE'
+export type ScanAttentionSourceTypeCode
+  = | 'SCANNED_PAGE'
+    | 'PROCESSING_TASK'
+    | 'DUPLICATE_RESOLUTION'
+    | 'GRADE_RESULT'
+    | 'PAPER_INSTANCE'
 
 export interface ScanAttentionQueryRequest extends QueryDto {
   examId: string
@@ -1474,15 +1474,15 @@ export interface ReviewTaskQueryRequest extends QueryDto {
  * 复核任务类型编码 - 与后端 com.nybc.edu.common.enums.TaskType 一一对齐。
  * 仅复核任务相关 3 类（其它任务类型不会出现在复核任务列表中）。
  */
-export type ReviewTaskTypeCode =
-  | 'OBJECTIVE_AUTO_REVIEW'
-  | 'OBJECTIVE_AI_REVIEW'
-  | 'SUBJECTIVE_AI_REVIEW'
+export type ReviewTaskTypeCode
+  = | 'OBJECTIVE_AUTO_REVIEW'
+    | 'OBJECTIVE_AI_REVIEW'
+    | 'SUBJECTIVE_AI_REVIEW'
 
 /** 复核任务类型中文标签与颜色，便于前端 tag 渲染 */
 export const REVIEW_TASK_TYPE_META: Record<
   ReviewTaskTypeCode,
-  { label: string; color: 'blue' | 'green' | 'purple' }
+  { label: string, color: 'blue' | 'green' | 'purple' }
 > = {
   OBJECTIVE_AUTO_REVIEW: { label: '客观题（硬比对）', color: 'green' },
   OBJECTIVE_AI_REVIEW: { label: '客观题（AI 评分）', color: 'blue' },
@@ -1492,12 +1492,12 @@ export const REVIEW_TASK_TYPE_META: Record<
 /**
  * 批改来源编码 - 与后端 com.nybc.edu.common.enums.GradeSource 一一对齐。
  */
-export type GradeSourceCode =
-  | 'AUTO_OBJECTIVE'
-  | 'AUTO_OBJECTIVE_AI'
-  | 'LOCAL_SUBJECTIVE_AI'
-  | 'TEACHER'
-  | 'RECOGNITION_FAILURE'
+export type GradeSourceCode
+  = | 'AUTO_OBJECTIVE'
+    | 'AUTO_OBJECTIVE_AI'
+    | 'LOCAL_SUBJECTIVE_AI'
+    | 'TEACHER'
+    | 'RECOGNITION_FAILURE'
 /** 复核任务状态编码 - 与后端 ReviewTaskStatus 枚举对齐 */
 export type ReviewTaskStatusCode = 'PENDING' | 'IN_PROGRESS' | 'APPROVED' | 'REJECTED'
 

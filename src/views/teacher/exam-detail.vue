@@ -169,14 +169,7 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import { computed, onMounted, ref, watch } from 'vue'
 import type { ExamDetailVO, ExamStatusCode, GradingStrategyCode } from '@/apis/mark/exam'
-import {
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  getExamDetail,
-  GRADING_STRATEGY_LABEL,
-} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -184,7 +177,14 @@ import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  getExamDetail,
+  GRADING_STRATEGY_LABEL,
+} from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
