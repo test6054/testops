@@ -4,23 +4,13 @@
  */
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import type {
   ExamDetailVO,
   ExamMaterialLayoutModeCode,
   ExamPrintSourceModeCode,
   ExamStatusCode,
 } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
-import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
-import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   EXAM_MATERIAL_LAYOUT_MODE_LABEL,
   EXAM_PRINT_SOURCE_MODE_LABEL,
@@ -29,6 +19,16 @@ import {
   getExamDetail,
   saveMaterialLayout,
 } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { WorkbenchStageStatus } from '@/types/workbench'
+import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import message from 'ant-design-vue/es/message'
+import { useRouter } from 'vue-router'
 import {
   UiBadge,
   UiButton,
@@ -38,7 +38,7 @@ import {
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageRail, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -46,12 +46,12 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
 
-type PrepStepKey
-  = | 'answerSheet'
-    | 'paperMaster'
-    | 'paperTemplate'
-    | 'printPackage'
-    | 'candidateRoster'
+type PrepStepKey =
+  | 'answerSheet'
+  | 'paperMaster'
+  | 'paperTemplate'
+  | 'printPackage'
+  | 'candidateRoster'
 
 interface PrepStepCard {
   key: PrepStepKey
@@ -162,8 +162,8 @@ const layoutDirty = computed(() => {
   const d = detail.value
   if (!d) return false
   return (
-    draftLayoutMode.value !== d.materialLayoutMode
-    || (draftLayoutMode.value === 'FULL_PAPER' && draftPrintSource.value !== d.printSourceMode)
+    draftLayoutMode.value !== d.materialLayoutMode ||
+    (draftLayoutMode.value === 'FULL_PAPER' && draftPrintSource.value !== d.printSourceMode)
   )
 })
 
@@ -300,15 +300,6 @@ const prepSteps = computed<PrepStepCard[]>(() => {
   return steps
 })
 
-const stageRail = computed<WorkbenchStage[]>(() =>
-  prepSteps.value.map((step) => ({
-    key: step.key,
-    title: step.title,
-    status: step.status,
-    statusText: step.statusText,
-  })),
-)
-
 const advisoryReasons = computed(() => {
   if (detail.value?.prepBlockingReasons?.length) {
     return detail.value.prepBlockingReasons
@@ -359,9 +350,9 @@ function syncStageProgressToStore(): void {
     : pendingCount > 0
       ? 'warning'
       : 'active'
-  const examPrepHint
-    = advisoryReasons.value[0]
-      ?? (allCompleted
+  const examPrepHint =
+    advisoryReasons.value[0] ??
+    (allCompleted
       ? `准备全部就绪（${completedCount}/${steps.length}）`
       : `准备进度 ${completedCount}/${steps.length}`)
   const layoutStep = steps.find((s) => s.key === 'answerSheet' || s.key === 'paperMaster')
@@ -502,10 +493,9 @@ onMounted(async () => {
         </UiCard>
 
         <template v-if="detail?.materialLayoutMode">
-          <StageRail :stages="stageRail" compact class="exam-prep__stages" />
           <UiStatPanel
             :items="statMetrics"
-            :columns="3"
+            :columns="5"
             variant="grid"
             compact
             class="exam-prep__signals"
@@ -542,9 +532,7 @@ onMounted(async () => {
                   {{ step.primaryAction }}
                 </UiButton>
                 <UiTag v-if="step.advisoryReason" tone="orange" size="sm">
-                  {{
-                    step.advisoryReason
-                  }}
+                  {{ step.advisoryReason }}
                 </UiTag>
               </a-space>
             </UiCard>
@@ -571,9 +559,6 @@ onMounted(async () => {
     font-size: 13px;
     color: var(--dp-text-muted, #64748b);
   }
-  &__stages {
-    margin-bottom: 16px;
-  }
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
@@ -592,7 +577,7 @@ onMounted(async () => {
   }
   &__cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 16px;
   }
   &__card {
@@ -609,6 +594,33 @@ onMounted(async () => {
     font-size: 13px;
     color: var(--dp-text-muted, #64748b);
     line-height: 1.6;
+  }
+}
+
+@media (max-width: 1400px) {
+  .exam-prep {
+    &__cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 960px) {
+  .exam-prep {
+    &__cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .exam-prep {
+    &__select {
+      width: 100%;
+    }
+    &__cards {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 }
 </style>

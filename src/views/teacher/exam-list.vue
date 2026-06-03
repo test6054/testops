@@ -146,86 +146,82 @@
         class="exam-table"
         @page-change="handleUiPageChange"
       >
-        <template #bodyCell="{ column, index }">
+        <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'examName'">
-            <button type="button" class="link-cell" @click="goDetail(dataSource[index])">
-              {{ dataSource[index].examName }}
+            <button type="button" class="link-cell" @click="goDetail(record)">
+              {{ record.examName }}
             </button>
-            <div v-if="dataSource[index].examNo" class="link-cell__sub">
-              编号：{{ dataSource[index].examNo }}
-            </div>
+            <div v-if="record.examNo" class="link-cell__sub">编号：{{ record.examNo }}</div>
           </template>
           <template v-else-if="column.key === 'academicTerm'">
-            <span v-if="formatAcademicTerm(dataSource[index])">
-              {{ formatAcademicTerm(dataSource[index]) }}
+            <span v-if="formatAcademicTerm(record)">
+              {{ formatAcademicTerm(record) }}
             </span>
             <span v-else class="muted">未设置</span>
           </template>
           <template v-else-if="column.key === 'status'">
-            <UiTag :tone="examStatusTone(dataSource[index])" size="sm">
-              {{ examStatusLabel(dataSource[index]) }}
+            <UiTag :tone="examStatusTone(record)" size="sm">
+              {{ examStatusLabel(record) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'examWindow'">
-            <span v-if="dataSource[index].examStartTime || dataSource[index].examEndTime">
-              {{ formatDateTime(dataSource[index].examStartTime) }}
+            <span v-if="record.examStartTime || record.examEndTime">
+              {{ formatDateTime(record.examStartTime) }}
               <span class="time-divider">~</span>
-              {{ formatDateTime(dataSource[index].examEndTime) }}
+              {{ formatDateTime(record.examEndTime) }}
             </span>
             <span v-else class="muted">未设置</span>
           </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatDateTime(dataSource[index].createTime) }}
+            {{ formatDateTime(record.createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space>
-              <UiButton size="sm" variant="ghost" @click="goDetail(dataSource[index])">
-                详情
-              </UiButton>
+              <UiButton size="sm" variant="ghost" @click="goDetail(record)"> 详情 </UiButton>
               <UiButton
-                v-if="dataSource[index].status !== 'CLOSED'"
+                v-if="record.status !== 'CLOSED'"
                 size="sm"
                 variant="ghost"
-                @click="openEditModal(dataSource[index])"
+                @click="openEditModal(record)"
               >
                 编辑
               </UiButton>
               <UiButton
-                v-if="dataSource[index].status !== 'CLOSED'"
+                v-if="record.status !== 'CLOSED'"
                 size="sm"
                 variant="ghost"
                 status="danger"
-                @click="confirmDelete(dataSource[index])"
+                @click="confirmDelete(record)"
               >
                 删除
               </UiButton>
               <UiButton
-                v-if="dataSource[index].status !== 'CLOSED'"
+                v-if="record.status !== 'CLOSED'"
                 size="sm"
-                @click="goPrepWorkbench(dataSource[index])"
+                @click="goPrepWorkbench(record)"
               >
                 准备工作台
               </UiButton>
               <UiButton
-                v-if="canAssignMarking(dataSource[index])"
+                v-if="canAssignMarking(record)"
                 size="sm"
-                @click="goMarkingOrganization(dataSource[index])"
+                @click="goMarkingOrganization(record)"
               >
                 分配批阅
               </UiButton>
               <UiButton
-                v-if="dataSource[index].status !== 'CLOSED'"
+                v-if="record.status !== 'CLOSED'"
                 size="sm"
                 variant="ghost"
-                @click="goTemplate(dataSource[index])"
+                @click="goTemplate(record)"
               >
                 配置模板
               </UiButton>
               <UiButton
-                v-if="dataSource[index].status !== 'CLOSED'"
+                v-if="record.status !== 'CLOSED'"
                 size="sm"
                 variant="ghost"
-                @click="goRoster(dataSource[index])"
+                @click="goRoster(record)"
               >
                 考生名册
               </UiButton>
@@ -253,19 +249,6 @@
           placeholder="选择课程"
           :allow-clear="false"
         />
-      </a-form-item>
-      <a-form-item label="考试模式" name="examMode" required>
-        <a-radio-group v-model:value="examForm.examMode" :disabled="isEditMode">
-          <a-radio-button value="OFFLINE_SCAN">线下扫描</a-radio-button>
-          <a-radio-button value="ONLINE">在线作答</a-radio-button>
-        </a-radio-group>
-        <div class="exam-list-page__form-helper">
-          {{
-            isEditMode
-              ? '考试模式一旦创建不可修改。'
-              : '线下扫描：学生纸笔作答 + 扫描入站；在线作答：学生 Web 端直接答题，跳过扫描环节。'
-          }}
-        </div>
       </a-form-item>
       <a-form-item label="考试名称" name="examName">
         <a-input
@@ -304,10 +287,11 @@
         />
       </a-form-item>
       <a-form-item label="批改策略（可选）" name="gradingStrategy">
-        <a-input
+        <a-select
           v-model:value="examForm.gradingStrategy"
-          placeholder="如 SINGLE / DOUBLE_BLIND，留空使用租户默认"
-          :maxlength="64"
+          placeholder="选择批改策略，留空使用租户默认"
+          allow-clear
+          :options="gradingStrategyOptions"
         />
       </a-form-item>
       <a-form-item label="备注" name="remark">
@@ -326,7 +310,21 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
-import type { ExamCreateRequest, ExamStatusCode, ExamSummaryVO } from '@/apis/mark/exam'
+import type {
+  ExamCreateRequest,
+  ExamStatusCode,
+  ExamSummaryVO,
+  GradingStrategyCode,
+} from '@/apis/mark/exam'
+import {
+  createExam,
+  deleteExam,
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  GRADING_STRATEGY_LABEL,
+  pageExams,
+  updateExam,
+} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -337,14 +335,6 @@ import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  createExam,
-  deleteExam,
-  EXAM_STATUS_LABEL,
-  EXAM_STATUS_TONE,
-  pageExams,
-  updateExam,
-} from '@/apis/mark/exam'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import {
   UiAlertStrip,
@@ -405,13 +395,17 @@ const filterForm = reactive<{
   dateRange: undefined,
 })
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
 
 /** 学期下拉选项：直接复用 SemesterOptions 的强类型枚举，避免本地重复定义。 */
 const semesterOptions = SemesterOptions
+const gradingStrategyOptions = Object.entries(GRADING_STRATEGY_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}))
 
 const dataSource = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
@@ -434,8 +428,7 @@ const columns: ColumnType<ExamSummaryVO>[] = [
   { title: '操作', key: 'actions', width: 420, fixed: 'right' },
 ]
 
-// helper 严格 typed 接收后端 API 对象 ExamSummaryVO。
-// 模板侧统一用 dataSource[index] 取同一个 VO 对象引用，避免 slot record 类型丢失。
+// helper 严格 typed 接收后端 API 对象 ExamSummaryVO，模板侧使用表格 slot record 保留当前行引用。
 function examStatusTone(exam: ExamSummaryVO): BadgeTone {
   return strictEnumTone(EXAM_STATUS_TONE, exam.status, '考试状态')
 }
@@ -489,7 +482,7 @@ function handleReset(): void {
   pagination.current = 1
   void loadExams()
 }
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadExams()
@@ -589,23 +582,21 @@ const isEditMode = computed(() => !!editingExamId.value)
 const formRef = ref<FormInstance>()
 const examForm = reactive<{
   courseId: string | null
-  examMode: 'ONLINE' | 'OFFLINE_SCAN'
   examName: string
   examNo: string
   academicYear?: string
   semester?: string
   examWindow?: [string, string]
-  gradingStrategy?: string
+  gradingStrategy?: GradingStrategyCode
   remark?: string
 }>({
   courseId: null,
-  examMode: 'OFFLINE_SCAN',
   examName: '',
   examNo: '',
   academicYear: '',
   semester: undefined,
   examWindow: undefined,
-  gradingStrategy: '',
+  gradingStrategy: undefined,
   remark: '',
 })
 
@@ -658,20 +649,18 @@ const examFormRules: Record<string, Rule[]> = {
       trigger: 'change',
     },
   ],
-  gradingStrategy: [{ max: 64, message: '批改策略最多 64 个字符', trigger: 'blur' }],
   remark: [{ max: 500, message: '备注最多 500 个字符', trigger: 'blur' }],
 }
 
 function resetExamForm(): void {
   editingExamId.value = null
   examForm.courseId = null
-  examForm.examMode = 'OFFLINE_SCAN'
   examForm.examName = ''
   examForm.examNo = ''
   examForm.academicYear = ''
   examForm.semester = undefined
   examForm.examWindow = undefined
-  examForm.gradingStrategy = ''
+  examForm.gradingStrategy = undefined
   examForm.remark = ''
   formRef.value?.clearValidate()
 }
@@ -689,9 +678,9 @@ function openEditModal(exam: ExamSummaryVO): void {
   examForm.examNo = exam.examNo
   examForm.academicYear = exam.academicYear ?? ''
   examForm.semester = exam.semester
-  examForm.examWindow
-    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
-  examForm.gradingStrategy = exam.gradingStrategy ?? ''
+  examForm.examWindow =
+    exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
+  examForm.gradingStrategy = exam.gradingStrategy
   examForm.remark = exam.remark ?? ''
   formModalOpen.value = true
 }
@@ -710,9 +699,8 @@ function buildExamRequest(): ExamCreateRequest | null {
     semester: examForm.semester,
     examStartTime: startTime,
     examEndTime: endTime,
-    gradingStrategy: examForm.gradingStrategy?.trim() || undefined,
+    gradingStrategy: examForm.gradingStrategy,
     remark: examForm.remark?.trim() || undefined,
-    examMode: examForm.examMode,
   }
 }
 
@@ -730,9 +718,7 @@ async function handleSave(): Promise<void> {
       return
     }
     if (editingExamId.value) {
-      // 考试模式一旦创建不可改，update 链路不传 examMode（后端 ExamUpdateRequest 也无此字段）
-      const { examMode: _examMode, ...updateRequest } = request
-      await updateExam({ examId: editingExamId.value, ...updateRequest })
+      await updateExam({ examId: editingExamId.value, ...request })
       message.success('考试已更新')
     } else {
       const examId = await createExam(request)

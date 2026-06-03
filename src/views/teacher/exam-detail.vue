@@ -67,7 +67,7 @@
                 </UiTag>
               </a-descriptions-item>
               <a-descriptions-item label="批改策略">
-                {{ detail.gradingStrategy || '默认' }}
+                {{ gradingStrategyLabel(detail.gradingStrategy) }}
               </a-descriptions-item>
               <a-descriptions-item label="开始时间">
                 {{ formatDateTime(detail.examStartTime) }}
@@ -169,7 +169,14 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
-import type { ExamDetailVO, ExamStatusCode } from '@/apis/mark/exam'
+import { computed, onMounted, ref, watch } from 'vue'
+import type { ExamDetailVO, ExamStatusCode, GradingStrategyCode } from '@/apis/mark/exam'
+import {
+  EXAM_STATUS_LABEL,
+  EXAM_STATUS_TONE,
+  getExamDetail,
+  GRADING_STRATEGY_LABEL,
+} from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
@@ -177,9 +184,7 @@ import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE, getExamDetail } from '@/apis/mark/exam'
 import {
   UiBadge,
   UiButton,
@@ -213,6 +218,10 @@ function examStatusTone(status: ExamStatusCode): BadgeTone {
 
 function examStatusLabel(status: ExamStatusCode): string {
   return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
+}
+
+function gradingStrategyLabel(strategy?: GradingStrategyCode): string {
+  return strategy ? strictEnumLabel(GRADING_STRATEGY_LABEL, strategy, '批改策略') : '租户默认'
 }
 
 function formatAcademicTerm(exam: ExamDetailVO): string {

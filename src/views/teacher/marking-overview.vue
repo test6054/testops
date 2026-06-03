@@ -142,45 +142,40 @@
         empty-description="暂无可参与批阅的考试"
         @page-change="handlePageChange"
       >
-        <template #bodyCell="{ column, text, index }">
+        <template #bodyCell="{ column, record, text }">
           <template v-if="column.key === 'examName'">
             <button
               type="button"
               class="marking-overview__exam-link"
-              @click="goPrepWorkbench(exams[index].examId)"
+              @click="goPrepWorkbench(record.examId)"
             >
-              {{ exams[index].examName }}
+              {{ record.examName }}
             </button>
           </template>
           <template v-else-if="column.key === 'status'">
-            <UiTag :tone="examStatusTone(exams[index].status)" size="sm">
-              {{ examStatusLabel(exams[index].status) }}
+            <UiTag :tone="examStatusTone(record.status)" size="sm">
+              {{ examStatusLabel(record.status) }}
             </UiTag>
           </template>
           <template v-else-if="column.key === 'progress'">
-            <span
-              v-if="getExamProgressText(exams[index].examId)"
-              class="marking-overview__progress-text"
-            >
-              {{ getExamProgressText(exams[index].examId) }}
+            <span v-if="getExamProgressText(record.examId)" class="marking-overview__progress-text">
+              {{ getExamProgressText(record.examId) }}
             </span>
             <span v-else class="marking-overview__progress-muted">—</span>
           </template>
           <template v-else-if="column.key === 'examStartTime'">
-            {{ formatTime(exams[index].examStartTime, '未设置') }}
+            {{ formatTime(record.examStartTime, '未设置') }}
           </template>
           <template v-else-if="column.key === 'examEndTime'">
-            {{ formatTime(exams[index].examEndTime, '未设置') }}
+            {{ formatTime(record.examEndTime, '未设置') }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <a-space :size="4" wrap>
-              <UiButton size="sm" @click="goPrepWorkbench(exams[index].examId)">
-                准备工作台
-              </UiButton>
-              <UiButton size="sm" variant="ghost" @click="goMarkingTaskPool(exams[index].examId)">
+              <UiButton size="sm" @click="goPrepWorkbench(record.examId)"> 准备工作台 </UiButton>
+              <UiButton size="sm" variant="ghost" @click="goMarkingTaskPool(record.examId)">
                 阅卷
               </UiButton>
-              <UiButton size="sm" variant="ghost" @click="goScanAttention(exams[index].examId)">
+              <UiButton size="sm" variant="ghost" @click="goScanAttention(record.examId)">
                 异常
               </UiButton>
             </a-space>
@@ -197,16 +192,16 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamStatusCode, ExamSummaryVO, MarkingProgressVO } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
   getMarkingProgress,
   pageExams,
 } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   UiAlertStrip,
   UiBadge,
@@ -236,7 +231,7 @@ function examStatusLabel(status: ExamStatusCode): string {
   return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
 }
 
-const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
+const statusOptions: Array<{ label: string; value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
@@ -446,7 +441,7 @@ const stages = computed<WorkbenchStage[]>(() => {
   ]
 })
 
-const urgentBanner = computed<{ title: string, description: string } | null>(() => {
+const urgentBanner = computed<{ title: string; description: string } | null>(() => {
   const a = aggregate.value
   if (!progressReady.value || progressLoadError.value) return null
   if (a.scanAttention > 0) {
@@ -531,7 +526,7 @@ function resetQuery(): void {
   void loadExams()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }): void {
+function handlePageChange(page: { current: number; pageSize: number }): void {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadExams()

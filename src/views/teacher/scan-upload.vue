@@ -222,100 +222,99 @@
           :data-source="batches"
           :loading="batchLoading"
           :total="batchTotal"
+          :scroll="{ x: 1290 }"
           flat
           @page-change="onBatchPageChange"
           row-key="scanBatchId"
           size="small"
           class="batch-table"
         >
-          <template #bodyCell="{ column, index }">
+          <template #bodyCell="{ column, record, text }">
             <template v-if="column.key === 'batchNo'">
-              <a-typography-text strong :content="batches[index].batchNo" />
+              <a-typography-text strong :content="record.batchNo" />
             </template>
             <template v-else-if="column.key === 'scannerDevice'">
-              {{ formatDeviceLabel(batches[index].scannerDeviceId) }}
+              {{ formatDeviceLabel(record.scannerDeviceId) }}
             </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag :tone="batchStatusTone(batches[index])" size="sm">
-                {{ batchStatusLabel(batches[index]) }}
+              <UiTag :tone="batchStatusTone(record)" size="sm">
+                {{ batchStatusLabel(record) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'scanWindow'">
-              <div>{{ formatDateTimeWithSeconds(batches[index].scanStartTime) }}</div>
-              <div class="muted">
-                至 {{ formatDateTimeWithSeconds(batches[index].scanEndTime) }}
-              </div>
+              <div>{{ formatDateTimeWithSeconds(record.scanStartTime) }}</div>
+              <div class="muted">至 {{ formatDateTimeWithSeconds(record.scanEndTime) }}</div>
             </template>
             <template v-else-if="column.key === 'eventCount'">
-              {{ batches[index].eventCount }} 条
+              {{ record.eventCount }} 条
             </template>
             <template v-else-if="column.key === 'fileCount'">
-              <template v-if="batches[index].sourceFileCount">
-                {{ batches[index].sourceFileCount }} 份
-              </template>
+              <template v-if="record.sourceFileCount"> {{ record.sourceFileCount }} 份 </template>
               <template v-else>0 份</template>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton
-                size="sm"
-                variant="outline"
-                tone="danger"
-                :loading="batchDiscarding === batches[index].scanBatchId"
-                :disabled="
-                  batches[index].status === 'DISCARDED' || Boolean(batches[index].sealedAt)
-                "
-                :title="
-                  batches[index].sealedAt
-                    ? '批次已封存，禁止废弃；请联系扫描终审角色'
-                    : batches[index].status === 'DISCARDED'
-                      ? '批次已废弃'
-                      : '废弃整批'
-                "
-                @click="onDiscardBatch(batches[index])"
-              >
-                <template #icon>
-                  <DeleteOutlined />
-                </template>
-                {{ batches[index].status === 'DISCARDED' ? '已废弃' : '废弃' }}
-              </UiButton>
+              <a-space :size="4">
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  :disabled="!record.sourceFileCount"
+                  @click="openBatchSourceFiles(record)"
+                >
+                  查看扫描原件
+                </UiButton>
+                <UiButton
+                  size="sm"
+                  variant="outline"
+                  tone="danger"
+                  :loading="batchDiscarding === record.scanBatchId"
+                  :disabled="record.status === 'DISCARDED' || Boolean(record.sealedAt)"
+                  :title="
+                    record.sealedAt
+                      ? '批次已封存，禁止废弃；请联系扫描终审角色'
+                      : record.status === 'DISCARDED'
+                        ? '批次已废弃'
+                        : '废弃整批'
+                  "
+                  @click="onDiscardBatch(record)"
+                >
+                  <template #icon>
+                    <DeleteOutlined />
+                  </template>
+                  {{ record.status === 'DISCARDED' ? '已废弃' : '废弃' }}
+                </UiButton>
+              </a-space>
             </template>
+            <template v-else>{{ text }}</template>
           </template>
         </UiDataTable>
       </UiCard>
-
-      <UiCard class="info-card">
-        <template #title>
-          <ThunderboltOutlined />
-          <span>快捷入口</span>
-        </template>
-        <a-space wrap>
-          <UiButton size="sm" variant="outline" @click="goAttention">
-            <template #icon>
-              <WarningOutlined />
-            </template>
-            扫描异常待办
-          </UiButton>
-          <UiButton size="sm" variant="outline" @click="goAssignment">
-            <template #icon>
-              <TeamOutlined />
-            </template>
-            分派批阅
-          </UiButton>
-          <UiButton size="sm" variant="outline" @click="goProgress">
-            <template #icon>
-              <LineChartOutlined />
-            </template>
-            进度看板
-          </UiButton>
-          <UiButton size="sm" variant="outline" @click="goScoreFinalize">
-            <template #icon>
-              <CheckCircleOutlined />
-            </template>
-            成绩确认
-          </UiButton>
-        </a-space>
-      </UiCard>
     </template>
+
+    <UiDrawer
+      v-model:open="sourceFilesDrawerOpen"
+      :title="sourceFilesDrawerTitle"
+      width="520"
+      hide-footer
+    >
+      <UiEmpty v-if="!sourceFilesTarget?.sourceFiles?.length" description="本批次暂无扫描原件" />
+      <a-list v-else size="small" :data-source="sourceFilesTarget.sourceFiles">
+        <template #renderItem="{ item }">
+          <a-list-item>
+            <a-list-item-meta :title="item.fileName || item.fileId" />
+            <template #actions>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="sourceFileDownloading === item.fileId"
+                @click="downloadBatchSourceFile(item)"
+              >
+                下载
+              </UiButton>
+            </template>
+          </a-list-item>
+        </template>
+      </a-list>
+    </UiDrawer>
 
     <a-modal
       v-model:open="batchDiscardModalOpen"
@@ -358,6 +357,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
+  ExamFileRefVO,
   ExamScannerBatchCreateRequest,
   ExamScannerBatchDeviceBreakdownVO,
   ExamScannerBatchPreviewVO,
@@ -379,18 +379,12 @@ import type {
 } from '@/apis/mark/exam-mark-scanner'
 import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
-import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import {
   UiAlertStrip,
@@ -398,6 +392,7 @@ import {
   UiButton,
   UiCard,
   UiDataTable,
+  UiDrawer,
   UiEmpty,
   UiErrorRetryPanel,
   UiRingProgress,
@@ -407,6 +402,7 @@ import {
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -420,8 +416,6 @@ function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
 function batchStatusLabel(batch: ExamScannerBatchVO): string {
   return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
 }
-
-const router = useRouter()
 
 const {
   examOptions,
@@ -717,7 +711,7 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '事件数', key: 'eventCount', width: 90 },
   { title: '文件数', key: 'fileCount', width: 90 },
   { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 80 },
-  { title: '操作', key: 'actions', width: 120, fixed: 'right' as const },
+  { title: '操作', key: 'actions', width: 220, fixed: 'right' as const },
 ]
 
 /**
@@ -730,6 +724,38 @@ const batchDiscardTarget = ref<ExamScannerBatchVO | null>(null)
 const batchDiscardReason = ref('')
 const batchDiscardReasonError = ref('')
 const batchDiscardError = ref('')
+
+const sourceFilesDrawerOpen = ref(false)
+const sourceFilesTarget = ref<ExamScannerBatchVO | null>(null)
+const sourceFileDownloading = ref<string | null>(null)
+
+const sourceFilesDrawerTitle = computed(() => {
+  const batch = sourceFilesTarget.value
+  if (!batch) return '扫描原件'
+  return `扫描原件 · ${batch.batchNo}`
+})
+
+function openBatchSourceFiles(batch: ExamScannerBatchVO): void {
+  if (!batch.sourceFileCount) {
+    message.info('本批次暂无扫描原件')
+    return
+  }
+  sourceFilesTarget.value = batch
+  sourceFilesDrawerOpen.value = true
+}
+
+async function downloadBatchSourceFile(file: ExamFileRefVO): Promise<void> {
+  sourceFileDownloading.value = file.fileId
+  try {
+    await handleDownloadFile({
+      fileId: file.fileId,
+      fileName: file.fileName,
+    })
+  } finally {
+    sourceFileDownloading.value = null
+  }
+}
+
 async function onDiscardBatch(batch: ExamScannerBatchVO): Promise<void> {
   if (!batch.scanBatchId) return
   if (batch.status === 'DISCARDED') {
@@ -816,27 +842,6 @@ function onBatchPageChange(page: { current: number; pageSize: number }): void {
   batchQuery.pageNum = page.current
   batchQuery.pageSize = page.pageSize
   void loadBatches()
-}
-
-// ─── 快捷入口 ─────────────────────────────
-function goAttention(): void {
-  if (!selectedExamId.value) return
-  void router.push({ name: 'TeacherScanAttention', query: { examId: selectedExamId.value } })
-}
-
-function goAssignment(): void {
-  if (!selectedExamId.value) return
-  void router.push({ name: 'TeacherReviewAssignment', query: { examId: selectedExamId.value } })
-}
-
-function goProgress(): void {
-  if (!selectedExamId.value) return
-  void router.push({ name: 'TeacherReviewProgress', query: { examId: selectedExamId.value } })
-}
-
-function goScoreFinalize(): void {
-  if (!selectedExamId.value) return
-  void router.push({ name: 'TeacherScoreFinalize', query: { examId: selectedExamId.value } })
 }
 
 // ─── 生命周期 ─────────────────────────────
