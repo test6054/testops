@@ -74,7 +74,8 @@
           <UserDeleteOutlined />
           <span class="section-title">核对检出的缺考学生</span>
         </template>
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="absentColumns"
           :data-source="absentStudents"
           :show-pagination="false"
@@ -139,7 +140,8 @@
             </a-form-item>
           </a-form>
         </div>
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="recordColumns"
           :data-source="records"
           :loading="recordLoading"
@@ -283,7 +285,6 @@ import {
   revokeAbsence,
 } from '@/apis/mark/absence'
 import {
-  UiBadge,
   UiButton,
   UiCard,
   UiDataTable,

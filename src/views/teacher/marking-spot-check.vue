@@ -49,7 +49,8 @@
         description="当前没有待处理的抽检任务"
       />
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-else
         :columns="columns"
         :data-source="pendingItems"

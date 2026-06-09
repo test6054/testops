@@ -137,7 +137,7 @@ watch(
 
 onMounted(async () => {
   await loadTaskOptions()
-  if (selectedAiTaskId.value) loadMapping()
+  if (selectedAiTaskId.value) await loadMapping()
 })
 </script>
 
@@ -170,26 +170,26 @@ onMounted(async () => {
       </div>
 
       <template v-if="taskVO">
-      <h4 class="ai-mask__section-title">AI 任务概览</h4>
-      <a-descriptions :column="2" size="small" bordered class="ai-mask__descriptions">
-        <a-descriptions-item label="能力">
-          {{ aiTaskTypeLabel(taskVO.taskType) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="状态">
-          <a-tag :color="aiTaskStatusColor(taskVO.status)">
-            {{ aiTaskStatusLabel(taskVO.status) }}
-          </a-tag>
-        </a-descriptions-item>
-        <a-descriptions-item label="操作人">
-          {{ taskVO.operatorUserName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="业务类型">
-          {{ aiTaskBusinessTypeLabel(taskVO.businessType) }} / {{ taskVO.businessLabel }}
-        </a-descriptions-item>
-        <a-descriptions-item label="脱敏映射">
-          {{ taskVO.maskMappingId ? '已完成脱敏处理' : '未完成脱敏处理' }}
-        </a-descriptions-item>
-      </a-descriptions>
+        <h4 class="ai-mask__section-title">AI 任务概览</h4>
+        <a-descriptions :column="2" size="small" bordered class="ai-mask__descriptions">
+          <a-descriptions-item label="能力">
+            {{ aiTaskTypeLabel(taskVO.taskType) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="状态">
+            <a-tag :color="aiTaskStatusColor(taskVO.status)">
+              {{ aiTaskStatusLabel(taskVO.status) }}
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="操作人">
+            {{ taskVO.operatorUserName }}
+          </a-descriptions-item>
+          <a-descriptions-item label="业务类型">
+            {{ aiTaskBusinessTypeLabel(taskVO.businessType) }} / {{ taskVO.businessLabel }}
+          </a-descriptions-item>
+          <a-descriptions-item label="脱敏映射">
+            {{ taskVO.maskMappingId ? '已完成脱敏处理' : '未完成脱敏处理' }}
+          </a-descriptions-item>
+        </a-descriptions>
       </template>
 
       <UiEmpty
@@ -200,18 +200,18 @@ onMounted(async () => {
       />
 
       <template v-else-if="mappingVO">
-      <h4 class="ai-mask__section-title">脱敏映射记录</h4>
-      <a-descriptions :column="2" size="small" bordered class="ai-mask__descriptions">
-        <a-descriptions-item label="业务类型">
-          {{ aiTaskBusinessTypeLabel(mappingVO.businessType) }} / {{ mappingVO.businessLabel }}
-        </a-descriptions-item>
-        <a-descriptions-item label="创建时间">
-          {{ mappingVO.createTime }}
-        </a-descriptions-item>
-        <a-descriptions-item label="记录说明" :span="2">
-          当前页面展示脱敏处理状态与审计时间，敏感内容不在页面侧呈现。
-        </a-descriptions-item>
-      </a-descriptions>
+        <h4 class="ai-mask__section-title">脱敏映射记录</h4>
+        <a-descriptions :column="2" size="small" bordered class="ai-mask__descriptions">
+          <a-descriptions-item label="业务类型">
+            {{ aiTaskBusinessTypeLabel(mappingVO.businessType) }} / {{ mappingVO.businessLabel }}
+          </a-descriptions-item>
+          <a-descriptions-item label="创建时间">
+            {{ mappingVO.createTime }}
+          </a-descriptions-item>
+          <a-descriptions-item label="记录说明" :span="2">
+            当前页面展示脱敏处理状态与审计时间，敏感内容不在页面侧呈现。
+          </a-descriptions-item>
+        </a-descriptions>
       </template>
     </a-card>
   </StageWorkbenchShell>

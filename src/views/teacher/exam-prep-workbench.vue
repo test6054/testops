@@ -23,8 +23,8 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   EXAM_MATERIAL_LAYOUT_MODE_LABEL,
@@ -45,8 +45,8 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageRail, StageWorkbenchShell } from '@/components/workbench'
-import { applyMarkStageFromExamProgress } from '@/composables/useMarkStageSync'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { applyMarkStageFromExamProgress } from '@/composables/useMarkStageSync'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'

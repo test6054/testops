@@ -48,7 +48,7 @@
     />
 
     <template v-else-if="progress">
-        <a-row :gutter="16" class="overview-row">
+      <a-row :gutter="16" class="overview-row">
         <a-col :xs="24" :md="8">
           <UiCard class="overview-card">
             <template #title>

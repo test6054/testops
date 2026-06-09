@@ -39,17 +39,27 @@
       <canvas ref="mainCanvas" class="pdf-editor__canvas" />
       <canvas ref="overlayCanvas" class="pdf-editor__canvas pdf-editor__overlay" />
     </div>
+    <a-modal
+      v-model:open="textModalOpen"
+      title="添加文字标注"
+      ok-text="添加"
+      cancel-text="取消"
+      @ok="confirmAddTextAnnotation"
+    >
+      <a-input v-model:value="pendingText" placeholder="请输入标注文字" @press-enter="confirmAddTextAnnotation" />
+    </a-modal>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, shallowRef, onMounted, watch, nextTick } from 'vue'
 import BorderOutlined from '@ant-design/icons-vue/BorderOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import UndoOutlined from '@ant-design/icons-vue/UndoOutlined'
-import { UiButton } from '@/components/ui-guide/ui'
 import message from 'ant-design-vue/es/message'
+import { onMounted, ref, shallowRef, watch } from 'vue'
+import { UiButton } from '@/components/ui-guide/ui'
+import { showUserError } from '@/utils/error-handler'
 import 'pdfjs-dist/build/pdf.worker.mjs'
 
 defineOptions({ name: 'PdfAnnotationEditor' })
@@ -64,7 +74,10 @@ const emit = defineEmits<{
 
 interface Annotation {
   type: 'text' | 'rect'
-  x: number; y: number; w: number; h: number
+  x: number
+  y: number
+  w: number
+  h: number
   text?: string
   color?: string
   pageIndex: number
@@ -78,13 +91,15 @@ const mainCanvas = ref<HTMLCanvasElement>()
 const overlayCanvas = ref<HTMLCanvasElement>()
 const canvasContainer = ref<HTMLDivElement>()
 const drawing = ref(false)
-const startX = ref(0); const startY = ref(0)
+const startX = ref(0)
+const startY = ref(0)
+const textModalOpen = ref(false)
+const pendingText = ref('')
+const pendingTextX = ref(0)
+const pendingTextY = ref(0)
 
 // PDF渲染
-const imgBlobUrls: string[] = []
 let pdfBytes: ArrayBuffer | null = null
-let pageCount = 0
-let canvasScale = 1
 
 async function loadPdf() {
   loading.value = true
@@ -94,19 +109,20 @@ async function loadPdf() {
     const url = new URL('/api/storage/filesystem/download', window.location.origin)
     url.searchParams.set('nodeId', props.pdfFileId)
     const resp = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
-    if (!resp.ok) throw new Error('PDF加载失败')
+    if (!resp.ok) {
+      message.error('PDF加载失败')
+      return
+    }
     pdfBytes = await resp.arrayBuffer()
 
     // 使用pdfjs渲染
     const { getDocument } = await import('pdfjs-dist')
     const loadingTask = getDocument({ data: pdfBytes.slice(0) })
     const pdfDoc = await loadingTask.promise
-    pageCount = pdfDoc.numPages
 
     // 渲染首页到canvas
     const page = await pdfDoc.getPage(1)
     const viewport = page.getViewport({ scale: 1.5 })
-    canvasScale = 1.5
 
     const canvas = mainCanvas.value!
     canvas.width = viewport.width
@@ -119,9 +135,11 @@ async function loadPdf() {
     overlay.width = viewport.width
     overlay.height = viewport.height
     redrawOverlay()
-  } catch (e: any) {
-    message.error('PDF加载失败：' + (e?.message ?? '未知错误'))
-  } finally { loading.value = false }
+  } catch (e: unknown) {
+    showUserError(e, 'PDF加载失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 // Overlay绘制
@@ -156,13 +174,10 @@ function onMouseDown(e: MouseEvent) {
   const x = e.clientX - rect.left
   const y = e.clientY - rect.top
   if (tool.value === 'text') {
-    const text = prompt('请输入标注文字：')
-    if (text?.trim()) {
-      annotations.value = [...annotations.value, {
-        type: 'text', x, y, w: 0, h: 0, text: text.trim(), color: '#1677ff', pageIndex: 0,
-      }]
-      redrawOverlay()
-    }
+    pendingText.value = ''
+    pendingTextX.value = x
+    pendingTextY.value = y
+    textModalOpen.value = true
   } else if (tool.value === 'rect') {
     drawing.value = true
     startX.value = x
@@ -189,17 +204,51 @@ function onMouseUp(e: MouseEvent) {
   const rect = overlayCanvas.value.getBoundingClientRect()
   const x = e.clientX - rect.left
   const y = e.clientY - rect.top
-  const w = x - startX.value; const h = y - startY.value
+  const w = x - startX.value
+  const h = y - startY.value
   if (Math.abs(w) > 5 && Math.abs(h) > 5) {
     annotations.value = [...annotations.value, {
-      type: 'rect', x: startX.value, y: startY.value, w, h, color: '#1677ff', pageIndex: 0,
+      type: 'rect',
+      x: startX.value,
+      y: startY.value,
+      w,
+      h,
+      color: '#1677ff',
+      pageIndex: 0,
     }]
   }
   redrawOverlay()
 }
 
-function undoLast() { annotations.value = annotations.value.slice(0, -1); redrawOverlay() }
-function clearAll() { annotations.value = []; redrawOverlay() }
+function confirmAddTextAnnotation() {
+  const text = pendingText.value.trim()
+  if (!text) {
+    message.warning('请输入标注文字')
+    return
+  }
+  annotations.value = [...annotations.value, {
+    type: 'text',
+    x: pendingTextX.value,
+    y: pendingTextY.value,
+    w: 0,
+    h: 0,
+    text,
+    color: '#1677ff',
+    pageIndex: 0,
+  }]
+  textModalOpen.value = false
+  redrawOverlay()
+}
+
+function undoLast() {
+  annotations.value = annotations.value.slice(0, -1)
+  redrawOverlay()
+}
+
+function clearAll() {
+  annotations.value = []
+  redrawOverlay()
+}
 
 // Save: merge annotations into PDF using pdf-lib
 async function handleSave() {
@@ -212,7 +261,10 @@ async function handleSave() {
     const { PDFDocument, rgb } = await import('pdf-lib')
     const pdfDoc = await PDFDocument.load(pdfBytes)
     const pages = pdfDoc.getPages()
-    if (pages.length === 0) { message.error('PDF无页面'); return }
+    if (pages.length === 0) {
+      message.error('PDF无页面')
+      return
+    }
 
     const scaleFactor = 1.5 // match pdfjs rendering scale
     for (const a of annotations.value) {
@@ -222,40 +274,68 @@ async function handleSave() {
       const pdfX = a.x / scaleFactor
       const pdfY = pageHeight - (a.y / scaleFactor)
       if (a.type === 'text' && a.text) {
-        page.drawText(a.text, { x: pdfX, y: pdfY - 12, size: 12, color: rgb(0.13, 0.47, 1.0) })
+        page.drawText(a.text, {
+          x: pdfX,
+          y: pdfY - 12,
+          size: 12,
+          color: rgb(0.13, 0.47, 1.0),
+        })
       } else if (a.type === 'rect') {
         page.drawRectangle({
-          x: pdfX, y: pdfY - a.h / scaleFactor,
-          width: a.w / scaleFactor, height: a.h / scaleFactor,
-          borderColor: rgb(0.13, 0.47, 1.0), borderWidth: 1.5,
+          x: pdfX,
+          y: pdfY - a.h / scaleFactor,
+          width: a.w / scaleFactor,
+          height: a.h / scaleFactor,
+          borderColor: rgb(0.13, 0.47, 1.0),
+          borderWidth: 1.5,
         })
       }
     }
     const modifiedBytes = await pdfDoc.save()
-    const blob = new Blob([modifiedBytes], { type: 'application/pdf' })
+    const modifiedBuffer = new ArrayBuffer(modifiedBytes.byteLength)
+    new Uint8Array(modifiedBuffer).set(modifiedBytes)
+    const blob = new Blob([modifiedBuffer], { type: 'application/pdf' })
 
     // Upload to storage
     const token = localStorage.getItem('token')
     const formData = new FormData()
     formData.append('file', blob, 'edited-paper.pdf')
     const uploadResp = await fetch('/api/storage/filesystem/upload', {
-      method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
       body: formData,
     })
-    if (!uploadResp.ok) throw new Error('上传失败')
+    if (!uploadResp.ok) {
+      message.error('上传失败')
+      return
+    }
     const uploadResult = await uploadResp.json()
     const newFileId = String(uploadResult?.data?.id ?? uploadResult?.data?.nodeId ?? '')
-    if (!newFileId) throw new Error('未获取到文件ID')
+    if (!newFileId) {
+      message.error('未获取到文件ID')
+      return
+    }
 
     message.success('PDF已保存并覆盖原文件')
     emit('saved', newFileId)
-  } catch (e: any) {
-    message.error('保存失败：' + (e?.message ?? '未知错误'))
-  } finally { saving.value = false }
+  } catch (e: unknown) {
+    showUserError(e, '保存失败')
+  } finally {
+    saving.value = false
+  }
 }
 
-onMounted(() => { if (props.pdfFileId) loadPdf() })
-watch(() => props.pdfFileId, () => { if (props.pdfFileId) loadPdf() })
+onMounted(() => {
+  if (props.pdfFileId) {
+    void loadPdf()
+  }
+})
+
+watch(() => props.pdfFileId, () => {
+  if (props.pdfFileId) {
+    void loadPdf()
+  }
+})
 </script>
 
 <style scoped>

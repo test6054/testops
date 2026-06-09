@@ -856,7 +856,7 @@ onMounted(async () => {
         size="sm"
       />
       <UiDataTable class="student-detail-table__data-table"
-        v-else
+                   v-else
         :columns="sourceColumns"
         :data-source="sources"
         :loading="sourceLoading"

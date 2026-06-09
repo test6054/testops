@@ -208,9 +208,9 @@ const activeStudentText = computed(() => {
 function handleClassChange(value?: SelectValue): void {
   activeClassId.value = typeof value === 'string' ? value : ''
   if (
-    activeStudentUserId.value &&
-    activeClassId.value &&
-    !studentOptions.value.some(
+    activeStudentUserId.value
+    && activeClassId.value
+    && !studentOptions.value.some(
       (opt) => opt.value === activeStudentUserId.value && opt.classId === activeClassId.value,
     )
   ) {

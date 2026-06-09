@@ -65,7 +65,8 @@
       />
 
       <!-- 设备表格 -->
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-if="!devicesLoadError"
         :columns="columns"
         :data-source="devices"

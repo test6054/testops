@@ -505,7 +505,7 @@ function goScoreBatch() {
             <UiButton variant="ghost" size="sm" @click="goAchievement"> 查看全部 </UiButton>
           </template>
           <UiDataTable class="student-detail-table__data-table"
-            :columns="recentAchievementColumns"
+                       :columns="recentAchievementColumns"
             :data-source="recentAchievements"
             :show-pagination="false"
             row-key="id"

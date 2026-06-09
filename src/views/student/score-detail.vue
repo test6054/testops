@@ -487,6 +487,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
+import type { StudentWrongBookItemVO } from '@/apis/mark/question-analysis'
 import type {
   StudentAiDiagnosisItemVO,
   StudentAiErrorClusterVO,
@@ -506,6 +507,7 @@ import { message } from 'ant-design-vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
+import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -522,8 +524,6 @@ import {
   OBJECTIVE_RESULT_LABEL,
   OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/student-exam'
-import type { StudentWrongBookItemVO } from '@/apis/mark/question-analysis'
-import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import {
   UiAlertStrip,
   UiBadge,

@@ -673,7 +673,7 @@ onMounted(async () => {
           :loading="loading"
           row-key="id"
           size="middle"
-          :total="total"
+                     :total="total"
           flat
           @page-change="handlePageChange"
         >

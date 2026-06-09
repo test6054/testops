@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SemesterCode} from '@/types';
 /**
  * Stage 1 - 准备扫描
  * Step 1 选择考试 / Step 2 选择扫描模式 / Step 3 确认并开始
@@ -15,7 +16,6 @@ import {
   SyncOutlined,
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
-import type { SemesterCode} from '@/types';
 import { getSemesterDescription, SemesterOptions } from '@/types'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -196,9 +196,7 @@ watch(
                   getSemesterDescription(workflow.selectedExamOption.value.semester)
                 }}</span>
               </template>
-              <span class="dot" /><span
-                >已扫批次 {{ workflow.selectedExamOption.value.scanBatchCount }}</span
-              >
+              <span class="dot" /><span>已扫批次 {{ workflow.selectedExamOption.value.scanBatchCount }}</span>
             </span>
           </div>
         </div>
@@ -361,8 +359,7 @@ watch(
             class="class-chip"
             :class="{ missing: chip.missing }"
             :title="chip.label"
-            >{{ chip.label }}</span
-          >
+          >{{ chip.label }}</span>
         </div>
         <span v-else class="empty-inline">请先选择考试</span>
       </div>

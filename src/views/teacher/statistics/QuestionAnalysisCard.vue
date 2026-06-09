@@ -69,7 +69,8 @@
       compact
       @retry="reload"
     />
-    <UiDataTable class="student-detail-table__data-table"
+    <UiDataTable
+      class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -154,7 +155,7 @@ import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
+const props = defineProps<{ examId: string, reloadToken: number, classId?: string }>()
 
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
@@ -177,7 +178,7 @@ const generatingAll = ref(false)
 const generatingId = ref<string>('')
 const selectedQuestionTemplateId = ref<string>()
 const questionLoading = ref(false)
-const questionOptions = ref<{ value: string; label: string }[]>([])
+const questionOptions = ref<{ value: string, label: string }[]>([])
 const generationSummary = ref('')
 
 const columns: ColumnType<ExamQuestionAnalysisRecordVO>[] = [

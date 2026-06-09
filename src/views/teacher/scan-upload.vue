@@ -279,8 +279,9 @@
         />
         <div v-if="previewLoaded" class="preview-section">
           <UiStatPanel :items="previewMetrics" :columns="4" variant="strip" compact />
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
             v-if="previewData && previewData.deviceBreakdown.length > 0"
+            class="student-detail-table__data-table event-table"
             :columns="deviceBreakdownColumns"
             :data-source="previewData.deviceBreakdown"
             :show-pagination="false"
@@ -288,7 +289,6 @@
             :total="previewData.deviceBreakdown.length"
             row-key="scannerDeviceId"
             size="small"
-            class="event-table"
           />
           <UiEmpty
             v-else-if="previewData && previewData.eventCount === 0"
@@ -362,8 +362,8 @@
               <template v-else>0 份</template>
             </template>
             <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-<span
+              <div class="operations-cell" @click.stop>
+                <span
                   class="op-link"
                   :class="{ 'is-disabled': !record.sourceFileCount }"
                   role="button"
@@ -396,7 +396,8 @@
                 >
                   {{ record.status === 'DISCARDED' ? '已废弃' : '废弃' }}
                 </span>
-            </div></template>
+              </div>
+            </template>
             <template v-else>{{ text }}</template>
           </template>
         </UiDataTable>
@@ -411,7 +412,7 @@
     >
       <UiEmpty v-if="!sourceFilesTarget?.sourceFiles?.length" description="本批次暂无扫描原件" />
       <a-list v-else size="small" :data-source="sourceFilesTarget.sourceFiles">
-        <template #renderItem="{ item }">
+        <template #render-item="{ item }">
           <a-list-item>
             <a-list-item-meta :title="item.fileName || item.fileId" />
             <template #actions>
@@ -1000,7 +1001,7 @@ async function confirmDiscardBatch(): Promise<void> {
   batchDiscarding.value = batch.scanBatchId
   try {
     await discardScannerKioskBatch({ scanBatchId: batch.scanBatchId, discardReason: trimmed })
-    let localAgentCleanupWarning = ''
+    let localAgentCleanupWarning: string
     try {
       localAgentCleanupWarning = await cleanupLocalAgentScanJobForDiscardedBatch(batch, trimmed)
     } catch (error) {

@@ -79,7 +79,8 @@
           </a-select>
         </template>
 
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="syncColumns"
           :data-source="syncTasks"
           :loading="syncLoading"
@@ -116,8 +117,8 @@
               <span v-else class="hint-text">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-<span
+              <div class="operations-cell" @click.stop>
+                <span
                   v-if="canExecute(syncTasks[index].taskStatus)"
                   class="op-link primary"
                   :class="{ 'is-disabled': actionLoadingId === syncTasks[index].id }"
@@ -153,7 +154,8 @@
                 <span class="op-link" role="button" @click="openTaskDetail(syncTasks[index])">
                   详情
                 </span>
-            </div></template>
+              </div>
+            </template>
           </template>
         </UiDataTable>
       </UiCard>
@@ -208,7 +210,8 @@
           </a-space>
         </template>
 
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="passbackColumns"
           :data-source="passbackRecords"
           :loading="passbackLoading"
@@ -440,7 +443,6 @@ import {
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
 import {
-  UiBadge,
   UiButton,
   UiCard,
   UiDataTable,

@@ -493,7 +493,6 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type {
-  AnnotationVO,
   ExamDetailVO,
   PaperInstanceDisplayVO,
   QualityDecisionCode,
@@ -1011,7 +1010,8 @@ async function preloadWholePageImagesForWindow(): Promise<void> {
     .slice(start, end + 1)
     .filter((page) => !wholePageImageUrls[page.pageId] && !wholePageImageLoading[page.pageId])
   const workers = Array.from({ length: Math.min(3, queue.length) }, async () => {
-    while (queue.length > 0 && batch === wholePageImageLoadBatch) {
+    while (queue.length > 0) {
+      if (batch !== wholePageImageLoadBatch) break
       const page = queue.shift()
       if (page) await loadWholePageImageByPage(page, batch)
     }

@@ -19,7 +19,8 @@
       compact
       @retry="reload"
     />
-    <UiDataTable class="student-detail-table__data-table"
+    <UiDataTable
+      class="student-detail-table__data-table"
       :columns="columns"
       :data-source="rows"
       :loading="loading"

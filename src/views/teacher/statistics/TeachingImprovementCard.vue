@@ -117,7 +117,7 @@ import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'TeachingImprovementCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
+const props = defineProps<{ examId: string, reloadToken: number, classId?: string }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)

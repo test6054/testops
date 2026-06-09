@@ -29,69 +29,70 @@
           class="filter-form filter-form--toolbar"
           @submit.prevent="handleSearch"
         >
-        <a-form-item label="纸质试卷档案编号">
-          <a-input
-            v-model:value="filterForm.archiveNoKeyword"
-            placeholder="按编号关键词过滤"
-            allow-clear
-            style="width: 200px"
-            @press-enter="handleSearch"
-          />
-        </a-form-item>
-        <a-form-item label="纸质试卷档案集标题">
-          <a-input
-            v-model:value="filterForm.titleKeyword"
-            placeholder="按标题关键词过滤"
-            allow-clear
-            style="width: 200px"
-            @press-enter="handleSearch"
-          />
-        </a-form-item>
-        <a-form-item label="学年">
-          <a-input
-            v-model:value="filterForm.examYear"
-            placeholder="如 2018-2019"
-            allow-clear
-            style="width: 140px"
-          />
-        </a-form-item>
-        <a-form-item label="学期">
-          <a-input
-            v-model:value="filterForm.examTerm"
-            placeholder="如 第一学期"
-            allow-clear
-            style="width: 140px"
-          />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="filterForm.archiveStatus"
-            placeholder="全部状态"
-            allow-clear
-            style="width: 160px"
-            :options="statusOptions"
-          />
-        </a-form-item>
-        <a-form-item class="filter-form__actions">
-          <a-space class="filter-form__action-group">
-            <UiButton size="sm" @click="handleSearch">查询</UiButton>
-            <span class="op-link" role="button" @click="handleReset">重置</span>
-            <UiButton variant="outline" size="sm" :loading="loading" @click="loadSets">
-              <template #icon><ReloadOutlined /></template>
-              刷新
-            </UiButton>
-            <UiButton size="sm" @click="openCreateModal">
-              <template #icon><PlusOutlined /></template>
-              新建纸质试卷档案集
-            </UiButton>
-          </a-space>
-        </a-form-item>
-      </a-form>
+          <a-form-item label="纸质试卷档案编号">
+            <a-input
+              v-model:value="filterForm.archiveNoKeyword"
+              placeholder="按编号关键词过滤"
+              allow-clear
+              style="width: 200px"
+              @press-enter="handleSearch"
+            />
+          </a-form-item>
+          <a-form-item label="纸质试卷档案集标题">
+            <a-input
+              v-model:value="filterForm.titleKeyword"
+              placeholder="按标题关键词过滤"
+              allow-clear
+              style="width: 200px"
+              @press-enter="handleSearch"
+            />
+          </a-form-item>
+          <a-form-item label="学年">
+            <a-input
+              v-model:value="filterForm.examYear"
+              placeholder="如 2018-2019"
+              allow-clear
+              style="width: 140px"
+            />
+          </a-form-item>
+          <a-form-item label="学期">
+            <a-input
+              v-model:value="filterForm.examTerm"
+              placeholder="如 秋季学期"
+              allow-clear
+              style="width: 140px"
+            />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="filterForm.archiveStatus"
+              placeholder="全部状态"
+              allow-clear
+              style="width: 160px"
+              :options="statusOptions"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="handleSearch">查询</UiButton>
+              <span class="op-link" role="button" @click="handleReset">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadSets">
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
+              <UiButton size="sm" @click="openCreateModal">
+                <template #icon><PlusOutlined /></template>
+                新建纸质试卷档案集
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
       </div>
 
       <UiEmpty v-if="!loading && sets.length === 0" description="尚未创建任何纸质试卷档案集" />
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-else
         :columns="columns"
         :data-source="sets"
@@ -210,7 +211,7 @@
           />
           <a-input
             v-model:value="createForm.examTerm"
-            placeholder="如 第二学期"
+            placeholder="如 春季学期"
             style="width: 140px"
           />
           <a-input

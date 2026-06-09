@@ -597,7 +597,8 @@ function handleCourseChange(courseId: string | null) {
             </a-form>
           </div>
 
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             :columns="nodeColumns"
             :data-source="nodes"
             :loading="nodesLoading"
@@ -736,7 +737,8 @@ function handleCourseChange(courseId: string | null) {
             @retry="loadRecords"
           />
 
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             v-else
             :columns="recordColumns"
             :data-source="records"
@@ -765,8 +767,9 @@ function handleCourseChange(courseId: string | null) {
                   {{ confirmationStatusLabel(record.confirmationStatus) }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" v-if="record.confirmationStatus !== 'CONFIRMED'" @click="openRecordEdit(record)">编辑</span>
+              <template v-else-if="column.key === 'actions'">
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" v-if="record.confirmationStatus !== 'CONFIRMED'" @click="openRecordEdit(record)">编辑</span>
                   <span
                     v-if="record.confirmationStatus !== 'CONFIRMED'"
                     class="op-link primary"
@@ -776,7 +779,8 @@ function handleCourseChange(courseId: string | null) {
                     确认
                   </span>
                   <span class="op-link danger" role="button" v-if="record.confirmationStatus !== 'CONFIRMED'" @click="deleteRecord(record)">删除</span>
-            </div></template>
+                </div>
+              </template>
             </template>
           </UiDataTable>
         </a-card>
@@ -1003,7 +1007,8 @@ function handleCourseChange(courseId: string | null) {
         @retry="queryConfirmedByGoal"
       />
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-else
         :columns="confirmedByGoalColumns"
         :data-source="confirmedByGoalRecords"

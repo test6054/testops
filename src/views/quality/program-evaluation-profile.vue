@@ -314,7 +314,8 @@ onMounted(async () => {
         </a-form>
       </div>
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -347,10 +348,12 @@ onMounted(async () => {
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
               <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
-            </div></template>
+            </div>
+          </template>
         </template>
       </UiDataTable>
     </a-card>

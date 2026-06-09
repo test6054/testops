@@ -1,10 +1,10 @@
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { Options } from '@/hooks'
+import { useBreakpoint, usePagination } from '@/hooks'
 import type { PageResult, QueryDto } from '@/types'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
-import { computed, ref } from 'vue'
-import { useBreakpoint, usePagination } from '@/hooks'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 
@@ -38,10 +38,8 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
         pageNum: pagination.current,
         pageSize: pagination.pageSize,
       }
-      const res = await api(params)
-
       // 直接使用响应数据（HTTP客户端已经解包了ResultInfo）
-      const actualData = res
+      const actualData = await api(params)
 
       // 处理分页响应数据
       if (Array.isArray(actualData)) {

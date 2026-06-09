@@ -129,7 +129,6 @@
         </a-form-item>
       </a-form>
     </a-modal>
-
   </StageWorkbenchShell>
 </template>
 
@@ -242,9 +241,11 @@ async function handleSheetGenerate() {
   sheetGenerating.value = true
   try {
     const names = sheetGenForm.subjectNamesText.trim()
-      ? sheetGenForm.subjectNamesText.trim().split('\n').filter(Boolean) : []
+      ? sheetGenForm.subjectNamesText.trim().split('\n').filter(Boolean)
+: []
     const lines = sheetGenForm.subjectLinesText.trim()
-      ? sheetGenForm.subjectLinesText.trim().split(',').map(Number).filter(n => !isNaN(n)) : []
+      ? sheetGenForm.subjectLinesText.trim().split(',').map(Number).filter(n => !isNaN(n))
+: []
     const fileId = await generateStandardAnswerSheet({
       examId: selectedExamId.value,
       choiceCount: sheetGenForm.choiceCount,

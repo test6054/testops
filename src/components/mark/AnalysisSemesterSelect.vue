@@ -9,8 +9,6 @@ import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisSemesterSelect' })
 
-const ANALYSIS_SEMESTER_EXAM_PAGE_SIZE = 100
-
 const selectedSemesterCode = defineModel<string | undefined>()
 
 withDefaults(
@@ -23,6 +21,8 @@ withDefaults(
     allowClear: true,
   },
 )
+
+const ANALYSIS_SEMESTER_EXAM_PAGE_SIZE = 100
 
 const loading = ref(false)
 const semesterOptions = ref<{ label: string; value: string }[]>([])

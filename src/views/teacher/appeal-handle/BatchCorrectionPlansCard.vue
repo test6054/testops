@@ -26,7 +26,8 @@
       compact
       @retry="reload"
     />
-    <UiDataTable class="student-detail-table__data-table"
+    <UiDataTable
+      class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -59,8 +60,8 @@
           {{ formatDateTime(record.createTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-<a-popconfirm
+          <div class="operations-cell" @click.stop>
+            <a-popconfirm
               title="确认提交审批？"
               :disabled="!canSubmit(record)"
               @confirm="handleSubmitPlan(record.id)"
@@ -103,7 +104,8 @@
                 执行
               </a-button>
             </a-popconfirm>
-            </div></template>
+          </div>
+        </template>
       </template>
     </UiDataTable>
 

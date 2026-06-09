@@ -16,7 +16,7 @@ export enum SemesterCode {
   /** 秋季学期 */
   AUTUMN = '1',
   /** 春季学期 */
-  SPRING = '2'
+  SPRING = '2',
 }
 
 /**
@@ -24,15 +24,15 @@ export enum SemesterCode {
  */
 export const SemesterDescription: Record<string, string> = {
   [SemesterCode.AUTUMN]: '秋季学期',
-  [SemesterCode.SPRING]: '春季学期'
+  [SemesterCode.SPRING]: '春季学期',
 }
 
 /**
  * 学期选项列表（用于 Select 组件）
  */
 export const SemesterOptions: Array<{ value: SemesterCode, label: string }> = [
-  {value: SemesterCode.AUTUMN, label: SemesterDescription[SemesterCode.AUTUMN]},
-  {value: SemesterCode.SPRING, label: SemesterDescription[SemesterCode.SPRING]}
+  { value: SemesterCode.AUTUMN, label: SemesterDescription[SemesterCode.AUTUMN] },
+  { value: SemesterCode.SPRING, label: SemesterDescription[SemesterCode.SPRING] },
 ]
 
 /**

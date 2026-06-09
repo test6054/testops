@@ -1,7 +1,7 @@
 import type { ExamDetailVO, ExamStatusCode, MarkingProgressVO } from '@/apis/mark/exam'
 import type { MarkStageKey, SelectedExamMeta } from '@/stores/modules/markStage'
-import { MARK_STAGE_ORDER, useMarkStageStore } from '@/stores/modules/markStage'
 import type { WorkbenchStageStatus } from '@/types/workbench'
+import { MARK_STAGE_ORDER, useMarkStageStore } from '@/stores/modules/markStage'
 
 /** 准备步骤快照，供阶段推导消费 */
 export interface MarkPrepStepSnapshot {

@@ -25,7 +25,8 @@
       compact
       @retry="reload"
     />
-    <UiDataTable class="student-detail-table__data-table"
+    <UiDataTable
+      class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -58,8 +59,8 @@
           {{ formatDateTime(rows[index].createTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-<a-popconfirm
+          <div class="operations-cell" @click.stop>
+            <a-popconfirm
               title="确认审批通过？"
               :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
               @confirm="handleApprove(rows[index].id)"
@@ -75,7 +76,8 @@
             </a-popconfirm>
             <span class="op-link danger" role="button" @click="openRejectModal(rows[index].id)">驳回</span>
             <span class="op-link" role="button" @click="openExecuteModal(rows[index].id)">执行</span>
-            </div></template>
+          </div>
+        </template>
       </template>
     </UiDataTable>
     <a-modal

@@ -583,7 +583,7 @@ function handleCourseChange(courseId: string | null) {
                 </template>
                 <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
 <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-                    <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+                  <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
             </div></template>
               </template>
             </UiDataTable>

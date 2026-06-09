@@ -1059,7 +1059,8 @@ onMounted(async () => {
         </a-form>
       </div>
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-model:current="formQuery.pageNum"
         v-model:page-size="formQuery.pageSize"
         :columns="formColumns"
@@ -1112,7 +1113,8 @@ onMounted(async () => {
             </a-form>
           </div>
 
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             :columns="itemColumns"
             :data-source="items"
             :loading="itemsLoading"
@@ -1181,7 +1183,8 @@ onMounted(async () => {
             </a-form>
           </div>
 
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             :columns="responseColumns"
             :data-source="responses"
             :loading="responsesLoading"
@@ -1220,10 +1223,12 @@ onMounted(async () => {
                   {{ record.validFlag ? '有效' : '无效' }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openResponseEdit(record)">编辑</span>
+              <template v-else-if="column.key === 'actions'">
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" @click="openResponseEdit(record)">编辑</span>
                   <span class="op-link danger" role="button" @click="deleteResponse(record)">删除</span>
-            </div></template>
+                </div>
+              </template>
             </template>
           </UiDataTable>
         </a-card>

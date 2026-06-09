@@ -851,94 +851,96 @@ onMounted(async () => {
         </div>
 
         <UiDataTable
-        v-model:current="query.pageNum"
-        v-model:page-size="query.pageSize"
-        class="score-batch__table student-detail-table__data-table"
-        :columns="batchListColumns"
-        :data-source="batches"
-        :loading="loading"
-        row-key="id"
-        size="middle"
-        :total="total"
-        flat
-        @page-change="handlePageChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'course'">
-            <div>{{ record.qualityCourseName }}</div>
-            <div class="score-batch__sub-text">
-              {{ record.qualityCourseCode }}
-            </div>
-          </template>
-          <template v-else-if="column.key === 'assessmentItem'">
-            <div>{{ record.assessmentItemName }}</div>
-            <div class="score-batch__sub-text">
-              {{ record.assessmentItemCode }}
-            </div>
-          </template>
-          <template
-            v-else-if="
-              column.key === 'schoolYear'
-                || column.key === 'semester'
-                || column.key === 'createTime'
-            "
-          >
-            <template v-if="column.key === 'schoolYear'">
-              {{ record.schoolYear }}
+          v-model:current="query.pageNum"
+          v-model:page-size="query.pageSize"
+          class="score-batch__table student-detail-table__data-table"
+          :columns="batchListColumns"
+          :data-source="batches"
+          :loading="loading"
+          row-key="id"
+          size="middle"
+          :total="total"
+          flat
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'course'">
+              <div>{{ record.qualityCourseName }}</div>
+              <div class="score-batch__sub-text">
+                {{ record.qualityCourseCode }}
+              </div>
             </template>
-            <template v-else-if="column.key === 'semester'">
-              {{ record.semester }}
+            <template v-else-if="column.key === 'assessmentItem'">
+              <div>{{ record.assessmentItemName }}</div>
+              <div class="score-batch__sub-text">
+                {{ record.assessmentItemCode }}
+              </div>
             </template>
-            <template v-else>
-              {{ record.createTime }}
+            <template
+              v-else-if="
+                column.key === 'schoolYear'
+                  || column.key === 'semester'
+                  || column.key === 'createTime'
+              "
+            >
+              <template v-if="column.key === 'schoolYear'">
+                {{ record.schoolYear }}
+              </template>
+              <template v-else-if="column.key === 'semester'">
+                {{ record.semester }}
+              </template>
+              <template v-else>
+                {{ record.createTime }}
+              </template>
             </template>
-          </template>
-          <template v-else-if="column.key === 'sourceMode'">
-            {{ sourceModeLabel(record.sourceMode) }}
-          </template>
-          <template v-else-if="column.key === 'rowsBreakdown'">
-            <template v-if="hasGeneratedRowStatistics(record)">
-              <span class="score-batch__num-success">{{ record.successRows }}</span>
-              /
-              <span class="score-batch__num-error">{{ record.errorRows }}</span>
-              /
-              <span>{{ record.totalRows }}</span>
+            <template v-else-if="column.key === 'sourceMode'">
+              {{ sourceModeLabel(record.sourceMode) }}
             </template>
-            <span v-else class="score-batch__sub-text">
-              {{ scoreBatchRowStatisticsText(record) }}
-            </span>
-          </template>
-          <template v-else-if="column.key === 'status'">
-            <a-tag :color="statusColor(record.status)">
-              {{ statusLabel(record.status) }}
-            </a-tag>
-          </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" v-if="canPreview(record.status)" @click="openPreview(record)">预览</span>
-              <span class="op-link" role="button" v-if="canValidate(record.status)" @click="handleValidate(record)">校验</span>
-              <span
-                v-if="canConfirm(record.status)"
-                class="op-link primary"
-                role="button"
-                @click="handleConfirm(record)"
-              >
-                确认
+            <template v-else-if="column.key === 'rowsBreakdown'">
+              <template v-if="hasGeneratedRowStatistics(record)">
+                <span class="score-batch__num-success">{{ record.successRows }}</span>
+                /
+                <span class="score-batch__num-error">{{ record.errorRows }}</span>
+                /
+                <span>{{ record.totalRows }}</span>
+              </template>
+              <span v-else class="score-batch__sub-text">
+                {{ scoreBatchRowStatisticsText(record) }}
               </span>
-              <span
-                v-if="canReParse(record.status)"
-                class="op-link primary"
-                role="button"
-                @click="handleReParse(record)"
-              >
-                重新解析
-              </span>
-              <span class="op-link" role="button" v-if="canEdit(record.status)" @click="openEdit(record)">编辑</span>
-              <span class="op-link danger" role="button" v-if="canCancel(record.status)" @click="handleCancel(record)">取消</span>
-              <span class="op-link danger" role="button" v-if="canDelete(record.status)" @click="handleDelete(record)">删除</span>
-              <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
-            </div></template>
-        </template>
-      </UiDataTable>
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <a-tag :color="statusColor(record.status)">
+                {{ statusLabel(record.status) }}
+              </a-tag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <span class="op-link" role="button" v-if="canPreview(record.status)" @click="openPreview(record)">预览</span>
+                <span class="op-link" role="button" v-if="canValidate(record.status)" @click="handleValidate(record)">校验</span>
+                <span
+                  v-if="canConfirm(record.status)"
+                  class="op-link primary"
+                  role="button"
+                  @click="handleConfirm(record)"
+                >
+                  确认
+                </span>
+                <span
+                  v-if="canReParse(record.status)"
+                  class="op-link primary"
+                  role="button"
+                  @click="handleReParse(record)"
+                >
+                  重新解析
+                </span>
+                <span class="op-link" role="button" v-if="canEdit(record.status)" @click="openEdit(record)">编辑</span>
+                <span class="op-link danger" role="button" v-if="canCancel(record.status)" @click="handleCancel(record)">取消</span>
+                <span class="op-link danger" role="button" v-if="canDelete(record.status)" @click="handleDelete(record)">删除</span>
+                <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
       </a-card>
     </template>
 
@@ -978,7 +980,8 @@ onMounted(async () => {
         :message="previewSummary.errorSummary"
         class="score-batch__preview-alert"
       />
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         :columns="diagnosticsColumns"
         :data-source="diagnostics"
         :loading="previewLoading"

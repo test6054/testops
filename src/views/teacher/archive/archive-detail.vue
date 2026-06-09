@@ -156,7 +156,7 @@
         <a-tab-pane key="items" :tab="`清单项 (${items.length})`">
           <UiEmpty v-if="items.length === 0" description="暂无清单项" />
           <UiDataTable class="student-detail-table__data-table"
-            v-else
+                       v-else
             :columns="itemColumns"
             :data-source="items"
             :page-size="20"
@@ -340,7 +340,6 @@ import {
   requestDestruction,
 } from '@/apis/mark/archive'
 import {
-  UiBadge,
   UiButton,
   UiCard,
   UiDataTable,

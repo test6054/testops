@@ -31,7 +31,7 @@ const props = defineProps<{
   trainingPlanId: string
 }>()
 
-const emit = defineEmits<{ 'count-change': [count: number], exported: [] }>()
+const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
 
 const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategory, label: string }[] = [
   { key: '', label: '全部' },
@@ -394,7 +394,7 @@ defineExpose({ loadEvidences })
       ok-text="保存"
       @ok="submitEvidence"
     >
-        <a-form layout="vertical">
+      <a-form layout="vertical">
         <a-form-item label="证据类别" required>
           <a-select v-model:value="evidenceForm.evidenceCategory" :disabled="evidenceEditing">
             <a-select-option value="EXAM_PAPER">试卷样本</a-select-option>

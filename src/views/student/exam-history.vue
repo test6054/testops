@@ -175,7 +175,6 @@ import {
   listMyExams,
 } from '@/apis/mark/student-exam'
 import {
-  UiBadge,
   UiButton,
   UiDataTable,
   UiEmpty,

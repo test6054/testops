@@ -95,7 +95,8 @@
         </a-form>
       </div>
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         :columns="columns"
         :data-source="filteredTasks"
         :loading="loading"
@@ -240,59 +241,59 @@
   >
     <a-spin :spinning="detailLoading" tip="加载任务详情…">
       <a-descriptions v-if="detailTask" :column="1" bordered size="small">
-      <a-descriptions-item label="当前考试">{{ formatTaskExam(detailTask) }}</a-descriptions-item>
-      <a-descriptions-item label="类型">
-        {{ exportTypeLabel(detailTask.exportType) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="范围">
-        {{ exportScopeLabel(detailTask.exportScope) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="范围条件">
-        {{ detailTask.scopeSummary }}
-      </a-descriptions-item>
-      <a-descriptions-item v-if="detailTask.scopeItems.length > 0" label="范围明细">
-        <div class="scope-items">
-          <UiTag
-            v-for="item in detailTask.scopeItems"
-            :key="`${item.scopeType}-${item.targetId}`"
-            tone="blue"
-            size="sm"
-          >
-            {{ formatScopeItem(item) }}
+        <a-descriptions-item label="当前考试">{{ formatTaskExam(detailTask) }}</a-descriptions-item>
+        <a-descriptions-item label="类型">
+          {{ exportTypeLabel(detailTask.exportType) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="范围">
+          {{ exportScopeLabel(detailTask.exportScope) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="范围条件">
+          {{ detailTask.scopeSummary }}
+        </a-descriptions-item>
+        <a-descriptions-item v-if="detailTask.scopeItems.length > 0" label="范围明细">
+          <div class="scope-items">
+            <UiTag
+              v-for="item in detailTask.scopeItems"
+              :key="`${item.scopeType}-${item.targetId}`"
+              tone="blue"
+              size="sm"
+            >
+              {{ formatScopeItem(item) }}
+            </UiTag>
+          </div>
+        </a-descriptions-item>
+        <a-descriptions-item label="状态">
+          <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
+            {{ exportStatusLabel(detailTask.taskStatus) }}
           </UiTag>
-        </div>
-      </a-descriptions-item>
-      <a-descriptions-item label="状态">
-        <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
-          {{ exportStatusLabel(detailTask.taskStatus) }}
-        </UiTag>
-      </a-descriptions-item>
-      <a-descriptions-item label="文件名">
-        {{ exportTaskFileNameText(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="文件大小">
-        {{ exportTaskFileSizeText(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="开始时间">
-        {{ exportTaskStartedTimeText(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="完成时间">
-        {{ exportTaskCompletedTimeText(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="导出处理说明">
-        <span v-if="exportTaskFailureMessageText(detailTask)" class="error-text">
-          {{ exportTaskFailureMessageText(detailTask) }}
-        </span>
-        <span v-else class="hint-text">{{ exportTaskProcessingText(detailTask) }}</span>
-      </a-descriptions-item>
-    </a-descriptions>
-    <UiErrorRetryPanel
-      v-if="detailError"
-      :error="detailError"
-      title="任务详情加载失败"
-      compact
-      @retry="retryLoadDetail"
-    />
+        </a-descriptions-item>
+        <a-descriptions-item label="文件名">
+          {{ exportTaskFileNameText(detailTask) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="文件大小">
+          {{ exportTaskFileSizeText(detailTask) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="开始时间">
+          {{ exportTaskStartedTimeText(detailTask) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="完成时间">
+          {{ exportTaskCompletedTimeText(detailTask) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="导出处理说明">
+          <span v-if="exportTaskFailureMessageText(detailTask)" class="error-text">
+            {{ exportTaskFailureMessageText(detailTask) }}
+          </span>
+          <span v-else class="hint-text">{{ exportTaskProcessingText(detailTask) }}</span>
+        </a-descriptions-item>
+      </a-descriptions>
+      <UiErrorRetryPanel
+        v-if="detailError"
+        :error="detailError"
+        title="任务详情加载失败"
+        compact
+        @retry="retryLoadDetail"
+      />
     </a-spin>
   </a-drawer>
 </template>
@@ -328,9 +329,7 @@ import {
   listExportTasks,
 } from '@/apis/mark/exam-export'
 import {
-  UiBadge,
   UiButton,
-  UiCard,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,

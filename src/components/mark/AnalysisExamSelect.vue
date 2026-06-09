@@ -9,8 +9,6 @@ import { readPageList } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisExamSelect' })
 
-const ANALYSIS_EXAM_OPTION_PAGE_SIZE = 50
-
 const selectedExamId = defineModel<string | undefined>()
 
 withDefaults(
@@ -21,6 +19,8 @@ withDefaults(
     placeholder: '请选择考试',
   },
 )
+
+const ANALYSIS_EXAM_OPTION_PAGE_SIZE = 50
 
 const loading = ref(false)
 const examOptions = ref<{ label: string, value: string }[]>([])

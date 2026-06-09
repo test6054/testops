@@ -203,7 +203,7 @@
           placeholder="从筛选区当前考试带入"
         />
       </a-form-item>
-        <a-form-item label="电子归档包名称">
+      <a-form-item label="电子归档包名称">
         <a-input
           v-model:value="createForm.archiveTitle"
           placeholder="留空使用默认：考试名 + 考后电子归档包"

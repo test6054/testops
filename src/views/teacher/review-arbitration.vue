@@ -118,10 +118,12 @@
             <template v-else-if="column.key === 'updateTime'">
               {{ formatDateTime(reviewTasks[index].updateTime) }}
             </template>
-            <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="goReviewDetail(reviewTasks[index])">详情</span>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <span class="op-link" role="button" @click="goReviewDetail(reviewTasks[index])">详情</span>
                 <span class="op-link primary" role="button" @click="goReviewWorkspace(reviewTasks[index])">进入仲裁处理</span>
-            </div></template>
+              </div>
+            </template>
           </template>
         </UiDataTable>
       </UiCard>
@@ -195,11 +197,13 @@
             <template v-else-if="column.key === 'allocatedAt'">
               {{ formatDateTime(arbitrationTasks[index].allocatedAt) }}
             </template>
-            <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link primary" role="button" @click="goMarkingWorkspace(arbitrationTasks[index])">
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <span class="op-link primary" role="button" @click="goMarkingWorkspace(arbitrationTasks[index])">
                   整卷仲裁
                 </span>
-            </div></template>
+              </div>
+            </template>
           </template>
         </UiDataTable>
       </UiCard>

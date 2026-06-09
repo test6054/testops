@@ -1652,7 +1652,8 @@ onMounted(async () => {
             </a-form>
           </div>
 
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             v-model:current="improvementQuery.pageNum"
             v-model:page-size="improvementQuery.pageSize"
             :columns="improvementColumns"
@@ -1684,8 +1685,9 @@ onMounted(async () => {
                   {{ improvementStatusLabel(record.status) }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openImprovementDetail(record)">详情</span>
+              <template v-else-if="column.key === 'actions'">
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" @click="openImprovementDetail(record)">详情</span>
                   <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditImprovementTask(record.status)) }" @click="!canEditImprovementTask(record.status) && (openImprovementEdit(record))">编辑</span>
                   <span
                     v-for="to in nextImprovementStatuses(record.status)"
@@ -1699,7 +1701,8 @@ onMounted(async () => {
                   </span>
                   <span class="op-link" role="button" :class="{ 'is-disabled': !(!record.achievementResultId) }" @click="!record.achievementResultId && (handleImprovementAiSuggestion(record))">AI 改进</span>
                   <span class="op-link danger" role="button" v-if="record.status === 'OPEN'" @click="handleImprovementDelete(record)">删除</span>
-            </div></template>
+                </div>
+              </template>
             </template>
           </UiDataTable>
         </a-card>
@@ -1763,7 +1766,8 @@ onMounted(async () => {
             </a-form>
           </div>
 
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             v-model:current="issueQuery.pageNum"
             v-model:page-size="issueQuery.pageSize"
             :columns="issueColumns"
@@ -1796,8 +1800,9 @@ onMounted(async () => {
                   {{ issueStatusLabel(record.status) }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditAuditIssue(record.status)) }" @click="!canEditAuditIssue(record.status) && (openIssueEdit(record))">编辑</span>
+              <template v-else-if="column.key === 'actions'">
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditAuditIssue(record.status)) }" @click="!canEditAuditIssue(record.status) && (openIssueEdit(record))">编辑</span>
                   <a-dropdown v-if="nextAuditIssueStatuses(record.status).length">
                     <span class="op-link primary" role="button" @click.prevent>状态</span>
                     <template #overlay>
@@ -1809,7 +1814,8 @@ onMounted(async () => {
                     </template>
                   </a-dropdown>
                   <span class="op-link danger" role="button" v-if="record.status === 'OPEN'" @click="handleIssueDelete(record)">删除</span>
-            </div></template>
+                </div>
+              </template>
             </template>
           </UiDataTable>
         </a-card>
@@ -1860,7 +1866,8 @@ onMounted(async () => {
             </a-form>
           </div>
 
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             v-model:current="rectQuery.pageNum"
             v-model:page-size="rectQuery.pageSize"
             :columns="rectColumns"
@@ -1887,8 +1894,9 @@ onMounted(async () => {
                   {{ rectificationStatusLabel(record.status) }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditAuditRectification(record.status)) }" @click="!canEditAuditRectification(record.status) && (openRectEdit(record))">编辑</span>
+              <template v-else-if="column.key === 'actions'">
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditAuditRectification(record.status)) }" @click="!canEditAuditRectification(record.status) && (openRectEdit(record))">编辑</span>
                   <span
                     v-if="record.status === 'PLANNED'"
                     class="op-link primary"
@@ -1931,7 +1939,8 @@ onMounted(async () => {
                     闭环
                   </span>
                   <span class="op-link danger" role="button" v-if="record.status === 'PLANNED'" @click="handleRectDelete(record)">删除</span>
-            </div></template>
+                </div>
+              </template>
             </template>
           </UiDataTable>
         </a-card>
@@ -1983,7 +1992,8 @@ onMounted(async () => {
             </a-form>
           </div>
 
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             v-model:current="supQuery.pageNum"
             v-model:page-size="supQuery.pageSize"
             :columns="supColumns"
@@ -2017,10 +2027,12 @@ onMounted(async () => {
                 </a-tag>
                 <span v-else class="iwb__muted">未形成结论</span>
               </template>
-              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openSupEdit(record)">编辑</span>
+              <template v-else-if="column.key === 'actions'">
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" @click="openSupEdit(record)">编辑</span>
                   <span class="op-link danger" role="button" @click="handleSupDelete(record)">删除</span>
-            </div></template>
+                </div>
+              </template>
             </template>
           </UiDataTable>
         </a-card>

@@ -522,7 +522,7 @@ import type {
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
   FinalScoreRiskOverviewVO,
-  FinalScoreStatusCode,
+  FinalScoreStatusCode, FinalScoreRiskReasonCode
 } from '@/apis/mark/exam'
 import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -546,7 +546,6 @@ import {
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import type { FinalScoreRiskReasonCode } from '@/apis/mark/exam'
 import {
   UiActivityTimeline,
   UiAlertStrip,

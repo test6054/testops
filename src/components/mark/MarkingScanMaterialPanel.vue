@@ -31,6 +31,19 @@ const hasSlice = computed(() => Boolean(props.sliceFileId))
 const hasSource = computed(() => Boolean(props.sourceScanPage?.fileId))
 const hasMaster = computed(() => Boolean(props.masterPaperPage?.fileId))
 const showTabs = computed(() => (hasSlice.value ? 1 : 0) + (hasSource.value ? 1 : 0) + (hasMaster.value ? 1 : 0) > 1)
+const tabOptions = computed(() => {
+  const options: { label: string, value: ViewTab }[] = []
+  if (hasSlice.value) {
+    options.push({ label: '作答切片', value: 'slice' })
+  }
+  if (hasSource.value) {
+    options.push({ label: '原始扫描页', value: 'source' })
+  }
+  if (hasMaster.value) {
+    options.push({ label: '试卷母版', value: 'master' })
+  }
+  return options
+})
 
 /** 母版页 ROI 定位样式（像素→百分比，适配浏览器任意渲染尺寸） */
 const masterRoiStyle = computed(() => {
@@ -146,7 +159,7 @@ onBeforeUnmount(releaseImages)
 
 <template>
   <div class="marking-scan-material">
-    <UiEmpty v-if="!hasSlice && !hasSource" description="暂无阅卷影像材料" />
+    <UiEmpty v-if="!hasSlice && !hasSource && !hasMaster" description="暂无阅卷影像材料" />
     <UiErrorRetryPanel
       v-else-if="loadError"
       :error="loadError"
@@ -159,17 +172,16 @@ onBeforeUnmount(releaseImages)
         v-if="showTabs"
         v-model:value="activeTab"
         class="marking-scan-material__tabs"
-        :options="[
-          { label: '作答切片', value: 'slice' },
-          { label: '原始扫描页', value: 'source' },
-          ...(hasMaster ? [{ label: '试卷母版', value: 'master' as const }] : []),
-        ]"
+        :options="tabOptions"
       />
       <div v-else-if="hasSource && !hasSlice" class="marking-scan-material__solo-label">
         原始扫描页
       </div>
       <div v-else-if="hasSlice && !hasSource" class="marking-scan-material__solo-label">
         作答切片
+      </div>
+      <div v-else-if="hasMaster && !hasSlice && !hasSource" class="marking-scan-material__solo-label">
+        试卷母版
       </div>
       <UiAlertStrip
         v-if="activeTab === 'source' && sourceScanPage?.qualityStatus === 'BLOCKED'"
@@ -197,7 +209,7 @@ onBeforeUnmount(releaseImages)
           </div>
           <UiEmpty v-else-if="!loading" description="切片图片加载失败" />
         </div>
-        <div v-else class="marking-scan-material__viewer">
+        <div v-else-if="activeTab === 'source'" class="marking-scan-material__viewer">
           <div v-if="sourceScanPage" class="marking-scan-material__source-meta">
             <UiTag tone="blue" size="sm">{{ sourcePageCaption }}</UiTag>
             <UiTag :tone="sourceQualityTone" size="sm">{{ sourceQualityLabel }}</UiTag>
@@ -218,8 +230,8 @@ onBeforeUnmount(releaseImages)
           </div>
           <UiEmpty v-else-if="!loading" description="原始扫描页加载失败" />
         </div>
-        <!-- 试卷母版对照（ANSWER_SHEET 模式自动展示，含ROI题目区域高亮） -->
         <div v-else-if="activeTab === 'master'" class="marking-scan-material__viewer">
+          <!-- 试卷母版对照（ANSWER_SHEET 模式自动展示，含ROI题目区域高亮） -->
           <div class="marking-scan-material__source-meta">
             <UiTag tone="green" size="sm">试卷母版 · 题干对照</UiTag>
             <UiTag v-if="masterRoiStyle" tone="blue" size="sm">题目区域已标注</UiTag>

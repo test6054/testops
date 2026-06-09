@@ -3,8 +3,8 @@
  * 生成 mark-vue ↔ edu-mark API 契约登记册（Markdown）。
  * 用法：node scripts/generate-mark-api-registry.mjs
  */
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { join, relative, basename } from 'node:path'
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const markVueRoot = join(fileURLToPath(import.meta.url), '../..')
@@ -216,11 +216,19 @@ const now = new Date().toISOString().slice(0, 10)
 
 function mdTable(rows, cols) {
   const head = `| ${cols.map((c) => c.title).join(' | ')} |`
-  const sep = `| ${cols.map((c) => '---').join(' | ')} |`
+  const sep = `| ${cols.map(() => '---').join(' | ')} |`
   const body = rows
     .map((r) => `| ${cols.map((c) => String(c.get(r)).replace(/\|/g, '\\|').replace(/\n/g, ' ')).join(' | ')} |`)
     .join('\n')
   return `${head}\n${sep}\n${body}`
+}
+
+function formatNoCallerSection(rows) {
+  if (!rows.length) return '- （无）'
+  return rows.map((r) => {
+    const note = r.reviewNote ? ` — ${r.reviewNote}` : ''
+    return `- \`${r.method} ${r.path}\` → \`${r.feFunctions.join(', ') || '?'}\`（${r.controller}）${note}`
+  }).join('\n')
 }
 
 const registryRows = browserEps.map((r, idx) => ({
@@ -237,7 +245,9 @@ const registryRows = browserEps.map((r, idx) => ({
   status: r.integration,
 }))
 
-let md = `# mark-vue ↔ edu-mark API 契约登记册
+const noCallerSection = formatNoCallerSection(noCaller)
+
+const md = `# mark-vue ↔ edu-mark API 契约登记册
 
 > **生成日期**：${now}  
 > **生成命令**：\`node edu-practice-mark-vue/scripts/generate-mark-api-registry.mjs\`  
@@ -325,10 +335,7 @@ let md = `# mark-vue ↔ edu-mark API 契约登记册
 
 #### 2.5.1 无业务调用（${noCaller.length} 项，优先补页面）
 
-${noCaller.length ? noCaller.map((r) => {
-  const note = r.reviewNote ? ` — ${r.reviewNote}` : ''
-  return `- \`${r.method} ${r.path}\` → \`${r.feFunctions.join(', ') || '?'}\`（${r.controller}）${note}`
-}).join('\n') : '- （无）'}
+${noCallerSection}
 
 #### 2.5.2 后端 worker 专用（${workerOnly.length} 项）
 
@@ -454,7 +461,3 @@ pnpm --dir edu-practice-mark-vue typecheck
 `
 
 writeFileSync(outPath, md, 'utf8')
-console.log(`Wrote ${outPath}`)
-console.log(
-  `Browser endpoints: ${browserEps.length}, view: ${wiredView.length}, indirect: ${wiredIndirect.length}, worker: ${workerOnly.length}, no-caller: ${noCaller.length}, missing: ${missing.length}`,
-)

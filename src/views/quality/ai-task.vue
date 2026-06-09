@@ -942,7 +942,8 @@ onMounted(async () => {
         </a-form>
       </div>
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -996,8 +997,9 @@ onMounted(async () => {
           <template v-else-if="column.key === 'startedAt'">
             {{ record.startedAt || '未开始' }}
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openDetail(record)">详情</span>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <span class="op-link" role="button" @click="openDetail(record)">详情</span>
               <span
                 v-if="record.status === 'PENDING'"
                 class="op-link primary"
@@ -1011,7 +1013,8 @@ onMounted(async () => {
                 人工处置
               </span>
               <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
-            </div></template>
+            </div>
+          </template>
         </template>
       </UiDataTable>
     </a-card>

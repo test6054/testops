@@ -102,57 +102,57 @@
 
         <div class="filter-card">
           <a-form layout="inline" :model="filterForm" class="filter-form filter-form--toolbar">
-          <a-form-item label="任务状态">
-            <a-select
-              v-model:value="filterForm.taskStatus"
-              style="width: 160px"
-              placeholder="全部状态"
-              :options="statusOptions"
-              allow-clear
-              @change="loadTasks"
-            />
-          </a-form-item>
-          <a-form-item label="题组">
-            <a-select
-              v-model:value="filterForm.groupId"
-              :options="claimGroupOptions"
-              :loading="claimContextLoading"
-              placeholder="选择题组"
-              allow-clear
-              style="width: 180px"
-              show-search
-              option-filter-prop="label"
-              @change="onFilterGroupChange"
-            />
-          </a-form-item>
-          <a-form-item label="正评会话">
-            <a-select
-              v-model:value="filterForm.sessionId"
-              :options="filterSessionOptions"
-              :disabled="!filterForm.groupId"
-              placeholder="选择正评会话"
-              allow-clear
-              style="width: 180px"
-              @change="loadTasks"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
-              <span class="op-link" role="button" @click="resetFilter">重置</span>
-              <UiButton
-                variant="outline"
-                size="sm"
-                :disabled="!selectedExamId"
-                :loading="loading"
-                @click="loadTasks"
-              >
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
+            <a-form-item label="任务状态">
+              <a-select
+                v-model:value="filterForm.taskStatus"
+                style="width: 160px"
+                placeholder="全部状态"
+                :options="statusOptions"
+                allow-clear
+                @change="loadTasks"
+              />
+            </a-form-item>
+            <a-form-item label="题组">
+              <a-select
+                v-model:value="filterForm.groupId"
+                :options="claimGroupOptions"
+                :loading="claimContextLoading"
+                placeholder="选择题组"
+                allow-clear
+                style="width: 180px"
+                show-search
+                option-filter-prop="label"
+                @change="onFilterGroupChange"
+              />
+            </a-form-item>
+            <a-form-item label="正评会话">
+              <a-select
+                v-model:value="filterForm.sessionId"
+                :options="filterSessionOptions"
+                :disabled="!filterForm.groupId"
+                placeholder="选择正评会话"
+                allow-clear
+                style="width: 180px"
+                @change="loadTasks"
+              />
+            </a-form-item>
+            <a-form-item class="filter-form__actions">
+              <a-space class="filter-form__action-group">
+                <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
+                <span class="op-link" role="button" @click="resetFilter">重置</span>
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  :disabled="!selectedExamId"
+                  :loading="loading"
+                  @click="loadTasks"
+                >
+                  <template #icon><ReloadOutlined /></template>
+                  刷新
+                </UiButton>
+              </a-space>
+            </a-form-item>
+          </a-form>
         </div>
 
         <!-- D-9 错误态：任务列表加载失败时提供重试 + 上报入口 -->
@@ -275,7 +275,6 @@ import type {
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import FilterOutlined from '@ant-design/icons-vue/FilterOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'

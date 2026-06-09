@@ -179,7 +179,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'change', changeEvent: UiDataTableChangeEvent): void
-  (e: 'page-change', pageEvent: { current: number; pageSize: number }): void
+  (e: 'page-change', pageEvent: { current: number, pageSize: number }): void
   (e: 'selection-change', rowKeys: Key[]): void
 }>()
 

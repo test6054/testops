@@ -30,7 +30,8 @@
       compact
       @retry="reload"
     />
-    <UiDataTable class="student-detail-table__data-table"
+    <UiDataTable
+      class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -63,10 +64,11 @@
           {{ formatDateTime(rows[index].reviewTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openHandleModal(rows[index], 'APPROVED')">通过</span>
+          <div class="operations-cell" @click.stop>
+            <span class="op-link" role="button" @click="openHandleModal(rows[index], 'APPROVED')">通过</span>
             <span class="op-link danger" role="button" @click="openHandleModal(rows[index], 'REJECTED')">驳回</span>
-            </div></template>
+          </div>
+        </template>
       </template>
     </UiDataTable>
 

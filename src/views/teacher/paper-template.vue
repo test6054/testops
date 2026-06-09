@@ -114,7 +114,8 @@
           </UiButton>
         </template>
 
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="questionColumns"
           :data-source="questions"
           :show-pagination="false"
@@ -153,10 +154,12 @@
               <UiTag v-if="record.questionTemplateId" tone="green" size="sm">已存在</UiTag>
               <UiTag v-else tone="orange" size="sm">未保存</UiTag>
             </template>
-            <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openQuestionEdit(index)">编辑</span>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <span class="op-link" role="button" @click="openQuestionEdit(index)">编辑</span>
                 <span class="op-link danger" role="button" @click="removeQuestion(index)">删除</span>
-            </div></template>
+              </div>
+            </template>
           </template>
           <template #expandedRowRender="{ record }">
             <div class="question-expand">
@@ -444,7 +447,6 @@
       </a-row>
     </a-form>
   </a-modal>
-
 </template>
 
 <script lang="ts" setup>
@@ -481,8 +483,8 @@ import {
   saveStandardAnswer,
 } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import { confirmAnswerEffective } from '@/apis/mark/question-analysis'
 import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
+import { confirmAnswerEffective } from '@/apis/mark/question-analysis'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import {
   UiBadge,

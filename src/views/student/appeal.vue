@@ -271,7 +271,6 @@ import {
 } from '@/apis/mark/grade-review'
 import { canSubmitReview, getMyScoreDetail, listMyExams } from '@/apis/mark/student-exam'
 import {
-  UiBadge,
   UiButton,
   UiCard,
   UiDataTable,

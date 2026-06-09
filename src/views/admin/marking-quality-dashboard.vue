@@ -218,7 +218,7 @@
               @retry="loadReviewerMetrics"
             />
             <UiDataTable class="student-detail-table__data-table"
-              v-else
+                         v-else
               :columns="reviewerColumns"
               :data-source="reviewerMetrics"
               :loading="reviewerLoading"

@@ -63,7 +63,8 @@
             compact
             @retry="loadSignatures"
           />
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             v-else
             :columns="signatureColumns"
             :data-source="signatures"
@@ -147,7 +148,8 @@
             compact
             @retry="loadExperiences"
           />
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             v-else
             :columns="experienceColumns"
             :data-source="experiences"

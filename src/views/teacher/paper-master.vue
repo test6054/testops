@@ -143,7 +143,8 @@
         <template #extra>
           <UiButton size="sm" variant="outline" @click="goPaperTemplate">去题目页编辑</UiButton>
         </template>
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="subjectiveColumns"
           :data-source="subjectiveQuestions"
           :show-pagination="false"
@@ -178,7 +179,8 @@
             新增
           </UiButton>
         </template>
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="identityColumns"
           :data-source="identityAreas"
           :show-pagination="false"
@@ -214,7 +216,8 @@
             新增
           </UiButton>
         </template>
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="objectiveColumns"
           :data-source="objectiveAreas"
           :show-pagination="false"
@@ -355,18 +358,22 @@
           <a-input v-model:value="genForm.academicYear" placeholder="例如：2025-2026" />
         </a-form-item>
         <a-form-item label="学期">
-          <a-select v-model:value="genForm.semester" :options="[
-            { label: '第一学期（秋季）', value: '1' },
-            { label: '第二学期（春季）', value: '2' },
-          ]" />
+          <a-select
+            v-model:value="genForm.semester" :options="[
+              { label: '秋季学期', value: '1' },
+              { label: '春季学期', value: '2' },
+            ]"
+          />
         </a-form-item>
         <a-form-item label="课程名称" required>
           <a-input v-model:value="genForm.courseName" placeholder="课程名称" />
         </a-form-item>
         <a-form-item label="考试形式">
-          <a-select v-model:value="genForm.examType" :options="[
-            { label: '闭卷', value: '闭卷' }, { label: '开卷', value: '开卷' },
-          ]" />
+          <a-select
+            v-model:value="genForm.examType" :options="[
+              { label: '闭卷', value: '闭卷' }, { label: '开卷', value: '开卷' },
+            ]"
+          />
         </a-form-item>
         <a-form-item label="考试时间（分钟）">
           <a-input-number v-model:value="genForm.durationMin" :min="30" :max="300" />
@@ -380,40 +387,33 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
+import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
 import type {
   PaperMasterIdentityAreaRequest,
   PaperMasterIdentityAreaTypeCode,
   PaperMasterObjectiveAreaRequest,
-  PaperMasterVO,
+  PaperMasterVO
+} from '@/apis/mark/paper-master'
+import {
+  generateStandardPaper,
+  getPaperMaster,
+  isPaperMasterNotConfiguredError,
+  PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL,
+  savePaperMaster
 } from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
-import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
-import { generateStandardPaper } from '@/apis/mark/paper-master'
 import PdfAnnotationEditor from '@/components/mark/PdfAnnotationEditor.vue'
-import {
-  getPaperMaster,
-  isPaperMasterNotConfiguredError,
-  PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL,
-  savePaperMaster,
-} from '@/apis/mark/paper-master'
-import {
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiErrorRetryPanel,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -848,7 +848,7 @@ async function handleGenerate() {
   }
   generating.value = true
   try {
-    const fileId = await generateStandardPaper({
+    form.masterFileId = await generateStandardPaper({
       examId: selectedExamId.value,
       universityName: genForm.universityName.trim(),
       academicYear: genForm.academicYear.trim(),
@@ -857,7 +857,6 @@ async function handleGenerate() {
       examType: genForm.examType,
       durationMin: genForm.durationMin,
     })
-    form.masterFileId = fileId
     form.masterName = genForm.courseName.trim() + ' 标准试卷'
     message.success('标准试卷已生成，请点击「保存母版」确认')
     generateModalOpen.value = false

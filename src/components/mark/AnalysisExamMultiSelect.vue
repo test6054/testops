@@ -9,9 +9,8 @@ import { readPageList } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisExamMultiSelect' })
 
-const ANALYSIS_EXAM_MULTI_OPTION_PAGE_SIZE = 50
-
 const selectedExamIds = defineModel<string[]>({ required: true })
+
 withDefaults(
   defineProps<{
     placeholder?: string
@@ -24,6 +23,8 @@ withDefaults(
 const emit = defineEmits<{
   (e: 'selected-exams-change', value: ExamSummaryVO[]): void
 }>()
+
+const ANALYSIS_EXAM_MULTI_OPTION_PAGE_SIZE = 50
 
 const loading = ref(false)
 const exams = ref<ExamSummaryVO[]>([])

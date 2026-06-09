@@ -1,14 +1,8 @@
 <script lang="ts" setup>
-import type { ColumnType } from 'ant-design-vue/es/table'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO, MarkingProgressVO } from '@/apis/mark/exam'
-import {
-  getExamTemplate,
-  getMarkingProgress,
-  isPaperTemplateNotConfiguredError,
-} from '@/apis/mark/exam'
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
-import { getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import type {
   AllocationUnitCode,
   AnonymityModeCode,
@@ -21,6 +15,23 @@ import type {
   MarkingOrganizationVO,
   QuestionMarkingGroupVO,
 } from '@/apis/mark/marking-organization'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { SignalMetric } from '@/types/workbench'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import DeploymentUnitOutlined from '@ant-design/icons-vue/DeploymentUnitOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  getExamTemplate,
+  getMarkingProgress,
+  isPaperTemplateNotConfiguredError,
+} from '@/apis/mark/exam'
+import { getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import {
   ALLOCATION_UNIT_LABEL,
   ALLOCATION_UNIT_OPTIONS,
@@ -42,17 +53,7 @@ import {
   validateFormalSessionContract,
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import DeploymentUnitOutlined from '@ant-design/icons-vue/DeploymentUnitOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
-import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import {
   UiAlertStrip,
@@ -64,11 +65,10 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import type { SignalMetric } from '@/types/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useUserStore } from '@/stores/modules/user'
-import { formatDateTime } from '@/utils/format'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { formatDateTime } from '@/utils/format'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -204,8 +204,8 @@ const anonymityModeOptions = ANONYMITY_MODE_OPTIONS
 const anonymousTokenPolicyOptions = ANONYMOUS_TOKEN_POLICY_OPTIONS
 
 const allocationModeOptions = computed(() => {
-  const allowed: MarkingAllocationModeCode[] =
-    form.allocationUnit === 'WHOLE_PAPER'
+  const allowed: MarkingAllocationModeCode[]
+    = form.allocationUnit === 'WHOLE_PAPER'
       ? ['BY_PAPER_RANDOM']
       : ['BY_QUESTION', 'ROUND_ROBIN', 'RANDOM', 'BY_CLASS']
   return allowed.map((value) => ({
@@ -222,8 +222,8 @@ const scanReadinessSummary = computed(() => {
   if (!ledgerDetail.value && !markingProgress.value) {
     return null
   }
-  const bound =
-    ledgerDetail.value?.boundPaperCount ?? markingProgress.value?.gradablePaperCount ?? 0
+  const bound
+    = ledgerDetail.value?.boundPaperCount ?? markingProgress.value?.gradablePaperCount ?? 0
   const gradable = markingProgress.value?.gradablePaperCount ?? bound
   return { bound, gradable }
 })
@@ -241,15 +241,15 @@ const selectedQuestions = computed(() =>
 
 const canSubmit = computed(
   () =>
-    Boolean(selectedExamId.value) &&
-    Boolean(form.leaderUserId) &&
-    form.reviewerUserIds.length > 0 &&
-    dualReviewContractValid.value &&
-    questionScopeValid.value &&
-    form.batchSize > 0 &&
-    form.loadLimit > 0 &&
-    !templateLoading.value &&
-    !questionLoadError.value,
+    Boolean(selectedExamId.value)
+    && Boolean(form.leaderUserId)
+    && form.reviewerUserIds.length > 0
+    && dualReviewContractValid.value
+    && questionScopeValid.value
+    && form.batchSize > 0
+    && form.loadLimit > 0
+    && !templateLoading.value
+    && !questionLoadError.value,
 )
 
 const questionScopeValid = computed(() => {
@@ -260,28 +260,28 @@ const questionScopeValid = computed(() => {
     return form.questionTemplateIds.length > 0
   }
   return (
-    form.questionTemplateIds.length > 0 &&
-    form.randomQuestionSampleSize !== null &&
-    form.randomQuestionSampleSize > 0 &&
-    form.randomQuestionSampleSize <= form.questionTemplateIds.length
+    form.questionTemplateIds.length > 0
+    && form.randomQuestionSampleSize !== null
+    && form.randomQuestionSampleSize > 0
+    && form.randomQuestionSampleSize <= form.questionTemplateIds.length
   )
 })
 
 const dualReviewContractValid = computed(() => {
   if (!form.dualReviewEnabled) {
     return (
-      form.arbitrationScoreThreshold === null &&
-      form.arbitrationRatioThreshold === null &&
-      form.arbitratorUserId === null
+      form.arbitrationScoreThreshold === null
+      && form.arbitrationRatioThreshold === null
+      && form.arbitratorUserId === null
     )
   }
   return (
-    form.allocationUnit === 'WHOLE_PAPER' &&
-    form.allocationMode === 'BY_PAPER_RANDOM' &&
-    form.reviewerUserIds.length >= 2 &&
-    Boolean(form.arbitratorUserId) &&
-    !form.reviewerUserIds.includes(String(form.arbitratorUserId)) &&
-    (form.arbitrationScoreThreshold !== null || form.arbitrationRatioThreshold !== null)
+    form.allocationUnit === 'WHOLE_PAPER'
+    && form.allocationMode === 'BY_PAPER_RANDOM'
+    && form.reviewerUserIds.length >= 2
+    && Boolean(form.arbitratorUserId)
+    && !form.reviewerUserIds.includes(String(form.arbitratorUserId))
+    && (form.arbitrationScoreThreshold !== null || form.arbitrationRatioThreshold !== null)
   )
 })
 

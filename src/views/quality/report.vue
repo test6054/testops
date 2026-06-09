@@ -631,7 +631,7 @@ onMounted(loadList)
       </div>
 
       <UiDataTable class="student-detail-table__data-table"
-        v-model:current="query.pageNum"
+                   v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
         :data-source="list"
@@ -696,8 +696,8 @@ onMounted(loadList)
                 @click="handleTransit(record, to)"
               >
                 -> {{ reportStatusLabel(to) }}
-              </span>
-              <span class="op-link" role="button" v-if="                   record.status === 'SUBMITTED'                     || record.status === 'CONFIRMED'                     || record.status === 'ARCHIVED'                 " @click="handleExport(record)">导出三格式</span>
+            </span>
+              <span class="op-link" role="button" v-if="record.status === 'SUBMITTED'|| record.status === 'CONFIRMED'|| record.status === 'ARCHIVED'" @click="handleExport(record)">导出三格式</span>
               <span class="op-link danger" role="button" v-if="record.status === 'DRAFT'" @click="handleDelete(record)">删除</span>
               <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
             </div></template>
@@ -720,7 +720,7 @@ onMounted(loadList)
             <a-form-item label="标题" required>
               <a-input
                 v-model:value="editor.title"
-                placeholder="例：2024-2025 学年第 1 学期《程序设计基础》课程评价报告"
+                placeholder="例：2024-2025 学年春季学期《程序设计基础》课程评价报告"
               />
             </a-form-item>
           </a-col>

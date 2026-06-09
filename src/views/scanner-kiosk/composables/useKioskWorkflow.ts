@@ -624,8 +624,26 @@ export function useKioskWorkflow() {
     return formatDateTimeWithSeconds(value)
   }
 
-  function handleError(error: unknown) {
-    errorMessage.value = getUserErrorMessage(error, '扫描一体机操作失败')
+  function handleError(error: unknown, fallback = '扫描一体机操作失败') {
+    errorMessage.value = getUserErrorMessage(error, fallback)
+  }
+
+  async function handleScanJobStartFailure(error: unknown, fallback = '启动本地扫描失败') {
+    if (activeBatchExternalNo.value) {
+      try {
+        await closeActiveBatch(true)
+      } catch (closeError) {
+        const startMessage = getUserErrorMessage(error, fallback)
+        const closeMessage = getUserErrorMessage(closeError, '扫描批次关闭失败')
+        handleError(null, `${startMessage}；扫描批次关闭失败：${closeMessage}`)
+        return
+      }
+    }
+    if (error instanceof ScannerBusyError) {
+      enterBusyState(error.activeJobId)
+      return
+    }
+    handleError(error, fallback)
   }
 
   function getActiveBatchExternalNo() {
@@ -680,23 +698,37 @@ export function useKioskWorkflow() {
     busyState.value = { active: false, activeJobId: '', activeJob: null }
   }
 
-  function validateActivationForm() {
+  function validateActivationForm(): ({
+    ok: true
+    gatewayBaseUrl: string
+    activationCode: string
+    endpointName: string
+  } | {
+    ok: false
+    errorMessage: string
+  }) {
     const gatewayBaseUrl = activationForm.value.gatewayBaseUrl.trim().replace(/\/+$/, '')
     const activationCode = activationForm.value.activationCode.trim()
     const endpointName = activationForm.value.endpointName.trim()
-    if (!gatewayBaseUrl) throw toUserError(null, '系统服务地址不能为空')
+    if (!gatewayBaseUrl) {
+      return { ok: false, errorMessage: '系统服务地址不能为空' }
+    }
     let url: URL
     try {
       url = new URL(gatewayBaseUrl)
     } catch {
-      throw toUserError(null, '系统服务地址格式不正确')
+      return { ok: false, errorMessage: '系统服务地址格式不正确' }
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      throw toUserError(null, '系统服务地址必须以 http:// 或 https:// 开头')
+      return { ok: false, errorMessage: '系统服务地址必须以 http:// 或 https:// 开头' }
     }
-    if (!activationCode) throw toUserError(null, '激活码不能为空')
-    if (!endpointName) throw toUserError(null, '端点名称不能为空')
-    return { gatewayBaseUrl, activationCode, endpointName }
+    if (!activationCode) {
+      return { ok: false, errorMessage: '激活码不能为空' }
+    }
+    if (!endpointName) {
+      return { ok: false, errorMessage: '端点名称不能为空' }
+    }
+    return { ok: true, gatewayBaseUrl, activationCode, endpointName }
   }
 
   // -------------------------------------------------------------
@@ -1105,32 +1137,49 @@ export function useKioskWorkflow() {
   function resolveLifecycleScanSource(
     lifecycle: ExamScannerBatchLifecycleVO,
     context: ExamScannerKioskContextVO,
-  ): {
+  ): ({
+    ok: true
     scanMode: ScannerKioskScanMode
     targetPageNo?: number
     supplementReason?: string
     replaceTargetPage: boolean
-  } {
+  } | {
+    ok: false
+    errorMessage: string
+  }) {
     if (!lifecycle.scanMode) {
-      throw toUserError(null, '扫描批次缺少扫描模式，已阻断本地扫描启动')
+      return {
+        ok: false,
+        errorMessage: '扫描批次缺少扫描模式，已阻断本地扫描启动',
+      }
     }
     if (
       lifecycle.declaredClassIds
       && !sameOrderedStringList(lifecycle.declaredClassIds, context.classIds)
     ) {
-      throw toUserError(null, '扫描批次班级范围与当前考试不一致，请刷新后重新启动扫描')
+      return {
+        ok: false,
+        errorMessage: '扫描批次班级范围与当前考试不一致，请刷新后重新启动扫描',
+      }
     }
     if (lifecycle.scanMode !== 'SUPPLEMENT') {
-      return { scanMode: lifecycle.scanMode, replaceTargetPage: false }
+      return { ok: true, scanMode: lifecycle.scanMode, replaceTargetPage: false }
     }
     if (!lifecycle.targetPageNo || lifecycle.targetPageNo <= 0) {
-      throw toUserError(null, '补扫任务缺少目标页号，已阻断本地扫描启动')
+      return {
+        ok: false,
+        errorMessage: '补扫任务缺少目标页号，已阻断本地扫描启动',
+      }
     }
     const reason = lifecycle.supplementReason?.trim()
     if (!reason) {
-      throw toUserError(null, '补扫任务缺少补扫原因，已阻断本地扫描启动')
+      return {
+        ok: false,
+        errorMessage: '补扫任务缺少补扫原因，已阻断本地扫描启动',
+      }
     }
     return {
+      ok: true,
       scanMode: lifecycle.scanMode,
       targetPageNo: lifecycle.targetPageNo,
       supplementReason: reason,
@@ -1175,13 +1224,25 @@ export function useKioskWorkflow() {
         replaceTargetPage: isSupplement ? supplementReplaceTargetPage.value : false,
       })
       if (!batchLifecycle.batchExternalNo) {
-        throw toUserError(null, '扫描批次创建结果缺少批次编号，无法启动本地扫描')
+        await handleScanJobStartFailure(
+          null,
+          '扫描批次创建结果缺少批次编号，无法启动本地扫描',
+        )
+        return
       }
       activeBatchExternalNo.value = batchLifecycle.batchExternalNo
       if (!batchLifecycle.reportId) {
-        throw toUserError(null, '扫描批次创建结果缺少扫描报告 ID，无法启动本地扫描')
+        await handleScanJobStartFailure(
+          null,
+          '扫描批次创建结果缺少扫描报告 ID，无法启动本地扫描',
+        )
+        return
       }
       const lifecycleScanSource = resolveLifecycleScanSource(batchLifecycle, kioskContext.value)
+      if (!lifecycleScanSource.ok) {
+        await handleScanJobStartFailure(null, lifecycleScanSource.errorMessage)
+        return
+      }
       currentJob.value = await startScanJob({
         context: kioskContext.value,
         localScannerId: selectedScannerId.value,
@@ -1195,22 +1256,7 @@ export function useKioskWorkflow() {
       })
       startJobPolling(currentJob.value.scanJobId)
     } catch (error) {
-      if (activeBatchExternalNo.value) {
-        try {
-          await closeActiveBatch(true)
-        } catch (closeError) {
-          if (!(closeError instanceof Error)) throw closeError
-          const startMessage = getUserErrorMessage(error, '启动本地扫描失败')
-          const closeMessage = getUserErrorMessage(closeError, '扫描批次关闭失败')
-          handleError(new Error(`${startMessage}；扫描批次关闭失败：${closeMessage}`))
-          return
-        }
-      }
-      if (error instanceof ScannerBusyError) {
-        enterBusyState(error.activeJobId)
-        return
-      }
-      handleError(error)
+      await handleScanJobStartFailure(error)
     } finally {
       loading.value = false
     }
@@ -1503,6 +1549,10 @@ export function useKioskWorkflow() {
     successMessage.value = ''
     try {
       const request = validateActivationForm()
+      if (!request.ok) {
+        errorMessage.value = request.errorMessage
+        return
+      }
       const activation = await activateLocalAgent(request)
       saveKioskAuthSession(activation)
       successMessage.value = '一体机已激活'

@@ -26,7 +26,7 @@
             <a-input v-model:value="schoolYear" placeholder="2025-2026" style="width:140px" />
           </a-form-item>
           <a-form-item label="学期">
-            <a-select v-model:value="semester" :options="[{label:'第一学期',value:'1'},{label:'第二学期',value:'2'}]" style="width:140px" />
+            <a-select v-model:value="semester" :options="SemesterOptions" style="width:140px" />
           </a-form-item>
           <a-form-item>
             <UiButton size="sm" @click="loadList">查询</UiButton>
@@ -109,22 +109,24 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
-import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
-import message from 'ant-design-vue/es/message'
-import { TrainingPlanSelector } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiTag } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import type {
   RationalityAuditCourseLedgerItemVO,
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
 import {
   createRationalityAudit,
   getRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
+import { TrainingPlanSelector } from '@/components/quality/selectors'
+import { UiButton, UiCard, UiDataTable, UiTag } from '@/components/ui-guide/ui'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'QualityRationalityAudit' })
 
@@ -168,9 +170,17 @@ const columns = [
   { title: '操作', key: 'actions', width: 120 },
 ]
 
-function auditStatusTone(s: string) { return s === 'APPROVED' ? 'green' : s === 'REJECTED' ? 'red' : 'orange' }
-function auditStatusLabel(s: string) { return s === 'APPROVED' ? '已通过' : s === 'REJECTED' ? '已驳回' : '待审核' }
-function booleanTagTone(v?: boolean) { return v === true ? 'green' : v === false ? 'red' : 'orange' }
+function auditStatusTone(s: string) {
+  return s === 'APPROVED' ? 'green' : s === 'REJECTED' ? 'red' : 'orange'
+}
+
+function auditStatusLabel(s: string) {
+  return s === 'APPROVED' ? '已通过' : s === 'REJECTED' ? '已驳回' : '待审核'
+}
+
+function booleanTagTone(v?: boolean) {
+  return v === true ? 'green' : v === false ? 'red' : 'orange'
+}
 
 async function loadList() {
   if (!trainingPlanId.value || !schoolYear.value || !semester.value) {
@@ -186,8 +196,8 @@ async function loadList() {
     })
     overview.value = response.overview
     list.value = response.items
-  } catch (e: any) {
-    message.error('加载审核列表失败: ' + (e?.message ?? ''))
+  } catch (e: unknown) {
+    showUserError(e, '加载审核列表失败')
   } finally {
     loading.value = false
   }
@@ -232,8 +242,8 @@ async function submitAudit(status: 'APPROVED' | 'REJECTED') {
     message.success(status === 'APPROVED' ? '审核已通过' : '已驳回')
     editOpen.value = false
     await loadList()
-  } catch (e: any) {
-    message.error('操作失败: ' + (e?.message ?? ''))
+  } catch (e: unknown) {
+    showUserError(e, '操作失败')
   } finally {
     editing.value = false
   }

@@ -154,7 +154,8 @@
       :footer="null"
     >
       <a-spin :spinning="detailLoading">
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           :columns="detailColumns"
           :data-source="detailItems"
           :show-pagination="false"
