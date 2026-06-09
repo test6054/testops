@@ -54,7 +54,7 @@ export interface SelectedExamMeta {
   examNo: string
 }
 
-const ORDERED_STAGES: ReadonlyArray<MarkStageKey> = [
+export const MARK_STAGE_ORDER: ReadonlyArray<MarkStageKey> = [
   'EXAM_PREP',
   'PAPER_TEMPLATE',
   'SCAN',
@@ -145,7 +145,7 @@ export const useMarkStageStore = defineStore('markStage', () => {
     return progressMap.value.get(observedExamId.value) ?? emptyProgress()
   })
 
-  const orderedStages = computed(() => ORDERED_STAGES.map((key) => ({
+  const orderedStages = computed(() => MARK_STAGE_ORDER.map((key) => ({
     key,
     title: STAGE_TITLES[key],
     status: observedProgress.value.states[key],
@@ -205,7 +205,7 @@ export const useMarkStageStore = defineStore('markStage', () => {
       if (update.hint !== undefined) progress.hints[key] = update.hint
     }
     // 同步整体阻断原因（取第一个 blocked 阶段的 hint）
-    const firstBlocked = ORDERED_STAGES.find((k) => progress.states[k] === 'blocked')
+    const firstBlocked = MARK_STAGE_ORDER.find((k) => progress.states[k] === 'blocked')
     progress.blockedReason = firstBlocked ? progress.hints[firstBlocked] : ''
     progressMap.value = new Map(progressMap.value)
   }

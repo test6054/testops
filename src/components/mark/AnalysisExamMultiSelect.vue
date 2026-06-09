@@ -9,6 +9,8 @@ import { readPageList } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisExamMultiSelect' })
 
+const ANALYSIS_EXAM_MULTI_OPTION_PAGE_SIZE = 50
+
 const selectedExamIds = defineModel<string[]>({ required: true })
 withDefaults(
   defineProps<{
@@ -28,11 +30,18 @@ const exams = ref<ExamSummaryVO[]>([])
 const examOptions = ref<{ label: string, value: string }[]>([])
 
 /** 加载当前租户考试范围，供 AI 分析卡片选择参与分析的考试实体。 */
-async function loadExamOptions(): Promise<void> {
+async function loadExamOptions(keyword?: string): Promise<void> {
   loading.value = true
   try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    exams.value = readPageList(result, '考试列表加载失败，请稍后重试')
+    const result = await pageExams({
+      pageNum: 1,
+      pageSize: ANALYSIS_EXAM_MULTI_OPTION_PAGE_SIZE,
+      keyword: keyword?.trim() || undefined,
+    })
+    const loaded = readPageList(result, '考试列表加载失败，请稍后重试')
+    const merged = new Map(exams.value.map((exam) => [exam.examId, exam]))
+    loaded.forEach((exam) => merged.set(exam.examId, exam))
+    exams.value = Array.from(merged.values())
     examOptions.value = exams.value.map((exam: ExamSummaryVO) => ({
       label: [formatExamOptionLabel(exam), formatAcademicTerm(exam)].filter(Boolean).join(' · '),
       value: exam.examId,
@@ -43,6 +52,10 @@ async function loadExamOptions(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+function handleExamSearch(keyword: string): void {
+  void loadExamOptions(keyword)
 }
 
 function formatAcademicTerm(exam: ExamSummaryVO): string {
@@ -74,16 +87,19 @@ onMounted(loadExamOptions)
       :placeholder="placeholder"
       show-search
       option-filter-prop="label"
+      :filter-option="false"
       allow-clear
       max-tag-count="responsive"
+      @search="handleExamSearch"
       @change="emitSelectedExamsChange"
+      @dropdown-visible-change="(open: boolean) => { if (open) void loadExamOptions() }"
     />
     <a-button
       class="analysis-exam-select__reload"
       size="small"
       :loading="loading"
       title="刷新考试列表"
-      @click="loadExamOptions"
+      @click="() => loadExamOptions()"
     >
       <template #icon><ReloadOutlined /></template>
     </a-button>

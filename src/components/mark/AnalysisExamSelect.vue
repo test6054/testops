@@ -9,6 +9,8 @@ import { readPageList } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisExamSelect' })
 
+const ANALYSIS_EXAM_OPTION_PAGE_SIZE = 50
+
 const selectedExamId = defineModel<string | undefined>()
 
 withDefaults(
@@ -24,10 +26,14 @@ const loading = ref(false)
 const examOptions = ref<{ label: string, value: string }[]>([])
 
 /** 加载当前租户考试范围，供 AI 分析卡片选择单个考试实体。 */
-async function loadExamOptions(): Promise<void> {
+async function loadExamOptions(keyword?: string): Promise<void> {
   loading.value = true
   try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
+    const result = await pageExams({
+      pageNum: 1,
+      pageSize: ANALYSIS_EXAM_OPTION_PAGE_SIZE,
+      keyword: keyword?.trim() || undefined,
+    })
     examOptions.value = readPageList(result, '考试列表加载失败，请稍后重试').map(
       (exam: ExamSummaryVO) => ({
         label: [formatExamOptionLabel(exam), formatAcademicTerm(exam)].filter(Boolean).join(' · '),
@@ -39,6 +45,10 @@ async function loadExamOptions(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+function handleExamSearch(keyword: string): void {
+  void loadExamOptions(keyword)
 }
 
 function formatAcademicTerm(exam: ExamSummaryVO): string {
@@ -62,14 +72,17 @@ onMounted(loadExamOptions)
       :placeholder="placeholder"
       show-search
       option-filter-prop="label"
+      :filter-option="false"
       allow-clear
+      @search="handleExamSearch"
+      @dropdown-visible-change="(open: boolean) => { if (open) void loadExamOptions() }"
     />
     <a-button
       class="analysis-exam-select__reload"
       size="small"
       :loading="loading"
       title="刷新考试列表"
-      @click="loadExamOptions"
+      @click="() => loadExamOptions()"
     >
       <template #icon><ReloadOutlined /></template>
     </a-button>

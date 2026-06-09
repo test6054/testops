@@ -1,0 +1,160 @@
+// 实训详情列表：操作列与工具栏按钮（与 edu-practice-web-vue StudentDetailTable 一致）
+// 全局样式（由 index.scss 引入），供阅卷端列表页复用
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.operations-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+
+  .op-link.primary {
+    color: var(--ant-color-primary);
+
+    &:hover {
+      color: var(--ant-color-primary-hover);
+    }
+  }
+}
+
+.op-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ant-color-text);
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.15s ease;
+  border: none;
+  background: transparent;
+
+  &:hover {
+    color: var(--ant-color-primary);
+  }
+
+  &.primary {
+    color: var(--ant-color-primary);
+  }
+
+  &.danger {
+    color: var(--ant-color-error);
+
+    &:hover {
+      color: color-mix(in srgb, var(--ant-color-error) 82%, var(--ant-color-text));
+    }
+  }
+
+  &.is-disabled {
+    color: var(--ant-color-text-quaternary);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+.ai-review-btn {
+  color: var(--ant-color-primary);
+  border-color: var(--ant-color-primary);
+}
+
+.stage-reject-btn {
+  color: var(--ant-color-error);
+  border-color: var(--ant-color-error);
+}
+
+.selection-info {
+  font-size: 13px;
+  color: var(--ant-color-text-secondary);
+}
+
+.filter-card {
+  margin-bottom: 0;
+  padding-top: 10px;
+}
+
+.filter-form {
+  padding: 8px 0;
+}
+
+.detail-table-card {
+  border-radius: var(--dp-radius-lg);
+  border: 1px solid var(--ant-color-border-secondary);
+  box-shadow: none;
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ant-color-text);
+  }
+
+  .student-detail-table__data-table .ui-data-table__table-wrap {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+.ui-data-table__table {
+  .operations-cell .op-link {
+    font-size: 15px;
+    font-weight: 700;
+  }
+}
+
+.student-detail-table__data-table {
+  .ui-data-table__card {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .dp-card__body,
+  .dp-card__body--no-header {
+    padding: 0;
+  }
+
+  .ui-data-table__top {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 0 12px;
+    justify-content: space-between;
+    margin-bottom: 0;
+  }
+
+  .ui-data-table__meta {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .ui-data-table__toolbar-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    margin-top: 0;
+  }
+
+  .ui-data-table__toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .ui-data-table__table-wrap {
+    overflow-x: auto;
+  }
+}

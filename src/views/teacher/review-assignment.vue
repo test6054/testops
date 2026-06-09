@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { ColumnType } from 'ant-design-vue/es/table'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamQuestionTemplateVO, MarkingProgressVO } from '@/apis/mark/exam'
 import {
@@ -15,22 +16,37 @@ import type {
   ExamAllocationPlanPreviewVO,
   ExamAllocationPlanRequest,
   ExamAllocationPlanVO,
+  FormalSessionVO,
   MarkingAllocationModeCode,
+  MarkingOrganizationVO,
+  QuestionMarkingGroupVO,
 } from '@/apis/mark/marking-organization'
 import {
   ALLOCATION_UNIT_LABEL,
   ALLOCATION_UNIT_OPTIONS,
   ANONYMITY_MODE_OPTIONS,
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
+  FORMAL_SESSION_STATUS_LABEL,
+  FORMAL_SESSION_STATUS_TONE,
+  getOrganization,
+  isMarkingOrgNotCreatedError,
+  listFormalSessions,
   MARKING_ALLOCATION_MODE_LABEL,
+  MARKING_ORGANIZATION_STATUS_LABEL,
+  MARKING_ORGANIZATION_STATUS_TONE,
   planAllocation,
   previewAllocationPlan,
+  QUESTION_GROUP_STATUS_LABEL,
+  QUESTION_GROUP_STATUS_TONE,
   startFormalSession,
+  validateFormalSessionContract,
+  validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import DeploymentUnitOutlined from '@ant-design/icons-vue/DeploymentUnitOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
@@ -38,12 +54,23 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
-import { UiAlertStrip, UiBadge, UiButton, UiCard, UiEmpty } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import {
+  UiAlertStrip,
+  UiBadge,
+  UiButton,
+  UiCard,
+  UiEmpty,
+  UiErrorRetryPanel,
+  UiTag,
+} from '@/components/ui-guide/ui'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import type { SignalMetric } from '@/types/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { formatDateTime } from '@/utils/format'
+import { showUserError, toUserError } from '@/utils/error-handler'
+import { readPageList } from '@/utils/page-result'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewAssignment' })
 
@@ -75,9 +102,28 @@ const {
   loading: examLoading,
   selectedExamId,
   selectedExamLabel,
+  selectedExam,
   init: initExamSelector,
   onExamChange,
-} = useMarkExamSelector({ maxLoad: 200 })
+} = useMarkExamSelector({ pageSize: 100 })
+
+const canManageExam = computed(
+  () =>
+    !!selectedExam.value?.createUser && selectedExam.value.createUser === userStore.userInfo.userId,
+)
+
+function guardExamOwnerAction(): boolean {
+  if (canManageExam.value) return true
+  message.warning('仅考试创建人可配置分派方案')
+  return false
+}
+
+function goBackToOrganization(): void {
+  void router.push({
+    name: 'TeacherMarkingOrganizationIndex',
+    query: selectedExamId.value ? { examId: selectedExamId.value } : {},
+  })
+}
 
 const templateLoading = ref(false)
 const scanReadinessLoading = ref(false)
@@ -92,6 +138,48 @@ const result = ref<ExamAllocationPlanVO | null>(null)
 const planPreview = ref<ExamAllocationPlanPreviewVO | null>(null)
 const ledgerDetail = ref<ImageLedgerDetailVO | null>(null)
 const markingProgress = ref<MarkingProgressVO | null>(null)
+
+const organization = ref<MarkingOrganizationVO | null>(null)
+const organizationLoading = ref(false)
+const organizationLoadError = ref<Error | null>(null)
+const formalSessions = ref<FormalSessionVO[]>([])
+
+const readOnlyGroupColumns: ColumnType<QuestionMarkingGroupVO>[] = [
+  { title: '题组名称', dataIndex: 'groupName', key: 'groupName', width: 200 },
+  { title: '负责题目', key: 'questions', width: 260 },
+  { title: '阅卷教师', key: 'reviewers', width: 220 },
+  { title: '题组组长', key: 'leader', width: 160 },
+  { title: '状态', key: 'groupStatus', width: 100 },
+]
+
+const readOnlySessionColumns: ColumnType<FormalSessionVO>[] = [
+  { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 180 },
+  { title: '批阅单元', key: 'allocationUnit', width: 120 },
+  { title: '会话状态', key: 'sessionStatus', width: 120 },
+  { title: '开始时间', key: 'startTime', width: 170 },
+]
+
+const collabSignalMetrics = computed<SignalMetric[]>(() => {
+  const org = organization.value
+  if (!org) return []
+  const groupCount = org.groups.length
+  const activeSessions = formalSessions.value.filter((s) => s.sessionStatus === 'SESSION_ACTIVE')
+  return [
+    { key: 'groups', label: '题组数', value: groupCount, tone: groupCount > 0 ? 'blue' : 'orange' },
+    {
+      key: 'sessions',
+      label: '正评会话',
+      value: formalSessions.value.length,
+      tone: activeSessions.length > 0 ? 'green' : 'gray',
+    },
+    {
+      key: 'anonymous',
+      label: '匿名阅卷',
+      value: org.anonymousMode ? '已启用' : '关闭',
+      tone: org.anonymousMode ? 'green' : 'gray',
+    },
+  ]
+})
 
 const form = reactive<AllocationForm>({
   leaderUserId: userStore.userInfo.userId || null,
@@ -136,9 +224,8 @@ const scanReadinessSummary = computed(() => {
   }
   const bound =
     ledgerDetail.value?.boundPaperCount ?? markingProgress.value?.gradablePaperCount ?? 0
-  const pendingReview = markingProgress.value?.pendingReviewTaskCount ?? 0
-  const openProcessing = markingProgress.value?.openProcessingTaskCount ?? 0
-  return { bound, pendingReview, openProcessing }
+  const gradable = markingProgress.value?.gradablePaperCount ?? bound
+  return { bound, gradable }
 })
 
 const questionOptions = computed(() =>
@@ -228,7 +315,16 @@ watch(selectedExamId, async () => {
   result.value = null
   planPreview.value = null
   form.questionTemplateIds = []
-  await Promise.all([loadExamQuestions(), loadScanReadiness()])
+  organization.value = null
+  formalSessions.value = []
+  if (!selectedExamId.value) {
+    return
+  }
+  if (canManageExam.value) {
+    await Promise.all([loadExamQuestions(), loadScanReadiness()])
+    return
+  }
+  await Promise.all([loadCollaboratorOrganization(), loadScanReadiness()])
 })
 
 watch(
@@ -294,7 +390,7 @@ async function loadTeachers(keyword?: string): Promise<void> {
       searchText: keyword || undefined,
       roleKey: 'SCH_TECH',
     })
-    teacherOptions.value = page.list
+    teacherOptions.value = readPageList(page, '教师列表加载失败，请稍后重试')
   } catch (error) {
     showUserError(error, '教师列表加载失败')
   } finally {
@@ -366,6 +462,59 @@ function clearSelectedQuestions(): void {
   form.randomQuestionSampleSize = null
 }
 
+async function loadCollaboratorOrganization(): Promise<void> {
+  if (!selectedExamId.value || canManageExam.value) {
+    organization.value = null
+    formalSessions.value = []
+    return
+  }
+  organizationLoading.value = true
+  organizationLoadError.value = null
+  try {
+    const nextOrganization = await getOrganization({ examId: selectedExamId.value })
+    validateMarkingOrganizationContract(nextOrganization)
+    organization.value = nextOrganization
+    const sessions = await listFormalSessions({ organizationId: nextOrganization.id })
+    sessions.forEach(validateFormalSessionContract)
+    formalSessions.value = sessions
+  } catch (error) {
+    organization.value = null
+    formalSessions.value = []
+    if (error instanceof Error && isMarkingOrgNotCreatedError(error)) {
+      return
+    }
+    organizationLoadError.value = toUserError(error, '阅卷组织加载失败')
+  } finally {
+    organizationLoading.value = false
+  }
+}
+
+function formatGroupQuestions(group: QuestionMarkingGroupVO): string {
+  if (group.questions.length === 0) {
+    return '-'
+  }
+  return group.questions.map((q) => `题 ${q.questionNo}`).join('、')
+}
+
+function formatGroupReviewers(group: QuestionMarkingGroupVO): string {
+  if (group.reviewers.length === 0) {
+    return '-'
+  }
+  return group.reviewers
+    .map((r) => (r.reviewerTeacherNo ? `${r.reviewerUserName}（${r.reviewerTeacherNo}）` : r.reviewerUserName))
+    .join('、')
+}
+
+function goOrganizationDetailReadOnly(): void {
+  if (!organization.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherMarkingOrganizationDetail',
+    params: { organizationId: organization.value.id },
+  })
+}
+
 async function loadScanReadiness(): Promise<void> {
   ledgerDetail.value = null
   markingProgress.value = null
@@ -406,6 +555,7 @@ async function loadPlanPreview(): Promise<void> {
 }
 
 async function submitAllocation(): Promise<void> {
+  if (!guardExamOwnerAction()) return
   if (!selectedExamId.value || !form.leaderUserId) {
     message.error('请选择考试和阅卷负责人')
     return
@@ -429,6 +579,7 @@ async function submitAllocation(): Promise<void> {
 }
 
 async function startFormalMarking(): Promise<void> {
+  if (!guardExamOwnerAction()) return
   if (!result.value?.sessionId) {
     message.error('请先保存阅卷配置')
     return
@@ -544,23 +695,22 @@ function formatDualReviewRule(): string {
 
 onMounted(async () => {
   await Promise.all([initExamSelector(), loadTeachers()])
-  if (selectedExamId.value) {
-    await Promise.all([loadExamQuestions(), loadScanReadiness()])
+  if (!selectedExamId.value) {
+    return
   }
+  if (canManageExam.value) {
+    await Promise.all([loadExamQuestions(), loadScanReadiness()])
+    return
+  }
+  await Promise.all([loadCollaboratorOrganization(), loadScanReadiness()])
 })
 </script>
 
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="review-assignment__context">
-        <div class="review-assignment__context-main">
-          <h2 class="review-assignment__title">分派批阅</h2>
-          <span class="review-assignment__subtitle"
-            >考试创建人配置阅卷负责人、评阅教师和任务生成策略</span
-          >
-        </div>
-        <div class="review-assignment__context-actions">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="review-assignment__exam-select"
@@ -572,7 +722,13 @@ onMounted(async () => {
             allow-clear
             @change="onExamChange"
           />
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" @click="goBackToOrganization">
+            返回阅卷安排
+          </UiButton>
           <UiButton
+            v-if="canManageExam"
             variant="outline"
             size="sm"
             :disabled="!selectedExamId"
@@ -582,8 +738,19 @@ onMounted(async () => {
             <template #icon><ReloadOutlined /></template>
             刷新题目
           </UiButton>
-        </div>
-      </div>
+          <UiButton
+            v-else
+            variant="outline"
+            size="sm"
+            :disabled="!selectedExamId"
+            :loading="organizationLoading"
+            @click="loadCollaboratorOrganization"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -592,16 +759,188 @@ onMounted(async () => {
       class="review-assignment__empty"
     />
 
+    <template v-else-if="!canManageExam">
+      <UiAlertStrip
+        tone="info"
+        title="协作查看模式"
+        description="分派方案仅考试创建人可编辑。以下为当前考试已保存的阅卷组织、题组与正评会话，修改请返回阅卷安排联系创建人。"
+        dense
+        class="review-assignment__alert"
+      />
+      <UiErrorRetryPanel
+        v-if="organizationLoadError"
+        :error="organizationLoadError"
+        title="阅卷组织加载失败"
+        :helper="selectedExamLabel || '当前考试'"
+        @retry="loadCollaboratorOrganization"
+      />
+      <a-spin v-else :spinning="organizationLoading || scanReadinessLoading">
+        <UiAlertStrip
+          v-if="scanReadinessSummary"
+          :tone="scanReadinessSummary.bound > 0 ? 'success' : 'warning'"
+          title="正评前置条件"
+          :description="`已完成身份绑定 ${scanReadinessSummary.bound} 份答卷，可进入正式阅卷 ${scanReadinessSummary.gradable} 份。`"
+          class="review-assignment__alert"
+        />
+        <UiEmpty
+          v-if="!organization && !organizationLoading"
+          description="本考试尚未创建阅卷组织，暂无分派配置可查看"
+          class="review-assignment__empty"
+        />
+        <template v-else-if="organization">
+          <SignalBand :metrics="collabSignalMetrics" compact class="review-assignment__signals" />
+          <UiCard class="review-assignment__panel review-assignment__panel--readonly">
+            <template #title>
+              <ProfileOutlined />
+              <span>组织全貌</span>
+              <UiBadge tone="blue">{{ selectedExamLabel }}</UiBadge>
+            </template>
+            <a-descriptions :column="{ xs: 1, sm: 2, lg: 3 }" size="middle" bordered>
+              <a-descriptions-item label="阅卷组长">
+                {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
+              </a-descriptions-item>
+              <a-descriptions-item label="组织状态">
+                <UiTag
+                  :tone="
+                    strictEnumTone(
+                      MARKING_ORGANIZATION_STATUS_TONE,
+                      organization.organizationStatus,
+                      '阅卷组织状态',
+                    )
+                  "
+                  size="sm"
+                >
+                  {{
+                    strictEnumLabel(
+                      MARKING_ORGANIZATION_STATUS_LABEL,
+                      organization.organizationStatus,
+                      '阅卷组织状态',
+                    )
+                  }}
+                </UiTag>
+              </a-descriptions-item>
+              <a-descriptions-item label="匿名阅卷">
+                <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
+                  {{ organization.anonymousMode ? '启用' : '关闭' }}
+                </UiTag>
+              </a-descriptions-item>
+              <a-descriptions-item label="题组数量">
+                {{ organization.groups.length }} 组
+              </a-descriptions-item>
+              <a-descriptions-item label="更新时间">
+                {{ formatDateTime(organization.updateTime) }}
+              </a-descriptions-item>
+              <a-descriptions-item label="备注" :span="3">
+                {{ organization.remark || '-' }}
+              </a-descriptions-item>
+            </a-descriptions>
+            <div class="review-assignment__readonly-actions">
+              <UiButton size="sm" @click="goOrganizationDetailReadOnly">查看题组与策略</UiButton>
+              <UiButton size="sm" variant="outline" @click="goTaskPool">进入阅卷任务池</UiButton>
+            </div>
+          </UiCard>
+          <UiCard class="review-assignment__panel review-assignment__panel--readonly">
+            <template #title>
+              <TeamOutlined />
+              <span>题组与阅卷教师</span>
+            </template>
+            <UiEmpty v-if="organization.groups.length === 0" description="尚未建立题组" />
+            <a-table
+              v-else
+              :columns="readOnlyGroupColumns"
+              :data-source="organization.groups"
+              :pagination="false"
+              row-key="id"
+              size="middle"
+            >
+              <template #bodyCell="{ column, record: group }">
+                <template v-if="column.key === 'questions'">
+                  {{ formatGroupQuestions(group as QuestionMarkingGroupVO) }}
+                </template>
+                <template v-else-if="column.key === 'reviewers'">
+                  {{ formatGroupReviewers(group as QuestionMarkingGroupVO) }}
+                </template>
+                <template v-else-if="column.key === 'leader'">
+                  {{ group.leaderUserName }}（{{ group.leaderTeacherNo }}）
+                </template>
+                <template v-else-if="column.key === 'groupStatus'">
+                  <UiTag
+                    :tone="
+                      strictEnumTone(
+                        QUESTION_GROUP_STATUS_TONE,
+                        group.groupStatus,
+                        '题组状态',
+                      )
+                    "
+                    size="sm"
+                  >
+                    {{
+                      strictEnumLabel(
+                        QUESTION_GROUP_STATUS_LABEL,
+                        group.groupStatus,
+                        '题组状态',
+                      )
+                    }}
+                  </UiTag>
+                </template>
+              </template>
+            </a-table>
+          </UiCard>
+          <UiCard
+            v-if="formalSessions.length > 0"
+            class="review-assignment__panel review-assignment__panel--readonly"
+          >
+            <template #title>
+              <DeploymentUnitOutlined />
+              <span>正评会话</span>
+            </template>
+            <a-table
+              :columns="readOnlySessionColumns"
+              :data-source="formalSessions"
+              :pagination="false"
+              row-key="id"
+              size="middle"
+            >
+              <template #bodyCell="{ column, record: session }">
+                <template v-if="column.key === 'allocationUnit'">
+                  {{ allocationUnitLabel((session as FormalSessionVO).allocationUnit) }}
+                </template>
+                <template v-else-if="column.key === 'sessionStatus'">
+                  <UiTag
+                    :tone="
+                      strictEnumTone(
+                        FORMAL_SESSION_STATUS_TONE,
+                        session.sessionStatus,
+                        '正评会话状态',
+                      )
+                    "
+                    size="sm"
+                  >
+                    {{
+                      strictEnumLabel(
+                        FORMAL_SESSION_STATUS_LABEL,
+                        session.sessionStatus,
+                        '正评会话状态',
+                      )
+                    }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'startTime'">
+                  {{ formatDateTime(session.startTime) }}
+                </template>
+              </template>
+            </a-table>
+          </UiCard>
+        </template>
+      </a-spin>
+    </template>
+
     <template v-else>
       <UiAlertStrip
         v-if="scanReadinessSummary"
-        :tone="
-          scanReadinessSummary.bound > 0 && scanReadinessSummary.pendingReview === 0
-            ? 'success'
-            : 'warning'
-        "
-        title="扫描就绪"
-        :description="`已绑定 ${scanReadinessSummary.bound} 份答卷；待复核 ${scanReadinessSummary.pendingReview} 题；处理中 ${scanReadinessSummary.openProcessing} 项`"
+        :tone="scanReadinessSummary.bound > 0 ? 'success' : 'warning'"
+        title="正评前置条件"
+        :description="`已完成身份绑定 ${scanReadinessSummary.bound} 份答卷，可进入正式阅卷 ${scanReadinessSummary.gradable} 份。`"
         class="review-assignment__alert"
       />
       <UiAlertStrip
@@ -646,7 +985,6 @@ onMounted(async () => {
                   全选题目
                 </UiButton>
                 <UiButton size="sm" variant="ghost" @click="clearSelectedQuestions">清空</UiButton>
-                <UiBadge tone="blue">已选 {{ selectedQuestions.length }} 题</UiBadge>
               </div>
               <a-select
                 v-model:value="form.questionTemplateIds"
@@ -979,6 +1317,21 @@ onMounted(async () => {
 .review-assignment__empty,
 .review-assignment__alert {
   margin-bottom: 12px;
+}
+
+.review-assignment__signals {
+  margin-bottom: 16px;
+}
+
+.review-assignment__readonly-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.review-assignment__panel--readonly {
+  margin-bottom: 16px;
 }
 
 .review-assignment__grid {

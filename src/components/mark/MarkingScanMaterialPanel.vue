@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import type { MarkingScanPageRefVO } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import RedoOutlined from '@ant-design/icons-vue/RedoOutlined'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam'
-import { UiAlertStrip, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -13,19 +14,38 @@ defineOptions({ name: 'MarkingScanMaterialPanel' })
 const props = defineProps<{
   sliceFileId?: string
   sourceScanPage?: MarkingScanPageRefVO | null
+  /** ANSWER_SHEET 模式下的试卷母版页引用（含fileId和ROI） */
+  masterPaperPage?: MarkingScanPageRefVO | null
 }>()
 
-type ViewTab = 'slice' | 'source'
+type ViewTab = 'slice' | 'source' | 'master'
 
 const activeTab = ref<ViewTab>('slice')
 const sliceImageUrl = ref('')
 const sourceImageUrl = ref('')
+const masterImageUrl = ref('')
 const loading = ref(false)
 const loadError = ref<Error | null>(null)
 
 const hasSlice = computed(() => Boolean(props.sliceFileId))
 const hasSource = computed(() => Boolean(props.sourceScanPage?.fileId))
-const showTabs = computed(() => hasSlice.value && hasSource.value)
+const hasMaster = computed(() => Boolean(props.masterPaperPage?.fileId))
+const showTabs = computed(() => (hasSlice.value ? 1 : 0) + (hasSource.value ? 1 : 0) + (hasMaster.value ? 1 : 0) > 1)
+
+/** 母版页 ROI 定位样式（像素→百分比，适配浏览器任意渲染尺寸） */
+const masterRoiStyle = computed(() => {
+  const page = props.masterPaperPage
+  if (!page || page.roiX == null || page.roiY == null || page.roiWidth == null || page.roiHeight == null) return null
+  const pw = page.pageImageWidth
+  const ph = page.pageImageHeight
+  if (!pw || !ph || pw <= 0 || ph <= 0) return null
+  return {
+    left: `${(page.roiX / pw) * 100}%`,
+    top: `${(page.roiY / ph) * 100}%`,
+    width: `${(page.roiWidth / pw) * 100}%`,
+    height: `${(page.roiHeight / ph) * 100}%`,
+  }
+})
 
 const sourceQualityLabel = computed(() => {
   const status = props.sourceScanPage?.qualityStatus
@@ -54,12 +74,16 @@ function releaseImages(): void {
     URL.revokeObjectURL(sourceImageUrl.value)
     sourceImageUrl.value = ''
   }
+  if (masterImageUrl.value) {
+    URL.revokeObjectURL(masterImageUrl.value)
+    masterImageUrl.value = ''
+  }
 }
 
 async function loadImages(): Promise<void> {
   releaseImages()
   loadError.value = null
-  if (!hasSlice.value && !hasSource.value) {
+  if (!hasSlice.value && !hasSource.value && !hasMaster.value) {
     return
   }
   loading.value = true
@@ -79,11 +103,21 @@ async function loadImages(): Promise<void> {
         }),
       )
     }
+    if (props.masterPaperPage?.fileId) {
+      jobs.push(
+        getImageBlobUrl(props.masterPaperPage.fileId).then((url) => {
+          masterImageUrl.value = url
+        }),
+      )
+    }
     await Promise.all(jobs)
-    if (!hasSlice.value && hasSource.value) {
-      activeTab.value = 'source'
-    } else {
+    // 自动选择默认 tab: 切片优先 > 母版 > 原始扫描页
+    if (hasSlice.value) {
       activeTab.value = 'slice'
+    } else if (hasMaster.value) {
+      activeTab.value = 'master'
+    } else {
+      activeTab.value = 'source'
     }
   } catch (error) {
     loadError.value = toUserError(error, '阅卷影像加载失败')
@@ -93,12 +127,19 @@ async function loadImages(): Promise<void> {
 }
 
 watch(
-  () => [props.sliceFileId, props.sourceScanPage?.fileId] as const,
+  () => [props.sliceFileId, props.sourceScanPage?.fileId, props.masterPaperPage?.fileId] as const,
   () => {
     void loadImages()
   },
   { immediate: true },
 )
+
+/** FIX-9: 影像旋转 */
+const rotation = ref(0)
+
+function rotateImage(): void {
+  rotation.value = (rotation.value + 90) % 360
+}
 
 onBeforeUnmount(releaseImages)
 </script>
@@ -121,6 +162,7 @@ onBeforeUnmount(releaseImages)
         :options="[
           { label: '作答切片', value: 'slice' },
           { label: '原始扫描页', value: 'source' },
+          ...(hasMaster ? [{ label: '试卷母版', value: 'master' as const }] : []),
         ]"
       />
       <div v-else-if="hasSource && !hasSlice" class="marking-scan-material__solo-label">
@@ -139,14 +181,20 @@ onBeforeUnmount(releaseImages)
       />
       <a-spin :spinning="loading" tip="加载影像中...">
         <div v-if="activeTab === 'slice'" class="marking-scan-material__viewer">
-          <a-image
-            v-if="sliceImageUrl"
-            :src="sliceImageUrl"
-            :preview="{}"
-            class="marking-scan-material__image"
-          >
-            <template #previewMask>点击查看切片大图</template>
-          </a-image>
+          <div v-if="sliceImageUrl" class="marking-scan-material__image-wrap">
+            <a-image
+              :src="sliceImageUrl"
+              :preview="{}"
+              :style="{ transform: `rotate(${rotation}deg)` }"
+              class="marking-scan-material__image"
+            >
+              <template #previewMask>点击查看切片大图</template>
+            </a-image>
+            <UiButton size="sm" variant="outline" class="marking-scan-material__rotate-btn" @click="rotateImage">
+              <template #icon><RedoOutlined /></template>
+              旋转 {{ rotation }}°
+            </UiButton>
+          </div>
           <UiEmpty v-else-if="!loading" description="切片图片加载失败" />
         </div>
         <div v-else class="marking-scan-material__viewer">
@@ -154,15 +202,53 @@ onBeforeUnmount(releaseImages)
             <UiTag tone="blue" size="sm">{{ sourcePageCaption }}</UiTag>
             <UiTag :tone="sourceQualityTone" size="sm">{{ sourceQualityLabel }}</UiTag>
           </div>
-          <a-image
-            v-if="sourceImageUrl"
-            :src="sourceImageUrl"
-            :preview="{}"
-            class="marking-scan-material__image"
-          >
-            <template #previewMask>点击查看原始扫描页</template>
-          </a-image>
+          <div v-if="sourceImageUrl" class="marking-scan-material__image-wrap">
+            <a-image
+              :src="sourceImageUrl"
+              :preview="{}"
+              :style="{ transform: `rotate(${rotation}deg)` }"
+              class="marking-scan-material__image"
+            >
+              <template #previewMask>点击查看原始扫描页</template>
+            </a-image>
+            <UiButton size="sm" variant="outline" class="marking-scan-material__rotate-btn" @click="rotateImage">
+              <template #icon><RedoOutlined /></template>
+              旋转 {{ rotation }}°
+            </UiButton>
+          </div>
           <UiEmpty v-else-if="!loading" description="原始扫描页加载失败" />
+        </div>
+        <!-- 试卷母版对照（ANSWER_SHEET 模式自动展示，含ROI题目区域高亮） -->
+        <div v-else-if="activeTab === 'master'" class="marking-scan-material__viewer">
+          <div class="marking-scan-material__source-meta">
+            <UiTag tone="green" size="sm">试卷母版 · 题干对照</UiTag>
+            <UiTag v-if="masterRoiStyle" tone="blue" size="sm">题目区域已标注</UiTag>
+          </div>
+          <div v-if="masterImageUrl" class="marking-scan-material__image-wrap marking-scan-material__image-wrap--roi">
+            <a-image
+              :src="masterImageUrl"
+              :preview="{}"
+              :style="{ transform: `rotate(${rotation}deg)` }"
+              class="marking-scan-material__image"
+            >
+              <template #previewMask>点击查看试卷母版</template>
+            </a-image>
+            <div
+              v-if="masterRoiStyle"
+              class="marking-scan-material__roi-overlay"
+              :style="{
+                left: masterRoiStyle.left,
+                top: masterRoiStyle.top,
+                width: masterRoiStyle.width,
+                height: masterRoiStyle.height,
+              }"
+            />
+            <UiButton size="sm" variant="outline" class="marking-scan-material__rotate-btn" @click="rotateImage">
+              <template #icon><RedoOutlined /></template>
+              旋转 {{ rotation }}°
+            </UiButton>
+          </div>
+          <UiEmpty v-else-if="!loading" description="母版页加载失败" />
         </div>
       </a-spin>
     </template>
@@ -207,5 +293,26 @@ onBeforeUnmount(releaseImages)
   width: 100%;
   border-radius: 4px;
   border: 1px solid var(--dp-border-subtle, #e2e8f0);
+}
+
+.marking-scan-material__image-wrap {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.marking-scan-material__roi-overlay {
+  position: absolute;
+  border: 2px dashed #1677ff;
+  background: rgba(22, 119, 255, 0.08);
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+.marking-scan-material__rotate-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 1;
 }
 </style>

@@ -9,7 +9,7 @@ import type { TrainingPlanVO } from '@/apis/quality'
 import { onMounted, ref, watch } from 'vue'
 import { trainingPlanApi } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -59,14 +59,17 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await trainingPlanApi.page({
-      pageNum: 1,
-      pageSize: 200,
-      programId: props.programId || undefined,
-      enabled: props.onlyEnabled ? true : undefined,
-      confirmationStatus: props.onlyConfirmed ? 'CONFIRMED' : undefined,
-    })
-    options.value = requirePageList(res, '培养方案')
+    options.value = await requireAllPages(
+      (pageNum) =>
+        trainingPlanApi.page({
+          pageNum,
+          pageSize: 100,
+          programId: props.programId || undefined,
+          enabled: props.onlyEnabled ? true : undefined,
+          confirmationStatus: props.onlyConfirmed ? 'CONFIRMED' : undefined,
+        }),
+      '培养方案',
+    )
   } catch (e) {
     showUserError(e, '培养方案列表加载失败')
   } finally {

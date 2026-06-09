@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamQuestionTemplateVO, ExamScoreSummaryItemVO } from '@/apis/mark/exam'
 import type {
   MarkOcrConfigVO,
@@ -30,6 +31,7 @@ import {
   MARK_OCR_PROVIDER_LABEL,
   MARK_OCR_PROVIDER_OPTIONS,
   recognizeMarkOcr,
+  registerPaddleOcrInstance,
   saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
 import {
@@ -40,7 +42,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -48,6 +50,8 @@ import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherOcrSettings' })
+
+const PAPER_CANDIDATE_FILTER_PAGE_SIZE = 50
 
 interface ConfigFormState {
   providerType?: MarkOcrProviderTypeCode
@@ -85,12 +89,21 @@ const {
 const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
 const paddleInstancesLoading = ref(false)
 const paddleInstancesError = ref<Error | null>(null)
+const registerModalOpen = ref(false)
+const registering = ref(false)
+const registerForm = ref({
+  instanceName: '',
+  serviceUrl: '',
+  deviceType: 'cpu',
+  localAutoDeploy: false,
+})
 const questions = ref<ExamQuestionTemplateVO[]>([])
 const questionsLoading = ref(false)
 const questionsError = ref<Error | null>(null)
 const paperCandidates = ref<ExamScoreSummaryItemVO[]>([])
 const paperCandidatesLoading = ref(false)
 const paperCandidatesError = ref<Error | null>(null)
+const paperCandidateKeyword = ref('')
 
 const providerOptions = MARK_OCR_PROVIDER_OPTIONS
 const configRules: Record<string, Rule[]> = {
@@ -264,11 +277,20 @@ async function loadQuestions(examId: string): Promise<void> {
   }
 }
 
-async function loadPaperCandidates(examId: string): Promise<void> {
+async function loadPaperCandidates(
+  examId: string,
+  keyword = paperCandidateKeyword.value,
+): Promise<void> {
+  const normalizedKeyword = keyword.trim()
   paperCandidatesLoading.value = true
   paperCandidatesError.value = null
   try {
-    const result = await pageExamScoreSummary({ examId, pageNum: 1, pageSize: 500 })
+    const result = await pageExamScoreSummary({
+      examId,
+      pageNum: 1,
+      pageSize: PAPER_CANDIDATE_FILTER_PAGE_SIZE,
+      keyword: normalizedKeyword || undefined,
+    })
     paperCandidates.value = readPageList(result, '答卷候选加载失败，请稍后重试').filter(
       (item) => item.paperInstanceId,
     )
@@ -278,6 +300,28 @@ async function loadPaperCandidates(examId: string): Promise<void> {
     showUserError(error, '答题卡列表加载失败')
   } finally {
     paperCandidatesLoading.value = false
+  }
+}
+
+function handlePaperCandidateSearch(value: string): void {
+  paperCandidateKeyword.value = value
+  if (debugForm.value.examId) {
+    void loadPaperCandidates(debugForm.value.examId, value)
+  }
+}
+
+function handlePaperCandidateDropdownVisibleChange(open: boolean): void {
+  if (open && debugForm.value.examId) {
+    void loadPaperCandidates(debugForm.value.examId)
+  }
+}
+
+function handlePaperCandidateChange(value: SelectValue): void {
+  if (!value) {
+    paperCandidateKeyword.value = ''
+    if (debugForm.value.examId) {
+      void loadPaperCandidates(debugForm.value.examId, '')
+    }
   }
 }
 
@@ -301,6 +345,42 @@ async function loadPaddleInstances(): Promise<void> {
   }
 }
 
+function openRegisterModal(): void {
+  registerForm.value = {
+    instanceName: '',
+    serviceUrl: '',
+    deviceType: 'cpu',
+    localAutoDeploy: false,
+  }
+  registerModalOpen.value = true
+}
+
+async function handleRegisterInstance(): Promise<void> {
+  const name = registerForm.value.instanceName.trim()
+  const url = registerForm.value.serviceUrl.trim()
+  const device = registerForm.value.deviceType.trim()
+  if (!name || !url || !device) {
+    message.warning('请填写实例名称、服务地址与设备类型')
+    return
+  }
+  registering.value = true
+  try {
+    await registerPaddleOcrInstance({
+      instanceName: name,
+      serviceUrl: url,
+      deviceType: device,
+      localAutoDeploy: registerForm.value.localAutoDeploy,
+    })
+    message.success('PaddleOCR 实例已注册')
+    registerModalOpen.value = false
+    await loadPaddleInstances()
+  } catch (error) {
+    showUserError(error, 'PaddleOCR 实例注册失败')
+  } finally {
+    registering.value = false
+  }
+}
+
 watch(
   isPaddleProvider,
   (paddle) => {
@@ -320,6 +400,7 @@ watch(
     debugForm.value.examId = examId
     debugForm.value.paperInstanceId = undefined
     debugForm.value.questionTemplateId = undefined
+    paperCandidateKeyword.value = ''
     recognizeResult.value = null
     if (examId) {
       void Promise.all([loadQuestions(examId), loadPaperCandidates(examId)])
@@ -349,23 +430,22 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="ocr-settings__context">
-        <div class="ocr-settings__context-info">
-          <h2 class="ocr-settings__title">阅卷交付 - OCR 设置与调用检测</h2>
+      <ContextBar>
+        <template #status>
           <UiTag :tone="currentConfig?.enabled ? 'green' : 'gray'" size="sm">
             {{ currentConfig?.enabled ? '已启用' : '未启用' }}
           </UiTag>
           <a-tag v-if="currentConfig" :color="healthColor">
             {{ healthLabel }}
           </a-tag>
-        </div>
-        <div class="ocr-settings__context-actions">
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadConfig">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- D-9 错误态：OCR 配置加载失败时提供重试 + 上报入口 -->
@@ -451,15 +531,20 @@ onMounted(async () => {
         </UiBadge>
       </template>
       <template #extra>
-        <UiButton
-          variant="outline"
-          size="sm"
-          :loading="paddleInstancesLoading"
-          @click="loadPaddleInstances"
-        >
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </UiButton>
+        <a-space>
+          <UiButton size="sm" variant="outline" @click="openRegisterModal">
+            注册实例
+          </UiButton>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="paddleInstancesLoading"
+            @click="loadPaddleInstances"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </a-space>
       </template>
 
       <UiErrorRetryPanel
@@ -547,8 +632,12 @@ onMounted(async () => {
                 :loading="paperCandidatesLoading"
                 :disabled="!debugForm.examId"
                 show-search
-                option-filter-prop="label"
+                :filter-option="false"
+                allow-clear
                 placeholder="请选择答题卡"
+                @search="handlePaperCandidateSearch"
+                @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
+                @change="handlePaperCandidateChange"
               />
               <div v-if="paperCandidatesError" class="debug-form__hint debug-form__hint--error">
                 答题卡列表加载失败，请刷新后重试
@@ -595,40 +684,38 @@ onMounted(async () => {
       </template>
       <UiEmpty v-else-if="!recognizing" description="暂无识别结果" />
     </UiCard>
+
+    <a-modal
+      v-model:open="registerModalOpen"
+      title="注册 PaddleOCR 实例"
+      :confirm-loading="registering"
+      ok-text="注册"
+      cancel-text="取消"
+      @ok="handleRegisterInstance"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="实例名称" required>
+          <a-input v-model:value="registerForm.instanceName" placeholder="例如 paddle-gpu-01" />
+        </a-form-item>
+        <a-form-item label="服务根地址" required>
+          <a-input
+            v-model:value="registerForm.serviceUrl"
+            placeholder="http://host:8080"
+          />
+        </a-form-item>
+        <a-form-item label="设备类型" required>
+          <a-input v-model:value="registerForm.deviceType" placeholder="cpu 或 gpu:0" />
+        </a-form-item>
+        <a-form-item>
+          <a-checkbox v-model:checked="registerForm.localAutoDeploy">本地自动部署实例</a-checkbox>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
 .ocr-settings {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
 }
 
 .ocr-grid {

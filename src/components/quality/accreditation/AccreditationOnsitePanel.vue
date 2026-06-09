@@ -123,11 +123,11 @@ async function selectPlan(id: string) {
   }
 }
 
-function resetPlanForm() {
+function resetPlanForm(accreditationCycleId: string) {
   form.id = undefined
   form.programId = props.programId
   form.trainingPlanId = props.trainingPlanId
-  form.accreditationCycleId = props.activeCycleId || ''
+  form.accreditationCycleId = accreditationCycleId
   form.visitCode = `VISIT-${Date.now()}`
   form.visitTitle = '现场考查计划'
   form.visitStart = ''
@@ -138,12 +138,13 @@ function resetPlanForm() {
 }
 
 function openCreate() {
-  if (!props.activeCycleId) {
+  const accreditationCycleId = props.activeCycleId
+  if (!accreditationCycleId) {
     message.error('请先创建认证周期')
     return
   }
   drawerTitle.value = '新建现场考查计划'
-  resetPlanForm()
+  resetPlanForm(accreditationCycleId)
   drawerOpen.value = true
 }
 
@@ -267,7 +268,7 @@ defineExpose({ openCreate, loadPlans })
           </UiButton>
         </template>
       </template>
-      <template #emptyText>
+      <template #empty>
         <UiEmpty description="暂无现场考查计划" />
       </template>
     </UiDataTable>
@@ -314,7 +315,14 @@ defineExpose({ openCreate, loadPlans })
         </template>
       </UiDataTable>
     </div>
-    <UiDrawer v-model:open="drawerOpen" :title="drawerTitle" width="480" @ok="submitPlan">
+    <UiDrawer
+      v-model:open="drawerOpen"
+      :title="drawerTitle"
+      width="480"
+      :hide-footer="false"
+      ok-text="保存"
+      @ok="submitPlan"
+    >
       <a-form layout="vertical">
         <a-form-item label="计划编码" required>
           <a-input v-model:value="form.visitCode" />
@@ -341,6 +349,8 @@ defineExpose({ openCreate, loadPlans })
       v-model:open="checklistDrawerOpen"
       title="更新检查项"
       width="480"
+      :hide-footer="false"
+      ok-text="保存"
       @ok="submitChecklistItem"
     >
       <template v-if="editingItem">

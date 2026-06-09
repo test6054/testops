@@ -116,7 +116,7 @@
             </a-button>
           </div>
         </template>
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="historyColumns"
           :data-source="passwordHistory"
           :loading="historyLoading"

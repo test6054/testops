@@ -1,6 +1,6 @@
 <template>
   <div class="stage-workbench-shell">
-    <!-- ContextBar 区域：上下文选择器 / 面包屑 -->
+    <!-- 页面级操作区：勿重复顶栏面包屑标题，按钮应并入列表 filter-form__actions -->
     <header v-if="$slots.context" class="stage-workbench-shell__context">
       <slot name="context" />
     </header>
@@ -32,31 +32,35 @@ defineOptions({
 .stage-workbench-shell {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 100%;
-  padding: 12px;
-  background: var(--dp-page-bg, #f5f7fb);
+  gap: 16px;
+  width: 100%;
+  padding: 0;
+  background: var(--ant-color-bg-container);
 }
 
 .stage-workbench-shell__context {
-  padding: 12px 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  padding: 0 0 4px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .stage-workbench-shell__rail {
-  padding: 8px 12px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  padding: 0 0 8px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .stage-workbench-shell__signal {
-  padding: 10px 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  padding: 0 0 8px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .stage-workbench-shell__surface {

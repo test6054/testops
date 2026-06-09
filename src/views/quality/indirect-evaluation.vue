@@ -53,12 +53,14 @@ import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { throwUserFacing } from '@/utils/contract-guard'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ImportResponseDocumentModal from './components/ImportResponseDocumentModal.vue'
 import ImportResponseExcelModal from './components/ImportResponseExcelModal.vue'
 
 const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'
 const RESPONSE_DATA_ERROR = '答卷数据异常，请刷新后重试'
+const SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE = 100
 
 const qualityStore = useQualityStore()
 
@@ -334,8 +336,8 @@ async function loadForms() {
   formsLoading.value = true
   try {
     const page = await indirectFormApi.page({ ...formQuery })
-    forms.value = page.list
-    formsTotal.value = Number(page.total)
+    forms.value = readPageList(page, '间接评价问卷加载失败，请稍后重试')
+    formsTotal.value = readPageTotal(page, '间接评价问卷加载失败，请稍后重试')
   } finally {
     formsLoading.value = false
   }
@@ -436,8 +438,14 @@ async function loadItems() {
 }
 
 async function loadScaleRules() {
-  const page = await scaleConversionRuleApi.page({ pageNum: 1, pageSize: 200, enabled: true })
-  scaleRules.value = page.list
+  scaleRules.value = await readAllPages(
+    (pageNum) => scaleConversionRuleApi.page({
+      pageNum,
+      pageSize: SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE,
+      enabled: true,
+    }),
+    '量表换算规则列表加载失败，请稍后重试',
+  )
 }
 
 const itemEditorVisible = ref(false)
@@ -1016,41 +1024,42 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="ie__context">
-        <div class="ie__context-info">
-          <h2 class="ie__title">间接评价管理</h2>
-        </div>
-        <div class="ie__context-actions">
-          <a-select
-            v-model:value="formQuery.formType"
-            placeholder="问卷类型"
-            allow-clear
-            class="ie__filter"
-            :options="formTypeOptions"
-          />
-          <a-select
-            v-model:value="formQuery.targetType"
-            placeholder="目标类型"
-            allow-clear
-            class="ie__filter ie__filter--md"
-            :options="targetTypeOptions"
-          />
-          <UiButton variant="outline" size="sm" :loading="formsLoading" @click="loadForms">
-            查询
-          </UiButton>
-          <UiButton variant="primary" size="sm" @click="openFormCreate"> 新建问卷 </UiButton>
-        </div>
-      </div>
-    </template>
-
     <SignalBand :metrics="signals" compact class="ie__signals" />
 
-    <section class="ie__panel">
-      <header class="ie__panel-header">
-        <h3 class="ie__panel-title">间接评价问卷台账</h3>
-      </header>
-      <UiDataTable
+    <a-card :bordered="false" class="detail-table-card ie__form-card">
+      <template #title>间接评价问卷台账</template>
+
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadForms">
+          <a-form-item label="问卷类型">
+            <a-select
+              v-model:value="formQuery.formType"
+              placeholder="问卷类型"
+              allow-clear
+              style="width: 140px"
+              :options="formTypeOptions"
+            />
+          </a-form-item>
+          <a-form-item label="目标类型">
+            <a-select
+              v-model:value="formQuery.targetType"
+              placeholder="目标类型"
+              allow-clear
+              style="width: 160px"
+              :options="targetTypeOptions"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" :loading="formsLoading" @click="loadForms">查询</UiButton>
+              <UiButton variant="outline" size="sm" :loading="formsLoading" @click="loadForms">刷新</UiButton>
+              <UiButton size="sm" @click="openFormCreate">新建问卷</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="formQuery.pageNum"
         v-model:page-size="formQuery.pageSize"
         :columns="formColumns"
@@ -1079,33 +1088,31 @@ onMounted(async () => {
             {{ targetTypeLabel(record.targetType) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton variant="ghost" size="sm" @click.stop="openFormEdit(record)">
-                编辑
-              </UiButton>
-              <UiButton
-                variant="ghost"
-                status="danger"
-                size="sm"
-                @click.stop="handleFormDelete(record)"
-              >
+            <div class="operations-cell" @click.stop>
+              <span class="op-link" role="button" @click.stop="openFormEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" @click.stop="handleFormDelete(record)">
                 删除
-              </UiButton>
-            </a-space>
+              </span>
+            </div>
           </template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <a-row v-if="selectedForm" :gutter="12" class="ie__split">
       <a-col :span="12">
-        <section class="ie__panel">
-          <header class="ie__panel-header">
-            <h3 class="ie__panel-title">题项</h3>
-            <UiButton variant="primary" size="sm" @click="openItemCreate"> 新建题项 </UiButton>
-          </header>
+        <a-card :bordered="false" class="detail-table-card ie__item-card">
+          <template #title>题项</template>
 
-          <UiDataTable
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar">
+              <a-form-item class="filter-form__actions">
+                <UiButton variant="primary" size="sm" @click="openItemCreate">新建题项</UiButton>
+              </a-form-item>
+            </a-form>
+          </div>
+
+          <UiDataTable class="student-detail-table__data-table"
             :columns="itemColumns"
             :data-source="items"
             :loading="itemsLoading"
@@ -1140,45 +1147,41 @@ onMounted(async () => {
                 </span>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <UiButton variant="ghost" size="sm" @click.stop="openItemEdit(record)">
-                    编辑
-                  </UiButton>
-                  <UiButton
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click.stop="deleteItem(record)"
-                  >
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" @click.stop="openItemEdit(record)">编辑</span>
+                  <span class="op-link danger" role="button" @click.stop="deleteItem(record)">
                     删除
-                  </UiButton>
-                </a-space>
+                  </span>
+                </div>
               </template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
       </a-col>
 
       <a-col :span="12">
         <UiEmpty v-if="!selectedItem" description="请在左侧选择题项查看答卷" class="ie__empty" />
 
-        <section v-else class="ie__panel">
-          <header class="ie__panel-header">
-            <h3 class="ie__panel-title">
-              「{{ selectedItem.itemCode }} · {{ selectedItem.itemText.substring(0, 24) }}…」答卷
-            </h3>
-            <div class="ie__panel-actions">
-              <UiButton variant="outline" size="sm" @click="openImportExcel"> Excel 导入 </UiButton>
-              <UiButton variant="outline" size="sm" @click="openImportDocument">
-                PDF / Word / 图片
-              </UiButton>
-              <UiButton variant="primary" size="sm" @click="openResponseCreate">
-                新增答卷
-              </UiButton>
-            </div>
-          </header>
+        <a-card v-else :bordered="false" class="detail-table-card ie__response-card">
+          <template #title>
+            「{{ selectedItem.itemCode }} · {{ selectedItem.itemText.substring(0, 24) }}…」答卷
+          </template>
 
-          <UiDataTable
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar">
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton variant="outline" size="sm" @click="openImportExcel">Excel 导入</UiButton>
+                  <UiButton variant="outline" size="sm" @click="openImportDocument">
+                    PDF / Word / 图片
+                  </UiButton>
+                  <UiButton variant="primary" size="sm" @click="openResponseCreate">新增答卷</UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
+          </div>
+
+          <UiDataTable class="student-detail-table__data-table"
             :columns="responseColumns"
             :data-source="responses"
             :loading="responsesLoading"
@@ -1217,24 +1220,13 @@ onMounted(async () => {
                   {{ record.validFlag ? '有效' : '无效' }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <UiButton variant="ghost" size="sm" @click="openResponseEdit(record)">
-                    编辑
-                  </UiButton>
-                  <UiButton
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click="deleteResponse(record)"
-                  >
-                    删除
-                  </UiButton>
-                </a-space>
-              </template>
+              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openResponseEdit(record)">编辑</span>
+                  <span class="op-link danger" role="button" @click="deleteResponse(record)">删除</span>
+            </div></template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
       </a-col>
     </a-row>
 
@@ -1588,14 +1580,7 @@ onMounted(async () => {
             >
               <a-input v-model:value="option.optionValue" placeholder="选项值" />
               <a-input v-model:value="option.optionLabel" placeholder="选项文案" />
-              <UiButton
-                variant="ghost"
-                status="danger"
-                size="sm"
-                @click="removeChoiceOption(optionIndex)"
-              >
-                删除
-              </UiButton>
+              <span class="op-link danger" role="button" @click="removeChoiceOption(optionIndex)">删除</span>
             </div>
             <UiButton variant="outline" size="sm" @click="addChoiceOption">新增选项</UiButton>
           </div>
@@ -1779,33 +1764,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .ie {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 240px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__filter {
     width: 140px;
 

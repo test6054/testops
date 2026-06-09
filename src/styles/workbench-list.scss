@@ -1,0 +1,28 @@
+// 工作台列表页：筛选行 + 操作按钮统一布局（与顶栏面包屑配合，不在 #context 重复标题）
+
+.stage-workbench-shell__context {
+  h2:not(.context-bar__title) {
+    display: none;
+  }
+}
+
+.filter-form.filter-form--toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  width: 100%;
+  row-gap: 8px;
+
+  .filter-form__actions {
+    margin-left: auto;
+  }
+
+  .filter-form__action-group {
+    flex-wrap: wrap;
+  }
+}
+
+.ui-stat-panel--compact .ui-stat-panel__header :deep(.ui-panel-header__description),
+.ui-stat-panel--strip .ui-stat-panel__header :deep(.ui-panel-header__description) {
+  display: none;
+}

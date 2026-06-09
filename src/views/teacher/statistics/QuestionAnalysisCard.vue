@@ -51,6 +51,16 @@
       />
     </div>
 
+    <AiGenerationProgressPanel
+      v-if="generatingAll || generatingId"
+      title="题目质量分析生成中"
+      :waiting-text="generatingAll ? '正在等待后端返回全部题目的真实质量分析。' : '正在等待后端返回当前题目的真实质量分析。'"
+    />
+
+    <a-typography-paragraph v-if="generationSummary" class="question-analysis-card__generation-summary">
+      {{ generationSummary }}
+    </a-typography-paragraph>
+
     <!-- D-9 错误态：题目质量分析加载失败时提供重试 + 上报入口 -->
     <UiErrorRetryPanel
       v-if="loadError"
@@ -59,7 +69,7 @@
       compact
       @retry="reload"
     />
-    <UiDataTable
+    <UiDataTable class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -104,14 +114,7 @@
           {{ formatDateTime(rows[index].snapshotTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <a-button
-            type="link"
-            size="small"
-            :loading="generatingId === rows[index].questionTemplateId"
-            @click="handleGenerateOne(rows[index].questionTemplateId)"
-          >
-            重新生成
-          </a-button>
+          <span class="op-link" role="button" @click="handleGenerateOne(rows[index].questionTemplateId)">重新生成</span>
         </template>
       </template>
     </UiDataTable>
@@ -147,10 +150,11 @@ import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildCorrectRatioBarOption } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'QuestionAnalysisCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
 
 const emit = defineEmits<{ (e: 'generated'): void }>()
 
@@ -174,6 +178,7 @@ const generatingId = ref<string>('')
 const selectedQuestionTemplateId = ref<string>()
 const questionLoading = ref(false)
 const questionOptions = ref<{ value: string; label: string }[]>([])
+const generationSummary = ref('')
 
 const columns: ColumnType<ExamQuestionAnalysisRecordVO>[] = [
   { title: '题目', key: 'question', width: 260 },
@@ -192,10 +197,12 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    rows.value = await listQuestionAnalysis({
+    const records = await listQuestionAnalysis({
       examId: props.examId,
       questionTemplateId: selectedQuestionTemplateId.value,
+      classId: props.classId || undefined,
     })
+    rows.value = acceptQuestionAnalysisRows(records)
   } catch (e) {
     rows.value = []
     loadError.value = toUserError(e, '题目质量分析加载失败')
@@ -234,9 +241,12 @@ async function loadQuestionOptions(): Promise<void> {
 }
 
 async function handleGenerateAll(): Promise<void> {
+  generationSummary.value = ''
   generatingAll.value = true
   try {
-    rows.value = await generateAllQuestionAnalysis(props.examId)
+    const records = await generateAllQuestionAnalysis(props.examId, props.classId || undefined)
+    rows.value = acceptQuestionAnalysisRows(records)
+    generationSummary.value = `已生成 ${rows.value.length} 道题目质量分析，可查看难度、区分度与正确率。`
     message.success('已生成全部题目质量分析')
     emit('generated')
   } catch (e) {
@@ -247,17 +257,41 @@ async function handleGenerateAll(): Promise<void> {
 }
 
 async function handleGenerateOne(questionTemplateId: string): Promise<void> {
+  generationSummary.value = ''
   generatingId.value = questionTemplateId
   try {
-    await generateQuestionAnalysis({ examId: props.examId, questionTemplateId })
+    await generateQuestionAnalysis({
+      examId: props.examId,
+      questionTemplateId,
+      classId: props.classId || undefined,
+    })
     message.success('已重新生成')
     await reload()
+    const matched = rows.value.find((item) => item.questionTemplateId === questionTemplateId)
+    generationSummary.value = matched
+      ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
+      : '已生成该题质量分析，可查看难度、区分度与正确率。'
     emit('generated')
   } catch (e) {
     showUserError(e, '题目质量分析重新生成失败')
   } finally {
     generatingId.value = ''
   }
+}
+
+function acceptQuestionAnalysisRows(
+  records: ExamQuestionAnalysisRecordVO[],
+): ExamQuestionAnalysisRecordVO[] {
+  const expectedScopeType = props.classId ? 'CLASS' : 'EXAM'
+  const invalidRecord = records.find((record) => {
+    if (record.scopeType !== expectedScopeType) return true
+    if (expectedScopeType === 'CLASS') return record.scopeId !== props.classId
+    return record.scopeId != null
+  })
+  if (invalidRecord) {
+    throw new Error('题目质量分析范围与当前筛选不一致')
+  }
+  return records
 }
 
 function fmtNum(v?: number): string {
@@ -387,7 +421,7 @@ const chartOption = computed(() => ({
 }))
 
 watch(
-  () => [props.examId, props.reloadToken],
+  () => [props.examId, props.reloadToken, props.classId],
   () => {
     if (props.examId) {
       void loadQuestionOptions()
@@ -424,6 +458,11 @@ watch(
   &__chart {
     width: 100%;
     height: 320px;
+  }
+
+  &__generation-summary {
+    margin: 0 0 var(--dp-space-3, 12px);
+    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
   }
 }
 </style>

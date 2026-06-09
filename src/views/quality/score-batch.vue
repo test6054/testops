@@ -51,6 +51,7 @@ import {
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
@@ -247,13 +248,15 @@ async function loadCourses() {
     courseOptions.value = []
     return
   }
-  const page = await qualityCourseApi.page({
-    pageNum: 1,
-    pageSize: 100,
-    trainingPlanId: qualityStore.currentTrainingPlanId,
-    enabled: true,
-  })
-  courseOptions.value = page.list
+  courseOptions.value = await readAllPages(
+    (pageNum) => qualityCourseApi.page({
+      pageNum,
+      pageSize: 100,
+      trainingPlanId: qualityStore.currentTrainingPlanId,
+      enabled: true,
+    }),
+    '质量评价课程加载失败，请稍后重试',
+  )
 }
 
 async function loadUploadAssessmentItems(qualityCourseId: string | undefined) {
@@ -293,8 +296,8 @@ async function loadBatches() {
       sourceMode: query.sourceMode || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
-    batches.value = page.list
-    total.value = Number(page.total)
+    batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
+    total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -571,7 +574,7 @@ async function openAuditDrawer(record: ScoreBatchVO) {
       category: 'QUALITY',
       description: record.id,
     })
-    auditEvents.value = page.list.map((log) => {
+    auditEvents.value = readPageList(page, '成绩批次审计记录加载失败，请稍后重试').map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -685,55 +688,6 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="score-batch__context">
-        <div class="score-batch__context-left">
-          <a-select
-            v-model:value="query.qualityCourseId"
-            placeholder="按课程筛选"
-            class="score-batch__filter score-batch__filter--lg"
-            allow-clear
-            :options="courseSelectOptions"
-          />
-          <a-select
-            v-model:value="query.assessmentItemId"
-            placeholder="考核环节"
-            class="score-batch__filter score-batch__filter--lg"
-            :options="queryAssessmentItemOptions"
-            :loading="queryAssessmentLoading"
-            :disabled="!query.qualityCourseId"
-            allow-clear
-          />
-          <a-select
-            v-model:value="query.status"
-            placeholder="状态"
-            class="score-batch__filter"
-            allow-clear
-            :options="statusOptions"
-          />
-          <a-select
-            v-model:value="query.sourceMode"
-            placeholder="接入模式"
-            class="score-batch__filter score-batch__filter--lg"
-            allow-clear
-            :options="SOURCE_MODE_OPTIONS"
-          />
-          <a-input
-            v-model:value="query.keyword"
-            placeholder="关键字"
-            class="score-batch__filter"
-            @press-enter="loadBatches"
-          />
-        </div>
-        <div class="score-batch__context-right">
-          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadBatches">
-            查询
-          </UiButton>
-        </div>
-      </div>
-    </template>
-
     <UiEmpty
       v-if="!qualityStore.currentTrainingPlanId"
       description="请先选择培养方案，再进行成绩批次的接入与计算"
@@ -831,10 +785,75 @@ onMounted(async () => {
         </a-form>
       </div>
 
-      <UiDataTable
+      <a-card :bordered="false" class="detail-table-card score-batch__table-card">
+        <template #title>成绩批次</template>
+
+        <div class="filter-card">
+          <a-form
+            layout="inline"
+            class="filter-form filter-form--toolbar score-batch__query-form"
+            @submit.prevent="loadBatches"
+          >
+            <a-form-item label="课程">
+              <a-select
+                v-model:value="query.qualityCourseId"
+                placeholder="按课程筛选"
+                class="score-batch__filter score-batch__filter--lg"
+                allow-clear
+                :options="courseSelectOptions"
+              />
+            </a-form-item>
+            <a-form-item label="考核环节">
+              <a-select
+                v-model:value="query.assessmentItemId"
+                placeholder="考核环节"
+                class="score-batch__filter score-batch__filter--lg"
+                :options="queryAssessmentItemOptions"
+                :loading="queryAssessmentLoading"
+                :disabled="!query.qualityCourseId"
+                allow-clear
+              />
+            </a-form-item>
+            <a-form-item label="状态">
+              <a-select
+                v-model:value="query.status"
+                placeholder="状态"
+                class="score-batch__filter"
+                allow-clear
+                :options="statusOptions"
+              />
+            </a-form-item>
+            <a-form-item label="接入模式">
+              <a-select
+                v-model:value="query.sourceMode"
+                placeholder="接入模式"
+                class="score-batch__filter score-batch__filter--lg"
+                allow-clear
+                :options="SOURCE_MODE_OPTIONS"
+              />
+            </a-form-item>
+            <a-form-item label="关键字">
+              <a-input
+                v-model:value="query.keyword"
+                placeholder="关键字"
+                class="score-batch__filter"
+                @press-enter="loadBatches"
+              />
+            </a-form-item>
+            <a-form-item class="filter-form__actions">
+              <a-space class="filter-form__action-group">
+                <UiButton size="sm" @click="loadBatches">查询</UiButton>
+                <span class="op-link" role="button" @click="resetQuery">重置</span>
+                <UiButton variant="outline" size="sm" :loading="loading" @click="loadBatches">刷新</UiButton>
+              </a-space>
+            </a-form-item>
+          </a-form>
+        </div>
+
+        <UiDataTable
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
-        class="score-batch__table"
+        class="score-batch__table student-detail-table__data-table"
         :columns="batchListColumns"
         :data-source="batches"
         :loading="loading"
@@ -894,71 +913,33 @@ onMounted(async () => {
               {{ statusLabel(record.status) }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space wrap>
-              <UiButton
-                v-if="canPreview(record.status)"
-                variant="ghost"
-                size="sm"
-                @click="openPreview(record)"
-              >
-                预览
-              </UiButton>
-              <UiButton
-                v-if="canValidate(record.status)"
-                variant="ghost"
-                size="sm"
-                @click="handleValidate(record)"
-              >
-                校验
-              </UiButton>
-              <UiButton
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" v-if="canPreview(record.status)" @click="openPreview(record)">预览</span>
+              <span class="op-link" role="button" v-if="canValidate(record.status)" @click="handleValidate(record)">校验</span>
+              <span
                 v-if="canConfirm(record.status)"
-                variant="primary"
-                size="sm"
+                class="op-link primary"
+                role="button"
                 @click="handleConfirm(record)"
               >
                 确认
-              </UiButton>
-              <UiButton
+              </span>
+              <span
                 v-if="canReParse(record.status)"
-                variant="outline"
-                size="sm"
+                class="op-link primary"
+                role="button"
                 @click="handleReParse(record)"
               >
                 重新解析
-              </UiButton>
-              <UiButton
-                v-if="canEdit(record.status)"
-                variant="ghost"
-                size="sm"
-                @click="openEdit(record)"
-              >
-                编辑
-              </UiButton>
-              <UiButton
-                v-if="canCancel(record.status)"
-                variant="ghost"
-                status="danger"
-                size="sm"
-                @click="handleCancel(record)"
-              >
-                取消
-              </UiButton>
-              <UiButton
-                v-if="canDelete(record.status)"
-                variant="ghost"
-                status="danger"
-                size="sm"
-                @click="handleDelete(record)"
-              >
-                删除
-              </UiButton>
-              <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
-            </a-space>
-          </template>
+              </span>
+              <span class="op-link" role="button" v-if="canEdit(record.status)" @click="openEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" v-if="canCancel(record.status)" @click="handleCancel(record)">取消</span>
+              <span class="op-link danger" role="button" v-if="canDelete(record.status)" @click="handleDelete(record)">删除</span>
+              <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
+            </div></template>
         </template>
       </UiDataTable>
+      </a-card>
     </template>
 
     <UiDrawer v-model:open="previewVisible" title="批次明细预览" :width="960" :hide-footer="true">
@@ -997,7 +978,7 @@ onMounted(async () => {
         :message="previewSummary.errorSummary"
         class="score-batch__preview-alert"
       />
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         :columns="diagnosticsColumns"
         :data-source="diagnostics"
         :loading="previewLoading"
@@ -1116,22 +1097,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .score-batch {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left,
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__filter {
     width: 160px;
 

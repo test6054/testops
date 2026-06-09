@@ -68,11 +68,13 @@ import ProgramEvaluationProfileSelector from '@/components/quality/selectors/Pro
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
+const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
 const objectiveColumns: ColumnsType = [
   { title: '编码', dataIndex: 'objectiveCode', key: 'objectiveCode', width: 80 },
   { title: '名称', key: 'objectiveName' },
@@ -245,12 +247,14 @@ const standardMappingsLoading = ref(false)
 const standardOptions = ref<AccreditationStandardVO[]>([])
 
 async function loadStandardOptions() {
-  const res = await accreditationStandardApi.page({
-    pageNum: 1,
-    pageSize: 200,
-    enabled: true,
-  })
-  standardOptions.value = res.list
+  standardOptions.value = await readAllPages(
+    (pageNum) => accreditationStandardApi.page({
+      pageNum,
+      pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
+      enabled: true,
+    }),
+    '认证标准列表加载失败，请稍后重试',
+  )
 }
 
 async function loadStandardMappings() {
@@ -1051,8 +1055,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="tpw__context">
-        <div class="tpw__context-left">
+      <ContextBar>
+        <template #status>
           <span class="tpw__context-label">培养方案</span>
           <TrainingPlanSelector
             :value="qualityStore.currentTrainingPlanId || null"
@@ -1088,29 +1092,19 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             学年 {{ currentPlan.schoolYear || '未配置学年' }} · 年级
             {{ currentPlan.gradeLevel || '未配置年级' }}
           </span>
-        </div>
-        <div class="tpw__context-right">
-          <UiButton variant="ghost" size="sm" @click="openPlanCreate"> 新建方案 </UiButton>
+        </template>
+        <template #actions>
+          <span class="op-link" role="button" @click="openPlanCreate">新建方案</span>
           <UiButton variant="outline" size="sm" :disabled="!currentPlan" @click="openPlanEdit">
             编辑方案
           </UiButton>
-          <UiButton variant="primary" size="sm" :disabled="!canConfirmPlan" @click="confirmPlan">
-            提交确认
-          </UiButton>
+          <UiButton size="sm" :disabled="!canConfirmPlan" @click="confirmPlan">提交确认</UiButton>
           <UiButton v-if="canRevokePlan" variant="outline" size="sm" @click="revokePlan">
             撤回修订
           </UiButton>
-          <UiButton
-            variant="ghost"
-            status="danger"
-            size="sm"
-            :disabled="!currentPlan"
-            @click="deletePlan"
-          >
-            删除方案
-          </UiButton>
-        </div>
-      </div>
+          <span class="op-link danger" role="button" @click="deletePlan">删除方案</span>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -1152,7 +1146,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   新建目标
                 </UiButton>
               </template>
-              <UiDataTable
+              <UiDataTable class="student-detail-table__data-table"
                 :columns="objectiveColumns"
                 :data-source="objectives"
                 :loading="objectivesLoading"
@@ -1189,20 +1183,10 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     </a-tag>
                   </template>
                   <template v-else-if="column.key === 'actions'">
-                    <a-space>
-                      <a-button type="link" size="small" @click.stop="openObjectiveEdit(record)">
-                        编辑
-                      </a-button>
-                      <a-button
-                        type="link"
-                        size="small"
-                        danger
-                        @click.stop="deleteObjective(record)"
-                      >
-                        删除
-                      </a-button>
-                    </a-space>
-                  </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click.stop="openObjectiveEdit(record)">编辑</span>
+                      <span class="op-link danger" role="button" @click.stop="deleteObjective(record)">删除</span>
+            </div></template>
                 </template>
               </UiDataTable>
             </a-card>
@@ -1227,7 +1211,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </UiButton>
                 </a-space>
               </template>
-              <UiDataTable
+              <UiDataTable class="student-detail-table__data-table"
                 :columns="objMappingColumns"
                 :data-source="mappingsOfSelectedObjective"
                 :loading="mappingLoading"
@@ -1257,15 +1241,10 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     {{ record.notes || '未填写说明' }}
                   </template>
                   <template v-else-if="column.key === 'actions'">
-                    <a-space>
-                      <a-button type="link" size="small" @click="openObjMappingEdit(record)">
-                        编辑
-                      </a-button>
-                      <a-button type="link" size="small" danger @click="deleteObjMapping(record)">
-                        删除
-                      </a-button>
-                    </a-space>
-                  </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openObjMappingEdit(record)">编辑</span>
+                      <span class="op-link danger" role="button" @click="deleteObjMapping(record)">删除</span>
+            </div></template>
                 </template>
               </UiDataTable>
             </a-card>
@@ -1301,7 +1280,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   新建毕业要求
                 </UiButton>
               </template>
-              <UiDataTable
+              <UiDataTable class="student-detail-table__data-table"
                 :columns="requirementColumns"
                 :data-source="requirements"
                 :loading="requirementsLoading"
@@ -1338,27 +1317,11 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     </a-tag>
                   </template>
                   <template v-else-if="column.key === 'actions'">
-                    <a-space>
-                      <a-button type="link" size="small" @click.stop="openRequirementEdit(record)">
-                        编辑
-                      </a-button>
-                      <a-button
-                        type="link"
-                        size="small"
-                        @click.stop="validateIndicatorWeights(record)"
-                      >
-                        校验权重
-                      </a-button>
-                      <a-button
-                        type="link"
-                        size="small"
-                        danger
-                        @click.stop="deleteRequirement(record)"
-                      >
-                        删除
-                      </a-button>
-                    </a-space>
-                  </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click.stop="openRequirementEdit(record)">编辑</span>
+                      <span class="op-link" role="button" @click.stop="validateIndicatorWeights(record)">校验权重</span>
+                      <span class="op-link danger" role="button" @click.stop="deleteRequirement(record)">删除</span>
+            </div></template>
                 </template>
               </UiDataTable>
             </a-card>
@@ -1390,7 +1353,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     </UiButton>
                   </a-space>
                 </template>
-                <UiDataTable
+                <UiDataTable class="student-detail-table__data-table"
                   :columns="indicatorColumns"
                   :data-source="indicatorsOfSelected"
                   :loading="indicatorsLoading"
@@ -1416,15 +1379,10 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                       </a-space>
                     </template>
                     <template v-else-if="column.key === 'actions'">
-                      <a-space>
-                        <a-button type="link" size="small" @click="openIndicatorEdit(record)">
-                          编辑
-                        </a-button>
-                        <a-button type="link" size="small" danger @click="deleteIndicator(record)">
-                          删除
-                        </a-button>
-                      </a-space>
-                    </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openIndicatorEdit(record)">编辑</span>
+                        <span class="op-link danger" role="button" @click="deleteIndicator(record)">删除</span>
+            </div></template>
                   </template>
                 </UiDataTable>
               </a-card>
@@ -1438,7 +1396,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     新增标准映射
                   </UiButton>
                 </template>
-                <UiDataTable
+                <UiDataTable class="student-detail-table__data-table"
                   :columns="stdMappingColumns"
                   :data-source="standardMappings"
                   :loading="standardMappingsLoading"
@@ -1468,15 +1426,10 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                       }}
                     </template>
                     <template v-else-if="column.key === 'actions'">
-                      <a-space>
-                        <a-button type="link" size="small" @click="openStdMappingEdit(record)">
-                          编辑
-                        </a-button>
-                        <a-button type="link" size="small" danger @click="deleteStdMapping(record)">
-                          删除
-                        </a-button>
-                      </a-space>
-                    </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openStdMappingEdit(record)">编辑</span>
+                        <span class="op-link danger" role="button" @click="deleteStdMapping(record)">删除</span>
+            </div></template>
                   </template>
                 </UiDataTable>
               </a-card>
@@ -1818,22 +1771,6 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
 <style scoped lang="scss">
 .tpw {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left,
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__context-label {
     font-size: 12px;
     color: var(--dp-text-muted, #64748b);

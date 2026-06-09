@@ -1,9 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="org-sessions__context">
-        <div class="org-sessions__context-info">
-          <h2 class="org-sessions__title">阅卷交付 - 试评 / 正评会话</h2>
+      <ContextBar>
+        <template #status>
           <a-select
             v-model:value="filterGroupId"
             class="org-sessions__group-select"
@@ -12,8 +11,6 @@
             allow-clear
             @change="reloadAll"
           />
-        </div>
-        <div class="org-sessions__context-actions">
           <UiTag
             v-if="organization?.organizationStatus"
             :tone="
@@ -33,11 +30,13 @@
               )
             }}
           </UiTag>
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="reloadAll">
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- D-9 错误态：阅卷组织 / 会话列表加载失败时提供重试 + 上报入口 -->
@@ -283,37 +282,6 @@ onMounted(reloadAll)
 
 <style lang="scss" scoped>
 .org-sessions {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 280px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__group-select {
     width: 240px;
   }

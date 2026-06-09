@@ -19,7 +19,7 @@
       compact
       @retry="reload"
     />
-    <UiDataTable
+    <UiDataTable class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -143,12 +143,15 @@ import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CorrectionsCard' })
 
 const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
+
+const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])
 const loading = ref(false)
@@ -239,14 +242,18 @@ async function loadApprovedReviewRequests(): Promise<void> {
   if (!props.examId) return
   reviewRequestLoading.value = true
   try {
-    const page = await listReviewRequests({
-      examId: props.examId,
-      requestStatus: 'APPROVED',
-      pageNum: 1,
-      pageSize: 200,
-    })
-    validateReviewRequestDisplayContracts(page.list)
-    approvedReviewRequests.value = page.list
+    const requests = await readAllPages(
+      (pageNum) =>
+        listReviewRequests({
+          examId: props.examId,
+          requestStatus: 'APPROVED',
+          pageNum,
+          pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
+        }),
+      '已通过复核申请加载失败',
+    )
+    validateReviewRequestDisplayContracts(requests)
+    approvedReviewRequests.value = requests
   } catch (e) {
     approvedReviewRequests.value = []
     showUserError(e, '已通过复核申请加载失败')

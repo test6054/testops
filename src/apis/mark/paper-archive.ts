@@ -125,7 +125,7 @@ export interface PaperArchiveSetCreateRequest {
   examTerm?: string
   examRound?: string
   tags?: string[]
-  /** 保管年限（年），permanentRetention=true 时忽略 */
+  /** 保管年限（年），permanentRetention=true 时忽略，非永久档案集必填 */
   retentionYears?: number
   /** 是否永久保管 */
   permanentRetention?: boolean

@@ -93,7 +93,7 @@ watch(
   (newId) => {
     if (!newId) return
     const exists = workflow.examOptions.value.some((x) => x.examId === newId)
-    if (!exists) workflow.loadExamOptions().catch(() => undefined)
+    if (!exists) workflow.loadExamOptions()
   },
   { immediate: true },
 )
@@ -335,10 +335,10 @@ watch(
           type="number"
           min="1"
           class="form-input form-input--num"
-          :disabled="!workflow.canEditScanSetup.value"
-          placeholder="留空由扫描仪决定"
+          :disabled="isSupplement || !workflow.canEditScanSetup.value"
+          :placeholder="isSupplement ? '补扫固定 1 页' : '留空由扫描仪决定'"
         />
-        <span class="hint">仅用于展示扫描进度</span>
+        <span class="hint">{{ isSupplement ? '补扫批次只允许扫描目标页的一张影像' : '仅用于展示扫描进度' }}</span>
       </div>
     </article>
 

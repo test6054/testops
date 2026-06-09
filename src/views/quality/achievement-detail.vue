@@ -40,7 +40,7 @@ import {
   MANUAL_REVIEW_DECISION_LABEL,
 } from '@/apis/quality'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -87,6 +87,18 @@ function auditStatusLabel(value: AchievementAuditStatus): string {
 
 function auditStatusColor(value: AchievementAuditStatus): string {
   return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
+}
+
+function isResultStale(value: AchievementResultVO | null): boolean {
+  return value?.staleFlag === true
+}
+
+function resultValidityLabel(value: AchievementResultVO | null): string {
+  return isResultStale(value) ? '已过期' : '有效'
+}
+
+function resultValidityColor(value: AchievementResultVO | null): string {
+  return isResultStale(value) ? 'red' : 'green'
 }
 
 function detailTypeLabel(value: AchievementDetailType): string {
@@ -196,6 +208,12 @@ const signals = computed<SignalMetric[]>(() => {
       tone: 'gray',
     },
     {
+      key: 'validity',
+      label: '结果有效性',
+      value: resultValidityLabel(r),
+      tone: isResultStale(r) ? 'red' : 'green',
+    },
+    {
       key: 'detail-rows',
       label: '明细行数',
       value: details.value.length,
@@ -234,15 +252,14 @@ onMounted(loadAll)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="achievement-detail__context">
-        <div class="achievement-detail__context-info">
-          <UiButton variant="ghost" size="sm" @click="router.back()"> 返回 </UiButton>
-          <h2 class="achievement-detail__title">达成度详情</h2>
+      <ContextBar>
+        <template #status>
+          <UiButton variant="outline" size="sm" @click="router.back()">返回</UiButton>
           <a-tag v-if="result" :color="auditStatusColor(result.auditStatus)">
             {{ auditStatusLabel(result.auditStatus) }}
           </a-tag>
-        </div>
-        <div class="achievement-detail__context-actions">
+        </template>
+        <template #actions>
           <UiButton
             v-if="result"
             variant="outline"
@@ -262,8 +279,8 @@ onMounted(loadAll)
           >
             -> {{ auditStatusLabel(to) }}
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -275,10 +292,8 @@ onMounted(loadAll)
     <template v-else-if="result">
       <SignalBand :metrics="signals" compact class="achievement-detail__signals" />
 
-      <section class="achievement-detail__panel achievement-detail__panel--meta">
-        <header class="achievement-detail__panel-header">
-          <h3 class="achievement-detail__panel-title">结果元数据</h3>
-        </header>
+      <a-card :bordered="false" class="detail-table-card achievement-detail__meta-card">
+        <template #title>结果元数据</template>
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="目标类型">
             {{ targetTypeLabel(result.targetType) }}
@@ -312,20 +327,47 @@ onMounted(loadAll)
             </a-tag>
           </a-descriptions-item>
         </a-descriptions>
-      </section>
+      </a-card>
+
+      <a-card :bordered="false" class="detail-table-card achievement-detail__panel">
+        <template #title>结果有效性</template>
+        <a-descriptions :column="3" size="small" bordered>
+          <a-descriptions-item label="有效性状态">
+            <a-tag :color="resultValidityColor(result)">
+              {{ resultValidityLabel(result) }}
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="过期时间">
+            {{ result.staleAt || '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="过期原因">
+            {{ result.staleReason || '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="来源类型">
+            {{ result.staleSourceType || '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="来源 ID">
+            {{ result.staleSourceId || '-' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="说明">
+            {{
+              isResultStale(result)
+                ? '当前结果已过期，需按最新成绩或配置重新计算'
+                : '当前结果与最新成绩、配置保持一致'
+            }}
+          </a-descriptions-item>
+        </a-descriptions>
+      </a-card>
 
       <div class="achievement-detail__layout">
-        <section class="achievement-detail__panel achievement-detail__panel--main">
-          <header class="achievement-detail__panel-header">
-            <h3 class="achievement-detail__panel-title">计算明细</h3>
-            <span class="achievement-detail__panel-meta">{{ details.length }} 行</span>
-          </header>
+        <a-card :bordered="false" class="detail-table-card achievement-detail__detail-card">
+          <template #title>计算明细</template>
           <UiEmpty
             v-if="!details.length && !loading"
             description="未生成明细记录。仅草稿或已计算状态后才会产出主要明细。"
             size="sm"
           />
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             v-else
             :columns="detailColumns"
             :data-source="details"
@@ -367,13 +409,10 @@ onMounted(loadAll)
               </template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
 
-        <section class="achievement-detail__panel achievement-detail__panel--side">
-          <header class="achievement-detail__panel-header">
-            <h3 class="achievement-detail__panel-title">审核责任链流水</h3>
-            <span class="achievement-detail__panel-meta">{{ audits.length }} 条</span>
-          </header>
+        <a-card :bordered="false" class="detail-table-card achievement-detail__audit-card">
+          <template #title>审核责任链流水</template>
           <UiEmpty
             v-if="!audits.length && !loading"
             description="未产生审核流水。审核动作会记录状态跳转与意见。"
@@ -406,14 +445,11 @@ onMounted(loadAll)
               </p>
             </a-timeline-item>
           </a-timeline>
-        </section>
+        </a-card>
       </div>
 
-      <section class="achievement-detail__panel">
-        <header class="achievement-detail__panel-header">
-          <h3 class="achievement-detail__panel-title">人工复核记录</h3>
-          <span class="achievement-detail__panel-meta">{{ reviews.length }} 条</span>
-        </header>
+      <a-card :bordered="false" class="detail-table-card achievement-detail__review-card">
+        <template #title>人工复核记录</template>
         <UiEmpty
           v-if="!reviews.length"
           description="尚无人工复核记录。可点击顶部「人工复核」补充复核意见。"
@@ -432,7 +468,7 @@ onMounted(loadAll)
             </a-list-item>
           </template>
         </a-list>
-      </section>
+      </a-card>
     </template>
 
     <UiDrawer
@@ -461,35 +497,6 @@ onMounted(loadAll)
 
 <style scoped lang="scss">
 .achievement-detail {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__empty {
     margin-top: 32px;
   }

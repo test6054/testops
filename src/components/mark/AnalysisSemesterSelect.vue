@@ -5,9 +5,11 @@ import { onMounted, ref } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
 import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 
 defineOptions({ name: 'AnalysisSemesterSelect' })
+
+const ANALYSIS_SEMESTER_EXAM_PAGE_SIZE = 100
 
 const selectedSemesterCode = defineModel<string | undefined>()
 
@@ -29,9 +31,15 @@ const semesterOptions = ref<{ label: string; value: string }[]>([])
 async function loadSemesterOptions(): Promise<void> {
   loading.value = true
   try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
     const termMap = new Map<string, string>()
-    readPageList(result, '考试列表加载失败，请稍后重试').forEach((exam: ExamSummaryVO) => {
+    const exams = await readAllPages(
+      (pageNum) => pageExams({
+        pageNum,
+        pageSize: ANALYSIS_SEMESTER_EXAM_PAGE_SIZE,
+      }),
+      '考试列表加载失败，请稍后重试',
+    )
+    exams.forEach((exam: ExamSummaryVO) => {
       if (!exam.academicYear || !exam.semester) return
       const value = `${exam.academicYear}-${exam.semester}`
       termMap.set(value, `${exam.academicYear} · ${getSemesterDescription(exam.semester)}`)

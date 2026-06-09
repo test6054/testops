@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="score-detail__context">
-        <div class="score-detail__context-left">
+      <ContextBar>
+        <template #status>
           <UiTag v-if="detail?.finalScoreStatus" :tone="finalScoreStatusTone(detail)" size="sm">
             {{ finalScoreStatusLabel(detail) }}
           </UiTag>
@@ -15,8 +15,8 @@
             /
             {{ detail.finalScoreStatus === 'PUBLISHED' ? formatPublishedFullScore(detail) : '--' }}
           </UiTag>
-        </div>
-        <div class="score-detail__context-right">
+        </template>
+        <template #actions>
           <UiButton size="sm" variant="outline" :loading="loading" @click="loadDetail">
             <template #icon><ReloadOutlined /></template>
             刷新
@@ -29,8 +29,8 @@
             <template #icon><FormOutlined /></template>
             提交复核申请
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiErrorRetryPanel
@@ -53,7 +53,6 @@
         <template #title>
           <BarChartOutlined />
           <span>题目得分明细</span>
-          <UiBadge tone="blue">{{ detail.questions.length }} 道题</UiBadge>
           <UiBadge v-if="clusterLabelOptions.length > 0" tone="orange">
             错题聚类 {{ clusterLabelOptions.length }} 项
           </UiBadge>
@@ -141,24 +140,24 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-space :size="4" wrap>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
+              <div class="operations-cell" @click.stop>
+                <span
+                  class="op-link"
+                  role="button"
                   @click="openAnswerDrawer(filteredQuestions[index])"
                 >
-                  <template #icon><ProfileOutlined /></template>
+                  <ProfileOutlined />
                   查看答题
-                </UiButton>
-                <UiButton
+                </span>
+                <span
                   v-if="canApplyReviewOnQuestion(filteredQuestions[index])"
-                  size="sm"
-                  variant="ghost"
+                  class="op-link"
+                  role="button"
                   @click="goAppealForQuestion(filteredQuestions[index])"
                 >
                   申请复核
-                </UiButton>
-              </a-space>
+                </span>
+              </div>
             </template>
           </template>
           <template #expandedRowRender="{ index }">
@@ -169,6 +168,55 @@
               </p>
             </div>
             <UiEmpty v-else description="本题暂无 AI 学习内容" />
+          </template>
+        </a-table>
+      </UiCard>
+
+      <UiCard
+        v-if="detail.finalScoreStatus === 'PUBLISHED'"
+        class="score-detail__wrong-book-card"
+      >
+        <template #title>
+          <ProfileOutlined />
+          <span>错题本</span>
+          <UiBadge tone="red">{{ wrongBookTotal }} 条</UiBadge>
+        </template>
+        <template #extra>
+          <UiButton size="sm" variant="outline" :loading="wrongBookLoading" @click="loadWrongBook">
+            刷新
+          </UiButton>
+        </template>
+        <UiEmpty v-if="!wrongBookLoading && wrongBookRows.length === 0" description="暂无错题记录" />
+        <a-table
+          v-else
+          :columns="wrongBookColumns"
+          :data-source="wrongBookRows"
+          :loading="wrongBookLoading"
+          :pagination="wrongBookPagination"
+          row-key="gradeResultId"
+          size="middle"
+          @change="handleWrongBookPageChange"
+        >
+          <template #bodyCell="{ column, record: item }">
+            <template v-if="column.key === 'score'">
+              {{ item.teacherReviewScore != null ? Number(item.teacherReviewScore).toFixed(2) : '--' }}
+              / {{ Number(item.fullScore).toFixed(2) }}
+            </template>
+            <template v-else-if="column.key === 'gradeStatus'">
+              <UiTag :tone="getGradeStatusTone(item.gradeStatus)" size="sm">
+                {{ formatGradeStatus(item.gradeStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'objectiveResult'">
+              <UiTag
+                v-if="item.objectiveResult"
+                :tone="strictEnumTone(OBJECTIVE_RESULT_TONE, item.objectiveResult, '客观判定')"
+                size="sm"
+              >
+                {{ strictEnumLabel(OBJECTIVE_RESULT_LABEL, item.objectiveResult, '客观判定') }}
+              </UiTag>
+              <span v-else class="score-detail__hint">-</span>
+            </template>
           </template>
         </a-table>
       </UiCard>
@@ -438,7 +486,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
   StudentAiDiagnosisItemVO,
   StudentAiErrorClusterVO,
@@ -474,6 +522,8 @@ import {
   OBJECTIVE_RESULT_LABEL,
   OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/student-exam'
+import type { StudentWrongBookItemVO } from '@/apis/mark/question-analysis'
+import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
 import {
   UiAlertStrip,
   UiBadge,
@@ -483,9 +533,10 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'StudentScoreDetail' })
@@ -497,6 +548,24 @@ const detailLoadError = ref<Error | null>(null)
 const detail = ref<StudentScoreDetailVO | null>(null)
 
 const detailQuestions = computed<StudentQuestionScoreVO[]>(() => detail.value?.questions ?? [])
+
+const wrongBookLoading = ref(false)
+const wrongBookRows = ref<StudentWrongBookItemVO[]>([])
+const wrongBookTotal = ref(0)
+const wrongBookPagination = reactive({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+  showSizeChanger: true,
+})
+
+const wrongBookColumns: ColumnType<StudentWrongBookItemVO>[] = [
+  { title: '题目', dataIndex: 'questionTemplateId', key: 'questionTemplateId', width: 140 },
+  { title: '得分', key: 'score', width: 120 },
+  { title: '批改状态', key: 'gradeStatus', width: 110 },
+  { title: '客观判定', key: 'objectiveResult', width: 110 },
+  { title: '评语', dataIndex: 'commentText', key: 'commentText', ellipsis: true },
+]
 
 /** 当前选中的错题聚类标签，为 undefined 表示不过滤 */
 const selectedClusterLabel = ref<string | undefined>(undefined)
@@ -646,6 +715,36 @@ function formatPublishedFullScore(item: StudentScoreDetailVO): string {
   return (item.fullScore as number).toFixed(2)
 }
 
+async function loadWrongBook(): Promise<void> {
+  if (!examId.value || detail.value?.finalScoreStatus !== 'PUBLISHED') {
+    wrongBookRows.value = []
+    wrongBookTotal.value = 0
+    return
+  }
+  wrongBookLoading.value = true
+  try {
+    const result = await pageStudentWrongBook({
+      examId: examId.value,
+      wrongOnly: true,
+      pageNum: wrongBookPagination.current,
+      pageSize: wrongBookPagination.pageSize,
+    })
+    wrongBookRows.value = readPageList(result, '错题本加载失败，请稍后重试')
+    wrongBookTotal.value = readPageTotal(result, '错题本加载失败，请稍后重试')
+    wrongBookPagination.total = wrongBookTotal.value
+  } catch (error) {
+    showUserError(error, '错题本加载失败')
+  } finally {
+    wrongBookLoading.value = false
+  }
+}
+
+function handleWrongBookPageChange(pagination: TablePaginationConfig): void {
+  wrongBookPagination.current = pagination.current ?? 1
+  wrongBookPagination.pageSize = pagination.pageSize ?? 10
+  void loadWrongBook()
+}
+
 async function loadDetail() {
   if (!examId.value) {
     message.warning('考试信息缺失，无法加载成绩详情')
@@ -657,6 +756,10 @@ async function loadDetail() {
     const loadedDetail = await getMyScoreDetail(examId.value)
     validateScoreDetailContract(loadedDetail)
     detail.value = loadedDetail
+    if (loadedDetail.finalScoreStatus === 'PUBLISHED') {
+      wrongBookPagination.current = 1
+      await loadWrongBook()
+    }
   } catch (error) {
     detailLoadError.value = toUserError(error, '成绩详情加载失败')
     showUserError(error, '成绩详情加载失败')
@@ -872,28 +975,6 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .score-detail {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__questions-card {
     margin-top: 8px;
   }

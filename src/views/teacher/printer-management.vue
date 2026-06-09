@@ -1,42 +1,42 @@
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="printer-management__context">
-        <div class="printer-management__context-info">
-          <h2 class="printer-management__title">阅卷交付 - 打印机 / 扫描仪管理</h2>
-          <a-tag color="blue"> 共 {{ devices.length }} 台设备 </a-tag>
-        </div>
-        <div class="printer-management__context-actions">
-          <a-button @click="loadDevices"> 刷新 </a-button>
-          <a-button type="primary" @click="handleCreate">
-            <template #icon>
-              <PlusOutlined />
-            </template>
-            新增设备
-          </a-button>
-        </div>
-      </div>
-    </template>
-
-    <div class="printer-management">
-      <!-- 筛选栏 -->
-      <div class="filter-row">
-        <a-input
-          v-model:value="searchForm.scannerDeviceIdKeyword"
-          placeholder="按扫描设备编号搜索"
-          allow-clear
-          style="width: 240px; margin-right: 12px"
-          @press-enter="handleSearch"
-        />
-        <a-select
-          v-model:value="searchForm.status"
-          placeholder="设备状态"
-          allow-clear
-          style="width: 160px; margin-right: 12px"
-          :options="statusOptions"
-        />
-        <a-button type="primary" @click="handleSearch">查询</a-button>
-        <a-button style="margin-left: 8px" @click="handleResetSearch">重置</a-button>
+    <a-card :bordered="false" class="detail-table-card printer-management">
+      <template #title>扫描设备</template>
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
+          <a-form-item>
+            <a-tag color="blue">共 {{ devices.length }} 台设备</a-tag>
+          </a-form-item>
+          <a-form-item label="设备编号">
+            <a-input
+              v-model:value="searchForm.scannerDeviceIdKeyword"
+              placeholder="按扫描设备编号搜索"
+              allow-clear
+              style="width: 240px"
+              @press-enter="handleSearch"
+            />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="searchForm.status"
+              placeholder="设备状态"
+              allow-clear
+              style="width: 160px"
+              :options="statusOptions"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="handleSearch">查询</UiButton>
+              <UiButton size="sm" variant="outline" @click="handleResetSearch">重置</UiButton>
+              <UiButton size="sm" variant="outline" @click="loadDevices">刷新</UiButton>
+              <UiButton size="sm" @click="handleCreate">
+                <template #icon><PlusOutlined /></template>
+                新增设备
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
       </div>
 
       <!-- D-9 错误态：设备列表加载失败时提供重试 + 上报入口 -->
@@ -65,7 +65,7 @@
       />
 
       <!-- 设备表格 -->
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-if="!devicesLoadError"
         :columns="columns"
         :data-source="devices"
@@ -110,17 +110,17 @@
               <a class="op-link" @click="handleCreateActivationCode(devices[index])"> 激活码 </a>
               <a
                 v-if="devices[index].endpointMachineCode"
-                class="op-link op-link--danger"
+                class="op-link danger"
                 @click="handleUnbindAgent(devices[index])"
               >
                 解绑扫描组件
               </a>
-              <a class="op-link op-link--danger" @click="handleDelete(devices[index])">删除</a>
+              <a class="op-link danger" @click="handleDelete(devices[index])">删除</a>
             </div>
           </template>
         </template>
       </UiDataTable>
-    </div>
+    </a-card>
 
     <!-- 新增/编辑设备弹窗 -->
     <a-modal
@@ -194,37 +194,6 @@
                 v-model:checked="formData.kioskLockEnabled"
                 checked-children="启用"
                 un-checked-children="关闭"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-
-        <a-divider orientation="left">Agent 默认配置</a-divider>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item name="defaultExamId" label="默认归属考试">
-              <a-select
-                v-model:value="formData.defaultExamId"
-                placeholder="可空，扫描仪未指定时使用"
-                :loading="examListLoading"
-                :options="examOptions"
-                show-search
-                allow-clear
-                :filter-option="filterExamOption"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item name="defaultClassIds" label="默认归属班级">
-              <a-select
-                v-model:value="formData.defaultClassIds"
-                mode="multiple"
-                placeholder="请选择默认归属班级"
-                :loading="classListLoading"
-                :options="classOptions"
-                show-search
-                allow-clear
-                :filter-option="filterClassOption"
               />
             </a-form-item>
           </a-col>
@@ -380,17 +349,6 @@
             scannerDeviceDiagnosticText(detailInfo.diagnosticMessage, detailInfo.diagnosticStatus)
           }}
         </a-descriptions-item>
-        <a-descriptions-item label="默认归属考试">
-          {{ detailInfo.defaultExamId || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="默认归属班级">
-          <a-space v-if="detailInfo.defaultClassRefs.length" wrap>
-            <a-tag v-for="classRef in detailInfo.defaultClassRefs" :key="classRef.classId">
-              {{ classRef.className }}
-            </a-tag>
-          </a-space>
-          <span v-else>—</span>
-        </a-descriptions-item>
         <a-descriptions-item label="完整设备接入密钥" :span="2">
           <div class="token-row">
             <span class="token-text">{{ detailInfo.pushToken || '—' }}</span>
@@ -472,8 +430,6 @@
 
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { DefaultOptionType } from 'ant-design-vue/es/select'
-import type { ClassInfoDto } from '@/apis/edu/class'
 import type {
   ExamScannerActivationCodeVO,
   ExamScannerDeviceCreateRequest,
@@ -482,7 +438,6 @@ import type {
   ExamScannerDeviceTokenVO,
   ExamScannerDeviceUpdateRequest,
   ExamScannerDeviceVO,
-  MarkExamSummaryVO,
   ScannerAgentDiagnosticStatusCode,
   ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
@@ -491,14 +446,12 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { getAllClasses } from '@/apis/edu/class'
 import {
   createScannerActivationCode,
   createScannerDevice,
   deleteScannerDevice,
   getScannerDeviceDetail,
   listScannerDevices,
-  pageMarkExams,
   resetScannerDevicePushToken,
   SCANNER_DEVICE_STATUS_COLOR,
   SCANNER_DEVICE_STATUS_LABEL,
@@ -507,45 +460,20 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useAuthStore } from '@/stores/modules/auth'
-import { useUserStore } from '@/stores/modules/user'
-import { RoleEnum } from '@/types/enums'
-import { formatSemester } from '@/types/enums/semester-enum'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
-import { readArrayResponse, readPageList } from '@/utils/page-result'
+import { readArrayResponse } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrinterManagement' })
 
-const authStore = useAuthStore()
-const userStore = useUserStore()
-
 // ─── 列表与筛选 ───────────────────────────────────────
 const loading = ref(false)
 const devicesLoadError = ref<Error | null>(null)
-const classListLoadError = ref<Error | null>(null)
-const examListLoadError = ref<Error | null>(null)
 const devices = ref<ExamScannerDeviceVO[]>([])
 const searchForm = ref<ExamScannerDeviceQueryRequest>({})
-const classListLoading = ref(false)
-const classList = ref<ClassInfoDto[]>([])
-const classOptions = computed(() =>
-  classList.value.map((item) => ({
-    label: [item.className, item.majorName].filter(Boolean).join(' / '),
-    value: String(item.id),
-  })),
-)
-const examListLoading = ref(false)
-const examList = ref<MarkExamSummaryVO[]>([])
-const examOptions = computed(() =>
-  examList.value.map((item) => ({
-    label: [formatExamOptionLabel(item), formatAcademicTerm(item)].filter(Boolean).join(' · '),
-    value: item.examId,
-  })),
-)
 const showActivationCodeModal = ref(false)
 const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
 const activationCodeDeviceName = ref('')
@@ -634,8 +562,6 @@ interface FormState {
   deviceName: string
   scannerIp?: string
   status: ScannerDeviceStatusCode
-  defaultExamId?: string
-  defaultClassIds?: string[]
   manufacturer?: string
   model?: string
   location?: string
@@ -650,7 +576,6 @@ function defaultFormState(): FormState {
     deviceName: '',
     scannerIp: '',
     status: 'ACTIVE',
-    defaultClassIds: [],
     kioskLockEnabled: true,
   }
 }
@@ -687,8 +612,6 @@ function handleEdit(record: ExamScannerDeviceVO): void {
     deviceName: record.deviceName,
     scannerIp: record.scannerIp ?? '',
     status: record.status,
-    defaultExamId: record.defaultExamId ?? '',
-    defaultClassIds: record.defaultClassRefs.map((classRef) => classRef.classId),
     manufacturer: record.manufacturer ?? '',
     model: record.model ?? '',
     location: record.location ?? '',
@@ -710,8 +633,6 @@ async function handleFormSubmit(): Promise<void> {
         deviceName: formData.deviceName.trim(),
         scannerIp: emptyToUndefined(formData.scannerIp),
         status: formData.status,
-        defaultExamId: emptyToUndefined(formData.defaultExamId),
-        defaultClassIds: formData.defaultClassIds,
         manufacturer: emptyToUndefined(formData.manufacturer),
         model: emptyToUndefined(formData.model),
         location: emptyToUndefined(formData.location),
@@ -731,8 +652,6 @@ async function handleFormSubmit(): Promise<void> {
         deviceName: formData.deviceName.trim(),
         scannerIp: emptyToUndefined(formData.scannerIp),
         status: formData.status,
-        defaultExamId: emptyToUndefined(formData.defaultExamId),
-        defaultClassIds: formData.defaultClassIds,
         manufacturer: emptyToUndefined(formData.manufacturer),
         model: emptyToUndefined(formData.model),
         location: emptyToUndefined(formData.location),
@@ -893,68 +812,8 @@ function handleDelete(record: ExamScannerDeviceVO): void {
   })
 }
 
-async function loadClassList(): Promise<void> {
-  classListLoading.value = true
-  try {
-    classListLoadError.value = null
-    classList.value = await getAllClasses()
-  } catch (error) {
-    classListLoadError.value = toUserError(error, '班级列表加载失败')
-    showUserError(error, '班级列表加载失败')
-  } finally {
-    classListLoading.value = false
-  }
-}
-
-async function loadExamList(): Promise<void> {
-  examListLoading.value = true
-  try {
-    examListLoadError.value = null
-    // P0 越权防护：与后端 ExamMarkPermissionService.hasFullTenantReadView() 对齐。
-    // 仅平台超管 + 企业管理员享有全租户读视角；租户管理员（含普通教师）走自己创建 + 被分配范围。
-    // 注：后端 listExamPage 切面会忽略前端教师视角传值，本处 createUserId 仅作为 UI 下钻入口。
-    const role = authStore.userRole
-    const isAdminView
-      = role === RoleEnum.SUPER_ADMIN || role === RoleEnum.CROP_ADMIN || role === RoleEnum.CROP_USER
-    const result = await pageMarkExams({
-      pageNum: 1,
-      pageSize: 200,
-      status: 'ACTIVE',
-      createUserId: isAdminView ? null : userStore.userInfo.userId || undefined,
-    })
-    examList.value = readPageList(result, '考试列表加载失败，请稍后重试')
-  } catch (error) {
-    examListLoadError.value = toUserError(error, '考试列表加载失败')
-    showUserError(error, '考试列表加载失败')
-  } finally {
-    examListLoading.value = false
-  }
-}
-
-function filterClassOption(input: string, option?: DefaultOptionType): boolean {
-  return String(option?.label ?? '')
-    .toLowerCase()
-    .includes(input.toLowerCase())
-}
-
-function filterExamOption(input: string, option?: DefaultOptionType): boolean {
-  return String(option?.label ?? '')
-    .toLowerCase()
-    .includes(input.toLowerCase())
-}
-
-function formatAcademicTerm(exam: MarkExamSummaryVO): string {
-  return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
-}
-
-function formatExamOptionLabel(exam: MarkExamSummaryVO): string {
-  return exam.examNo ? `${exam.examName} (${exam.examNo})` : exam.examName
-}
-
 onMounted(() => {
   loadDevices()
-  loadClassList()
-  loadExamList()
 })
 </script>
 
@@ -982,26 +841,6 @@ onMounted(() => {
   .toolbar-actions {
     display: flex;
     gap: 8px;
-  }
-}
-
-.operations-cell {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.op-link {
-  color: #2563eb;
-  cursor: pointer;
-  user-select: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
-
-  &--danger {
-    color: #dc2626;
   }
 }
 

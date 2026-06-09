@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="task-detail-page__context">
-        <div class="task-detail-page__context-left">
+      <ContextBar>
+        <template #status>
           <UiTag v-if="detail" :tone="reviewStatusTone(detail.status)" size="sm">
             {{ reviewStatusLabel(detail.status) }}
           </UiTag>
@@ -10,11 +10,11 @@
           <UiTag v-if="detail" tone="blue" size="sm">
             题{{ detail.questionNo }} · 满分{{ detail.fullScore }}
           </UiTag>
-        </div>
-        <div class="task-detail-page__context-right">
+        </template>
+        <template #actions>
           <UiButton v-if="canEnterWorkspace" size="sm" @click="goWorkspace">
             <template #icon><EditOutlined /></template>
-            进入批阅
+            进入复核
           </UiButton>
           <UiButton
             variant="outline"
@@ -26,13 +26,13 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
       v-if="!hasParams"
-      description="未找到本次批阅任务，请从任务列表重新进入"
+      description="未找到本次复核任务，请从教师复核列表重新进入"
       class="task-detail-page__empty"
     />
 
@@ -41,7 +41,7 @@
       v-else-if="taskLoadError"
       :error="taskLoadError"
       title="复核任务详情加载失败"
-      helper="请从批阅任务列表重新进入后重试"
+      helper="请从教师复核列表重新进入后重试"
       @retry="loadTask"
     />
 
@@ -101,9 +101,9 @@
           <UiCard class="info-card">
             <template #title>
               <RobotOutlined />
-              <span>AI 复评说明</span>
+              <span>AI 评分说明</span>
             </template>
-            <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 复评说明" />
+            <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 评分说明" />
             <div v-else class="text-block">{{ aiReviewDiagnosticText(detail.aiDiagnostic) }}</div>
           </UiCard>
         </a-col>
@@ -113,7 +113,6 @@
             <template #title>
               <CommentOutlined />
               <span>批注历史</span>
-              <UiBadge tone="blue">{{ annotations.length }}</UiBadge>
             </template>
             <UiEmpty v-if="annotations.length === 0" description="尚无批注记录" />
             <a-list v-else :data-source="annotations" size="small">
@@ -158,19 +157,21 @@ import {
 } from '@/apis/mark/exam'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import {
-  UiBadge,
   UiButton,
   UiCard,
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewTaskDetail' })
+
+const REVIEW_TASK_DETAIL_PAGE_SIZE = 100
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
@@ -180,11 +181,11 @@ function reviewStatusLabel(value: ReviewTaskStatusCode): string {
   return strictEnumLabel(REVIEW_TASK_STATUS_LABEL, value, '复核任务状态')
 }
 
-/** 将 AI 复评诊断转为教师可处理的评分提示，避免展示模型或接口内部细节。 */
+/** 将 AI 评分诊断转为教师可处理的评分提示，避免展示模型或接口内部细节。 */
 function aiReviewDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
-    'AI 复评暂未形成可展示说明，请按题目评分细则继续人工复核',
+    'AI 评分暂未形成可展示说明，请按题目评分细则继续人工复核',
   )
 }
 
@@ -213,16 +214,20 @@ const annotations = ref<AnnotationVO[]>([])
 
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
+  const currentExamId = examId.value
+  const { paperInstanceId, questionTemplateId, gradeResultId } = detail.value
   try {
-    const page = await listAnnotations({
-      examId: examId.value,
-      paperInstanceId: detail.value.paperInstanceId,
-      questionTemplateId: detail.value.questionTemplateId,
-      gradeResultId: detail.value.gradeResultId,
-      pageNum: 1,
-      pageSize: 200,
-    })
-    annotations.value = page.list
+    annotations.value = await readAllPages(
+      (pageNum) => listAnnotations({
+        examId: currentExamId,
+        paperInstanceId,
+        questionTemplateId,
+        gradeResultId,
+        pageNum,
+        pageSize: REVIEW_TASK_DETAIL_PAGE_SIZE,
+      }),
+      '批注记录加载失败，请刷新后重试',
+    )
   } catch (error) {
     showUserError(error, '批注记录加载失败')
   }
@@ -268,28 +273,6 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .task-detail-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__empty {
     padding: 60px 0;
   }
@@ -298,7 +281,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .info-card {

@@ -10,7 +10,7 @@ import { onMounted, ref, watch } from 'vue'
 import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -56,14 +56,17 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await archiveApi.page({
-      pageNum: 1,
-      pageSize: 200,
-      businessType: props.businessType || undefined,
-      archiveCategory: props.archiveCategory || undefined,
-      archiveOfficeConfirmed: props.onlyConfirmed ? true : undefined,
-    })
-    options.value = requirePageList(res, '材料归档')
+    options.value = await requireAllPages(
+      (pageNum) =>
+        archiveApi.page({
+          pageNum,
+          pageSize: 100,
+          businessType: props.businessType || undefined,
+          archiveCategory: props.archiveCategory || undefined,
+          archiveOfficeConfirmed: props.onlyConfirmed ? true : undefined,
+        }),
+      '材料归档',
+    )
   } catch (e) {
     showUserError(e, '质量档案列表加载失败')
   } finally {

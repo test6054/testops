@@ -27,7 +27,10 @@ import {
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
+
+const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'templateCode', key: 'templateCode', width: 120 },
@@ -169,8 +172,14 @@ function assignEditor(
 }
 
 async function loadStandards() {
-  const page = await accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true })
-  standards.value = page.list
+  standards.value = await readAllPages(
+    (pageNum) => accreditationStandardApi.page({
+      pageNum,
+      pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
+      enabled: true,
+    }),
+    '认证标准列表加载失败，请稍后重试',
+  )
 }
 
 async function loadList() {
@@ -180,8 +189,8 @@ async function loadList() {
       ...query,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '专业算法模板加载失败，请稍后重试')
+    total.value = readPageTotal(page, '专业算法模板加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -330,42 +339,42 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="pat__context">
-        <div class="pat__context-info">
-          <h2 class="pat__title">专业算法模板库</h2>
-        </div>
-      </div>
-    </template>
-
     <SignalBand :metrics="signals" compact class="pat__signals" />
 
-    <section class="pat__panel">
-      <header class="pat__panel-header">
-        <h3 class="pat__panel-title">模板台账</h3>
-        <div class="pat__panel-actions">
-          <a-select
-            v-model:value="query.accreditationType"
-            placeholder="认证类型"
-            allow-clear
-            class="pat__filter pat__filter--lg"
-            :options="accreditationOptions"
-          />
-          <a-input
-            v-model:value="query.keyword"
-            placeholder="编码/名称"
-            class="pat__filter pat__filter--md"
-            @press-enter="loadList"
-          />
-          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            查询
-          </UiButton>
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建模板 </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card pat__table-card">
+      <template #title>模板台账</template>
 
-      <UiDataTable
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
+          <a-form-item label="认证类型">
+            <a-select
+              v-model:value="query.accreditationType"
+              placeholder="认证类型"
+              allow-clear
+              style="width: 180px"
+              :options="accreditationOptions"
+            />
+          </a-form-item>
+          <a-form-item label="关键字">
+            <a-input
+              v-model:value="query.keyword"
+              placeholder="编码/名称"
+              style="width: 160px"
+              @press-enter="loadList"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="loadList">查询</UiButton>
+              <span class="op-link" role="button" @click="resetQuery">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
+              <UiButton variant="primary" size="sm" @click="openCreate">新建模板</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -395,41 +404,38 @@ onMounted(async () => {
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
-              <UiButton
+            <div class="operations-cell" @click.stop>
+              <span class="op-link" role="button" @click="openDetail(record)">详情</span>
+              <span
                 v-if="isSharedTemplate(record)"
-                variant="outline"
-                size="sm"
-                :loading="copyingTemplateId === record.id"
-                @click="copyAsTenantTemplate(record)"
+                class="op-link primary"
+                :class="{ 'is-disabled': copyingTemplateId === record.id }"
+                role="button"
+                @click="copyingTemplateId !== record.id && copyAsTenantTemplate(record)"
               >
                 复制为租户模板
-              </UiButton>
-              <a-tooltip
-                v-if="isSharedTemplate(record)"
-                title="平台共享模板仅可查看和继承，不能在租户侧编辑"
+              </span>
+              <span
+                v-if="!isSharedTemplate(record)"
+                class="op-link"
+                role="button"
+                @click="openEdit(record)"
               >
-                <UiButton variant="ghost" size="sm" disabled> 编辑 </UiButton>
-              </a-tooltip>
-              <UiButton v-else variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <a-tooltip v-if="isSharedTemplate(record)" title="平台共享模板不能在租户侧删除">
-                <UiButton variant="ghost" status="danger" size="sm" disabled> 删除 </UiButton>
-              </a-tooltip>
-              <UiButton
-                v-else
-                variant="ghost"
-                status="danger"
-                size="sm"
+                编辑
+              </span>
+              <span
+                v-if="!isSharedTemplate(record)"
+                class="op-link danger"
+                role="button"
                 @click="handleDelete(record)"
               >
                 删除
-              </UiButton>
-            </a-space>
+              </span>
+            </div>
           </template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <a-modal
       v-model:open="editorVisible"
@@ -697,26 +703,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .pat {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 240px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;

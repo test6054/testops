@@ -1,12 +1,12 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="message-page__context">
-        <div class="message-page__context-left">
+      <ContextBar>
+        <template #status>
           <UiTag tone="blue" size="sm">站内信 + 系统公告</UiTag>
           <UiTag v-if="unreadTotal > 0" tone="red" size="sm">未读 {{ unreadTotal }}</UiTag>
-        </div>
-        <div class="message-page__context-right">
+        </template>
+        <template #actions>
           <UiButton
             variant="outline"
             size="sm"
@@ -25,8 +25,8 @@
             <template #icon><CheckCircleOutlined /></template>
             全部标记已读
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- Tabs -->
@@ -318,12 +318,12 @@ import {
   updateMessageStatus,
 } from '@/apis/edu/message'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList } from '@/utils/page-result'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 
 defineOptions({ name: 'UserMessage' })
 
@@ -377,7 +377,7 @@ async function loadMessages(page = messagePageState.pageNum) {
     messages.value = readPageList(result, '消息列表加载失败，请稍后重试')
     messagePageState.pageNum = result.pageNum
     messagePageState.pageSize = result.pageSize
-    messagePageState.total = Number(result.total)
+    messagePageState.total = readPageTotal(result, '消息列表加载失败，请稍后重试')
   } catch (error) {
     showUserError(error, '站内信加载失败')
   } finally {
@@ -426,7 +426,7 @@ async function loadAnnouncements(page = announcementPageState.pageNum) {
     announcements.value = readPageList(result, '公告列表加载失败，请稍后重试')
     announcementPageState.pageNum = result.pageNum
     announcementPageState.pageSize = result.pageSize
-    announcementPageState.total = Number(result.total)
+    announcementPageState.total = readPageTotal(result, '公告列表加载失败，请稍后重试')
   } catch (error) {
     showUserError(error, '系统公告加载失败')
   } finally {
@@ -654,33 +654,10 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .message-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .tab-label {

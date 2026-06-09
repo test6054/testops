@@ -17,4 +17,20 @@ $color-bg-box: var(--ant-color-bg-container);
 $margin: 16px;
 $padding: 16px;
 
-$radius-box: var(--dp-radius-lg, 8px);
+$radius-box: var(--dp-radius-xs);
+
+// 实训详情列表：列设置/批量操作工具栏行（作答管理、成绩管理、学生管理等统一间距）
+@mixin teacher-detail-table-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 0 12px;
+}
+
+// 实训详情列表：表格外框（与 UiDataTable 默认 table-wrap 一致）
+@mixin teacher-detail-table-wrap {
+  overflow: hidden;
+  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: var(--dp-radius-panel, 4px);
+}

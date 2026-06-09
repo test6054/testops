@@ -31,7 +31,10 @@ import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage } from '@/utils/error-handler'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+const AI_MODEL_PROFILE_PAGE_SIZE = 100
 
 const columns: ColumnsType = [
   { title: '名称', dataIndex: 'profileName', key: 'profileName' },
@@ -108,12 +111,14 @@ const activatingId = ref<string>('')
 async function loadList() {
   loading.value = true
   try {
-    const result = await aiModelProfileApi.list({
-      enabledOnly: enabledOnly.value || undefined,
-      pageNum: 1,
-      pageSize: 200,
-    })
-    list.value = result.list
+    list.value = await readAllPages(
+      (pageNum) => aiModelProfileApi.list({
+        enabledOnly: enabledOnly.value || undefined,
+        pageNum,
+        pageSize: AI_MODEL_PROFILE_PAGE_SIZE,
+      }),
+      'AI 模型配置列表加载失败，请稍后重试',
+    )
   } finally {
     loading.value = false
   }
@@ -316,21 +321,6 @@ onMounted(() => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="ai-model__context">
-        <div class="ai-model__context-info">
-          <h2 class="ai-model__title">质量评价 - AI 模型可靠性台</h2>
-        </div>
-        <div class="ai-model__context-actions">
-          <a-checkbox v-model:checked="enabledOnly" @change="loadList"> 仅看启用 </a-checkbox>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            刷新
-          </UiButton>
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建配置 </UiButton>
-        </div>
-      </div>
-    </template>
-
     <a-alert
       type="warning"
       show-icon
@@ -340,23 +330,29 @@ onMounted(() => {
 
     <SignalBand :metrics="signals" compact class="ai-model__signals" />
 
-    <section class="ai-model__panel">
-      <header class="ai-model__panel-header">
-        <h3 class="ai-model__panel-title">当前启用模型</h3>
-        <div v-if="activeProfile" class="ai-model__panel-meta">
-          <a-tag :color="healthColor(activeProfile.healthStatus)">
-            {{ healthLabel(activeProfile.healthStatus) }}
-          </a-tag>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :loading="healthLoading === activeProfile.id"
-            @click="handleHealthCheck(activeProfile)"
-          >
-            重新检测
-          </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card ai-model__active-card">
+      <template #title>当前启用模型</template>
+
+      <div v-if="activeProfile" class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar">
+          <a-form-item>
+            <a-tag :color="healthColor(activeProfile.healthStatus)">
+              {{ healthLabel(activeProfile.healthStatus) }}
+            </a-tag>
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <UiButton
+              variant="outline"
+              size="sm"
+              :loading="healthLoading === activeProfile.id"
+              @click="handleHealthCheck(activeProfile)"
+            >
+              重新检测
+            </UiButton>
+          </a-form-item>
+        </a-form>
+      </div>
+
       <UiEmpty
         v-if="!activeProfile"
         description="当前租户尚未启用任何 AI 模型，请从候选仓库中选择一条设为启用"
@@ -382,14 +378,26 @@ onMounted(() => {
           {{ aiModelHealthMessageText(activeProfile.lastHealthMessage) }}
         </a-descriptions-item>
       </a-descriptions>
-    </section>
+    </a-card>
 
-    <section class="ai-model__panel">
-      <header class="ai-model__panel-header">
-        <h3 class="ai-model__panel-title">模型候选仓库</h3>
-      </header>
+    <a-card :bordered="false" class="detail-table-card ai-model__table-card">
+      <template #title>模型候选仓库</template>
 
-      <UiDataTable
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
+          <a-form-item>
+            <a-checkbox v-model:checked="enabledOnly" @change="loadList">仅看启用</a-checkbox>
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
+              <UiButton size="sm" @click="openCreate">新建配置</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <UiDataTable class="student-detail-table__data-table"
         :columns="columns"
         :data-source="list"
         :loading="loading"
@@ -426,39 +434,30 @@ onMounted(() => {
             </a-tag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space wrap>
-              <UiButton
+            <div class="operations-cell" @click.stop>
+<span
                 v-if="!record.enabled"
-                variant="primary"
-                size="sm"
-                :loading="activatingId === record.id"
-                @click="handleActivate(record)"
+                class="op-link primary"
+                :class="{ 'is-disabled': activatingId === record.id }"
+                role="button"
+                @click="activatingId !== record.id && handleActivate(record)"
               >
                 设为启用
-              </UiButton>
-              <UiButton
-                variant="outline"
-                size="sm"
-                :loading="healthLoading === record.id"
-                @click="handleHealthCheck(record)"
+              </span>
+              <span
+                class="op-link primary"
+                :class="{ 'is-disabled': healthLoading === record.id }"
+                role="button"
+                @click="healthLoading !== record.id && handleHealthCheck(record)"
               >
                 健康检查
-              </UiButton>
-              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton
-                variant="ghost"
-                status="danger"
-                size="sm"
-                :disabled="!record.enabled"
-                @click="handleDisable(record)"
-              >
-                停用
-              </UiButton>
-            </a-space>
-          </template>
+              </span>
+              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" @click="handleDisable(record)">停用</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <UiDrawer
       v-model:open="editorVisible"
@@ -568,33 +567,6 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .ai-model {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__alert {
     margin-bottom: 16px;
   }

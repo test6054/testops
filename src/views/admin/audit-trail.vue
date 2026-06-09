@@ -1,9 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="audit-trail__context">
-        <div class="audit-trail__context-info">
-          <h2 class="audit-trail__title">阅卷交付 - 审计与事件</h2>
+      <ContextBar>
+        <template #status>
           <a-select
             v-model:value="selectedExamId"
             placeholder="选择考试"
@@ -16,22 +15,10 @@
           />
           <UiTag tone="blue" size="sm">考试维度</UiTag>
           <UiTag v-if="selectedExamId" tone="green" size="sm">
-            日志 {{ operationLogs.length }} · 事件 {{ incidents.length }}
+            日志 {{ logPagination.total }} · 事件 {{ incidents.length }}
           </UiTag>
-        </div>
-        <div class="audit-trail__context-actions">
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="loading"
-            @click="reloadAll"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- 主工作面 -->
@@ -41,38 +28,44 @@
       class="audit-trail__empty"
     />
 
-    <UiCard v-else class="audit-trail-page__main-card">
+    <a-card v-else :bordered="false" class="detail-table-card audit-trail-page__main-card">
       <template #title>
         <FileSearchOutlined />
         <span>审计内容</span>
-        <UiBadge tone="blue">
-          {{
-            activeTab === 'logs'
-              ? '审计日志'
-              : activeTab === 'incidents'
-                ? '重大事件'
-                : '异常留痕样本'
-          }}
-        </UiBadge>
       </template>
 
       <a-tabs v-model:active-key="activeTab" class="audit-tabs" @change="onTabChange">
         <!-- 审计日志 -->
         <a-tab-pane key="logs" tab="审计日志">
-          <div class="filter-bar">
-            <a-space wrap>
-              <a-select
-                v-model:value="logFilter.operationType"
-                placeholder="操作类型"
-                allow-clear
-                class="audit-trail__filter-input"
-                :options="operationTypeOptions"
-                option-filter-prop="label"
-                show-search
-              />
-              <UiButton size="sm" :loading="logLoading" @click="loadLogs">查询</UiButton>
-              <span class="audit-trail__hint">共 {{ operationLogs.length }} 条</span>
-            </a-space>
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="searchLogs">
+              <a-form-item label="操作类型">
+                <a-select
+                  v-model:value="logFilter.operationType"
+                  placeholder="全部类型"
+                  allow-clear
+                  style="width: 200px"
+                  :options="operationTypeOptions"
+                  option-filter-prop="label"
+                  show-search
+                />
+              </a-form-item>
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton size="sm" :loading="logLoading" @click="searchLogs">查询</UiButton>
+                  <UiButton
+                    variant="outline"
+                    size="sm"
+                    :disabled="!selectedExamId"
+                    :loading="loading"
+                    @click="reloadAll"
+                  >
+                    <template #icon><ReloadOutlined /></template>
+                    刷新
+                  </UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
           </div>
 
           <!-- D-9 错误态：审计日志加载失败时提供重试 + 上报入口 -->
@@ -94,10 +87,12 @@
             :loading="logLoading"
             row-key="id"
             size="middle"
-            class="audit-table"
-            :page-size="20"
-            :total="operationLogs.length"
+            class="audit-table student-detail-table__data-table"
+            v-model:current="logPagination.current"
+            v-model:page-size="logPagination.pageSize"
+            :total="logPagination.total"
             flat
+            @page-change="handleLogPageChange"
           >
             <template #bodyCell="{ column, index }">
               <template v-if="column.key === 'operationType'">
@@ -129,14 +124,17 @@
 
         <!-- 重大事件 -->
         <a-tab-pane key="incidents" tab="重大事件">
-          <div class="filter-bar">
-            <a-space wrap>
-              <a-checkbox v-model:checked="incidentFilter.unresolvedOnly">仅未解决</a-checkbox>
-              <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents">
-                查询
-              </UiButton>
-              <span class="muted">共 {{ incidents.length }} 条</span>
-            </a-space>
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadIncidents">
+              <a-form-item>
+                <a-checkbox v-model:checked="incidentFilter.unresolvedOnly">仅未解决</a-checkbox>
+              </a-form-item>
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents">查询</UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
           </div>
 
           <!-- D-9 错误态：重大事件加载失败时提供重试 + 上报入口 -->
@@ -158,7 +156,7 @@
             :loading="incidentLoading"
             row-key="id"
             size="middle"
-            class="audit-table"
+            class="audit-table student-detail-table__data-table"
             :page-size="20"
             :total="incidents.length"
             flat
@@ -195,15 +193,17 @@
                 <span v-else class="muted">-</span>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiButton
-                  v-if="!incidents[index].resolved"
-                  size="sm"
-                  variant="outline"
-                  @click="openResolveModal(incidents[index])"
-                >
-                  解决事件
-                </UiButton>
-                <span v-else class="muted">-</span>
+                <div class="operations-cell" @click.stop>
+                  <span
+                    v-if="!incidents[index].resolved"
+                    class="op-link primary"
+                    role="button"
+                    @click="openResolveModal(incidents[index])"
+                  >
+                    解决事件
+                  </span>
+                  <span v-else class="muted">-</span>
+                </div>
               </template>
             </template>
           </UiDataTable>
@@ -211,22 +211,25 @@
 
         <!-- 异常留痕样本 -->
         <a-tab-pane key="diagnostic-samples" tab="异常留痕样本">
-          <div class="filter-bar">
-            <a-space wrap>
-              <a-select
-                v-model:value="sampleFilter.sampleType"
-                placeholder="样本类型"
-                allow-clear
-                class="audit-trail__filter-input"
-                :options="diagnosticSampleTypeOptions"
-                option-filter-prop="label"
-                show-search
-              />
-              <UiButton size="sm" :loading="sampleLoading" @click="loadDiagnosticSamples">
-                查询
-              </UiButton>
-              <span class="audit-trail__hint">共 {{ diagnosticSamples.length }} 条</span>
-            </a-space>
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="searchDiagnosticSamples">
+              <a-form-item label="样本类型">
+                <a-select
+                  v-model:value="sampleFilter.sampleType"
+                  placeholder="全部类型"
+                  allow-clear
+                  style="width: 200px"
+                  :options="diagnosticSampleTypeOptions"
+                  option-filter-prop="label"
+                  show-search
+                />
+              </a-form-item>
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton size="sm" :loading="sampleLoading" @click="searchDiagnosticSamples">查询</UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
           </div>
 
           <!-- D-9 错误态：异常留痕样本加载失败时提供重试 + 上报入口 -->
@@ -248,10 +251,12 @@
             :loading="sampleLoading"
             row-key="id"
             size="middle"
-            class="audit-table"
-            :page-size="20"
-            :total="diagnosticSamples.length"
+            class="audit-table student-detail-table__data-table"
+            v-model:current="samplePagination.current"
+            v-model:page-size="samplePagination.pageSize"
+            :total="samplePagination.total"
             flat
+            @page-change="handleSamplePageChange"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'sampleType'">
@@ -281,7 +286,7 @@
           </UiDataTable>
         </a-tab-pane>
       </a-tabs>
-    </UiCard>
+    </a-card>
 
     <!-- 解决事件弹窗 -->
     <a-modal
@@ -312,6 +317,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type {
   AuditTargetTypeCode,
@@ -339,19 +345,17 @@ import {
 } from '@/apis/mark/admin-audit'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
 import {
-  UiBadge,
   UiButton,
-  UiCard,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
-import { readPageList } from '@/utils/page-result'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminAuditTrail' })
@@ -371,6 +375,13 @@ const logLoading = ref(false)
 const logsLoadError = ref<Error | null>(null)
 const operationLogs = ref<OperationLogVO[]>([])
 const logFilter = reactive<{ operationType?: OperationTypeCode }>({})
+const logPagination = reactive<TablePaginationConfig>({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+  showSizeChanger: true,
+  showTotal: (total: number) => `共 ${total} 条`,
+})
 const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(
   () => OPERATION_TYPE_OPTIONS,
 )
@@ -391,16 +402,28 @@ async function loadLogs() {
     const page = await listOperationLogs({
       examId: selectedExamId.value,
       operationType: logFilter.operationType,
-      pageNum: 1,
-      pageSize: 200,
+      pageNum: logPagination.current ?? 1,
+      pageSize: logPagination.pageSize ?? 20,
     })
     operationLogs.value = readPageList(page, '审计日志加载失败，请稍后重试')
+    logPagination.total = readPageTotal(page, '审计日志加载失败，请稍后重试')
   } catch (error) {
     logsLoadError.value = captureLoadFailure(error, '审计日志加载失败')
     showUserError(error, '审计日志加载失败')
   } finally {
     logLoading.value = false
   }
+}
+
+function searchLogs() {
+  logPagination.current = 1
+  void loadLogs()
+}
+
+function handleLogPageChange(pageInfo: { current: number, pageSize: number }) {
+  logPagination.current = pageInfo.current
+  logPagination.pageSize = pageInfo.pageSize
+  void loadLogs()
 }
 
 // ─── 重大事件 ──────────────────────────────────
@@ -476,6 +499,13 @@ const sampleLoading = ref(false)
 const samplesLoadError = ref<Error | null>(null)
 const diagnosticSamples = ref<DiagnosticSampleVO[]>([])
 const sampleFilter = reactive<{ sampleType?: DiagnosticSampleTypeCode }>({})
+const samplePagination = reactive<TablePaginationConfig>({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+  showSizeChanger: true,
+  showTotal: (total: number) => `共 ${total} 条`,
+})
 const diagnosticSampleTypeOptions = computed<
   Array<{ value: DiagnosticSampleTypeCode, label: string }>
 >(() => DIAGNOSTIC_SAMPLE_TYPE_OPTIONS)
@@ -491,16 +521,31 @@ async function loadDiagnosticSamples() {
   sampleLoading.value = true
   samplesLoadError.value = null
   try {
-    diagnosticSamples.value = await listDiagnosticSamples({
+    const page = await listDiagnosticSamples({
       examId: selectedExamId.value,
       sampleType: sampleFilter.sampleType,
+      pageNum: samplePagination.current ?? 1,
+      pageSize: samplePagination.pageSize ?? 20,
     })
+    diagnosticSamples.value = readPageList(page, '异常留痕样本加载失败，请稍后重试')
+    samplePagination.total = readPageTotal(page, '异常留痕样本加载失败，请稍后重试')
   } catch (error) {
     samplesLoadError.value = captureLoadFailure(error, '异常留痕样本加载失败')
     showUserError(error, '异常留痕样本加载失败')
   } finally {
     sampleLoading.value = false
   }
+}
+
+function searchDiagnosticSamples() {
+  samplePagination.current = 1
+  void loadDiagnosticSamples()
+}
+
+function handleSamplePageChange(pageInfo: { current: number, pageSize: number }) {
+  samplePagination.current = pageInfo.current
+  samplePagination.pageSize = pageInfo.pageSize
+  void loadDiagnosticSamples()
 }
 
 // ─── 整体编排 ──────────────────────────────────
@@ -526,8 +571,12 @@ function onTabChange(_key: string | number) {
 function onExamChange(value: SelectValue, option: DefaultOptionType | DefaultOptionType[]) {
   onSelectorChange(value, option)
   operationLogs.value = []
+  logPagination.current = 1
+  logPagination.total = 0
   incidents.value = []
   diagnosticSamples.value = []
+  samplePagination.current = 1
+  samplePagination.total = 0
   if (selectedExamId.value) {
     reloadAll()
   }
@@ -565,7 +614,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .audit-tabs {
@@ -587,37 +635,6 @@ onMounted(async () => {
 }
 
 .audit-trail {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
   &__exam-select {
     width: 280px;
   }

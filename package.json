@@ -33,12 +33,15 @@
     "lodash-es": "^4.17.23",
     "mitt": "^3.0.1",
     "nprogress": "^0.2.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.0.227",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "vue": "^3.5.29",
     "vue-echarts": "^8.0.1",
     "vue-router": "^5.0.3",
-    "xe-utils": "^4.0.1"
+    "xe-utils": "^4.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@antfu/eslint-config": "7.6.1",

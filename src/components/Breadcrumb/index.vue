@@ -43,7 +43,7 @@ const getHome = () => {
       cloneRoutes,
       (i) =>
         i.path === '/admin/dashboard'
-        || i.path === '/teacher/marking-overview'
+        || i.path === '/teacher/exam-list'
         || i.path === '/student/score',
     )
     home = obj?.item || null

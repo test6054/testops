@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="absence-page__context">
-        <div class="absence-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="absence-page__exam-select"
@@ -14,8 +14,8 @@
             allow-clear
             @change="handleExamChange"
           />
-        </div>
-        <div class="absence-page__context-right">
+        </template>
+        <template #actions>
           <UiButton
             size="sm"
             :disabled="!selectedExamId"
@@ -35,8 +35,8 @@
             <template #icon><PlusOutlined /></template>
             核对并新建待确认记录
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="absence-page__empty" />
@@ -72,10 +72,9 @@
       <UiCard v-if="reconcileVO && absentStudents.length" class="info-card">
         <template #title>
           <UserDeleteOutlined />
-          <span>核对检出的缺考学生</span>
-          <UiBadge tone="orange">{{ absentStudents.length }}</UiBadge>
+          <span class="section-title">核对检出的缺考学生</span>
         </template>
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="absentColumns"
           :data-source="absentStudents"
           :show-pagination="false"
@@ -86,12 +85,15 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
-              <UiButton
-                size="sm"
-                @click="openConfirmModal(record.studentUserId, formatStudentSnapshot(record))"
-              >
-                确认缺考
-              </UiButton>
+              <div class="operations-cell" @click.stop>
+                <span
+                  class="op-link primary"
+                  role="button"
+                  @click="openConfirmModal(record.studentUserId, formatStudentSnapshot(record))"
+                >
+                  确认缺考
+                </span>
+              </div>
             </template>
           </template>
         </UiDataTable>
@@ -106,32 +108,38 @@
         compact
         @retry="loadRecords"
       />
-      <UiCard v-else class="info-card">
+      <a-card v-else :bordered="false" class="detail-table-card info-card absence-page__records-card">
         <template #title>
           <SolutionOutlined />
           <span>缺考记录</span>
-          <UiBadge tone="blue">{{ recordPagination.total }}</UiBadge>
         </template>
-        <template #extra>
-          <a-space>
-            <a-select
-              v-model:value="statusFilter"
-              placeholder="状态过滤"
-              style="width: 160px"
-              allow-clear
-              @change="loadRecords"
-            >
-              <a-select-option value="PENDING">待确认</a-select-option>
-              <a-select-option value="CONFIRMED">已确认</a-select-option>
-              <a-select-option value="REVOKED">已撤销</a-select-option>
-            </a-select>
-            <UiButton size="sm" variant="outline" :loading="recordLoading" @click="loadRecords">
-              <template #icon><ReloadOutlined /></template>
-              刷新
-            </UiButton>
-          </a-space>
-        </template>
-        <UiDataTable
+        <div class="filter-card">
+          <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadRecords">
+            <a-form-item label="状态">
+              <a-select
+                v-model:value="statusFilter"
+                placeholder="全部状态"
+                style="width: 160px"
+                allow-clear
+              >
+                <a-select-option value="PENDING">待确认</a-select-option>
+                <a-select-option value="CONFIRMED">已确认</a-select-option>
+                <a-select-option value="REVOKED">已撤销</a-select-option>
+              </a-select>
+            </a-form-item>
+            <a-form-item class="filter-form__actions">
+              <a-space class="filter-form__action-group">
+                <span class="op-link" role="button" @click="handleRecordFilterReset">重置</span>
+                <UiButton size="sm" @click="loadRecords">查询</UiButton>
+                <UiButton size="sm" variant="outline" :loading="recordLoading" @click="loadRecords">
+                  <template #icon><ReloadOutlined /></template>
+                  刷新
+                </UiButton>
+              </a-space>
+            </a-form-item>
+          </a-form>
+        </div>
+        <UiDataTable class="student-detail-table__data-table"
           :columns="recordColumns"
           :data-source="records"
           :loading="recordLoading"
@@ -156,31 +164,34 @@
               {{ scorePolicyLabel(records[index].scorePolicy) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton
-                v-if="records[index].absenceStatus === 'CONFIRMED'"
-                size="sm"
-                variant="outline"
-                @click="openRevokeModal(records[index])"
-              >
-                撤销
-              </UiButton>
-              <UiButton
-                v-else-if="records[index].absenceStatus === 'PENDING'"
-                size="sm"
-                @click="
-                  openConfirmModal(
-                    records[index].studentUserId,
-                    formatStudentSnapshot(records[index]),
-                  )
-                "
-              >
-                确认
-              </UiButton>
-              <span v-else class="hint-text">-</span>
+              <div class="operations-cell" @click.stop>
+                <span
+                  v-if="records[index].absenceStatus === 'CONFIRMED'"
+                  class="op-link"
+                  role="button"
+                  @click="openRevokeModal(records[index])"
+                >
+                  撤销
+                </span>
+                <span
+                  v-else-if="records[index].absenceStatus === 'PENDING'"
+                  class="op-link primary"
+                  role="button"
+                  @click="
+                    openConfirmModal(
+                      records[index].studentUserId,
+                      formatStudentSnapshot(records[index]),
+                    )
+                  "
+                >
+                  确认
+                </span>
+                <span v-else class="hint-text">-</span>
+              </div>
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </a-card>
     </template>
   </StageWorkbenchShell>
 
@@ -282,9 +293,10 @@ import {
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherAbsenceConfirm' })
@@ -435,10 +447,10 @@ async function loadRecords(): Promise<void> {
       pageNum: recordPagination.pageNum,
       pageSize: recordPagination.pageSize,
     })
-    records.value = page.list
+    records.value = readPageList(page, '缺考记录加载失败，请稍后重试')
     recordPagination.pageNum = page.pageNum
     recordPagination.pageSize = page.pageSize
-    recordPagination.total = Number(page.total)
+    recordPagination.total = readPageTotal(page, '缺考记录加载失败，请稍后重试')
     recordsLoadError.value = null
   } catch (error) {
     recordsLoadError.value = toUserError(error, '缺考记录加载失败')
@@ -577,6 +589,10 @@ async function handleExamChange(
   }
 }
 
+function handleRecordFilterReset() {
+  statusFilter.value = undefined
+}
+
 watch(
   () => statusFilter.value,
   () => {
@@ -610,28 +626,6 @@ onMounted(async () => {
 }
 
 .absence-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }

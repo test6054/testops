@@ -1,7 +1,9 @@
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/accreditation'
+const FACULTY_PROFILE_BASE = '/api/quality/faculty-profiles'
 
 export type AccreditationCyclePhase
   = | 'SELF_EVALUATION'
@@ -17,6 +19,18 @@ export type SelfAssessmentReviewDecision = 'ACCEPTED' | 'SUPPLEMENT_REQUIRED' | 
 export type AccreditationConclusionType = 'FULL_6Y' | 'CONDITIONAL_6Y' | 'NOT_PASS'
 
 export type OnsiteChecklistItemStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'NOT_APPLICABLE'
+
+export type AnnualReportMaterialStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED'
+
+export type AnnualReportMaterialReviewStatus = 'APPROVED' | 'REJECTED'
+
+export type AnnualReportMaterialCategory
+  = | 'CONTINUOUS_IMPROVEMENT_REPORT'
+    | 'MIDTERM_CONTINUOUS_IMPROVEMENT_REPORT'
+    | 'COURSE_QUALITY_EVALUATION'
+    | 'FACULTY_AND_SUPPORT'
+    | 'QUALITY_ASSURANCE'
+    | 'INDUSTRY_GRADUATE_FEEDBACK'
 
 export type OnsiteChecklistCategory
   = | 'FACILITY'
@@ -58,6 +72,19 @@ export interface AccreditationCycleVO {
   updateTime?: string
 }
 
+export interface AccreditationAnnualCourseCoverageSnapshot {
+  reportYear: string
+  requiredCourseCount: number
+  coveredCourseCount: number
+}
+
+export interface AccreditationConclusionReadinessItemVO {
+  itemKey: string
+  itemName: string
+  ready: boolean
+  message: string
+}
+
 export interface AccreditationCockpitVO {
   activeCycle?: AccreditationCycleVO
   annualPlanCount: number
@@ -65,6 +92,15 @@ export interface AccreditationCockpitVO {
   onsiteVisitPlanCount: number
   onsiteChecklistCompletionRate: number
   supportProfileConfirmed: boolean
+  facultyProfileCount: number
+  activeFacultyProfileCount: number
+  annualReportMaterialCount: number
+  submittedAnnualReportMaterialCount: number
+  approvedAnnualReportMaterialCount: number
+  annualReportMaterialsReady: boolean
+  conclusionRegistrationReady: boolean
+  conclusionReadinessItems?: AccreditationConclusionReadinessItemVO[]
+  annualCourseCoverages?: AccreditationAnnualCourseCoverageSnapshot[]
   conditionalDueDaysRemaining?: number
   onsiteReportDueDaysRemaining?: number
 }
@@ -100,7 +136,7 @@ export interface SelfAssessmentReviewDecisionRequest {
 export interface AccreditationConclusionRegisterRequest {
   accreditationCycleId: string
   conclusionType: AccreditationConclusionType
-  validFrom: string
+  validFrom?: string
   validUntil?: string
   conditionalDueDate?: string
   conclusionRemark?: string
@@ -134,6 +170,56 @@ export interface ProgramSupportProfileVO {
   qualityAssuranceRemark?: string
   profileStatus?: string
   confirmedAt?: string
+}
+
+export interface FacultyProfileQueryRequest extends QueryDto {
+  trainingPlanId: string
+  keyword?: string
+  department?: string
+  title?: string
+}
+
+export interface FacultyProfileSaveRequest {
+  id?: string
+  trainingPlanId: string
+  teacherUserId: string
+  teacherName: string
+  teacherNo: string
+  title: string
+  department: string
+  hasTeachingEthicsTraining: boolean
+  ethicsTrainingDate: string
+  teachingEvaluation: string
+  researchDirection?: string
+  courses: string
+  engineeringPracticeExperience: string
+  engineeringAbilityEvidence: string
+  teacherDevelopmentRecord: string
+  teachingReformContribution: string
+  graduationDesignGuidance: string
+}
+
+export interface FacultyProfileVO {
+  id: string
+  trainingPlanId: string
+  teacherUserId: string
+  teacherName: string
+  teacherNo: string
+  title: string
+  department: string
+  hasTeachingEthicsTraining: boolean
+  ethicsTrainingDate: string
+  teachingEvaluation: string
+  researchDirection?: string
+  courses: string
+  engineeringPracticeExperience: string
+  engineeringAbilityEvidence: string
+  teacherDevelopmentRecord: string
+  teachingReformContribution: string
+  graduationDesignGuidance: string
+  profileStatus: 'ACTIVE'
+  createTime?: string
+  updateTime?: string
 }
 
 export interface OnsiteVisitPlanSaveRequest {
@@ -215,6 +301,11 @@ export interface AnnualEvaluationPlanCourseVO {
   remark?: string
 }
 
+export interface AnnualEvaluationPlanCourseStatusUpdateRequest {
+  id: string
+  evaluationCompleted: boolean
+}
+
 export interface AnnualEvaluationPlanVO {
   id: string
   programId: string
@@ -229,6 +320,54 @@ export interface AnnualEvaluationPlanVO {
   completedCourseCount?: number
   remark?: string
   courses?: AnnualEvaluationPlanCourseVO[]
+}
+
+export interface AnnualReportMaterialSaveRequest {
+  id?: string
+  accreditationCycleId: string
+  trainingPlanId: string
+  reportYear: string
+  materialCategory: AnnualReportMaterialCategory
+  qualityCourseId?: string
+  materialName: string
+  materialDescription?: string
+  storageFileId?: string
+}
+
+export interface AnnualReportMaterialQueryRequest extends QueryDto {
+  accreditationCycleId?: string
+  trainingPlanId?: string
+  reportYear?: string
+  materialCategory?: AnnualReportMaterialCategory
+  reportStatus?: AnnualReportMaterialStatus
+  keyword?: string
+}
+
+export interface AnnualReportMaterialReviewRequest {
+  id: string
+  reviewStatus: AnnualReportMaterialReviewStatus
+  reviewComment?: string
+}
+
+export interface AnnualReportMaterialVO {
+  id: string
+  accreditationCycleId: string
+  trainingPlanId: string
+  reportYear: string
+  materialCategory: AnnualReportMaterialCategory
+  qualityCourseId?: string
+  qualityCourseCode?: string
+  qualityCourseName?: string
+  materialName: string
+  materialDescription?: string
+  storageFileId?: string
+  reportStatus: AnnualReportMaterialStatus
+  submittedAt?: string
+  reviewerUserId?: string
+  reviewComment?: string
+  reviewedAt?: string
+  createTime?: string
+  updateTime?: string
 }
 
 export interface AccreditationScopeRequest {
@@ -369,6 +508,29 @@ export const ACCREDITATION_EVIDENCE_ANCHOR_LABEL: Record<AccreditationEvidenceAn
     MANUAL: '手工上传',
   }
 
+export const ANNUAL_REPORT_MATERIAL_STATUS_LABEL: Record<AnnualReportMaterialStatus, string> = {
+  DRAFT: '草稿',
+  SUBMITTED: '已提交',
+  APPROVED: '已通过',
+  REJECTED: '已退回',
+}
+
+export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatus, BadgeTone> = {
+  DRAFT: 'gray',
+  SUBMITTED: 'blue',
+  APPROVED: 'green',
+  REJECTED: 'orange',
+}
+
+export const ANNUAL_REPORT_MATERIAL_CATEGORY_LABEL: Record<AnnualReportMaterialCategory, string> = {
+  CONTINUOUS_IMPROVEMENT_REPORT: '年度持续改进报告',
+  MIDTERM_CONTINUOUS_IMPROVEMENT_REPORT: '第三年持续改进情况报告',
+  COURSE_QUALITY_EVALUATION: '课程评价与达成度材料',
+  FACULTY_AND_SUPPORT: '师资与支持条件材料',
+  QUALITY_ASSURANCE: '校内质量保障材料',
+  INDUSTRY_GRADUATE_FEEDBACK: '行业与毕业生反馈材料',
+}
+
 export const accreditationApi = {
   cyclePage: (data: AccreditationCycleQueryRequest) =>
     http.post<PageResult<AccreditationCycleVO>>(`${BASE}/cycles/page`, data),
@@ -396,8 +558,22 @@ export const accreditationApi = {
   annualPlanUpdate: (data: AnnualEvaluationPlanSaveRequest) =>
     http.post<void>(`${BASE}/annual-plans/update`, data),
   annualPlanDelete: (id: string) => http.post<void>(`${BASE}/annual-plans/delete`, { id }),
-  markCourseCompleted: (id: string) =>
-    http.post<void>(`${BASE}/annual-plans/mark-course-completed`, { id }),
+  updateAnnualPlanCourseStatus: (data: AnnualEvaluationPlanCourseStatusUpdateRequest) =>
+    http.post<void>(`${BASE}/annual-plans/update-course-status`, data),
+  annualReportMaterialPage: (data: AnnualReportMaterialQueryRequest) =>
+    http.post<PageResult<AnnualReportMaterialVO>>(`${BASE}/annual-report-materials/page`, data),
+  annualReportMaterialCreate: (data: AnnualReportMaterialSaveRequest) =>
+    http.post<string>(`${BASE}/annual-report-materials/create`, data),
+  annualReportMaterialUpdate: (data: AnnualReportMaterialSaveRequest) =>
+    http.post<void>(`${BASE}/annual-report-materials/update`, data),
+  annualReportMaterialDelete: (id: string) =>
+    http.post<void>(`${BASE}/annual-report-materials/delete`, { id }),
+  annualReportMaterialDetail: (id: string) =>
+    http.post<AnnualReportMaterialVO>(`${BASE}/annual-report-materials/detail`, { id }),
+  annualReportMaterialSubmit: (id: string) =>
+    http.post<void>(`${BASE}/annual-report-materials/submit`, { id }),
+  annualReportMaterialReview: (data: AnnualReportMaterialReviewRequest) =>
+    http.post<void>(`${BASE}/annual-report-materials/review`, data),
   onsitePlanList: (data: AccreditationScopeRequest) =>
     http.post<OnsiteVisitPlanVO[]>(`${BASE}/onsite-plans/list`, data),
   onsitePlanDetail: (id: string) =>
@@ -417,6 +593,16 @@ export const accreditationApi = {
     http.post<string>(`${BASE}/support-profiles/save`, data),
   confirmSupportProfile: (id: string) =>
     http.post<void>(`${BASE}/support-profiles/confirm`, { id }),
+  facultyProfilePage: (data: FacultyProfileQueryRequest) =>
+    http.post<PageResult<FacultyProfileVO>>(`${FACULTY_PROFILE_BASE}/page`, data),
+  facultyProfileDetail: (id: string) =>
+    http.post<FacultyProfileVO>(`${FACULTY_PROFILE_BASE}/detail`, { id }),
+  facultyProfileCreate: (data: FacultyProfileSaveRequest) =>
+    http.post<string>(`${FACULTY_PROFILE_BASE}/create`, data),
+  facultyProfileUpdate: (data: FacultyProfileSaveRequest) =>
+    http.post<void>(`${FACULTY_PROFILE_BASE}/update`, data),
+  facultyProfileDelete: (id: string) =>
+    http.post<void>(`${FACULTY_PROFILE_BASE}/delete`, { id }),
   evidencePage: (data: AccreditationEvidenceQueryRequest) =>
     http.post<PageResult<AccreditationEvidenceVO>>(`${BASE}/evidences/page`, data),
   evidenceCreate: (data: AccreditationEvidenceSaveRequest) =>

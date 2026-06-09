@@ -1,9 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="org-index__context">
-        <div class="org-index__context-info">
-          <h2 class="org-index__title">阅卷交付 - 阅卷组织</h2>
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="org-index__exam-select"
@@ -15,8 +14,6 @@
             allow-clear
             @change="onExamChange"
           />
-        </div>
-        <div class="org-index__context-actions">
           <UiTag
             v-if="organization"
             :tone="strictEnumTone(MARKING_ORGANIZATION_STATUS_TONE, organization.organizationStatus, '阅卷组织状态')"
@@ -24,6 +21,8 @@
           >
             {{ strictEnumLabel(MARKING_ORGANIZATION_STATUS_LABEL, organization.organizationStatus, '阅卷组织状态') }}
           </UiTag>
+        </template>
+        <template #actions>
           <UiButton
             variant="outline"
             size="sm"
@@ -45,6 +44,14 @@
             进入详情
           </UiButton>
           <UiButton
+            v-if="organization && canManageSelectedExam && isTeacherMarkingRoute"
+            variant="outline"
+            size="sm"
+            @click="goAssignmentScheme"
+          >
+            分派方案
+          </UiButton>
+          <UiButton
             v-if="organization && canManageSelectedExam"
             variant="outline"
             size="sm"
@@ -64,8 +71,8 @@
               删除组织
             </UiButton>
           </a-popconfirm>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- D-9 错误态：阅卷组织加载遇到非“未创建”错误时提供重试 + 上报入口 -->
@@ -83,16 +90,22 @@
     />
 
     <a-spin v-else :spinning="loading" tip="加载组织中...">
+      <UiAlertStrip
+        v-if="!canManageSelectedExam"
+        tone="info"
+        title="协作查看模式"
+        description="当前考试由其他教师创建。你可查看阅卷安排与题组进度，创建组织、分派与启动正评仅创建人可操作。"
+        dense
+        class="org-index__collab-alert"
+      />
       <SignalBand v-if="organization" :metrics="signalMetrics" compact class="org-index__signals" />
 
-      <section v-if="organization" class="org-index__panel">
-        <header class="org-index__panel-header">
-          <h3 class="org-index__panel-title">
-            <ProfileOutlined />
-            组织全貌
-          </h3>
-          <UiBadge tone="blue">{{ organizationExamLabel }}</UiBadge>
-        </header>
+      <a-card v-if="organization" :bordered="false" class="detail-table-card org-index__overview-card">
+        <template #title>
+          <ProfileOutlined />
+          <span>组织全貌</span>
+          <UiBadge tone="blue" class="org-index__title-badge">{{ organizationExamLabel }}</UiBadge>
+        </template>
 
         <a-descriptions
           :column="{ xs: 1, sm: 2, lg: 3 }"
@@ -146,6 +159,14 @@
             编辑组织
           </UiButton>
           <UiButton size="sm" variant="outline" @click="goSessions"> 试评 / 正评会话 </UiButton>
+          <UiButton
+            v-if="canManageSelectedExam && isTeacherMarkingRoute"
+            size="sm"
+            variant="outline"
+            @click="goAssignmentScheme"
+          >
+            分派方案
+          </UiButton>
           <a-popconfirm
             v-if="canManageSelectedExam"
             title="确认删除该阅卷组织？"
@@ -159,9 +180,9 @@
             </UiButton>
           </a-popconfirm>
         </div>
-      </section>
+      </a-card>
 
-      <section v-else-if="!loading" class="org-index__panel org-index__panel--empty">
+      <a-card v-else-if="!loading" :bordered="false" class="detail-table-card org-index__overview-card org-index__panel--empty">
         <h3 class="org-index__empty-title">
           <InfoCircleOutlined />
           本考试尚未创建阅卷组织
@@ -179,7 +200,7 @@
           立即创建阅卷组织
         </UiButton>
         <p v-else class="org-index__empty-desc">该考试的阅卷组织由考试创建人创建和分配。</p>
-      </section>
+      </a-card>
     </a-spin>
 
     <!-- 新建组织抽屉 -->
@@ -298,6 +319,7 @@ import {
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
 import {
+  UiAlertStrip,
   UiBadge,
   UiButton,
   UiDrawer,
@@ -305,15 +327,17 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingOrganizationIndex' })
+
+const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
 
 const router = useRouter()
 const route = useRoute()
@@ -334,9 +358,11 @@ const canManageSelectedExam = computed(
     !!selectedExam.value?.createUser && selectedExam.value.createUser === userStore.userInfo.userId,
 )
 
+const isTeacherMarkingRoute = computed(() => route.path.startsWith('/teacher'))
+
 function guardExamOwnerAction(): boolean {
   if (canManageSelectedExam.value) return true
-  message.warning('仅考试创建人可分配批阅任务')
+  message.warning('仅考试创建人可修改阅卷安排')
   return false
 }
 
@@ -409,12 +435,14 @@ const teacherOptions = computed(() =>
 async function loadTeachers(): Promise<void> {
   teacherLoading.value = true
   try {
-    const result = await adminGetUserPage({
-      pageNum: 1,
-      pageSize: 200,
-      roleKey: 'SCH_TECH',
-    })
-    teacherList.value = readPageList(result, '阅卷教师列表加载失败，请稍后重试')
+    teacherList.value = await readAllPages(
+      (pageNum) => adminGetUserPage({
+        pageNum,
+        pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
+        roleKey: 'SCH_TECH',
+      }),
+      '阅卷教师列表加载失败，请稍后重试',
+    )
   } catch (error) {
     showUserError(error, '阅卷教师列表加载失败')
   } finally {
@@ -583,6 +611,15 @@ function goSessions(): void {
   })
 }
 
+function goAssignmentScheme(): void {
+  if (!selectedExamId.value) return
+  if (!guardExamOwnerAction()) return
+  void router.push({
+    name: 'TeacherReviewAssignment',
+    query: { examId: selectedExamId.value },
+  })
+}
+
 watch(selectedExamId, () => {
   void loadOrganization()
 })
@@ -597,37 +634,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .org-index {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 280px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__exam-select {
     width: 280px;
   }

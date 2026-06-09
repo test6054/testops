@@ -1,31 +1,35 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="paper-archive-list-page__context">
-        <div class="paper-archive-list-page__context-left">
-          <UiTag tone="blue" size="sm">{{ pagination.total }} 个档案集</UiTag>
-        </div>
-        <div class="paper-archive-list-page__context-right">
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadSets">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-          <UiButton size="sm" @click="openCreateModal">
-            <template #icon><PlusOutlined /></template>
-            新建档案集
-          </UiButton>
-        </div>
-      </div>
+      <ContextBar>
+        <template #status>
+          <UiTag tone="blue" size="sm">{{ pagination.total }} 个纸质试卷档案集</UiTag>
+        </template>
+      </ContextBar>
     </template>
 
-    <UiCard class="paper-archive-list-page__filter-card">
+    <UiAlertStrip
+      tone="info"
+      title="纸质试卷档案集"
+      description="这里管理历史纸质试卷的保管对象，不与考试电子归档包混用。"
+      dense
+      class="paper-archive-list-page__alert"
+    />
+
+    <a-card :bordered="false" class="detail-table-card paper-archive-list-page__table-card">
       <template #title>
-        <SearchOutlined />
-        <span>筛选条件</span>
+        <FileOutlined />
+        <span>纸质试卷档案集</span>
       </template>
 
-      <a-form layout="inline" :model="filterForm" @submit.prevent="handleSearch">
-        <a-form-item label="档案编号">
+      <div class="filter-card">
+        <a-form
+          layout="inline"
+          :model="filterForm"
+          class="filter-form filter-form--toolbar"
+          @submit.prevent="handleSearch"
+        >
+        <a-form-item label="纸质试卷档案编号">
           <a-input
             v-model:value="filterForm.archiveNoKeyword"
             placeholder="按编号关键词过滤"
@@ -34,7 +38,7 @@
             @press-enter="handleSearch"
           />
         </a-form-item>
-        <a-form-item label="标题">
+        <a-form-item label="纸质试卷档案集标题">
           <a-input
             v-model:value="filterForm.titleKeyword"
             placeholder="按标题关键词过滤"
@@ -68,25 +72,26 @@
             :options="statusOptions"
           />
         </a-form-item>
-        <a-form-item>
-          <a-space>
+        <a-form-item class="filter-form__actions">
+          <a-space class="filter-form__action-group">
             <UiButton size="sm" @click="handleSearch">查询</UiButton>
-            <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
+            <span class="op-link" role="button" @click="handleReset">重置</span>
+            <UiButton variant="outline" size="sm" :loading="loading" @click="loadSets">
+              <template #icon><ReloadOutlined /></template>
+              刷新
+            </UiButton>
+            <UiButton size="sm" @click="openCreateModal">
+              <template #icon><PlusOutlined /></template>
+              新建纸质试卷档案集
+            </UiButton>
           </a-space>
         </a-form-item>
       </a-form>
-    </UiCard>
-
-    <UiCard class="paper-archive-list-page__table-card">
-      <template #title>
-        <FileOutlined />
-        <span>档案集列表</span>
-        <UiBadge tone="blue">{{ pagination.total }} 条</UiBadge>
-      </template>
+      </div>
 
       <UiEmpty v-if="!loading && sets.length === 0" description="尚未创建任何纸质试卷档案集" />
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-else
         :columns="columns"
         :data-source="sets"
@@ -141,19 +146,19 @@
             {{ formatDateTime(record.createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton
+            <div class="operations-cell" @click.stop>
+              <span class="op-link" role="button" @click="goDetail(record.archiveSetId)">
+                详情
+              </span>
+              <span
                 v-if="record.archiveStatus === 'DRAFT'"
-                size="sm"
-                variant="outline"
+                class="op-link primary"
+                role="button"
                 @click="confirmActivate(record)"
               >
                 激活
-              </UiButton>
-              <UiButton size="sm" variant="ghost" @click="goDetail(record.archiveSetId)">
-                详情
-              </UiButton>
-            </a-space>
+              </span>
+            </div>
           </template>
         </template>
       </UiDataTable>
@@ -169,7 +174,7 @@
           @show-size-change="loadSets"
         />
       </div>
-    </UiCard>
+    </a-card>
   </StageWorkbenchShell>
 
   <a-modal
@@ -182,7 +187,7 @@
     @ok="submitCreate"
   >
     <a-form layout="vertical" :model="createForm" class="paper-archive-create-form">
-      <a-form-item label="档案标题" required>
+      <a-form-item label="纸质试卷档案集标题" required>
         <a-input
           v-model:value="createForm.archiveTitle"
           placeholder="如 2018-2019 高等数学(A)期末"
@@ -227,7 +232,7 @@
           <a-checkbox v-model:checked="createForm.permanentRetention">永久保管</a-checkbox>
         </a-space>
       </a-form-item>
-      <a-form-item label="档案标签">
+      <a-form-item label="纸质试卷档案集标签">
         <a-select
           v-model:value="createForm.tags"
           mode="tags"
@@ -244,7 +249,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/paper-archive'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { FileOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { FileOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -255,14 +260,14 @@ import {
   PAPER_ARCHIVE_SET_STATUS_OPTIONS,
   PAPER_ARCHIVE_SET_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
-import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { UiAlertStrip, UiButton, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList } from '@/utils/page-result'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperArchiveList' })
@@ -303,7 +308,7 @@ interface PaperArchiveSetCreateForm {
   examYear: string
   examTerm: string
   examRound: string
-  retentionYears: number
+  retentionYears: number | undefined
   permanentRetention: boolean
   tags: string[]
 }
@@ -314,7 +319,7 @@ const createForm = reactive<PaperArchiveSetCreateForm>({
   examYear: '',
   examTerm: '',
   examRound: '',
-  retentionYears: 10,
+  retentionYears: undefined,
   permanentRetention: false,
   tags: [],
 })
@@ -322,11 +327,11 @@ const createForm = reactive<PaperArchiveSetCreateForm>({
 const statusOptions = PAPER_ARCHIVE_SET_STATUS_OPTIONS
 
 const columns: ColumnsType<PaperArchiveSetVO> = [
-  { title: '档案编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 240 },
+  { title: '纸质试卷档案编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 240 },
   { title: '考期', key: 'examScope', width: 180 },
   { title: '试卷份数', key: 'paperCount', dataIndex: 'paperCount', width: 100 },
   { title: '状态', key: 'status', dataIndex: 'archiveStatus', width: 140 },
-  { title: 'tag', key: 'tags', dataIndex: 'tags', width: 200 },
+  { title: '纸质试卷档案集标签', key: 'tags', dataIndex: 'tags', width: 200 },
   { title: '保管期限', key: 'retention', dataIndex: 'retentionYears', width: 200 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 180, align: 'right' },
@@ -334,7 +339,7 @@ const columns: ColumnsType<PaperArchiveSetVO> = [
 
 /**
  * 当用户当前已经选定考试上下文（来自 archive-list / score-publish 等页面跳转）时，
- * 将本页档案集列表的状态汇总写入该考试的 ARCHIVE 阶段。
+ * 将本页纸质试卷档案集列表的状态汇总写入该考试的 ARCHIVE 阶段。
  *
  * 注意：PaperArchiveSet 不持有 examId，只能基于 examContextStore.currentExamId 反映"用户视角"。
  * 无上下文时不写入，避免污染 markStageStore。
@@ -361,16 +366,16 @@ function syncPaperArchiveStageToStore(): void {
   let hint = ''
   if (hasDestroyed) {
     status = 'completed'
-    hint = `共 ${sets.value.length} 个档案集 · 含已销毁`
+    hint = `共 ${sets.value.length} 个纸质试卷档案集 · 含已销毁`
   } else if (hasActive) {
     status = 'active'
     const active = statuses.filter(
       (s) => s === 'ACTIVE' || s === 'APPRAISAL_PENDING' || s === 'APPRAISAL_DECIDED',
     ).length
-    hint = `${active} 个档案集保管 / 鉴定中`
+    hint = `${active} 个纸质试卷档案集保管 / 鉴定中`
   } else if (hasDraft) {
     status = 'blocked'
-    hint = `${statuses.filter((s) => s === 'DRAFT').length} 个档案集草稿待激活`
+    hint = `${statuses.filter((s) => s === 'DRAFT').length} 个纸质试卷档案集草稿待激活`
   }
   if (hint) {
     markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
@@ -389,11 +394,11 @@ async function loadSets(): Promise<void> {
       examTerm: filterForm.examTerm?.trim() || undefined,
       archiveStatus: filterForm.archiveStatus,
     })
-    sets.value = readPageList(result, '试卷归档集加载失败，请稍后重试')
-    pagination.total = Number(result.total)
+    sets.value = readPageList(result, '纸质试卷档案集加载失败，请稍后重试')
+    pagination.total = readPageTotal(result, '纸质试卷档案集加载失败，请稍后重试')
     syncPaperArchiveStageToStore()
   } catch (error) {
-    showUserError(error, '试卷档案列表加载失败')
+    showUserError(error, '纸质试卷档案集列表加载失败')
   } finally {
     loading.value = false
   }
@@ -420,7 +425,7 @@ function openCreateModal(): void {
   createForm.examYear = ''
   createForm.examTerm = ''
   createForm.examRound = ''
-  createForm.retentionYears = 10
+  createForm.retentionYears = undefined
   createForm.permanentRetention = false
   createForm.tags = []
   createModalOpen.value = true
@@ -429,7 +434,13 @@ function openCreateModal(): void {
 async function submitCreate(): Promise<void> {
   const title = createForm.archiveTitle.trim()
   if (!title) {
-    message.warning('档案标题不能为空')
+    message.warning('纸质试卷档案集标题不能为空')
+    return
+  }
+  if (!createForm.permanentRetention
+    && (createForm.retentionYears == null || createForm.retentionYears < 1 || createForm.retentionYears > 100)
+  ) {
+    message.warning('非永久纸质试卷档案集必须填写 1-100 年保管年限')
     return
   }
   creating.value = true
@@ -440,16 +451,16 @@ async function submitCreate(): Promise<void> {
       examYear: createForm.examYear.trim() || undefined,
       examTerm: createForm.examTerm.trim() || undefined,
       examRound: createForm.examRound.trim() || undefined,
-      retentionYears: createForm.permanentRetention ? undefined : createForm.retentionYears,
+      retentionYears: createForm.permanentRetention ? undefined : createForm.retentionYears!,
       permanentRetention: createForm.permanentRetention,
       tags: createForm.tags.length > 0 ? createForm.tags : undefined,
     })
-    message.success('档案集已创建')
+    message.success('纸质试卷档案集已创建')
     createModalOpen.value = false
     pagination.pageNum = 1
     await loadSets()
   } catch (error) {
-    showUserError(error, '试卷档案集创建失败')
+    showUserError(error, '纸质试卷档案集创建失败')
   } finally {
     creating.value = false
   }
@@ -457,18 +468,18 @@ async function submitCreate(): Promise<void> {
 
 function confirmActivate(record: PaperArchiveSetVO): void {
   void confirmAsync({
-    title: '激活档案集？',
-    content: `档案集 ${record.archiveNo} 将从草稿推进到保管中，激活后即可正式接收新试卷上传。`,
+    title: '激活纸质试卷档案集？',
+    content: `纸质试卷档案集 ${record.archiveNo} 将从草稿推进到保管中，激活后即可正式接收新试卷上传。`,
     type: 'info',
     okText: '激活',
     cancelText: '取消',
     onOk: async () => {
       try {
         await activatePaperArchiveSet(record.archiveSetId)
-        message.success('档案集已激活')
+        message.success('纸质试卷档案集已激活')
         await loadSets()
       } catch (error) {
-        showUserError(error, '试卷档案集激活失败')
+        showUserError(error, '纸质试卷档案集激活失败')
       }
     },
   })
@@ -482,7 +493,7 @@ function goDetail(archiveSetId: string): void {
 }
 
 function setStatusTone(status: PaperArchiveSetStatusCode): BadgeTone {
-  return strictEnumTone(PAPER_ARCHIVE_SET_STATUS_TONE, status, '试卷档案集状态')
+  return strictEnumTone(PAPER_ARCHIVE_SET_STATUS_TONE, status, '纸质试卷档案集状态')
 }
 
 onMounted(() => {
@@ -492,34 +503,15 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .paper-archive-list-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.paper-archive-list-page__filter-card,
+.paper-archive-list-page__alert {
+  margin-bottom: 0;
+}
+
 .paper-archive-list-page__table-card {
   width: 100%;
 }

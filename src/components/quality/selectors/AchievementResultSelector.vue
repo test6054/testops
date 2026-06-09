@@ -20,7 +20,7 @@ import {
 } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: '请选择达成度结果',
@@ -82,19 +82,21 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await achievementApi.page({
-      pageNum: 1,
-      pageSize: 100,
-      targetType: props.targetType,
-      auditStatus: props.auditStatus,
-      trainingPlanId: props.trainingPlanId || undefined,
-      qualityCourseId: props.qualityCourseId || undefined,
-      classId: props.classId || undefined,
-      programId: props.programId || undefined,
-      schoolYear: props.schoolYear || undefined,
-      semester: props.semester || undefined,
-    })
-    options.value = requirePageList(res, '达成度结果')
+    options.value = await requireAllPages(
+      (pageNum) => achievementApi.page({
+        pageNum,
+        pageSize: 100,
+        targetType: props.targetType,
+        auditStatus: props.auditStatus,
+        trainingPlanId: props.trainingPlanId || undefined,
+        qualityCourseId: props.qualityCourseId || undefined,
+        classId: props.classId || undefined,
+        programId: props.programId || undefined,
+        schoolYear: props.schoolYear || undefined,
+        semester: props.semester || undefined,
+      }),
+      '达成度结果',
+    )
   } catch (e) {
     showUserError(e, '达成度结果列表加载失败')
   } finally {

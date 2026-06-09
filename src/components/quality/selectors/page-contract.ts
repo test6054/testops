@@ -1,5 +1,5 @@
 import type { PageResult } from '@/types'
-import { readArrayResponse, readPageList } from '@/utils/page-result'
+import { readAllPages, readArrayResponse, readPageList } from '@/utils/page-result'
 
 function listLoadFallback(moduleName: string): string {
   return `${moduleName}加载失败，请稍后重试`
@@ -11,6 +11,17 @@ function listLoadFallback(moduleName: string): string {
  */
 export function requirePageList<T>(res: PageResult<T>, moduleName: string): T[] {
   return readPageList(res, listLoadFallback(moduleName))
+}
+
+/**
+ * 按分页协议读取选择器完整候选集。
+ * 中间页缺失或分页元数据异常代表候选源不完整，必须显式失败。
+ */
+export function requireAllPages<T>(
+  loadPage: (pageNum: number) => Promise<PageResult<T>>,
+  moduleName: string,
+): Promise<T[]> {
+  return readAllPages(loadPage, listLoadFallback(moduleName))
 }
 
 /**

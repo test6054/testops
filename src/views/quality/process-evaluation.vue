@@ -45,7 +45,7 @@ import {
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { toUserError } from '@/utils/error-handler'
@@ -552,11 +552,8 @@ function handleCourseChange(courseId: string | null) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="pe__context">
-        <div class="pe__context-info">
-          <h2 class="pe__title">过程性评价管理</h2>
-        </div>
-        <div class="pe__context-actions">
+      <ContextBar>
+        <template #status>
           <span class="pe__filter-label">培养方案：</span>
           <TrainingPlanSelector
             :value="qualityStore.currentTrainingPlanId || null"
@@ -570,8 +567,8 @@ function handleCourseChange(courseId: string | null) {
             :width="320"
             @change="handleCourseChange"
           />
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <SignalBand
@@ -589,13 +586,18 @@ function handleCourseChange(courseId: string | null) {
 
     <a-row v-if="qualityStore.currentQualityCourseId" :gutter="12">
       <a-col :span="10">
-        <section class="pe__panel">
-          <header class="pe__panel-header">
-            <h3 class="pe__panel-title">过程性评价节点</h3>
-            <UiButton variant="primary" size="sm" @click="openNodeCreate"> 新建节点 </UiButton>
-          </header>
+        <a-card :bordered="false" class="detail-table-card pe__node-card">
+          <template #title>过程性评价节点</template>
 
-          <UiDataTable
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar">
+              <a-form-item class="filter-form__actions">
+                <UiButton variant="primary" size="sm" @click="openNodeCreate">新建节点</UiButton>
+              </a-form-item>
+            </a-form>
+          </div>
+
+          <UiDataTable class="student-detail-table__data-table"
             :columns="nodeColumns"
             :data-source="nodes"
             :loading="nodesLoading"
@@ -630,12 +632,10 @@ function handleCourseChange(courseId: string | null) {
                 </a-tag>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a-space wrap>
-                  <UiButton variant="ghost" size="sm" @click.stop="openNodeEdit(record)">
-                    编辑
-                  </UiButton>
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" @click.stop="openNodeEdit(record)">编辑</span>
                   <a-dropdown>
-                    <UiButton variant="outline" size="sm" @click.stop> 状态 </UiButton>
+                    <span class="op-link primary" role="button" @click.stop.prevent>状态</span>
                     <template #overlay>
                       <a-menu>
                         <a-menu-item key="DRAFT" @click.stop="changeNodeStatus(record, 'DRAFT')">
@@ -662,60 +662,62 @@ function handleCourseChange(courseId: string | null) {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <UiButton
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click.stop="handleNodeDelete(record)"
-                  >
+                  <span class="op-link danger" role="button" @click.stop="handleNodeDelete(record)">
                     删除
-                  </UiButton>
-                </a-space>
+                  </span>
+                </div>
               </template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
       </a-col>
 
       <a-col :span="14">
         <UiEmpty v-if="!selectedNode" description="请在左侧选择节点查看记录" class="pe__empty" />
 
-        <section v-else class="pe__panel">
-          <header class="pe__panel-header">
-            <h3 class="pe__panel-title">「{{ selectedNode.nodeName }}」记录</h3>
-            <div class="pe__panel-actions">
-              <a-select
-                v-model:value="recordStatusFilter"
-                placeholder="状态筛选"
-                allow-clear
-                class="pe__filter"
-              >
-                <a-select-option value="DRAFT">起草</a-select-option>
-                <a-select-option value="SUBMITTED">已提交</a-select-option>
-                <a-select-option value="CONFIRMED">已确认</a-select-option>
-                <a-select-option value="RETURNED">已退回</a-select-option>
-              </a-select>
-              <UiButton
-                variant="primary"
-                size="sm"
-                :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
-                @click="openRecordCreate"
-              >
-                录入记录
-              </UiButton>
-              <UiButton
-                variant="outline"
-                size="sm"
-                :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
-                @click="openImportExcel"
-              >
-                Excel 导入
-              </UiButton>
-              <UiButton variant="outline" size="sm" @click="openConfirmedByGoal">
-                按课程目标查有效
-              </UiButton>
-            </div>
-          </header>
+        <a-card v-else :bordered="false" class="detail-table-card pe__record-card">
+          <template #title>「{{ selectedNode.nodeName }}」记录</template>
+
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar">
+              <a-form-item label="状态">
+                <a-select
+                  v-model:value="recordStatusFilter"
+                  placeholder="状态筛选"
+                  allow-clear
+                  style="width: 140px"
+                >
+                  <a-select-option value="DRAFT">起草</a-select-option>
+                  <a-select-option value="SUBMITTED">已提交</a-select-option>
+                  <a-select-option value="CONFIRMED">已确认</a-select-option>
+                  <a-select-option value="RETURNED">已退回</a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton
+                    variant="primary"
+                    size="sm"
+                    :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
+                    @click="openRecordCreate"
+                  >
+                    录入记录
+                  </UiButton>
+                  <UiButton
+                    variant="outline"
+                    size="sm"
+                    :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
+                    @click="openImportExcel"
+                  >
+                    Excel 导入
+                  </UiButton>
+                  <UiButton variant="outline" size="sm" @click="openConfirmedByGoal">
+                    按课程目标查有效
+                  </UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
+          </div>
 
           <a-alert
             v-if="selectedNode.confirmationStatus !== 'CONFIRMED'"
@@ -734,7 +736,7 @@ function handleCourseChange(courseId: string | null) {
             @retry="loadRecords"
           />
 
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             v-else
             :columns="recordColumns"
             :data-source="records"
@@ -763,38 +765,21 @@ function handleCourseChange(courseId: string | null) {
                   {{ confirmationStatusLabel(record.confirmationStatus) }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space wrap>
-                  <UiButton
+              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" v-if="record.confirmationStatus !== 'CONFIRMED'" @click="openRecordEdit(record)">编辑</span>
+                  <span
                     v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    variant="ghost"
-                    size="sm"
-                    @click="openRecordEdit(record)"
-                  >
-                    编辑
-                  </UiButton>
-                  <UiButton
-                    v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    variant="outline"
-                    size="sm"
+                    class="op-link primary"
+                    role="button"
                     @click="confirmRecord(record)"
                   >
                     确认
-                  </UiButton>
-                  <UiButton
-                    v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click="deleteRecord(record)"
-                  >
-                    删除
-                  </UiButton>
-                </a-space>
-              </template>
+                  </span>
+                  <span class="op-link danger" role="button" v-if="record.confirmationStatus !== 'CONFIRMED'" @click="deleteRecord(record)">删除</span>
+            </div></template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
       </a-col>
     </a-row>
 
@@ -1018,7 +1003,7 @@ function handleCourseChange(courseId: string | null) {
         @retry="queryConfirmedByGoal"
       />
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-else
         :columns="confirmedByGoalColumns"
         :data-source="confirmedByGoalRecords"
@@ -1050,33 +1035,6 @@ function handleCourseChange(courseId: string | null) {
 
 <style scoped lang="scss">
 .pe {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 240px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__filter-label {
     color: var(--dp-text-muted, #64748b);
     font-size: 13px;

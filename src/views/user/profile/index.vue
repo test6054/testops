@@ -1,14 +1,14 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="profile-page__context">
-        <div class="profile-page__context-left">
+      <ContextBar>
+        <template #status>
           <span class="profile-page__title">{{ displayName }}</span>
           <UiTag tone="blue" size="sm">{{ roleLabel }}</UiTag>
           <UiTag tone="gray" size="sm">{{ userInfo.userName }}</UiTag>
           <UiTag v-if="tenantName" tone="gray" size="sm">{{ tenantName }}</UiTag>
-        </div>
-        <div class="profile-page__context-right">
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :loading="refreshing" @click="refresh">
             <template #icon><ReloadOutlined /></template>
             刷新
@@ -17,8 +17,8 @@
             <template #icon><LogoutOutlined /></template>
             退出登录
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <a-row :gutter="16">
@@ -172,7 +172,7 @@ import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { UiBadge, UiButton, UiCard, UiTag } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
@@ -250,28 +250,6 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .profile-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__title {
     font-size: 16px;
     font-weight: 600;
@@ -282,7 +260,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .profile-page__info-card,

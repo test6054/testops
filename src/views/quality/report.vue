@@ -54,6 +54,7 @@ import {
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
 function reportTypeLabel(value: ReportType): string {
@@ -177,8 +178,8 @@ async function loadList() {
       status: query.status || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '质量报告加载失败，请稍后重试')
+    total.value = readPageTotal(page, '质量报告加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -517,7 +518,7 @@ async function openAuditDrawer(record: ReportVO) {
       category: 'QUALITY',
       description: record.id,
     })
-    auditEvents.value = page.list.map((log) => {
+    auditEvents.value = readPageList(page, '报告审计记录加载失败，请稍后重试').map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -561,20 +562,6 @@ onMounted(loadList)
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="report__context">
-        <div class="report__context-info">
-          <h2 class="report__title">质量评价报告</h2>
-        </div>
-        <div class="report__context-actions">
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            刷新
-          </UiButton>
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建报告 </UiButton>
-        </div>
-      </div>
-    </template>
-
     <StageRail :stages="stages" compact class="report__stages" />
     <SignalBand :metrics="signals" compact class="report__signals" />
 
@@ -586,55 +573,64 @@ onMounted(loadList)
       @action="handleReportResultAction"
     />
 
-    <section class="report__panel">
-      <header class="report__panel-header">
-        <h3 class="report__panel-title">报告列表</h3>
-        <div class="report__panel-actions">
-          <a-select
-            v-model:value="query.reportType"
-            placeholder="类型"
-            class="report__filter"
-            allow-clear
-            :options="reportTypeOptions"
-          />
-          <CourseSelector
-            :value="query.qualityCourseId || null"
-            :training-plan-id="qualityStore.currentTrainingPlanId || null"
-            placeholder="关联课程"
-            class="report__filter report__filter--xs"
-            @change="handleQueryQualityCourseChange"
-          />
-          <a-input
-            v-model:value="query.schoolYear"
-            placeholder="学年"
-            class="report__filter report__filter--xs"
-          />
-          <a-input
-            v-model:value="query.semester"
-            placeholder="学期"
-            class="report__filter report__filter--xxs"
-          />
-          <a-select
-            v-model:value="query.status"
-            placeholder="状态"
-            class="report__filter"
-            allow-clear
-            :options="statusOptions"
-          />
-          <a-input
-            v-model:value="query.keyword"
-            placeholder="关键字"
-            class="report__filter"
-            @press-enter="loadList"
-          />
-          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            查询
-          </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card report__table-card">
+      <template #title>报告列表</template>
 
-      <UiDataTable
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
+          <a-form-item label="类型">
+            <a-select
+              v-model:value="query.reportType"
+              placeholder="类型"
+              style="width: 140px"
+              allow-clear
+              :options="reportTypeOptions"
+            />
+          </a-form-item>
+          <a-form-item label="关联课程">
+            <CourseSelector
+              :value="query.qualityCourseId || null"
+              :training-plan-id="qualityStore.currentTrainingPlanId || null"
+              placeholder="关联课程"
+              :width="160"
+              @change="handleQueryQualityCourseChange"
+            />
+          </a-form-item>
+          <a-form-item label="学年">
+            <a-input v-model:value="query.schoolYear" placeholder="学年" style="width: 120px" />
+          </a-form-item>
+          <a-form-item label="学期">
+            <a-input v-model:value="query.semester" placeholder="学期" style="width: 100px" />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="query.status"
+              placeholder="状态"
+              style="width: 120px"
+              allow-clear
+              :options="statusOptions"
+            />
+          </a-form-item>
+          <a-form-item label="关键字">
+            <a-input
+              v-model:value="query.keyword"
+              placeholder="关键字"
+              style="width: 160px"
+              @press-enter="loadList"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="loadList">查询</UiButton>
+              <span class="op-link" role="button" @click="resetQuery">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
+              <UiButton size="sm" @click="openCreate">新建报告</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -688,54 +684,26 @@ onMounted(loadList)
               </a-tooltip>
             </a-space>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
-              <UiButton
-                variant="ghost"
-                size="sm"
-                :disabled="!canEditReport(record.status)"
-                @click="openEdit(record)"
-              >
-                编辑
-              </UiButton>
-              <UiButton
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openDetail(record)">详情</span>
+              <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditReport(record.status)) }" @click="!canEditReport(record.status) && (openEdit(record))">编辑</span>
+              <span
                 v-for="to in nextStatuses(record.status)"
                 :key="to"
-                :variant="to === 'RETURNED' ? 'ghost' : 'outline'"
-                :status="to === 'RETURNED' ? 'danger' : undefined"
-                size="sm"
+                class="op-link"
+                :class="to === 'RETURNED' ? 'danger' : 'primary'"
+                role="button"
                 @click="handleTransit(record, to)"
               >
                 -> {{ reportStatusLabel(to) }}
-              </UiButton>
-              <UiButton
-                v-if="
-                  record.status === 'SUBMITTED'
-                    || record.status === 'CONFIRMED'
-                    || record.status === 'ARCHIVED'
-                "
-                variant="ghost"
-                size="sm"
-                @click="handleExport(record)"
-              >
-                导出三格式
-              </UiButton>
-              <UiButton
-                v-if="record.status === 'DRAFT'"
-                variant="ghost"
-                status="danger"
-                size="sm"
-                @click="handleDelete(record)"
-              >
-                删除
-              </UiButton>
-              <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
-            </a-space>
-          </template>
+              </span>
+              <span class="op-link" role="button" v-if="                   record.status === 'SUBMITTED'                     || record.status === 'CONFIRMED'                     || record.status === 'ARCHIVED'                 " @click="handleExport(record)">导出三格式</span>
+              <span class="op-link danger" role="button" v-if="record.status === 'DRAFT'" @click="handleDelete(record)">删除</span>
+              <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <UiDrawer
       v-model:open="editorVisible"
@@ -917,33 +885,6 @@ onMounted(loadList)
 
 <style scoped lang="scss">
 .report {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__stages {
     margin-bottom: 16px;
   }

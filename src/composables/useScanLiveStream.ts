@@ -4,9 +4,9 @@
  * 用法示例：
  *   const { events, ready, error, isStreaming, refresh, start, stop, ledger, refreshLedger }
  *     = useScanLiveStream({
- *         filter: () => ({ examId: selectedExamId.value }),
+ *         filter: () => ({ examId: selectedExamId.value, scannerDeviceId: deviceId.value, scannerStationId: stationId.value }),
  *         ledgerFilter: () => batchExternalNo.value
- *           ? { examId: selectedExamId.value, scannerDeviceId: deviceId.value, batchExternalNo: batchExternalNo.value }
+ *           ? { examId: selectedExamId.value, scannerDeviceId: deviceId.value, scannerStationId: stationId.value, batchExternalNo: batchExternalNo.value }
  *           : null,
  *       })
  *   onMounted(start)

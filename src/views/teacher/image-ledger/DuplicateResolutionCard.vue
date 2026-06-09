@@ -19,7 +19,7 @@
       compact
       @retry="reload"
     />
-    <UiDataTable
+    <UiDataTable class="student-detail-table__data-table"
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -36,14 +36,7 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <a-button
-            type="link"
-            size="small"
-            :disabled="rows[index].resolutionStatus !== 'PENDING'"
-            @click="$emit('resolve', rows[index])"
-          >
-            处置
-          </a-button>
+          <span class="op-link" role="button" @click="$emit('resolve', rows[index])">处置</span>
         </template>
       </template>
     </UiDataTable>

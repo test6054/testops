@@ -14,9 +14,13 @@
 defineOptions({ name: 'ContextBar' })
 
 withDefaults(defineProps<{
-  title: string
+  /** 默认不展示：路由面包屑已表达页面名 */
+  showTitle?: boolean
+  title?: string
   subtitle?: string
 }>(), {
+  showTitle: false,
+  title: '',
   subtitle: '',
 })
 </script>
@@ -24,7 +28,7 @@ withDefaults(defineProps<{
 <template>
   <div class="context-bar">
     <div class="context-bar__info">
-      <h2 class="context-bar__title">
+      <h2 v-if="showTitle && title" class="context-bar__title">
         {{ title }}
       </h2>
       <p v-if="subtitle" class="context-bar__subtitle">

@@ -430,6 +430,10 @@ export interface QuestionMarkingGroupQuestionVO {
   questionType: QuestionTypeCode
   questionTypeMessage: string
   fullScore: number
+  /** AI建议分 */
+  aiScore?: number
+  /** AI诊断说明 */
+  aiDiagnostic?: string
   questionStem?: string
   questionOrder: number
 }
@@ -958,6 +962,14 @@ export interface ScannedPageRef {
   qualityStatus: QualityDecisionCode
   /** 匿名整卷需走 scan-page/display 遮罩展示 */
   identityMaskedView?: boolean
+  /** 题目区域 ROI X（像素） */
+  roiX?: number
+  /** 题目区域 ROI Y（像素） */
+  roiY?: number
+  /** 题目区域 ROI 宽度（像素） */
+  roiWidth?: number
+  /** 题目区域 ROI 高度（像素） */
+  roiHeight?: number
 }
 
 /** 整卷视图响应 - 对应后端 WholePaperViewResponse */
@@ -995,6 +1007,20 @@ export interface MarkingQuestionViewVO {
   effectiveStatus: EffectiveStatusCode
   /** 原始扫描页引用，供教师查看整页扫描影像 */
   sourceScanPage?: ScannedPageRef
+  /** 标准答案文本 */
+  standardAnswer?: string
+  /** 标准答案比对策略编码 */
+  comparePolicy?: string
+  /** 评分细则/采分点说明 */
+  evaluationCriteria?: string
+  /** OCR识别答案 */
+  recognizedAnswer?: string
+  /** AI建议分 */
+  aiScore?: number
+  /** AI诊断说明 */
+  aiDiagnostic?: string
+  /** 试卷母版页引用，仅 ANSWER_SHEET 模式回填 */
+  masterPaperPage?: ScannedPageRef
 }
 
 /**

@@ -8,14 +8,14 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
-import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<ScaleConversionRuleVO[]>([])
@@ -57,30 +57,6 @@ const editor = reactive<ScaleConversionRuleSaveRequest>({
   enabled: true,
 })
 const submitting = ref(false)
-
-const filterFields: FilterField[] = [
-  {
-    key: 'scaleType',
-    label: '量表类型',
-    type: 'select',
-    placeholder: '量表类型',
-    allowClear: true,
-    options: scaleTypeOptions,
-    width: 180,
-  },
-  {
-    key: 'enabled',
-    label: '状态',
-    type: 'select',
-    placeholder: '状态',
-    allowClear: true,
-    width: 130,
-    options: [
-      { value: 'true', label: '启用' },
-      { value: 'false', label: '停用' },
-    ],
-  },
-]
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'ruleCode', key: 'ruleCode', width: 140 },
@@ -141,8 +117,8 @@ async function loadList() {
   loading.value = true
   try {
     const page = await scaleConversionRuleApi.page({ ...query })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '量表换算规则加载失败，请稍后重试')
+    total.value = readPageTotal(page, '量表换算规则加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -356,29 +332,48 @@ onMounted(() => loadList())
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar title="量表换算规则库" />
+      <ContextBar show-title title="量表换算规则库" />
     </template>
 
     <SignalBand :metrics="signals" compact class="scr__signals" />
 
-    <section class="scr__panel">
-      <header class="scr__panel-header">
-        <h3 class="scr__panel-title">换算规则台账</h3>
-        <div class="scr__panel-actions">
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建换算规则 </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card scr__table-card">
+      <template #title>换算规则台账</template>
 
-      <UiSearchForm
-        v-model="filterModel"
-        :fields="filterFields"
-        :show-labels="false"
-        class="scr__search-form"
-        @search="handleSearch"
-        @reset="handleResetSearch"
-      />
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
+          <a-form-item label="量表类型">
+            <a-select
+              v-model:value="filterModel.scaleType"
+              placeholder="量表类型"
+              allow-clear
+              style="width: 180px"
+              :options="scaleTypeOptions"
+            />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="filterModel.enabled"
+              placeholder="状态"
+              allow-clear
+              style="width: 130px"
+              :options="[
+                { value: 'true', label: '启用' },
+                { value: 'false', label: '停用' },
+              ]"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="handleSearch">查询</UiButton>
+              <span class="op-link" role="button" @click="handleResetSearch">重置</span>
+              <UiButton variant="primary" size="sm" @click="openCreate">新建换算规则</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -404,17 +399,13 @@ onMounted(() => loadList())
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
-                删除
-              </UiButton>
-            </a-space>
-          </template>
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <a-modal
       v-model:open="editorVisible"
@@ -451,7 +442,7 @@ onMounted(() => loadList())
         <a-form-item label="换算条目" required>
           <div class="scr__items-header">
             <span class="scr__items-tip">原始值与换算分值按当前业务条目直接维护</span>
-            <UiButton variant="ghost" size="sm" @click="addItem"> 新增条目 </UiButton>
+            <span class="op-link" role="button" @click="addItem">新增条目</span>
           </div>
           <div v-if="editor.items.length" class="scr__item-list">
             <div v-for="(item, index) in editor.items" :key="index" class="scr__item-row">
@@ -482,9 +473,7 @@ onMounted(() => loadList())
                 />
               </div>
               <div class="scr__item-cell scr__item-cell--action">
-                <UiButton variant="ghost" status="danger" size="sm" @click="removeItem(index)">
-                  删除
-                </UiButton>
+                <span class="op-link danger" role="button" @click="removeItem(index)">删除</span>
               </div>
             </div>
           </div>

@@ -23,7 +23,7 @@ import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const props = defineProps<{
@@ -31,7 +31,7 @@ const props = defineProps<{
   trainingPlanId: string
 }>()
 
-const emit = defineEmits<{ 'count-change': [count: number], "exported": [] }>()
+const emit = defineEmits<{ 'count-change': [count: number], exported: [] }>()
 
 const CATEGORY_TABS: { key: '' | AccreditationEvidenceCategory, label: string }[] = [
   { key: '', label: '全部' },
@@ -57,6 +57,8 @@ const columns: ColumnsType = [
 const loading = ref(false)
 const exporting = ref(false)
 const evidences = ref<AccreditationEvidenceVO[]>([])
+const evidenceQuery = reactive({ pageNum: 1, pageSize: 10 })
+const evidenceTotal = ref(0)
 const categoryFilter = ref<'' | AccreditationEvidenceCategory>('')
 const evidenceOpen = ref(false)
 const evidenceDrawerTitle = ref('登记认证证据')
@@ -74,40 +76,35 @@ const evidenceForm = reactive<AccreditationEvidenceSaveRequest>({
   evidenceDescription: '',
   storageFileId: '',
 })
-
-const filteredEvidences = computed(() => {
-  if (!categoryFilter.value) return evidences.value
-  return evidences.value.filter((e) => e.evidenceCategory === categoryFilter.value)
-})
-
-const categoryStats = computed(() => {
-  const map = new Map<string, number>()
-  for (const e of evidences.value) {
-    map.set(e.evidenceCategory, (map.get(e.evidenceCategory) || 0) + 1)
-  }
-  return map
-})
+const evidenceEditing = computed(() => !!evidenceForm.id)
 
 function emitCount() {
-  emit('count-change', evidences.value.length)
+  emit('count-change', evidenceTotal.value)
 }
 
 async function loadEvidences() {
   if (!props.trainingPlanId) {
     evidences.value = []
+    evidenceTotal.value = 0
     emitCount()
     return
   }
   loading.value = true
   try {
-    const page = await accreditationApi.evidencePage({
+    const result = await accreditationApi.evidencePage({
       programId: props.programId,
       trainingPlanId: props.trainingPlanId,
       evidenceCategory: categoryFilter.value || undefined,
-      pageNum: 1,
-      pageSize: 200,
+      pageNum: evidenceQuery.pageNum,
+      pageSize: evidenceQuery.pageSize,
     })
-    evidences.value = readPageList(page, '认证证据列表加载失败，请刷新后重试')
+    evidences.value = readPageList(result, '认证证据列表加载失败，请刷新后重试')
+    evidenceTotal.value = readPageTotal(result, '认证证据列表加载失败，请刷新后重试')
+    if (evidences.value.length === 0 && evidenceTotal.value > 0 && evidenceQuery.pageNum > 1) {
+      evidenceQuery.pageNum -= 1
+      await loadEvidences()
+      return
+    }
     emitCount()
   } catch (e) {
     showUserError(e)
@@ -120,14 +117,18 @@ async function loadLinkedExams() {
   linkedExams.value = []
   if (!props.trainingPlanId) return
   try {
-    const coursePage = await qualityCourseApi.page({
-      trainingPlanId: props.trainingPlanId,
-      programId: props.programId,
-      pageNum: 1,
-      pageSize: 200,
-    })
+    const courses = await readAllPages(
+      (pageNum) =>
+        qualityCourseApi.page({
+          trainingPlanId: props.trainingPlanId,
+          programId: props.programId,
+          pageNum,
+          pageSize: 100,
+        }),
+      '质量评价课程列表加载失败，请刷新后重试',
+    )
     const seen = new Set<string>()
-    for (const course of coursePage.list) {
+    for (const course of courses) {
       const items: AssessmentItemVO[] = await assessmentItemApi.listByCourse(course.id)
       for (const item of items) {
         if (item.sourceExamId && !seen.has(item.sourceExamId)) {
@@ -152,6 +153,8 @@ function resetEvidenceForm(category?: AccreditationEvidenceCategory) {
   evidenceForm.assessmentItemId = undefined
   evidenceForm.sourceExamId = undefined
   evidenceForm.anchorId = undefined
+  evidenceForm.markScannedPageId = undefined
+  evidenceForm.markPaperInstanceId = undefined
   evidenceForm.evidenceCategory = category || categoryFilter.value || 'HOMEWORK'
   evidenceForm.anchorType = 'MANUAL'
   evidenceForm.evidenceCode = ''
@@ -179,6 +182,8 @@ function openEvidenceEdit(record: AccreditationEvidenceVO) {
   evidenceForm.evidenceCategory = record.evidenceCategory
   evidenceForm.anchorType = record.anchorType
   evidenceForm.anchorId = record.anchorId
+  evidenceForm.markScannedPageId = record.markScannedPageId
+  evidenceForm.markPaperInstanceId = record.markPaperInstanceId
   evidenceForm.evidenceCode = record.evidenceCode
   evidenceForm.evidenceTitle = record.evidenceTitle
   evidenceForm.evidenceDescription = record.evidenceDescription || ''
@@ -194,7 +199,6 @@ async function uploadEvidenceFile(option: UploadRequestOption) {
     const uploaded = await uploadFile(file, { businessType: 'QUALITY_ACCREDITATION_EVIDENCE' })
     evidenceForm.storageFileId = uploaded.id
     if (!evidenceForm.evidenceTitle) evidenceForm.evidenceTitle = file.name
-    if (!evidenceForm.evidenceCode) evidenceForm.evidenceCode = `EV-${Date.now()}`
     option.onSuccess?.(uploaded)
     message.success('文件已上传')
   } catch (e) {
@@ -294,19 +298,30 @@ async function exportExpertPackage() {
   }
 }
 
-watch(categoryFilter, loadEvidences)
-watch(() => props.trainingPlanId, loadEvidences, { immediate: true })
+async function handleEvidencePageChange(pageEvent: { current: number, pageSize: number }) {
+  evidenceQuery.pageNum = pageEvent.current
+  evidenceQuery.pageSize = pageEvent.pageSize
+  await loadEvidences()
+}
+
+watch(categoryFilter, async () => {
+  evidenceQuery.pageNum = 1
+  await loadEvidences()
+})
+watch(
+  () => [props.programId, props.trainingPlanId],
+  async () => {
+    evidenceQuery.pageNum = 1
+    await loadEvidences()
+  },
+  { immediate: true },
+)
 
 defineExpose({ loadEvidences })
 </script>
 
 <template>
   <div class="evidence-panel">
-    <div class="stats">
-      <span v-for="tab in CATEGORY_TABS.slice(1)" :key="tab.key" class="stat-chip">
-        {{ tab.label }} {{ categoryStats.get(tab.key) || 0 }}
-      </span>
-    </div>
     <div class="toolbar">
       <a-radio-group v-model:value="categoryFilter" button-style="solid" size="small">
         <a-radio-button v-for="tab in CATEGORY_TABS" :key="tab.key || 'all'" :value="tab.key">
@@ -331,10 +346,14 @@ defineExpose({ loadEvidences })
       </div>
     </div>
     <UiDataTable
+      v-model:current="evidenceQuery.pageNum"
+      v-model:page-size="evidenceQuery.pageSize"
       :columns="columns"
-      :data-source="filteredEvidences"
+      :data-source="evidences"
       :loading="loading"
+      :total="evidenceTotal"
       row-key="id"
+      @page-change="handleEvidencePageChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'evidenceCategory'">
@@ -363,7 +382,7 @@ defineExpose({ loadEvidences })
           </UiButton>
         </template>
       </template>
-      <template #emptyText>
+      <template #empty>
         <UiEmpty description="按类别上传或从 mark 同步，供专家包 manifest 引用 fileId" />
       </template>
     </UiDataTable>
@@ -371,11 +390,13 @@ defineExpose({ loadEvidences })
       v-model:open="evidenceOpen"
       :title="evidenceDrawerTitle"
       width="520"
+      :hide-footer="false"
+      ok-text="保存"
       @ok="submitEvidence"
     >
-      <a-form layout="vertical">
+        <a-form layout="vertical">
         <a-form-item label="证据类别" required>
-          <a-select v-model:value="evidenceForm.evidenceCategory">
+          <a-select v-model:value="evidenceForm.evidenceCategory" :disabled="evidenceEditing">
             <a-select-option value="EXAM_PAPER">试卷样本</a-select-option>
             <a-select-option value="HOMEWORK">作业样本</a-select-option>
             <a-select-option value="LAB_REPORT">实验报告</a-select-option>
@@ -391,6 +412,7 @@ defineExpose({ loadEvidences })
             v-model:value="evidenceForm.qualityCourseId"
             :training-plan-id="trainingPlanId"
             :program-id="programId"
+            :disabled="evidenceEditing"
             allow-clear
           />
         </a-form-item>
@@ -423,6 +445,8 @@ defineExpose({ loadEvidences })
       v-model:open="markImportOpen"
       title="从 edu-mark 同步扫描页"
       width="520"
+      :hide-footer="false"
+      ok-text="同步"
       @ok="submitMarkImport"
     >
       <p v-if="linkedExams.length === 0" class="hint">
@@ -442,17 +466,6 @@ defineExpose({ loadEvidences })
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.stat-chip {
-  font-size: 12px;
-  padding: 2px 8px;
-  background: #f5f5f5;
-  border-radius: 4px;
 }
 .toolbar {
   display: flex;

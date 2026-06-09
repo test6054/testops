@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="print-package-page__context">
-        <div class="print-package-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="print-package-page__exam-select"
@@ -17,8 +17,8 @@
           <UiTag v-if="pagination.total > 0" tone="blue" size="sm">
             共 {{ pagination.total }} 个印刷包
           </UiTag>
-        </div>
-        <div class="print-package-page__context-right">
+        </template>
+        <template #actions>
           <UiButton
             size="sm"
             :disabled="!selectedExamId"
@@ -28,8 +28,8 @@
             <template #icon><ThunderboltOutlined /></template>
             一键生成印刷包
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -77,15 +77,23 @@
           </a-descriptions>
 
           <div class="package-actions">
-            <a-button type="link" size="small" @click="viewDetail(pkg)"> 查看明细 </a-button>
-            <a-button
+            <span class="op-link" role="button" @click="viewDetail(pkg)">查看明细</span>
+            <span
               v-if="pkg.packageFileId"
-              type="link"
-              size="small"
+              class="op-link primary"
+              role="button"
+              @click="previewPackagePdf(pkg)"
+            >
+              预览
+            </span>
+            <span
+              v-if="pkg.packageFileId"
+              class="op-link"
+              role="button"
               @click="downloadPackagePdf(pkg)"
             >
               下载 PDF
-            </a-button>
+            </span>
           </div>
         </UiCard>
 
@@ -146,7 +154,7 @@
       :footer="null"
     >
       <a-spin :spinning="detailLoading">
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="detailColumns"
           :data-source="detailItems"
           :show-pagination="false"
@@ -165,6 +173,24 @@
             </template>
           </template>
         </UiDataTable>
+      </a-spin>
+    </a-modal>
+
+    <!-- PDF 预览 Modal -->
+    <a-modal
+      v-model:open="previewModalOpen"
+      title="印刷包 PDF 预览"
+      width="900px"
+      :footer="null"
+      :destroy-on-close="true"
+    >
+      <a-spin :spinning="previewLoading">
+        <iframe
+          v-if="previewPdfUrl"
+          :src="previewPdfUrl"
+          style="width: 100%; height: 70vh; border: none"
+        />
+        <UiEmpty v-else-if="!previewLoading" description="无法加载 PDF 预览" />
       </a-spin>
     </a-modal>
   </StageWorkbenchShell>
@@ -195,9 +221,10 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPrintPackage' })
@@ -231,8 +258,8 @@ async function loadPackageList() {
       pageNum: pagination.pageNum,
       pageSize: pagination.pageSize,
     })
-    packageList.value = res.list
-    pagination.total = Number(res.total)
+    packageList.value = readPageList(res, '印刷包列表加载失败，请稍后重试')
+    pagination.total = readPageTotal(res, '印刷包列表加载失败，请稍后重试')
   } catch (e) {
     packageListLoadError.value = toUserError(e, '印刷包列表加载失败')
     packageList.value = []
@@ -321,6 +348,42 @@ async function downloadPackagePdf(pkg: PrintPackageVO) {
   }
 }
 
+// ─── PDF 预览 ──────────────────────────────────────────────────────
+
+const previewModalOpen = ref(false)
+const previewLoading = ref(false)
+const previewPdfUrl = ref('')
+
+async function previewPackagePdf(pkg: PrintPackageVO) {
+  previewModalOpen.value = true
+  previewLoading.value = true
+  previewPdfUrl.value = ''
+  try {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      message.error('未登录或登录已过期')
+      return
+    }
+    const requestUrl = new URL('/api/storage/filesystem/download', window.location.origin)
+    requestUrl.searchParams.set('nodeId', pkg.packageFileId)
+    const response = await fetch(requestUrl.toString(), {
+      method: 'GET',
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) {
+      message.error('印刷包文件加载失败')
+      return
+    }
+    const blob = await response.blob()
+    previewPdfUrl.value = URL.createObjectURL(blob)
+  } catch (error) {
+    showUserError(error, '印刷包预览加载失败')
+  } finally {
+    previewLoading.value = false
+  }
+}
+
 // ─── 印刷包明细 ──────────────────────────────────────────────────────
 
 const detailModalVisible = ref(false)
@@ -376,23 +439,6 @@ watch(
 
 <style lang="scss" scoped>
 .print-package-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }

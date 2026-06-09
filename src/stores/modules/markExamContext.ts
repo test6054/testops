@@ -21,7 +21,7 @@ import { computed, ref } from 'vue'
 import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { formatSemester } from '@/types/enums/semester-enum'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 
 export const useMarkExamContextStore = defineStore(
   'markExamContext',
@@ -68,22 +68,25 @@ export const useMarkExamContextStore = defineStore(
     /* ---------- Actions ---------- */
 
     /**
-     * 加载当前用户可见的考试列表。默认拉取 ACTIVE 状态前 200 条。
+     * 加载当前用户可见的完整考试列表。
      * 业务用 createUserId 过滤教师本人创建的考试；管理员场景需调用方在 request 中显式置空。
      */
     async function loadExams(request?: Partial<ExamPageQueryRequest>): Promise<void> {
       examsLoading.value = true
       try {
-        const result = await pageExams({
-          pageNum: request?.pageNum ?? 1,
-          pageSize: request?.pageSize ?? 200,
-          status: request?.status,
-          keyword: request?.keyword,
-          createUserId: request?.createUserId,
-          startTime: request?.startTime,
-          endTime: request?.endTime,
-        })
-        exams.value = readPageList(result, '考试列表加载失败，请稍后重试')
+        const pageSize = request?.pageSize ?? 100
+        exams.value = await readAllPages(
+          (pageNum) => pageExams({
+            pageNum,
+            pageSize,
+            status: request?.status,
+            keyword: request?.keyword,
+            createUserId: request?.createUserId,
+            startTime: request?.startTime,
+            endTime: request?.endTime,
+          }),
+          '考试列表加载失败，请稍后重试',
+        )
       } finally {
         examsLoading.value = false
       }

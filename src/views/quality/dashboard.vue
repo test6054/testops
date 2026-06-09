@@ -39,7 +39,7 @@ import {
   improvementTaskApi,
 } from '@/apis/quality'
 import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import { SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError } from '@/utils/error-handler'
@@ -310,11 +310,11 @@ async function loadAchievement() {
         achievementStatus: 'NOT_ACHIEVED',
       }),
     ])
-    achievementCounts.calculated = Number(calculated.total)
-    achievementCounts.submitted = Number(submitted.total)
-    achievementCounts.confirmed = Number(confirmed.total)
-    achievementCounts.archived = Number(archived.total)
-    achievementCounts.notAchieved = Number(notAchieved.total)
+    achievementCounts.calculated = readPageTotal(calculated, '达成度状态统计加载失败，请稍后重试')
+    achievementCounts.submitted = readPageTotal(submitted, '达成度状态统计加载失败，请稍后重试')
+    achievementCounts.confirmed = readPageTotal(confirmed, '达成度状态统计加载失败，请稍后重试')
+    achievementCounts.archived = readPageTotal(archived, '达成度状态统计加载失败，请稍后重试')
+    achievementCounts.notAchieved = readPageTotal(notAchieved, '达成度状态统计加载失败，请稍后重试')
   } finally {
     loading.achievement = false
   }
@@ -358,10 +358,10 @@ async function loadImprovement() {
         status: 'CLOSED',
       }),
     ])
-    improvementCounts.open = Number(open.total)
-    improvementCounts.inProgress = Number(inProgress.total)
-    improvementCounts.submitted = Number(submitted.total)
-    improvementCounts.closed = Number(closed.total)
+    improvementCounts.open = readPageTotal(open, '改进任务状态统计加载失败，请稍后重试')
+    improvementCounts.inProgress = readPageTotal(inProgress, '改进任务状态统计加载失败，请稍后重试')
+    improvementCounts.submitted = readPageTotal(submitted, '改进任务状态统计加载失败，请稍后重试')
+    improvementCounts.closed = readPageTotal(closed, '改进任务状态统计加载失败，请稍后重试')
   } finally {
     loading.improvement = false
   }
@@ -386,10 +386,10 @@ async function loadAiTasks() {
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'SUCCEEDED' }),
       aiTaskApi.page({ pageNum: 1, pageSize: 1, trainingPlanId: plan, status: 'FAILED' }),
     ])
-    aiCounts.pending = Number(pending.total)
-    aiCounts.processing = Number(processing.total)
-    aiCounts.succeeded = Number(succeeded.total)
-    aiCounts.failed = Number(failed.total)
+    aiCounts.pending = readPageTotal(pending, 'AI 任务状态统计加载失败，请稍后重试')
+    aiCounts.processing = readPageTotal(processing, 'AI 任务状态统计加载失败，请稍后重试')
+    aiCounts.succeeded = readPageTotal(succeeded, 'AI 任务状态统计加载失败，请稍后重试')
+    aiCounts.failed = readPageTotal(failed, 'AI 任务状态统计加载失败，请稍后重试')
   } finally {
     loading.ai = false
   }
@@ -451,8 +451,8 @@ function goScoreBatch() {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="quality-dashboard__context">
-        <div class="quality-dashboard__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="trainingPlanId || undefined"
             placeholder="选择培养方案"
@@ -472,8 +472,8 @@ function goScoreBatch() {
           <a-tag :color="planConfirmationColor" class="quality-dashboard__plan-status">
             {{ planConfirmationLabel }}
           </a-tag>
-        </div>
-        <div class="quality-dashboard__context-right">
+        </template>
+        <template #actions>
           <UiButton
             variant="outline"
             size="sm"
@@ -482,11 +482,11 @@ function goScoreBatch() {
           >
             刷新
           </UiButton>
-          <UiButton variant="primary" size="sm" :disabled="!trainingPlanId" @click="goAchievement">
+          <UiButton size="sm" :disabled="!trainingPlanId" @click="goAchievement">
             进入达成度
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -504,7 +504,7 @@ function goScoreBatch() {
           <template #extra>
             <UiButton variant="ghost" size="sm" @click="goAchievement"> 查看全部 </UiButton>
           </template>
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             :columns="recentAchievementColumns"
             :data-source="recentAchievements"
             :show-pagination="false"
@@ -554,7 +554,7 @@ function goScoreBatch() {
           <template #extra>
             <UiButton variant="ghost" size="sm" @click="goImprovement"> 查看全部 </UiButton>
           </template>
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             :columns="recentImprovementColumns"
             :data-source="recentImprovements"
             :show-pagination="false"
@@ -584,7 +584,7 @@ function goScoreBatch() {
           <template #extra>
             <UiButton variant="ghost" size="sm" @click="goAiTask"> 查看全部 </UiButton>
           </template>
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             :columns="recentAiTaskColumns"
             :data-source="recentAiTasks"
             :show-pagination="false"
@@ -633,22 +633,6 @@ function goScoreBatch() {
 
 <style scoped lang="scss">
 .quality-dashboard {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left,
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
   &__plan-select {
     min-width: 260px;
   }

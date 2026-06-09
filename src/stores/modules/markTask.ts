@@ -32,7 +32,7 @@ import {
   getTeacherClaimContext,
   listMarkingTasks,
 } from '@/apis/mark/marking-organization'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 
 export const useMarkTaskStore = defineStore('markTask', () => {
   /** 当前用户在指定考试下的阅卷任务（按 examId 隔离） */
@@ -49,7 +49,7 @@ export const useMarkTaskStore = defineStore('markTask', () => {
    * store 内部为不显式传分页的调用方兜底默认值，避免页面崩；
    * pagination 暴露给消费侧用于检查截断或显示分页 UI。
    */
-  const REVIEW_TASKS_DEFAULT_PAGE_SIZE = 200
+  const REVIEW_TASKS_DEFAULT_PAGE_SIZE = 100
   const reviewTasksPagination = ref<{ pageNum: number, pageSize: number, total: number }>({
     pageNum: 1,
     pageSize: 0,
@@ -118,28 +118,18 @@ export const useMarkTaskStore = defineStore('markTask', () => {
     reviewTasksLoading.value = true
     try {
       const pageSize = request.pageSize ?? REVIEW_TASKS_DEFAULT_PAGE_SIZE
-      let pageNum = request.pageNum ?? 1
-      const merged: ReviewTaskItemVO[] = []
-      let total = 0
-      while (true) {
-        const result = await listReviewTasks({
+      reviewTasks.value = await readAllPages(
+        (pageNum) => listReviewTasks({
           ...request,
           pageNum,
           pageSize,
-        })
-        const list = readPageList(result, '复核任务列表加载失败，请稍后重试')
-        total = Number(result.total)
-        merged.push(...list)
-        if (merged.length >= total || list.length === 0) {
-          break
-        }
-        pageNum += 1
-      }
-      reviewTasks.value = merged
+        }),
+        '复核任务列表加载失败，请稍后重试',
+      )
       reviewTasksPagination.value = {
         pageNum: 1,
-        pageSize: merged.length,
-        total,
+        pageSize: reviewTasks.value.length,
+        total: reviewTasks.value.length,
       }
       reviewLoadedExamId.value = request.examId
       return reviewTasks.value

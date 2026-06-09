@@ -40,33 +40,30 @@ export interface ExamErrorCauseClusterVO {
 }
 
 /**
- * 生成考试维度的错因聚类分析
- * POST /api/exam/error-cause-cluster/generate?examId=
+ * 生成错因聚类分析
+ * POST /api/exam/error-cause-cluster/generate?examId=&classId=
  */
-export function generateErrorCauseCluster(examId: string): Promise<ExamErrorCauseClusterVO> {
+export function generateErrorCauseCluster(
+  examId: string,
+  classId?: string,
+): Promise<ExamErrorCauseClusterVO> {
+  const search = new URLSearchParams({ examId })
+  if (classId) search.set('classId', classId)
   return http.post<ExamErrorCauseClusterVO>(
-    `/api/exam/error-cause-cluster/generate?examId=${encodeURIComponent(examId)}`,
+    `/api/exam/error-cause-cluster/generate?${search}`,
   )
 }
 
 /**
  * 查询最新错因聚类分析
- * GET /api/exam/error-cause-cluster/latest?examId=
+ * GET /api/exam/error-cause-cluster/latest?examId=&classId=
  */
-export function getLatestErrorCauseCluster(examId: string): Promise<ExamErrorCauseClusterVO | null> {
+export function getLatestErrorCauseCluster(
+  examId: string,
+  classId?: string,
+): Promise<ExamErrorCauseClusterVO | null> {
   return http.get<ExamErrorCauseClusterVO | null>(
     '/api/exam/error-cause-cluster/latest',
-    { params: { examId } },
-  )
-}
-
-/**
- * 查询错因聚类分析历史列表
- * GET /api/exam/error-cause-cluster/list?examId=
- */
-export function listErrorCauseClusters(examId: string): Promise<ExamErrorCauseClusterVO[]> {
-  return http.get<ExamErrorCauseClusterVO[]>(
-    '/api/exam/error-cause-cluster/list',
-    { params: { examId } },
+    { params: { examId, classId } },
   )
 }

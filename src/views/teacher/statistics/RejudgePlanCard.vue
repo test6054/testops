@@ -2,6 +2,7 @@
   <a-card title="重判计划" :bordered="false" size="small">
     <template #extra>
       <a-space>
+        <a-tag color="blue">全考试治理</a-tag>
         <a-select
           v-model:value="statusFilter"
           style="width: 160px"
@@ -24,7 +25,7 @@
       compact
       @retry="reload"
     />
-    <UiDataTable
+    <UiDataTable class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -57,8 +58,8 @@
           {{ formatDateTime(rows[index].createTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <a-space>
-            <a-popconfirm
+            <div class="operations-cell" @click.stop>
+<a-popconfirm
               title="确认审批通过？"
               :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
               @confirm="handleApprove(rows[index].id)"
@@ -72,27 +73,9 @@
                 通过
               </a-button>
             </a-popconfirm>
-            <a-button
-              type="link"
-              danger
-              size="small"
-              :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
-              :loading="operatingId === rows[index].id && operatingAction === 'reject'"
-              @click="openRejectModal(rows[index].id)"
-            >
-              驳回
-            </a-button>
-            <a-button
-              type="link"
-              size="small"
-              :disabled="rows[index].planStatus !== 'APPROVED'"
-              :loading="operatingId === rows[index].id && operatingAction === 'execute'"
-              @click="openExecuteModal(rows[index].id)"
-            >
-              执行
-            </a-button>
-          </a-space>
-        </template>
+            <span class="op-link danger" role="button" @click="openRejectModal(rows[index].id)">驳回</span>
+            <span class="op-link" role="button" @click="openExecuteModal(rows[index].id)">执行</span>
+            </div></template>
       </template>
     </UiDataTable>
     <a-modal

@@ -56,6 +56,7 @@ import {
   TaskResultPanel,
 } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -77,6 +78,18 @@ function achievementStatusLabel(value: AchievementStatus): string {
 
 function achievementStatusColor(value: AchievementStatus): string {
   return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
+}
+
+function isResultStale(record: AchievementResultVO): boolean {
+  return record.staleFlag === true
+}
+
+function resultValidityLabel(record: AchievementResultVO): string {
+  return isResultStale(record) ? '已过期' : '有效'
+}
+
+function resultValidityColor(record: AchievementResultVO): string {
+  return isResultStale(record) ? 'red' : 'green'
 }
 
 const router = useRouter()
@@ -182,8 +195,8 @@ async function loadList() {
       auditStatus: query.auditStatus || undefined,
       achievementStatus: query.achievementStatus || undefined,
     })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '达成度结果加载失败，请稍后重试')
+    total.value = readPageTotal(page, '达成度结果加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -204,6 +217,7 @@ const columns: ColumnsType = [
   { title: '达成值 / 阈值', key: 'achievementValue', width: 160 },
   { title: '样本（有效 / 总量）', key: 'sample', width: 120 },
   { title: '达成结论', dataIndex: 'achievementStatus', key: 'achievementStatus', width: 120 },
+  { title: '结果有效性', key: 'validity', width: 150 },
   { title: '审核', dataIndex: 'auditStatus', key: 'auditStatus', width: 110 },
   { title: '操作', key: 'actions', width: 320, fixed: 'right' },
 ]
@@ -437,6 +451,7 @@ const signals = computed<SignalMetric[]>(() => {
   const notAchieved = list.value.filter((r) => r.achievementStatus === 'NOT_ACHIEVED').length
   const partial = list.value.filter((r) => r.achievementStatus === 'PARTIALLY_ACHIEVED').length
   const achieved = list.value.filter((r) => r.achievementStatus === 'ACHIEVED').length
+  const stale = list.value.filter((r) => isResultStale(r)).length
   return [
     { key: 'total', label: '本页结果', value: list.value.length, tone: 'blue' },
     { key: 'achieved', label: '已达成', value: achieved, tone: achieved > 0 ? 'green' : 'gray' },
@@ -453,6 +468,7 @@ const signals = computed<SignalMetric[]>(() => {
       value: b.DRAFT + b.CALCULATED,
       tone: b.DRAFT + b.CALCULATED > 0 ? 'orange' : 'gray',
     },
+    { key: 'stale', label: '已过期', value: stale, tone: stale > 0 ? 'red' : 'gray' },
     { key: 'returned', label: '已驳回', value: b.RETURNED, tone: b.RETURNED > 0 ? 'red' : 'gray' },
   ]
 })
@@ -507,16 +523,22 @@ async function openAuditDrawer(record: AchievementResultVO) {
 const achievementResultItems = computed<TaskResultItem[]>(() => {
   const abnormalTone: BadgeTone = 'red'
   return list.value
-    .filter((r) => r.auditStatus === 'RETURNED' || r.achievementStatus === 'NOT_ACHIEVED')
+    .filter((r) =>
+      r.auditStatus === 'RETURNED'
+      || r.achievementStatus === 'NOT_ACHIEVED'
+      || isResultStale(r),
+    )
     .slice(0, 5)
     .map((r) => ({
       id: r.id,
       title: `${targetTypeLabel(r.targetType)} · ${r.targetLabel}`,
-      statusLabel: r.auditStatus === 'RETURNED' ? '已驳回' : '未达成',
+      statusLabel: r.auditStatus === 'RETURNED' ? '已驳回' : isResultStale(r) ? '结果过期' : '未达成',
       statusTone: abnormalTone,
       description:
         r.auditStatus === 'RETURNED'
           ? `审核驳回，需修正后重新提交`
+          : isResultStale(r)
+            ? `结果已过期，需按最新成绩或配置重新计算`
           : `达成值 ${formatValue(r.finalValue)} < 阈值 ${formatValue(r.thresholdValue)}`,
       actions: [{ key: 'detail', label: '查看详情' }],
     }))
@@ -557,27 +579,6 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="achievement__context">
-        <div class="achievement__context-info">
-          <h2 class="achievement__title">达成度评价驾驶舱</h2>
-        </div>
-        <div class="achievement__context-actions">
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            刷新
-          </UiButton>
-          <UiButton
-            variant="primary"
-            size="sm"
-            :disabled="trainingPlanRequired"
-            @click="openTriggerDrawer"
-          >
-            触发达成度计算
-          </UiButton>
-        </div>
-      </div>
-    </template>
-
     <UiEmpty
       v-if="trainingPlanRequired"
       description="尚未选择培养方案，请前往工作台首页选择培养方案后再回来"
@@ -596,62 +597,75 @@ onMounted(async () => {
         @action="handleResultAction"
       />
 
-      <section class="achievement__panel">
-        <header class="achievement__panel-header">
-          <h3 class="achievement__panel-title">达成度结果</h3>
-          <div class="achievement__panel-actions">
-            <a-select
-              v-model:value="query.targetType"
-              placeholder="目标类型"
-              class="achievement__filter achievement__filter--lg"
-              allow-clear
-              :options="targetTypeOptions"
-            />
-            <a-select
-              v-model:value="query.auditStatus"
-              placeholder="审核状态"
-              class="achievement__filter"
-              allow-clear
-              :options="auditStatusOptions"
-            />
-            <a-select
-              v-model:value="query.achievementStatus"
-              placeholder="达成结论"
-              class="achievement__filter"
-              allow-clear
-              :options="achievementStatusOptions"
-            />
-            <CourseSelector
-              :value="query.qualityCourseId || null"
-              :training-plan-id="qualityStore.currentTrainingPlanId || null"
-              placeholder="关联课程"
-              class="achievement__filter achievement__filter--course"
-              @change="handleQueryQualityCourseChange"
-            />
-            <ClassSelector
-              :value="query.classId || null"
-              placeholder="关联班级"
-              class="achievement__filter achievement__filter--class"
-              @change="handleQueryClassChange"
-            />
-            <a-input
-              v-model:value="query.schoolYear"
-              placeholder="学年"
-              class="achievement__filter achievement__filter--xs"
-            />
-            <a-input
-              v-model:value="query.semester"
-              placeholder="学期"
-              class="achievement__filter achievement__filter--xxs"
-            />
-            <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
-            <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-              查询
-            </UiButton>
-          </div>
-        </header>
+      <a-card :bordered="false" class="detail-table-card achievement__table-card">
+        <template #title>达成度结果</template>
 
-        <UiDataTable
+        <div class="filter-card">
+          <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
+            <a-form-item label="目标类型">
+              <a-select
+                v-model:value="query.targetType"
+                placeholder="目标类型"
+                style="width: 160px"
+                allow-clear
+                :options="targetTypeOptions"
+              />
+            </a-form-item>
+            <a-form-item label="审核状态">
+              <a-select
+                v-model:value="query.auditStatus"
+                placeholder="审核状态"
+                style="width: 120px"
+                allow-clear
+                :options="auditStatusOptions"
+              />
+            </a-form-item>
+            <a-form-item label="达成结论">
+              <a-select
+                v-model:value="query.achievementStatus"
+                placeholder="达成结论"
+                style="width: 120px"
+                allow-clear
+                :options="achievementStatusOptions"
+              />
+            </a-form-item>
+            <a-form-item label="关联课程">
+              <CourseSelector
+                :value="query.qualityCourseId || null"
+                :training-plan-id="qualityStore.currentTrainingPlanId || null"
+                placeholder="关联课程"
+                :width="180"
+                @change="handleQueryQualityCourseChange"
+              />
+            </a-form-item>
+            <a-form-item label="关联班级">
+              <ClassSelector
+                :value="query.classId || null"
+                placeholder="关联班级"
+                :width="160"
+                @change="handleQueryClassChange"
+              />
+            </a-form-item>
+            <a-form-item label="学年">
+              <a-input v-model:value="query.schoolYear" placeholder="学年" style="width: 120px" />
+            </a-form-item>
+            <a-form-item label="学期">
+              <a-input v-model:value="query.semester" placeholder="学期" style="width: 100px" />
+            </a-form-item>
+            <a-form-item class="filter-form__actions">
+              <a-space class="filter-form__action-group">
+                <UiButton size="sm" @click="loadList">查询</UiButton>
+                <span class="op-link" role="button" @click="resetQuery">重置</span>
+                <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
+                <UiButton size="sm" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
+                  触发达成度计算
+                </UiButton>
+              </a-space>
+            </a-form-item>
+          </a-form>
+        </div>
+
+        <UiDataTable class="student-detail-table__data-table"
           v-model:current="query.pageNum"
           v-model:page-size="query.pageSize"
           :columns="columns"
@@ -705,32 +719,38 @@ onMounted(async () => {
                 {{ achievementStatusLabel(record.achievementStatus) }}
               </a-tag>
             </template>
+            <template v-else-if="column.key === 'validity'">
+              <div class="achievement__validity">
+                <a-tag :color="resultValidityColor(record)">
+                  {{ resultValidityLabel(record) }}
+                </a-tag>
+                <span v-if="record.staleAt" class="achievement__validity-time">
+                  {{ record.staleAt }}
+                </span>
+              </div>
+            </template>
             <template v-else-if="column.key === 'auditStatus'">
               <a-tag :color="auditStatusColor(record.auditStatus)">
                 {{ auditStatusLabel(record.auditStatus) }}
               </a-tag>
             </template>
-            <template v-else-if="column.key === 'actions'">
-              <a-space wrap>
-                <UiButton variant="ghost" size="sm" @click="goDetail(record)"> 详情 </UiButton>
-                <UiButton
+            <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="goDetail(record)">详情</span>
+                <span
                   v-for="to in nextStatuses(record.auditStatus)"
                   :key="to"
-                  :variant="to === 'RETURNED' ? 'ghost' : 'outline'"
-                  :status="to === 'RETURNED' ? 'danger' : 'normal'"
-                  size="sm"
+                  class="op-link"
+                  :class="to === 'RETURNED' ? 'danger' : 'primary'"
+                  role="button"
                   @click="handleTransit(record, to)"
                 >
                   -> {{ auditStatusLabel(to) }}
-                </UiButton>
-                <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)">
-                  审计
-                </UiButton>
-              </a-space>
-            </template>
+                </span>
+                <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
+            </div></template>
           </template>
         </UiDataTable>
-      </section>
+      </a-card>
     </template>
 
     <UiDrawer v-model:open="triggerVisible" title="触发达成度计算" :width="720" :hide-footer="true">
@@ -820,33 +840,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .achievement {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__empty {
     margin-top: 32px;
   }
@@ -948,8 +941,31 @@ onMounted(async () => {
     font-weight: 600;
   }
 
+  &__value--ok {
+    color: var(--ant-color-success, #16a34a);
+    font-weight: 600;
+  }
+
+  &__value--bad {
+    color: var(--ant-color-error, #dc2626);
+    font-weight: 600;
+  }
+
   &__threshold {
     color: var(--dp-text-muted, #64748b);
+  }
+
+  &__validity {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  &__validity-time {
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
+    line-height: 1.4;
   }
 }
 </style>

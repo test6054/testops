@@ -1,9 +1,21 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="archive-list-page__context">
-        <div class="archive-list-page__context-left">
-          <UiTag tone="blue" size="sm">{{ archivePagination.total }} 个归档</UiTag>
+      <ContextBar>
+        <template #status>
+          <a-select
+            :value="selectedExamId"
+            class="archive-list-page__exam-select"
+            placeholder="选择考试"
+            allow-clear
+            show-search
+            :loading="examLoading"
+            :options="examOptions"
+            option-filter-prop="label"
+            style="width: 260px"
+            @change="onExamChange"
+          />
+          <UiTag tone="blue" size="sm">{{ archivePagination.total }} 个电子归档包</UiTag>
           <UiTag v-if="selectedExam" tone="purple" size="sm">
             {{
               selectedExam.examNo
@@ -11,18 +23,8 @@
                 : selectedExam.examName
             }}
           </UiTag>
-        </div>
-        <div class="archive-list-page__context-right">
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadArchives">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-          <UiButton size="sm" :disabled="!canCreate" @click="openCreateModal">
-            <template #icon><PlusOutlined /></template>
-            新建归档
-          </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiAlertStrip
@@ -40,59 +42,53 @@
       </template>
     </UiAlertStrip>
 
-    <UiCard class="archive-list-page__filter-card">
-      <template #title>
-        <SearchOutlined />
-        <span>筛选条件</span>
-      </template>
-
-      <a-form layout="inline" :model="filterForm" @submit.prevent="handleSearch">
-        <a-form-item label="当前考试">
-          <a-select
-            :value="selectedExamId"
-            placeholder="选择考试"
-            allow-clear
-            show-search
-            :loading="examLoading"
-            :options="examOptions"
-            option-filter-prop="label"
-            style="width: 260px"
-            @change="onExamChange"
-          />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="filterForm.archiveStatus"
-            placeholder="全部状态"
-            allow-clear
-            style="width: 180px"
-            :options="statusOptions"
-          />
-        </a-form-item>
-        <a-form-item>
-          <a-space>
-            <UiButton size="sm" @click="handleSearch">查询</UiButton>
-            <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
-          </a-space>
-        </a-form-item>
-      </a-form>
-    </UiCard>
-
-    <UiCard class="archive-list-page__table-card">
+    <a-card :bordered="false" class="detail-table-card archive-list-page__table-card">
       <template #title>
         <FileOutlined />
-        <span>归档列表</span>
-        <UiBadge tone="blue">{{ archivePagination.total }} 条</UiBadge>
+        <span>考试电子归档包</span>
       </template>
+
+      <div class="filter-card">
+        <a-form
+          layout="inline"
+          :model="filterForm"
+          class="filter-form filter-form--toolbar"
+          @submit.prevent="handleSearch"
+        >
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="filterForm.archiveStatus"
+              placeholder="全部状态"
+              allow-clear
+              style="width: 180px"
+              :options="statusOptions"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="handleSearch">查询</UiButton>
+              <span class="op-link" role="button" @click="handleReset">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadArchives">
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
+              <UiButton size="sm" :disabled="!canCreate" @click="openCreateModal">
+                <template #icon><PlusOutlined /></template>
+                新建电子归档包
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
       <UiErrorRetryPanel
         v-if="archiveLoadError"
         :error="archiveLoadError"
-        title="归档列表加载失败"
+        title="电子归档包加载失败"
         compact
         @retry="loadArchives"
       />
-      <UiEmpty v-else-if="!loading && archives.length === 0" description="尚未创建任何归档包" />
+      <UiEmpty v-else-if="!loading && archives.length === 0" description="尚未创建任何电子归档包" />
 
       <UiDataTable
         v-else
@@ -105,7 +101,7 @@
         :total="archivePagination.total"
         row-key="archiveId"
         size="middle"
-        class="archive-table"
+        class="archive-table student-detail-table__data-table"
         @page-change="handleArchivePageChange"
       >
         <template #bodyCell="{ column, index }">
@@ -154,30 +150,35 @@
             {{ formatDateTime(archives[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton size="sm" variant="ghost" @click="goDetail(archives[index].archiveId)">
+            <div class="operations-cell" @click.stop>
+              <span
+                class="op-link"
+                role="button"
+                @click="goDetail(archives[index].archiveId)"
+              >
                 详情
-              </UiButton>
-              <UiButton
+              </span>
+              <span
                 v-if="
                   archives[index].archiveStatus === 'DRAFT'
                     || archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
-                size="sm"
+                class="op-link primary"
+                role="button"
                 @click="confirmPackage(archives[index])"
               >
                 打包入队
-              </UiButton>
-            </a-space>
+              </span>
+            </div>
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </a-card>
   </StageWorkbenchShell>
 
   <a-modal
     v-model:open="createModalOpen"
-    title="新建归档包"
+    title="新建电子归档包"
     :confirm-loading="creating"
     :ok-button-props="{ disabled: !selectedExamId }"
     ok-text="创建草稿"
@@ -185,7 +186,12 @@
     @ok="submitCreate"
   >
     <a-form layout="vertical" :model="createForm" class="archive-create-form">
-      <a-alert v-if="!selectedExamId" type="warning" show-icon message="请先选择考试再新建归档" />
+      <a-alert
+        v-if="!selectedExamId"
+        type="warning"
+        show-icon
+        message="请先选择考试再新建电子归档包"
+      />
       <a-form-item label="当前考试">
         <a-input
           :value="
@@ -197,10 +203,10 @@
           placeholder="从筛选区当前考试带入"
         />
       </a-form-item>
-      <a-form-item label="归档包名称">
+        <a-form-item label="电子归档包名称">
         <a-input
           v-model:value="createForm.archiveTitle"
-          placeholder="留空使用默认：考试名+考后归档包"
+          placeholder="留空使用默认：考试名 + 考后电子归档包"
           :maxlength="120"
         />
       </a-form-item>
@@ -244,7 +250,6 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -261,19 +266,19 @@ import {
   UiAlertStrip,
   UiBadge,
   UiButton,
-  UiCard,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveList' })
@@ -326,7 +331,7 @@ const columns: ColumnsType = [
   { title: '所属考试', key: 'exam', dataIndex: 'examName', width: 220 },
   { title: '状态', key: 'status', dataIndex: 'archiveStatus', width: 200 },
   { title: '保管期限', key: 'retention', dataIndex: 'retentionYears', width: 200 },
-  { title: '归档包大小', key: 'fileSize', dataIndex: 'archiveFileSize', width: 110 },
+  { title: '电子归档包大小', key: 'fileSize', dataIndex: 'archiveFileSize', width: 110 },
   { title: '清单数', key: 'itemCount', dataIndex: 'itemCount', width: 90 },
   { title: '创建时间', key: 'createTime', dataIndex: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 200, align: 'right' },
@@ -353,10 +358,10 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
   if (archives.value.length === 0) {
     return {
       tone: 'error',
-      title: '该考试尚未创建归档包',
+      title: '该考试尚未创建电子归档包',
       description:
-        '按档案合规要求，成绩发布后应及时归档扫描影像、批改流水与评分细则。点击立即创建归档草稿，再触发打包。',
-      action: { label: '立即创建归档', handler: openCreateModal },
+        '按档案合规要求，成绩发布后应及时归档扫描影像、批改流水与评分细则。点击立即创建电子归档包草稿，再触发打包。',
+      action: { label: '立即创建电子归档包', handler: openCreateModal },
     }
   }
   // 2) 已有归档但仍处于 DRAFT 或 PACKAGING_FAILED：未入队/失败
@@ -367,10 +372,10 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
     const first = pendingArchives[0]
     return {
       tone: 'warning',
-      title: `${pendingArchives.length} 个归档草稿待打包入队`,
-      description: '草稿状态的归档包尚未生成最终 ZIP，请尽快入队打包以完成档案保管。',
+      title: `${pendingArchives.length} 个电子归档包草稿待打包入队`,
+      description: '草稿状态的考试电子归档包尚未生成最终 ZIP，请尽快入队打包以完成档案保管。',
       action: {
-        label: '打包首个草稿',
+        label: '打包首个电子归档包草稿',
         handler: () => confirmPackage(first),
       },
     }
@@ -391,7 +396,7 @@ function syncArchiveStageToStore(): void {
   const examId = selectedExamId.value
   if (!examId) return
   if (archives.value.length === 0) {
-    markStageStore.setStageStatus(examId, 'ARCHIVE', 'blocked', '尚未创建归档包')
+    markStageStore.setStageStatus(examId, 'ARCHIVE', 'blocked', '尚未创建电子归档包')
     markStageStore.setCurrentStage(examId, 'ARCHIVE')
     return
   }
@@ -454,15 +459,15 @@ async function loadArchives(): Promise<void> {
       pageNum: archivePagination.pageNum,
       pageSize: archivePagination.pageSize,
     })
-    archives.value = page.list
+    archives.value = readPageList(page, '电子归档包列表加载失败，请稍后重试')
     archivePagination.pageNum = page.pageNum
     archivePagination.pageSize = page.pageSize
-    archivePagination.total = Number(page.total)
+    archivePagination.total = readPageTotal(page, '电子归档包列表加载失败，请稍后重试')
     syncArchiveStageToStore()
     if (selectedExamId.value) examContextStore.currentExamId = selectedExamId.value
   } catch (error) {
-    archiveLoadError.value = toUserError(error, '归档列表加载失败')
-    showUserError(error, '考试归档列表加载失败')
+    archiveLoadError.value = toUserError(error, '电子归档包列表加载失败')
+    showUserError(error, '考试电子归档包加载失败')
   } finally {
     loading.value = false
   }
@@ -488,7 +493,7 @@ function handleArchivePageChange(pageInfo: { current: number, pageSize: number }
 
 function openCreateModal(): void {
   if (!selectedExamId.value) {
-    message.warning('请先选择考试')
+    message.warning('请先选择考试后再创建电子归档包')
     return
   }
   createForm.archiveTitle = ''
@@ -502,7 +507,7 @@ function openCreateModal(): void {
 
 async function submitCreate(): Promise<void> {
   if (!selectedExamId.value) {
-    message.warning('请先选择考试')
+    message.warning('请先选择考试后再创建电子归档包')
     return
   }
   if (
@@ -524,11 +529,11 @@ async function submitCreate(): Promise<void> {
       includeMarkedSlices: createForm.includeMarkedSlices,
       includeAnswerBooklet: createForm.includeAnswerBooklet,
     })
-    message.success('归档草稿已创建')
+    message.success('考试电子归档包草稿已创建')
     createModalOpen.value = false
     await loadArchives()
   } catch (error) {
-    showUserError(error, '考试归档草稿创建失败')
+    showUserError(error, '考试电子归档包草稿创建失败')
   } finally {
     creating.value = false
   }
@@ -537,17 +542,17 @@ async function submitCreate(): Promise<void> {
 function confirmPackage(record: ArchivePackageVO): void {
   void confirmAsync({
     title: '确认入队打包？',
-    content: `归档包 ${record.archiveNo} 将进入异步打包队列，过程可能需要数分钟。`,
+    content: `考试电子归档包 ${record.archiveNo} 将进入异步打包队列，过程可能需要数分钟。`,
     type: 'info',
     okText: '入队打包',
     cancelText: '取消',
     onOk: async () => {
       try {
         await packageArchive(record.archiveId)
-        message.success('归档已入队，正在异步打包')
+        message.success('考试电子归档包已入队，正在异步打包')
         await loadArchives()
       } catch (error) {
-        showUserError(error, '考试归档打包提交失败')
+        showUserError(error, '考试电子归档包打包提交失败')
       }
     },
   })
@@ -591,28 +596,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .archive-list-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -622,9 +605,12 @@ onMounted(async () => {
   margin-bottom: 4px;
 }
 
-.archive-list-page__filter-card,
 .archive-list-page__table-card {
   width: 100%;
+}
+
+.archive-list-page__exam-select {
+  min-width: 260px;
 }
 
 .archive-table {

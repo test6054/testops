@@ -3,13 +3,13 @@
     <template #extra>
       <a-space>
         <a-select
-          v-model:value="selectedClassId"
+          :value="props.classId"
           placeholder="全场考生"
           allow-clear
           style="width: 200px"
-          :options="classOptions"
-          :loading="rosterLoading"
-          @change="reload"
+          :options="props.classOptions"
+          :loading="props.rosterLoading"
+          @change="handleClassChange"
         />
         <a-button :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>
@@ -70,13 +70,14 @@
 </template>
 
 <script lang="ts" setup>
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionVO } from '@/apis/mark/exam'
+import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { getExamScoreDistribution } from '@/apis/mark/exam'
 import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
-import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { buildScoreHistogramOption } from '@/utils/mark-statistics-chart'
 
@@ -85,19 +86,16 @@ defineOptions({ name: 'ScoreDistributionCard' })
 const props = defineProps<{
   examId: string
   reloadToken: number
+  classId?: string
+  classOptions: MarkClassOption[]
+  rosterLoading: boolean
 }>()
 
-const {
-  classOptions,
-  loading: rosterLoading,
-  load: loadRoster,
-  reset: resetRoster,
-} = useMarkExamRoster()
+const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
 const distribution = ref<ExamScoreDistributionVO | null>(null)
 const loading = ref(false)
 const loadError = ref<Error | null>(null)
-const selectedClassId = ref<string>()
 
 const histogramOption = computed(() => {
   if (!distribution.value) return null
@@ -114,7 +112,7 @@ async function reload(): Promise<void> {
   try {
     distribution.value = await getExamScoreDistribution({
       examId: props.examId,
-      classId: selectedClassId.value || undefined,
+      classId: props.classId || undefined,
     })
   } catch (e) {
     distribution.value = null
@@ -125,15 +123,16 @@ async function reload(): Promise<void> {
   }
 }
 
+function handleClassChange(value?: SelectValue): void {
+  emit('class-change', typeof value === 'string' ? value : undefined)
+}
+
 watch(
-  () => [props.examId, props.reloadToken],
+  () => [props.examId, props.reloadToken, props.classId],
   () => {
-    selectedClassId.value = undefined
     if (props.examId) {
-      void loadRoster(props.examId)
       void reload()
     } else {
-      resetRoster()
       distribution.value = null
     }
   },

@@ -1,20 +1,19 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="student-score__context">
-        <div class="student-score__context-info">
-          <h2 class="student-score__title">成绩查询</h2>
-          <UiTag tone="blue" size="sm"> {{ exams.length }} 场考试 </UiTag>
+      <ContextBar>
+        <template #status>
+          <UiTag tone="blue" size="sm">{{ exams.length }} 场考试</UiTag>
           <UiTag v-if="publishedCount > 0" tone="green" size="sm">
             已发布 {{ publishedCount }}
           </UiTag>
-        </div>
-        <div class="student-score__context-actions">
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- 最近一场已发布详情卡 -->
@@ -95,7 +94,6 @@
       <template #title>
         <FileOutlined />
         <span>全部考试</span>
-        <UiBadge tone="blue">{{ exams.length }} 场</UiBadge>
       </template>
 
       <a-spin :spinning="loading">
@@ -127,6 +125,9 @@
                   复核中
                 </UiTag>
               </div>
+              <p v-if="item.finalScoreStatus !== 'PUBLISHED'" class="exam-card__status-hint">
+                {{ finalScoreStatusHint(item) }}
+              </p>
               <div class="exam-card__meta">
                 <span class="meta-item">
                   <CalendarOutlined />
@@ -232,7 +233,7 @@ import {
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -252,6 +253,18 @@ function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
 
 function finalScoreStatusLabel(item: StudentExamItemVO): string {
   return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, item.finalScoreStatus, '最终成绩状态')
+}
+
+/** P1-4: 为每个成绩状态提供学生易懂的说明文案 */
+function finalScoreStatusHint(item: StudentExamItemVO): string {
+  switch (item.finalScoreStatus) {
+    case 'CALCULATED': return '试卷已批改完成，等待教师确认成绩'
+    case 'CONFIRMED': return '成绩已确认，待教师统一发布'
+    case 'PUBLISHED': return '成绩已正式发布'
+    case 'WITHDRAWN': return '成绩已被教师撤回，请等待重新核查'
+    case 'CORRECTED': return '成绩经复核后已更正'
+    default: return '暂无成绩信息'
+  }
 }
 
 function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -452,36 +465,6 @@ onMounted(loadExams)
 
 <style lang="scss" scoped>
 .student-score {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 240px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
   &__latest-card {
     margin-bottom: 16px;
   }

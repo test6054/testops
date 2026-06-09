@@ -1,9 +1,11 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="cross-exam-dashboard__context">
-        <UiTag tone="purple" size="sm">课程 / 班级 / 学期</UiTag>
-      </div>
+      <ContextBar>
+        <template #status>
+          <UiTag tone="purple" size="sm">课程 / 班级 / 学期</UiTag>
+        </template>
+      </ContextBar>
     </template>
 
     <div class="cross-exam-dashboard__cards">
@@ -16,7 +18,7 @@
 
 <script lang="ts" setup>
 import { UiTag } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import CourseAchievementCard from './cross-exam/CourseAchievementCard.vue'
 import CrossExamTrendCard from './cross-exam/CrossExamTrendCard.vue'
 import SemesterGrowthCard from './cross-exam/SemesterGrowthCard.vue'
@@ -26,12 +28,6 @@ defineOptions({ name: 'AdminCrossExamDashboard' })
 
 <style lang="scss" scoped>
 .cross-exam-dashboard {
-  &__context {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
   &__alert {
     margin-bottom: 16px;
   }

@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="paper-master-page__context">
-        <div class="paper-master-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="paper-master-page__exam-select"
@@ -24,14 +24,18 @@
           <UiTag v-if="masterData" :tone="pageTemplateReady ? 'green' : 'orange'" size="sm">
             {{ pageTemplateReady ? `${examTotalPages ?? 0} 页已同步` : '拆页待同步' }}
           </UiTag>
-        </div>
-        <div class="paper-master-page__context-right">
+        </template>
+        <template #actions>
+          <UiButton size="sm" variant="primary" :disabled="!selectedExamId" :loading="generating" @click="openGenerateModal">
+            <template #icon><ThunderboltOutlined /></template>
+            生成标准试卷
+          </UiButton>
           <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
             <template #icon><SaveOutlined /></template>
             保存母版
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -50,22 +54,40 @@
     />
 
     <a-spin v-else :spinning="loading">
-      <!-- PDF 预览区 -->
-      <UiCard v-if="pdfPreviewUrl || pdfPreviewLoading" class="preview-card">
+      <!-- PDF 预览/编辑区 -->
+      <UiCard v-if="form.masterFileId" class="preview-card">
         <template #title>
           <EyeOutlined />
-          <span>母版 PDF 预览</span>
+          <span>母版 PDF</span>
+          <a-segmented
+            v-model:value="pdfViewMode"
+            :options="[
+              { label: '预览', value: 'preview' },
+              { label: '在线编辑', value: 'edit' },
+            ]"
+            size="small"
+            style="margin-left: 12px"
+          />
         </template>
         <template #extra>
           <a-button v-if="pdfPreviewUrl" type="link" size="small" @click="openPdfInNewTab">
             新窗口打开
           </a-button>
-          <a-button type="link" size="small" @click="closePdfPreview">关闭预览</a-button>
+          <span class="op-link" role="button" @click="closePdfPreview">关闭预览</span>
         </template>
-        <a-spin :spinning="pdfPreviewLoading">
-          <iframe v-if="pdfPreviewUrl" :src="pdfPreviewUrl" class="pdf-iframe" />
-          <div v-else class="pdf-placeholder">正在加载 PDF…</div>
-        </a-spin>
+        <!-- 预览模式 -->
+        <template v-if="pdfViewMode === 'preview'">
+          <a-spin :spinning="pdfPreviewLoading">
+            <iframe v-if="pdfPreviewUrl" :src="pdfPreviewUrl" class="pdf-iframe" />
+            <div v-else class="pdf-placeholder">正在加载 PDF…</div>
+          </a-spin>
+        </template>
+        <!-- 编辑模式 -->
+        <PdfAnnotationEditor
+          v-else
+          :pdf-file-id="form.masterFileId"
+          @saved="onPdfSaved"
+        />
       </UiCard>
 
       <!-- 基本信息 -->
@@ -121,7 +143,7 @@
         <template #extra>
           <UiButton size="sm" variant="outline" @click="goPaperTemplate">去题目页编辑</UiButton>
         </template>
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="subjectiveColumns"
           :data-source="subjectiveQuestions"
           :show-pagination="false"
@@ -156,7 +178,7 @@
             新增
           </UiButton>
         </template>
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="identityColumns"
           :data-source="identityAreas"
           :show-pagination="false"
@@ -172,10 +194,8 @@
             </template>
             <template v-else-if="column.key === 'action'">
               <a-space>
-                <a-button type="link" size="small" @click="openIdentityEdit(index)">编辑</a-button>
-                <a-button type="link" danger size="small" @click="removeIdentityArea(index)">
-                  删除
-                </a-button>
+                <span class="op-link" role="button" @click="openIdentityEdit(index)">编辑</span>
+                <span class="op-link danger" role="button" @click="removeIdentityArea(index)">删除</span>
               </a-space>
             </template>
           </template>
@@ -194,7 +214,7 @@
             新增
           </UiButton>
         </template>
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="objectiveColumns"
           :data-source="objectiveAreas"
           :show-pagination="false"
@@ -213,10 +233,8 @@
             </template>
             <template v-else-if="column.key === 'action'">
               <a-space>
-                <a-button type="link" size="small" @click="openObjectiveEdit(index)">编辑</a-button>
-                <a-button type="link" danger size="small" @click="removeObjectiveArea(index)">
-                  删除
-                </a-button>
+                <span class="op-link" role="button" @click="openObjectiveEdit(index)">编辑</span>
+                <span class="op-link danger" role="button" @click="removeObjectiveArea(index)">删除</span>
               </a-space>
             </template>
           </template>
@@ -310,14 +328,7 @@
               class="objective-options__item"
             >
               <a-input v-model:value="option.optionLabel" :maxlength="8" size="small" />
-              <a-button
-                type="link"
-                danger
-                size="small"
-                @click="removeObjectiveOption(objectiveDraft, option.sortNo)"
-              >
-                删除
-              </a-button>
+              <span class="op-link danger" role="button" @click="removeObjectiveOption(objectiveDraft, option.sortNo)">删除</span>
             </div>
             <a-button size="small" type="link" @click="addObjectiveOption(objectiveDraft)">
               添加选项
@@ -326,6 +337,42 @@
         </a-form>
       </a-modal>
     </a-spin>
+
+    <!-- 生成标准试卷配置弹窗 -->
+    <a-modal
+      v-model:open="generateModalOpen"
+      title="生成标准试卷 PDF"
+      width="560px"
+      :confirm-loading="generating"
+      ok-text="生成并预览"
+      @ok="handleGenerate"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="学校名称" required>
+          <a-input v-model:value="genForm.universityName" placeholder="例如：XX大学" />
+        </a-form-item>
+        <a-form-item label="学年">
+          <a-input v-model:value="genForm.academicYear" placeholder="例如：2025-2026" />
+        </a-form-item>
+        <a-form-item label="学期">
+          <a-select v-model:value="genForm.semester" :options="[
+            { label: '第一学期（秋季）', value: '1' },
+            { label: '第二学期（春季）', value: '2' },
+          ]" />
+        </a-form-item>
+        <a-form-item label="课程名称" required>
+          <a-input v-model:value="genForm.courseName" placeholder="课程名称" />
+        </a-form-item>
+        <a-form-item label="考试形式">
+          <a-select v-model:value="genForm.examType" :options="[
+            { label: '闭卷', value: '闭卷' }, { label: '开卷', value: '开卷' },
+          ]" />
+        </a-form-item>
+        <a-form-item label="考试时间（分钟）">
+          <a-input-number v-model:value="genForm.durationMin" :min="30" :max="300" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </StageWorkbenchShell>
 </template>
 
@@ -348,8 +395,11 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
 import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
+import { generateStandardPaper } from '@/apis/mark/paper-master'
+import PdfAnnotationEditor from '@/components/mark/PdfAnnotationEditor.vue'
 import {
   getPaperMaster,
   isPaperMasterNotConfiguredError,
@@ -364,7 +414,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
 
@@ -750,6 +800,76 @@ async function handleBeforeUpload(file: File) {
   return false
 }
 
+// ─── 生成标准试卷 ──────────────────────────────────────────────────
+
+const pdfViewMode = ref<'preview' | 'edit'>('preview')
+
+/** 编辑保存后回调：更新fileId并刷新预览 */
+function onPdfSaved(newFileId: string) {
+  form.masterFileId = newFileId
+  pdfPreviewUrl.value = ''
+  void previewPdf()
+}
+
+const generateModalOpen = ref(false)
+const generating = ref(false)
+const genForm = reactive({
+  universityName: '',
+  academicYear: '',
+  semester: '1' as string,
+  courseName: '',
+  examType: '闭卷',
+  durationMin: 120,
+})
+
+async function openGenerateModal() {
+  genForm.universityName = ''
+  genForm.academicYear = ''
+  genForm.semester = '1'
+  genForm.courseName = ''
+  genForm.examType = '闭卷'
+  genForm.durationMin = 120
+  // 预填考试已有数据
+  if (selectedExamId.value) {
+    try {
+      const d = await getExamDetail(selectedExamId.value)
+      genForm.academicYear = d.academicYear ?? ''
+      genForm.semester = d.semester ?? '1'
+      genForm.courseName = d.examName ?? ''
+    } catch { /* 预填失败不影响使用 */ }
+  }
+  generateModalOpen.value = true
+}
+
+async function handleGenerate() {
+  if (!selectedExamId.value || !genForm.courseName.trim() || !genForm.universityName.trim()) {
+    message.warning('请填写学校名称和课程名称')
+    return
+  }
+  generating.value = true
+  try {
+    const fileId = await generateStandardPaper({
+      examId: selectedExamId.value,
+      universityName: genForm.universityName.trim(),
+      academicYear: genForm.academicYear.trim(),
+      semester: genForm.semester,
+      courseName: genForm.courseName.trim(),
+      examType: genForm.examType,
+      durationMin: genForm.durationMin,
+    })
+    form.masterFileId = fileId
+    form.masterName = genForm.courseName.trim() + ' 标准试卷'
+    message.success('标准试卷已生成，请点击「保存母版」确认')
+    generateModalOpen.value = false
+    // 自动预览
+    await previewPdf()
+  } catch (error) {
+    showUserError(error, '生成标准试卷失败')
+  } finally {
+    generating.value = false
+  }
+}
+
 // ─── 保存 ────────────────────────────────────────────────────────────
 
 async function handleSave() {
@@ -885,25 +1005,6 @@ watch(
 
 <style lang="scss" scoped>
 .paper-master-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }

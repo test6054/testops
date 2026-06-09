@@ -3,6 +3,8 @@
     <template #extra>
       <a-space>
         <a-button type="primary" :loading="generating" @click="handleGenerate"> 重新生成 </a-button>
+        <a-button :disabled="!canShareRecord" @click="copyShareText">复制分享内容</a-button>
+        <a-button :disabled="!canShareRecord" @click="exportRecordText">导出文本</a-button>
         <a-button :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新最新
         </a-button>
@@ -10,6 +12,11 @@
     </template>
 
     <a-spin :spinning="loading">
+      <AiGenerationProgressPanel
+        v-if="generating"
+        title="AI 教学改进方案生成中"
+        :waiting-text="props.classId ? '正在等待后端返回当前班级的真实教学改进方案。' : '正在等待后端返回本场考试的真实教学改进方案。'"
+      />
       <!-- D-9 错误态：教学改进方案加载失败时提供重试 + 上报入口 -->
       <UiErrorRetryPanel
         v-if="loadError"
@@ -106,10 +113,11 @@ import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'TeachingImprovementCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
@@ -120,6 +128,8 @@ const loadError = ref<Error | null>(null)
 const improvementItems = computed<TeachingImprovementItemVO[]>(() => {
   return record.value?.improvementItems ?? []
 })
+
+const canShareRecord = computed(() => record.value?.analysisStatus === 'SUCCESS')
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 教学改进方案未完成，请稍后重新生成')
@@ -132,7 +142,8 @@ function acceptTeachingImprovementRecord(
   const dataError = 'AI 教学改进方案数据异常，请刷新后重试'
   assertUserFacing(value.examId === props.examId, dataError)
   assertUserFacing(value.analysisType === 'TEACHING_IMPROVEMENT', dataError)
-  assertUserFacing(value.scopeType === 'EXAM', dataError)
+  assertUserFacing(value.scopeType === (props.classId ? 'CLASS' : 'EXAM'), dataError)
+  assertUserFacing(props.classId ? value.scopeId === props.classId : !value.scopeId, dataError)
   assertUserFacing(Boolean(value.createTime?.trim()), dataError)
   if (value.analysisStatus === 'SUCCESS') {
     assertUserFacing(Boolean(value.aiTraceId?.trim()), dataError)
@@ -173,7 +184,7 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    const latest = await getLatestTeachingImprovement(props.examId)
+    const latest = await getLatestTeachingImprovement(props.examId, props.classId || undefined)
     record.value = acceptTeachingImprovementRecord(latest)
   } catch (e) {
     record.value = null
@@ -188,7 +199,7 @@ async function handleGenerate(): Promise<void> {
   generating.value = true
   loadError.value = null
   try {
-    const generated = await generateTeachingImprovement(props.examId)
+    const generated = await generateTeachingImprovement(props.examId, props.classId || undefined)
     record.value = acceptTeachingImprovementRecord(generated)
     message.success('已生成最新改进方案')
   } catch (e) {
@@ -200,8 +211,47 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
+function buildShareText(): string {
+  const current = record.value
+  assertUserFacing(Boolean(current) && current?.analysisStatus === 'SUCCESS', '暂无可分享的 AI 教学改进方案')
+  const lines = [
+    'AI 教学改进方案',
+    `考试编号：${current!.examId}`,
+    `生成时间：${analysisCreateTimeText(current!)}`,
+    `处理追踪编号：${analysisTraceId(current!)}`,
+    '',
+    '总体摘要：',
+    current!.overallSummary,
+  ]
+  improvementItems.value.forEach((item, index) => {
+    lines.push(
+      '',
+      `第 ${index + 1} 项：${item.questionType || '教学改进内容'}`,
+      `问题：${item.problemDescription || '无'}`,
+      `改进措施：${item.suggestion || '无'}`,
+      `依据：${item.evidenceSummary || '无'}`,
+    )
+  })
+  return lines.join('\n')
+}
+
+async function copyShareText(): Promise<void> {
+  await navigator.clipboard.writeText(buildShareText())
+  message.success('已复制教学改进方案')
+}
+
+function exportRecordText(): void {
+  const blob = new Blob([buildShareText()], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `teaching-improvement-${props.examId}.txt`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 watch(
-  () => [props.examId, props.reloadToken],
+  () => [props.examId, props.reloadToken, props.classId],
   () => {
     if (props.examId) void reload()
   },
@@ -239,10 +289,10 @@ watch(
 }
 .analysis-item__text {
   margin: 0;
-  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
   line-height: 1.6;
 }
 .text-muted {
-  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
 }
 </style>

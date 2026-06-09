@@ -114,11 +114,16 @@ export interface ExamTeachingAnalysisRecordVO {
 
 /**
  * 生成教学改进方案
- * POST /api/exam/teaching-analysis/improvement/generate?examId=
+ * POST /api/exam/teaching-analysis/improvement/generate?examId=&classId=
  */
-export function generateTeachingImprovement(examId: string): Promise<ExamTeachingAnalysisRecordVO> {
+export function generateTeachingImprovement(
+  examId: string,
+  classId?: string,
+): Promise<ExamTeachingAnalysisRecordVO> {
+  const search = new URLSearchParams({ examId })
+  if (classId) search.set('classId', classId)
   return http.post<ExamTeachingAnalysisRecordVO>(
-    `/api/exam/teaching-analysis/improvement/generate?examId=${encodeURIComponent(examId)}`,
+    `/api/exam/teaching-analysis/improvement/generate?${search}`,
   )
 }
 
@@ -128,10 +133,11 @@ export function generateTeachingImprovement(examId: string): Promise<ExamTeachin
  */
 export function getLatestTeachingImprovement(
   examId: string,
+  classId?: string,
 ): Promise<ExamTeachingAnalysisRecordVO | null> {
   return http.get<ExamTeachingAnalysisRecordVO | null>(
     '/api/exam/teaching-analysis/improvement/latest',
-    { params: { examId } },
+    { params: { examId, classId } },
   )
 }
 
@@ -195,15 +201,4 @@ export function getLatestStudentLearningProfile(params: {
     '/api/exam/teaching-analysis/student-profile/latest',
     { params },
   )
-}
-
-/**
- * 查询教学分析记录列表
- * GET /api/exam/teaching-analysis/list
- */
-export function listTeachingAnalysis(params: {
-  examId: string
-  analysisType?: TeachingAnalysisTypeCode
-}): Promise<ExamTeachingAnalysisRecordVO[]> {
-  return http.get<ExamTeachingAnalysisRecordVO[]>('/api/exam/teaching-analysis/list', { params })
 }

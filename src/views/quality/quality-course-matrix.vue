@@ -74,7 +74,7 @@ import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -1279,8 +1279,8 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="qcm__context">
-        <div class="qcm__context-left">
+      <ContextBar>
+        <template #status>
           <span class="qcm__context-label">质量评价课程</span>
           <CourseSelector
             :value="qualityStore.currentQualityCourseId || null"
@@ -1300,23 +1300,15 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
           <a-tag v-if="currentCourse?.creditHours != null" color="default">
             {{ currentCourse.creditHours }} 学时
           </a-tag>
-        </div>
-        <div class="qcm__context-right">
-          <UiButton variant="ghost" size="sm" @click="openCourseCreate"> 新建课程 </UiButton>
+        </template>
+        <template #actions>
+          <span class="op-link" role="button" @click="openCourseCreate">新建课程</span>
           <UiButton variant="outline" size="sm" :disabled="!currentCourse" @click="openCourseEdit">
             编辑课程
           </UiButton>
-          <UiButton
-            variant="ghost"
-            status="danger"
-            size="sm"
-            :disabled="!currentCourse"
-            @click="deleteCourse"
-          >
-            删除课程
-          </UiButton>
-        </div>
-      </div>
+          <span class="op-link danger" role="button" @click="deleteCourse">删除课程</span>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -1399,7 +1391,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
           <template #title>
             <span>考核环节列表</span>
           </template>
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             :columns="itemColumns"
             :data-source="assessmentItems"
             :loading="assessmentItemsLoading"
@@ -1431,22 +1423,13 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
                 {{ rubricsOfItem(record.id).length }}
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <a-button type="link" size="small" @click="openItemEdit(record)"> 编辑 </a-button>
-                  <a-button type="link" size="small" @click="openRubricList(record)">
-                    Rubric
-                  </a-button>
-                  <a-button type="link" size="small" @click="validateItemWeights(record)">
-                    校验权重
-                  </a-button>
-                  <a-button type="link" size="small" @click="validateRubricFullScore(record)">
-                    校验 Rubric
-                  </a-button>
-                  <a-button type="link" size="small" danger @click="deleteItem(record)">
-                    删除
-                  </a-button>
-                </a-space>
-              </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openItemEdit(record)">编辑</span>
+                  <span class="op-link" role="button" @click="openRubricList(record)">Rubric</span>
+                  <span class="op-link" role="button" @click="validateItemWeights(record)">校验权重</span>
+                  <span class="op-link" role="button" @click="validateRubricFullScore(record)">校验 Rubric</span>
+                  <span class="op-link danger" role="button" @click="deleteItem(record)">删除</span>
+            </div></template>
             </template>
           </UiDataTable>
         </a-card>
@@ -1461,7 +1444,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
           <template #extra>
             <UiButton variant="primary" size="sm" @click="openGoalCreate"> 新建课程目标 </UiButton>
           </template>
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             :columns="goalColumns"
             :data-source="courseGoals"
             :loading="courseGoalsLoading"
@@ -1497,16 +1480,11 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
                 </a-space>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <a-button type="link" size="small" @click="openGoalEdit(record)"> 编辑 </a-button>
-                  <a-button type="link" size="small" @click="openRuleEditor(record)">
-                    计算规则
-                  </a-button>
-                  <a-button type="link" size="small" danger @click="deleteGoal(record)">
-                    删除
-                  </a-button>
-                </a-space>
-              </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openGoalEdit(record)">编辑</span>
+                  <span class="op-link" role="button" @click="openRuleEditor(record)">计算规则</span>
+                  <span class="op-link danger" role="button" @click="deleteGoal(record)">删除</span>
+            </div></template>
             </template>
           </UiDataTable>
         </a-card>
@@ -1928,7 +1906,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
           fullScore
         </span>
       </div>
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         :columns="rubricColumns"
         :data-source="rubricItem ? rubricsOfItem(rubricItem.id) : []"
         row-key="id"
@@ -1948,13 +1926,10 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
             {{ record.fullScore.toFixed(0) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <a-button type="link" size="small" @click="openRubricEdit(record)"> 编辑 </a-button>
-              <a-button type="link" size="small" danger @click="deleteRubric(record)">
-                删除
-              </a-button>
-            </a-space>
-          </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openRubricEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" @click="deleteRubric(record)">删除</span>
+            </div></template>
         </template>
       </UiDataTable>
     </UiDrawer>
@@ -2105,22 +2080,6 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
 
 <style scoped lang="scss">
 .qcm {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left,
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__context-label {
     font-size: 12px;
     color: var(--dp-text-muted, #64748b);

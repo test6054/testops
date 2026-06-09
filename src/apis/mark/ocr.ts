@@ -120,3 +120,21 @@ export function recognizeMarkOcr(request: MarkOcrRecognizeRequest): Promise<Mark
 export function listPaddleOcrInstances(): Promise<PaddleOcrInstanceVO[]> {
   return http.get<PaddleOcrInstanceVO[]>('/api/mark/ocr/paddle/instance/list')
 }
+
+/** PaddleOCR 实例注册请求 - 对应 PaddleOcrInstanceRegisterRequest */
+export interface PaddleOcrInstanceRegisterRequest {
+  instanceName: string
+  serviceUrl: string
+  deviceType: string
+  localAutoDeploy?: boolean
+}
+
+/**
+ * 注册 PaddleOCR 服务实例
+ * POST /api/mark/ocr/paddle/instance/register
+ */
+export function registerPaddleOcrInstance(
+  request: PaddleOcrInstanceRegisterRequest,
+): Promise<PaddleOcrInstanceVO> {
+  return http.post<PaddleOcrInstanceVO>('/api/mark/ocr/paddle/instance/register', request)
+}

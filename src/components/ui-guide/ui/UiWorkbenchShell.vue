@@ -65,8 +65,8 @@ const layoutStyle = computed(() => ({
   flex-direction: column;
   gap: 12px;
   min-height: 100%;
-  padding: 12px;
-  background: #f5f7fb;
+  padding: 0;
+  background: var(--ant-color-bg-container);
 }
 
 .ui-workbench-shell__toolbar {
@@ -74,10 +74,10 @@ const layoutStyle = computed(() => ({
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 16px;
-  border: 1px solid var(--dp-border, #e5e7eb);
-  border-radius: var(--dp-radius-panel, 4px);
-  background: var(--dp-surface, #fff);
+  padding: 0 0 4px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .ui-workbench-shell__toolbar-main {

@@ -24,3 +24,12 @@
 
 // 超级管理员后台统一页面语法
 @use './admin/super-admin.scss';
+
+// 实训详情列表表格 typography（与 edu-practice-web-vue 一致）
+@use './teacher-detail-table-typography.scss';
+
+// 实训详情列表操作列 / 工具栏（与 edu-practice-web-vue 一致）
+@use './teacher-detail-table-actions.scss';
+
+// 工作台列表页：筛选工具栏、去卡片副文案
+@use './workbench-list.scss';

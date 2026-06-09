@@ -39,6 +39,14 @@ export function useAccreditationWorkbench() {
   const activeCycleId = computed(() => activeCycle.value?.id)
   const hasScope = computed(() => !!programId.value && !!trainingPlanId.value)
 
+  const annualCourseCoverageSummary = computed(() => {
+    const coverages = cockpit.value?.annualCourseCoverages || []
+    if (!coverages.length) return '无已到期年度'
+    return coverages
+      .map(item => `${item.reportYear} ${item.coveredCourseCount}/${item.requiredCourseCount}`)
+      .join('，')
+  })
+
   const phaseStages = computed<WorkbenchStage[]>(() => {
     const cycle = activeCycle.value
     if (!cycle) {
@@ -94,7 +102,25 @@ export function useAccreditationWorkbench() {
         label: '考查清单完成率',
         value: `${c.onsiteChecklistCompletionRate ?? 0}%`,
       },
-      { key: 'support', label: '师资档案', value: c.supportProfileConfirmed ? '已确认' : '未确认' },
+      {
+        key: 'support',
+        label: '支持条件档案',
+        value: c.supportProfileConfirmed ? '已确认' : '未确认',
+        tone: c.supportProfileConfirmed ? 'green' as const : 'orange' as const,
+      },
+      {
+        key: 'faculty-profile',
+        label: '教师档案',
+        value: `${c.activeFacultyProfileCount}/${c.facultyProfileCount}`,
+        helper: '启用/总数',
+      },
+      {
+        key: 'annual-material',
+        label: '年度报备材料',
+        value: c.annualReportMaterialsReady ? '就绪' : '未就绪',
+        helper: `材料 ${c.annualReportMaterialCount}，课程覆盖 ${annualCourseCoverageSummary.value}`,
+        tone: c.annualReportMaterialsReady ? 'green' as const : 'orange' as const,
+      },
     ]
   })
 
@@ -107,6 +133,7 @@ export function useAccreditationWorkbench() {
     try {
       cockpit.value = await accreditationApi.cockpit(trainingPlanId.value)
     } catch (e) {
+      cockpit.value = undefined
       showUserError(e)
     } finally {
       cockpitLoading.value = false
@@ -205,7 +232,8 @@ export function canReview(row: AccreditationCycleVO) {
 export function canConclusion(row: AccreditationCycleVO) {
   return (
     row.cycleStatus === 'ACTIVE'
-    && (row.currentPhase === 'ONSITE_VISIT' || row.currentPhase === 'CONCLUSION')
+    && row.currentPhase === 'ONSITE_VISIT'
+    && !row.conclusionRegisteredAt
   )
 }
 

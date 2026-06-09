@@ -42,10 +42,11 @@ const getRouteKey = (route: RouteLocationNormalized) => {
 <style lang="scss" scoped>
 .main {
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden; // 外层不滚动
+  overflow: hidden;
   position: relative;
   background: var(--ant-color-bg-container);
 }
@@ -58,7 +59,9 @@ const getRouteKey = (route: RouteLocationNormalized) => {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  padding: 24px;
+  box-sizing: border-box;
   background: var(--ant-color-bg-container);
 
   // 自定义细滚动条样式（替代完全隐藏，保持可操作性）
@@ -84,6 +87,7 @@ const getRouteKey = (route: RouteLocationNormalized) => {
 
   :deep(> *) {
     width: 100%;
+    max-width: 1400px;
     box-sizing: border-box;
   }
 

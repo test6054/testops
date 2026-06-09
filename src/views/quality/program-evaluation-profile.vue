@@ -29,7 +29,10 @@ import { ProgramSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
+
+const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
 
 const columns: ColumnsType = [
   { title: '专业', dataIndex: 'programName', key: 'programName' },
@@ -124,8 +127,8 @@ async function loadList() {
       ...query,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '专业评价口径加载失败，请稍后重试')
+    total.value = readPageTotal(page, '专业评价口径加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -175,8 +178,14 @@ const signals = computed<SignalMetric[]>(() => {
 })
 
 async function loadDicts() {
-  const std = await accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true })
-  standards.value = std.list
+  standards.value = await readAllPages(
+    (pageNum) => accreditationStandardApi.page({
+      pageNum,
+      pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
+      enabled: true,
+    }),
+    '认证标准列表加载失败，请稍后重试',
+  )
 }
 
 function handlePageChange(page: { current: number, pageSize: number }) {
@@ -270,41 +279,42 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="program-profile__context">
-        <div class="program-profile__context-info">
-          <h2 class="program-profile__title">质量评价 - 专业评价口径配置</h2>
-        </div>
-        <div class="program-profile__context-actions">
-          <a-select
-            v-model:value="query.accreditationType"
-            placeholder="认证类型"
-            allow-clear
-            class="program-profile__filter"
-            :options="accreditationOptions"
-          />
-          <a-input
-            v-model:value="query.keyword"
-            placeholder="专业名称"
-            class="program-profile__filter"
-            @press-enter="loadList"
-          />
-          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            查询
-          </UiButton>
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建评价口径 </UiButton>
-        </div>
-      </div>
-    </template>
-
     <SignalBand :metrics="signals" compact class="program-profile__signals" />
 
-    <section class="program-profile__panel">
-      <header class="program-profile__panel-header">
-        <h3 class="program-profile__panel-title">口径列表</h3>
-      </header>
-      <UiDataTable
+    <a-card :bordered="false" class="detail-table-card program-profile__table-card">
+      <template #title>口径列表</template>
+
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
+          <a-form-item label="认证类型">
+            <a-select
+              v-model:value="query.accreditationType"
+              placeholder="认证类型"
+              allow-clear
+              style="width: 160px"
+              :options="accreditationOptions"
+            />
+          </a-form-item>
+          <a-form-item label="专业名称">
+            <a-input
+              v-model:value="query.keyword"
+              placeholder="专业名称"
+              style="width: 160px"
+              @press-enter="loadList"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="loadList">查询</UiButton>
+              <span class="op-link" role="button" @click="resetQuery">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
+              <UiButton size="sm" @click="openCreate">新建评价口径</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -337,17 +347,13 @@ onMounted(async () => {
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
-                删除
-              </UiButton>
-            </a-space>
-          </template>
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <UiDrawer
       v-model:open="editorVisible"
@@ -495,33 +501,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .program-profile {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__filter {
     width: 200px;
   }

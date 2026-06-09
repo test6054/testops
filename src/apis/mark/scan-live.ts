@@ -5,6 +5,8 @@
  * - SSE 端点：GET /api/mark/sse/scan-live/subscribe（含 /sse/ 触发后端 GlobalExceptionHandler 静默处理客户端断开）
  * - 增量查询：POST /api/mark/scan-live/recent，返回扫描事件视图列表
  * - 鉴权：教师 Web 使用 JWT；一体机使用 Agent 激活后的 push_token（与 kiosk API 同源）
+ * - 视野：教师 JWT 可按过滤器查看同租户扫描事件；一体机 push_token 必须同时传 scannerDeviceId 与 scannerStationId，
+ *   且两者必须等于 token 绑定设备和工位，禁止跨工位订阅或回填。
  */
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import http from '@/config/axios'
@@ -57,7 +59,7 @@ export interface ScanLiveEventVO {
   createTime: string
 }
 
-/** 增量查询请求 - 对应 ScanLiveQueryRequest */
+/** 增量查询请求 - 对应 ScanLiveQueryRequest；push_token 会话必须声明绑定设备和工位 */
 export interface ScanLiveQueryRequest {
   examId?: string
   scannerStationId?: string
@@ -68,7 +70,7 @@ export interface ScanLiveQueryRequest {
   limit?: number
 }
 
-/** SSE 订阅过滤器（query 参数） */
+/** SSE 订阅过滤器（query 参数）；push_token 会话必须声明绑定设备和工位 */
 export interface ScanLiveSubscribeFilter {
   examId?: string
   scannerStationId?: string
@@ -106,7 +108,7 @@ export function listRecentScanEvents(
  * - 使用 fetch-event-source 替代浏览器原生 EventSource，以便在 fetch 请求里携带 Bearer token；
  * - 库内置自动重连，断线后会重新发起 fetch；调用方可在重连时通过 onReady 触发增量补差。
  *
- * @param filter   过滤器（examId / scannerStationId / scannerDeviceId 任一为空表示该维度不过滤）
+ * @param filter   过滤器。教师 JWT 会话可空维度不过滤；一体机 push_token 会话必须传绑定 scannerStationId / scannerDeviceId。
  * @param handler  事件回调
  * @returns AbortController：调用 .abort() 主动断开订阅
  */

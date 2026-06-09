@@ -14,7 +14,7 @@ import {
 } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -58,14 +58,17 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await auditRectificationApi.page({
-      pageNum: 1,
-      pageSize: 200,
-      auditIssueId: props.auditIssueId || undefined,
-      ownerUserId: props.ownerUserId || undefined,
-      status: props.status,
-    })
-    options.value = requirePageList(res, '审核评估整改任务')
+    options.value = await requireAllPages(
+      (pageNum) =>
+        auditRectificationApi.page({
+          pageNum,
+          pageSize: 100,
+          auditIssueId: props.auditIssueId || undefined,
+          ownerUserId: props.ownerUserId || undefined,
+          status: props.status,
+        }),
+      '审核评估整改任务',
+    )
   } catch (e) {
     showUserError(e, '整改任务列表加载失败')
   } finally {

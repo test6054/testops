@@ -15,6 +15,7 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { UserDto } from '@/types/api-types.d'
 import http from '@/config/axios'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const EXAM_TEMPLATE_DATA_ERROR = '试卷模板数据异常，请刷新后重试'
@@ -63,6 +64,12 @@ export const SUBJECTIVE_ANONYMITY_MODE_LABEL: Record<AnonymityModeCode, string> 
 /** 考生状态编码 - 与后端 CandidateStatus 枚举完全一致 */
 export type CandidateStatusCode = 'ACTIVE' | 'ABSENT'
 
+/** 考生状态文案 - 与后端 CandidateStatus 枚举完全一致 */
+export const CANDIDATE_STATUS_LABEL: Record<CandidateStatusCode, string> = {
+  ACTIVE: '正常',
+  ABSENT: '缺考',
+}
+
 /** 试卷绑定状态编码 - 与后端 BindingStatus 枚举完全一致 */
 export type BindingStatusCode = 'UNBOUND' | 'BOUND' | 'CONFLICT' | 'DISCARDED'
 
@@ -92,6 +99,18 @@ export interface MarkingScanPageRefVO {
   fileId?: string
   qualityStatus: QualityDecisionCode
   identityMaskedView?: boolean
+  /** 题目区域 ROI X（像素） */
+  roiX?: number
+  /** 题目区域 ROI Y（像素） */
+  roiY?: number
+  /** 题目区域 ROI 宽度（像素） */
+  roiWidth?: number
+  /** 题目区域 ROI 高度（像素） */
+  roiHeight?: number
+  /** 页面图像像素宽度（用于前端百分比定位） */
+  pageImageWidth?: number
+  /** 页面图像像素高度（用于前端百分比定位） */
+  pageImageHeight?: number
 }
 
 /** 批改处理任务状态 - 与后端 TaskStatus 枚举完全一致 */
@@ -539,7 +558,7 @@ export interface ExamCandidateVO {
   studentUserId: string
   studentNo: string
   studentName: string
-  status?: CandidateStatusCode
+  status: CandidateStatusCode
 }
 
 // ─── API 调用 ──────────────────────────────────────────────────
@@ -591,6 +610,34 @@ export function updateExam(request: ExamUpdateRequest): Promise<boolean> {
  */
 export function deleteExam(request: ExamDeleteRequest): Promise<boolean> {
   return http.post<boolean>('/api/mark/exams/delete', request)
+}
+
+/** 考试归档关闭请求 - 对应 ExamCloseRequest */
+export interface ExamCloseRequest {
+  examId: string
+}
+
+/**
+ * 归档关闭考试（状态 ACTIVE → CLOSED）
+ * POST /api/mark/exams/close
+ */
+export function closeExam(request: ExamCloseRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/close', request)
+}
+
+/** 考试范围全量保存请求 - 对应 ExamScopeSaveRequest */
+export interface ExamScopeSaveRequest {
+  examId: string
+  classIds: string[]
+  candidates: ExamCandidateRosterRequest[]
+}
+
+/**
+ * 全量保存考试班级范围与考生名册（原子替换，与增量 merge/remove 互补）
+ * POST /api/mark/exams/scope/save
+ */
+export function saveExamScope(request: ExamScopeSaveRequest): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/scope/save', request)
 }
 
 /** 增量合并考生名册 */
@@ -645,6 +692,66 @@ export function previewExamCandidates(
   request: ExamCandidatePreviewRequest,
 ): Promise<ExamCandidateVO[]> {
   return http.post<ExamCandidateVO[]>('/api/mark/exams/scope/candidates/preview', request)
+}
+
+/** 考生名册导入预览行 */
+export interface ExamCandidateImportRowRequest {
+  rowNo: number
+  departmentName?: string
+  className: string
+  studentNo: string
+  studentName: string
+}
+
+export type ExamCandidateImportAction = 'EXISTING_STUDENT' | 'CREATE_STUDENT'
+
+/** 考生名册导入预览请求 */
+export interface ExamCandidateImportPreviewRequest {
+  examId: string
+  classIds?: string[]
+  rows: ExamCandidateImportRowRequest[]
+}
+
+/** 考生名册导入预览行结果 */
+export interface ExamCandidateImportRowResponse {
+  rowNo: number
+  departmentName?: string
+  className: string
+  studentNo: string
+  studentName?: string
+  classId?: string
+  studentUserId?: string
+  resolvedStudentNo?: string
+  resolvedStudentName?: string
+  resolvedClassName?: string
+  importAction?: ExamCandidateImportAction
+  valid: boolean
+  errorMessage?: string
+}
+
+/** 考生名册导入预览结果 */
+export interface ExamCandidateImportPreviewResponse {
+  rows: ExamCandidateImportRowResponse[]
+  validCount: number
+  errorCount: number
+}
+
+export function previewExamCandidateImport(
+  request: ExamCandidateImportPreviewRequest,
+): Promise<ExamCandidateImportPreviewResponse> {
+  return http.post<ExamCandidateImportPreviewResponse>(
+    '/api/mark/exams/scope/candidates/import-preview',
+    request,
+  )
+}
+
+export function commitExamCandidateImport(
+  request: ExamCandidateImportPreviewRequest,
+): Promise<ExamCandidateImportPreviewResponse> {
+  return http.post<ExamCandidateImportPreviewResponse>(
+    '/api/mark/exams/scope/candidates/import-commit',
+    request,
+  )
 }
 
 /** 名册班级学生分页 */
@@ -773,24 +880,17 @@ export function pageExamCandidates(
  * 查询考试当前考生名单（自动分页拉全）
  * POST /api/mark/exams/candidates
  */
-const EXAM_CANDIDATE_PAGE_SIZE = 500
+const EXAM_CANDIDATE_PAGE_SIZE = 100
 
 export async function listExamCandidates(examId: string): Promise<ExamCandidateVO[]> {
-  const all: ExamCandidateVO[] = []
-  let pageNum = 1
-  while (true) {
-    const page = await pageExamCandidates({
+  return readAllPages(
+    (pageNum) => pageExamCandidates({
       examId,
       pageNum,
       pageSize: EXAM_CANDIDATE_PAGE_SIZE,
-    })
-    all.push(...page.list)
-    if (pageNum >= page.pages || page.list.length === 0) {
-      break
-    }
-    pageNum += 1
-  }
-  return all
+    }),
+    '考试考生名单加载失败，请稍后重试',
+  )
 }
 
 // ─── 考试成绩汇总（成绩确认 / 成绩发布列表） ──────────────────────────
@@ -916,6 +1016,121 @@ export function pageExamScoreSummary(
   return http.post<PageResult<ExamScoreSummaryItemVO>>('/api/mark/exams/score-summary', request)
 }
 
+/** 最终成绩风险原因编码 - 对应后端全场风险概览输出 */
+export type FinalScoreRiskReasonCode
+  = | 'ABNORMAL_PAPER'
+    | 'UNRECONCILED_ABSENCE'
+    | 'MISSING_QUESTION_GRADE'
+    | 'UNCONFIRMED_QUESTION_GRADE'
+    | 'BLOCKING_INCIDENT'
+    | 'PENDING_DUPLICATE_IMAGE'
+    | 'SAFE_CONFIRMABLE'
+
+/** 最终成绩全场风险概览请求 - 对应 FinalScoreRiskOverviewRequest */
+export interface FinalScoreRiskOverviewRequest {
+  examId: string
+}
+
+/** 最终成绩风险原因 - 对应 FinalScoreRiskReasonResponse */
+export interface FinalScoreRiskReasonVO {
+  reasonCode: FinalScoreRiskReasonCode
+  reasonName: string
+  count: number
+}
+
+/** 最终成绩全场风险概览 - 对应 FinalScoreRiskOverviewResponse */
+export interface FinalScoreRiskOverviewVO {
+  totalCandidateCount: number
+  pendingCount: number
+  calculatedCount: number
+  confirmedCount: number
+  publishedCount: number
+  withdrawnCount: number
+  correctedCount: number
+  safeConfirmableCount: number
+  blockedCount: number
+  missingQuestionGradeCount: number
+  unconfirmedQuestionGradeCount: number
+  abnormalPaperCount: number
+  unreconciledAbsenceCount: number
+  blockingIncidentCount: number
+  pendingDuplicateImageCount: number
+  readyToPublish: boolean
+  riskReasons: FinalScoreRiskReasonVO[]
+  reviewedReasonCodes: FinalScoreRiskReasonCode[]
+}
+
+/** 最终成绩风险复核保存请求 - 对应 FinalScoreRiskReviewSaveRequest */
+export interface FinalScoreRiskReviewSaveRequest {
+  examId: string
+  reviewedReasonCodes: FinalScoreRiskReasonCode[]
+}
+
+/** 安全批量确认最终成绩请求 - 对应 FinalScoreSafeBatchConfirmRequest */
+export interface FinalScoreSafeBatchConfirmRequest {
+  examId: string
+}
+
+/** 安全批量确认失败明细 - 对应 FinalScoreSafeBatchConfirmFailureResponse */
+export interface FinalScoreSafeBatchConfirmFailureVO {
+  paperInstanceId: string
+  code: string
+  message: string
+}
+
+/** 安全批量确认最终成绩响应 - 对应 FinalScoreSafeBatchConfirmResponse */
+export interface FinalScoreSafeBatchConfirmVO {
+  totalCandidateCount: number
+  successCount: number
+  skippedCount: number
+  failureCount: number
+  confirmedPaperInstanceIds: string[]
+  failures: FinalScoreSafeBatchConfirmFailureVO[]
+  skipReasons: FinalScoreRiskReasonVO[]
+}
+
+/**
+ * 查询最终成绩全场风险概览。
+ * 该接口提供全场确认 / 发布 / 风险口径，前端分页列表不得自行推断全场状态。
+ * POST /api/mark/exams/final-scores/risk-overview
+ */
+export function getFinalScoreRiskOverview(
+  request: FinalScoreRiskOverviewRequest,
+): Promise<FinalScoreRiskOverviewVO> {
+  return http.post<FinalScoreRiskOverviewVO>(
+    '/api/mark/exams/final-scores/risk-overview',
+    request,
+  )
+}
+
+/**
+ * 保存最终成绩风险复核状态。
+ * 后端按当前仍存在的阻塞风险原因持久化复核状态，并返回最新风险概览。
+ * POST /api/mark/exams/final-scores/risk-review/save
+ */
+export function saveFinalScoreRiskReview(
+  request: FinalScoreRiskReviewSaveRequest,
+): Promise<FinalScoreRiskOverviewVO> {
+  return http.post<FinalScoreRiskOverviewVO>(
+    '/api/mark/exams/final-scores/risk-review/save',
+    request,
+  )
+}
+
+/**
+ * 安全批量确认最终成绩。
+ * 只确认后端判定为无阻塞风险的已计算成绩，跳过和失败明细由后端返回。
+ * POST /api/mark/exams/final-scores/batch-confirm-safe
+ */
+export function batchConfirmSafeFinalScores(
+  request: FinalScoreSafeBatchConfirmRequest,
+): Promise<FinalScoreSafeBatchConfirmVO> {
+  return http.post<FinalScoreSafeBatchConfirmVO>(
+    '/api/mark/exams/final-scores/batch-confirm-safe',
+    request,
+  )
+}
+
 // ─── 扫描与导入链路 ─────────────────────────────────────────────
 /** 扫描异常待办查询请求 - 对应 ScanAttentionQueryRequest */
 export type ScanAttentionTypeCode
@@ -924,6 +1139,9 @@ export type ScanAttentionTypeCode
     | 'DUPLICATE_PENDING'
     | 'RECOGNITION_REVIEW'
     | 'BINDING_CONFLICT'
+
+/** 扫描异常查询分组 - 对应 ScanAttentionQueryGroup */
+export type ScanAttentionQueryGroupCode = 'ABNORMAL' | 'DUPLICATE'
 
 /** 扫描异常来源类型 - 对应后端扫描异常聚合 SQL 固定来源 */
 export type ScanAttentionSourceTypeCode
@@ -938,6 +1156,7 @@ export interface ScanAttentionQueryRequest extends QueryDto {
   scanBatchId?: string
   paperInstanceId?: string
   attentionType?: ScanAttentionTypeCode
+  queryGroup?: ScanAttentionQueryGroupCode
 }
 
 /** 扫描异常待办项 - 对应 ScanAttentionItemResponse */
@@ -957,6 +1176,9 @@ export interface ScanAttentionItemVO {
   studentName?: string
   classId?: string
   className?: string
+  identitySliceFileId?: string
+  /** 原始扫描页引用，身份绑定冲突处置时用于和手写身份区切片对照 */
+  sourceScanPage?: MarkingScanPageRefVO
   anonymousNo?: string
   paperDisplay: PaperInstanceDisplayVO
   pageId?: string
@@ -1070,6 +1292,8 @@ export interface ExamScannerBatchCreateRequest {
 export interface ExamScannerBatchQueryRequest extends QueryDto {
   examId: string
   scannerDeviceId?: string
+  /** 扫描批次关键词（批次号、外部批次号、设备ID、工位ID模糊匹配） */
+  keyword?: string
   status?: ScanBatchStatusCode
   scanStartTimeFrom?: string
   scanStartTimeTo?: string
@@ -1136,11 +1360,7 @@ export function pageScannerBatches(
 export function listScanAttentions(
   request: ScanAttentionQueryRequest,
 ): Promise<PageResult<ScanAttentionItemVO>> {
-  return http.post<PageResult<ScanAttentionItemVO>>('/api/mark/exams/scan-attentions', {
-    ...request,
-    pageNum: request.pageNum ?? 1,
-    pageSize: request.pageSize ?? 500,
-  })
+  return http.post<PageResult<ScanAttentionItemVO>>('/api/mark/exams/scan-attentions', request)
 }
 
 // ─── 试卷身份绑定 ────────────────────────────────────────
@@ -1584,6 +1804,18 @@ export interface ReviewTaskDetailVO {
   aiDiagnostic?: string
   commentText?: string
   status: ReviewTaskStatusCode
+  /** 制卷形态: ANSWER_SHEET / FULL_PAPER */
+  materialLayoutMode?: string
+  /** 试卷母版页引用，仅 ANSWER_SHEET 模式回填 */
+  masterPaperPage?: MarkingScanPageRefVO
+  /** 题干文本 */
+  questionStem?: string
+  /** 标准答案文本 */
+  standardAnswer?: string
+  /** 标准答案比对策略编码（EXACT / CASE_INSENSITIVE / IGNORE_WHITESPACE / CHOICE_SET / NUMERIC / REGEX） */
+  comparePolicy?: string
+  /** 评分细则/采分点说明 */
+  evaluationCriteria?: string
 }
 
 /**
@@ -1691,6 +1923,27 @@ export function listAnnotations(
  */
 export function getMarkingProgress(examId: string): Promise<MarkingProgressVO> {
   return http.post<MarkingProgressVO>('/api/mark/exams/marking-progress', { examId })
+}
+
+/** 批量阅卷进度查询请求 */
+export interface MarkingProgressBatchQueryRequest {
+  /** 考试 ID 列表，单次最多 50 场 */
+  examIds: string[]
+}
+
+/** 批量阅卷进度响应 */
+export interface MarkingProgressBatchVO {
+  items: MarkingProgressVO[]
+}
+
+/**
+ * 批量查询阅卷进度（考试工作台列表聚合，一次请求）
+ * POST /api/mark/exams/marking-progress/batch
+ */
+export function batchGetMarkingProgress(examIds: string[]): Promise<MarkingProgressVO[]> {
+  return http
+    .post<MarkingProgressBatchVO>('/api/mark/exams/marking-progress/batch', { examIds })
+    .then((response) => response.items)
 }
 
 /** 考试分数分布查询请求 */

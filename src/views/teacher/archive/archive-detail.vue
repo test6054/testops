@@ -1,42 +1,39 @@
 <template>
   <StageWorkbenchShell v-if="archive">
     <template #context>
-      <div class="archive-detail-page__context">
-        <div class="archive-detail-page__context-left">
+      <ContextBar>
+        <template #status>
           <span class="archive-detail-page__title">{{ archive.archiveTitle }}</span>
           <UiTag :tone="archiveStatusTone(archive.archiveStatus)" size="sm">
             {{ archiveStatusLabel(archive.archiveStatus) }}
           </UiTag>
           <UiTag v-if="archive.permanentRetention" tone="purple" size="sm">永久保管</UiTag>
-          <UiTag v-else tone="gray" size="sm"> 保管 {{ archive.retentionYears }} 年 </UiTag>
+          <UiTag v-else tone="gray" size="sm">保管 {{ archive.retentionYears }} 年</UiTag>
           <UiTag v-if="archive.archiveFileSize" tone="blue" size="sm">
             ZIP {{ formatBytes(Number(archive.archiveFileSize)) }}
           </UiTag>
-        </div>
-        <div class="archive-detail-page__context-right">
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadDetail">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-          <UiButton size="sm" variant="ghost" @click="goBack">返回列表</UiButton>
-        </div>
-      </div>
+          <UiButton size="sm" variant="ghost" @click="goBack">返回电子归档包列表</UiButton>
+        </template>
+      </ContextBar>
     </template>
 
     <UiCard v-if="showProgressCard" class="archive-detail-page__progress-card">
       <template #title>
         <ClockCircleOutlined />
         <span>异步打包进度</span>
-        <UiBadge tone="blue">
-          {{ archivePhaseLabel(progressPackagingPhase) }}
-        </UiBadge>
       </template>
       <a-progress :percent="archive.packagingProgressPercent" :status="progressStatus" />
       <div class="progress-message">
         {{ archive.packagingProgressMessage }}
       </div>
       <div v-if="archive.packagingUploadId" class="progress-upload-id">
-        归档打包任务编号：<span class="archive-inline-value">{{ archive.packagingUploadId }}</span>
+        电子归档包打包任务编号：<span class="archive-inline-value">{{ archive.packagingUploadId }}</span>
       </div>
       <div v-if="archive.packagingDiagnostic" class="progress-diagnostic">
         <a-alert
@@ -50,7 +47,7 @@
     <UiCard class="archive-detail-page__info-card">
       <template #title>
         <FileOutlined />
-        <span>归档信息</span>
+        <span>电子归档包信息</span>
       </template>
       <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" size="small" bordered>
         <a-descriptions-item label="状态">
@@ -81,7 +78,7 @@
           {{ archive.answerBookletCount }}
         </a-descriptions-item>
         <a-descriptions-item label="清单数">{{ archive.itemCount }}</a-descriptions-item>
-        <a-descriptions-item label="归档包大小">
+        <a-descriptions-item label="电子归档包大小">
           <span v-if="archive.archiveFileSize">
             {{ formatBytes(Number(archive.archiveFileSize)) }}
           </span>
@@ -158,7 +155,7 @@
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="items" :tab="`清单项 (${items.length})`">
           <UiEmpty v-if="items.length === 0" description="暂无清单项" />
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             v-else
             :columns="itemColumns"
             :data-source="items"
@@ -212,12 +209,12 @@
   <UiErrorRetryPanel
     v-else-if="detailLoadError"
     :error="detailLoadError"
-    title="归档详情加载失败"
+    title="电子归档包详情加载失败"
     :show-report="false"
     @retry="loadDetail"
   />
 
-  <UiEmpty v-else-if="!loading" description="归档包不存在或已被删除" />
+  <UiEmpty v-else-if="!loading" description="电子归档包不存在或已被删除" />
 
   <a-modal
     v-model:open="appraiseModalOpen"
@@ -351,7 +348,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
@@ -544,7 +541,7 @@ function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
 
 async function loadDetail(): Promise<void> {
   if (!archiveId) {
-    message.error('未找到要查看的考试归档')
+    message.error('未找到要查看的电子归档包')
     return
   }
   loading.value = true
@@ -557,11 +554,11 @@ async function loadDetail(): Promise<void> {
     syncArchiveDetailStageToStore(detail.archive)
     syncPolling()
   } catch (error) {
-    detailLoadError.value = toUserError(error, '考试归档详情加载失败')
+    detailLoadError.value = toUserError(error, '考试电子归档包详情加载失败')
     archive.value = null
     items.value = []
     events.value = []
-    showUserError(error, '考试归档详情加载失败')
+    showUserError(error, '考试电子归档包详情加载失败')
   } finally {
     loading.value = false
   }
@@ -585,17 +582,17 @@ function confirmPackage(): void {
   if (!archive.value) return
   void confirmAsync({
     title: '确认入队打包？',
-    content: `归档包 ${archive.value.archiveNo} 将进入异步打包队列，过程可能需要数分钟。`,
+    content: `考试电子归档包 ${archive.value.archiveNo} 将进入异步打包队列，过程可能需要数分钟。`,
     type: 'info',
     okText: '入队打包',
     cancelText: '取消',
     onOk: async () => {
       try {
         await packageArchive(archiveId)
-        message.success('归档已入队，正在异步打包')
+        message.success('考试电子归档包已入队，正在异步打包')
         await loadDetail()
       } catch (error) {
-        showUserError(error, '考试归档打包提交失败')
+        showUserError(error, '考试电子归档包打包提交失败')
       }
     },
   })
@@ -712,10 +709,10 @@ function confirmExecuteDestruction(): void {
     onOk: async () => {
       try {
         await executeDestruction(archiveId)
-        message.success('归档已物理销毁')
+        message.success('考试电子归档包已物理销毁')
         await loadDetail()
       } catch (error) {
-        showUserError(error, '档案销毁执行失败')
+        showUserError(error, '考试电子归档包销毁执行失败')
       }
     },
   })
@@ -757,28 +754,6 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .archive-detail-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__title {
     font-size: 16px;
     font-weight: 600;

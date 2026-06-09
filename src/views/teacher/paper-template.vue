@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="paper-template-page__context">
-        <div class="paper-template-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="paper-template-page__exam-select"
@@ -20,14 +20,14 @@
           <UiTag v-if="selectedExamId" tone="blue" size="sm">
             {{ questions.length }} 题 · 总分 {{ totalScore }}
           </UiTag>
-        </div>
-        <div class="paper-template-page__context-right">
+        </template>
+        <template #actions>
           <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
             <template #icon><SaveOutlined /></template>
             保存
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -102,11 +102,10 @@
       <UiCard class="info-card">
         <template #title>
           <ProfileOutlined />
-          <span>题目与标准答案</span>
-          <UiBadge tone="blue">{{ questions.length }} 题</UiBadge>
-          <UiBadge tone="green">总分 {{ totalScore }}</UiBadge>
+          <span class="section-title">题目与标准答案</span>
         </template>
         <template #extra>
+          <span class="paper-template__total-score">总分 {{ totalScore }}</span>
           <UiButton size="sm" @click="addQuestion">
             <template #icon>
               <PlusOutlined />
@@ -115,7 +114,7 @@
           </UiButton>
         </template>
 
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="questionColumns"
           :data-source="questions"
           :show-pagination="false"
@@ -154,14 +153,10 @@
               <UiTag v-if="record.questionTemplateId" tone="green" size="sm">已存在</UiTag>
               <UiTag v-else tone="orange" size="sm">未保存</UiTag>
             </template>
-            <template v-else-if="column.key === 'actions'">
-              <a-space :size="4">
-                <UiButton size="sm" variant="ghost" @click="openQuestionEdit(index)">编辑</UiButton>
-                <UiButton size="sm" variant="ghost" status="danger" @click="removeQuestion(index)">
-                  删除
-                </UiButton>
-              </a-space>
-            </template>
+            <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openQuestionEdit(index)">编辑</span>
+                <span class="op-link danger" role="button" @click="removeQuestion(index)">删除</span>
+            </div></template>
           </template>
           <template #expandedRowRender="{ record }">
             <div class="question-expand">
@@ -188,14 +183,7 @@
                 <section class="question-expand__panel question-expand__panel--answer">
                   <header class="question-expand__head">
                     <span class="question-expand__title">标准答案</span>
-                    <UiButton
-                      v-if="record.questionTemplateId"
-                      size="sm"
-                      variant="ghost"
-                      @click="openAnswerModal(record)"
-                    >
-                      编辑
-                    </UiButton>
+                    <span class="op-link" role="button" v-if="record.questionTemplateId" @click="openAnswerModal(record)">编辑</span>
                   </header>
                   <a-spin v-if="isAnswerPreviewLoading(record)" size="small" />
                   <span v-else-if="!record.questionTemplateId" class="question-cell__muted">
@@ -456,6 +444,7 @@
       </a-row>
     </a-form>
   </a-modal>
+
 </template>
 
 <script lang="ts" setup>
@@ -492,6 +481,7 @@ import {
   saveStandardAnswer,
 } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import { confirmAnswerEffective } from '@/apis/mark/question-analysis'
 import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import {
@@ -503,7 +493,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
@@ -580,7 +570,7 @@ const answerPreviewMap = reactive(new Map<string, AnswerPreviewState>())
 
 const loading = ref(false)
 const saving = ref(false)
-// D-9 错误态：仅当后端返回非“未配置”类错误时才上报（“未配置模板”是合法空态）
+// D-9 错误态：仅当后端返回非”未配置”类错误时才上报（”未配置模板”是合法空态）
 const templateLoadError = ref<Error | null>(null)
 const layoutMode = ref<ExamMaterialLayoutModeCode | undefined>()
 const isFullPaperLayout = computed(() => layoutMode.value === 'FULL_PAPER')
@@ -1340,7 +1330,7 @@ async function handleSaveAnswer(): Promise<void> {
     ) {
       standardAnswer = answerForm.standardAnswer.trim() || undefined
     }
-    await saveStandardAnswer({
+    const standardAnswerId = await saveStandardAnswer({
       examId: selectedExamId.value,
       questionTemplateId: answerContext.questionTemplateId,
       standardAnswer,
@@ -1366,9 +1356,17 @@ async function handleSaveAnswer(): Promise<void> {
       aiHint: answerForm.aiHint?.trim() || undefined,
       effectiveNow: answerForm.effectiveNow,
     })
+    if (answerForm.effectiveNow) {
+      await confirmAnswerEffective({
+        examId: selectedExamId.value,
+        questionTemplateId: answerContext.questionTemplateId,
+        standardAnswerId,
+        comparePolicy: answerForm.comparePolicy,
+      })
+    }
     answerPreviewMap.delete(answerContext.questionTemplateId)
     await loadAnswerPreview(answerContext.questionTemplateId)
-    message.success('标准答案已保存')
+    message.success(answerForm.effectiveNow ? '标准答案已保存并确认生效' : '标准答案已保存为草稿')
     answerModalOpen.value = false
   } catch (error) {
     showUserError(error, '标准答案保存失败')
@@ -1396,25 +1394,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .paper-template-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }
@@ -1427,7 +1406,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .info-card {
@@ -1466,7 +1444,7 @@ onMounted(async () => {
 
 .question-expand {
   padding: 12px 16px 12px 48px;
-  background: var(--dp-bg-muted, #f5f5f5);
+  background: var(--ant-color-fill-quaternary);
 
   &__layout {
     display: grid;

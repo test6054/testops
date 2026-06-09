@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="export-page__context">
-        <div class="export-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="export-page__exam-select"
@@ -25,8 +25,8 @@
             已完成 {{ counts.completed }}
           </UiTag>
           <UiTag v-if="counts.failed > 0" tone="red" size="sm">失败 {{ counts.failed }}</UiTag>
-        </div>
-        <div class="export-page__context-right">
+        </template>
+        <template #actions>
           <UiButton size="sm" :disabled="!selectedExamId" @click="openCreateModal">
             <template #icon><PlusOutlined /></template>
             创建导出任务
@@ -41,8 +41,8 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="export-page__empty" />
@@ -56,38 +56,46 @@
       @retry="loadTasks"
     />
 
-    <UiCard v-else class="info-card">
+    <a-card v-else :bordered="false" class="detail-table-card info-card export-page__table-card">
       <template #title>
         <CloudDownloadOutlined />
         <span>当前考试导出任务</span>
-        <UiBadge tone="blue">{{ taskPagination.total }}</UiBadge>
       </template>
-      <template #extra>
-        <a-space>
-          <a-select
-            v-model:value="statusFilter"
-            placeholder="状态过滤"
-            style="width: 160px"
-            allow-clear
-          >
-            <a-select-option v-for="(label, code) in EXPORT_STATUS_LABEL" :key="code" :value="code">
-              {{ label }}
-            </a-select-option>
-          </a-select>
-          <a-select
-            v-model:value="typeFilter"
-            placeholder="类型过滤"
-            style="width: 160px"
-            allow-clear
-          >
-            <a-select-option v-for="(label, code) in EXPORT_TYPE_LABEL" :key="code" :value="code">
-              {{ label }}
-            </a-select-option>
-          </a-select>
-        </a-space>
-      </template>
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="statusFilter"
+              placeholder="全部状态"
+              style="width: 160px"
+              allow-clear
+            >
+              <a-select-option v-for="(label, code) in EXPORT_STATUS_LABEL" :key="code" :value="code">
+                {{ label }}
+              </a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="类型">
+            <a-select
+              v-model:value="typeFilter"
+              placeholder="全部类型"
+              style="width: 160px"
+              allow-clear
+            >
+              <a-select-option v-for="(label, code) in EXPORT_TYPE_LABEL" :key="code" :value="code">
+                {{ label }}
+              </a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <span class="op-link" role="button" @click="handleTaskFilterReset">重置</span>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         :columns="columns"
         :data-source="filteredTasks"
         :loading="loading"
@@ -131,24 +139,31 @@
             }}</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton
+            <div class="operations-cell" @click.stop>
+              <span
                 v-if="canDownloadExportTask(filteredTasks[index])"
-                size="sm"
-                :loading="downloadingId === filteredTasks[index].taskId"
-                @click="handleDownload(filteredTasks[index])"
+                class="op-link primary"
+                :class="{ 'is-disabled': downloadingId === filteredTasks[index].taskId }"
+                role="button"
+                @click="
+                  downloadingId !== filteredTasks[index].taskId
+                    && handleDownload(filteredTasks[index])
+                "
               >
-                <template #icon><DownloadOutlined /></template>
                 下载
-              </UiButton>
-              <UiButton size="sm" variant="outline" @click="openDetailDrawer(filteredTasks[index])">
+              </span>
+              <span
+                class="op-link"
+                role="button"
+                @click="openDetailDrawer(filteredTasks[index])"
+              >
                 详情
-              </UiButton>
-            </a-space>
+              </span>
+            </div>
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </a-card>
   </StageWorkbenchShell>
 
   <!-- 创建导出任务 Modal -->
@@ -223,7 +238,8 @@
     width="540"
     :destroy-on-close="true"
   >
-    <a-descriptions v-if="detailTask" :column="1" bordered size="small">
+    <a-spin :spinning="detailLoading" tip="加载任务详情…">
+      <a-descriptions v-if="detailTask" :column="1" bordered size="small">
       <a-descriptions-item label="当前考试">{{ formatTaskExam(detailTask) }}</a-descriptions-item>
       <a-descriptions-item label="类型">
         {{ exportTypeLabel(detailTask.exportType) }}
@@ -270,6 +286,14 @@
         <span v-else class="hint-text">{{ exportTaskProcessingText(detailTask) }}</span>
       </a-descriptions-item>
     </a-descriptions>
+    <UiErrorRetryPanel
+      v-if="detailError"
+      :error="detailError"
+      title="任务详情加载失败"
+      compact
+      @retry="retryLoadDetail"
+    />
+    </a-spin>
   </a-drawer>
 </template>
 
@@ -288,7 +312,6 @@ import type {
 } from '@/apis/mark/exam-export'
 import type { BadgeTone } from '@/components/ui-guide/ui'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -301,6 +324,7 @@ import {
   EXPORT_STATUS_LABEL,
   EXPORT_STATUS_TONE,
   EXPORT_TYPE_LABEL,
+  getExportTask,
   listExportTasks,
 } from '@/apis/mark/exam-export'
 import {
@@ -312,11 +336,11 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamExportTasks' })
@@ -360,6 +384,11 @@ const filteredTasks = computed(() =>
       && (!typeFilter.value || t.exportType === typeFilter.value),
   ),
 )
+
+function handleTaskFilterReset() {
+  statusFilter.value = undefined
+  typeFilter.value = undefined
+}
 
 const counts = computed(() => ({
   total: tasks.value.length,
@@ -477,7 +506,7 @@ async function loadTasks(): Promise<void> {
     tasks.value = readPageList(page, '导出任务加载失败，请稍后重试')
     taskPagination.pageNum = page.pageNum
     taskPagination.pageSize = page.pageSize
-    taskPagination.total = Number(page.total)
+    taskPagination.total = readPageTotal(page, '导出任务加载失败，请稍后重试')
   } catch (error) {
     tasksLoadError.value = toUserError(error, '导出任务加载失败')
     showUserError(error, '导出任务加载失败')
@@ -606,10 +635,44 @@ async function handleCreate(): Promise<void> {
 
 const detailDrawerOpen = ref(false)
 const detailTask = ref<ExportTaskVO | null>(null)
+const detailLoading = ref(false)
+const detailError = ref<Error | null>(null)
+/** 当前正在获取详情的任务 ID，用于关闭后重开另一条时覆盖 */
+let pendingDetailTaskId: string | null = null
 
-function openDetailDrawer(record: ExportTaskVO): void {
-  detailTask.value = record
+async function openDetailDrawer(record: ExportTaskVO): Promise<void> {
+  detailTask.value = null
+  detailError.value = null
   detailDrawerOpen.value = true
+  pendingDetailTaskId = record.taskId
+
+  detailLoading.value = true
+  try {
+    const fresh = await getExportTask({ taskId: record.taskId })
+    // 抽屉关闭或已切换到另一条任务时丢弃过期响应
+    if (pendingDetailTaskId !== record.taskId) {
+      return
+    }
+    detailTask.value = fresh
+  } catch (error) {
+    if (pendingDetailTaskId !== record.taskId) {
+      return
+    }
+    detailError.value = toUserError(error, '任务详情加载失败')
+    // 后端不可用时回退到列表缓存数据，避免用户完全看不到内容
+    detailTask.value = record
+  } finally {
+    if (pendingDetailTaskId === record.taskId) {
+      detailLoading.value = false
+    }
+  }
+}
+
+function retryLoadDetail(): void {
+  if (!pendingDetailTaskId) return
+  const record = tasks.value.find((t) => t.taskId === pendingDetailTaskId)
+  if (!record) return
+  void openDetailDrawer(record)
 }
 
 function formatTaskExam(task: ExportTaskVO): string {
@@ -683,28 +746,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .export-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }

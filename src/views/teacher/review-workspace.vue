@@ -1,10 +1,9 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="review-workspace__context">
-        <div class="review-workspace__context-info">
-          <UiButton variant="ghost" size="sm" @click="goBack"> 返回 </UiButton>
-          <h2 class="review-workspace__title">阅卷交付 - 沉浸式批阅工作区</h2>
+      <ContextBar>
+        <template #status>
+          <UiButton variant="outline" size="sm" @click="goBack">返回</UiButton>
           <UiTag v-if="detail?.paperDisplay" tone="gray" size="sm">
             {{ detail.paperDisplay.primaryText }}
           </UiTag>
@@ -17,8 +16,8 @@
           <UiTag v-if="queueTotal > 0" tone="purple" size="sm">
             同题进度 {{ currentQueueIndex }} / {{ queueTotal }}
           </UiTag>
-        </div>
-        <div class="review-workspace__context-actions">
+        </template>
+        <template #actions>
           <UiButton
             variant="outline"
             size="sm"
@@ -28,13 +27,13 @@
           >
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
       v-if="!examId || !taskId"
-      description="未找到本次批阅任务，请从任务列表重新进入"
+      description="未找到本次复核任务，请从教师复核列表重新进入"
       class="review-workspace__empty"
     />
 
@@ -43,27 +42,18 @@
       v-else-if="taskLoadError"
       :error="taskLoadError"
       title="复核任务详情加载失败"
-      helper="请从批阅任务列表重新进入后重试"
+      helper="请从教师复核列表重新进入后重试"
       @retry="loadTask"
     />
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
-      <UiStatPanel
-        v-if="detail"
-        :items="statMetrics"
-        :columns="3"
-        variant="grid"
-        compact
-        class="review-workspace__signals"
-      />
-
-      <!-- B-7 流水线进度：当前任务在同题队列中的位次 -->
+      <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
       <div v-if="queueTotal > 0" class="review-workspace__queue-progress">
         <div class="review-workspace__queue-progress-meta">
-          <span class="review-workspace__queue-progress-title">本题批阅流水线</span>
+          <span class="review-workspace__queue-progress-title">本题复核流水线</span>
           <span class="review-workspace__queue-progress-text">
             当前第 {{ currentQueueIndex }} 份，剩余
-            {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待批
+            {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
           </span>
         </div>
         <a-progress
@@ -72,29 +62,56 @@
           size="small"
           :status="queueProgressPercent >= 100 ? 'success' : 'active'"
         />
+        <!-- P2-2: 快速跳转到指定份数 -->
+        <a-space class="review-workspace__queue-jump" size="small">
+          <span class="review-workspace__jump-label">跳转到第</span>
+          <a-input-number
+            :value="jumpTarget ?? undefined"
+            :min="1"
+            :max="queueTotal"
+            size="small"
+            style="width: 80px"
+            @update:value="(value) => { jumpTarget = typeof value === 'number' ? value : null }"
+            @keydown.enter="handleQueueJump"
+          />
+          <span class="review-workspace__jump-label">份</span>
+          <UiButton size="sm" :disabled="!jumpTarget" @click="handleQueueJump">跳转</UiButton>
+        </a-space>
       </div>
       <UiAlertStrip
         v-if="queueLoadError"
         tone="error"
-        title="同题流水线加载失败"
+        title="同题复核流水线加载失败"
         :description="queueLoadError"
         dense
         class="review-workspace__alert"
       />
 
       <a-row v-if="detail" :gutter="16" class="review-workspace__row">
-        <!-- 左：切片图 + 识别答案 + AI 复评说明 -->
+        <!-- 左：切片图 + 识别答案 + 标准答案 + AI 复评说明 -->
         <a-col :xs="24" :lg="16">
+          <!-- FIX-3: 题目题干 -->
+          <UiCard v-if="detail?.questionStem" class="review-workspace__card">
+            <template #title>
+              <FileTextOutlined />
+              <span>题目题干 · 第 {{ detail.questionNo }} 题 · 满分 {{ detail.fullScore }}</span>
+            </template>
+            <a-typography-paragraph :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }">
+              {{ detail.questionStem }}
+            </a-typography-paragraph>
+          </UiCard>
+
           <UiCard class="review-workspace__card">
             <template #title>
               <FileImageOutlined />
               <span>阅卷影像</span>
             </template>
-            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage" description="该题目暂无阅卷影像" />
+            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage && !detail?.masterPaperPage?.fileId" description="该题目暂无阅卷影像" />
             <MarkingScanMaterialPanel
               v-else
               :slice-file-id="detail?.sliceFileId"
               :source-scan-page="detail?.sourceScanPage"
+              :master-paper-page="detail?.masterPaperPage"
             />
           </UiCard>
 
@@ -105,6 +122,28 @@
             </template>
             <UiEmpty v-if="!detail?.recognizedAnswer" description="尚未产生识别答案" />
             <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
+          </UiCard>
+
+          <!-- FIX-3: 标准答案对照 -->
+          <UiCard v-if="detail?.standardAnswer" class="review-workspace__card review-workspace__card--standard">
+            <template #title>
+              <CheckCircleOutlined />
+              <span>标准答案</span>
+              <UiTag v-if="detail.comparePolicy" tone="blue" size="sm">
+                {{ comparePolicyLabel(detail.comparePolicy) }}
+              </UiTag>
+            </template>
+            <div class="review-workspace__text-block review-workspace__standard-answer">
+              {{ detail.standardAnswer }}
+            </div>
+            <UiAlertStrip
+              v-if="detail.evaluationCriteria"
+              tone="info"
+              title="评分细则"
+              :description="detail.evaluationCriteria"
+              dense
+              class="review-workspace__criteria-alert"
+            />
           </UiCard>
 
           <UiCard class="review-workspace__card">
@@ -157,9 +196,18 @@
                 size="sm"
                 variant="primary"
                 :disabled="!canAdoptAiSuggestion"
+                :loading="submitting"
+                @click="adoptAiSuggestionAndSubmit"
+              >
+                采纳评分并提交
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                :disabled="!canAdoptAiSuggestion"
                 @click="adoptAiSuggestion"
               >
-                {{ adoptAiScoreButtonText }}
+                填入表单（微调）
               </UiButton>
               <UiButton
                 size="sm"
@@ -169,13 +217,10 @@
               >
                 清空 AI 评分改人工
               </UiButton>
-              <span class="review-workspace__ai-actions-hint">
-                采纳后表单会填入 AI 评分；教师复核评分仍需点击提交批改才写入。
-              </span>
             </div>
           </UiCard>
 
-          <!-- AI 历次执行记录抽屉：教师异议决策时提供完整审计证据 -->
+          <!-- AI 历次执行记录抽屉：教师复核异议决策时提供完整审计证据 -->
           <a-drawer
             v-model:open="executionsDrawerOpen"
             title="本题 AI 历次执行记录"
@@ -239,62 +284,9 @@
             </a-spin>
           </a-drawer>
 
-          <!-- B-1 题目质量参考：注入题目难度/区分度/分布，辅助评分尺度 -->
-          <UiCard class="review-workspace__card">
-            <template #title>
-              <BarChartOutlined />
-              <span>题目质量参考</span>
-              <UiBadge v-if="difficultyBadge" :tone="difficultyBadge.tone">
-                {{ difficultyBadge.label }}
-              </UiBadge>
-              <UiBadge v-if="discriminationBadge" :tone="discriminationBadge.tone">
-                {{ discriminationBadge.label }}
-              </UiBadge>
-            </template>
-            <a-spin :spinning="analysisLoading">
-              <UiAlertStrip
-                v-if="analysisLoadError"
-                tone="error"
-                title="题目质量参考加载失败"
-                :description="analysisLoadError"
-                dense
-              />
-              <UiEmpty
-                v-else-if="!analysisLoading && !questionAnalysis"
-                description="尚未生成本题质量分析"
-              />
-              <a-descriptions
-                v-else-if="questionAnalysis"
-                :column="{ xs: 1, sm: 2, md: 3 }"
-                size="small"
-                bordered
-              >
-                <a-descriptions-item label="已批人数">
-                  {{ questionAnalysis.totalCount }}
-                </a-descriptions-item>
-                <a-descriptions-item label="均分">
-                  {{ formatNum(questionAnalysis.avgScore) }}
-                  <span class="review-workspace__hint">/ {{ questionAnalysis.fullScore }}</span>
-                </a-descriptions-item>
-                <a-descriptions-item label="标准差">
-                  {{ formatNum(questionAnalysis.scoreStddev) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="难度系数">
-                  {{ formatNum(questionAnalysis.difficultyIndex) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="区分度">
-                  {{ formatNum(questionAnalysis.discriminationIndex) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="满分 / 零分">
-                  {{ questionAnalysis.fullScoreCount ?? 0 }} /
-                  {{ questionAnalysis.zeroScoreCount ?? 0 }}
-                </a-descriptions-item>
-              </a-descriptions>
-            </a-spin>
-          </UiCard>
         </a-col>
 
-        <!-- 右：教师打分 + 批注列表 -->
+        <!-- 右：教师复核给分 + 批注列表 -->
         <a-col :xs="24" :lg="8">
           <UiCard class="review-workspace__card">
             <template #title>
@@ -318,6 +310,13 @@
                   class="review-workspace__score-input"
                 />
                 <div class="review-workspace__hint">满分 {{ detail.fullScore }} 分</div>
+                <!-- FIX-10: 快捷给分按钮 -->
+                <a-space size="small" class="review-workspace__quick-scores">
+                  <UiButton size="sm" variant="outline" :disabled="!canConfirm" @click="setQuickScore(detail.fullScore)">满分</UiButton>
+                  <UiButton size="sm" variant="outline" :disabled="!canConfirm" @click="setQuickScore(Math.round(detail.fullScore / 2 * 10) / 10)">半分</UiButton>
+                  <UiButton size="sm" variant="outline" :disabled="!canConfirm" @click="setQuickScore(0)">零分</UiButton>
+                  <UiButton v-if="detail?.aiScore != null" size="sm" variant="outline" :disabled="!canConfirm" @click="setQuickScore(detail.aiScore)">填入 AI 分</UiButton>
+                </a-space>
               </a-form-item>
               <a-form-item label="评语（面向学生）" name="commentText">
                 <a-textarea
@@ -344,7 +343,6 @@
             <template #title>
               <CommentOutlined />
               <span>批注历史</span>
-              <UiBadge tone="blue">{{ annotations.length }}</UiBadge>
             </template>
             <UiEmpty v-if="annotations.length === 0" description="尚无批注记录" />
             <a-list v-else :data-source="annotations" size="small">
@@ -368,7 +366,7 @@
       </a-row>
     </a-spin>
 
-    <!-- 底部 sticky 操作条（流水线批阅主入口） -->
+    <!-- 底部 sticky 操作条（流水线教师复核主入口） -->
     <footer v-if="detail" class="review-workspace__sticky">
       <div class="review-workspace__sticky-left">
         <span class="review-workspace__hint">
@@ -424,9 +422,8 @@ import type {
   ReviewTaskItemVO,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam'
-import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
@@ -452,28 +449,26 @@ import {
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam'
-import { listQuestionAnalysis } from '@/apis/mark/question-analysis'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import {
   UiAlertStrip,
-  UiBadge,
   UiButton,
   UiCard,
   UiEmpty,
   UiErrorRetryPanel,
-  UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewWorkspace' })
 
-type ToneCode = 'gray' | 'blue' | 'green' | 'orange' | 'red' | 'purple'
+const REVIEW_WORKSPACE_PAGE_SIZE = 100
 
 function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_TASK_STATUS_TONE, value, '复核任务状态')
@@ -481,6 +476,20 @@ function reviewStatusTone(value: ReviewTaskStatusCode): BadgeTone {
 
 function reviewStatusLabel(value: ReviewTaskStatusCode): string {
   return strictEnumLabel(REVIEW_TASK_STATUS_LABEL, value, '复核任务状态')
+}
+
+/** FIX-5: 客观题比对策略文案映射 */
+const COMPARE_POLICY_LABEL: Record<string, string> = {
+  EXACT: '严格全等',
+  CASE_INSENSITIVE: '忽略大小写',
+  IGNORE_WHITESPACE: '忽略空白符',
+  CHOICE_SET: '无序选项集合',
+  NUMERIC: '数值容差',
+  REGEX: '正则表达式',
+}
+
+function comparePolicyLabel(code: string): string {
+  return COMPARE_POLICY_LABEL[code] ?? code
 }
 
 const route = useRoute()
@@ -493,18 +502,18 @@ function goBack(): void {
   if (window.history.length > 1) {
     router.back()
   } else {
-    void router.push({ name: 'TeacherMarkingOverview' })
+    void router.push({ name: 'TeacherExamList' })
   }
 }
 
-// ─── 任务详情 ─────────────────────────────
+// ─── 复核任务详情 ──────────────────────────
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
 const taskLoadError = ref<Error | null>(null)
 
 const canSubmit = computed(() => !!examId.value && !!taskId.value)
 
-/** 当前任务是否允许提交批改（PENDING / IN_PROGRESS） */
+/** 当前任务是否允许提交复核（PENDING / IN_PROGRESS） */
 const canConfirm = computed(() => {
   const status = detail.value?.status
   return status === 'PENDING' || status === 'IN_PROGRESS'
@@ -515,28 +524,31 @@ const annotations = ref<AnnotationVO[]>([])
 
 async function loadAnnotations(): Promise<void> {
   if (!examId.value || !detail.value) return
+  const currentExamId = examId.value
+  const { paperInstanceId, questionTemplateId, gradeResultId } = detail.value
   try {
-    const page = await listAnnotations({
-      examId: examId.value,
-      paperInstanceId: detail.value.paperInstanceId,
-      questionTemplateId: detail.value.questionTemplateId,
-      gradeResultId: detail.value.gradeResultId,
-      pageNum: 1,
-      pageSize: 200,
-    })
-    annotations.value = page.list
+    annotations.value = await readAllPages(
+      (pageNum) => listAnnotations({
+        examId: currentExamId,
+        paperInstanceId,
+        questionTemplateId,
+        gradeResultId,
+        pageNum,
+        pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
+      }),
+      '批注记录加载失败，请刷新后重试',
+    )
   } catch (error) {
     showUserError(error, '批注记录加载失败')
   }
 }
 
-// ─── B-7 同题剩余任务队列（用于「提交并取下一份」流水线接力） ────────
+// ─── B-7 同题剩余复核任务队列（用于「提交并取下一份」流水线接力） ─────
 const reviewQueue = ref<ReviewTaskItemVO[]>([])
-const queueLoading = ref(false)
 const queueLoadError = ref('')
 
 /**
- * 加载当前考试 + 当前题目下仍可批阅的任务集合（PENDING + IN_PROGRESS）。
+ * 加载当前考试 + 当前题目下仍可复核的任务集合（PENDING + IN_PROGRESS）。
  * 当前任务自身会包含在内，用于精确计算「我在第几份 / 共几份」。
  */
 async function loadReviewQueue(): Promise<void> {
@@ -544,44 +556,49 @@ async function loadReviewQueue(): Promise<void> {
     reviewQueue.value = []
     return
   }
-  queueLoading.value = true
+  const currentExamId = examId.value
+  const { questionTemplateId } = detail.value
   queueLoadError.value = ''
   try {
-    // 后端 ReviewTaskQueryRequest.status 可选；同题下分别拉 PENDING / IN_PROGRESS 后合并去重
-    const [pendingPage, inProgressPage] = await Promise.all([
-      listReviewTasks({
-        examId: examId.value,
-        questionTemplateId: detail.value.questionTemplateId,
-        status: 'PENDING',
-        pageNum: 1,
-        pageSize: 200,
-      }),
-      listReviewTasks({
-        examId: examId.value,
-        questionTemplateId: detail.value.questionTemplateId,
-        status: 'IN_PROGRESS',
-        pageNum: 1,
-        pageSize: 200,
-      }),
+    // 后端 ReviewTaskQueryRequest.status 可选；同题下分别拉 PENDING / IN_PROGRESS 后合并去重。
+    const [pendingItems, inProgressItems] = await Promise.all([
+      readAllPages(
+        (pageNum) => listReviewTasks({
+          examId: currentExamId,
+          questionTemplateId,
+          status: 'PENDING',
+          pageNum,
+          pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
+        }),
+        '同题复核队列加载失败，请刷新后重试',
+      ),
+      readAllPages(
+        (pageNum) => listReviewTasks({
+          examId: currentExamId,
+          questionTemplateId,
+          status: 'IN_PROGRESS',
+          pageNum,
+          pageSize: REVIEW_WORKSPACE_PAGE_SIZE,
+        }),
+        '同题复核队列加载失败，请刷新后重试',
+      ),
     ])
     const merged = new Map<string, ReviewTaskItemVO>()
-    for (const item of [...pendingPage.list, ...inProgressPage.list]) {
+    for (const item of [...pendingItems, ...inProgressItems]) {
       merged.set(item.reviewTaskId, item)
     }
     reviewQueue.value = Array.from(merged.values())
   } catch (error) {
     queueLoadError.value = getUserErrorMessage(
       error,
-      '同题批阅队列加载失败，提交并取下一份暂不可用。',
+      '同题复核队列加载失败，提交并取下一份暂不可用。',
     )
     reviewQueue.value = []
-  } finally {
-    queueLoading.value = false
   }
 }
 
 /**
- * 当前任务在同题队列中的 1-based 位次，找不到时回退为 1（流水线尚未刷新到当前任务）。
+ * 当前任务在同题复核队列中的 1-based 位次，找不到时回退为 1（流水线尚未刷新到当前任务）。
  */
 const currentQueueIndex = computed<number>(() => {
   if (!detail.value || reviewQueue.value.length === 0) return 0
@@ -592,66 +609,35 @@ const currentQueueIndex = computed<number>(() => {
 const queueTotal = computed<number>(() => reviewQueue.value.length)
 
 /**
- * 流水线进度百分比（0-100）。
+ * 复核流水线进度百分比（0-100）。
  * 当前任务一旦提交（APPROVED/REJECTED）会从队列中消失，下次刷新位次自然推进。
  */
 const queueProgressPercent = computed<number>(() => {
   if (queueTotal.value === 0) return 0
-  // 当前任务尚在队列内意味着尚未完成；以"已完成 = total - 剩余"计算更直观
   const remaining = queueTotal.value
   const completedInWindow = Math.max(0, currentQueueIndex.value - 1)
   return Math.min(100, Math.round((completedInWindow / Math.max(remaining, 1)) * 100))
 })
 
-// ─── B-1 题目质量参考（注入批改决策环节） ────────────────────────
-const questionAnalysis = ref<ExamQuestionAnalysisRecordVO | null>(null)
-const analysisLoading = ref(false)
-const analysisLoadError = ref('')
+/** P2-2: 队列快速跳转 */
+const jumpTarget = ref<number | null>(null)
 
-/**
- * 加载当前题目的质量分析快照（难度/区分度/均分/分布）。
- * 教师批改时实时参考该题在全场的统计特征，避免评分尺度偏离均值。
- * 数据由教师在「成绩统计」页面通过 generateAllQuestionAnalysis 生成。
- */
-async function loadQuestionAnalysis(): Promise<void> {
-  if (!examId.value || !detail.value?.questionTemplateId) {
-    questionAnalysis.value = null
+function handleQueueJump(): void {
+  if (!jumpTarget.value || reviewQueue.value.length === 0) return
+  const idx = jumpTarget.value
+  if (idx < 1 || idx > reviewQueue.value.length) {
+    message.warning(`请输入 1～${reviewQueue.value.length} 之间的编号`)
     return
   }
-  analysisLoading.value = true
-  analysisLoadError.value = ''
-  try {
-    const list = await listQuestionAnalysis({
-      examId: examId.value,
-      questionTemplateId: detail.value.questionTemplateId,
+  const targetTask = reviewQueue.value[idx - 1]
+  if (targetTask) {
+    void router.replace({
+      name: 'TeacherReviewTaskDetail',
+      params: { taskId: targetTask.reviewTaskId },
+      query: { examId: examId.value },
     })
-    // 后端按 questionTemplateId 过滤返回最多一条；取第一条作为当前题快照
-    questionAnalysis.value = list[0] ?? null
-  } catch (error) {
-    analysisLoadError.value = getUserErrorMessage(error, '题目质量参考加载失败')
-    questionAnalysis.value = null
-  } finally {
-    analysisLoading.value = false
   }
 }
-
-/** 难度系数文案 + 色调（难度区间参照教育测量学经验阈值） */
-const difficultyBadge = computed<{ label: string, tone: ToneCode } | null>(() => {
-  const v = questionAnalysis.value?.difficultyIndex
-  if (v == null) return null
-  if (v < 0.3) return { label: '偏难', tone: 'red' }
-  if (v > 0.8) return { label: '偏易', tone: 'orange' }
-  return { label: '适中', tone: 'green' }
-})
-
-/** 区分度文案 + 色调（区分度 < 0.2 视为不足） */
-const discriminationBadge = computed<{ label: string, tone: ToneCode } | null>(() => {
-  const v = questionAnalysis.value?.discriminationIndex
-  if (v == null) return null
-  if (v < 0.2) return { label: '区分度不足', tone: 'red' }
-  if (v < 0.4) return { label: '一般', tone: 'orange' }
-  return { label: '良好', tone: 'green' }
-})
 
 // ─── 加载主流程 ───────────────────────────
 async function loadTask(): Promise<void> {
@@ -665,7 +651,7 @@ async function loadTask(): Promise<void> {
     })
     validateReviewTaskDetailContract(taskDetail)
     detail.value = taskDetail
-    await Promise.all([loadAnnotations(), loadQuestionAnalysis(), loadReviewQueue()])
+    await Promise.all([loadAnnotations(), loadReviewQueue()])
     // 默认填充 AI 评分（仅当表单空时；避免覆盖教师正在编辑的值）
     if (
       gradeForm.teacherReviewScore === undefined
@@ -675,18 +661,23 @@ async function loadTask(): Promise<void> {
       gradeForm.teacherReviewScore = detail.value.aiScore
     }
   } catch (error) {
-    taskLoadError.value = toUserError(error, '复核工作台任务加载失败')
-    showUserError(error, '阅卷任务详情加载失败')
+    taskLoadError.value = toUserError(error, '教师复核工作台任务加载失败')
+    showUserError(error, '教师复核任务详情加载失败')
   } finally {
     loading.value = false
   }
 }
 
-/** 清空打分表单（流水线切换到下份任务前必须调用，避免上份分数残留） */
+/** 清空打分表单（流水线切换到下份复核任务前必须调用，避免上份分数残留） */
 function resetGradeForm(): void {
   gradeForm.teacherReviewScore = undefined
   gradeForm.commentText = ''
   gradeForm.annotationText = ''
+}
+
+/** FIX-10: 快捷给分按钮 */
+function setQuickScore(score: number): void {
+  gradeForm.teacherReviewScore = score
 }
 
 // ─── 打分表单 ─────────────────────────────
@@ -730,7 +721,7 @@ const rescoring = ref(false)
 
 /** 复评可用不可用的原因，用于异议阶段以外状态提示教师 */
 const rescoreBlockReason = computed<string>(() => {
-  if (!detail.value) return '复核任务尚未载入题目批改结果'
+  if (!detail.value) return '复核任务尚未载入题目复核结果'
   if (detail.value.status === 'APPROVED' || detail.value.status === 'REJECTED') {
     return '任务已关闭，禁止重新生成 AI 复评'
   }
@@ -748,7 +739,7 @@ const canRescoreByAi = computed<boolean>(() => {
 /**
  * 二次确认 → 调用 rescoreQuestionByAi → 成功后 loadTask 刷新详情。
  * 后端只会重写 AI 评分 / aiTraceId / aiDiagnostic / aiLimited 等辅助字段，
- * gradeStatus 保持 NEED_REVIEW、teacherReviewScore 置空；教师复核评分仍需教师确认入口写入。
+ * gradeStatus 保持 NEED_REVIEW、teacherReviewScore 置空；教师复核评分仍需教师提交复核入口写入。
  */
 function openRescoreConfirm(): void {
   if (!canRescoreByAi.value) return
@@ -807,7 +798,7 @@ const currentAiSourceTone = computed<BadgeTone>(() => {
 function executionDiagnosticText(diagnostic?: string): string {
   return getUserErrorMessage(
     { message: diagnostic },
-    'AI 复评暂未生成可采纳评分，请按题目评分细则继续人工批阅',
+    'AI 复评暂未生成可采纳评分，请按题目评分细则继续人工复核',
   )
 }
 
@@ -830,7 +821,24 @@ function adoptAiSuggestion(): void {
   if (aiScore == null) return
   gradeForm.teacherReviewScore = aiScore
   void gradeFormRef.value?.validateFields(['teacherReviewScore'])
-  message.success(`已采纳 AI 评分 ${aiScore}，请点击提交批改完成确认`)
+  message.success(`已填入 AI 评分 ${aiScore}，可微调后提交`)
+}
+
+/** 采纳当前 AI 评分并立即提交教师复核结论，成功后进入下一份流水线。 */
+async function adoptAiSuggestionAndSubmit(): Promise<void> {
+  if (!canAdoptAiSuggestion.value) return
+  const aiScore = detail.value?.aiScore
+  if (aiScore == null) return
+  gradeForm.teacherReviewScore = aiScore
+  try {
+    await gradeFormRef.value?.validate()
+  } catch {
+    return
+  }
+  const ok = await submitGrade()
+  if (!ok) return
+  message.success('已采纳 AI 评分并提交，正在为你取下一份…')
+  await takeNextTask()
 }
 
 /** 清空 AI 评分转人工评分，仅重置表单不会反向写库 */
@@ -936,15 +944,15 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
     = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
-  // 取下一份模式下额外提示队列剩余信息，让教师清楚批阅会继续
+  // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续
   const remaining = Math.max(0, queueTotal.value - 1)
   const tailHint = advanceToNext
     ? remaining > 0
-      ? `提交后将自动取同题剩余 ${remaining} 份中的下一份继续批阅。`
+      ? `提交后将自动取同题剩余 ${remaining} 份中的下一份继续复核。`
       : '提交后同题剩余任务为 0，将自动返回。'
     : '提交后任务将被关闭，不可撤销。'
   void confirmAsync({
-    title: advanceToNext ? '确认提交并继续下一份？' : '确认提交该题批改？',
+    title: advanceToNext ? '确认提交并继续下一份复核？' : '确认提交该题复核？',
     content: `教师复核评分：${teacherReviewScore} / ${fullScore}（${ratio}）。${tailHint}`,
     type: 'info',
     okText: advanceToNext ? '提交并取下一份' : '确认提交',
@@ -953,7 +961,7 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   })
 }
 
-/** 提交核心：仅提交给分，成功返回 true；失败已 message.error 并返回 false */
+/** 提交核心：仅提交教师复核给分，成功返回 true；失败已提示并返回 false */
 async function submitGrade(): Promise<boolean> {
   if (!examId.value || !detail.value) return false
   submitting.value = true
@@ -967,7 +975,7 @@ async function submitGrade(): Promise<boolean> {
     })
     return true
   } catch (error) {
-    showUserError(error, '确认批改失败')
+    showUserError(error, '确认复核失败')
     return false
   } finally {
     submitting.value = false
@@ -1008,7 +1016,7 @@ async function handleReject(): Promise<void> {
 async function handleSubmit(): Promise<void> {
   const ok = await submitGrade()
   if (!ok) return
-  message.success('题目批改已确认并关闭任务')
+  message.success('题目复核已确认并关闭任务')
   await loadTask()
 }
 
@@ -1021,8 +1029,8 @@ async function handleSubmitAndNext(): Promise<void> {
 }
 
 /**
- * 从同题队列中挑选下一份 PENDING 任务领取并跳转。
- * 找不到下一份时返回阅卷概览页，提示教师本题批阅已完成。
+ * 从同题复核队列中挑选下一份 PENDING 任务领取并跳转。
+ * 找不到下一份时返回考试工作台，提示教师本题复核已完成。
  */
 async function takeNextTask(): Promise<void> {
   if (!examId.value) return
@@ -1036,8 +1044,8 @@ async function takeNextTask(): Promise<void> {
         && (item.status === 'PENDING' || item.status === 'IN_PROGRESS'),
     )
     if (!candidate) {
-      message.success('同题剩余任务批阅完毕，返回阅卷概览')
-      void router.push({ name: 'TeacherMarkingOverview', query: { examId: examId.value } })
+      message.success('同题剩余任务复核完毕，返回考试工作台')
+      void router.push({ name: 'TeacherExamList', query: { examId: examId.value } })
       return
     }
     // 领取下一份；后端会把状态推进到处理中并绑定到当前教师
@@ -1056,44 +1064,10 @@ async function takeNextTask(): Promise<void> {
     })
     // watch(examId, taskId) 会自动触发 loadTask，无需手动调用
   } catch (error) {
-    showUserError(error, '取下一份阅卷任务失败')
+    showUserError(error, '取下一份复核任务失败')
   }
 }
 
-const statMetrics = computed(() => {
-  const d = detail.value
-  if (!d) return []
-  return [
-    { label: '题号', value: d.questionNo, tone: 'blue' as const },
-    { label: '满分', value: d.fullScore, unit: '分', tone: 'gray' as const },
-    {
-      label: 'AI 评分',
-      value: d.aiScore ?? 'AI 尚未给分',
-      unit: d.aiScore != null ? '分' : '',
-      tone: (d.aiScore != null ? 'purple' : 'gray') as 'purple' | 'gray',
-    },
-    {
-      label: '教师复核评分',
-      value: gradeForm.teacherReviewScore ?? '尚未填写',
-      unit: gradeForm.teacherReviewScore != null ? '分' : '',
-      tone: (gradeForm.teacherReviewScore != null ? 'green' : 'orange') as 'green' | 'orange',
-    },
-    {
-      label: '批注记录',
-      value: annotations.value.length,
-      unit: '条',
-      tone: (annotations.value.length > 0 ? 'blue' : 'gray') as 'blue' | 'gray',
-    },
-    { label: '状态', value: reviewStatusLabel(d.status), tone: reviewStatusTone(d.status) },
-  ]
-})
-
-// ─── 辅助函数 ─────────────────────────────
-/** 题目质量参考卡片用：null/undefined 显示 -，其余保留两位小数 */
-function formatNum(value: number | null | undefined): string {
-  if (value == null) return '-'
-  return value.toFixed(2)
-}
 // ─── 生命周期 ─────────────────────────────
 watch(
   () => [examId.value, taskId.value],
@@ -1113,37 +1087,6 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .review-workspace {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 280px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__signals {
     margin-bottom: 12px;
     padding: 16px 20px;

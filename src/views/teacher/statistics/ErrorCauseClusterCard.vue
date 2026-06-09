@@ -10,6 +10,11 @@
     </template>
 
     <a-spin :spinning="loading">
+      <AiGenerationProgressPanel
+        v-if="generating"
+        title="AI 错因聚类分析生成中"
+        :waiting-text="props.classId ? '正在等待后端返回当前班级的真实错因聚类结果。' : '正在等待后端返回本场考试的真实错因聚类结果。'"
+      />
       <!-- D-9 错误态：AI 错因聚类加载失败时提供重试 + 上报入口 -->
       <UiErrorRetryPanel
         v-if="loadError"
@@ -122,10 +127,11 @@ import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildErrorCausePieOption } from '@/utils/mark-statistics-chart'
+import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number; classId?: string }>()
 
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)
@@ -146,6 +152,8 @@ function acceptErrorCauseClusterRecord(
   if (!value) return null
   const dataError = 'AI 错因聚类数据异常，请刷新后重试'
   assertUserFacing(value.examId === props.examId, dataError)
+  assertUserFacing(value.scopeType === (props.classId ? 'CLASS' : 'EXAM'), dataError)
+  assertUserFacing(props.classId ? value.scopeId === props.classId : !value.scopeId, dataError)
   assertUserFacing(Boolean(value.createTime?.trim()), dataError)
   if (value.analysisStatus === 'SUCCESS') {
     assertUserFacing(Boolean(value.aiTraceId?.trim()), dataError)
@@ -198,7 +206,7 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    const latest = await getLatestErrorCauseCluster(props.examId)
+    const latest = await getLatestErrorCauseCluster(props.examId, props.classId || undefined)
     record.value = acceptErrorCauseClusterRecord(latest)
   } catch (e) {
     record.value = null
@@ -213,7 +221,7 @@ async function handleGenerate(): Promise<void> {
   generating.value = true
   loadError.value = null
   try {
-    const generated = await generateErrorCauseCluster(props.examId)
+    const generated = await generateErrorCauseCluster(props.examId, props.classId || undefined)
     record.value = acceptErrorCauseClusterRecord(generated)
     message.success('已生成最新错因聚类')
   } catch (e) {
@@ -226,7 +234,7 @@ async function handleGenerate(): Promise<void> {
 }
 
 watch(
-  () => [props.examId, props.reloadToken],
+  () => [props.examId, props.reloadToken, props.classId],
   () => {
     if (props.examId) void reload()
   },

@@ -16,7 +16,6 @@ import type {
   WorkgroupMember,
   WorkgroupMemberRole,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -28,24 +27,12 @@ import {
 } from '@/apis/quality'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
-
-const filterFields: FilterField[] = [
-  { key: 'programId', label: '专业大类', type: 'custom', placeholder: '专业大类', width: 220 },
-  {
-    key: 'levelCode',
-    label: '层级',
-    type: 'select',
-    placeholder: '层级',
-    allowClear: true,
-    options: [],
-    width: 130,
-  },
-]
 
 interface EvaluationWorkgroupFilterModel {
   programId?: string
@@ -56,8 +43,6 @@ const filterModel = ref<EvaluationWorkgroupFilterModel>({
   programId: undefined,
   levelCode: undefined,
 })
-
-type SearchFieldUpdate = (value: string | WorkgroupLevel | undefined) => void
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'workgroupCode', key: 'workgroupCode', width: 140 },
@@ -121,8 +106,8 @@ async function loadList() {
   loading.value = true
   try {
     const page = await evaluationWorkgroupApi.page({ ...query })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '评价工作组加载失败，请稍后重试')
+    total.value = readPageTotal(page, '评价工作组加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -153,28 +138,20 @@ function handleResetSearch() {
   loadList()
 }
 
-function handleFilterProgramChange(value: string | null, update: SearchFieldUpdate) {
-  update(value ?? undefined)
-}
-
 function isWorkgroupLevel(value: string): value is WorkgroupLevel {
   return WORKGROUP_LEVEL_OPTIONS.some((item) => item.value === value)
 }
 
-function handleFilterLevelChange(value: SelectValue, update: SearchFieldUpdate) {
+function onFilterLevelChange(value: SelectValue): void {
   if (value === undefined || value === null) {
-    update(undefined)
+    filterModel.value.levelCode = undefined
     return
   }
   if (typeof value !== 'string' || !isWorkgroupLevel(value)) {
     showUserError(null, '工作组层级选择无效，请重新选择')
     return
   }
-  update(value)
-}
-
-function createFilterLevelChangeHandler(update: SearchFieldUpdate) {
-  return (value: SelectValue) => handleFilterLevelChange(value, update)
+  filterModel.value.levelCode = value
 }
 
 function openCreate() {
@@ -383,53 +360,42 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="ewg__context">
-        <div class="ewg__context-info">
-          <h2 class="ewg__title">校院两级评价工作组</h2>
-        </div>
-      </div>
-    </template>
-
     <SignalBand :metrics="signals" compact class="ewg__signals" />
 
-    <section class="ewg__panel">
-      <header class="ewg__panel-header">
-        <h3 class="ewg__panel-title">工作组台账</h3>
-        <div class="ewg__panel-actions">
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建工作组 </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card ewg__table-card">
+      <template #title>工作组台账</template>
 
-      <UiSearchForm
-        v-model="filterModel"
-        :fields="filterFields"
-        :show-labels="false"
-        class="ewg__search-form"
-        @search="handleSearch"
-        @reset="handleResetSearch"
-      >
-        <template #field-programId="{ value, update }">
-          <ProgramSelector
-            :value="typeof value === 'string' ? value : null"
-            placeholder="专业大类"
-            :width="200"
-            @change="handleFilterProgramChange($event, update)"
-          />
-        </template>
-        <template #field-levelCode="{ value, update }">
-          <a-select
-            :value="value"
-            placeholder="层级"
-            allow-clear
-            class="ewg__filter"
-            :options="levelOptions"
-            @update:value="createFilterLevelChangeHandler(update)"
-          />
-        </template>
-      </UiSearchForm>
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
+          <a-form-item label="专业大类">
+            <ProgramSelector
+              :value="filterModel.programId ?? null"
+              placeholder="专业大类"
+              :width="200"
+              @change="(value: string | null) => { filterModel.programId = value ?? undefined }"
+            />
+          </a-form-item>
+          <a-form-item label="层级">
+            <a-select
+              :value="filterModel.levelCode"
+              placeholder="层级"
+              allow-clear
+              style="width: 130px"
+              :options="levelOptions"
+              @update:value="onFilterLevelChange"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="handleSearch">查询</UiButton>
+              <span class="op-link" role="button" @click="handleResetSearch">重置</span>
+              <UiButton variant="primary" size="sm" @click="openCreate">新建工作组</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -461,23 +427,15 @@ onMounted(async () => {
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton variant="ghost" size="sm" @click="openMembersDrawer(record)">
-                成员
-              </UiButton>
-              <UiButton variant="ghost" size="sm" @click="openImportMembers(record)">
-                Excel 导入
-              </UiButton>
-              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
-                删除
-              </UiButton>
-            </a-space>
-          </template>
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openMembersDrawer(record)">成员</span>
+              <span class="op-link" role="button" @click="openImportMembers(record)">Excel 导入</span>
+              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <a-modal
       v-model:open="editorVisible"
@@ -544,15 +502,7 @@ onMounted(async () => {
                   />
                 </a-col>
                 <a-col :span="2" class="ewg__member-row-action">
-                  <UiButton
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    :disabled="editor.members.length === 1"
-                    @click="removeMember(index)"
-                  >
-                    删除
-                  </UiButton>
+                  <span class="op-link danger" role="button" :class="{ 'is-disabled': !(editor.members.length === 1) }" @click="editor.members.length === 1 && (removeMember(index))">删除</span>
                 </a-col>
               </a-row>
             </div>
@@ -588,7 +538,7 @@ onMounted(async () => {
       placement="right"
     >
       <a-empty v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-else
         :columns="memberColumns"
         :data-source="membersDrawerRows"
@@ -612,26 +562,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .ewg {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 240px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;

@@ -1,14 +1,14 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="appeal-page__context">
-        <div class="appeal-page__context-left">
+      <ContextBar>
+        <template #status>
           <UiTag tone="blue" size="sm">{{ appealableExams.length }} 场可申请</UiTag>
           <UiTag v-if="pendingRequestCount > 0" tone="orange" size="sm">
             待处理 {{ pendingRequestCount }}
           </UiTag>
-        </div>
-        <div class="appeal-page__context-right">
+        </template>
+        <template #actions>
           <UiButton
             variant="outline"
             size="sm"
@@ -22,8 +22,8 @@
             <template #icon><FormOutlined /></template>
             提交复核申请
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- 选择考试 -->
@@ -31,7 +31,6 @@
       <template #title>
         <CheckCircleOutlined />
         <span>选择待申诉的考试</span>
-        <UiBadge tone="blue">{{ appealableExams.length }} 场</UiBadge>
       </template>
 
       <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
@@ -81,39 +80,45 @@
     </UiCard>
 
     <!-- 我的复核申请 -->
-    <UiCard class="appeal-page__list-card">
+    <a-card :bordered="false" class="detail-table-card appeal-page__list-card">
       <template #title>
         <FileSearchOutlined />
         <span>我的复核申请</span>
-        <UiBadge tone="blue">{{ filteredRequests.length }} 条</UiBadge>
       </template>
-      <template #extra>
-        <a-space wrap>
-          <a-select
-            v-model:value="filterStatus"
-            placeholder="按状态筛选"
-            allow-clear
-            style="width: 160px"
-            :options="statusOptions"
-            @change="loadRequests"
-          />
-          <a-select
-            v-model:value="filterExamId"
-            placeholder="按考试筛选"
-            allow-clear
-            style="width: 220px"
-            :options="examFilterOptions"
-            option-filter-prop="label"
-            show-search
-          />
-          <UiButton size="sm" variant="outline" :loading="loadingRequests" @click="loadRequests">
-            <template #icon>
-              <ReloadOutlined />
-            </template>
-            刷新
-          </UiButton>
-        </a-space>
-      </template>
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadRequests">
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="filterStatus"
+              placeholder="全部状态"
+              allow-clear
+              style="width: 160px"
+              :options="statusOptions"
+            />
+          </a-form-item>
+          <a-form-item label="考试">
+            <a-select
+              v-model:value="filterExamId"
+              placeholder="全部考试"
+              allow-clear
+              style="width: 220px"
+              :options="examFilterOptions"
+              option-filter-prop="label"
+              show-search
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <span class="op-link" role="button" @click="handleRequestFilterReset">重置</span>
+              <UiButton size="sm" @click="loadRequests">查询</UiButton>
+              <UiButton size="sm" variant="outline" :loading="loadingRequests" @click="loadRequests">
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
       <!-- D-9 错误态：复核申请加载失败时提供重试入口 -->
       <UiErrorRetryPanel
@@ -136,7 +141,7 @@
         :loading="loadingRequests"
         row-key="id"
         size="middle"
-        class="requests-table"
+        class="requests-table student-detail-table__data-table"
         :page-size="10"
         :total="filteredRequests.length"
         flat
@@ -178,7 +183,7 @@
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </a-card>
 
     <!-- 提交复核弹窗 -->
     <a-modal
@@ -274,7 +279,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -428,6 +433,12 @@ async function reloadAll() {
   await loadRequests()
 }
 
+function handleRequestFilterReset() {
+  filterStatus.value = undefined
+  filterExamId.value = undefined
+  loadRequests()
+}
+
 function formatPublishedScore(exam: StudentExamItemVO): string {
   return (exam.finalScore as number).toFixed(2)
 }
@@ -560,34 +571,10 @@ async function loadSelectedExamQuestions(): Promise<void> {
 </script>
 
 <style lang="scss" scoped>
-.appeal-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
+.appeal-page__list-card {
+  :deep(.ant-card-body) {
+    padding-top: 0;
   }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .exam-pick-list {

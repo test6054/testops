@@ -48,6 +48,7 @@ import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -475,8 +476,8 @@ async function loadSources() {
   sourceLoading.value = true
   try {
     const page = await externalDataSourceApi.page(sourceQuery)
-    sources.value = page.list
-    sourceTotal.value = Number(page.total)
+    sources.value = readPageList(page, '外部数据源加载失败，请稍后重试')
+    sourceTotal.value = readPageTotal(page, '外部数据源加载失败，请稍后重试')
   } finally {
     sourceLoading.value = false
   }
@@ -491,8 +492,8 @@ async function loadTasks() {
       status: taskQuery.status || undefined,
       businessAnchor: taskQuery.businessAnchor?.trim() || undefined,
     })
-    tasks.value = page.list
-    taskTotal.value = Number(page.total)
+    tasks.value = readPageList(page, '外部拉取任务加载失败，请稍后重试')
+    taskTotal.value = readPageTotal(page, '外部拉取任务加载失败，请稍后重试')
   } finally {
     taskLoading.value = false
   }
@@ -822,33 +823,6 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="external-pull__context">
-        <div class="external-pull__context-info">
-          <h2 class="external-pull__title">外部数据拔取审计</h2>
-        </div>
-        <div class="external-pull__context-actions">
-          <UiButton
-            variant="ghost"
-            size="sm"
-            :loading="sourceLoading || taskLoading"
-            @click="reloadAll"
-          >
-            刷新
-          </UiButton>
-          <UiButton variant="outline" size="sm" @click="openSourceCreate"> 新建数据源 </UiButton>
-          <UiButton
-            variant="primary"
-            size="sm"
-            :disabled="!sources.some((s) => s.enabled)"
-            @click="openTaskCreate"
-          >
-            新建拔取任务
-          </UiButton>
-        </div>
-      </div>
-    </template>
-
     <SignalBand :metrics="signals" compact class="external-pull__signals" />
 
     <TaskResultPanel
@@ -859,17 +833,29 @@ onMounted(async () => {
       @action="handlePullResultAction"
     />
 
-    <section class="external-pull__panel">
-      <header class="external-pull__panel-header">
-        <h3 class="external-pull__panel-title">外部只读数据源</h3>
+    <a-card :bordered="false" class="detail-table-card external-pull__source-card">
+      <template #title>
+        外部只读数据源
         <span class="external-pull__panel-meta">{{ sourceTotal }} 个</span>
-      </header>
+      </template>
+
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar">
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <span class="op-link" role="button" @click="reloadAll">刷新</span>
+              <UiButton variant="outline" size="sm" @click="openSourceCreate">新建数据源</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
       <UiEmpty
         v-if="!sources.length && !sourceLoading"
         description="尚未配置任何外部只读数据源；请先新建数据源以便创建拔取任务"
         size="sm"
       />
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-else
         :columns="sourceColumns"
         :data-source="sources"
@@ -894,58 +880,68 @@ onMounted(async () => {
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openSourceEdit(record)">编辑</UiButton>
-              <UiButton variant="ghost" size="sm" @click="toggleSourceEnabled(record)">
-                {{ record.enabled ? '停用' : '启用' }}
-              </UiButton>
-              <UiButton variant="ghost" status="danger" size="sm" @click="deleteSource(record)">
-                删除
-              </UiButton>
-            </a-space>
-          </template>
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openSourceEdit(record)">编辑</span>
+              <span class="op-link" role="button" @click="toggleSourceEnabled(record)">{{ record.enabled ? '停用' : '启用' }}</span>
+              <span class="op-link danger" role="button" @click="deleteSource(record)">删除</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
-    <section class="external-pull__panel">
-      <header class="external-pull__panel-header">
-        <h3 class="external-pull__panel-title">拔取任务</h3>
-        <div class="external-pull__panel-actions">
-          <a-select
-            v-model:value="taskQuery.sourceId"
-            placeholder="按数据源筛选"
-            class="external-pull__filter external-pull__filter--lg"
-            allow-clear
-            :options="sources.map((s) => ({ value: s.id, label: s.sourceName }))"
-          />
-          <a-select
-            v-model:value="taskQuery.status"
-            placeholder="状态"
-            class="external-pull__filter"
-            allow-clear
-            :options="taskStatusOptions"
-          />
-          <a-select
-            v-model:value="taskQuery.businessAnchor"
-            placeholder="业务归属"
-            class="external-pull__filter external-pull__filter--lg"
-            allow-clear
-            :options="businessAnchorOptions"
-          />
-          <UiButton variant="outline" size="sm" :loading="taskLoading" @click="loadTasks">
-            查询
-          </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card external-pull__task-card">
+      <template #title>拔取任务</template>
+
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadTasks">
+          <a-form-item label="数据源">
+            <a-select
+              v-model:value="taskQuery.sourceId"
+              placeholder="按数据源筛选"
+              style="width: 200px"
+              allow-clear
+              :options="sources.map((s) => ({ value: s.id, label: s.sourceName }))"
+            />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="taskQuery.status"
+              placeholder="状态"
+              style="width: 120px"
+              allow-clear
+              :options="taskStatusOptions"
+            />
+          </a-form-item>
+          <a-form-item label="业务归属">
+            <a-select
+              v-model:value="taskQuery.businessAnchor"
+              placeholder="业务归属"
+              style="width: 160px"
+              allow-clear
+              :options="businessAnchorOptions"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" :loading="taskLoading" @click="loadTasks">查询</UiButton>
+              <UiButton
+                size="sm"
+                :disabled="!sources.some((s) => s.enabled)"
+                @click="openTaskCreate"
+              >
+                新建拔取任务
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
       <UiEmpty
         v-if="!tasks.length && !taskLoading"
         description="当前筛选条件下无拔取任务；请新建拔取任务或调整筛选"
         size="sm"
       />
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-else
         v-model:current="taskQuery.pageNum"
         v-model:page-size="taskQuery.pageSize"
@@ -997,23 +993,13 @@ onMounted(async () => {
               {{ taskStatusLabel(record.status) }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openDetail(record)">详情</UiButton>
-              <UiButton
-                v-if="canCancelTask(record.status)"
-                variant="ghost"
-                status="danger"
-                size="sm"
-                @click="cancelTask(record)"
-              >
-                取消
-              </UiButton>
-            </a-space>
-          </template>
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openDetail(record)">详情</span>
+              <span class="op-link danger" role="button" v-if="canCancelTask(record.status)" @click="cancelTask(record)">取消</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <UiDrawer
       v-model:open="sourceEditorVisible"
@@ -1106,15 +1092,7 @@ onMounted(async () => {
             >
               <div class="external-pull__entry-header">
                 <span class="external-pull__entry-title">字段 {{ index + 1 }}</span>
-                <UiButton
-                  variant="ghost"
-                  size="sm"
-                  status="danger"
-                  :disabled="sourceFieldScopes.length === 1"
-                  @click="sourceFieldScopes.splice(index, 1)"
-                >
-                  删除
-                </UiButton>
+                <span class="op-link danger" role="button" :class="{ 'is-disabled': !(sourceFieldScopes.length === 1) }" @click="sourceFieldScopes.length === 1 && (sourceFieldScopes.splice(index, 1))">删除</span>
               </div>
               <a-row :gutter="12">
                 <a-col :span="6">
@@ -1270,15 +1248,7 @@ onMounted(async () => {
             >
               <div class="external-pull__entry-header">
                 <span class="external-pull__entry-title">条件 {{ index + 1 }}</span>
-                <UiButton
-                  variant="ghost"
-                  size="sm"
-                  status="danger"
-                  :disabled="taskFilters.length === 1"
-                  @click="taskFilters.splice(index, 1)"
-                >
-                  删除
-                </UiButton>
+                <span class="op-link danger" role="button" :class="{ 'is-disabled': !(taskFilters.length === 1) }" @click="taskFilters.length === 1 && (taskFilters.splice(index, 1))">删除</span>
               </div>
               <a-row :gutter="12">
                 <a-col :span="8">
@@ -1337,14 +1307,7 @@ onMounted(async () => {
                   <a-select v-model:value="entry.sortDirection" :options="sortDirectionOptions" />
                 </a-col>
                 <a-col :span="6">
-                  <UiButton
-                    variant="ghost"
-                    size="sm"
-                    status="danger"
-                    @click="taskSorts.splice(index, 1)"
-                  >
-                    删除
-                  </UiButton>
+                  <span class="op-link danger" role="button" @click="taskSorts.splice(index, 1)">删除</span>
                 </a-col>
               </a-row>
             </div>
@@ -1512,7 +1475,7 @@ onMounted(async () => {
           description="任务暂未生成结果批次；任务执行成功后会出现预览状态的批次"
           size="sm"
         />
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           v-else
           :columns="detailResultColumns"
           :data-source="detailResults"
@@ -1548,27 +1511,17 @@ onMounted(async () => {
                 {{ confirmationStatusLabel(record.confirmationStatus) }}
               </a-tag>
             </template>
-            <template v-else-if="column.key === 'actions'">
-              <a-space>
-                <UiButton
+            <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span
                   v-if="record.confirmationStatus === 'PREVIEW'"
-                  variant="primary"
-                  size="sm"
+                  class="op-link primary"
+                  role="button"
                   @click="confirmResult(record)"
                 >
                   确认
-                </UiButton>
-                <UiButton
-                  v-if="record.confirmationStatus === 'PREVIEW'"
-                  variant="ghost"
-                  status="danger"
-                  size="sm"
-                  @click="rejectResult(record)"
-                >
-                  驳回
-                </UiButton>
-              </a-space>
-            </template>
+                </span>
+                <span class="op-link danger" role="button" v-if="record.confirmationStatus === 'PREVIEW'" @click="rejectResult(record)">驳回</span>
+            </div></template>
           </template>
         </UiDataTable>
 
@@ -1613,33 +1566,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .external-pull {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;

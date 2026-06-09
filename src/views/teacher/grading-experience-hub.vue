@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="experience-page__context">
-        <div class="experience-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="experience-page__exam-select"
@@ -20,8 +20,8 @@
           <UiTag v-if="experiences.length > 0" tone="green" size="sm">
             经验案例 {{ experiences.length }}
           </UiTag>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="experience-page__empty" />
@@ -36,7 +36,6 @@
         <UiCard class="info-card">
           <template #title>
             <span>考试题目签名</span>
-            <UiBadge tone="blue">{{ signatures.length }}</UiBadge>
           </template>
           <template #extra>
             <a-space>
@@ -64,7 +63,7 @@
             compact
             @retry="loadSignatures"
           />
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             v-else
             :columns="signatureColumns"
             :data-source="signatures"
@@ -85,9 +84,11 @@
                 </a-tooltip>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiButton size="sm" @click="openSimilarDrawer(signatures[index])">
-                  查找相似题
-                </UiButton>
+                <div class="operations-cell" @click.stop>
+                  <span class="op-link" role="button" @click="openSimilarDrawer(signatures[index])">
+                    查找相似题
+                  </span>
+                </div>
               </template>
             </template>
           </UiDataTable>
@@ -97,13 +98,12 @@
       <!-- ─── Tab 2: AI 经验案例 ─── -->
       <a-tab-pane key="experience">
         <template #tab>
-          <span><BulbOutlined /> AI 批改经验</span>
+          <span><BulbOutlined /> AI 阅卷经验</span>
         </template>
 
         <UiCard class="info-card">
           <template #title>
-            <span>批改经验案例</span>
-            <UiBadge tone="green">{{ experiences.length }}</UiBadge>
+            <span class="section-title">阅卷经验案例</span>
           </template>
           <template #extra>
             <a-space>
@@ -134,20 +134,20 @@
                 @click="handleExtract"
               >
                 <template #icon><ThunderboltOutlined /></template>
-                AI 提取经验
+                AI 提炼经验
               </UiButton>
             </a-space>
           </template>
 
-          <!-- D-9 错误态：AI 批改经验案例加载失败时提供重试 + 上报入口 -->
+          <!-- D-9 错误态：AI 阅卷经验案例加载失败时提供重试 + 上报入口 -->
           <UiErrorRetryPanel
             v-if="experiencesLoadError"
             :error="experiencesLoadError"
-            title="批改经验案例加载失败"
+            title="阅卷经验案例加载失败"
             compact
             @retry="loadExperiences"
           />
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             v-else
             :columns="experienceColumns"
             :data-source="experiences"
@@ -178,13 +178,15 @@
                 </a-tooltip>
               </template>
               <template v-else-if="column.key === 'actions'">
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  @click="openExperienceDrawer(experiences[index])"
-                >
-                  详情
-                </UiButton>
+                <div class="operations-cell" @click.stop>
+                  <span
+                    class="op-link"
+                    role="button"
+                    @click="openExperienceDrawer(experiences[index])"
+                  >
+                    详情
+                  </span>
+                </div>
               </template>
             </template>
           </UiDataTable>
@@ -354,7 +356,7 @@
   <!-- 经验案例详情抽屉 -->
   <a-drawer
     v-model:open="experienceDrawerOpen"
-    title="批改经验详情"
+    title="阅卷经验详情"
     width="720"
     :destroy-on-close="true"
   >
@@ -477,7 +479,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -704,21 +706,21 @@ function questionTypeLabel(value: QuestionTypeCode): string {
 function requireText(value: string | undefined, _fieldName: string): string {
   const normalized = value?.trim()
   if (!normalized) {
-    throw toUserError(null, '批改经验数据不完整，请刷新后重试')
+    throw toUserError(null, '阅卷经验数据不完整，请刷新后重试')
   }
   return normalized
 }
 
 function requireNumber(value: number | undefined, _fieldName: string): number {
   if (value == null || !Number.isFinite(value)) {
-    throw toUserError(null, '批改经验数据不完整，请刷新后重试')
+    throw toUserError(null, '阅卷经验数据不完整，请刷新后重试')
   }
   return value
 }
 
 function requireArray<T>(value: T[] | undefined, _fieldName: string): T[] {
   if (!Array.isArray(value)) {
-    throw toUserError(null, '批改经验数据不完整，请刷新后重试')
+    throw toUserError(null, '阅卷经验数据不完整，请刷新后重试')
   }
   return value
 }
@@ -815,7 +817,7 @@ function experienceLatencyText(item: GradingExperienceCaseVO): string {
 }
 
 function experienceSummaryText(item: GradingExperienceCaseVO): string {
-  if (item.analysisStatus === 'PENDING') return 'AI 批改经验提取处理中，完成后展示经验总结'
+  if (item.analysisStatus === 'PENDING') return 'AI 阅卷经验提炼处理中，完成后展示经验总结'
   if (item.analysisStatus === 'SUCCESS')
     return requireText(item.experienceSummary, 'experienceSummary')
   return gradingExperienceFailureMessage(item.errorMessage)
@@ -890,21 +892,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .experience-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__exam-select {
     width: 280px;
   }

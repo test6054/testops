@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="review-batch-confirm__context">
-        <div class="review-batch-confirm__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             v-model:value="selectedExamId"
             class="review-batch-confirm__exam-select"
@@ -14,50 +14,21 @@
             allow-clear
             @change="() => onExamChange()"
           />
-          <UiTag tone="blue" size="sm">待审核 {{ tasks.length }}</UiTag>
+          <UiTag tone="blue" size="sm">待批量确认 {{ tasks.length }}</UiTag>
           <UiTag v-if="selectedTaskIds.length > 0" tone="green" size="sm">
             已选 {{ selectedTaskIds.length }}
           </UiTag>
-          <a-select
-            v-model:value="channelFilter"
-            class="review-batch-confirm__channel-filter"
-            placeholder="任务通道筛选"
-            :options="channelOptions"
-            allow-clear
-            size="middle"
-          />
-        </div>
-        <div class="review-batch-confirm__context-right">
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="loading"
-            @click="loadTasks"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-          <UiButton
-            size="sm"
-            :disabled="selectedTaskIds.length === 0"
-            :loading="submitting"
-            @click="submitBatch"
-          >
-            <template #icon><CheckOutlined /></template>
-            一键确认所选 {{ selectedTaskIds.length }} 项
-          </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
       v-if="!selectedExamId"
-      description="请选择考试以批量审核 NEED_REVIEW 状态的批改结果"
+      description="请选择考试以批量确认教师复核题目"
       class="review-batch-confirm__empty"
     />
 
-    <a-spin v-else :spinning="loading" tip="加载待审核题目中...">
+    <a-spin v-else :spinning="loading" tip="加载待批量确认题目中...">
       <UiAlertStrip
         v-if="batchSummary"
         :tone="batchSummary.failureCount === 0 ? 'success' : 'warning'"
@@ -66,10 +37,46 @@
         dense
       />
 
-      <UiCard class="review-batch-confirm__list-card">
-        <template #title>
-          <span>NEED_REVIEW 题目列表</span>
-        </template>
+      <a-card :bordered="false" class="detail-table-card review-batch-confirm__list-card">
+        <template #title>待批量确认题目</template>
+
+        <div class="filter-card">
+          <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadTasks">
+            <a-form-item label="复核来源">
+              <a-select
+                v-model:value="channelFilter"
+                class="review-batch-confirm__channel-filter"
+                placeholder="复核来源筛选"
+                :options="channelOptions"
+                allow-clear
+                style="width: 200px"
+                @change="loadTasks"
+              />
+            </a-form-item>
+            <a-form-item class="filter-form__actions">
+              <a-space class="filter-form__action-group">
+                <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  :disabled="!selectedExamId"
+                  :loading="loading"
+                  @click="loadTasks"
+                >
+                  刷新
+                </UiButton>
+                <UiButton
+                  size="sm"
+                  :disabled="selectedTaskIds.length === 0"
+                  :loading="submitting"
+                  @click="submitBatch"
+                >
+                  一键确认所选 {{ selectedTaskIds.length }} 项
+                </UiButton>
+              </a-space>
+            </a-form-item>
+          </a-form>
+        </div>
 
         <a-table
           :columns="columns"
@@ -119,13 +126,15 @@
               />
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-button type="link" size="small" @click="openSingleReview(tasks[index])">
-                查看单题
-              </a-button>
+              <div class="operations-cell" @click.stop>
+                <span class="op-link" role="button" @click="openSingleReview(tasks[index])">
+                  进入单题处理
+                </span>
+              </div>
             </template>
           </template>
         </a-table>
-      </UiCard>
+      </a-card>
     </a-spin>
   </StageWorkbenchShell>
 </template>
@@ -138,7 +147,6 @@ import type {
   ReviewTaskItemVO,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam'
-import { CheckOutlined, ReloadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -148,11 +156,14 @@ import {
   pageExams,
   REVIEW_TASK_TYPE_META,
 } from '@/apis/mark/exam'
-import { UiAlertStrip, UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { UiAlertStrip, UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
+
+const REVIEW_BATCH_CONFIRM_PAGE_SIZE = 100
+const EXAM_OPTION_PAGE_SIZE = 100
 
 const router = useRouter()
 const examLoading = ref(false)
@@ -211,8 +222,10 @@ const rowSelection = computed(() => ({
 async function loadExamOptions() {
   examLoading.value = true
   try {
-    const result = await pageExams({ pageNum: 1, pageSize: 200 })
-    const list = readPageList(result, '考试列表加载失败，请稍后重试')
+    const list = await readAllPages(
+      (pageNum) => pageExams({ pageNum, pageSize: EXAM_OPTION_PAGE_SIZE }),
+      '考试列表加载失败，请稍后重试',
+    )
     examOptions.value = list.map((exam: ExamSummaryVO) => ({
       label: [formatExamOptionLabel(exam), formatAcademicTerm(exam)].filter(Boolean).join(' · '),
       value: exam.examId,
@@ -234,20 +247,23 @@ function formatAcademicTerm(exam: ExamSummaryVO): string {
 }
 
 async function loadTasks() {
-  if (!selectedExamId.value) {
+  const examId = selectedExamId.value
+  if (!examId) {
     tasks.value = []
     return
   }
   loading.value = true
   try {
-    // status=PENDING：尚未确认；后端按 GradeStatus.NEED_REVIEW + ReviewTaskStatus.PENDING 派生
-    const page = await listReviewTasks({
-      examId: selectedExamId.value,
-      status: 'PENDING',
-      pageNum: 1,
-      pageSize: 500,
-    })
-    const items = page.list
+    // status=PENDING：尚未确认；后端按 GradeStatus.NEED_REVIEW + ReviewTaskStatus.PENDING 派生。
+    const items = await readAllPages(
+      (pageNum) => listReviewTasks({
+        examId,
+        status: 'PENDING',
+        pageNum,
+        pageSize: REVIEW_BATCH_CONFIRM_PAGE_SIZE,
+      }),
+      '待批量确认题目加载失败，请稍后重试',
+    )
     const channelCode = channelFilter.value
     tasks.value = items.filter((task) => {
       if (!channelCode) return true
@@ -260,7 +276,7 @@ async function loadTasks() {
     }))
     selectedTaskIds.value = []
   } catch (error) {
-    showUserError(error, '待审核题目加载失败')
+    showUserError(error, '待批量确认题目加载失败')
   } finally {
     loading.value = false
   }
@@ -318,7 +334,7 @@ async function submitBatch() {
     })
   }
   if (items.length === 0) {
-    message.info('未选择任何待审核题目')
+    message.info('未选择任何待批量确认题目')
     return
   }
   submitting.value = true

@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="roster-page__context">
-        <div class="roster-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="roster-page__exam-select"
@@ -15,8 +15,8 @@
             @change="handleExamChange"
           />
           <UiTag v-if="selectedExamId" tone="blue" size="sm">{{ candidateTotal }} 名考生</UiTag>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
@@ -34,7 +34,6 @@
         <template #title>
           <TeamOutlined />
           <span>班级范围</span>
-          <UiBadge tone="blue">{{ classIds.length }}</UiBadge>
           <UiTag v-if="rosterLocked" tone="orange" size="sm">扫描已开始</UiTag>
           <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
         </template>
@@ -66,66 +65,73 @@
         />
       </UiCard>
 
-      <UiCard class="info-card">
+      <a-card :bordered="false" class="detail-table-card info-card roster-page__table-card">
         <template #title>
           <UserOutlined />
           <span>考生名册</span>
-          <UiBadge tone="blue">{{ pagination.total ?? 0 }}</UiBadge>
         </template>
-        <template #extra>
-          <a-space v-if="!classScopeReadOnly">
-            <UiButton
-              size="sm"
-              variant="outline"
-              :disabled="!classIds.length"
-              @click="openSelectDrawer"
-            >
-              <template #icon><UserAddOutlined /></template>
-              从学生库选择
-            </UiButton>
-            <UiButton size="sm" variant="outline" @click="openBatchImportModal">
-              <template #icon><UploadOutlined /></template>
-              批量导入
-            </UiButton>
-            <UiButton size="sm" @click="openSingleAddModal">
-              <template #icon><PlusOutlined /></template>
-              添加单个
-            </UiButton>
-          </a-space>
-        </template>
-
-        <a-form layout="inline" class="roster-filter">
-          <a-form-item>
-            <a-input
-              v-model:value="rosterKeyword"
-              placeholder="按学号 / 姓名搜索"
-              allow-clear
-              class="roster-filter__keyword"
-              @press-enter="handleRosterSearch"
-            >
-              <template #prefix>
-                <SearchOutlined />
-              </template>
-            </a-input>
-          </a-form-item>
-          <a-form-item>
-            <a-select
-              v-model:value="rosterClassFilter"
-              placeholder="按班级筛选"
-              allow-clear
-              show-search
-              option-filter-prop="label"
-              class="roster-filter__class"
-              :options="rosterClassFilterOptions"
-            />
-          </a-form-item>
-          <a-form-item>
-            <a-space>
-              <UiButton size="sm" @click="handleRosterSearch">查询</UiButton>
-              <UiButton size="sm" variant="outline" @click="handleRosterReset">重置</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
+        <div class="filter-card">
+          <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleRosterSearch">
+            <a-form-item label="关键词">
+              <a-input
+                v-model:value="rosterKeyword"
+                placeholder="按学号 / 姓名搜索"
+                allow-clear
+                class="roster-filter__keyword"
+                @press-enter="handleRosterSearch"
+              >
+                <template #prefix>
+                  <SearchOutlined />
+                </template>
+              </a-input>
+            </a-form-item>
+            <a-form-item label="班级">
+              <a-select
+                v-model:value="rosterClassFilter"
+                placeholder="全部班级"
+                allow-clear
+                show-search
+                option-filter-prop="label"
+                class="roster-filter__class"
+                :options="rosterClassFilterOptions"
+              />
+            </a-form-item>
+            <a-form-item class="filter-form__actions">
+              <a-space class="filter-form__action-group">
+                <UiButton size="sm" @click="handleRosterSearch">查询</UiButton>
+                <UiButton size="sm" variant="outline" @click="handleRosterReset">重置</UiButton>
+                <template v-if="!classScopeReadOnly">
+                  <UiButton
+                    size="sm"
+                    variant="outline"
+                    :disabled="!classIds.length"
+                    @click="openSelectDrawer"
+                  >
+                    <template #icon><UserAddOutlined /></template>
+                    从学生库选择
+                  </UiButton>
+                  <UiButton size="sm" variant="outline" @click="openImportModal">
+                    <template #icon><UploadOutlined /></template>
+                    批量导入
+                  </UiButton>
+                  <UiButton size="sm" @click="openSingleAddModal">
+                    <template #icon><PlusOutlined /></template>
+                    添加单个
+                  </UiButton>
+                  <UiButton
+                    size="sm"
+                    variant="outline"
+                    :loading="fullScopeSaving"
+                    :disabled="!classIds.length || candidateTotal === 0"
+                    @click="confirmSaveFullScope"
+                  >
+                    全量保存名册
+                  </UiButton>
+                </template>
+              </a-space>
+            </a-form-item>
+          </a-form>
+        </div>
 
         <UiErrorRetryPanel
           v-if="tableLoadError"
@@ -145,7 +151,7 @@
           row-key="rowKey"
           size="middle"
           flat
-          class="roster-table"
+          class="roster-table student-detail-table__data-table"
           bordered
           @page-change="handlePageChange"
         >
@@ -162,20 +168,21 @@
               </span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton
-                v-if="!classScopeReadOnly"
-                size="sm"
-                variant="ghost"
-                :loading="removingStudentUserId === (record as CandidateRow).studentUserId"
-                @click="removeCandidate((record as CandidateRow).studentUserId)"
-              >
-                移除
-              </UiButton>
-              <span v-else class="roster-cell roster-cell--muted">—</span>
+              <div class="operations-cell" @click.stop>
+                <span
+                  v-if="!classScopeReadOnly"
+                  class="op-link danger"
+                  role="button"
+                  @click="removeCandidate((record as CandidateRow).studentUserId)"
+                >
+                  移除
+                </span>
+                <span v-else class="muted">—</span>
+              </div>
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </a-card>
     </a-spin>
 
     <ClassStudentTreeSelectorDrawer
@@ -186,15 +193,141 @@
       :excluded-student-ids="rosterStudentUserIds"
       @confirm="handleStudentsSelected"
     />
-    <BatchImportModal
+    <a-modal
       v-model:open="showImportModal"
-      title="批量导入学生"
-      entity-label="学生"
-      :import-handler="handleImportStudents"
-      :requirements="importRequirements"
-      @download-template="handleDownloadImportTemplate"
-      @success="handleImportSuccess"
-    />
+      title="导入考生名册"
+      ok-text="导入名册"
+      :ok-button-props="{ disabled: !importPreview || importPreview.errorCount > 0 || importPreview.validCount === 0 }"
+      :confirm-loading="importCommitting"
+      :destroy-on-close="true"
+      width="920px"
+      @ok="handleCommitImport"
+      @cancel="resetImportModal"
+    >
+      <div class="roster-import">
+        <div class="roster-import__toolbar">
+          <a-upload
+            accept=".xlsx,.xls,.csv,.tsv,.txt"
+            :show-upload-list="false"
+            :before-upload="handleImportFileSelected"
+          >
+            <UiButton size="sm" variant="outline">
+              <template #icon><UploadOutlined /></template>
+              选择文件
+            </UiButton>
+          </a-upload>
+          <UiButton size="sm" :loading="importPreviewing" :disabled="!canPreviewImport" @click="handlePreviewImport">
+            重新预览
+          </UiButton>
+          <UiTag v-if="importFileName" tone="blue" size="sm">{{ importFileName }}</UiTag>
+          <UiTag v-if="importDataRowCount > 0" tone="gray" size="sm">{{ importDataRowCount }} 行数据</UiTag>
+          <UiTag v-if="importPreview" :tone="importPreview.errorCount > 0 ? 'red' : 'green'" size="sm">
+            {{ importPreview.validCount }} 可导入 / {{ importPreview.errorCount }} 错误
+          </UiTag>
+        </div>
+        <a-alert
+          v-if="importValidationMessage"
+          :message="importValidationMessage"
+          type="warning"
+          show-icon
+          class="roster-import__alert"
+        />
+        <div v-if="importColumnOptions.length" class="roster-import__mapping">
+          <a-form layout="vertical" class="roster-import__mapping-form">
+            <a-form-item label="院系">
+              <a-select
+                v-model:value="importFieldMapping.departmentName"
+                :options="optionalImportColumnOptions"
+                placeholder="可不选择"
+                allow-clear
+              />
+            </a-form-item>
+            <a-form-item label="班级" required>
+              <a-select
+                v-model:value="importFieldMapping.className"
+                :options="importColumnOptions"
+                placeholder="选择班级列"
+              />
+            </a-form-item>
+            <a-form-item label="学号" required>
+              <a-select
+                v-model:value="importFieldMapping.studentNo"
+                :options="importColumnOptions"
+                placeholder="选择学号列"
+              />
+            </a-form-item>
+            <a-form-item label="姓名" required>
+              <a-select
+                v-model:value="importFieldMapping.studentName"
+                :options="importColumnOptions"
+                placeholder="选择姓名列"
+              />
+            </a-form-item>
+          </a-form>
+          <div class="roster-import__preview">
+            <div class="roster-import__preview-title">文件前 5 行</div>
+            <div class="roster-import__preview-grid">
+              <div
+                v-for="option in importColumnOptions"
+                :key="option.value"
+                class="roster-import__preview-head"
+              >
+                {{ option.label }}
+              </div>
+              <template v-for="row in importPreviewSampleRows" :key="row.rowNo">
+                <div
+                  v-for="cell in row.cells"
+                  :key="`${row.rowNo}-${cell.columnIndex}`"
+                  class="roster-import__preview-cell"
+                >
+                  {{ cell.text || '—' }}
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+        <a-table
+          v-if="importPreview"
+          :columns="importColumns"
+          :data-source="importPreview.rows"
+          :pagination="{ pageSize: 8, showSizeChanger: false }"
+          row-key="rowNo"
+          size="small"
+          class="roster-import__table"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'student'">
+              <div class="roster-student">
+                <span class="roster-student__name">
+                  {{ (record as ExamCandidateImportRowResponse).resolvedStudentName || (record as ExamCandidateImportRowResponse).studentName }}
+                </span>
+                <span class="roster-student__no">
+                  {{ (record as ExamCandidateImportRowResponse).resolvedStudentNo || (record as ExamCandidateImportRowResponse).studentNo }}
+                </span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'className'">
+              <span>{{ (record as ExamCandidateImportRowResponse).resolvedClassName || (record as ExamCandidateImportRowResponse).className }}</span>
+            </template>
+            <template v-else-if="column.key === 'action'">
+              <UiTag
+                v-if="(record as ExamCandidateImportRowResponse).valid"
+                :tone="(record as ExamCandidateImportRowResponse).importAction === 'CREATE_STUDENT' ? 'orange' : 'blue'"
+                size="sm"
+              >
+                {{ (record as ExamCandidateImportRowResponse).importAction === 'CREATE_STUDENT' ? '将创建学生用户' : '复用学生用户' }}
+              </UiTag>
+              <UiTag v-else tone="red" size="sm">不可导入</UiTag>
+            </template>
+            <template v-else-if="column.key === 'message'">
+              <span :class="{ 'roster-import__error': !(record as ExamCandidateImportRowResponse).valid }">
+                {{ (record as ExamCandidateImportRowResponse).errorMessage || '可导入' }}
+              </span>
+            </template>
+          </template>
+        </a-table>
+      </div>
+    </a-modal>
 
     <a-modal
       v-model:open="singleAddOpen"
@@ -234,7 +367,13 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
-import type { ExamCandidateRosterRequest, ExamClassRefVO } from '@/apis/mark/exam'
+import type {
+  ExamCandidateImportPreviewResponse,
+  ExamCandidateImportRowRequest,
+  ExamCandidateImportRowResponse,
+  ExamCandidateRosterRequest,
+  ExamClassRefVO,
+} from '@/apis/mark/exam'
 import type { UserDto } from '@/types/api-types.d'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -243,9 +382,11 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
+import Modal from 'ant-design-vue/es/modal'
+import * as XLSX from 'xlsx'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { downloadUserImportTemplate, tenantBatchImportUsers } from '@/apis/edu/admin-user'
 import {
+  commitExamCandidateImport,
   getExamDetail,
   listExamCandidates,
   listExamClassOptions,
@@ -253,15 +394,15 @@ import {
   pageExamCandidates,
   pageScannerBatches,
   previewExamCandidates,
+  previewExamCandidateImport,
   removeExamCandidates,
   saveExamClassScope,
+  saveExamScope,
 } from '@/apis/mark/exam'
-import BatchImportModal from '@/components/common/BatchImportModal.vue'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import StudentSelector from '@/components/quality/selectors/StudentSelector.vue'
 import {
   UiAlertStrip,
-  UiBadge,
   UiButton,
   UiCard,
   UiDataTable,
@@ -269,15 +410,43 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { RoleEnum } from '@/types/enums'
 import { ErrorType, handleError, showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { buildScopedClassTags, mergeClassSelectOptions } from './candidate-roster/class-scope'
 import { toCandidateRow } from './candidate-roster/roster-merge'
 
 defineOptions({ name: 'TeacherCandidateRoster' })
+
+const ROSTER_CANDIDATE_EXPORT_PAGE_SIZE = 100
+
+type ImportFieldKey = 'departmentName' | 'className' | 'studentNo' | 'studentName'
+
+interface ImportColumnOption {
+  label: string
+  value: number
+}
+
+interface ImportFieldMapping {
+  departmentName?: number
+  className?: number
+  studentNo?: number
+  studentName?: number
+}
+
+interface ImportSheetRow {
+  rowNo: number
+  cells: string[]
+}
+
+interface ImportPreviewSampleRow {
+  rowNo: number
+  cells: Array<{
+    columnIndex: number
+    text: string
+  }>
+}
 
 const {
   examOptions,
@@ -304,6 +473,7 @@ let loadTableSeq = 0
 const tableCandidates = ref<CandidateRow[]>([])
 const rosterStudentUserIds = ref<string[]>([])
 const contextLoading = ref(false)
+const fullScopeSaving = ref(false)
 const tableLoading = ref(false)
 const rosterLoadError = ref<Error | null>(null)
 const tableLoadError = ref<Error | null>(null)
@@ -322,6 +492,15 @@ const pagination = reactive<TablePaginationConfig>({
 
 const selectDrawerOpen = ref(false)
 const showImportModal = ref(false)
+const importFileName = ref('')
+const importSheetRows = ref<ImportSheetRow[]>([])
+const importFieldMapping = reactive<ImportFieldMapping>({})
+const importRows = ref<ExamCandidateImportRowRequest[]>([])
+const importPreview = ref<ExamCandidateImportPreviewResponse | null>(null)
+const importPreviewing = ref(false)
+const importCommitting = ref(false)
+let importPreviewTimer: ReturnType<typeof setTimeout> | null = null
+let importPreviewSeq = 0
 const singleAddOpen = ref(false)
 const singleAddClassId = ref<string | undefined>(undefined)
 const singleAddStudentUserId = ref<string | null>(null)
@@ -340,17 +519,94 @@ const rosterClassFilterOptions = computed(() =>
   })),
 )
 
-const importRequirements: string[] = [
-  '请使用官方模板格式',
-  '只保留姓名、学号、院系名称、班级名称四列',
-  '学号不能重复；班级按院系名称匹配',
-]
-
 const columns: ColumnType<CandidateRow>[] = [
   { title: '考生', key: 'student', width: 220 },
   { title: '班级', key: 'className', width: 200 },
   { title: '操作', key: 'actions', width: 80, fixed: 'right' },
 ]
+
+const importColumns: ColumnType<ExamCandidateImportRowResponse>[] = [
+  { title: '行号', dataIndex: 'rowNo', key: 'rowNo', width: 72 },
+  { title: '班级', key: 'className', width: 180 },
+  { title: '考生', key: 'student', width: 180 },
+  { title: '导入动作', key: 'action', width: 150 },
+  { title: '诊断', key: 'message' },
+]
+
+const importColumnOptions = computed<ImportColumnOption[]>(() => {
+  const maxColumnCount = importSheetRows.value.reduce(
+    (max, row) => Math.max(max, row.cells.length),
+    0,
+  )
+  if (maxColumnCount === 0) {
+    return []
+  }
+  const headerRow = importSheetRows.value[0]
+  return Array.from({ length: maxColumnCount }, (_, index) => {
+    const headerText = String(headerRow?.cells[index] ?? '').trim()
+    return {
+      value: index,
+      label: headerText || `第 ${index + 1} 列`,
+    }
+  })
+})
+
+const optionalImportColumnOptions = computed<ImportColumnOption[]>(() => [
+  { value: -1, label: '不导入院系' },
+  ...importColumnOptions.value,
+])
+
+const importDataRows = computed<ImportSheetRow[]>(() => importSheetRows.value.slice(1))
+
+const importDataRowCount = computed(() =>
+  importDataRows.value.filter((row) => row.cells.some((cell) => cell.trim())).length,
+)
+
+const importPreviewSampleRows = computed<ImportPreviewSampleRow[]>(() =>
+  importDataRows.value.slice(0, 5).map((row) => ({
+    rowNo: row.rowNo,
+    cells: importColumnOptions.value.map((option) => ({
+      columnIndex: option.value,
+      text: String(row.cells[option.value] ?? '').trim(),
+    })),
+  })),
+)
+
+const canPreviewImport = computed(() =>
+  Boolean(
+    selectedExamId.value
+      && importDataRowCount.value > 0
+      && importFieldMapping.className !== undefined
+      && importFieldMapping.studentNo !== undefined
+      && importFieldMapping.studentName !== undefined,
+  ),
+)
+
+const importValidationMessage = computed(() => {
+  if (!importFileName.value) {
+    return '请上传 Excel、CSV、TSV 或 TXT 格式的考生名册文件。'
+  }
+  if (!importColumnOptions.value.length) {
+    return '文件中没有可识别的列。'
+  }
+  if (importDataRowCount.value === 0) {
+    return '文件中没有可导入的数据行。'
+  }
+  const missingFields: string[] = []
+  if (importFieldMapping.className === undefined) {
+    missingFields.push('班级')
+  }
+  if (importFieldMapping.studentNo === undefined) {
+    missingFields.push('学号')
+  }
+  if (importFieldMapping.studentName === undefined) {
+    missingFields.push('姓名')
+  }
+  if (missingFields.length) {
+    return `请完成字段映射：${missingFields.join('、')}`
+  }
+  return ''
+})
 
 function isPermissionError(error: unknown): boolean {
   return handleError(error, { silent: true }).type === ErrorType.PERMISSION
@@ -528,25 +784,197 @@ function openSelectDrawer(): void {
   selectDrawerOpen.value = true
 }
 
-function openBatchImportModal(): void {
+function openImportModal(): void {
+  resetImportModal()
   showImportModal.value = true
 }
 
-async function handleImportStudents(file: File) {
-  return await tenantBatchImportUsers(file, RoleEnum.SCH_STU)
+function resetImportModal(): void {
+  if (importPreviewTimer) {
+    clearTimeout(importPreviewTimer)
+    importPreviewTimer = null
+  }
+  importFileName.value = ''
+  importSheetRows.value = []
+  importFieldMapping.departmentName = undefined
+  importFieldMapping.className = undefined
+  importFieldMapping.studentNo = undefined
+  importFieldMapping.studentName = undefined
+  importRows.value = []
+  importPreview.value = null
 }
 
-function handleDownloadImportTemplate(): void {
-  void downloadUserImportTemplate(RoleEnum.SCH_STU)
+function inferImportFieldMapping(rows: ImportSheetRow[]): void {
+  const headerCells = rows[0]?.cells ?? []
+  const patterns: Record<ImportFieldKey, string[]> = {
+    departmentName: ['院系', '院系名称', '学院', '学院名称'],
+    className: ['班级', '班级名称', '行政班'],
+    studentNo: ['学号', '学生学号', '考号', '学生编号'],
+    studentName: ['姓名', '学生姓名', '考生姓名'],
+  }
+  ;(Object.keys(patterns) as ImportFieldKey[]).forEach((field) => {
+    const matchedIndex = headerCells.findIndex((cell) => patterns[field].includes(cell.trim()))
+    importFieldMapping[field] = matchedIndex >= 0 ? matchedIndex : undefined
+  })
 }
 
-function handleImportSuccess(): void {
-  message.success('学生已导入租户库，请从学生库勾选后纳入本次考试名册')
-  if (classIds.value.length) {
-    selectDrawerOpen.value = true
+function readWorkbookRows(workbook: XLSX.WorkBook): ImportSheetRow[] {
+  const firstSheetName = workbook.SheetNames[0]
+  if (!firstSheetName) {
+    return []
+  }
+  const sheet = workbook.Sheets[firstSheetName]
+  const rows = XLSX.utils.sheet_to_json<Array<string | number | boolean | null>>(sheet, {
+    header: 1,
+    defval: '',
+    blankrows: false,
+    raw: false,
+  })
+  return rows.map((cells, index) => ({
+    rowNo: index + 1,
+    cells: cells.map((cell) => String(cell ?? '').trim()),
+  }))
+}
+
+function applyImportedWorkbook(fileName: string, workbook: XLSX.WorkBook): void {
+  const rows = readWorkbookRows(workbook)
+  if (!rows.length) {
+    message.warning('文件中没有可识别的名册数据')
+    resetImportModal()
+    showImportModal.value = true
+    importFileName.value = fileName
     return
   }
-  message.warning('请先选择班级范围后再从学生库勾选')
+  importFileName.value = fileName
+  importSheetRows.value = rows
+  importPreview.value = null
+  importRows.value = []
+  inferImportFieldMapping(rows)
+}
+
+function handleImportFileSelected(file: File): boolean {
+  const reader = new FileReader()
+  reader.onload = () => {
+    try {
+      const result = reader.result
+      const workbook = result instanceof ArrayBuffer
+        ? XLSX.read(result, { type: 'array' })
+        : XLSX.read(String(result ?? ''), { type: 'string' })
+      applyImportedWorkbook(file.name, workbook)
+    } catch (error) {
+      showUserError(error, '名册文件解析失败')
+    }
+  }
+  reader.onerror = () => {
+    message.error('名册文件读取失败')
+  }
+  if (/\.(xlsx|xls)$/i.test(file.name)) {
+    reader.readAsArrayBuffer(file)
+  } else {
+    reader.readAsText(file)
+  }
+  return false
+}
+
+function buildImportRowsFromMapping(): ExamCandidateImportRowRequest[] {
+  if (
+    importFieldMapping.className === undefined
+    || importFieldMapping.studentNo === undefined
+    || importFieldMapping.studentName === undefined
+  ) {
+    return []
+  }
+  const rows: ExamCandidateImportRowRequest[] = []
+  importDataRows.value.forEach((row) => {
+    const departmentColumn = importFieldMapping.departmentName
+    const departmentName = departmentColumn === undefined || departmentColumn < 0
+      ? undefined
+      : String(row.cells[departmentColumn] ?? '').trim()
+    const className = String(row.cells[importFieldMapping.className!] ?? '').trim()
+    const studentNo = String(row.cells[importFieldMapping.studentNo!] ?? '').trim()
+    const studentName = String(row.cells[importFieldMapping.studentName!] ?? '').trim()
+    if (!className && !studentNo && !studentName) {
+      return
+    }
+    rows.push({
+      rowNo: row.rowNo,
+      departmentName: departmentName || undefined,
+      className,
+      studentNo,
+      studentName,
+    })
+  })
+  return rows
+}
+
+async function handlePreviewImport(): Promise<void> {
+  if (!selectedExamId.value) {
+    return
+  }
+  if (importValidationMessage.value) {
+    message.warning(importValidationMessage.value)
+    return
+  }
+  const rows = buildImportRowsFromMapping()
+  if (!rows.length) {
+    message.warning('文件中没有可导入的班级、学号、姓名数据')
+    return
+  }
+  const seq = ++importPreviewSeq
+  importRows.value = rows
+  importPreviewing.value = true
+  try {
+    const response = await previewExamCandidateImport({
+      examId: selectedExamId.value,
+      classIds: [...classIds.value],
+      rows,
+    })
+    if (seq !== importPreviewSeq) {
+      return
+    }
+    importPreview.value = response
+  } catch (error) {
+    if (seq === importPreviewSeq) {
+      showUserError(error, '导入预览失败')
+    }
+  } finally {
+    if (seq === importPreviewSeq) {
+      importPreviewing.value = false
+    }
+  }
+}
+
+async function handleCommitImport(): Promise<void> {
+  if (!selectedExamId.value || !importPreview.value) {
+    return
+  }
+  const rows = buildImportRowsFromMapping()
+  if (!rows.length) {
+    message.warning('文件中没有可导入的班级、学号、姓名数据')
+    return
+  }
+  importRows.value = rows
+  importCommitting.value = true
+  try {
+    const response = await commitExamCandidateImport({
+      examId: selectedExamId.value,
+      classIds: [...classIds.value],
+      rows,
+    })
+    importPreview.value = response
+    if (response.errorCount > 0) {
+      message.error('名册存在错误行，未写入')
+      return
+    }
+    message.success('名册已导入，缺失学生已创建')
+    showImportModal.value = false
+    resetImportModal()
+    await reloadExamContext()
+  } catch (error) {
+    showUserError(error, '导入考生名册失败')
+  } finally {
+    importCommitting.value = false
+  }
 }
 
 async function mergeCandidatesWithPreview(
@@ -562,6 +990,65 @@ async function mergeCandidatesWithPreview(
   })
   await mergeExamCandidates({ examId: selectedExamId.value, candidates })
   return candidates.length
+}
+
+async function fetchAllRosterCandidates(): Promise<ExamCandidateRosterRequest[]> {
+  const examId = selectedExamId.value
+  if (!examId) {
+    return []
+  }
+  const pages = await readAllPages(
+    (pageNum) => pageExamCandidates({
+      examId,
+      pageNum,
+      pageSize: ROSTER_CANDIDATE_EXPORT_PAGE_SIZE,
+    }),
+    '考生名册加载失败',
+  )
+  const roster: ExamCandidateRosterRequest[] = []
+  for (const item of pages) {
+      const classId = String(item.classId ?? '').trim()
+      const studentUserId = String(item.studentUserId ?? '').trim()
+      if (!classId || !studentUserId) {
+        continue
+      }
+      roster.push({ classId, studentUserId })
+  }
+  return roster
+}
+
+function confirmSaveFullScope(): void {
+  if (!selectedExamId.value || !classIds.value.length) {
+    message.warning('请先选择班级范围')
+    return
+  }
+  Modal.confirm({
+    title: '全量保存考生名册？',
+    content: '将当前班级范围与全部考生一次性写入后端，覆盖增量编辑结果。扫描已开始后可能失败。',
+    okText: '全量保存',
+    cancelText: '取消',
+    async onOk() {
+      fullScopeSaving.value = true
+      try {
+        const candidates = await fetchAllRosterCandidates()
+        if (!candidates.length) {
+          message.error('名册为空，无法全量保存')
+          return
+        }
+        await saveExamScope({
+          examId: selectedExamId.value!,
+          classIds: [...classIds.value],
+          candidates,
+        })
+        message.success(`已全量保存 ${candidates.length} 名考生`)
+        await reloadExamContext()
+      } catch (error) {
+        showUserError(error, '全量保存名册失败')
+      } finally {
+        fullScopeSaving.value = false
+      }
+    },
+  })
 }
 
 function buildMergeRequest(
@@ -718,6 +1205,31 @@ watch(classIds, (ids) => {
   }, 400)
 })
 
+watch(
+  [
+    () => importFieldMapping.departmentName,
+    () => importFieldMapping.className,
+    () => importFieldMapping.studentNo,
+    () => importFieldMapping.studentName,
+    () => importSheetRows.value,
+  ],
+  () => {
+    importPreview.value = null
+    importRows.value = []
+    if (importPreviewTimer) {
+      clearTimeout(importPreviewTimer)
+      importPreviewTimer = null
+    }
+    if (!canPreviewImport.value) {
+      return
+    }
+    importPreviewTimer = setTimeout(() => {
+      importPreviewTimer = null
+      void handlePreviewImport()
+    }, 500)
+  },
+)
+
 watch(selectedExamId, (value) => {
   if (classScopeSaveTimer) {
     clearTimeout(classScopeSaveTimer)
@@ -753,21 +1265,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .roster-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__exam-select {
     width: 280px;
   }
@@ -780,7 +1277,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .info-card {
@@ -811,8 +1307,6 @@ onMounted(async () => {
 }
 
 .roster-filter {
-  margin-bottom: 12px;
-
   &__keyword {
     width: 220px;
   }
@@ -846,6 +1340,107 @@ onMounted(async () => {
   &__no {
     font-size: 12px;
     color: var(--ant-color-text-secondary);
+  }
+}
+
+.roster-import {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-4, 16px);
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--dp-space-2, 8px);
+  }
+
+  &__alert {
+    margin: 0;
+  }
+
+  &__mapping {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    gap: var(--dp-space-4, 16px);
+    padding: var(--dp-space-4, 16px);
+    border: 1px solid var(--dp-border, var(--ant-color-border));
+    border-radius: var(--dp-radius-panel, 8px);
+    background: var(--dp-surface-subtle, var(--ant-color-fill-quaternary));
+  }
+
+  &__mapping-form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--dp-space-2, 8px);
+
+    :deep(.ant-form-item) {
+      margin-bottom: 0;
+    }
+  }
+
+  &__preview {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  &__preview-title {
+    margin-bottom: var(--dp-space-2, 8px);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ant-color-text);
+  }
+
+  &__preview-grid {
+    display: grid;
+    grid-auto-rows: minmax(32px, auto);
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    overflow: auto;
+    border: 1px solid var(--dp-border, var(--ant-color-border));
+    border-radius: var(--dp-radius-control, 8px);
+    background: var(--ant-color-bg-container);
+  }
+
+  &__preview-head,
+  &__preview-cell {
+    min-width: 0;
+    padding: 7px 10px;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-right: 1px solid var(--dp-border, var(--ant-color-border));
+    border-bottom: 1px solid var(--dp-border, var(--ant-color-border));
+  }
+
+  &__preview-head {
+    font-weight: 600;
+    color: var(--ant-color-text);
+    background: var(--ant-color-fill-quaternary);
+  }
+
+  &__preview-cell {
+    color: var(--ant-color-text-secondary);
+  }
+
+  &__table {
+    :deep(.ant-table-thead > tr > th) {
+      background: var(--dp-surface-subtle, var(--ant-color-fill-quaternary));
+      font-weight: 600;
+    }
+  }
+
+  &__error {
+    color: var(--ant-color-error);
+  }
+}
+
+@media (max-width: 900px) {
+  .roster-import {
+    &__mapping {
+      grid-template-columns: 1fr;
+    }
   }
 }
 </style>

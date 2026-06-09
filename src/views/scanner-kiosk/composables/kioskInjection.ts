@@ -21,8 +21,8 @@ import { inject } from 'vue'
  *   - 通过 `openSettings` / `viewHistoryLedger` 统一入口，自动关闭对方避免叠加；
  *   - 关闭操作（closeSettings / closeHistoryLedger）只清自己。
  *
- * `shortcutHintsOpen` 是只读 modal overlay，与抽屉互斥分开：抽屉打开时仍可叠加 hints
- * （hints 是临时帮助层，不影响业务）。
+ * `shortcutHintsOpen` 是只读 modal overlay，与抽屉互斥分开：抽屉打开时仍可叠加 hints。
+ * 快捷提示只承载现场操作辅助，不改变任何扫描任务、设备绑定或批次状态。
  */
 export interface KioskUiState {
   settingsDrawerOpen: Ref<boolean>

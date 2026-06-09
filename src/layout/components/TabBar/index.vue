@@ -17,6 +17,8 @@
 <script lang="ts" setup>
 import type { Component } from 'vue'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
 import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import { computed } from 'vue'
@@ -78,21 +80,21 @@ const allTabBarItems: TabBarItem[] = [
 
   // 教师端菜单
   {
-    path: '/teacher/marking-overview',
-    label: '阅卷概览',
+    path: '/teacher/exam-list',
+    label: '考试工作台',
     icon: DashboardOutlined,
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
   {
-    path: '/teacher/tasks',
-    label: '任务管理',
-    icon: UnorderedListOutlined,
+    path: '/teacher/marking-task-pool',
+    label: '阅卷任务',
+    icon: HighlightOutlined,
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
   {
-    path: '/teacher/classes',
-    label: '班级',
-    icon: UserOutlined,
+    path: '/teacher/marking-organization',
+    label: '阅卷安排',
+    icon: EditOutlined,
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
 
@@ -128,6 +130,19 @@ const tabBarItems = computed(() => {
  * 判断当前路由是否激活
  */
 function isActive(path: string): boolean {
+  if (path === '/teacher/exam-list') {
+    return (
+      route.path.startsWith('/teacher/exam-list')
+      || route.path.startsWith('/teacher/exam-prep-workbench')
+    )
+  }
+  if (path === '/teacher/marking-task-pool') {
+    return (
+      route.path.startsWith('/teacher/marking-task-pool')
+      || route.path.startsWith('/teacher/marking-task/')
+      || route.path.startsWith('/teacher/review-workspace')
+    )
+  }
   return route.path.startsWith(path)
 }
 

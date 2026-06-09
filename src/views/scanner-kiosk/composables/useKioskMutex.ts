@@ -5,7 +5,7 @@
  * 全部聚合为统一的 blockedReasons 对象，UI 层只读这一个 computed 决定 disable 状态，
  * 不再让多个组件各自重复实现规则推导。
  *
- * 业务约束（与旧 demo 规则等价）：
+ * 业务约束：
  *   - 任务非终态时阻断切考试 / 切扫描仪 / 切模式 / 激活 / 解绑
  *   - 任务在 SCANNING/PAUSED 才允许暂停或继续
  *   - 任务在 SCANNING/PAUSED 才允许结束本批次

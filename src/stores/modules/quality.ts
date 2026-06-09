@@ -16,6 +16,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { graduationRequirementApi, qualityCourseApi, trainingPlanApi } from '@/apis/quality'
 import { departmentCatalogApi, majorCategoryCatalogApi } from '@/apis/quality/user-catalog'
+import { readAllPages } from '@/utils/page-result'
 
 export const useQualityStore = defineStore(
   'quality',
@@ -107,14 +108,17 @@ export const useQualityStore = defineStore(
     async function loadTrainingPlanOptions(opts?: { programId?: string, keyword?: string }) {
       trainingPlanLoading.value = true
       try {
-        const page = await trainingPlanApi.page({
-          pageNum: 1,
-          pageSize: 200,
-          enabled: true,
-          programId: opts?.programId || currentProgramId.value || undefined,
-          keyword: opts?.keyword?.trim() || undefined,
-        })
-        trainingPlanOptions.value = page.list || []
+        trainingPlanOptions.value = await readAllPages(
+          (pageNum) =>
+            trainingPlanApi.page({
+              pageNum,
+              pageSize: 100,
+              enabled: true,
+              programId: opts?.programId || currentProgramId.value || undefined,
+              keyword: opts?.keyword?.trim() || undefined,
+            }),
+          '培养方案列表加载失败',
+        )
         return trainingPlanOptions.value
       } finally {
         trainingPlanLoading.value = false
@@ -148,15 +152,18 @@ export const useQualityStore = defineStore(
       }
       qualityCourseLoading.value = true
       try {
-        const page = await qualityCourseApi.page({
-          pageNum: 1,
-          pageSize: 200,
-          trainingPlanId: planId,
-          schoolYear: opts?.schoolYear || currentSchoolYear.value || undefined,
-          semester: opts?.semester || currentSemester.value || undefined,
-          enabled: true,
-        })
-        qualityCourseOptions.value = page.list || []
+        qualityCourseOptions.value = await readAllPages(
+          (pageNum) =>
+            qualityCourseApi.page({
+              pageNum,
+              pageSize: 100,
+              trainingPlanId: planId,
+              schoolYear: opts?.schoolYear || currentSchoolYear.value || undefined,
+              semester: opts?.semester || currentSemester.value || undefined,
+              enabled: true,
+            }),
+          '质量评价课程列表加载失败',
+        )
         return qualityCourseOptions.value
       } finally {
         qualityCourseLoading.value = false

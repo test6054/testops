@@ -119,8 +119,6 @@ export interface ScannerAgentActivateResponse {
   storageUploadToken: string
   /** edu-storage 上传 Authorization 请求头模板 */
   storageUploadAuthorizationHeader: string
-  defaultExamId?: string
-  defaultClassIds: string[]
   /** 一体机 Kiosk 锁是否启用 */
   kioskLockEnabled: boolean
   activatedAt: string
@@ -166,6 +164,8 @@ export interface StartScanJobRequest {
   localScannerId: string
   /** 后端 /scanner/kiosk/batch/start 签发的批次外部号 */
   batchExternalNo: string
+  /** 后端 /scanner/kiosk/batch/start 签发的扫描报告 ID */
+  reportId: string
   expectedPages?: number
   scanMode: ScannerKioskScanMode
   targetPageNo?: number
@@ -216,9 +216,12 @@ export interface ScanJobListResponse {
 }
 
 export interface ListScanJobsParams {
-  examId?: string
-  scannerDeviceId?: string
-  scannerStationId?: string
+  /** 当前工作台考试 ID，本地任务恢复必须按考试隔离。 */
+  examId: string
+  /** edu-mark 绑定的扫描设备 ID，本地任务恢复必须按设备隔离。 */
+  scannerDeviceId: string
+  /** edu-mark 绑定的扫描站点 ID，本地任务恢复必须按站点隔离。 */
+  scannerStationId: string
   includeTerminal?: boolean
 }
 
@@ -261,22 +264,18 @@ export async function getScanJob(scanJobId: string): Promise<ScanJobResponse> {
   return normalizeAgentPayload(() => validateScanJobResponse(payload))
 }
 
-export async function listScanJobs(params: ListScanJobsParams = {}): Promise<ScanJobListResponse> {
+export async function listScanJobs(params: ListScanJobsParams): Promise<ScanJobListResponse> {
+  if (!params.examId.trim() || !params.scannerDeviceId.trim() || !params.scannerStationId.trim()) {
+    throwUserFacing('当前考试、扫描设备或扫描站点缺失，无法恢复本地扫描任务')
+  }
   const query = new URLSearchParams()
-  if (params.examId) {
-    query.set('examId', params.examId)
-  }
-  if (params.scannerDeviceId) {
-    query.set('scannerDeviceId', params.scannerDeviceId)
-  }
-  if (params.scannerStationId) {
-    query.set('scannerStationId', params.scannerStationId)
-  }
+  query.set('examId', params.examId.trim())
+  query.set('scannerDeviceId', params.scannerDeviceId.trim())
+  query.set('scannerStationId', params.scannerStationId.trim())
   if (typeof params.includeTerminal === 'boolean') {
     query.set('includeTerminal', String(params.includeTerminal))
   }
-  const suffix = query.toString() ? `?${query.toString()}` : ''
-  const payload = await localAgentGet(`/api/scan-jobs${suffix}`)
+  const payload = await localAgentGet(`/api/scan-jobs?${query.toString()}`)
   return normalizeAgentPayload(() => validateScanJobListResponse(payload))
 }
 
@@ -303,7 +302,7 @@ export async function pauseScanJob(scanJobId: string): Promise<ScanJobResponse> 
 }
 
 /**
- * 恢复被暂停的扫描任务。仅 Paused 任务可被恢复；其它状态原样返回。
+ * 恢复被暂停的扫描任务。仅 Paused 任务可被恢复，其它状态由 Agent 返回业务错误。
  */
 export async function resumeScanJob(scanJobId: string): Promise<ScanJobResponse> {
   const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/resume`, {})
@@ -336,10 +335,12 @@ export async function retryCommit(scanJobId: string): Promise<ScanJobResponse> {
 
 /**
  * 删除尚未上报后端的 Agent 本地扫描任务。仅清理本地 metadata + 影像文件，
- * 不调用后端废弃接口；已上报任务必须先由前端废弃服务端批次，成功后再清理 Agent 本地任务。
+ * 不调用后端废弃接口；若任务已有逐页上传副作用，必须先由前端成功关闭工作台并丢弃后端 pending 页。
  */
-export async function deleteScanJob(scanJobId: string): Promise<boolean> {
-  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {})
+export async function deleteScanJob(scanJobId: string, backendPendingCleared = false): Promise<boolean> {
+  const payload = await localAgentPost(`/api/scan-jobs/${encodeURIComponent(scanJobId)}/delete`, {
+    backendPendingCleared,
+  })
   return normalizeAgentPayload(() => validateBooleanResult(payload))
 }
 
@@ -633,7 +634,6 @@ function validateScannerAgentActivateResponse(
     storageUploadUrl: requireString(result, 'storageUploadUrl'),
     storageUploadToken: requireString(result, 'storageUploadToken'),
     storageUploadAuthorizationHeader: requireString(result, 'storageUploadAuthorizationHeader'),
-    defaultClassIds: requireStringArray(result, 'defaultClassIds'),
     kioskLockEnabled: requireBoolean(result, 'kioskLockEnabled'),
     activatedAt: requireString(result, 'activatedAt'),
     minimumAgentVersion: requireString(result, 'minimumAgentVersion'),
@@ -642,10 +642,6 @@ function validateScannerAgentActivateResponse(
   const tenantId = requireOptionalString(result, 'tenantId')
   if (tenantId !== undefined) {
     payload.tenantId = tenantId
-  }
-  const defaultExamId = requireOptionalString(result, 'defaultExamId')
-  if (defaultExamId !== undefined) {
-    payload.defaultExamId = defaultExamId
   }
   return payload
 }

@@ -87,6 +87,9 @@ onMounted(() => {
     overflow: auto;
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    background: var(--ant-color-bg-container);
   }
 
   // 移动端适配

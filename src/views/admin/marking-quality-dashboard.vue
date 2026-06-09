@@ -1,9 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="quality-dashboard__context">
-        <div class="quality-dashboard__context-info">
-          <h2 class="quality-dashboard__title">阅卷交付 - 阅卷质量控制台</h2>
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="quality-dashboard__exam-select"
@@ -32,8 +31,6 @@
             allow-clear
             @change="handleGroupChange"
           />
-        </div>
-        <div class="quality-dashboard__context-actions">
           <UiTag
             v-if="selectedExamId && progress?.riskLevel"
             :tone="riskTone(progress.riskLevel)"
@@ -41,8 +38,8 @@
           >
             {{ riskLabel(progress.riskLevel) }}
           </UiTag>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -172,7 +169,6 @@
           <UiCard class="info-card">
             <template #title>
               <span>教师质量指标</span>
-              <UiBadge tone="blue">{{ reviewerMetrics.length }}</UiBadge>
             </template>
             <template #extra>
               <a-space>
@@ -221,7 +217,7 @@
               compact
               @retry="loadReviewerMetrics"
             />
-            <UiDataTable
+            <UiDataTable class="student-detail-table__data-table"
               v-else
               :columns="reviewerColumns"
               :data-source="reviewerMetrics"
@@ -450,12 +446,16 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingQualityDashboard' })
+
+const REVIEWER_METRIC_PAGE_SIZE = 100
+const SCANNER_BATCH_OPTION_PAGE_SIZE = 100
 
 const route = useRoute()
 const router = useRouter()
@@ -622,15 +622,17 @@ async function loadReviewerMetrics(): Promise<void> {
   reviewerLoading.value = true
   reviewerMetricsLoadError.value = null
   try {
-    const page = await listReviewerMetrics({
-      examId: selectedExamId.value,
-      organizationId: selectedOrganizationId.value,
-      groupId: selectedGroupId.value,
-      metricStatus: metricStatusFilter.value,
-      pageNum: 1,
-      pageSize: 200,
-    })
-    reviewerMetrics.value = page.list
+    reviewerMetrics.value = await readAllPages(
+      (pageNum) => listReviewerMetrics({
+        examId: selectedExamId.value!,
+        organizationId: selectedOrganizationId.value,
+        groupId: selectedGroupId.value,
+        metricStatus: metricStatusFilter.value,
+        pageNum,
+        pageSize: REVIEWER_METRIC_PAGE_SIZE,
+      }),
+      '阅卷教师质量指标加载失败',
+    )
   } catch (error) {
     reviewerMetricsLoadError.value = toUserError(error, '阅卷教师质量指标加载失败')
     showUserError(error, '阅卷教师质量指标加载失败')
@@ -851,13 +853,15 @@ async function loadScannerBatches(): Promise<void> {
   }
   scannerBatchLoading.value = true
   try {
-    const page = await pageScannerBatches({
-      examId: selectedExamId.value,
-      pageNum: 1,
-      pageSize: 100,
-      includeDiscarded: true,
-    })
-    scannerBatches.value = page.list
+    scannerBatches.value = await readAllPages(
+      (pageNum) => pageScannerBatches({
+        examId: selectedExamId.value!,
+        pageNum,
+        pageSize: SCANNER_BATCH_OPTION_PAGE_SIZE,
+        includeDiscarded: true,
+      }),
+      '扫描批次加载失败',
+    )
   } catch (error) {
     showUserError(error, '扫描批次加载失败')
   } finally {
@@ -912,30 +916,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .quality-dashboard {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
   &__signals {
     margin-bottom: 12px;
     padding: 16px 20px;
@@ -949,13 +929,6 @@ onMounted(async () => {
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
     padding: 0 16px;
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
   }
 
   &__exam-select {

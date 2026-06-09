@@ -30,6 +30,7 @@ import {
 } from '@/apis/quality'
 import { UiButton, UiEmpty } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
+import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function aiTaskTypeLabel(value: AiTaskType): string {
@@ -74,7 +75,7 @@ async function loadTaskOptions() {
       pageNum: 1,
       pageSize: 50,
     })
-    taskOptions.value = page.list.map((task) => ({
+    taskOptions.value = readPageList(page, 'AI 任务列表加载失败，请稍后重试').map((task) => ({
       value: task.id,
       label: `${aiTaskTypeLabel(task.taskType)} / ${aiTaskStatusLabel(task.status)} / ${task.businessLabel}`,
     }))
@@ -142,35 +143,35 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="ai-mask__context">
-        <div class="ai-mask__context-info">
-          <h2 class="ai-mask__title">质量评价 - AI 脱敏映射审计</h2>
-        </div>
-        <div class="ai-mask__context-actions">
-          <a-select
-            :value="selectedTaskSelectValue"
-            :options="taskOptions"
-            :loading="taskLoading"
-            allow-clear
-            show-search
-            option-filter-prop="label"
-            placeholder="选择 AI 任务"
-            class="ai-mask__selector"
-            @change="handleTaskChange"
-          />
-          <UiButton variant="primary" size="sm" :loading="loading" @click="loadMapping">
-            查询映射记录
-          </UiButton>
-        </div>
-      </div>
-    </template>
+    <a-card :bordered="false" class="detail-table-card ai-mask__main-card">
+      <template #title>脱敏映射审计</template>
 
-    <section v-if="taskVO" class="ai-mask__panel">
-      <header class="ai-mask__panel-header">
-        <h3 class="ai-mask__panel-title">AI 任务概览</h3>
-      </header>
-      <a-descriptions :column="2" size="small" bordered>
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadMapping">
+          <a-form-item label="AI 任务">
+            <a-select
+              :value="selectedTaskSelectValue"
+              :options="taskOptions"
+              :loading="taskLoading"
+              allow-clear
+              show-search
+              option-filter-prop="label"
+              placeholder="选择 AI 任务"
+              class="ai-mask__selector"
+              @change="handleTaskChange"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" :loading="loading" @click="loadMapping">查询</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <template v-if="taskVO">
+      <h4 class="ai-mask__section-title">AI 任务概览</h4>
+      <a-descriptions :column="2" size="small" bordered class="ai-mask__descriptions">
         <a-descriptions-item label="能力">
           {{ aiTaskTypeLabel(taskVO.taskType) }}
         </a-descriptions-item>
@@ -189,20 +190,18 @@ onMounted(async () => {
           {{ taskVO.maskMappingId ? '已完成脱敏处理' : '未完成脱敏处理' }}
         </a-descriptions-item>
       </a-descriptions>
-    </section>
+      </template>
 
-    <section v-if="!loading && !mappingVO" class="ai-mask__panel">
       <UiEmpty
-        description="尚未查询到脱敏映射记录，请选择 AI 任务后点击「查询映射记录」"
+        v-if="!loading && selectedAiTaskId && !mappingVO"
+        description="尚未查询到脱敏映射记录，请确认该任务已完成脱敏处理"
         size="sm"
+        class="ai-mask__empty"
       />
-    </section>
 
-    <section v-else-if="mappingVO" class="ai-mask__panel">
-      <header class="ai-mask__panel-header">
-        <h3 class="ai-mask__panel-title">脱敏映射记录</h3>
-      </header>
-      <a-descriptions :column="2" size="small" bordered>
+      <template v-else-if="mappingVO">
+      <h4 class="ai-mask__section-title">脱敏映射记录</h4>
+      <a-descriptions :column="2" size="small" bordered class="ai-mask__descriptions">
         <a-descriptions-item label="业务类型">
           {{ aiTaskBusinessTypeLabel(mappingVO.businessType) }} / {{ mappingVO.businessLabel }}
         </a-descriptions-item>
@@ -213,39 +212,13 @@ onMounted(async () => {
           当前页面展示脱敏处理状态与审计时间，敏感内容不在页面侧呈现。
         </a-descriptions-item>
       </a-descriptions>
-    </section>
+      </template>
+    </a-card>
   </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
 .ai-mask {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__selector {
     width: 360px;
   }

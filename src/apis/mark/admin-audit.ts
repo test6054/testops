@@ -202,7 +202,7 @@ export interface IncidentResolveRequest {
 }
 
 /** 诊断样本查询请求 - 对应 DiagnosticSampleQueryRequest */
-export interface DiagnosticSampleQueryRequest {
+export interface DiagnosticSampleQueryRequest extends QueryDto {
   examId: string
   sampleType?: DiagnosticSampleTypeCode
 }
@@ -288,6 +288,6 @@ export function resolveIncident(request: IncidentResolveRequest): Promise<boolea
  */
 export function listDiagnosticSamples(
   request: DiagnosticSampleQueryRequest,
-): Promise<DiagnosticSampleVO[]> {
-  return http.post<DiagnosticSampleVO[]>('/api/mark/exams/audit/diagnostic-samples', request)
+): Promise<PageResult<DiagnosticSampleVO>> {
+  return http.post<PageResult<DiagnosticSampleVO>>('/api/mark/exams/audit/diagnostic-samples', request)
 }

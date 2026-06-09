@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import type { AccreditationCyclePhase } from '@/apis/quality'
+import { SafetyCertificateOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref } from 'vue'
 import AccreditationAnnualPanel from '@/components/quality/accreditation/AccreditationAnnualPanel.vue'
+import AccreditationAnnualReportMaterialPanel from '@/components/quality/accreditation/AccreditationAnnualReportMaterialPanel.vue'
 import AccreditationCyclePanel from '@/components/quality/accreditation/AccreditationCyclePanel.vue'
 import AccreditationEvidencePanel from '@/components/quality/accreditation/AccreditationEvidencePanel.vue'
 import AccreditationOnsitePanel from '@/components/quality/accreditation/AccreditationOnsitePanel.vue'
 import AccreditationSupportPanel from '@/components/quality/accreditation/AccreditationSupportPanel.vue'
 import { ProgramSelector, TrainingPlanSelector } from '@/components/quality/selectors'
-import { UiButton, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useAccreditationWorkbench } from '@/composables/useAccreditationWorkbench'
 
@@ -36,6 +38,7 @@ const evidenceCount = ref(0)
 
 const cyclePanelRef = ref<InstanceType<typeof AccreditationCyclePanel>>()
 const annualPanelRef = ref<InstanceType<typeof AccreditationAnnualPanel>>()
+const annualReportMaterialPanelRef = ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
 const onsitePanelRef = ref<InstanceType<typeof AccreditationOnsitePanel>>()
 const supportPanelRef = ref<InstanceType<typeof AccreditationSupportPanel>>()
 const evidencePanelRef = ref<InstanceType<typeof AccreditationEvidencePanel>>()
@@ -53,16 +56,88 @@ const deadlineHints = computed(() => {
   return hints
 })
 
+/** CEEAA 2024 标准5章思政全覆盖检查 */
+const ceeaa2024CheckItems = computed(() => {
+  const c = cockpit.value
+  return [
+    {
+      key: '4.1-student',
+      label: '4.1 学生·思政引领',
+      desc: '学生管理制度中应体现思政引领和品德培养措施',
+      passed: !!(c?.activeCycle),
+    },
+    {
+      key: '4.2-objective',
+      label: '4.2 培养目标·为党育人',
+      desc: '培养目标应符合"为党育人、为国育才"总要求',
+      passed: !!(c?.activeCycle),
+    },
+    {
+      key: '4.3-graduate',
+      label: '4.3 毕业要求·工程报国',
+      desc: '毕业要求应包含工程伦理和职业规范（含工程报国意识）',
+      passed: !!(c?.activeCycle),
+    },
+    {
+      key: '4.4-curriculum',
+      label: '4.4 课程体系·价值导向',
+      desc: '课程设置和教学实施应体现正确的价值导向',
+      passed: !!(c?.activeCycle),
+    },
+    {
+      key: '4.5-faculty',
+      label: '4.5 师资队伍·师德师风',
+      desc: '教师应具有良好的师德师风',
+      passed: !!(c?.activeCycle),
+    },
+    {
+      key: '4.6-support',
+      label: '4.6 支持条件',
+      desc: '教室/实验室/设备等支持条件',
+      passed: c?.supportProfileConfirmed ?? false,
+    },
+    {
+      key: '4.7-achievement',
+      label: '4.7 持续改进·达成度闭环',
+      desc: '"评价→分析→改进→再评价"闭环机制',
+      passed: c?.annualReportMaterialsReady === true,
+    },
+  ]
+})
+
+/** P2-1: 当前认证阶段的下一步操作指引 */
+const phaseActionHint = computed<string | null>(() => {
+  const phase = activeCycle.value?.currentPhase
+  if (!phase) return null
+  switch (phase) {
+    case 'SELF_EVALUATION':
+      return '当前阶段：校内自评。请首先配置培养方案、课程矩阵和达成度计算，然后提交自评报告。'
+    case 'SELF_ASSESSMENT_REVIEW':
+      return '自评报告已提交，等待审阅决议。如需补充材料，系统将自动创建新的审阅轮次。'
+    case 'ONSITE_VISIT':
+      return '已通过自评审阅，请创建现场考查计划并生成检查清单。'
+    case 'CONCLUSION':
+      return '认证结论已登记且周期已关闭，请查看结论记录并补齐归档证据。'
+    case 'MAINTENANCE':
+      return '认证通过，进入保持改进阶段。请持续更新年度评价计划和课程达成度数据。'
+    default:
+      return null
+  }
+})
+
 const signalMetrics = computed(() => {
   const base = metrics.value
   if (!base.length) return base
   return [...base, { key: 'evidence', label: '专家材料证据', value: String(evidenceCount.value) }]
 })
 
+const annualCourseCoverages = computed(() => cockpit.value?.annualCourseCoverages || [])
+
 async function refreshAll() {
   await reloadCockpit()
   cyclePanelRef.value?.loadCycles()
   annualPanelRef.value?.loadPlans()
+  annualReportMaterialPanelRef.value?.loadMaterials()
   onsitePanelRef.value?.loadPlans()
   supportPanelRef.value?.loadProfile()
   await evidencePanelRef.value?.loadEvidences()
@@ -84,6 +159,7 @@ onMounted(refreshAll)
   <StageWorkbenchShell>
     <template #context>
       <ContextBar
+        show-title
         title="工程教育认证驾驶舱"
         subtitle="校内自评 → 审阅 → 现场考查 → 结论 → 保持改进（不含 eqem 对接）"
       >
@@ -143,6 +219,41 @@ onMounted(refreshAll)
         :message="deadlineHints.join(' · ')"
         class="acc-deadline"
       />
+      <!-- P2-1: 当前阶段操作指引 -->
+      <a-alert
+        v-if="phaseActionHint"
+        type="info"
+        show-icon
+        :message="phaseActionHint"
+        class="acc-phase-hint"
+      />
+
+      <!-- CEEAA 2024 标准对齐检查面板 -->
+      <UiCard v-if="activeCycle" class="acc-standard-check">
+        <template #title>
+          <SafetyCertificateOutlined />
+          <span>CEEAA 2024 标准对齐检查</span>
+        </template>
+        <div class="acc-standard-check__grid">
+          <div v-for="item in ceeaa2024CheckItems" :key="item.key" class="acc-standard-check__item">
+            <UiTag :tone="item.passed ? 'green' : 'orange'" size="sm">
+              {{ item.passed ? '已覆盖' : '待完善' }}
+            </UiTag>
+            <span class="acc-standard-check__label">{{ item.label }}</span>
+            <span class="acc-standard-check__desc">{{ item.desc }}</span>
+          </div>
+        </div>
+        <div v-if="annualCourseCoverages.length" class="acc-course-coverage">
+          <span class="acc-course-coverage__title">已到期年度课程评价材料覆盖</span>
+          <span
+            v-for="coverage in annualCourseCoverages"
+            :key="coverage.reportYear"
+            class="acc-course-coverage__item"
+          >
+            {{ coverage.reportYear }} 年 {{ coverage.coveredCourseCount }}/{{ coverage.requiredCourseCount }}
+          </span>
+        </div>
+      </UiCard>
 
       <a-tabs v-model:active-key="activeTab" class="acc-tabs">
         <a-tab-pane key="cycle" tab="认证周期">
@@ -158,6 +269,15 @@ onMounted(refreshAll)
         <a-tab-pane key="annual" tab="年度评价">
           <AccreditationAnnualPanel
             ref="annualPanelRef"
+            :program-id="programId"
+            :training-plan-id="trainingPlanId"
+            :active-cycle-id="activeCycleId"
+            @refresh="refreshAll"
+          />
+        </a-tab-pane>
+        <a-tab-pane key="annual-material" tab="年度报备材料">
+          <AccreditationAnnualReportMaterialPanel
+            ref="annualReportMaterialPanelRef"
             :program-id="programId"
             :training-plan-id="trainingPlanId"
             :active-cycle-id="activeCycleId"
@@ -207,6 +327,56 @@ onMounted(refreshAll)
 }
 .acc-deadline {
   margin-bottom: 12px;
+}
+.acc-standard-check {
+  margin-bottom: 12px;
+}
+.acc-standard-check :deep(.ui-card__header) {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.acc-standard-check__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+.acc-standard-check__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--dp-border, #e5e7eb);
+  border-radius: 4px;
+}
+.acc-standard-check__label {
+  font-weight: 600;
+}
+.acc-standard-check__desc {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+}
+.acc-course-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--dp-border, #e5e7eb);
+  font-size: 12px;
+}
+.acc-course-coverage__title {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.72);
+}
+.acc-course-coverage__item {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.08);
+  color: #0f766e;
 }
 .acc-tabs :deep(.ant-tabs-nav) {
   margin-bottom: 12px;

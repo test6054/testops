@@ -10,7 +10,7 @@ import { onMounted, ref, watch } from 'vue'
 import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL, auditIssueApi } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -62,16 +62,19 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await auditIssueApi.page({
-      pageNum: 1,
-      pageSize: 200,
-      programId: props.programId || undefined,
-      trainingPlanId: props.trainingPlanId || undefined,
-      qualityCourseId: props.qualityCourseId || undefined,
-      status: props.status,
-      auditYear: props.auditYear || undefined,
-    })
-    options.value = requirePageList(res, '审核评估问题')
+    options.value = await requireAllPages(
+      (pageNum) =>
+        auditIssueApi.page({
+          pageNum,
+          pageSize: 100,
+          programId: props.programId || undefined,
+          trainingPlanId: props.trainingPlanId || undefined,
+          qualityCourseId: props.qualityCourseId || undefined,
+          status: props.status,
+          auditYear: props.auditYear || undefined,
+        }),
+      '审核评估问题',
+    )
   } catch (e) {
     showUserError(e, '审核问题列表加载失败')
   } finally {

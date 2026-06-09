@@ -57,6 +57,18 @@ export const qualityRoutes: RouteRecordRaw[] = [
           keepAlive: true,
         },
       },
+      {
+        path: 'rationality-audit',
+        name: 'QualityRationalityAudit',
+        component: () => import('@/views/quality/rationality-audit.vue'),
+        meta: {
+          title: '考核合理性审核',
+          roles: ALL_ROLES,
+          icon: 'audit',
+          hideInMenu: false,
+          keepAlive: true,
+        },
+      },
 
       // ─── ① 顶层配置 ──────────────────────────────
       {

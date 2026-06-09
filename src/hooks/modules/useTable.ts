@@ -6,6 +6,7 @@ import Modal from 'ant-design-vue/es/modal'
 import { computed, ref } from 'vue'
 import { useBreakpoint, usePagination } from '@/hooks'
 import { showUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 
 interface UseTableOptions<T, U> {
   formatResult?: (data: T[]) => U[]
@@ -39,13 +40,6 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
       }
       const res = await api(params)
 
-      // 检查响应数据
-      if (!res) {
-        tableData.value = []
-        setTotal(0)
-        return
-      }
-
       // 直接使用响应数据（HTTP客户端已经解包了ResultInfo）
       const actualData = res
 
@@ -57,16 +51,9 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
       } else {
         // 如果返回的是PageResult格式
         const pageResult = actualData as PageResult<T>
-        if (!pageResult) {
-          tableData.value = []
-          setTotal(0)
-          return
-        }
-
-        // 后端PageResult保证list非null，使用??防御性处理
-        const data = pageResult.list ?? []
+        const data = readPageList(pageResult, '数据加载失败，请稍后重试')
         tableData.value = formatResult ? formatResult(data) : data
-        setTotal(Number(pageResult.total))
+        setTotal(readPageTotal(pageResult, '数据加载失败，请稍后重试'))
       }
 
       onSuccess && onSuccess()

@@ -18,7 +18,6 @@ import type {
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -35,7 +34,7 @@ import {
   TeacherSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiSearchForm } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
   ContextBar,
@@ -44,6 +43,7 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function archiveBusinessTypeLabel(value: ArchiveBusinessType): string {
@@ -87,27 +87,6 @@ const businessTypeOptions: { value: ArchiveBusinessType, label: string }[] = Obj
   value,
   label,
 })) as { value: ArchiveBusinessType, label: string }[]
-
-const filterFields: FilterField[] = [
-  {
-    key: 'businessType',
-    label: '业务类型',
-    type: 'select',
-    placeholder: '业务类型',
-    allowClear: true,
-    options: businessTypeOptions,
-    width: 180,
-  },
-  { key: 'archiveCategory', label: '归档分类', type: 'input', placeholder: '归档分类', width: 130 },
-  {
-    key: 'keyword',
-    label: '关键字',
-    type: 'input',
-    placeholder: '关键字',
-    width: 180,
-    inputPrefixIcon: 'search',
-  },
-]
 
 const filterModel = ref<ArchiveFilterModel>({
   businessType: undefined,
@@ -160,8 +139,8 @@ async function loadList() {
       archiveCategory: query.archiveCategory?.trim() || undefined,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '质量归档材料加载失败，请稍后重试')
+    total.value = readPageTotal(page, '质量归档材料加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -435,7 +414,7 @@ async function openAuditDrawer(record: ArchiveVO) {
       category: 'QUALITY',
       description: record.id,
     })
-    auditEvents.value = page.list.map((log) => {
+    auditEvents.value = readPageList(page, '归档审计记录加载失败，请稍后重试').map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -478,7 +457,7 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar title="质量评价 - 材料归档">
+      <ContextBar show-title title="质量评价 - 材料归档">
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
             刷新
@@ -491,21 +470,48 @@ onMounted(async () => {
 
     <SignalBand :metrics="signals" compact class="archive__signals" />
 
-    <section class="archive__panel">
-      <header class="archive__panel-header">
-        <h3 class="archive__panel-title">归档列表</h3>
-      </header>
+    <a-card :bordered="false" class="detail-table-card archive__table-card">
+      <template #title>归档列表</template>
 
-      <UiSearchForm
-        v-model="filterModel"
-        :fields="filterFields"
-        :show-labels="false"
-        class="archive__search-form"
-        @search="handleSearch"
-        @reset="handleResetSearch"
-      />
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
+          <a-form-item label="业务类型">
+            <a-select
+              v-model:value="filterModel.businessType"
+              placeholder="业务类型"
+              allow-clear
+              style="width: 180px"
+              :options="businessTypeOptions"
+            />
+          </a-form-item>
+          <a-form-item label="归档分类">
+            <a-input
+              v-model:value="filterModel.archiveCategory"
+              placeholder="归档分类"
+              allow-clear
+              style="width: 130px"
+            />
+          </a-form-item>
+          <a-form-item label="关键字">
+            <a-input
+              v-model:value="filterModel.keyword"
+              placeholder="关键字"
+              allow-clear
+              style="width: 180px"
+              @press-enter="handleSearch"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="handleSearch">查询</UiButton>
+              <span class="op-link" role="button" @click="handleResetSearch">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -549,19 +555,15 @@ onMounted(async () => {
           <template v-else-if="column.key === 'archivedAt'">
             {{ record.archivedAt || '尚未归档确认' }}
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
-              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
-                删除
-              </UiButton>
-              <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
-            </a-space>
-          </template>
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openDetail(record)">详情</span>
+              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+              <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <UiDrawer
       v-model:open="exportVisible"

@@ -76,7 +76,7 @@ const hints = computed(() => {
       tab: 'onsite',
     })
   }
-  if (canConclusion(c) && !c.conclusionRegisteredAt) {
+  if (canConclusion(c)) {
     list.push({
       text: '现场考查完成后登记认证结论（含有条件通过第 3 年改进到期）。',
       action: '登记结论',

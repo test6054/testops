@@ -40,8 +40,8 @@ export type ExamScannerPageRegistrationStatus
 
 export interface ExamScannerKioskContextRequest {
   examId: string
-  scannerDeviceId?: string
-  scannerStationId?: string
+  scannerDeviceId: string
+  scannerStationId: string
   scanMode: ScannerKioskScanMode
 }
 
@@ -282,6 +282,8 @@ export interface ExamScannerBatchLifecycleVO {
   anchorMutated: boolean
   /** 后端签发的批次外部号；前端 push / commit 时必须使用此值 */
   batchExternalNo?: string
+  /** 后端签发的扫描报告 ID；本地 Agent push / commit 必须原值透传 */
+  reportId?: string
   examId?: string
   scannerDeviceId?: string
   scannerStationId?: string
@@ -373,7 +375,7 @@ export interface ExamScannerPageLedgerItemVO {
   serverReceiveStatus: ExamScannerPageServerReceiveStatus
   /** 识别登记状态；异常通过 attentionType 独立表达 */
   registrationStatus: ExamScannerPageRegistrationStatus
-  /** 异常类型编码：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW */
+  /** 异常类型编码：QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT */
   attentionType?: ScanAttentionTypeCode
   attentionMessage?: string
   /** 已落库扫描页的最后操作人昵称；未 commit 的 pending 页无操作人 */
@@ -426,6 +428,8 @@ export function fetchScannerPageLedger(
 
 export interface ExamScannerBoundPaperListRequest {
   examId: string
+  scannerDeviceId: string
+  scannerStationId: string
   scanBatchId?: string
 }
 
@@ -495,7 +499,7 @@ export interface ExamScannerKioskBatchHistoryItem {
   receivedPageCount?: number
   /** 待上传页数（pageCount - receivedPageCount） */
   pendingUploadCount?: number
-  /** 异常处置项数量（QUALITY_BLOCK + 未处置 PROCESSING） */
+  /** 异常处置项数量（QUALITY_BLOCK / PROCESSING_BLOCK / DUPLICATE_PENDING / RECOGNITION_REVIEW / BINDING_CONFLICT） */
   attentionItemCount?: number
   scanMode: ScannerKioskScanMode
   targetPageNo?: number

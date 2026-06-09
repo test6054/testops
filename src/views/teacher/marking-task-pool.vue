@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="marking-task-pool-page__context">
-        <div class="marking-task-pool-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="marking-task-pool-page__exam-select"
@@ -18,20 +18,8 @@
           <UiTag v-if="inProgressCount > 0" tone="orange" size="sm">
             阅卷中 {{ inProgressCount }}
           </UiTag>
-        </div>
-        <div class="marking-task-pool-page__context-right">
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="loading"
-            @click="loadTasks"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -45,13 +33,12 @@
         <template #title>
           <ThunderboltOutlined />
           <span>领取任务</span>
-          <UiBadge tone="green"> {{ claimContext?.groups.length ?? 0 }} 个可领取题组 </UiBadge>
         </template>
 
         <a-spin :spinning="claimContextLoading">
           <UiEmpty
             v-if="!claimContextLoading && (claimContext?.groups.length ?? 0) === 0"
-            description="您当前未被分配到任何活跃题组，请联系阅卷组织管理员"
+            :description="claimEmptyHint"
           />
           <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
             <a-form-item label="题组" required>
@@ -97,13 +84,24 @@
         </a-spin>
       </UiCard>
 
-      <UiCard class="filter-card">
+      <!-- PR-ISSUE-1: 任务完成度统计面板 -->
+      <UiStatPanel
+        v-if="tasks.length > 0"
+        :items="taskStats"
+        :columns="4"
+        variant="strip"
+        compact
+        class="marking-task-pool-page__stats"
+      />
+
+      <a-card :bordered="false" class="detail-table-card table-card">
         <template #title>
-          <FilterOutlined />
-          <span>筛选条件</span>
+          <TableOutlined />
+          <span class="section-title">任务列表</span>
         </template>
 
-        <a-form layout="inline" :model="filterForm">
+        <div class="filter-card">
+          <a-form layout="inline" :model="filterForm" class="filter-form filter-form--toolbar">
           <a-form-item label="任务状态">
             <a-select
               v-model:value="filterForm.taskStatus"
@@ -138,21 +136,24 @@
               @change="loadTasks"
             />
           </a-form-item>
-          <a-form-item>
-            <a-space>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
               <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
-              <UiButton size="sm" variant="outline" @click="resetFilter">重置</UiButton>
+              <span class="op-link" role="button" @click="resetFilter">重置</span>
+              <UiButton
+                variant="outline"
+                size="sm"
+                :disabled="!selectedExamId"
+                :loading="loading"
+                @click="loadTasks"
+              >
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
             </a-space>
           </a-form-item>
         </a-form>
-      </UiCard>
-
-      <UiCard class="table-card">
-        <template #title>
-          <TableOutlined />
-          <span>任务列表</span>
-          <UiBadge tone="blue">{{ tasks.length }} 条</UiBadge>
-        </template>
+        </div>
 
         <!-- D-9 错误态：任务列表加载失败时提供重试 + 上报入口 -->
         <UiErrorRetryPanel
@@ -174,6 +175,7 @@
           row-key="id"
           size="middle"
           flat
+          class="student-detail-table__data-table"
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'question'">
@@ -257,7 +259,7 @@
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </a-card>
     </template>
   </StageWorkbenchShell>
 </template>
@@ -290,15 +292,15 @@ import {
   MARKING_TASK_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
 import {
-  UiBadge,
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
@@ -352,6 +354,14 @@ const inProgressCount = computed(
       (task) => task.taskStatus === 'IN_PROGRESS' || task.taskStatus === 'ALLOCATED',
     ).length,
 )
+
+/** PR-ISSUE-1: 任务完成度统计 */
+const taskStats = computed(() => [
+  { label: '我的任务', value: tasks.value.length, tone: 'blue' as BadgeTone },
+  { label: '待处理', value: tasks.value.filter((t) => t.taskStatus === 'ALLOCATED').length, tone: 'gray' as BadgeTone },
+  { label: '阅卷中', value: inProgressCount.value, tone: 'orange' as BadgeTone },
+  { label: '已完成', value: tasks.value.filter((t) => t.taskStatus === 'SUBMITTED' || t.taskStatus === 'FINALIZED').length, tone: 'green' as BadgeTone },
+])
 
 const columns: ColumnType<MarkingTaskVO>[] = [
   { title: '题目', key: 'question', width: 190 },
@@ -410,6 +420,14 @@ const claimForm = reactive<MarkingTaskClaimRequest>({
 })
 
 const canClaim = computed(() => !!claimForm.sessionId.trim() && !!claimForm.groupId.trim())
+
+/** C-ISSUE-2: 区分无可领任务的不同原因 */
+const claimEmptyHint = computed(() => {
+  if (claimContext.value && (claimContext.value.groups?.length ?? 0) > 0) {
+    return '题组下有配置但无可领取任务：可能正评会话未启动，或任务已被其他教师领完。请联系阅卷组织管理员确认正评状态。'
+  }
+  return '您当前未被分配到任何活跃题组。请确认：1) 阅卷组织已创建 2) 题组已配置阅卷教师 3) 正评会话已启动。如仍有问题请联系管理员。'
+})
 
 const claimContext = computed<TeacherClaimContextVO | null>(() =>
   selectedExamId.value ? markTaskStore.getClaimContext(selectedExamId.value) : null,
@@ -529,25 +547,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .marking-task-pool-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }

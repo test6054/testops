@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="sheet-page__context">
-        <div class="sheet-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="sheet-page__exam-select"
@@ -20,14 +20,18 @@
           <UiTag v-if="selectedExamId" tone="gray" size="sm">
             {{ pages.length }} / {{ totalPagesLabel }} 页
           </UiTag>
-        </div>
-        <div class="sheet-page__context-right">
+        </template>
+        <template #actions>
+          <UiButton size="sm" variant="primary" :disabled="!hasQuestions" :loading="sheetGenerating" @click="openSheetGenerateModal">
+            <template #icon><ThunderboltOutlined /></template>
+            生成标准答题卡
+          </UiButton>
           <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
             <template #icon><SaveOutlined /></template>
             保存
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="sheet-page__empty" />
@@ -100,6 +104,32 @@
         <ExamTemplatePageTable ref="pageTableRef" v-model:pages="pages" @remove="removePage" />
       </UiCard>
     </a-spin>
+
+    <!-- 生成标准答题卡配置弹窗 -->
+    <a-modal
+      v-model:open="sheetGenerateModalOpen"
+      title="生成标准答题卡 PDF"
+      width="520px"
+      :confirm-loading="sheetGenerating"
+      ok-text="生成并预览"
+      @ok="handleSheetGenerate"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="选择题数量">
+          <a-input-number v-model:value="sheetGenForm.choiceCount" :min="0" :max="200" style="width:100%" />
+        </a-form-item>
+        <a-form-item label="判断题数量">
+          <a-input-number v-model:value="sheetGenForm.trueFalseCount" :min="0" :max="100" style="width:100%" />
+        </a-form-item>
+        <a-form-item label="主观题名称（一行一个）">
+          <a-textarea v-model:value="sheetGenForm.subjectNamesText" :rows="4" placeholder="三、简答题&#10;四、计算题&#10;五、论述题" />
+        </a-form-item>
+        <a-form-item label="每题预留行数（逗号分隔）">
+          <a-input v-model:value="sheetGenForm.subjectLinesText" placeholder="5,8,10" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
   </StageWorkbenchShell>
 </template>
 
@@ -116,6 +146,7 @@ import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -124,6 +155,7 @@ import {
   isPaperTemplateNotConfiguredError,
   saveAnswerSheetTemplate,
 } from '@/apis/mark/exam'
+import { generateStandardAnswerSheet } from '@/apis/mark/paper-master'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
 import {
   UiAlertStrip,
@@ -134,7 +166,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
@@ -165,6 +197,7 @@ const form = reactive<{ templateName: string, totalPages?: number }>({
 })
 const pages = ref<ExamTemplatePageRow[]>([])
 
+const questionTemplates = ref<ExamQuestionTemplateVO[]>([])
 const questionCount = ref(0)
 const hasQuestions = computed(() => questionCount.value > 0)
 const totalPagesLabel = computed(() =>
@@ -177,10 +210,70 @@ const loading = ref(false)
 const saving = ref(false)
 const templateLoadError = ref<Error | null>(null)
 
+// ─── 生成标准答题卡 ────────────────────────────────────────────
+
+const sheetGenerateModalOpen = ref(false)
+const sheetGenerating = ref(false)
+const sheetGenForm = reactive({
+  choiceCount: 0,
+  trueFalseCount: 0,
+  subjectNamesText: '',
+  subjectLinesText: '',
+})
+
+function openSheetGenerateModal() {
+  if (questionTemplates.value.length > 0) {
+    const objectiveQuestions = questionTemplates.value.filter((q) => q.questionType === 'OBJECTIVE')
+    const subjectiveQuestions = questionTemplates.value.filter((q) => q.questionType === 'SUBJECTIVE')
+    sheetGenForm.choiceCount = objectiveQuestions.length
+    sheetGenForm.trueFalseCount = 0
+    sheetGenForm.subjectNamesText = subjectiveQuestions.length > 0
+      ? subjectiveQuestions.map((q) => `第${q.questionNo}题`).join('\n')
+      : ''
+    sheetGenForm.subjectLinesText = subjectiveQuestions.length > 0
+      ? subjectiveQuestions.map(() => '5').join(',')
+      : ''
+  }
+  sheetGenerateModalOpen.value = true
+}
+
+async function handleSheetGenerate() {
+  if (!selectedExamId.value) return
+  sheetGenerating.value = true
+  try {
+    const names = sheetGenForm.subjectNamesText.trim()
+      ? sheetGenForm.subjectNamesText.trim().split('\n').filter(Boolean) : []
+    const lines = sheetGenForm.subjectLinesText.trim()
+      ? sheetGenForm.subjectLinesText.trim().split(',').map(Number).filter(n => !isNaN(n)) : []
+    const fileId = await generateStandardAnswerSheet({
+      examId: selectedExamId.value,
+      choiceCount: sheetGenForm.choiceCount,
+      trueFalseCount: sheetGenForm.trueFalseCount,
+      subjectNames: names.length > 0 ? names : undefined,
+      subjectLines: lines.length > 0 ? lines : undefined,
+    })
+    const token = localStorage.getItem('token')
+    if (token) {
+      const url = new URL('/api/storage/filesystem/download', window.location.origin)
+      url.searchParams.set('nodeId', fileId)
+      const resp = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
+      if (resp.ok) {
+        const blob = await resp.blob()
+        window.open(URL.createObjectURL(blob), '_blank')
+      }
+    }
+    message.success('标准答题卡已生成，新窗口预览中')
+    sheetGenerateModalOpen.value = false
+  } catch (error) {
+    showUserError(error, '生成标准答题卡失败')
+  } finally { sheetGenerating.value = false }
+}
+
 function clearTemplate(): void {
   form.templateName = ''
   form.totalPages = undefined
   pages.value = []
+  questionTemplates.value = []
   questionCount.value = 0
 }
 
@@ -200,6 +293,7 @@ async function applyTemplate(
     heightPx: p.heightPx,
   }))
   await hydrateTemplatePageFileNames(pages.value)
+  questionTemplates.value = questionList
   questionCount.value = questionList.length
 }
 
@@ -362,25 +456,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .sheet-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }
@@ -397,7 +472,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .info-card {

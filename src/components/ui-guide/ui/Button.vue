@@ -16,21 +16,8 @@
     @click="onClick"
   >
     <span v-if="loading" class="dp-btn__loading">
-      <svg
-        class="dp-btn__spinner"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <circle
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="3"
-          stroke-linecap="round"
-          stroke-dasharray="31.4 31.4"
-        />
+      <svg class="dp-btn__spinner" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="31.4 31.4" />
       </svg>
     </span>
     <span v-if="hasPrefixIcon && !loading" class="dp-btn__icon">
@@ -54,30 +41,27 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(
-  defineProps<{
-    variant?: UiButtonVariant
-    size?: UiComponentSize
-    block?: boolean
-    disabled?: boolean
-    loading?: boolean
-    status?: UiButtonStatus
-    type?: 'button' | 'submit' | 'reset'
-    htmlType?: 'button' | 'submit' | 'reset'
-    iconOnly?: boolean
-  }>(),
-  {
-    variant: 'primary',
-    size: 'md',
-    block: false,
-    disabled: false,
-    loading: false,
-    status: 'normal',
-    type: 'button',
-    htmlType: undefined,
-    iconOnly: false,
-  },
-)
+const props = withDefaults(defineProps<{
+  variant?: UiButtonVariant
+  size?: UiComponentSize
+  block?: boolean
+  disabled?: boolean
+  loading?: boolean
+  status?: UiButtonStatus
+  type?: 'button' | 'submit' | 'reset'
+  htmlType?: 'button' | 'submit' | 'reset'
+  iconOnly?: boolean
+}>(), {
+  variant: 'primary',
+  size: 'md',
+  block: false,
+  disabled: false,
+  loading: false,
+  status: 'normal',
+  type: 'button',
+  htmlType: undefined,
+  iconOnly: false,
+})
 
 const emit = defineEmits<{
   (e: 'click', evt: MouseEvent): void
@@ -120,12 +104,12 @@ const onClick = (evt: MouseEvent) => {
   border: 1px solid transparent;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    opacity 0.15s ease;
-  outline: none;
-  font-family: var(--dp-font-family), sans-serif;
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+  font-family: var(--dp-font-family, 'Inter'), 'PingFang SC', sans-serif;
   white-space: nowrap;
   user-select: none;
 }
@@ -187,25 +171,23 @@ const onClick = (evt: MouseEvent) => {
 .dp-btn--outline {
   background-color: var(--dp-surface, #fff);
   color: var(--dp-text-primary, #0f172a);
-  border-color: var(--dp-border-strong, #e2e8f0);
+  border-color: var(--dp-border, #e5e7eb);
 }
 
 .dp-btn--outline:hover {
   background-color: var(--dp-gray-50, #f8fafc);
-  color: var(--dp-gray-900, #0f172a);
-  border-color: var(--dp-gray-300, #cbd5e1);
+  border-color: var(--dp-border-strong, #d0d5dd);
 }
 
 .dp-btn--ghost {
   background-color: transparent;
-  color: var(--dp-text-secondary, #475569);
+  color: var(--dp-text-primary, #0f172a);
   border-color: transparent;
 }
 
 .dp-btn--ghost:hover {
-  background-color: var(--dp-bg-control, #f1f5f9);
-  color: var(--dp-text-primary, #0f172a);
-  border-color: transparent;
+  background-color: var(--dp-gray-50, #f8fafc);
+  color: var(--dp-text-secondary, #475569);
 }
 
 /* Soft 变体（浅蓝色背景） */
@@ -247,7 +229,7 @@ const onClick = (evt: MouseEvent) => {
 }
 
 .dp-btn:not(:disabled):active {
-  opacity: 0.85;
+  transform: translateY(1px);
 }
 
 .dp-btn:disabled {

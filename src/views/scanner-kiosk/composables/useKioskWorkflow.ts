@@ -2,12 +2,11 @@
  * 扫描一体机工作站 - 业务编排 composable
  *
  * 由 KioskLayout.vue 顶层调用一次，4 个 stage 子路由通过 inject('kioskCtx') 共享。
- * 所有业务逻辑（API 调用 / SSE 接入 / 轮询 / 恢复 / 互斥规则 / 错误处理）从旧
- * views/scanner-kiosk/index.vue 完整迁移，保持规则等价；UI 层只读 reactive state +
- * 调用本 composable 暴露的 method，不直接调底层 API。
+ * 所有业务逻辑（API 调用 / SSE 接入 / 轮询 / 恢复 / 互斥规则 / 错误处理）在这里
+ * 统一收口；UI 层只读 reactive state + 调用本 composable 暴露的 method，不直接调底层 API。
  *
- * 业务约束（与旧 demo 等价）：
- *   - canStartScan / canSwitchExam / canSwitchScanner / canSwitchScanMode 互斥规则保留
+ * 业务约束：
+ *   - canStartScan / canSwitchExam / canSwitchScanner / canSwitchScanMode 由后端上下文和本地任务状态共同决定
  *   - SSE 增量 → 800ms 防抖刷新 context + ledger
  *   - 健康轮询 5s / 上下文轮询 15s / 任务轮询 1.5s / busy 轮询 2s
  *   - 任务终态收口：REPORTED/CANCELLED 关闭锚点；FAILED 保留中间页供重试
@@ -131,7 +130,7 @@ export function useKioskWorkflow() {
     = typeof gatewayBaseUrlEnv === 'string' ? gatewayBaseUrlEnv.trim() : ''
 
   // -------------------------------------------------------------
-  // reactive state（与旧 index.vue 一一对应）
+  // reactive state：承载一体机工作台的浏览器态、Agent 态和后端上下文锚点。
   // -------------------------------------------------------------
 
   const health = ref<AgentHealthResponse | null>(null)
@@ -257,6 +256,7 @@ export function useKioskWorkflow() {
     filter: () => ({
       examId: examId.value || undefined,
       scannerDeviceId: queryScannerDeviceId.value || undefined,
+      scannerStationId: queryScannerStationId.value || undefined,
     }),
     initialLimit: 20,
     maxEvents: 50,
@@ -285,7 +285,7 @@ export function useKioskWorkflow() {
   }
 
   // -------------------------------------------------------------
-  // computed - 派生 state（保留旧 demo 全部 computed）
+  // computed：从后端上下文、本地任务和页面输入派生工作台可执行状态。
   // -------------------------------------------------------------
 
   const selectedExamOption = computed<ExamScannerKioskExamOptionVO | null>(
@@ -409,6 +409,7 @@ export function useKioskWorkflow() {
         return '补扫目标页号不能为空'
       }
       if (!supplementReason.value.trim()) return '补扫原因不能为空'
+      if (expectedPages.value !== 1) return '补扫预计页数必须为 1'
     }
     if (!kioskContext.value.device) return '考试未绑定可用扫描设备'
     if (!kioskContext.value.policy) return '考试扫描策略未配置'
@@ -541,7 +542,7 @@ export function useKioskWorkflow() {
   })
 
   // -------------------------------------------------------------
-  // helpers - 文案 / 工具函数（旧 demo 中的 helper 直接迁移）
+  // helpers：工作台文案、合同校验和轻量格式化函数。
   // -------------------------------------------------------------
 
   function scanModeText(mode: ScannerKioskScanMode, suffix: string) {
@@ -738,17 +739,25 @@ export function useKioskWorkflow() {
       boundPapers.value = []
       return
     }
+    if (!queryScannerDeviceId.value || !queryScannerStationId.value) {
+      kioskContext.value = null
+      boundPapers.value = []
+      errorMessage.value = '扫描工作台地址缺少 scannerDeviceId 或 scannerStationId，无法加载考试上下文'
+      return
+    }
     kioskContext.value = await getScannerKioskContext({
       examId: examId.value,
-      scannerDeviceId: queryScannerDeviceId.value || undefined,
-      scannerStationId: queryScannerStationId.value || undefined,
+      scannerDeviceId: queryScannerDeviceId.value,
+      scannerStationId: queryScannerStationId.value,
       scanMode: scanMode.value,
     })
     await refreshBoundPapers()
   }
 
   async function refreshBoundPapers() {
-    if (!examId.value) {
+    const device = getActiveScannerDeviceId()
+    const station = getActiveScannerStationId()
+    if (!examId.value || !device || !station) {
       boundPapers.value = []
       boundPapersError.value = null
       return
@@ -759,6 +768,8 @@ export function useKioskWorkflow() {
       const scanBatchId = kioskContext.value?.latestBatch?.scanBatchId
       boundPapers.value = await listScannerKioskBoundPapers({
         examId: examId.value,
+        scannerDeviceId: device,
+        scannerStationId: station,
         ...(scanBatchId ? { scanBatchId } : {}),
       })
     } catch (error) {
@@ -793,6 +804,10 @@ export function useKioskWorkflow() {
       const result = await pageScannerKioskExamOptions(request)
       examOptions.value = readPageList(result, '考试列表加载失败，请稍后重试')
       examOptionTotal.value = readPageTotal(result)
+    } catch (error) {
+      handleError(error)
+      examOptions.value = []
+      examOptionTotal.value = 0
     } finally {
       examOptionLoading.value = false
     }
@@ -877,7 +892,11 @@ export function useKioskWorkflow() {
       if (toIso) request.scanStartTimeTo = toIso
       const result = await pageScannerKioskBatchHistory(request)
       batchHistoryList.value = readPageList(result, '扫描批次历史加载失败，请稍后重试')
-      batchHistoryTotal.value = Number(result.total)
+      batchHistoryTotal.value = readPageTotal(result, '扫描批次历史加载失败，请稍后重试')
+    } catch (error) {
+      handleError(error)
+      batchHistoryList.value = []
+      batchHistoryTotal.value = 0
     } finally {
       batchHistoryLoading.value = false
     }
@@ -1072,6 +1091,8 @@ export function useKioskWorkflow() {
       supplementTargetPageNo.value = undefined
       supplementReason.value = ''
       supplementReplaceTargetPage.value = false
+    } else {
+      expectedPages.value = 1
     }
     errorMessage.value = ''
     await refreshKioskContext()
@@ -1123,11 +1144,15 @@ export function useKioskWorkflow() {
       errorMessage.value = '当前扫描任务未结束，不能新建扫描'
       return
     }
+    const isSupplement = scanMode.value === 'SUPPLEMENT'
+    if (isSupplement && expectedPages.value !== 1) {
+      errorMessage.value = '补扫只能扫描 1 个物理页'
+      return
+    }
     loading.value = true
     errorMessage.value = ''
     successMessage.value = ''
     resetBusyState()
-    const isSupplement = scanMode.value === 'SUPPLEMENT'
     const scannerDeviceId = getActiveScannerDeviceId()
     const scannerStationId = getActiveScannerStationId()
     try {
@@ -1150,16 +1175,19 @@ export function useKioskWorkflow() {
         replaceTargetPage: isSupplement ? supplementReplaceTargetPage.value : false,
       })
       if (!batchLifecycle.batchExternalNo) {
-        errorMessage.value = '扫描批次创建结果缺少批次编号，无法启动本地扫描'
-        return
+        throw toUserError(null, '扫描批次创建结果缺少批次编号，无法启动本地扫描')
       }
       activeBatchExternalNo.value = batchLifecycle.batchExternalNo
+      if (!batchLifecycle.reportId) {
+        throw toUserError(null, '扫描批次创建结果缺少扫描报告 ID，无法启动本地扫描')
+      }
       const lifecycleScanSource = resolveLifecycleScanSource(batchLifecycle, kioskContext.value)
       currentJob.value = await startScanJob({
         context: kioskContext.value,
         localScannerId: selectedScannerId.value,
         batchExternalNo: batchLifecycle.batchExternalNo,
-        expectedPages: expectedPages.value,
+        reportId: batchLifecycle.reportId,
+        expectedPages: isSupplement ? 1 : expectedPages.value,
         scanMode: lifecycleScanSource.scanMode,
         targetPageNo: lifecycleScanSource.targetPageNo,
         supplementReason: lifecycleScanSource.supplementReason,
@@ -1361,7 +1389,7 @@ export function useKioskWorkflow() {
     loading.value = true
     try {
       await closeActiveBatch(true)
-      await deleteScanJob(job.scanJobId)
+      await deleteScanJob(job.scanJobId, true)
       successMessage.value = '已删除本地扫描任务并关闭当前扫描工作台记录'
       currentJob.value = null
       await refreshKioskContext()
@@ -1552,7 +1580,9 @@ export function useKioskWorkflow() {
 
   async function closeActiveBatch(discardPendingPages: boolean) {
     const batchExternalNo = getActiveBatchExternalNo()
-    if (!batchExternalNo) return
+    if (!batchExternalNo) {
+      throw toUserError(null, '当前扫描任务缺少批次外部号，无法关闭批次')
+    }
     const scannerDeviceId = getActiveScannerDeviceId()
     const scannerStationId = getActiveScannerStationId()
     if (!examId.value) {
@@ -1579,7 +1609,11 @@ export function useKioskWorkflow() {
         throw toUserError(null, '扫描批次关闭结果异常，请刷新后重试')
       }
       if (lifecycle.pendingPageCount > 0) {
-        errorMessage.value = lifecycle.pendingPagesDiagnostic!
+        const diagnostic = lifecycle.pendingPagesDiagnostic?.trim()
+        throw toUserError(
+          null,
+          diagnostic || `批次仍有 ${lifecycle.pendingPageCount} 页未提交，无法关闭扫描批次`,
+        )
       }
     }
     activeBatchExternalNo.value = ''
@@ -1933,7 +1967,7 @@ function queryValue(value: LocationQueryValue | LocationQueryValue[]) {
  * 字符串（'YYYY-MM-DDTHH:mm:ss'）。空字符串原样返回；已含秒时不重复补。
  *
  * 用于历史批次时间范围过滤：后端 ExamScannerBatchQueryRequest 字段
- * scanStartTimeFrom / scanStartTimeTo 类型为 LocalDateTime，Jackson 默认要求 ISO 格式。
+ * scanStartTimeFrom / scanStartTimeTo 类型为 LocalDateTime，后端绑定要求 ISO 本地时间格式。
  */
 function normalizeDatetimeLocal(value: string): string {
   const trimmed = (value || '').trim()

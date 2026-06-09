@@ -37,7 +37,8 @@ import type { RouteRecordRaw } from 'vue-router'
 import { debounce } from 'lodash-es'
 import { ref, watch } from 'vue'
 import { useDevice } from '@/hooks'
-import { useAppStore, useRouteStore } from '@/stores'
+import { useAppStore, useAuthStore, useRouteStore } from '@/stores'
+import { RoleEnum } from '@/types/enums'
 import { isExternal } from '@/utils/validate'
 import MenuIcon from './MenuIcon.vue'
 import MenuItem from './MenuItem.vue'
@@ -58,10 +59,20 @@ const { isDesktop } = useDevice()
 const route = useRoute()
 const router = useRouter()
 const appStore = useAppStore()
+const authStore = useAuthStore()
 const routeStore = useRouteStore()
+
+const TEACHER_MARKING_ROLES: RoleEnum[] = [
+  RoleEnum.SCH_TECH,
+  RoleEnum.CROP_ADMIN,
+  RoleEnum.CROP_USER,
+  RoleEnum.SUPER_ADMIN,
+]
 
 // 顶层容器路由前缀（各角色布局 / 工作台）
 const ROLE_LAYOUT_PREFIXES = ['/admin', '/teacher', '/student', '/quality'] as const
+
+const MERGED_TEACHER_QUALITY_PREFIXES = ['/teacher', '/quality'] as const
 
 // 根据当前路径匹配所在的角色容器前缀
 const activeLayoutPrefix = computed(() => {
@@ -71,15 +82,63 @@ const activeLayoutPrefix = computed(() => {
 // 是否处于某个角色容器路由之下（决定是否走扁平化 + 分组渲染）
 const isRoleLayoutRoute = computed(() => activeLayoutPrefix.value !== null)
 
+const useMergedTeacherQualitySidebar = computed(() => {
+  const role = authStore.userRole as RoleEnum
+  if (!TEACHER_MARKING_ROLES.includes(role)) {
+    return false
+  }
+  const path = route.path
+  return MERGED_TEACHER_QUALITY_PREFIXES.some((prefix) => path.startsWith(prefix))
+})
+
+function normalizeQualitySidebarItem(child: RouteRecordRaw): RouteRecordRaw {
+  const absPath = child.path.startsWith('/') ? child.path : `/quality/${child.path}`
+  const groupKey = child.meta?.menuGroup as string | undefined
+  if (!groupKey) {
+    return {
+      ...child,
+      path: absPath,
+      meta: {
+        ...child.meta,
+        menuGroup: 'quality-overview',
+        menuGroupTitle: '教学质量评价',
+        menuGroupIcon: 'reconciliation',
+        menuGroupOrder: 7,
+      },
+    }
+  }
+  const baseOrder = (child.meta?.menuGroupOrder as number) || 1
+  return {
+    ...child,
+    path: absPath,
+    meta: {
+      ...child.meta,
+      menuGroupOrder: baseOrder + 6,
+    },
+  }
+}
+
+function buildMergedTeacherQualityRoutes(menuRoutes: RouteRecordRaw[]): RouteRecordRaw[] {
+  const teacherRoute = menuRoutes.find((r) => r.path === '/teacher')
+  const qualityRoute = menuRoutes.find((r) => r.path === '/quality')
+  const teacherItems = (teacherRoute?.children ?? []).filter((child) => !child.meta?.hideInMenu)
+  const qualityItems = (qualityRoute?.children ?? [])
+    .filter((child) => !child.meta?.hideInMenu)
+    .map((child) => normalizeQualitySidebarItem(child))
+  return [...teacherItems, ...qualityItems]
+}
+
 // 使用权限过滤后的菜单路由
 const sidebarRoutes = computed(() => {
   if (props.menus) {
     return props.menus
   }
-  // 获取过滤后的菜单路由
   const menuRoutes = routeStore.getMenuRoutes()
 
-  // 角色容器路由：直接显示子路由，不显示父级菜单（admin / teacher / student 统一处理）
+  if (useMergedTeacherQualitySidebar.value) {
+    return buildMergedTeacherQualityRoutes(menuRoutes)
+  }
+
   const prefix = activeLayoutPrefix.value
   if (prefix) {
     const layoutRoute = menuRoutes.find((r) => r.path === prefix)
@@ -102,7 +161,7 @@ interface MenuGroup {
 
 // 按 menuGroup 分组菜单（容器路由启用；无 menuGroup 的项进入 ungrouped 顶部区）
 const groupedMenus = computed(() => {
-  if (!isRoleLayoutRoute.value) return null
+  if (!isRoleLayoutRoute.value && !useMergedTeacherQualitySidebar.value) return null
 
   const routes = sidebarRoutes.value
   const ungrouped: RouteRecordRaw[] = []
@@ -151,12 +210,30 @@ const updateStableRoutes = debounce(() => {
 watch(sidebarRoutes, updateStableRoutes, { immediate: true, deep: true })
 
 // 当前页面激活菜单路径，先从路由里面找
+function resolveMenuSelectedKey(raw: string): string {
+  if (raw.startsWith('/quality/')) {
+    return raw
+  }
+  if (raw.startsWith('/teacher/')) {
+    const relative = raw.slice('/teacher/'.length)
+    const firstSegment = relative.split('/')[0]
+    return firstSegment || relative
+  }
+  const prefix = activeLayoutPrefix.value
+  if (prefix && raw.startsWith(`${prefix}/`)) {
+    const relative = raw.slice(prefix.length + 1)
+    const firstSegment = relative.split('/')[0]
+    return firstSegment || relative
+  }
+  return raw
+}
+
 const activeMenu = computed<Key[]>(() => {
   const { meta, path } = route
   if (meta?.activeMenu) {
-    return [meta.activeMenu as string]
+    return [resolveMenuSelectedKey(meta.activeMenu as string)]
   }
-  return [path]
+  return [resolveMenuSelectedKey(path)]
 })
 
 // 菜单项点击事件
@@ -174,7 +251,9 @@ const onMenuItemClick = ({ key }: { key: Key }) => {
   // 触发"缺少必要参数：examId / taskId"等假错误页。
   // 这里把所有非外链、非绝对路径的 menu key 拼上当前 layout 前缀，强制绝对化。
   const isAbsolute = keyStr.startsWith('/')
-  const prefix = activeLayoutPrefix.value
+  const prefix = useMergedTeacherQualitySidebar.value
+    ? (keyStr.startsWith('/quality/') ? null : '/teacher')
+    : activeLayoutPrefix.value
   const target = !isAbsolute && prefix ? `${prefix}/${keyStr}` : keyStr
   router.push({ path: target })
   emit('menu-item-click-after')
@@ -186,7 +265,12 @@ const openKeys = ref<Key[]>([])
 
 // 当前激活路由所属的 menuGroup（来自 route.meta.menuGroup）
 const currentGroupKey = computed<Key | null>(() => {
-  return (route.meta?.menuGroup as string | undefined) ?? null
+  const groupKey = route.meta?.menuGroup as string | undefined
+  if (groupKey) return groupKey
+  if (route.path.startsWith('/quality/')) {
+    return 'quality-overview'
+  }
+  return null
 })
 
 // 路由变化时自动展开所属分组：手风琴模式只保留当前分组

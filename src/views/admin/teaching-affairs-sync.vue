@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="sync-page__context">
-        <div class="sync-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="sync-page__exam-select"
@@ -20,8 +20,8 @@
           <UiTag v-if="passbackPagination.total > 0" tone="green" size="sm">
             回写记录 {{ passbackPagination.total }}
           </UiTag>
-        </div>
-        <div class="sync-page__context-right">
+        </template>
+        <template #actions>
           <UiButton size="sm" :disabled="!selectedExamId" @click="openCreateModal">
             <template #icon><PlusOutlined /></template>
             新建同步任务
@@ -36,8 +36,8 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -60,7 +60,6 @@
         <template #title>
           <SyncOutlined />
           <span>同步任务</span>
-          <UiBadge tone="blue">{{ syncTasks.length }}</UiBadge>
         </template>
         <template #extra>
           <a-select
@@ -80,7 +79,7 @@
           </a-select>
         </template>
 
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="syncColumns"
           :data-source="syncTasks"
           :loading="syncLoading"
@@ -117,38 +116,44 @@
               <span v-else class="hint-text">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-space>
-                <UiButton
+            <div class="operations-cell" @click.stop>
+<span
                   v-if="canExecute(syncTasks[index].taskStatus)"
-                  size="sm"
-                  :loading="actionLoadingId === syncTasks[index].id"
-                  @click="handleExecute(syncTasks[index])"
+                  class="op-link primary"
+                  :class="{ 'is-disabled': actionLoadingId === syncTasks[index].id }"
+                  role="button"
+                  @click="
+                    actionLoadingId !== syncTasks[index].id && handleExecute(syncTasks[index])
+                  "
                 >
                   执行回写
-                </UiButton>
-                <UiButton
+                </span>
+                <span
                   v-if="canRetry(syncTasks[index].taskStatus)"
-                  size="sm"
-                  variant="outline"
-                  :loading="actionLoadingId === syncTasks[index].id"
-                  @click="handleRetry(syncTasks[index])"
+                  class="op-link primary"
+                  :class="{ 'is-disabled': actionLoadingId === syncTasks[index].id }"
+                  role="button"
+                  @click="
+                    actionLoadingId !== syncTasks[index].id && handleRetry(syncTasks[index])
+                  "
                 >
                   重试
-                </UiButton>
-                <UiButton
+                </span>
+                <span
                   v-if="canCancel(syncTasks[index].taskStatus)"
-                  size="sm"
-                  variant="outline"
-                  :loading="actionLoadingId === syncTasks[index].id"
-                  @click="handleCancel(syncTasks[index])"
+                  class="op-link danger"
+                  :class="{ 'is-disabled': actionLoadingId === syncTasks[index].id }"
+                  role="button"
+                  @click="
+                    actionLoadingId !== syncTasks[index].id && handleCancel(syncTasks[index])
+                  "
                 >
                   取消
-                </UiButton>
-                <UiButton size="sm" variant="outline" @click="openTaskDetail(syncTasks[index])">
+                </span>
+                <span class="op-link" role="button" @click="openTaskDetail(syncTasks[index])">
                   详情
-                </UiButton>
-              </a-space>
-            </template>
+                </span>
+            </div></template>
           </template>
         </UiDataTable>
       </UiCard>
@@ -166,7 +171,6 @@
         <template #title>
           <FileSyncOutlined />
           <span>回写记录</span>
-          <UiBadge tone="blue">{{ passbackPagination.total }}</UiBadge>
         </template>
         <template #extra>
           <a-space>
@@ -204,7 +208,7 @@
           </a-space>
         </template>
 
-        <UiDataTable
+        <UiDataTable class="student-detail-table__data-table"
           :columns="passbackColumns"
           :data-source="passbackRecords"
           :loading="passbackLoading"
@@ -444,9 +448,10 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminTeachingAffairsSync' })
@@ -709,10 +714,10 @@ async function loadPassbackRecords(): Promise<void> {
       pageNum: passbackPagination.pageNum,
       pageSize: passbackPagination.pageSize,
     })
-    passbackRecords.value = page.list
+    passbackRecords.value = readPageList(page, '教务回写记录加载失败，请稍后重试')
     passbackPagination.pageNum = page.pageNum
     passbackPagination.pageSize = page.pageSize
-    passbackPagination.total = Number(page.total)
+    passbackPagination.total = readPageTotal(page, '教务回写记录加载失败，请稍后重试')
   } catch (error) {
     passbackLoadError.value = toUserError(error, '教务回写记录加载失败')
     showUserError(error, '教务回写记录加载失败')
@@ -813,28 +818,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .sync-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }

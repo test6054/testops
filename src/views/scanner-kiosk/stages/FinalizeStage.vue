@@ -183,7 +183,7 @@ function toggleHistoryDetail(id: string) {
 
 function reloadHistory() {
   workflow.batchHistoryFilter.pageNum = 1
-  workflow.loadBatchHistory().catch(() => undefined)
+  workflow.loadBatchHistory()
 }
 
 function historyBadgeTone(
@@ -215,7 +215,7 @@ const historyTotalPages = computed(() =>
 
 // 进入 stage / 关键身份字段变化时加载（缺字段时 workflow 内部自动空响应）
 onMounted(() => {
-  workflow.loadBatchHistory().catch(() => undefined)
+  workflow.loadBatchHistory()
 })
 
 watch(
@@ -226,7 +226,7 @@ watch(
   ],
   () => {
     workflow.batchHistoryFilter.pageNum = 1
-    workflow.loadBatchHistory().catch(() => undefined)
+    workflow.loadBatchHistory()
   },
 )
 </script>

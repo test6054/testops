@@ -1,9 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="score-publish__context">
-        <div class="score-publish__context-info">
-          <h2 class="score-publish__title">阅卷交付 - 成绩发布</h2>
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="score-publish__exam-select"
@@ -15,35 +14,15 @@
             allow-clear
             @change="onExamChange"
           />
-        </div>
-        <div class="score-publish__context-actions">
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="loading"
-            @click="loadCandidates"
-          >
-            刷新
-          </UiButton>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!canBulkPublish"
-            @click="openBulkPublishModal"
-          >
-            <template #icon><ThunderboltOutlined /></template>
-            批量发布
-          </UiButton>
-          <UiButton variant="outline" size="sm" :disabled="!selectedExamId" @click="goAnalytics">
-            <template #icon><BarChartOutlined /></template>
-            教学质量分析
-          </UiButton>
-          <UiButton variant="primary" size="sm" :disabled="!selectedExamId" @click="goFinalize">
-            成绩确认
-          </UiButton>
-        </div>
-      </div>
+        </template>
+        <template #actions>
+          <a-segmented
+            :value="scoreReleaseStep"
+            :options="scoreReleaseStepOptions"
+            @change="onScoreReleaseStepChange"
+          />
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -53,6 +32,20 @@
     />
 
     <template v-else>
+      <UiAlertStrip
+        v-if="pendingAbsenceCount > 0"
+        tone="warning"
+        :title="`当前考试仍有 ${pendingAbsenceCount} 条待确认缺考记录`"
+        description="缺考未核对前禁止发布成绩，请先完成缺考确认，避免将缺考学生误发布为零分成绩。"
+        :closable="false"
+        class="score-publish__absence-alert"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="goToAbsenceConfirm">
+            去核对
+          </UiButton>
+        </template>
+      </UiAlertStrip>
       <UiStatPanel
         :items="statMetrics"
         :columns="3"
@@ -69,43 +62,62 @@
         compact
         @retry="loadCandidates"
       />
-      <a-form layout="inline" class="score-publish__filter-form">
-        <a-form-item>
-          <a-input
-            v-model:value="keyword"
-            placeholder="按学号 / 姓名搜索"
-            allow-clear
-            class="score-publish__search"
-            @press-enter="handleSearch"
-          >
-            <template #prefix>
-              <SearchOutlined />
-            </template>
-          </a-input>
-        </a-form-item>
-        <a-form-item>
-          <a-select
-            v-model:value="statusFilter"
-            placeholder="按最终状态过滤"
-            allow-clear
-            class="score-publish__status-select"
-            :options="statusOptions"
-          />
-        </a-form-item>
-        <a-form-item>
-          <a-space>
-            <UiButton size="sm" @click="handleSearch">查询</UiButton>
-            <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
-          </a-space>
-        </a-form-item>
-      </a-form>
-
-      <UiCard class="score-publish__table-card" flat>
+      <a-card :bordered="false" class="detail-table-card score-publish__table-card">
         <template #title>
           <FileDoneOutlined />
           <span>成绩发布列表</span>
-          <UiBadge tone="blue">{{ pagination.total ?? 0 }} 条</UiBadge>
         </template>
+
+        <div class="filter-card">
+          <a-form layout="inline" class="score-publish__filter-form filter-form filter-form--toolbar">
+            <a-form-item label="关键词">
+              <a-input
+                v-model:value="keyword"
+                placeholder="按学号 / 姓名搜索"
+                allow-clear
+                class="score-publish__search"
+                @press-enter="handleSearch"
+              >
+                <template #prefix>
+                  <SearchOutlined />
+                </template>
+              </a-input>
+            </a-form-item>
+            <a-form-item label="最终状态">
+              <a-select
+                v-model:value="statusFilter"
+                placeholder="按最终状态过滤"
+                allow-clear
+                class="score-publish__status-select"
+                :options="statusOptions"
+              />
+            </a-form-item>
+            <a-form-item class="filter-form__actions">
+              <a-space class="filter-form__action-group">
+                <UiButton size="sm" @click="handleSearch">查询</UiButton>
+                <span class="op-link" role="button" @click="handleReset">重置</span>
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  :disabled="!selectedExamId"
+                  :loading="loading"
+                  @click="loadCandidates"
+                >
+                  刷新
+                </UiButton>
+                <UiButton
+                  variant="outline"
+                  size="sm"
+                  :disabled="!canBulkPublish"
+                  @click="openBulkPublishModal"
+                >
+                  <template #icon><ThunderboltOutlined /></template>
+                  批量发布
+                </UiButton>
+              </a-space>
+            </a-form-item>
+          </a-form>
+        </div>
 
         <UiDataTable
           v-model:current="pagination.current"
@@ -117,7 +129,7 @@
           flat
           row-key="candidateRosterId"
           size="middle"
-          class="score-publish__table"
+          class="score-publish__table student-detail-table__data-table"
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, index }">
@@ -147,35 +159,37 @@
               {{ formatDateTime(candidates[index].confirmedTime) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-space>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :disabled="!candidates[index].paperInstanceId"
+              <div class="operations-cell" @click.stop>
+                <span
+                  v-if="candidates[index].paperInstanceId"
+                  class="op-link"
+                  role="button"
                   @click="openDetailDrawer(candidates[index])"
                 >
                   明细
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  :disabled="!canPublish(candidates[index])"
-                  @click="handlePublish(candidates[index])"
+                </span>
+                <span v-else class="muted">—</span>
+                <span
+                  class="op-link primary"
+                  role="button"
+                  :class="{ 'is-disabled': !canPublish(candidates[index]) }"
+                  @click="canPublish(candidates[index]) && handlePublish(candidates[index])"
                 >
                   {{ publishButtonLabel(candidates[index]) }}
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="ghost"
-                  :disabled="!canWithdraw(candidates[index])"
-                  @click="openWithdrawModal(candidates[index])"
+                </span>
+                <span
+                  class="op-link"
+                  role="button"
+                  :class="{ 'is-disabled': !canWithdraw(candidates[index]) }"
+                  @click="canWithdraw(candidates[index]) && openWithdrawModal(candidates[index])"
                 >
                   撤回
-                </UiButton>
-              </a-space>
+                </span>
+              </div>
             </template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </a-card>
     </template>
 
     <!-- 成绩明细 Drawer -->
@@ -335,13 +349,12 @@ import type {
   ExamScoreSummaryItemVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
-import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
@@ -351,11 +364,10 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
+import { listAbsenceRecords } from '@/apis/mark/absence'
 import {
   UiAlertStrip,
-  UiBadge,
   UiButton,
-  UiCard,
   UiDataTable,
   UiDrawer,
   UiEmpty,
@@ -363,7 +375,7 @@ import {
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -384,6 +396,16 @@ function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
 const statusOptions = FINAL_SCORE_STATUS_OPTIONS
 
 const router = useRouter()
+const route = useRoute()
+
+const scoreReleaseStepOptions = [
+  { label: '① 成绩确认', value: 'confirm' },
+  { label: '② 成绩发布', value: 'publish' },
+]
+
+const scoreReleaseStep = computed(() =>
+  route.name === 'TeacherScorePublish' ? 'publish' : 'confirm',
+)
 
 const {
   examOptions,
@@ -394,6 +416,16 @@ const {
   init: initExamSelector,
 } = useMarkExamSelector()
 
+function onScoreReleaseStepChange(value: string | number): void {
+  const examId = selectedExamId.value
+  const query = examId ? { examId } : {}
+  if (value === 'publish') {
+    void router.push({ name: 'TeacherScorePublish', query })
+    return
+  }
+  void router.push({ name: 'TeacherScoreFinalize', query })
+}
+
 const markStageStore = useMarkStageStore()
 
 // ─── 数据加载（服务端分页） ─────────────────────────────
@@ -401,6 +433,8 @@ const candidates = ref<ExamScoreSummaryItemVO[]>([])
 const loading = ref(false)
 // D-9 错误态：捕获 loadCandidates 加载失败，给 UiErrorRetryPanel 渲染重试 + 上报入口
 const candidatesLoadError = ref<Error | null>(null)
+const pendingAbsenceCount = ref(0)
+const absenceGuardLoading = ref(false)
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
@@ -444,6 +478,53 @@ async function loadCandidates(): Promise<void> {
   }
 }
 
+async function loadPendingAbsenceCount(): Promise<void> {
+  if (!selectedExamId.value) {
+    pendingAbsenceCount.value = 0
+    return
+  }
+  absenceGuardLoading.value = true
+  try {
+    const result = await listAbsenceRecords({
+      examId: selectedExamId.value,
+      absenceStatus: 'PENDING',
+      pageNum: 1,
+      pageSize: 1,
+    })
+    pendingAbsenceCount.value = readPageTotal(result)
+  } catch (error) {
+    pendingAbsenceCount.value = 0
+    showUserError(error, '待确认缺考记录查询失败')
+  } finally {
+    absenceGuardLoading.value = false
+  }
+}
+
+function goToAbsenceConfirm(): void {
+  if (!selectedExamId.value) {
+    return
+  }
+  void router.push({
+    name: 'TeacherAbsenceConfirm',
+    query: { examId: selectedExamId.value },
+  })
+}
+
+async function ensureNoPendingAbsenceBeforePublish(): Promise<boolean> {
+  if (!selectedExamId.value) {
+    return false
+  }
+  await loadPendingAbsenceCount()
+  if (pendingAbsenceCount.value > 0) {
+    message.warning(
+      `当前考试仍有 ${pendingAbsenceCount.value} 条待确认缺考记录，请先完成核对后再发布成绩`,
+    )
+    goToAbsenceConfirm()
+    return false
+  }
+  return true
+}
+
 function handleSearch(): void {
   pagination.current = 1
   void loadCandidates()
@@ -461,17 +542,6 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
 }
-function goFinalize(): void {
-  if (!selectedExamId.value) return
-  void router.push({ name: 'TeacherScoreFinalize', query: { examId: selectedExamId.value } })
-}
-
-/** D-7：跳转教师侧成绩统计（含 AI 难度区分度、题目质量、班级分布） */
-function goAnalytics(): void {
-  if (!selectedExamId.value) return
-  void router.push({ name: 'TeacherStatistics', query: { examId: selectedExamId.value } })
-}
-
 // ─── B-5 批量发布 ─────────────────────────────
 /** 本页中处于「可发布」状态（CONFIRMED / WITHDRAWN / CORRECTED）且具备 paperInstanceId 的候选 */
 const bulkCandidates = computed<ExamScoreSummaryItemVO[]>(() => candidates.value.filter(canPublish))
@@ -498,13 +568,24 @@ function openBulkPublishModal(): void {
     message.warning('本页没有可发布的候选；请切换分页或筛选状态后再试')
     return
   }
-  resetBulkState()
-  bulkOpen.value = true
+  void (async () => {
+    const canContinue = await ensureNoPendingAbsenceBeforePublish()
+    if (!canContinue) {
+      return
+    }
+    resetBulkState()
+    bulkOpen.value = true
+  })()
 }
 
 /** 串行调用 publishFinalScore，逐条更新进度；过程中可见已成功/失败明细 */
 async function runBulkPublish(): Promise<void> {
   if (!selectedExamId.value || bulkRunning.value) return
+  const canContinue = await ensureNoPendingAbsenceBeforePublish()
+  if (!canContinue) {
+    bulkOpen.value = false
+    return
+  }
   const targets = bulkCandidates.value
   if (targets.length === 0) {
     bulkOpen.value = false
@@ -656,6 +737,10 @@ function canWithdraw(record: ExamScoreSummaryItemVO): boolean {
 
 async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
+  const canContinue = await ensureNoPendingAbsenceBeforePublish()
+  if (!canContinue) {
+    return
+  }
   try {
     await publishFinalScore({
       examId: selectedExamId.value,
@@ -740,10 +825,11 @@ async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
 watch(selectedExamId, (value) => {
   pagination.current = 1
   if (value) {
-    void loadCandidates()
+    void Promise.all([loadCandidates(), loadPendingAbsenceCount()])
   } else {
     candidates.value = []
     pagination.total = 0
+    pendingAbsenceCount.value = 0
   }
 })
 
@@ -755,34 +841,15 @@ watch(statusFilter, () => {
 onMounted(async () => {
   await initExamSelector()
   if (selectedExamId.value) {
-    await loadCandidates()
+    await Promise.all([loadCandidates(), loadPendingAbsenceCount()])
   }
 })
 </script>
 
 <style lang="scss" scoped>
 .score-publish {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 280px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
+  &__absence-alert {
+    margin-bottom: 12px;
   }
 
   &__signals {
@@ -791,13 +858,6 @@ onMounted(async () => {
     background: var(--dp-surface-elevated, #f8fafc);
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
   }
 
   &__exam-select {

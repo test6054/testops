@@ -1,8 +1,12 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="marking-task-detail-page__context">
-        <div class="marking-task-detail-page__context-left">
+      <ContextBar>
+        <template #status>
+          <UiButton variant="outline" size="sm" @click="goBackToTaskPool">
+            <template #icon><LeftOutlined /></template>
+            返回任务池
+          </UiButton>
           <UiTag v-if="task" :tone="taskStatusTone(task.taskStatus)" size="sm">
             {{ taskStatusLabel(task.taskStatus) }}
           </UiTag>
@@ -29,10 +33,13 @@
               <template #icon><UnlockOutlined /></template>
               解匿名
             </UiButton>
+            <a-tooltip v-else-if="!revealedIdentity && !isExamOwner" title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份">
+              <UiTag tone="purple" size="sm">匿名保护中</UiTag>
+            </a-tooltip>
           </template>
-        </div>
-        <div class="marking-task-detail-page__context-right">
-          <UiTag v-if="batchTasksLoadError" tone="red" size="sm"> 上下题导航加载失败 </UiTag>
+        </template>
+        <template #actions>
+          <UiTag v-if="batchTasksLoadError" tone="red" size="sm">上下题导航加载失败</UiTag>
           <template v-if="batchProgress">
             <UiButton
               size="sm"
@@ -60,13 +67,13 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
       v-if="!taskId"
-      description="未找到本次批阅任务，请从任务列表重新进入"
+      description="未找到本次阅卷任务，请从阅卷任务池重新进入"
       class="marking-task-detail-page__empty"
     />
 
@@ -93,7 +100,10 @@
               <FileImageOutlined />
               <span>阅卷影像</span>
             </template>
-            <UiEmpty v-if="isWholePaperTask" description="整卷批阅在下方原始扫描页区域查看与给分" />
+            <UiEmpty
+              v-if="usesWholePaperWorkspace"
+              description="当前任务在下方原始扫描页区域查看与给分"
+            />
             <UiErrorRetryPanel
               v-else-if="questionViewError"
               :error="questionViewError"
@@ -121,12 +131,56 @@
                 <MarkingScanMaterialPanel
                   :slice-file-id="questionView.sliceFileId"
                   :source-scan-page="questionView.sourceScanPage"
+                  :master-paper-page="questionView.masterPaperPage"
                 />
+                <!-- FIX-4: 标准答案对照 + AI 辅助参考 -->
+                <template v-if="questionView.standardAnswer || questionView.aiScore != null">
+                  <a-divider />
+                  <UiAlertStrip
+                    v-if="questionView.standardAnswer"
+                    tone="info"
+                    title="标准答案"
+                    dense
+                    class="marking-task-detail-page__standard-answer"
+                  >
+                    {{ questionView.standardAnswer }}
+                    <template v-if="questionView.comparePolicy" #footer>
+                      <UiTag tone="blue" size="sm">匹配策略：{{ questionView.comparePolicy }}</UiTag>
+                    </template>
+                  </UiAlertStrip>
+                  <UiAlertStrip
+                    v-if="questionView.evaluationCriteria"
+                    tone="info"
+                    title="评分细则"
+                    :description="questionView.evaluationCriteria"
+                    dense
+                  />
+                  <UiAlertStrip
+                    v-if="questionView.recognizedAnswer"
+                    tone="info"
+                    title="OCR识别"
+                    :description="questionView.recognizedAnswer"
+                    dense
+                  />
+                  <UiAlertStrip
+                    v-if="questionView.aiScore != null && questionView.aiDiagnostic"
+                    tone="info"
+                    title="AI 建议参考"
+                    dense
+                  >
+                    <template #default>
+                      AI 建议分：<strong>{{ questionView.aiScore }}</strong> / {{ questionView.fullScore }}
+                    </template>
+                    <template v-if="questionView.aiDiagnostic" #footer>
+                      {{ questionView.aiDiagnostic }}
+                    </template>
+                  </UiAlertStrip>
+                </template>
               </div>
             </a-spin>
           </UiCard>
 
-          <UiCard v-if="isWholePaperTask" class="info-card">
+          <UiCard v-if="usesWholePaperWorkspace" class="info-card">
             <template #title>
               <FileImageOutlined />
               <span>原始扫描页</span>
@@ -140,17 +194,17 @@
                 @click="reloadWholePaperView"
               >
                 <template #icon><ReloadOutlined /></template>
-                刷新整卷
+                刷新影像
               </UiButton>
             </template>
             <UiEmpty
               v-if="!wholePagesLoaded && !wholePagesLoading"
-              description="正在加载整卷扫描页…"
+              description="正在加载扫描页…"
             />
             <UiErrorRetryPanel
               v-else-if="wholePagesError"
               :error="wholePagesError"
-              title="整卷视图加载失败"
+              title="影像工作区加载失败"
               compact
               @retry="reloadWholePaperView"
             />
@@ -159,37 +213,59 @@
                 v-if="wholePagesLoaded && wholePages.length === 0"
                 description="该试卷暂无 ACTIVE 扫描页"
               />
-              <div v-else class="whole-paper-gallery">
+              <div
+                v-else
+                ref="wholePageViewportRef"
+                class="whole-paper-gallery"
+                @scroll="handleWholePageGalleryScroll"
+              >
                 <div
-                  v-for="page in wholePages"
-                  :key="page.pageId"
+                  v-if="wholePageTopSpacerHeight > 0"
+                  class="whole-paper-gallery__spacer"
+                  :style="{ height: `${wholePageTopSpacerHeight}px` }"
+                />
+                <div
+                  v-for="item in visibleWholePages"
+                  :key="item.page.pageId"
                   class="whole-paper-gallery__page"
+                  :class="{ 'whole-paper-gallery__page--active': item.pageIndex === currentWholePageIndex }"
                 >
                   <div class="whole-paper-gallery__page-header">
-                    <UiTag tone="blue" size="sm">第 {{ page.pageSeq }} 页</UiTag>
-                    <UiTag tone="gray" size="sm">模板页 {{ page.templatePageNo }}</UiTag>
-                    <UiTag :tone="scanPageQualityTone(page.qualityStatus)" size="sm">
-                      {{ scanPageQualityLabel(page.qualityStatus) }}
+                    <UiTag tone="blue" size="sm">第 {{ item.page.pageSeq }} 页</UiTag>
+                    <UiTag tone="gray" size="sm">模板页 {{ item.page.templatePageNo }}</UiTag>
+                    <UiTag :tone="scanPageQualityTone(item.page.qualityStatus)" size="sm">
+                      {{ scanPageQualityLabel(item.page.qualityStatus) }}
                     </UiTag>
                   </div>
                   <UiAlertStrip
-                    v-if="page.qualityStatus === 'BLOCKED'"
+                    v-if="item.page.qualityStatus === 'BLOCKED'"
                     tone="warning"
                     title="扫描页质量阻断"
                     description="该页扫描质量未通过自动检测，请结合原始影像谨慎批阅。"
                     dense
                   />
                   <a-image
-                    v-if="wholePageImageUrls[page.pageId]"
-                    :src="wholePageImageUrls[page.pageId]"
+                    v-if="wholePageImageUrls[item.page.pageId]"
+                    :src="wholePageImageUrls[item.page.pageId]"
                     :preview="{}"
                     class="whole-paper-gallery__image"
                   >
                     <template #previewMask>点击查看原始扫描页</template>
                   </a-image>
-                  <UiEmpty v-else description="扫描页图片加载中..." />
+                  <UiErrorRetryPanel
+                    v-else-if="wholePageImageErrors[item.page.pageId]"
+                    :error="wholePageImageErrors[item.page.pageId]"
+                    title="扫描页图片加载失败"
+                    compact
+                    @retry="loadWholePageImageByPage(item.page)"
+                  />
+                  <div v-else class="whole-paper-gallery__image-placeholder">
+                    <a-spin :spinning="Boolean(wholePageImageLoading[item.page.pageId])" />
+                    <span>扫描页图片加载中</span>
+                  </div>
                   <a-textarea
-                    v-model:value="wholePageAnnotationForms[page.pageId]"
+                    v-if="isWholePaperTask"
+                    v-model:value="wholePageAnnotationForms[item.page.pageId]"
                     :rows="3"
                     :maxlength="1000"
                     :disabled="isReadOnly"
@@ -198,6 +274,11 @@
                     show-count
                   />
                 </div>
+                <div
+                  v-if="wholePageBottomSpacerHeight > 0"
+                  class="whole-paper-gallery__spacer"
+                  :style="{ height: `${wholePageBottomSpacerHeight}px` }"
+                />
               </div>
             </a-spin>
           </UiCard>
@@ -265,7 +346,7 @@
           <UiCard class="info-card">
             <template #title>
               <EditOutlined />
-              <span>批改提交</span>
+              <span>{{ usesWholePaperWorkspace ? '当前任务负责题目' : '批改提交' }}</span>
             </template>
 
             <a-alert
@@ -283,13 +364,13 @@
               layout="vertical"
               :disabled="!canSubmit"
             >
-              <template v-if="isWholePaperTask">
+              <template v-if="usesWholePaperWorkspace">
                 <UiEmpty
                   v-if="wholeQuestions.length === 0"
-                  description="请先加载整卷扫描页和题目清单后再提交"
+                  description="请先加载扫描页和当前任务负责题目后再提交"
                 />
                 <div
-                  v-for="question in wholeQuestions"
+                  v-for="(question, questionIndex) in wholeQuestions"
                   :key="question.questionTemplateId"
                   class="whole-question-score"
                 >
@@ -300,13 +381,47 @@
                   </div>
                   <a-input-number
                     v-model:value="getWholeQuestionForm(question.questionTemplateId).score"
+                    :ref="(el: unknown) => setWholeQuestionScoreInputRef(el, questionIndex)"
                     :min="0"
                     :max="question.fullScore"
                     :step="0.5"
                     :disabled="isReadOnly"
                     style="width: 100%; margin-bottom: 8px"
                     placeholder="本题给分"
+                    @keydown.enter.prevent="handleWholeQuestionScoreEnter(questionIndex)"
                   />
+                  <div v-if="question.aiScore != null" class="whole-question-score__ai">
+                    <div class="whole-question-score__ai-text">
+                      <span>AI 建议分：</span>
+                      <strong>{{ question.aiScore }}</strong>
+                      <span>/ {{ question.fullScore }}</span>
+                    </div>
+                    <a-space size="small" wrap>
+                      <UiButton
+                        size="sm"
+                        variant="outline"
+                        :disabled="isReadOnly"
+                        @click="fillWholeQuestionAiScore(question)"
+                      >
+                        填入 AI 分
+                      </UiButton>
+                      <UiButton
+                        size="sm"
+                        variant="primary"
+                        :disabled="isReadOnly || submitting || !canSubmit"
+                        @click="acceptWholeQuestionAiScore(question, questionIndex)"
+                      >
+                        {{ questionIndex === wholeQuestions.length - 1 ? '采纳并提交' : '采纳并继续' }}
+                      </UiButton>
+                    </a-space>
+                    <a-typography-paragraph
+                      v-if="question.aiDiagnostic"
+                      class="whole-question-score__ai-diagnostic"
+                      :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
+                    >
+                      {{ question.aiDiagnostic }}
+                    </a-typography-paragraph>
+                  </div>
                   <a-textarea
                     v-model:value="getWholeQuestionForm(question.questionTemplateId).annotationText"
                     :rows="3"
@@ -319,15 +434,33 @@
               </template>
               <a-form-item v-else label="教师给分" name="score" required>
                 <a-input-number
+                  ref="scoreInputRef"
                   v-model:value="form.score"
                   :min="0"
                   :max="questionView?.fullScore"
                   :step="0.5"
                   style="width: 100%"
                   placeholder="按题目满分给分"
+                  @keydown.enter.prevent="submit"
                 />
+                <!-- FIX-10: 快捷给分 -->
+                <a-space size="small" style="margin-top: 8px">
+                  <UiButton size="sm" variant="outline" :disabled="isReadOnly" @click="form.score = questionView?.fullScore">满分</UiButton>
+                  <UiButton size="sm" variant="outline" :disabled="isReadOnly" @click="form.score = Math.round((questionView?.fullScore ?? 0) / 2 * 10) / 10">半分</UiButton>
+                  <UiButton size="sm" variant="outline" :disabled="isReadOnly" @click="form.score = 0">零分</UiButton>
+                  <UiButton v-if="questionView?.aiScore != null" size="sm" variant="outline" :disabled="isReadOnly" @click="form.score = questionView.aiScore">填入 AI 分</UiButton>
+                  <UiButton
+                    v-if="questionView?.aiScore != null"
+                    size="sm"
+                    variant="primary"
+                    :disabled="isReadOnly || submitting || !canSubmit"
+                    @click="acceptAiScoreAndSubmit"
+                  >
+                    采纳并提交
+                  </UiButton>
+                </a-space>
               </a-form-item>
-              <a-form-item v-if="!isWholePaperTask" label="批改批注" name="annotationNote">
+              <a-form-item v-if="!usesWholePaperWorkspace" label="批改批注" name="annotationNote">
                 <a-textarea
                   v-model:value="form.annotationNote"
                   :rows="6"
@@ -338,7 +471,7 @@
               </a-form-item>
               <a-form-item v-if="canSubmit">
                 <UiButton block size="md" :loading="submitting" @click="submit">
-                  确认给分并提交
+                  确认给分并提交（Enter）· 自动切换{{ isWholePaperTask ? '下一份' : '下一题' }}
                 </UiButton>
               </a-form-item>
             </a-form>
@@ -418,17 +551,18 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingTaskDetail' })
 
+const SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE = 100
 const route = useRoute()
 
 function taskStatusTone(status: MarkingTaskStatusCode): BadgeTone {
@@ -468,6 +602,12 @@ const isReadOnly = computed(() => task.value?.taskStatus === 'FINALIZED')
 
 const isWholePaperTask = computed(() => task.value?.taskUnit === 'WHOLE_PAPER')
 
+const usesWholePaperWorkspace = computed(() => (
+  task.value?.taskUnit === 'WHOLE_PAPER'
+  || task.value?.taskUnit === 'SELECTED_QUESTIONS'
+  || task.value?.taskUnit === 'RANDOM_QUESTIONS'
+))
+
 const canSubmit = computed(() => {
   const status = task.value?.taskStatus
   return status === 'ALLOCATED' || status === 'IN_PROGRESS'
@@ -496,7 +636,7 @@ const paperInstanceId = computed(() => {
 
 function applySubmittedQuestionScores(scores: MarkingTaskSubmittedQuestionScoreVO[]): void {
   if (!scores.length) return
-  if (isWholePaperTask.value) {
+  if (usesWholePaperWorkspace.value) {
     for (const item of scores) {
       const questionForm = getWholeQuestionForm(item.questionTemplateId)
       questionForm.score = Number(item.score)
@@ -513,16 +653,17 @@ async function loadSubmittedPageAnnotations(): Promise<void> {
   const examId = task.value?.examId
   const paperId = paperInstanceId.value
   if (!examId || !paperId || !wholePages.value.length) return
-  const page = await listAnnotations({
-    examId,
-    paperInstanceId: paperId,
-    pageNum: 1,
-    pageSize: 500,
-  })
-  const pageAnnotations = readPageList(page, '批注列表加载失败，请刷新后重试').filter(
-    (item: AnnotationVO) => item.annotationScope === 'PAGE',
+  const pageAnnotations = await readAllPages(
+    (pageNum) => listAnnotations({
+      examId,
+      paperInstanceId: paperId,
+      pageNum,
+      pageSize: SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE,
+    }),
+    '批注列表加载失败，请刷新后重试',
   )
   for (const annotation of pageAnnotations) {
+    if (annotation.annotationScope !== 'PAGE') continue
     if (!annotation.pageId || !annotation.annotationText) continue
     wholePageAnnotationForms[annotation.pageId] = annotation.annotationText
   }
@@ -573,6 +714,15 @@ function goToTask(targetTaskId: string): void {
   })
 }
 
+/** P2-4: 返回阅卷任务池 */
+function goBackToTaskPool(): void {
+  if (task.value?.examId) {
+    void router.push({ name: 'TeacherMarkingTaskPool', query: { examId: task.value.examId } })
+  } else {
+    void router.push({ name: 'TeacherMarkingTaskPool' })
+  }
+}
+
 async function loadTask(): Promise<void> {
   if (!taskId.value) return
   loading.value = true
@@ -592,9 +742,9 @@ async function loadTask(): Promise<void> {
     if (detail.submittedQuestionScores?.length) {
       applySubmittedQuestionScores(detail.submittedQuestionScores)
     }
-    if (detail.taskUnit === 'WHOLE_PAPER') {
+    if (usesWholePaperWorkspace.value) {
       await openWholePaperView()
-      if (detail.taskStatus === 'FINALIZED') {
+      if (isWholePaperTask.value && detail.taskStatus === 'FINALIZED') {
         await loadSubmittedPageAnnotations()
       }
     } else {
@@ -602,7 +752,7 @@ async function loadTask(): Promise<void> {
     }
   } catch (error) {
     task.value = null
-    taskLoadError.value = toUserError(error, '批阅任务详情加载失败')
+    taskLoadError.value = toUserError(error, '阅卷任务详情加载失败')
     showUserError(error, '阅卷任务详情加载失败')
   } finally {
     loading.value = false
@@ -646,6 +796,7 @@ async function openQuestionView(currentTask = task.value): Promise<void> {
       taskId: currentTask.id,
     })
     questionViewLoaded.value = true
+    focusPrimaryScoreInput()
   } catch (error) {
     questionViewError.value = toUserError(error, '题目视图加载失败')
     showUserError(error, '题目级批阅视图加载失败')
@@ -667,6 +818,17 @@ const wholePagesLoaded = ref(false)
 const wholePagesLoading = ref(false)
 const wholePagesError = ref<Error | null>(null)
 const wholePageImageUrls = reactive<Record<string, string>>({})
+const wholePageImageLoading = reactive<Record<string, boolean>>({})
+const wholePageImageErrors = reactive<Record<string, Error | null>>({})
+const WHOLE_PAGE_ESTIMATED_HEIGHT = 1180
+const WHOLE_PAGE_RENDER_BUFFER = 2
+const WHOLE_PAGE_PRELOAD_BUFFER = 3
+
+interface VisibleWholePage {
+  page: ScannedPageRef
+  pageIndex: number
+}
+
 interface WholeQuestionForm {
   score?: number
   annotationText: string
@@ -675,6 +837,123 @@ interface WholeQuestionForm {
 
 const wholeQuestionForms = reactive<Record<string, WholeQuestionForm>>({})
 const wholePageAnnotationForms = reactive<Record<string, string>>({})
+const scoreInputRef = ref<{ focus?: () => void } | null>(null)
+const wholeQuestionScoreInputRefs = ref<Array<{ focus?: () => void } | null>>([])
+const wholePageViewportRef = ref<HTMLElement | null>(null)
+const wholePageScrollTop = ref(0)
+const wholePageViewportHeight = ref(900)
+const currentWholePageIndex = ref(0)
+let wholePageImageLoadBatch = 0
+
+function setWholeQuestionScoreInputRef(el: unknown, index: number): void {
+  wholeQuestionScoreInputRefs.value[index] = (el as { focus?: () => void } | null) ?? null
+}
+
+const visibleWholePageRange = computed(() => {
+  if (wholePages.value.length === 0) return { start: 0, end: -1 }
+  const viewportStart = Math.floor(wholePageScrollTop.value / WHOLE_PAGE_ESTIMATED_HEIGHT)
+  const viewportEnd = Math.ceil(
+    (wholePageScrollTop.value + wholePageViewportHeight.value) / WHOLE_PAGE_ESTIMATED_HEIGHT,
+  )
+  return {
+    start: Math.max(0, viewportStart - WHOLE_PAGE_RENDER_BUFFER),
+    end: Math.min(wholePages.value.length - 1, viewportEnd + WHOLE_PAGE_RENDER_BUFFER),
+  }
+})
+
+const visibleWholePages = computed<VisibleWholePage[]>(() => {
+  const range = visibleWholePageRange.value
+  if (range.end < range.start) return []
+  return wholePages.value.slice(range.start, range.end + 1).map((page, offset) => ({
+    page,
+    pageIndex: range.start + offset,
+  }))
+})
+
+const wholePageTopSpacerHeight = computed(() => (
+  visibleWholePageRange.value.start * WHOLE_PAGE_ESTIMATED_HEIGHT
+))
+
+const wholePageBottomSpacerHeight = computed(() => {
+  const range = visibleWholePageRange.value
+  if (range.end < range.start) return 0
+  return Math.max(0, (wholePages.value.length - range.end - 1) * WHOLE_PAGE_ESTIMATED_HEIGHT)
+})
+
+function focusPrimaryScoreInput(): void {
+  window.requestAnimationFrame(() => {
+    if (usesWholePaperWorkspace.value) {
+      focusWholeQuestionScoreInput(0)
+      return
+    }
+    scoreInputRef.value?.focus?.()
+  })
+}
+
+function focusWholeQuestionScoreInput(index: number): void {
+  window.requestAnimationFrame(() => {
+    wholeQuestionScoreInputRefs.value[index]?.focus?.()
+  })
+}
+
+function scrollToWholePage(index: number): void {
+  if (!usesWholePaperWorkspace.value || wholePages.value.length === 0) return
+  const nextIndex = Math.min(Math.max(index, 0), wholePages.value.length - 1)
+  currentWholePageIndex.value = nextIndex
+  const nextScrollTop = nextIndex * WHOLE_PAGE_ESTIMATED_HEIGHT
+  if (wholePageViewportRef.value) {
+    wholePageViewportRef.value.scrollTo({ top: nextScrollTop, behavior: 'smooth' })
+    return
+  }
+  wholePageScrollTop.value = nextScrollTop
+  void preloadWholePageImagesForWindow()
+}
+
+function handleWholePageGalleryScroll(event: Event): void {
+  if (!(event.currentTarget instanceof HTMLElement)) return
+  wholePageScrollTop.value = event.currentTarget.scrollTop
+  wholePageViewportHeight.value = event.currentTarget.clientHeight
+  currentWholePageIndex.value = Math.min(
+    Math.max(Math.round(event.currentTarget.scrollTop / WHOLE_PAGE_ESTIMATED_HEIGHT), 0),
+    Math.max(wholePages.value.length - 1, 0),
+  )
+}
+
+function isKeyboardInputTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tagName = target.tagName.toLowerCase()
+  if (tagName === 'textarea' || tagName === 'select') return true
+  if (target.isContentEditable) return true
+  return tagName === 'input' && target.getAttribute('role') !== 'spinbutton'
+}
+
+function handleWorkspaceKeydown(event: KeyboardEvent): void {
+  if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return
+  if (event.key === 'Enter') {
+    if (submitting.value || !canSubmit.value || isKeyboardInputTarget(event.target)) return
+    event.preventDefault()
+    void submit()
+    return
+  }
+  if (event.key === 'PageDown' && usesWholePaperWorkspace.value) {
+    event.preventDefault()
+    scrollToWholePage(currentWholePageIndex.value + 1)
+    return
+  }
+  if (event.key === 'PageUp' && usesWholePaperWorkspace.value) {
+    event.preventDefault()
+    scrollToWholePage(currentWholePageIndex.value - 1)
+  }
+}
+
+function handleWholeQuestionScoreEnter(questionIndex: number): void {
+  if (submitting.value || !canSubmit.value) return
+  if (questionIndex < wholeQuestions.value.length - 1) {
+    focusWholeQuestionScoreInput(questionIndex + 1)
+    return
+  }
+  void submit()
+}
 
 async function loadWholePageImage(
   page: ScannedPageRef,
@@ -694,6 +973,52 @@ async function loadWholePageImage(
   return getImageBlobUrl(page.fileId)
 }
 
+async function loadWholePageImageByPage(page: ScannedPageRef, batch = wholePageImageLoadBatch): Promise<void> {
+  if (
+    !task.value?.examId
+    || !task.value?.id
+    || wholePageImageUrls[page.pageId]
+    || wholePageImageLoading[page.pageId]
+  ) {
+    return
+  }
+  wholePageImageLoading[page.pageId] = true
+  wholePageImageErrors[page.pageId] = null
+  try {
+    const url = await loadWholePageImage(page, task.value.examId, task.value.id)
+    if (batch !== wholePageImageLoadBatch) {
+      URL.revokeObjectURL(url)
+      return
+    }
+    wholePageImageUrls[page.pageId] = url
+  } catch (error) {
+    if (batch !== wholePageImageLoadBatch) return
+    wholePageImageErrors[page.pageId] = toUserError(error, '扫描页图片加载失败')
+  } finally {
+    if (batch === wholePageImageLoadBatch) {
+      wholePageImageLoading[page.pageId] = false
+    }
+  }
+}
+
+async function preloadWholePageImagesForWindow(): Promise<void> {
+  const batch = wholePageImageLoadBatch
+  const range = visibleWholePageRange.value
+  if (range.end < range.start) return
+  const start = Math.max(0, range.start - WHOLE_PAGE_PRELOAD_BUFFER)
+  const end = Math.min(wholePages.value.length - 1, range.end + WHOLE_PAGE_PRELOAD_BUFFER)
+  const queue = wholePages.value
+    .slice(start, end + 1)
+    .filter((page) => !wholePageImageUrls[page.pageId] && !wholePageImageLoading[page.pageId])
+  const workers = Array.from({ length: Math.min(3, queue.length) }, async () => {
+    while (queue.length > 0 && batch === wholePageImageLoadBatch) {
+      const page = queue.shift()
+      if (page) await loadWholePageImageByPage(page, batch)
+    }
+  })
+  await Promise.all(workers)
+}
+
 async function openWholePaperView(): Promise<void> {
   if (!task.value?.examId || !task.value?.id) {
     return
@@ -707,31 +1032,37 @@ async function openWholePaperView(): Promise<void> {
     })
     wholePages.value = view.pages
     wholeQuestions.value = view.questions
+    currentWholePageIndex.value = 0
     syncWholePaperForms(view.questions, view.pages)
-    await Promise.all(
-      view.pages.map(async (page) => {
-        wholePageImageUrls[page.pageId] = await loadWholePageImage(
-          page,
-          task.value!.examId,
-          task.value!.id,
-        )
-      }),
-    )
     wholePagesLoaded.value = true
+    focusPrimaryScoreInput()
+    window.requestAnimationFrame(() => {
+      if (wholePageViewportRef.value) {
+        wholePageViewportHeight.value = wholePageViewportRef.value.clientHeight
+      }
+      void preloadWholePageImagesForWindow()
+    })
   } catch (error) {
-    wholePagesError.value = toUserError(error, '整卷影像加载失败')
-    showUserError(error, '整卷视图加载失败')
+    wholePagesError.value = toUserError(error, '阅卷影像加载失败')
+    showUserError(error, '影像工作区加载失败')
   } finally {
     wholePagesLoading.value = false
   }
 }
 
 function releaseWholePageImages(): void {
+  wholePageImageLoadBatch += 1
   for (const url of Object.values(wholePageImageUrls)) {
     URL.revokeObjectURL(url)
   }
   for (const key of Object.keys(wholePageImageUrls)) {
     delete wholePageImageUrls[key]
+  }
+  for (const key of Object.keys(wholePageImageLoading)) {
+    delete wholePageImageLoading[key]
+  }
+  for (const key of Object.keys(wholePageImageErrors)) {
+    delete wholePageImageErrors[key]
   }
 }
 
@@ -776,6 +1107,26 @@ async function reloadWholePaperView(): Promise<void> {
   clearWholePaperForms()
   wholePagesLoaded.value = false
   await openWholePaperView()
+}
+
+function fillWholeQuestionAiScore(question: QuestionMarkingGroupQuestionVO): void {
+  if (question.aiScore == null) return
+  getWholeQuestionForm(question.questionTemplateId).score = question.aiScore
+  message.success(`已填入第 ${question.questionNo} 题 AI 建议分`)
+}
+
+async function acceptWholeQuestionAiScore(
+  question: QuestionMarkingGroupQuestionVO,
+  questionIndex: number,
+): Promise<void> {
+  if (question.aiScore == null || submitting.value) return
+  getWholeQuestionForm(question.questionTemplateId).score = question.aiScore
+  if (questionIndex < wholeQuestions.value.length - 1) {
+    focusWholeQuestionScoreInput(questionIndex + 1)
+    message.success(`已采纳第 ${question.questionNo} 题 AI 分`)
+    return
+  }
+  await submit()
 }
 
 const revealOpen = ref(false)
@@ -856,7 +1207,7 @@ function buildWholePaperSubmitRequest(): {
   pageAnnotations: MarkingPageAnnotationSubmitItem[]
 } {
   if (wholeQuestions.value.length === 0) {
-    throw new Error('整卷题目清单未加载，请刷新后重试')
+    throw new Error('当前任务负责题目未加载，请刷新后重试')
   }
   const questionScores: MarkingQuestionScoreSubmitItem[] = wholeQuestions.value.map((question) => {
     const questionForm = getWholeQuestionForm(question.questionTemplateId)
@@ -870,21 +1221,23 @@ function buildWholePaperSubmitRequest(): {
       correlationId: questionForm.correlationId,
     }
   })
-  const pageAnnotations: MarkingPageAnnotationSubmitItem[] = wholePages.value
-    .map(
-      (page): MarkingPageAnnotationSubmitItem => ({
-        pageId: page.pageId,
-        annotationText: wholePageAnnotationForms[page.pageId]?.trim() || '',
-        correlationId: createCorrelationId('page', page.pageId),
-      }),
-    )
-    .filter((item) => item.annotationText.length > 0)
+  const pageAnnotations: MarkingPageAnnotationSubmitItem[] = isWholePaperTask.value
+    ? wholePages.value
+        .map(
+          (page): MarkingPageAnnotationSubmitItem => ({
+            pageId: page.pageId,
+            annotationText: wholePageAnnotationForms[page.pageId]?.trim() || '',
+            correlationId: createCorrelationId('page', page.pageId),
+          }),
+        )
+        .filter((item) => item.annotationText.length > 0)
+    : []
   return { questionScores, pageAnnotations }
 }
 
 async function submit(): Promise<void> {
   if (!taskId.value || !task.value || !formRef.value) return
-  if (!isWholePaperTask.value) {
+  if (!usesWholePaperWorkspace.value) {
     try {
       await formRef.value.validate()
     } catch {
@@ -893,20 +1246,31 @@ async function submit(): Promise<void> {
   }
   submitting.value = true
   try {
-    const submitRequest = isWholePaperTask.value
+    const submitRequest = usesWholePaperWorkspace.value
       ? buildWholePaperSubmitRequest()
       : {
           questionScores: [buildQuestionSubmitRequest()],
           pageAnnotations: [],
         }
     await submitMarkingTask({ taskId: taskId.value, ...submitRequest })
-    message.success('阅卷任务已提交')
+    if (nextTaskId.value) {
+      message.success(`阅卷任务已提交，已切换到${isWholePaperTask.value ? '下一份' : '下一题'}`)
+      goToTask(nextTaskId.value)
+      return
+    }
+    message.success(`阅卷任务已提交，当前批次已到最后${isWholePaperTask.value ? '一份' : '一题'}`)
     await loadTask()
   } catch (error) {
     showUserError(error, '提交阅卷任务失败')
   } finally {
     submitting.value = false
   }
+}
+
+async function acceptAiScoreAndSubmit(): Promise<void> {
+  if (questionView.value?.aiScore == null || submitting.value) return
+  form.score = questionView.value.aiScore
+  await submit()
 }
 
 watch(taskId, () => {
@@ -923,6 +1287,10 @@ watch(taskId, () => {
   releaseWholePageImages()
   wholePages.value = []
   wholeQuestions.value = []
+  wholeQuestionScoreInputRefs.value = []
+  wholePageScrollTop.value = 0
+  wholePageViewportHeight.value = 900
+  currentWholePageIndex.value = 0
   clearWholePaperForms()
   wholePagesLoaded.value = false
   wholePagesLoading.value = false
@@ -932,13 +1300,26 @@ watch(taskId, () => {
   void loadTask()
 })
 
+watch(
+  () => [
+    visibleWholePageRange.value.start,
+    visibleWholePageRange.value.end,
+    wholePages.value.length,
+  ],
+  () => {
+    void preloadWholePageImagesForWindow()
+  },
+)
+
 onMounted(() => {
+  window.addEventListener('keydown', handleWorkspaceKeydown)
   if (taskId.value) {
     void loadTask()
   }
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleWorkspaceKeydown)
   clearRevealedIdentity()
   releaseWholePageImages()
 })
@@ -946,26 +1327,6 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .marking-task-detail-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
   &__progress {
     font-size: 13px;
     font-weight: 500;
@@ -1002,11 +1363,29 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: min(72vh, 960px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+
+  &__spacer {
+    flex: 0 0 auto;
+  }
 
   &__page {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-height: 1120px;
+    padding: 8px;
+    border: 1px solid transparent;
+    border-radius: var(--dp-radius-panel, 8px);
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+
+  &__page--active {
+    border-color: var(--ant-color-primary, #1677ff);
+    box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(22, 119, 255, 0.18));
   }
 
   &__page-header {
@@ -1017,8 +1396,66 @@ onBeforeUnmount(() => {
 
   &__image {
     width: 100%;
+    min-height: 920px;
     border-radius: 4px;
     border: 1px solid var(--dp-border-subtle, #e2e8f0);
+  }
+
+  &__image-placeholder {
+    min-height: 920px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    color: var(--dp-text-secondary, #475569);
+    border: 1px dashed var(--dp-border-subtle, #e2e8f0);
+    border-radius: 4px;
+    background: var(--dp-surface-subtle, #f8fafc);
+  }
+}
+
+.whole-question-score {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--dp-border-subtle, #e2e8f0);
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  &__ai {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0 0 8px;
+    padding: 8px;
+    border: 1px solid var(--dp-border-subtle, #e2e8f0);
+    border-radius: var(--dp-radius-control, 8px);
+    background: var(--dp-surface-subtle, #f8fafc);
+  }
+
+  &__ai-text {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: var(--dp-font-size-sm, 13px);
+    color: var(--dp-text-secondary, #475569);
+
+    strong {
+      color: var(--ant-color-primary, #1677ff);
+      font-size: var(--dp-font-size-md, 14px);
+    }
+  }
+
+  &__ai-diagnostic {
+    margin-bottom: 0;
+    color: var(--dp-text-secondary, #475569);
+    font-size: var(--dp-font-size-sm, 13px);
   }
 }
 

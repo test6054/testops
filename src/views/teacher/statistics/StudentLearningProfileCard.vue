@@ -29,6 +29,11 @@
     </template>
 
     <a-spin :spinning="loading">
+      <AiGenerationProgressPanel
+        v-if="generating"
+        title="AI 学生学情分析生成中"
+        waiting-text="正在等待后端返回该学生的真实学情画像。"
+      />
       <!-- D-9 错误态：AI 学生个体学情加载失败时提供重试 + 上报入口 -->
       <UiErrorRetryPanel
         v-if="loadError"
@@ -128,6 +133,7 @@ import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'StudentLearningProfileCard' })
 
@@ -347,14 +353,14 @@ watch(
 }
 .diagnosis-rate {
   margin-left: auto;
-  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
 }
 .diagnosis-text {
   font-size: 13px;
   line-height: 1.6;
-  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
 }
 .text-muted {
-  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
 }
 </style>

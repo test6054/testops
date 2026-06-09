@@ -30,7 +30,7 @@
       compact
       @retry="reload"
     />
-    <UiDataTable
+    <UiDataTable class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -63,34 +63,10 @@
           {{ formatDateTime(rows[index].reviewTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <a-space>
-            <a-button
-              type="link"
-              size="small"
-              :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
-              "
-              @click="openHandleModal(rows[index], 'APPROVED')"
-            >
-              通过
-            </a-button>
-            <a-button
-              type="link"
-              size="small"
-              danger
-              :disabled="
-                rows[index].requestStatus === 'APPROVED'
-                  || rows[index].requestStatus === 'REJECTED'
-                  || rows[index].requestStatus === 'CORRECTED'
-              "
-              @click="openHandleModal(rows[index], 'REJECTED')"
-            >
-              驳回
-            </a-button>
-          </a-space>
-        </template>
+            <div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openHandleModal(rows[index], 'APPROVED')">通过</span>
+            <span class="op-link danger" role="button" @click="openHandleModal(rows[index], 'REJECTED')">驳回</span>
+            </div></template>
       </template>
     </UiDataTable>
 
@@ -170,12 +146,15 @@ import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
 const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
+
+const GRADE_REVIEW_REQUEST_PAGE_SIZE = 100
 
 const rows = ref<GradeReviewRequestItemResponse[]>([])
 const loading = ref(false)
@@ -227,14 +206,18 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    const page = await listReviewRequests({
-      examId: props.examId,
-      requestStatus: statusFilter.value,
-      pageNum: 1,
-      pageSize: 200,
-    })
-    validateReviewRequestDisplayContracts(page.list)
-    rows.value = page.list
+    const requests = await readAllPages(
+      (pageNum) =>
+        listReviewRequests({
+          examId: props.examId,
+          requestStatus: statusFilter.value,
+          pageNum,
+          pageSize: GRADE_REVIEW_REQUEST_PAGE_SIZE,
+        }),
+      '复核申请加载失败',
+    )
+    validateReviewRequestDisplayContracts(requests)
+    rows.value = requests
   } catch (e) {
     rows.value = []
     loadError.value = toUserError(e, '复核申请加载失败')

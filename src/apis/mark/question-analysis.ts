@@ -1,4 +1,9 @@
 import type { QuestionTypeCode } from './grading-experience'
+import type {
+  EffectiveStatusCode,
+  ObjectiveComparePolicyCode,
+} from './exam'
+import type { GradeStatusCode, ObjectiveResultCode } from './student-exam'
 /**
  * 题目质量分析与重判 API - 对接 edu-mark 模块 QuestionAnalysisController
  *
@@ -8,6 +13,7 @@ import type { QuestionTypeCode } from './grading-experience'
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
 // ─── 题目质量分析 ─────────────────────────────────
@@ -17,6 +23,8 @@ export interface ExamQuestionAnalysisRecordVO {
   id: string
   tenantId?: string
   examId: string
+  scopeType?: 'EXAM' | 'CLASS'
+  scopeId?: string
   questionTemplateId: string
   questionNo: string
   questionType: QuestionTypeCode
@@ -46,11 +54,13 @@ export interface ExamQuestionAnalysisRecordVO {
 export function generateQuestionAnalysis(params: {
   examId: string
   questionTemplateId: string
+  classId?: string
 }): Promise<ExamQuestionAnalysisRecordVO> {
   const search = new URLSearchParams({
     examId: params.examId,
     questionTemplateId: params.questionTemplateId,
-  }).toString()
+  })
+  if (params.classId) search.set('classId', params.classId)
   return http.post<ExamQuestionAnalysisRecordVO>(`/api/exam/question-analysis/generate?${search}`)
 }
 
@@ -60,9 +70,12 @@ export function generateQuestionAnalysis(params: {
  */
 export function generateAllQuestionAnalysis(
   examId: string,
+  classId?: string,
 ): Promise<ExamQuestionAnalysisRecordVO[]> {
+  const search = new URLSearchParams({ examId })
+  if (classId) search.set('classId', classId)
   return http.post<ExamQuestionAnalysisRecordVO[]>(
-    `/api/exam/question-analysis/generate-all?examId=${encodeURIComponent(examId)}`,
+    `/api/exam/question-analysis/generate-all?${search}`,
   )
 }
 
@@ -73,12 +86,102 @@ export function generateAllQuestionAnalysis(
 export function listQuestionAnalysis(params: {
   examId: string
   questionTemplateId?: string
+  classId?: string
 }): Promise<ExamQuestionAnalysisRecordVO[]> {
   return http.get<ExamQuestionAnalysisRecordVO[]>('/api/exam/question-analysis/list', { params })
 }
 
 // ─── 学生错题本 ─────────────────────────────────
+
+/** 学生错题本查询请求 - 对应 StudentWrongBookQueryRequest */
+export interface StudentWrongBookQueryRequest {
+  examId: string
+  questionTemplateId?: string
+  wrongOnly?: boolean
+  pageNum?: number
+  pageSize?: number
+}
+
+/** 学生错题本条目 - 对应 StudentWrongBookItemResponse */
+export interface StudentWrongBookItemVO {
+  gradeResultId: string
+  examId: string
+  paperInstanceId: string
+  questionTemplateId: string
+  fullScore: number
+  teacherReviewScore?: number
+  objectiveResult?: ObjectiveResultCode
+  gradeStatus: GradeStatusCode
+  commentText?: string
+  isWrong: boolean
+}
+
+/**
+ * 查询当前登录学生的错题本（分页）
+ * POST /api/exam/question-analysis/wrong-book
+ */
+export function pageStudentWrongBook(
+  request: StudentWrongBookQueryRequest,
+): Promise<PageResult<StudentWrongBookItemVO>> {
+  return http.post<PageResult<StudentWrongBookItemVO>>(
+    '/api/exam/question-analysis/wrong-book',
+    request,
+  )
+}
+
 // ─── 答案确认生效 ─────────────────────────────────
+
+/** 答案确认生效请求 - 对应 AnswerEffectiveConfirmRequest */
+export interface AnswerEffectiveConfirmRequest {
+  examId: string
+  questionTemplateId: string
+  standardAnswerId?: string
+  comparePolicy?: ObjectiveComparePolicyCode
+  aiReviewHintId?: string
+  knowledgePointIds?: string[]
+}
+
+/** 答案确认生效配置 - 对应 ExamAnswerEffectiveConfig */
+export interface ExamAnswerEffectiveConfigVO {
+  id?: string
+  examId: string
+  questionTemplateId: string
+  standardAnswerId?: string
+  comparePolicy?: ObjectiveComparePolicyCode
+  aiReviewHintId?: string
+  knowledgePointIds?: string[]
+  effectiveStatus?: EffectiveStatusCode
+  confirmedBy?: string
+  confirmedTime?: string
+}
+
+/**
+ * 确认标准答案生效；已有批改结果时自动创建重判计划
+ * POST /api/exam/question-analysis/answer-effective/confirm
+ */
+export function confirmAnswerEffective(
+  request: AnswerEffectiveConfirmRequest,
+): Promise<ExamAnswerEffectiveConfigVO> {
+  return http.post<ExamAnswerEffectiveConfigVO>(
+    '/api/exam/question-analysis/answer-effective/confirm',
+    request,
+  )
+}
+
+/**
+ * 查询题目当前生效的答案配置
+ * GET /api/exam/question-analysis/answer-effective/get
+ */
+export function getEffectiveAnswerConfig(params: {
+  examId: string
+  questionTemplateId: string
+}): Promise<ExamAnswerEffectiveConfigVO | null> {
+  return http.get<ExamAnswerEffectiveConfigVO | null>(
+    '/api/exam/question-analysis/answer-effective/get',
+    { params },
+  )
+}
+
 // ─── 重判计划 ─────────────────────────────────
 
 /** 重判计划状态 */

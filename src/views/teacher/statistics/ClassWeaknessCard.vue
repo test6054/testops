@@ -3,7 +3,7 @@
     <template #extra>
       <a-space>
         <a-select
-          v-model:value="selectedClassId"
+          :value="props.classId"
           placeholder="选择班级"
           style="width: 240px"
           show-search
@@ -13,14 +13,15 @@
           :loading="props.rosterLoading"
           :disabled="!props.examId"
           :not-found-content="props.rosterLoading ? '加载中…' : '该考试未关联班级'"
+          @change="handleClassSelectChange"
         />
-        <a-button :loading="loading" :disabled="!selectedClassId" @click="reload">
+        <a-button :loading="loading" :disabled="!props.classId" @click="reload">
           <template #icon><ReloadOutlined /></template>查看最新
         </a-button>
         <a-button
           type="primary"
           :loading="generating"
-          :disabled="!selectedClassId"
+          :disabled="!props.classId"
           @click="handleGenerate"
         >
           重新生成
@@ -29,6 +30,11 @@
     </template>
 
     <a-spin :spinning="loading">
+      <AiGenerationProgressPanel
+        v-if="generating"
+        title="AI 班级薄弱题型分析生成中"
+        waiting-text="正在等待后端返回该班级的真实薄弱题型分析。"
+      />
       <!-- D-9 错误态：AI 班级薄弱题型加载失败时提供重试 + 上报入口 -->
       <UiErrorRetryPanel
         v-if="loadError"
@@ -116,6 +122,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type {
   ClassWeaknessItemVO,
   ExamTeachingAnalysisRecordVO,
@@ -134,31 +141,28 @@ import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ClassWeaknessCard' })
 
 const props = defineProps<{
   examId: string
   reloadToken: number
+  /** 父级统计页维护的活跃班级 ID，驱动跨卡片联动 */
+  classId?: string
   /** 考试关联班级选项，由父级 useMarkExamRoster 从考生名册派生 */
   classOptions: MarkClassOption[]
   /** 考生名册加载状态，控制下拉框的 loading 提示 */
   rosterLoading: boolean
 }>()
 
-/**
- * B-12 联动：本卡每次成功查询/生成后，把当前 classId 上抛给父级 statistics.vue，
- * 由父级统一展示「联动上下文」并把同一 classId 提示到学生学情卡，避免子卡片成为孤岛。
- */
-const emit = defineEmits<{ (e: 'class-change', classId: string): void }>()
+const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
 // D-9 错误态：AI 班级薄弱题型加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 const generating = ref(false)
-// 选中的班级 ID（来自下拉选择器，避免教师手输）
-const selectedClassId = ref<string | undefined>(undefined)
 const hasQueried = ref(false)
 
 const weaknessItems = computed<ClassWeaknessItemVO[]>(() => {
@@ -219,7 +223,7 @@ function analysisTraceText(value: ExamTeachingAnalysisRecordVO): string {
 }
 
 async function reload(): Promise<void> {
-  const classId = selectedClassId.value
+  const classId = props.classId
   if (!props.examId || !classId) return
   hasQueried.value = true
   loadError.value = null
@@ -227,8 +231,6 @@ async function reload(): Promise<void> {
   try {
     const latest = await getLatestClassWeaknessAnalysis({ examId: props.examId, classId })
     record.value = acceptClassWeaknessRecord(latest, classId)
-    // B-12 联动：广播当前班级，便于学生学情卡显示同班级上下文
-    emit('class-change', classId)
   } catch (e) {
     record.value = null
     loadError.value = toUserError(e, '班级薄弱题型分析加载失败')
@@ -239,7 +241,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  const classId = selectedClassId.value
+  const classId = props.classId
   if (!classId) {
     message.warning('请先选择班级')
     return
@@ -251,7 +253,6 @@ async function handleGenerate(): Promise<void> {
     const generated = await generateClassWeaknessAnalysis({ examId: props.examId, classId })
     record.value = acceptClassWeaknessRecord(generated, classId)
     message.success('已生成最新分析')
-    emit('class-change', classId)
   } catch (e) {
     record.value = null
     loadError.value = toUserError(e, '班级薄弱题型分析生成失败')
@@ -261,29 +262,22 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
+function handleClassSelectChange(value?: SelectValue): void {
+  emit('class-change', typeof value === 'string' ? value : undefined)
+  hasQueried.value = false
+  record.value = null
+}
+
 function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`
 }
 
 watch(
-  () => [props.examId, props.reloadToken],
+  () => [props.examId, props.reloadToken, props.classId],
   () => {
-    // 切换考试或外部刷新时清空当前结果，等待用户重新指定班级
     hasQueried.value = false
     record.value = null
-    selectedClassId.value = undefined
-  },
-)
-
-watch(
-  () => props.classOptions,
-  (next) => {
-    // 考试名册变化后，如果当前选中的班级不再在范围内，需重置选择以保证业务一致性
-    if (selectedClassId.value && !next.some((opt) => opt.value === selectedClassId.value)) {
-      selectedClassId.value = undefined
-      hasQueried.value = false
-      record.value = null
-    }
+    if (props.classId) void reload()
   },
 )
 </script>

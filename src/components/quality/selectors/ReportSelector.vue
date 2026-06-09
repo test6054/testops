@@ -10,7 +10,7 @@ import { onMounted, ref, watch } from 'vue'
 import { REPORT_TYPE_LABEL, reportApi } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -66,18 +66,21 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await reportApi.page({
-      pageNum: 1,
-      pageSize: 200,
-      programId: props.programId || undefined,
-      trainingPlanId: props.trainingPlanId || undefined,
-      qualityCourseId: props.qualityCourseId || undefined,
-      schoolYear: props.schoolYear || undefined,
-      semester: props.semester || undefined,
-      status: props.status,
-      reportType: props.reportType,
-    })
-    options.value = requirePageList(res, '教学质量评价报告')
+    options.value = await requireAllPages(
+      (pageNum) =>
+        reportApi.page({
+          pageNum,
+          pageSize: 100,
+          programId: props.programId || undefined,
+          trainingPlanId: props.trainingPlanId || undefined,
+          qualityCourseId: props.qualityCourseId || undefined,
+          schoolYear: props.schoolYear || undefined,
+          semester: props.semester || undefined,
+          status: props.status,
+          reportType: props.reportType,
+        }),
+      '教学质量评价报告',
+    )
   } catch (e) {
     showUserError(e, '教学质量评价报告列表加载失败')
   } finally {

@@ -2,8 +2,8 @@
   <StageWorkbenchShell>
     <!-- 上下文区 -->
     <template #context>
-      <div class="admin-dashboard__context">
-        <div class="admin-dashboard__context-left">
+      <ContextBar>
+        <template #status>
           <UiTag tone="blue" size="sm">租户聚合视图</UiTag>
           <UiTag
             v-if="incidentMetrics && incidentMetrics.unresolvedIncidentCount > 0"
@@ -12,8 +12,8 @@
           >
             待处理事件 {{ incidentMetrics.unresolvedIncidentCount }}
           </UiTag>
-        </div>
-        <div class="admin-dashboard__context-right">
+        </template>
+        <template #actions>
           <a-input-number
             v-model:value="recentLimit"
             :min="1"
@@ -29,8 +29,8 @@
             <template #icon><FileSearchOutlined /></template>
             批改审计
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- D-9 错误态：阅卷概览加载失败时提供重试 + 上报入口 -->
@@ -134,7 +134,6 @@
           <template #title>
             <FileOutlined />
             <span>最近考试</span>
-            <UiBadge tone="blue">{{ recentExams.length }} 场</UiBadge>
           </template>
           <template #extra>
             <UiButton size="sm" variant="ghost" @click="goAuditTrail"> 进入批改审计 </UiButton>
@@ -256,7 +255,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildExamScalePieOption } from '@/utils/mark-statistics-chart'
@@ -342,26 +341,6 @@ onMounted(loadOverview)
 
 <style lang="scss" scoped>
 .admin-dashboard {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__limit-input {
     width: 140px;
   }

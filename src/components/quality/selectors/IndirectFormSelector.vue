@@ -13,7 +13,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { INDIRECT_FORM_TYPE_LABEL, indirectFormApi } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -60,16 +60,18 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await indirectFormApi.page({
-      pageNum: 1,
-      pageSize: 100,
-      formType: props.formType || undefined,
-      targetType: props.targetType,
-      targetId: props.targetId || undefined,
-      programId: props.programId || undefined,
-      enabled: props.enabled,
-    })
-    options.value = requirePageList(res, '间接评价问卷')
+    options.value = await requireAllPages(
+      (pageNum) => indirectFormApi.page({
+        pageNum,
+        pageSize: 100,
+        formType: props.formType || undefined,
+        targetType: props.targetType,
+        targetId: props.targetId || undefined,
+        programId: props.programId || undefined,
+        enabled: props.enabled,
+      }),
+      '间接评价问卷',
+    )
   } catch (e) {
     showUserError(e, '间接评价问卷列表加载失败')
   } finally {

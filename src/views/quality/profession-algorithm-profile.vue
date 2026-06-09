@@ -32,7 +32,11 @@ import { ProgramSelector } from '@/components/quality/selectors'
 import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+const PROFESSION_ALGORITHM_TEMPLATE_OPTION_PAGE_SIZE = 100
+const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'profileCode', key: 'profileCode', width: 140 },
@@ -143,8 +147,8 @@ async function loadList() {
       ...query,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '专业算法实例加载失败，请稍后重试')
+    total.value = readPageTotal(page, '专业算法实例加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -152,11 +156,25 @@ async function loadList() {
 
 async function loadDicts() {
   const [tpl, std] = await Promise.all([
-    professionAlgorithmTemplateApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
-    accreditationStandardApi.page({ pageNum: 1, pageSize: 500, enabled: true }),
+    readAllPages(
+      (pageNum) => professionAlgorithmTemplateApi.page({
+        pageNum,
+        pageSize: PROFESSION_ALGORITHM_TEMPLATE_OPTION_PAGE_SIZE,
+        enabled: true,
+      }),
+      '专业算法模板列表加载失败，请稍后重试',
+    ),
+    readAllPages(
+      (pageNum) => accreditationStandardApi.page({
+        pageNum,
+        pageSize: ACCREDITATION_STANDARD_OPTION_PAGE_SIZE,
+        enabled: true,
+      }),
+      '认证标准列表加载失败，请稍后重试',
+    ),
   ])
-  templates.value = tpl.list
-  standards.value = std.list
+  templates.value = tpl
+  standards.value = std
 }
 
 // a-select v-model:value 是 SelectValue（string|number|undefined|array），
@@ -371,58 +389,62 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="pap__context">
-        <div class="pap__context-info">
-          <h2 class="pap__title">专业算法实例</h2>
-        </div>
-      </div>
-    </template>
-
     <SignalBand :metrics="signals" compact class="pap__signals" />
 
-    <section class="pap__panel">
-      <header class="pap__panel-header">
-        <h3 class="pap__panel-title">实例台账</h3>
-        <div class="pap__panel-actions">
-          <ProgramSelector
-            :value="query.programId || null"
-            placeholder="专业大类"
-            :width="200"
-            @change="handleQueryProgramChange"
-          />
-          <a-select
-            v-model:value="query.accreditationType"
-            placeholder="认证类型"
-            allow-clear
-            class="pap__filter pap__filter--md"
-            :options="accreditationOptions"
-          />
-          <a-select
-            v-model:value="query.confirmationStatus"
-            placeholder="状态"
-            allow-clear
-            class="pap__filter"
-          >
-            <a-select-option v-for="s in statusOptions" :key="s" :value="s">
-              {{ confirmationStatusLabel(s) }}
-            </a-select-option>
-          </a-select>
-          <a-input
-            v-model:value="query.keyword"
-            placeholder="编码/名称"
-            class="pap__filter pap__filter--md"
-            @press-enter="loadList"
-          />
-          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            查询
-          </UiButton>
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建实例 </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card pap__table-card">
+      <template #title>实例台账</template>
 
-      <UiDataTable
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
+          <a-form-item label="专业大类">
+            <ProgramSelector
+              :value="query.programId || null"
+              placeholder="专业大类"
+              :width="200"
+              @change="handleQueryProgramChange"
+            />
+          </a-form-item>
+          <a-form-item label="认证类型">
+            <a-select
+              v-model:value="query.accreditationType"
+              placeholder="认证类型"
+              allow-clear
+              style="width: 160px"
+              :options="accreditationOptions"
+            />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="query.confirmationStatus"
+              placeholder="状态"
+              allow-clear
+              style="width: 120px"
+            >
+              <a-select-option v-for="s in statusOptions" :key="s" :value="s">
+                {{ confirmationStatusLabel(s) }}
+              </a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="关键字">
+            <a-input
+              v-model:value="query.keyword"
+              placeholder="编码/名称"
+              style="width: 160px"
+              @press-enter="loadList"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="loadList">查询</UiButton>
+              <span class="op-link" role="button" @click="resetQuery">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
+              <UiButton variant="primary" size="sm" @click="openCreate">新建实例</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -451,33 +473,29 @@ onMounted(async () => {
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+              <span
                 v-if="record.confirmationStatus === 'DRAFT'"
-                variant="outline"
-                size="sm"
+                class="op-link primary"
+                role="button"
                 @click="handleConfirm(record)"
               >
                 确认
-              </UiButton>
-              <UiButton
+              </span>
+              <span
                 v-if="record.confirmationStatus === 'CONFIRMED'"
-                variant="outline"
-                size="sm"
+                class="op-link danger"
+                role="button"
                 @click="handleRevoke(record)"
               >
                 退回
-              </UiButton>
-              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
-                删除
-              </UiButton>
-            </a-space>
-          </template>
+              </span>
+              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <a-modal
       v-model:open="editorVisible"
@@ -717,26 +735,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .pap {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 240px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;

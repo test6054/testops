@@ -48,7 +48,7 @@ const ui: KioskUiState = {
   viewHistoryLedger(item) {
     // 互斥：先关 settings 再触发 ledger 拉取
     if (settingsDrawerOpen.value) settingsDrawerOpen.value = false
-    workflow.viewBatchHistoryLedger(item).catch(() => undefined)
+    workflow.viewBatchHistoryLedger(item)
   },
   closeHistoryLedger() {
     workflow.closeBatchHistoryLedger()

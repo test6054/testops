@@ -36,11 +36,15 @@ import {
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+const SCORE_BATCH_OPTION_PAGE_SIZE = 100
+const VALID_SCORE_RECORD_PAGE_SIZE = 100
 
 const batchColumns: ColumnsType = [
   { title: '编码', dataIndex: 'batchCode', key: 'batchCode', width: 120 },
@@ -98,12 +102,14 @@ async function loadBatches() {
   }
   batchesLoading.value = true
   try {
-    const page = await scoreBatchApi.page({
-      pageNum: 1,
-      pageSize: 100,
-      qualityCourseId: qualityStore.currentQualityCourseId,
-    })
-    batches.value = page.list
+    batches.value = await readAllPages(
+      (pageNum) => scoreBatchApi.page({
+        pageNum,
+        pageSize: SCORE_BATCH_OPTION_PAGE_SIZE,
+        qualityCourseId: qualityStore.currentQualityCourseId,
+      }),
+      '成绩批次列表加载失败，请稍后重试',
+    )
   } finally {
     batchesLoading.value = false
   }
@@ -365,13 +371,15 @@ async function queryValidByItem() {
   }
   validByItemLoading.value = true
   try {
-    const page = await scoreRecordApi.listValidByItem({
-      assessmentItemId: validByItemId.value,
-      qualityCourseId: qualityStore.currentQualityCourseId,
-      pageNum: 1,
-      pageSize: 500,
-    })
-    validByItemRecords.value = page.list
+    validByItemRecords.value = await readAllPages(
+      (pageNum) => scoreRecordApi.listValidByItem({
+        assessmentItemId: validByItemId.value,
+        qualityCourseId: qualityStore.currentQualityCourseId,
+        pageNum,
+        pageSize: VALID_SCORE_RECORD_PAGE_SIZE,
+      }),
+      '有效成绩明细加载失败，请稍后重试',
+    )
   } finally {
     validByItemLoading.value = false
   }
@@ -424,16 +432,14 @@ function handleCourseChange(courseId: string | null) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="score-record__context">
-        <div class="score-record__context-group">
+      <ContextBar>
+        <template #status>
           <span class="score-record__context-label">培养方案</span>
           <TrainingPlanSelector
             :value="qualityStore.currentTrainingPlanId || null"
             :width="280"
             @change="handlePlanChange"
           />
-        </div>
-        <div class="score-record__context-group">
           <span class="score-record__context-label">质量评价课程</span>
           <CourseSelector
             :value="qualityStore.currentQualityCourseId || null"
@@ -441,8 +447,8 @@ function handleCourseChange(courseId: string | null) {
             :width="320"
             @change="handleCourseChange"
           />
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -461,13 +467,14 @@ function handleCourseChange(courseId: string | null) {
       <SignalBand :metrics="signals" compact class="score-record__signals" />
 
       <div class="score-record__layout">
-        <section class="score-record__panel score-record__panel--batches">
-          <header class="score-record__panel-header">
-            <h3 class="score-record__panel-title">成绩批次</h3>
+        <a-card :bordered="false" class="detail-table-card score-record__batch-card">
+          <template #title>
+            成绩批次
             <span class="score-record__panel-meta">{{ batches.length }} 批</span>
-          </header>
+          </template>
+
           <UiDataTable
-            class="score-record__batches-table"
+            class="score-record__batches-table student-detail-table__data-table"
             :columns="batchColumns"
             :data-source="batches"
             :loading="batchesLoading"
@@ -491,48 +498,53 @@ function handleCourseChange(courseId: string | null) {
               </template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
 
-        <section class="score-record__panel score-record__panel--detail">
+        <a-card :bordered="false" class="detail-table-card score-record__detail-card">
+          <template v-if="selectedBatch" #title>
+            「{{ selectedBatch.batchName }}」明细
+            <span class="score-record__detail-meta">
+              <a-tag :color="batchStatusColor(selectedBatch.status)">
+                {{ batchStatusLabel(selectedBatch.status) }}
+              </a-tag>
+              · {{ selectedBatch.batchCode }}
+            </span>
+          </template>
+          <template v-else #title>成绩明细</template>
+
           <UiEmpty
             v-if="!selectedBatch"
             description="请在左侧选择成绩批次后查看其明细数据"
             class="score-record__empty"
           />
           <template v-else>
-            <header class="score-record__detail-header">
-              <div>
-                <h3 class="score-record__panel-title">「{{ selectedBatch.batchName }}」明细</h3>
-                <div class="score-record__detail-meta">
-                  状态
-                  <a-tag :color="batchStatusColor(selectedBatch.status)">
-                    {{ batchStatusLabel(selectedBatch.status) }}
-                  </a-tag>
-                  · 编码 {{ selectedBatch.batchCode }}
-                </div>
-              </div>
-              <div class="score-record__detail-actions">
-                <a-select
-                  v-model:value="validFilterSelect"
-                  placeholder="有效性筛选"
-                  allow-clear
-                  class="score-record__valid-select"
-                >
-                  <a-select-option value="true"> 仅有效 </a-select-option>
-                  <a-select-option value="false"> 仅无效 </a-select-option>
-                </a-select>
-                <UiButton variant="ghost" size="sm" @click="openValidByItem">
-                  按考核环节查有效
-                </UiButton>
-                <router-link :to="{ name: 'QualityScoreBatch' }" class="score-record__import-link">
-                  <UiButton variant="outline" size="sm"> 批量导入（Excel） </UiButton>
-                </router-link>
-                <UiButton variant="primary" size="sm" @click="openCreate"> 新增明细 </UiButton>
-              </div>
-            </header>
+            <div class="filter-card">
+              <a-form layout="inline" class="filter-form filter-form--toolbar">
+                <a-form-item label="有效性">
+                  <a-select
+                    v-model:value="validFilterSelect"
+                    placeholder="有效性筛选"
+                    allow-clear
+                    style="width: 140px"
+                  >
+                    <a-select-option value="true">仅有效</a-select-option>
+                    <a-select-option value="false">仅无效</a-select-option>
+                  </a-select>
+                </a-form-item>
+                <a-form-item class="filter-form__actions">
+                  <a-space class="filter-form__action-group">
+                    <span class="op-link" role="button" @click="openValidByItem">按考核环节查有效</span>
+                    <router-link :to="{ name: 'QualityScoreBatch' }" class="score-record__import-link">
+                      <UiButton variant="outline" size="sm">批量导入（Excel）</UiButton>
+                    </router-link>
+                    <UiButton variant="primary" size="sm" @click="openCreate">新增明细</UiButton>
+                  </a-space>
+                </a-form-item>
+              </a-form>
+            </div>
 
             <UiDataTable
-              class="score-record__records-table"
+              class="score-record__records-table student-detail-table__data-table"
               :columns="recordColumns"
               :data-source="filteredRecords"
               :loading="recordsLoading"
@@ -569,23 +581,14 @@ function handleCourseChange(courseId: string | null) {
                     </a-tooltip>
                   </a-space>
                 </template>
-                <template v-else-if="column.key === 'actions'">
-                  <a-space>
-                    <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-                    <UiButton
-                      variant="ghost"
-                      status="danger"
-                      size="sm"
-                      @click="handleDelete(record)"
-                    >
-                      删除
-                    </UiButton>
-                  </a-space>
-                </template>
+                <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+                    <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+            </div></template>
               </template>
             </UiDataTable>
           </template>
-        </section>
+        </a-card>
       </div>
     </template>
 
@@ -738,7 +741,7 @@ function handleCourseChange(courseId: string | null) {
           查询
         </UiButton>
       </div>
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         :columns="validByItemColumns"
         :data-source="validByItemRecords"
         :loading="validByItemLoading"
@@ -765,19 +768,6 @@ function handleCourseChange(courseId: string | null) {
 
 <style scoped lang="scss">
 .score-record {
-  &__context {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 24px;
-  }
-
-  &__context-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
   &__context-label {
     color: var(--dp-text-secondary, #475569);
     font-size: 13px;

@@ -21,13 +21,13 @@ import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 
 export interface MarkExamSelectorOptions {
   /** 是否在切换时自动回写 URL query，默认 true */
   syncUrl?: boolean
-  /** 最大加载数量，默认 200 */
-  maxLoad?: number
+  /** 单页加载数量，默认 100；完整集合由 readAllPages 自动翻页读取 */
+  pageSize?: number
 }
 
 export interface MarkExamSelectOption {
@@ -44,7 +44,7 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const markStageStore = useMarkStageStore()
 
   const syncUrl = options.syncUrl ?? true
-  const maxLoad = options.maxLoad ?? 200
+  const pageSize = options.pageSize ?? 100
 
   const exams = ref<ExamSummaryVO[]>([])
   const loading = ref(false)
@@ -98,13 +98,15 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   async function loadExams(): Promise<void> {
     loading.value = true
     try {
-      const result = await pageExams({
-        pageNum: 1,
-        pageSize: maxLoad,
-        status: 'ACTIVE',
-        createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
-      })
-      exams.value = readPageList(result, '考试列表加载失败，请稍后重试')
+      exams.value = await readAllPages(
+        (pageNum) => pageExams({
+          pageNum,
+          pageSize,
+          status: 'ACTIVE',
+          createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
+        }),
+        '考试列表加载失败，请稍后重试',
+      )
       // 同步考试列表到全局 Store，供跨页面下拉复用
       examContext.exams = exams.value
       // URL / Store 都未指定时默认选第一个

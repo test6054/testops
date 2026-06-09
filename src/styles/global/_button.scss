@@ -5,126 +5,107 @@
   gap: var(--dp-space-2);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  border-radius: var(--dp-radius-control, 6px);
+  border-radius: var(--ant-border-radius);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-  outline: none;
-  white-space: nowrap;
-  user-select: none;
+  transition: background-color var(--dp-duration-normal) ease, color var(--dp-duration-normal) ease, border-color var(--dp-duration-normal) ease, box-shadow var(--dp-duration-normal) ease;
 }
 
 :global(.dp-btn:focus-visible) {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.25));
+  outline: 2px solid var(--ant-color-primary-border);
+  outline-offset: 2px;
 }
 
 :global(.dp-btn--md) {
-  padding: 0 14px;
-  min-height: var(--dp-button-height-md, 36px);
+  padding: var(--dp-space-2) 14px;
+  min-height: 36px;
 }
 
 :global(.dp-btn--sm) {
-  padding: 0 12px;
+  padding: 7px var(--dp-space-3);
   font-size: var(--dp-font-size-sm);
-  min-height: var(--dp-button-height-sm, 32px);
+  min-height: 30px;
 }
 
 :global(.dp-btn--primary) {
-  background-color: var(--dp-blue-600, #2563eb);
-  color: #fff;
-  border-color: var(--dp-blue-600, #2563eb);
+  background-color: var(--ant-color-primary);
+  color: var(--ant-color-white);
+  border-color: var(--ant-color-primary);
+  box-shadow: var(--dp-shadow-sm);
 }
 
 :global(.dp-btn--primary:hover) {
-  background-color: var(--dp-blue-700, #1d4ed8);
-  border-color: var(--dp-blue-700, #1d4ed8);
+  background-color: var(--ant-color-primary-hover);
+  border-color: var(--ant-color-primary-hover);
 }
 
 :global(.dp-btn--outline) {
-  background-color: var(--dp-surface, #fff);
-  color: var(--dp-text-primary, #0f172a);
-  border-color: var(--dp-border-strong, #e2e8f0);
+  background-color: var(--ant-color-bg-container);
+  color: var(--ant-color-text);
+  border-color: var(--ant-color-border);
 }
 
 :global(.dp-btn--outline:hover) {
-  background-color: var(--dp-gray-50, #f8fafc);
-  color: var(--dp-gray-900, #0f172a);
-  border-color: var(--dp-gray-300, #cbd5e1);
-}
-
-:global(.dp-btn--ghost) {
-  background-color: transparent;
-  color: var(--dp-text-secondary, #475569);
-  border-color: transparent;
-}
-
-:global(.dp-btn--ghost:hover) {
-  background-color: var(--dp-bg-control, #f1f5f9);
-  color: var(--dp-text-primary, #0f172a);
-  border-color: transparent;
-}
-
-:global(.dp-btn:not(:disabled):active) {
-  opacity: 0.85;
+  background-color: var(--ant-color-fill-tertiary);
+  border-color: var(--ant-color-primary-border);
 }
 
 :global(.dp-btn:disabled) {
   cursor: not-allowed;
-  opacity: 1;
   box-shadow: none;
-  color: var(--dp-text-muted, #6b7280);
-  border-color: var(--dp-border, #e5e7eb);
-  background-color: var(--dp-gray-100, #f3f4f6);
+  color: var(--ant-color-text-quaternary);
+  border-color: var(--ant-color-border-secondary);
+  background-color: var(--ant-color-fill-tertiary);
 }
 
 :global(.dp-btn--primary:disabled) {
-  color: #f8fafc;
-  background: #bfdbfe;
-  border-color: #bfdbfe;
+  color: var(--ant-color-white);
+  background: var(--ant-color-primary-border);
+  border-color: var(--ant-color-primary-border);
 }
 
 // Ant Design Button + dp-btn 叠加（确保在 Ant Design CSS-in-JS 之上生效）
 :global(.ant-btn.dp-btn) {
-  border-radius: var(--dp-radius-control, 6px);
+  border-radius: var(--ant-border-radius);
   font-weight: 600;
   font-size: var(--dp-font-size-md);
-  min-height: var(--dp-button-height-md, 36px);
+  min-height: 36px;
 }
 
 :global(.ant-btn.dp-btn.dp-btn--primary) {
-  background-color: var(--dp-blue-600, #2563eb);
-  color: #fff;
-  border-color: var(--dp-blue-600, #2563eb);
+  background-color: var(--ant-color-primary);
+  color: var(--ant-color-white);
+  border-color: var(--ant-color-primary);
+  box-shadow: var(--dp-shadow-sm);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--primary:hover) {
-  background-color: var(--dp-blue-700, #1d4ed8);
-  border-color: var(--dp-blue-700, #1d4ed8);
+  background-color: var(--ant-color-primary-hover);
+  border-color: var(--ant-color-primary-hover);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--outline) {
-  background-color: var(--dp-surface, #fff);
-  color: var(--dp-text-primary, #0f172a);
-  border-color: var(--dp-border-strong, #e2e8f0);
+  background-color: var(--ant-color-bg-container);
+  color: var(--ant-color-text);
+  border-color: var(--ant-color-border);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--outline:hover) {
-  background-color: var(--dp-gray-50, #f8fafc);
-  border-color: var(--dp-gray-300, #cbd5e1);
+  background-color: var(--ant-color-fill-tertiary);
+  border-color: var(--ant-color-primary-border);
 }
 
 :global(.ant-btn.dp-btn:disabled),
 :global(.ant-btn.dp-btn.dp-btn--outline:disabled) {
   cursor: not-allowed;
   box-shadow: none;
-  color: var(--dp-text-muted, #6b7280);
-  border-color: var(--dp-border, #e5e7eb);
-  background-color: var(--dp-gray-100, #f3f4f6);
+  color: var(--ant-color-text-quaternary);
+  border-color: var(--ant-color-border-secondary);
+  background-color: var(--ant-color-fill-tertiary);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--primary:disabled) {
-  color: #f8fafc;
-  background: #bfdbfe;
-  border-color: #bfdbfe;
+  color: var(--ant-color-white);
+  background: var(--ant-color-primary-border);
+  border-color: var(--ant-color-primary-border);
 }

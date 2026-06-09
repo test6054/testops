@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="stats-page__context">
-        <div class="stats-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="stats-page__exam-select"
@@ -15,64 +15,130 @@
             @change="onExamChange"
           />
           <UiTag v-if="selectedExamId" tone="blue" size="sm">已选考试</UiTag>
-        </div>
-        <div class="stats-page__context-right">
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :disabled="!selectedExamId" @click="reloadAll">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
       v-if="!selectedExamId"
-      description="请选择一场考试以查看统计与教学分析"
+      description="请选择一场考试以查看考试统计与教学改进"
       class="stats-page__empty"
     />
 
     <template v-else>
-      <!-- B-12 教学分析联动上下文：跨卡片打通班级 / 学生维度，避免子卡片各自孤立 -->
-      <div v-if="hasLinkageContext" class="stats-page__linkage">
-        <UiTag tone="blue" size="sm">{{ linkageDescription }}</UiTag>
-        <UiButton variant="ghost" size="sm" @click="clearLinkage">清空联动</UiButton>
+      <div class="stats-page__linkage">
+        <div class="stats-page__linkage-main">
+          <span class="stats-page__linkage-label">联动范围</span>
+          <a-select
+            :value="activeClassId"
+            class="stats-page__class-select"
+            placeholder="全部班级"
+            allow-clear
+            show-search
+            option-filter-prop="label"
+            :options="classOptions"
+            :loading="rosterLoading"
+            @change="handleClassChange"
+          />
+          <UiTag v-if="activeClassName" tone="blue" size="sm">{{ activeClassName }}</UiTag>
+          <UiTag v-if="activeStudentText" tone="purple" size="sm">{{ activeStudentText }}</UiTag>
+        </div>
+        <UiButton
+          variant="ghost"
+          size="sm"
+          :disabled="!hasLinkageContext"
+          @click="clearLinkage"
+        >
+          清空联动
+        </UiButton>
       </div>
 
-      <div class="stats-page__cards">
-        <ScoreDistributionCard :exam-id="selectedExamId" :reload-token="scoreDistToken" />
-        <QuestionAnalysisCard
-          :exam-id="selectedExamId"
-          :reload-token="qaToken"
-          @generated="reloadRejudge"
-        />
-        <RejudgePlanCard :exam-id="selectedExamId" :reload-token="rejudgeToken" />
-        <TeachingImprovementCard :exam-id="selectedExamId" :reload-token="improvementToken" />
-        <ClassWeaknessCard
-          :exam-id="selectedExamId"
-          :reload-token="weaknessToken"
-          :class-options="classOptions"
-          :roster-loading="rosterLoading"
-          @class-change="handleClassChange"
-        />
-        <ErrorCauseClusterCard :exam-id="selectedExamId" :reload-token="errorCauseToken" />
-        <StudentLearningProfileCard
-          :exam-id="selectedExamId"
-          :reload-token="profileToken"
-          :class-id-hint="activeClassId"
-          :student-options="studentOptions"
-          :roster-loading="rosterLoading"
-          @student-change="handleStudentChange"
-        />
+      <div class="stats-page__sections">
+        <section class="stats-page__section">
+          <header class="stats-page__section-header">
+            <div class="stats-page__section-copy">
+              <h3 class="stats-page__section-title">考试统计与质量治理</h3>
+              <p class="stats-page__section-desc">
+                围绕本场考试的成绩分布、题目质量、重判计划与错因结构，支撑考后质量校准。
+              </p>
+            </div>
+            <UiTag tone="blue" size="sm">考试后治理</UiTag>
+          </header>
+          <div class="stats-page__cards">
+            <ScoreDistributionCard
+              :exam-id="selectedExamId"
+              :reload-token="scoreDistToken"
+              :class-id="activeClassId"
+              :class-options="classOptions"
+              :roster-loading="rosterLoading"
+              @class-change="handleClassChange"
+            />
+            <QuestionAnalysisCard
+              :exam-id="selectedExamId"
+              :reload-token="qaToken"
+              :class-id="activeClassId"
+              @generated="reloadRejudge"
+            />
+            <RejudgePlanCard :exam-id="selectedExamId" :reload-token="rejudgeToken" />
+            <ErrorCauseClusterCard
+              :exam-id="selectedExamId"
+              :reload-token="errorCauseToken"
+              :class-id="activeClassId"
+            />
+          </div>
+        </section>
+
+        <section class="stats-page__section">
+          <header class="stats-page__section-header">
+            <div class="stats-page__section-copy">
+              <h3 class="stats-page__section-title">教学改进与学情洞察</h3>
+              <p class="stats-page__section-desc">
+                围绕班级薄弱点、学生个体画像与教学建议，支持教师把考试结果转化为后续教学动作。
+              </p>
+            </div>
+            <UiTag tone="purple" size="sm">教学支持</UiTag>
+          </header>
+          <div class="stats-page__cards">
+            <TeachingImprovementCard
+              :exam-id="selectedExamId"
+              :reload-token="improvementToken"
+              :class-id="activeClassId"
+            />
+            <ClassWeaknessCard
+              :exam-id="selectedExamId"
+              :reload-token="weaknessToken"
+              :class-id="activeClassId"
+              :class-options="classOptions"
+              :roster-loading="rosterLoading"
+              @class-change="handleClassChange"
+            />
+            <StudentLearningProfileCard
+              :exam-id="selectedExamId"
+              :reload-token="profileToken"
+              :class-id-hint="activeClassId"
+              :student-options="studentOptions"
+              :roster-loading="rosterLoading"
+              @student-change="handleStudentChange"
+            />
+          </div>
+        </section>
       </div>
     </template>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+import type { SelectValue } from 'ant-design-vue/es/select'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
 import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
@@ -116,15 +182,40 @@ const activeStudentUserId = ref<string>('')
 
 const hasLinkageContext = computed(() => !!activeClassId.value || !!activeStudentUserId.value)
 
-const linkageDescription = computed(() => {
-  const parts: string[] = []
-  if (activeClassId.value) parts.push(`所选班级：${activeClassId.value}`)
-  if (activeStudentUserId.value) parts.push(`所选学生：${activeStudentUserId.value}`)
-  return `当前联动范围：${parts.join('，')}。其他卡片会在相应位置显示一致的上下文提示。`
+const activeClassName = computed(() => {
+  if (activeClassId.value) {
+    const selectedClass = classOptions.value.find((opt) => opt.value === activeClassId.value)
+    return selectedClass?.className ?? activeClassId.value
+  }
+  return ''
 })
 
-function handleClassChange(classId: string): void {
-  activeClassId.value = classId
+const activeStudentText = computed(() => {
+  if (activeStudentUserId.value) {
+    const selectedStudent = studentOptions.value.find(
+      (opt) => opt.value === activeStudentUserId.value,
+    )
+    if (selectedStudent) {
+      const studentText = `${selectedStudent.studentName} (${selectedStudent.studentNo})`
+      return selectedStudent.className ? `${studentText} · ${selectedStudent.className}` : studentText
+    } else {
+      return activeStudentUserId.value
+    }
+  }
+  return ''
+})
+
+function handleClassChange(value?: SelectValue): void {
+  activeClassId.value = typeof value === 'string' ? value : ''
+  if (
+    activeStudentUserId.value &&
+    activeClassId.value &&
+    !studentOptions.value.some(
+      (opt) => opt.value === activeStudentUserId.value && opt.classId === activeClassId.value,
+    )
+  ) {
+    activeStudentUserId.value = ''
+  }
 }
 
 function handleStudentChange(studentUserId: string): void {
@@ -172,23 +263,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .stats-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }
@@ -198,7 +272,78 @@ onMounted(async () => {
   }
 
   &__linkage {
+    position: sticky;
+    top: var(--dp-space-3, 12px);
+    z-index: var(--dp-z-sticky, 1020);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin-bottom: 12px;
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    border: 1px solid var(--dp-border, #e5e7eb);
+    border-radius: var(--dp-radius-panel, 8px);
+    background: var(--dp-surface, #fff);
+  }
+
+  &__linkage-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--dp-space-2, 8px);
+    min-width: 0;
+  }
+
+  &__linkage-label {
+    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+    font-size: var(--dp-font-size-sm, 13px);
+    font-weight: 600;
+  }
+
+  &__class-select {
+    width: 240px;
+  }
+
+  &__sections {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  &__section {
+    padding-top: 4px;
+  }
+
+  &__section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--dp-border, #e5e7eb);
+  }
+
+  &__section-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  &__section-title {
+    margin: 0;
+    color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  &__section-desc {
+    margin: 0;
+    color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+    font-size: 14px;
+    line-height: 1.6;
   }
 
   &__cards {

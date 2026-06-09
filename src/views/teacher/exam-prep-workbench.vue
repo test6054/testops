@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 /**
- * 考试准备聚合工作台：按制卷形态驱动准备步骤与待完善提示（不阻断扫描）。
+ * 考试准备聚合工作台：按制卷形态驱动前置配置步骤与待完善提示。
  */
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
@@ -9,17 +9,22 @@ import type {
   ExamMaterialLayoutModeCode,
   ExamPrintSourceModeCode,
   ExamStatusCode,
+  MarkingProgressVO,
 } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStageStatus } from '@/types/workbench'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import {
   EXAM_MATERIAL_LAYOUT_MODE_LABEL,
@@ -27,6 +32,7 @@ import {
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
   getExamDetail,
+  getMarkingProgress,
   saveMaterialLayout,
 } from '@/apis/mark/exam'
 import {
@@ -38,7 +44,8 @@ import {
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageRail, StageWorkbenchShell } from '@/components/workbench'
+import { applyMarkStageFromExamProgress } from '@/composables/useMarkStageSync'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -47,11 +54,12 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherExamPrepWorkbench' })
 
 type PrepStepKey
-  = | 'answerSheet'
-    | 'paperMaster'
-    | 'paperTemplate'
-    | 'printPackage'
+  = | 'materialLayout'
     | 'candidateRoster'
+    | 'paperTemplate'
+    | 'answerSheet'
+    | 'paperMaster'
+    | 'printPackage'
 
 interface PrepStepCard {
   key: PrepStepKey
@@ -65,11 +73,12 @@ interface PrepStepCard {
 }
 
 const ICON_MAP: Record<string, Component> = {
+  materialLayout: ContainerOutlined,
+  candidateRoster: TeamOutlined,
+  paperTemplate: ProfileOutlined,
   answerSheet: FormOutlined,
   paperMaster: FilePdfOutlined,
-  paperTemplate: ProfileOutlined,
   printPackage: ContainerOutlined,
-  candidateRoster: TeamOutlined,
 }
 
 const TONE_MAP: Record<WorkbenchStageStatus, BadgeTone> = {
@@ -106,7 +115,10 @@ function examStatusLabel(status: ExamStatusCode): string {
 }
 
 const markStageStore = useMarkStageStore()
+const { orderedStages } = storeToRefs(markStageStore)
 const router = useRouter()
+
+const markingProgress = ref<MarkingProgressVO | null>(null)
 
 const {
   examOptions,
@@ -126,20 +138,31 @@ const layoutSaving = ref(false)
 const draftLayoutMode = ref<ExamMaterialLayoutModeCode | undefined>()
 const draftPrintSource = ref<ExamPrintSourceModeCode | undefined>()
 
+async function loadMarkingProgress(examId: string): Promise<void> {
+  try {
+    markingProgress.value = await getMarkingProgress(examId)
+  } catch {
+    markingProgress.value = null
+  }
+}
+
 async function loadDetail(examId: string | undefined) {
   if (!examId) {
     detail.value = null
     detailLoadError.value = null
+    markingProgress.value = null
     return
   }
   detailLoadError.value = null
   detailLoading.value = true
   try {
-    detail.value = await getExamDetail(examId)
+    const [examDetail] = await Promise.all([getExamDetail(examId), loadMarkingProgress(examId)])
+    detail.value = examDetail
     draftLayoutMode.value = detail.value.materialLayoutMode
     draftPrintSource.value = detail.value.printSourceMode
   } catch (error) {
     detail.value = null
+    markingProgress.value = null
     detailLoadError.value = toUserError(error, '考试准备信息加载失败')
     showUserError(error, '考试准备信息加载失败')
   } finally {
@@ -196,7 +219,7 @@ function buildQuestionStep(d: ExamDetailVO): PrepStepCard {
   const subjectivePending = (d.subjectiveQuestionCount ?? 0) > 0 && d.subjectiveRegionReady !== true
   let status: WorkbenchStageStatus = 'pending'
   let statusText = '未配置'
-  let description = '未预配题目时，身份绑定后将按扫描页推导页级题目并进入 OCR / 整卷 AI'
+  let description = '未预配题目时，身份绑定后将按扫描页推导页级题目，后续可继续补录题目与答案'
   let primaryAction = '录入题目（可选）'
   if (hasQuestions && answersComplete && !subjectivePending) {
     status = 'completed'
@@ -227,10 +250,45 @@ function buildQuestionStep(d: ExamDetailVO): PrepStepCard {
 
 const prepSteps = computed<PrepStepCard[]>(() => {
   const d = detail.value
-  if (!d || !d.materialLayoutMode) {
+  if (!d) {
     return []
   }
   const steps: PrepStepCard[] = []
+  steps.push({
+    key: 'materialLayout',
+    title: '制卷形态',
+    description: d.materialLayoutMode
+      ? `${strictEnumLabel(EXAM_MATERIAL_LAYOUT_MODE_LABEL, d.materialLayoutMode, '制卷形态')}，${
+          d.printSourceMode
+            ? strictEnumLabel(EXAM_PRINT_SOURCE_MODE_LABEL, d.printSourceMode, '印刷来源')
+            : '无需系统印刷'
+        }`
+      : '先确定答卷页或整卷作答形态，后续扫描、身份识别与印刷包都按该形态执行',
+    status: d.materialLayoutMode ? 'completed' : 'warning',
+    statusText: d.materialLayoutMode ? '已选择' : '未选择',
+    routeName: 'TeacherExamPrep',
+    primaryAction: d.materialLayoutMode ? '调整形态' : '选择形态',
+    advisoryReason: d.materialLayoutMode ? undefined : '制卷形态未选择：扫描识别链路无法确定版面处理方式',
+  })
+  const hasCandidates = d.candidateCount > 0
+  steps.push({
+    key: 'candidateRoster',
+    title: '考生名册',
+    description: hasCandidates
+      ? `已绑定 ${d.candidateCount} 名考生 / ${d.classIds.length} 个班级范围`
+      : '导入考生名册，缺失学生用户会在导入提交时创建为租户学生账号',
+    status: hasCandidates ? 'completed' : 'warning',
+    statusText: hasCandidates ? `${d.candidateCount} 人` : '未配置',
+    routeName: 'TeacherCandidateRoster',
+    primaryAction: hasCandidates ? '查看 / 调整' : '配置考生名册',
+    advisoryReason: hasCandidates
+      ? undefined
+      : '考生名册未配置：扫描后无法自动绑定到可登录学生账号，学生端无法承接考试结果',
+  })
+  if (!d.materialLayoutMode) {
+    return steps
+  }
+  steps.push(buildQuestionStep(d))
   if (d.materialLayoutMode === 'ANSWER_SHEET') {
     const ready = d.pageTemplateReady === true
     steps.push({
@@ -243,7 +301,9 @@ const prepSteps = computed<PrepStepCard[]>(() => {
       statusText: ready ? '已配置' : '未配置',
       routeName: 'TeacherAnswerSheetTemplate',
       primaryAction: ready ? '查看 / 调整' : '配置答卷页',
-      advisoryReason: ready ? undefined : '答卷页模板未配置：扫描可登记，坐标识别需补配答卷页',
+      advisoryReason: ready
+        ? undefined
+        : '答卷页模板未配置：扫描后坐标缩放、题目定位和批改落点将无法稳定识别',
     })
   } else {
     const masterReady = d.masterConfigured === true && d.masterRegionReady === true
@@ -263,7 +323,7 @@ const prepSteps = computed<PrepStepCard[]>(() => {
       primaryAction: masterReady ? '查看 / 调整' : '配置母版',
       advisoryReason: masterReady
         ? undefined
-        : '试卷母版未配置：扫描可登记，身份/客观识别需补配母版',
+        : '试卷母版未配置：身份区识别、客观题识别和异常件处置将缺少版面基准',
     })
     if (d.printSourceMode === 'SYSTEM_PRINT') {
       const pkgReady = (d.printPackageCount ?? 0) > 0
@@ -279,93 +339,75 @@ const prepSteps = computed<PrepStepCard[]>(() => {
         primaryAction: pkgReady ? '查看 / 调整' : '生成印刷包',
         advisoryReason: pkgReady
           ? undefined
-          : '印刷包未生成：系统制卷无法按名册打印，不影响扫描入库',
+          : '印刷包未生成：系统制卷无法按考生名册生成印刷件，考前发卷准备不完整',
       })
     }
   }
-  steps.push(buildQuestionStep(d))
-  const hasCandidates = d.candidateCount > 0
-  steps.push({
-    key: 'candidateRoster',
-    title: '考生名册',
-    description: hasCandidates
-      ? `已绑定 ${d.candidateCount} 名考生 / ${d.classIds.length} 个班级范围`
-      : '绑定考生名册，扫描后完成身份绑定',
-    status: hasCandidates ? 'completed' : 'warning',
-    statusText: hasCandidates ? `${d.candidateCount} 人` : '未配置',
-    routeName: 'TeacherCandidateRoster',
-    primaryAction: hasCandidates ? '查看 / 调整' : '配置考生名册',
-    advisoryReason: hasCandidates ? undefined : '考生名册未配置：无法自动身份绑定',
-  })
   return steps
 })
 
 const advisoryReasons = computed(() => {
-  if (detail.value?.prepBlockingReasons?.length) {
-    return detail.value.prepBlockingReasons
-  }
   return prepSteps.value.filter((s) => s.advisoryReason).map((s) => s.advisoryReason as string)
 })
 
-const statMetrics = computed(() => {
+const blockingReasons = computed(() => {
+  const d = detail.value
+  if (!d) return []
+  const reasons: string[] = []
+  if (!d.materialLayoutMode) {
+    reasons.push('请先选择制卷形态')
+  }
+  if (d.candidateCount <= 0) {
+    reasons.push('请先导入考生名册')
+  }
+  if (
+    d.materialLayoutMode === 'FULL_PAPER'
+    && d.printSourceMode === 'SYSTEM_PRINT'
+    && (d.printPackageCount ?? 0) <= 0
+  ) {
+    reasons.push('系统印刷模式必须先生成印刷包')
+  }
+  return reasons
+})
+
+const statMetrics = computed((): UiStatPanelItem[] => {
   const d = detail.value
   if (!d) return []
   const completed = prepSteps.value.filter((s) => s.status === 'completed').length
-  const pending = prepSteps.value.filter(
-    (s) => s.status === 'warning' || s.status === 'active',
-  ).length
-  return [
+  const items: UiStatPanelItem[] = [
     {
       label: '准备进度',
       value: `${completed} / ${prepSteps.value.length}`,
-      tone: (completed === prepSteps.value.length ? 'green' : 'blue') as 'green' | 'blue',
+      tone: (completed === prepSteps.value.length ? 'green' : 'blue') as BadgeTone,
     },
     {
-      label: '待完善',
-      value: pending,
+      label: '硬阻断',
+      value: blockingReasons.value.length,
       unit: '项',
-      tone: (pending > 0 ? 'orange' : 'gray') as 'orange' | 'gray',
+      tone: (blockingReasons.value.length > 0 ? 'orange' : 'green') as BadgeTone,
     },
-    { label: '题目 / 答案', value: `${d.questionCount} / ${d.answerCount}`, tone: 'blue' as const },
-    { label: '考生数', value: d.candidateCount, unit: '人', tone: 'blue' as const },
+  ]
+  items.push(
+    { label: '考生数', value: d.candidateCount, unit: '人', tone: 'blue' },
     {
       label: '制卷形态',
       value: d.materialLayoutMode
         ? strictEnumLabel(EXAM_MATERIAL_LAYOUT_MODE_LABEL, d.materialLayoutMode, '制卷形态')
         : '未选择',
-      tone: 'gray' as const,
+      tone: 'gray',
     },
-  ]
+  )
+  return items
 })
 
 function syncStageProgressToStore(): void {
-  if (!selectedExamId.value) return
-  const steps = prepSteps.value
-  if (steps.length === 0) return
-  const completedCount = steps.filter((s) => s.status === 'completed').length
-  const pendingCount = steps.filter((s) => s.status === 'warning' || s.status === 'active').length
-  const allCompleted = completedCount === steps.length
-  const examPrepStatus: WorkbenchStageStatus = allCompleted
-    ? 'completed'
-    : pendingCount > 0
-      ? 'warning'
-      : 'active'
-  const examPrepHint
-    = advisoryReasons.value[0]
-      ?? (allCompleted
-      ? `准备全部就绪（${completedCount}/${steps.length}）`
-      : `准备进度 ${completedCount}/${steps.length}`)
-  const layoutStep = steps.find((s) => s.key === 'answerSheet' || s.key === 'paperMaster')
-  markStageStore.bulkUpdate(selectedExamId.value, {
-    EXAM_PREP: { status: examPrepStatus, hint: examPrepHint },
-    PAPER_TEMPLATE: layoutStep
-      ? { status: layoutStep.status, hint: layoutStep.statusText }
-      : undefined,
-    SCAN: { status: 'active', hint: '可前往扫描工作台录入影像，未配置制卷项不阻断扫描' },
-  })
-  markStageStore.setCurrentStage(
+  if (!selectedExamId.value || !detail.value) return
+  applyMarkStageFromExamProgress(
     selectedExamId.value,
-    allCompleted ? 'PAPER_TEMPLATE' : 'EXAM_PREP',
+    prepSteps.value,
+    blockingReasons.value.length > 0 ? blockingReasons.value : advisoryReasons.value,
+    markingProgress.value,
+    detail.value,
   )
 }
 
@@ -377,6 +419,21 @@ function goPrepStep(step: PrepStepCard) {
   void router.push({ name: step.routeName, query: { examId: selectedExamId.value } })
 }
 
+/** 所有必填准备项是否已完成 */
+const prepReady = computed(() => {
+  return blockingReasons.value.length === 0
+})
+
+/** 从准备阶段跳转到下一步 */
+function goNextStep(target: 'scan' | 'review'): void {
+  if (!selectedExamId.value) return
+  if (target === 'scan') {
+    void router.push({ name: 'TeacherScanUpload', query: { examId: selectedExamId.value } })
+  } else {
+    void router.push({ name: 'TeacherReviewWorkspace', query: { examId: selectedExamId.value } })
+  }
+}
+
 watch(selectedExamId, (next) => {
   if (next) {
     markStageStore.observeExam(next)
@@ -386,7 +443,7 @@ watch(selectedExamId, (next) => {
   }
 })
 
-watch([() => selectedExamId.value, () => detail.value], () => {
+watch([() => selectedExamId.value, () => detail.value, () => markingProgress.value], () => {
   if (selectedExamId.value && detail.value) {
     syncStageProgressToStore()
   }
@@ -404,11 +461,11 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
+    <template #rail>
+      <StageRail v-if="selectedExamId && detail" :stages="orderedStages" compact />
+    </template>
     <template #context>
-      <ContextBar
-        title="考试准备工作台"
-        subtitle="按制卷形态聚合答卷配置、题目、名册与印刷包准备状态"
-      >
+      <ContextBar subtitle="考试准备：制卷形态、导入考生名册、录入题目与答案、生成印刷包">
         <template #status>
           <a-select
             :value="selectedExamId"
@@ -430,7 +487,7 @@ onMounted(async () => {
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-          <UiButton variant="primary" size="sm" @click="goExamList">考试列表</UiButton>
+          <UiButton variant="primary" size="sm" @click="goExamList">考试工作台</UiButton>
         </template>
       </ContextBar>
     </template>
@@ -484,11 +541,37 @@ onMounted(async () => {
               </UiButton>
             </a-form-item>
           </a-form>
+          <div class="exam-prep__mode-options">
+            <button
+              type="button"
+              class="exam-prep__mode-option"
+              :class="{ 'exam-prep__mode-option--active': draftLayoutMode === 'ANSWER_SHEET' }"
+              :disabled="layoutModeLocked"
+              @click="draftLayoutMode = 'ANSWER_SHEET'"
+            >
+              <span class="exam-prep__mode-option-title">答卷页模式</span>
+              <span class="exam-prep__mode-option-desc">
+                教师上传答卷页，适合外部试卷或只扫描答题卡；后续重点处理身份绑定、题目区域和成绩确认。
+              </span>
+            </button>
+            <button
+              type="button"
+              class="exam-prep__mode-option"
+              :class="{ 'exam-prep__mode-option--active': draftLayoutMode === 'FULL_PAPER' }"
+              :disabled="layoutModeLocked"
+              @click="draftLayoutMode = 'FULL_PAPER'"
+            >
+              <span class="exam-prep__mode-option-title">整卷模式</span>
+              <span class="exam-prep__mode-option-desc">
+                使用整卷 PDF 母版，配置身份区和客观题填涂区，适合系统拆页识别与按名册生成印刷包。
+              </span>
+            </button>
+          </div>
           <p v-if="layoutModeLocked" class="exam-prep__mode-hint">
             已开印或已扫描，制卷形态不可修改
           </p>
           <p v-else-if="!detail?.materialLayoutMode" class="exam-prep__mode-hint">
-            建议先选择制卷形态；未配置项不阻断扫描，可直接前往扫描工作台
+            建议先完成制卷形态、模板与名册准备；缺项会直接增加扫描识别、身份绑定和后续批改的人工处理风险
           </p>
         </UiCard>
 
@@ -500,6 +583,16 @@ onMounted(async () => {
             compact
             class="exam-prep__signals"
           />
+          <div v-if="blockingReasons.length > 0" class="exam-prep__advisory">
+            <a-alert
+              v-for="reason in blockingReasons"
+              :key="reason"
+              type="error"
+              show-icon
+              :message="reason"
+              class="exam-prep__alert"
+            />
+          </div>
           <div v-if="advisoryReasons.length > 0" class="exam-prep__advisory">
             <a-alert
               v-for="reason in advisoryReasons"
@@ -537,6 +630,28 @@ onMounted(async () => {
               </a-space>
             </UiCard>
           </section>
+          <!-- P1-1 准备完成下一步操作栏 -->
+          <div v-if="prepReady" class="exam-prep__next-step">
+            <UiCard class="exam-prep__next-step-card">
+              <template #title>
+                <CheckCircleOutlined />
+                <span>关键准备项已完成</span>
+              </template>
+              <p class="exam-prep__next-step-desc">
+                制卷形态、可登录学生名册与必要印刷准备已就绪，可以开始扫描试卷或进入阅卷。
+              </p>
+              <a-space>
+                <UiButton variant="primary" @click="goNextStep('scan')">
+                  <template #icon><ScanOutlined /></template>
+                  开始扫描录入
+                </UiButton>
+                <UiButton variant="outline" @click="goNextStep('review')">
+                  <template #icon><EditOutlined /></template>
+                  进入阅卷复核
+                </UiButton>
+              </a-space>
+            </UiCard>
+          </div>
         </template>
       </a-spin>
     </template>
@@ -553,6 +668,50 @@ onMounted(async () => {
   }
   &__mode-card {
     margin-bottom: 16px;
+  }
+  &__mode-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+  &__mode-option {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 96px;
+    padding: 12px 16px;
+    text-align: left;
+    background: var(--dp-surface, #fff);
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      border-color: var(--ant-color-primary, #2563eb);
+      background: var(--dp-surface-subtle, #f8fafc);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+
+    &--active {
+      border-color: var(--ant-color-primary, #2563eb);
+      background: var(--ant-color-primary-bg, #eff6ff);
+    }
+  }
+  &__mode-option-title {
+    color: var(--dp-text-primary, #0f172a);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  &__mode-option-desc {
+    color: var(--dp-text-secondary, #475569);
+    font-size: 13px;
+    line-height: 1.6;
   }
   &__mode-hint {
     margin: 8px 0 0;
@@ -617,6 +776,9 @@ onMounted(async () => {
   .exam-prep {
     &__select {
       width: 100%;
+    }
+    &__mode-options {
+      grid-template-columns: minmax(0, 1fr);
     }
     &__cards {
       grid-template-columns: minmax(0, 1fr);

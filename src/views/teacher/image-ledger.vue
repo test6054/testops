@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="ledger-page__context">
-        <div class="ledger-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="ledger-page__exam-select"
@@ -14,8 +14,17 @@
             allow-clear
             @change="onExamChange"
           />
-        </div>
-        <div class="ledger-page__context-right">
+        </template>
+        <template #actions>
+          <UiButton
+            v-if="selectedExamId"
+            variant="outline"
+            size="sm"
+            @click="goBackToScanLiveMonitor"
+          >
+            <template #icon><LeftOutlined /></template>
+            返回扫描监控
+          </UiButton>
           <UiButton
             variant="outline"
             size="sm"
@@ -26,8 +35,8 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -76,12 +85,14 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
 import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
@@ -98,6 +109,14 @@ const {
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
+
+const router = useRouter()
+
+function goBackToScanLiveMonitor(): void {
+  if (selectedExamId.value) {
+    void router.push({ name: 'TeacherScanLiveMonitor', query: { examId: selectedExamId.value } })
+  }
+}
 
 const ledger = ref<ImageLedgerDetailVO | null>(null)
 const loadingDetail = ref(false)
@@ -167,25 +186,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .ledger-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }

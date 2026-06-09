@@ -1,20 +1,20 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="paper-archive-detail-page__context">
-        <div class="paper-archive-detail-page__context-left">
+      <ContextBar>
+        <template #status>
           <span class="paper-archive-detail-page__title">{{
-            set?.archiveTitle ?? '档案集详情'
+            set?.archiveTitle ?? '纸质试卷档案集详情'
           }}</span>
           <UiTag v-if="set?.archiveStatus" :tone="setStatusTone(set.archiveStatus)" size="sm">
             {{ set.archiveStatusMessage }}
           </UiTag>
           <UiTag tone="blue" size="sm">{{ set?.paperCount ?? 0 }} 份试卷</UiTag>
-        </div>
-        <div class="paper-archive-detail-page__context-right">
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" @click="goBack">
             <template #icon><ArrowLeftOutlined /></template>
-            返回列表
+            返回纸质试卷档案集列表
           </UiButton>
           <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
             <template #icon><ReloadOutlined /></template>
@@ -24,17 +24,17 @@
             <template #icon><UploadOutlined /></template>
             上传试卷
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiCard v-if="set" class="paper-archive-detail-page__overview">
       <template #title>
         <ProfileOutlined />
-        <span>档案集信息</span>
+        <span>纸质试卷档案集信息</span>
       </template>
       <a-descriptions :column="3" size="small">
-        <a-descriptions-item label="档案编号">{{ set.archiveNo }}</a-descriptions-item>
+        <a-descriptions-item label="纸质试卷档案编号">{{ set.archiveNo }}</a-descriptions-item>
         <a-descriptions-item label="学年">{{ set.examYear || '未登记学年' }}</a-descriptions-item>
         <a-descriptions-item label="学期">{{ set.examTerm || '未登记学期' }}</a-descriptions-item>
         <a-descriptions-item label="考期">{{ set.examRound || '未登记考期' }}</a-descriptions-item>
@@ -45,13 +45,11 @@
         <a-descriptions-item label="创建时间">
           {{ formatDateTime(set.createTime) }}
         </a-descriptions-item>
-        <a-descriptions-item label="档案标签" :span="3">
+        <a-descriptions-item label="纸质试卷档案集标签" :span="3">
           <UiTag v-for="tag in set.tags ?? []" :key="tag" tone="purple" size="sm" class="tag-chip">
             {{ tag }}
           </UiTag>
-          <UiButton size="sm" variant="ghost" @click="openSetTagModal">
-            {{ set.tags?.length ? '编辑标签' : '添加标签' }}
-          </UiButton>
+          <span class="op-link" role="button" @click="openSetTagModal">{{ set.tags?.length ? '编辑标签' : '添加标签' }}</span>
         </a-descriptions-item>
       </a-descriptions>
     </UiCard>
@@ -59,8 +57,7 @@
     <UiCard class="paper-archive-detail-page__items">
       <template #title>
         <FileSearchOutlined />
-        <span>档案项检索</span>
-        <UiBadge tone="blue">{{ pagination.total }} 条</UiBadge>
+        <span>纸质试卷档案项检索</span>
       </template>
 
       <a-form layout="inline" :model="searchForm" class="paper-archive-detail-page__filter">
@@ -116,7 +113,7 @@
 
       <UiEmpty v-if="!loading && items.length === 0" description="尚未上传任何试卷" />
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-else
         :columns="itemColumns"
         :data-source="items"
@@ -176,28 +173,26 @@
             {{ formatDateTime(record.createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton
-                size="sm"
-                variant="ghost"
-                :disabled="!record.fileId"
-                @click="handleDownloadItem(record)"
+            <div class="operations-cell" @click.stop>
+              <span
+                class="op-link"
+                role="button"
+                :class="{ 'is-disabled': !record.fileId }"
+                @click="record.fileId && handleDownloadItem(record)"
               >
-                <template #icon><DownloadOutlined /></template>
+                <DownloadOutlined />
                 原图
-              </UiButton>
-              <UiButton size="sm" variant="ghost" @click="openItemTagModal(record)">
-                标签
-              </UiButton>
-              <UiButton
+              </span>
+              <span class="op-link" role="button" @click="openItemTagModal(record)">标签</span>
+              <span
                 v-if="canTriggerOcr(record)"
-                size="sm"
-                variant="outline"
+                class="op-link primary"
+                role="button"
                 @click="confirmTriggerOcr(record)"
               >
                 {{ record.ocrStatus === 'FAILED' ? '重试 OCR' : '识别' }}
-              </UiButton>
-            </a-space>
+              </span>
+            </div>
           </template>
         </template>
       </UiDataTable>
@@ -312,10 +307,10 @@
     </a-form>
   </a-modal>
 
-  <!-- tag 编辑弹窗（档案集 / 档案项共用） -->
+  <!-- tag 编辑弹窗（纸质试卷档案集 / 试卷档案项共用） -->
   <a-modal
     v-model:open="tagModal.open"
-    :title="tagModal.target === 'set' ? '编辑档案集标签' : '编辑档案项标签'"
+    :title="tagModal.target === 'set' ? '编辑纸质试卷档案集标签' : '编辑试卷档案项标签'"
     :confirm-loading="tagSaving"
     ok-text="保存"
     cancel-text="取消"
@@ -369,12 +364,13 @@ import {
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
 import { UiBadge, UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperArchiveDetail' })
@@ -490,9 +486,9 @@ const canUpload = computed(() => {
 })
 
 /**
- * 将单个档案集状态映射为当前考试的 ARCHIVE 阶段状态。
+ * 将单个纸质试卷档案集状态映射为当前考试的 ARCHIVE 阶段状态。
  *
- * 档案集本身不持有 examId，只能基于 examContextStore.currentExamId 反映“用户视角”。
+ * 纸质试卷档案集本身不持有 examId，只能基于 examContextStore.currentExamId 反映“用户视角”。
  * 无上下文时不写入。
  */
 function syncArchiveSetStageToStore(set: PaperArchiveSetVO): void {
@@ -503,7 +499,7 @@ function syncArchiveSetStageToStore(set: PaperArchiveSetVO): void {
   switch (set.archiveStatus) {
     case 'DRAFT':
       status = 'blocked'
-      hint = `档案集草稿 · ${set.archiveTitle}`
+      hint = `纸质试卷档案集草稿 · ${set.archiveTitle}`
       break
     case 'ACTIVE':
       status = 'active'
@@ -532,7 +528,7 @@ async function loadSet(): Promise<void> {
     set.value = await getPaperArchiveSetDetail(archiveSetId.value)
     if (set.value) syncArchiveSetStageToStore(set.value)
   } catch (error) {
-    showUserError(error, '试卷档案详情加载失败')
+    showUserError(error, '纸质试卷档案集详情加载失败')
   }
 }
 
@@ -550,10 +546,10 @@ async function loadItems(): Promise<void> {
       ocrStatus: searchForm.ocrStatus,
       tagAny: searchForm.tagAny && searchForm.tagAny.length > 0 ? searchForm.tagAny : undefined,
     })
-    items.value = result.list
-    pagination.total = Number(result.total)
+    items.value = readPageList(result, '纸质试卷档案集明细加载失败，请稍后重试')
+    pagination.total = readPageTotal(result, '纸质试卷档案集明细加载失败，请稍后重试')
   } catch (error) {
-    showUserError(error, '试卷档案明细加载失败')
+    showUserError(error, '纸质试卷档案集明细加载失败')
   } finally {
     loading.value = false
   }
@@ -666,7 +662,7 @@ async function submitUpload(): Promise<void> {
  */
 async function handleDownloadItem(item: PaperArchiveItemVO): Promise<void> {
   if (!item.fileId) {
-    message.warning('该档案项未关联文件')
+    message.warning('该试卷档案项未关联扫描文件')
     return
   }
   try {
@@ -705,11 +701,11 @@ async function submitTagUpdate(): Promise<void> {
         tags: tagModal.tags,
       })
     }
-    message.success('档案标签已更新')
+    message.success(tagModal.target === 'set' ? '纸质试卷档案集标签已更新' : '试卷档案项标签已更新')
     tagModal.open = false
     await reload()
   } catch (error) {
-    showUserError(error, '档案标签更新失败')
+    showUserError(error, tagModal.target === 'set' ? '纸质试卷档案集标签更新失败' : '试卷档案项标签更新失败')
   } finally {
     tagSaving.value = false
   }
@@ -722,7 +718,7 @@ function canTriggerOcr(item: PaperArchiveItemVO): boolean {
 function confirmTriggerOcr(item: PaperArchiveItemVO): void {
   void confirmAsync({
     title: 'OCR 识别？',
-    content: `档案项 #${item.sequenceNo ?? item.itemId} 将进入 OCR 队列等待识别。`,
+    content: `试卷档案项 #${item.sequenceNo ?? item.itemId} 将进入 OCR 队列等待识别。`,
     type: 'info',
     okText: '入队',
     cancelText: '取消',
@@ -743,7 +739,7 @@ function goBack(): void {
 }
 
 function setStatusTone(status: PaperArchiveSetStatusCode): BadgeTone {
-  return strictEnumTone(PAPER_ARCHIVE_SET_STATUS_TONE, status, '试卷档案集状态')
+  return strictEnumTone(PAPER_ARCHIVE_SET_STATUS_TONE, status, '纸质试卷档案集状态')
 }
 
 function ocrStatusTone(status: PaperArchiveOcrStatusCode): BadgeTone {
@@ -791,28 +787,6 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .paper-archive-detail-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__title {
     font-size: 16px;
     font-weight: 600;

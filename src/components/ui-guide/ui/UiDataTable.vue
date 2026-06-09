@@ -1,5 +1,9 @@
 <template>
-  <div ref="tableRoot" class="ui-data-table" :class="{ 'ui-data-table--flat': props.flat }">
+  <div
+    ref="tableRoot"
+    class="ui-data-table"
+    :class="[rootClass, { 'ui-data-table--flat': props.flat }]"
+  >
     <UiCard v-if="!props.flat" class="ui-data-table__card" bordered :hoverable="false">
       <div v-if="hasTopBar" class="ui-data-table__top">
         <div class="ui-data-table__meta">
@@ -28,7 +32,7 @@
           :size="props.size"
           :row-selection="rowSelection"
           :get-popup-container="getPopupContainer"
-          v-bind="$attrs"
+          v-bind="tableAttrs"
           @change="handleTableChange"
         >
           <template #emptyText>
@@ -84,7 +88,7 @@
           :size="props.size"
           :row-selection="rowSelection"
           :get-popup-container="getPopupContainer"
-          v-bind="$attrs"
+          v-bind="tableAttrs"
           @change="handleTableChange"
         >
           <template #emptyText>
@@ -118,7 +122,7 @@
 import type { ColumnsType, TableProps } from 'ant-design-vue/es/table'
 import type { Key, TableRowSelection } from 'ant-design-vue/es/table/interface'
 import type { UiDataTableChangeEvent } from './data-table'
-import { computed, ref, useSlots } from 'vue'
+import { computed, ref, useAttrs, useSlots } from 'vue'
 import UiCard from './Card.vue'
 import UiEmpty from './Empty.vue'
 import UiPagination from './Pagination.vue'
@@ -179,8 +183,16 @@ const emit = defineEmits<{
   (e: 'selection-change', rowKeys: Key[]): void
 }>()
 
+const attrs = useAttrs()
 const slots = useSlots()
 const tableRoot = ref<HTMLElement>()
+
+const rootClass = computed(() => attrs.class)
+
+const tableAttrs = computed(() => {
+  const { class: _class, style: _style, ...rest } = attrs
+  return rest
+})
 
 const hasTopBar = computed(() => {
   return !!props.title || !!props.description || !!slots['toolbar-left'] || !!slots['toolbar-right']

@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="scan-batch-page__context">
-        <div class="scan-batch-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="scan-batch-page__exam-select"
@@ -14,12 +14,12 @@
             allow-clear
             @change="onExamChange"
           />
-          <UiTag v-if="selectedExamId" :tone="pendingEventTotal > 0 ? 'orange' : 'green'" size="sm">
-            待聚合 {{ pendingEventTotal }}
+          <UiTag v-if="selectedExamId" :tone="livePendingEventTotal > 0 ? 'orange' : 'green'" size="sm">
+            待聚合 {{ livePendingEventTotal }}
           </UiTag>
           <UiTag v-if="selectedExamId" tone="blue" size="sm">{{ batchTotal }} 批次</UiTag>
-        </div>
-        <div class="scan-batch-page__context-right">
+        </template>
+        <template #actions>
           <UiButton
             variant="outline"
             size="sm"
@@ -30,8 +30,30 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+          <UiButton
+            v-if="selectedExamId"
+            :variant="scanAttentionCount > 0 ? 'primary' : 'outline'"
+            size="sm"
+            @click="goScanLiveMonitor"
+          >
+            扫描监控
+            <span v-if="scanAttentionCount > 0" class="scan-batch-page__action-count">
+              {{ scanAttentionCount }}
+            </span>
+          </UiButton>
+          <div v-if="selectedExamId" class="operations-cell scan-batch-page__advanced-links">
+            <span class="op-link" role="button" @click="goScanAdvanced('TeacherImageLedger')">
+              影像账本
+            </span>
+            <span class="op-link" role="button" @click="goScanAdvanced('TeacherPrinterManagement')">
+              设备管理
+            </span>
+            <span class="op-link" role="button" @click="goScanAdvanced('TeacherOcrSettings')">
+              OCR 配置
+            </span>
+          </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiEmpty
@@ -83,10 +105,94 @@
         compact
         @retry="loadProgress"
       />
+
+      <div class="scan-batch-page__monitor-grid">
+        <UiCard class="scan-batch-page__device-card">
+          <template #title>
+            <DesktopOutlined />
+            <span>当前连接扫描仪</span>
+            <span class="scan-batch-page__panel-meta">{{ onlineDeviceCount }} / {{ devices.length }} 在线</span>
+          </template>
+          <UiErrorRetryPanel
+            v-if="devicesLoadError"
+            :error="devicesErrorObject"
+            title="扫描设备列表加载失败"
+            compact
+            @retry="loadDevices"
+          />
+          <UiEmpty
+            v-else-if="!devicesLoading && devices.length === 0"
+            description="当前租户尚未接入扫描仪"
+          />
+          <div v-else class="scan-batch-page__device-list">
+            <article
+              v-for="device in devices"
+              :key="device.id"
+              class="scan-batch-page__device-row"
+            >
+              <div class="scan-batch-page__device-main">
+                <strong>{{ device.deviceName || device.scannerDeviceId }}</strong>
+                <span>{{ device.scannerStationId }}</span>
+              </div>
+              <div class="scan-batch-page__device-meta">
+                <UiTag :tone="deviceOnlineTone(device)" size="sm">
+                  {{ deviceOnlineLabel(device) }}
+                </UiTag>
+                <span v-if="device.scannerIp" class="muted">{{ device.scannerIp }}</span>
+                <span v-if="device.pendingUploadPageCount" class="muted">
+                  待上传 {{ device.pendingUploadPageCount }} 页
+                </span>
+              </div>
+              <div v-if="device.diagnosticMessage" class="scan-batch-page__device-diagnostic">
+                {{ device.diagnosticMessage }}
+              </div>
+            </article>
+          </div>
+        </UiCard>
+
+        <UiCard class="scan-batch-page__events-card">
+          <template #title>
+            <ThunderboltOutlined />
+            <span>实时扫描事件</span>
+            <span class="scan-batch-page__panel-meta">{{ connectionLabel }} · 最新 {{ liveEvents.length }} 条</span>
+          </template>
+          <UiErrorRetryPanel
+            v-if="scanLiveError"
+            :error="scanLiveError"
+            title="实时事件订阅失败"
+            compact
+            @retry="refreshScanLive"
+          />
+          <UiEmpty
+            v-else-if="liveEvents.length === 0"
+            description="暂无扫描事件，等待扫描端推送"
+          />
+          <div v-else class="scan-batch-page__event-list">
+            <div
+              v-for="event in liveEventPreview"
+              :key="event.eventId"
+              class="scan-batch-page__event-row"
+            >
+              <div class="scan-batch-page__event-main">
+                <UiTag :tone="scanEventStatusTone(event.status)" size="sm">
+                  {{ scanEventStatusLabel(event.status) }}
+                </UiTag>
+                <strong>{{ formatDeviceLabel(event.scannerDeviceId) }}</strong>
+                <span>{{ event.pageCount }} 页</span>
+              </div>
+              <div class="scan-batch-page__event-meta">
+                <span>{{ event.scannerStationId }}</span>
+                <span>{{ formatTimeOfDay(event.scanEndTime || event.createTime) }}</span>
+              </div>
+            </div>
+          </div>
+        </UiCard>
+      </div>
+
       <UiCard class="info-card">
         <template #title>
           <FileTextOutlined />
-          <span>按扫描仪和时间窗口创建批次</span>
+          <span>高级聚合：按扫描仪和时间窗口创建批次</span>
         </template>
 
         <a-form ref="formRef" :model="batchForm" :rules="batchFormRules" layout="vertical">
@@ -173,7 +279,7 @@
         />
         <div v-if="previewLoaded" class="preview-section">
           <UiStatPanel :items="previewMetrics" :columns="4" variant="strip" compact />
-          <UiDataTable
+          <UiDataTable class="student-detail-table__data-table"
             v-if="previewData && previewData.deviceBreakdown.length > 0"
             :columns="deviceBreakdownColumns"
             :data-source="previewData.deviceBreakdown"
@@ -200,20 +306,23 @@
         compact
         @retry="() => loadBatches(1)"
       />
-      <UiCard v-else class="info-card">
+      <a-card v-else :bordered="false" class="detail-table-card scan-batch-page__batch-list-card">
         <template #title>
           <UnorderedListOutlined />
           <span>已创建批次</span>
-          <UiBadge tone="blue">{{ batchTotal }} 个</UiBadge>
         </template>
-        <template #extra>
-          <UiButton size="sm" variant="outline" :loading="batchLoading" @click="loadBatches(1)">
-            <template #icon>
-              <ReloadOutlined />
-            </template>
-            刷新
-          </UiButton>
-        </template>
+
+        <div class="filter-card">
+          <a-form layout="inline" class="filter-form filter-form--toolbar">
+            <a-form-item class="filter-form__actions">
+              <a-space class="filter-form__action-group">
+                <UiButton variant="outline" size="sm" :loading="globalLoading" @click="loadAllForExam">
+                  刷新
+                </UiButton>
+              </a-space>
+            </a-form-item>
+          </a-form>
+        </div>
 
         <UiDataTable
           v-model:current="batchQuery.pageNum"
@@ -227,7 +336,7 @@
           @page-change="onBatchPageChange"
           row-key="scanBatchId"
           size="small"
-          class="batch-table"
+          class="batch-table student-detail-table__data-table"
         >
           <template #bodyCell="{ column, record, text }">
             <template v-if="column.key === 'batchNo'">
@@ -253,21 +362,24 @@
               <template v-else>0 份</template>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-space :size="4">
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :disabled="!record.sourceFileCount"
-                  @click="openBatchSourceFiles(record)"
+            <div class="operations-cell" @click.stop>
+<span
+                  class="op-link"
+                  :class="{ 'is-disabled': !record.sourceFileCount }"
+                  role="button"
+                  @click="record.sourceFileCount && openBatchSourceFiles(record)"
                 >
                   查看扫描原件
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  tone="danger"
-                  :loading="batchDiscarding === record.scanBatchId"
-                  :disabled="record.status === 'DISCARDED' || Boolean(record.sealedAt)"
+                </span>
+                <span
+                  class="op-link danger"
+                  :class="{
+                    'is-disabled':
+                      batchDiscarding === record.scanBatchId
+                      || record.status === 'DISCARDED'
+                      || Boolean(record.sealedAt),
+                  }"
+                  role="button"
                   :title="
                     record.sealedAt
                       ? '批次已封存，禁止废弃；请联系扫描终审角色'
@@ -275,19 +387,20 @@
                         ? '批次已废弃'
                         : '废弃整批'
                   "
-                  @click="onDiscardBatch(record)"
+                  @click="
+                    batchDiscarding !== record.scanBatchId
+                      && record.status !== 'DISCARDED'
+                      && !record.sealedAt
+                      && onDiscardBatch(record)
+                  "
                 >
-                  <template #icon>
-                    <DeleteOutlined />
-                  </template>
                   {{ record.status === 'DISCARDED' ? '已废弃' : '废弃' }}
-                </UiButton>
-              </a-space>
-            </template>
+                </span>
+            </div></template>
             <template v-else>{{ text }}</template>
           </template>
         </UiDataTable>
-      </UiCard>
+      </a-card>
     </template>
 
     <UiDrawer
@@ -369,13 +482,16 @@ import type {
   ExamScannerDeviceQueryRequest,
   ExamScannerDeviceVO,
 } from '@/apis/mark/exam-mark-scanner'
+import type { ScanEventStatusCode } from '@/apis/mark/scan-live'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import DeleteOutlined from '@ant-design/icons-vue/DeleteOutlined'
+import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   createScanBatchByCondition,
   getMarkingProgress,
@@ -385,10 +501,10 @@ import {
   SCAN_BATCH_STATUS_TONE,
 } from '@/apis/mark/exam'
 import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
+import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
 import {
   UiAlertStrip,
-  UiBadge,
   UiButton,
   UiCard,
   UiDataTable,
@@ -399,15 +515,28 @@ import {
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
-import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
-import { readPageList } from '@/utils/page-result'
+import { formatDateTime, formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanUpload' })
+
+const router = useRouter()
+
+function goScanAdvanced(routeName: string): void {
+  if (!selectedExamId.value) return
+  void router.push({ name: routeName, query: { examId: selectedExamId.value } })
+}
+
+function goScanLiveMonitor(): void {
+  if (!selectedExamId.value) return
+  void router.push({ name: 'TeacherScanLiveMonitor', query: { examId: selectedExamId.value } })
+}
 
 function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
   return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
@@ -434,6 +563,55 @@ const hasOpenTasks = computed(() => {
   const current = progress.value
   return current ? current.openProcessingTaskCount > 0 : false
 })
+
+const scanAttentionCount = computed(() => progress.value?.scanAttentionCount ?? 0)
+
+const {
+  events: liveEvents,
+  ready: scanLiveReady,
+  isStreaming: scanLiveStreaming,
+  error: scanLiveError,
+  start: startScanLive,
+  stop: stopScanLive,
+  refresh: refreshScanLive,
+} = useScanLiveStream({
+  filter: () => ({
+    examId: selectedExamId.value || undefined,
+  }),
+  initialLimit: 50,
+  maxEvents: 120,
+})
+
+const livePendingEventTotal = computed(() =>
+  liveEvents.value.filter((event) => event.status === 'PENDING').length,
+)
+const liveEventPreview = computed(() => liveEvents.value.slice(0, 8))
+
+const connectionLabel = computed(() => {
+  if (scanLiveError.value) return '实时连接异常'
+  if (scanLiveReady.value) return '实时连接中'
+  if (scanLiveStreaming.value) return '正在建立连接'
+  return '未连接'
+})
+
+function scanEventStatusLabel(status: ScanEventStatusCode): string {
+  const labels: Record<ScanEventStatusCode, string> = {
+    PENDING: '待聚合',
+    BATCHED: '已聚合',
+    INVALID: '已失效',
+  }
+  return strictEnumLabel(labels, status, '扫描事件状态')
+}
+
+function scanEventStatusTone(status: ScanEventStatusCode): BadgeTone {
+  const tones: Record<ScanEventStatusCode, BadgeTone> = {
+    PENDING: 'orange',
+    BATCHED: 'green',
+    INVALID: 'red',
+  }
+  return strictEnumTone(tones, status, '扫描事件状态')
+}
+
 /** 全局加载状态：任一子加载中即视为正在加载 */
 const globalLoading = computed(
   () => progressLoading.value || devicesLoading.value || batchLoading.value || previewLoading.value,
@@ -460,9 +638,9 @@ const progressMetrics = computed(() => {
     { label: '已创建批次', value: batchTotal.value, unit: '个', tone: 'blue' as const },
     {
       label: '待聚合事件',
-      value: pendingEventTotal.value,
+      value: livePendingEventTotal.value,
       unit: '条',
-      tone: pendingEventTotal.value > 0 ? ('orange' as const) : ('green' as const),
+      tone: livePendingEventTotal.value > 0 ? ('orange' as const) : ('green' as const),
     },
     {
       label: '待处理任务',
@@ -535,6 +713,7 @@ const previewMetrics = computed(() => {
 const devices = ref<ExamScannerDeviceVO[]>([])
 const devicesLoading = ref(false)
 const devicesLoadError = ref('')
+const devicesErrorObject = computed(() => new Error(devicesLoadError.value))
 
 const deviceSelectOptions = computed(() =>
   devices.value
@@ -552,6 +731,25 @@ function formatDeviceLabel(deviceId?: string): string {
   return device.scannerIp
     ? `${device.deviceName || deviceId} (${device.scannerIp})`
     : device.deviceName || deviceId
+}
+
+const onlineDeviceCount = computed(() =>
+  devices.value.filter((device) => device.endpointOnlineStatus === 'ONLINE' || device.scannerConnected).length,
+)
+
+function deviceOnlineTone(device: ExamScannerDeviceVO): BadgeTone {
+  if (device.diagnosticStatus === 'ERROR') return 'red'
+  if (device.diagnosticStatus === 'WARNING' || device.endpointOnlineStatus === 'OFFLINE') return 'orange'
+  if (device.endpointOnlineStatus === 'ONLINE' || device.scannerConnected) return 'green'
+  return 'gray'
+}
+
+function deviceOnlineLabel(device: ExamScannerDeviceVO): string {
+  if (device.diagnosticStatus === 'ERROR') return '诊断异常'
+  if (device.diagnosticStatus === 'WARNING') return '诊断告警'
+  if (device.endpointOnlineStatus === 'ONLINE' || device.scannerConnected) return '在线'
+  if (device.endpointOnlineStatus === 'OFFLINE') return '离线'
+  return '未上报'
 }
 
 async function loadDevices(): Promise<void> {
@@ -677,9 +875,9 @@ async function handleCreateBatch(): Promise<void> {
     )
     previewLoaded.value = false
     previewData.value = null
-    pendingEventTotal.value = 0
     await loadBatches(1)
     await loadProgress()
+    await refreshScanLive()
   } catch (error) {
     batchCreateError.value = getUserErrorMessage(error, '扫描批次创建失败')
     showUserError(error, '扫描批次创建失败')
@@ -802,7 +1000,20 @@ async function confirmDiscardBatch(): Promise<void> {
   batchDiscarding.value = batch.scanBatchId
   try {
     await discardScannerKioskBatch({ scanBatchId: batch.scanBatchId, discardReason: trimmed })
-    message.success(`扫描批次已废弃，批次编号：${batch.batchNo}`)
+    let localAgentCleanupWarning = ''
+    try {
+      localAgentCleanupWarning = await cleanupLocalAgentScanJobForDiscardedBatch(batch, trimmed)
+    } catch (error) {
+      localAgentCleanupWarning = getUserErrorMessage(
+        error,
+        '无法连接本机扫描 Agent，服务端批次已废弃但本机扫描任务未清理',
+      )
+    }
+    if (localAgentCleanupWarning) {
+      message.warning(`扫描批次已废弃；${localAgentCleanupWarning}`)
+    } else {
+      message.success(`扫描批次已废弃，并已清理本机扫描任务，批次编号：${batch.batchNo}`)
+    }
     batchDiscardModalOpen.value = false
     batchDiscardTarget.value = null
     batchDiscardReason.value = ''
@@ -814,6 +1025,44 @@ async function confirmDiscardBatch(): Promise<void> {
   } finally {
     batchDiscarding.value = null
   }
+}
+
+/**
+ * 教师废弃后端批次后，按后端批次标识精确清理同一台工作站上的 Reported Agent 任务。
+ * 返回非空文案表示后端已废弃但本机清理未完成，调用方必须显式提示教师。
+ */
+async function cleanupLocalAgentScanJobForDiscardedBatch(
+  batch: ExamScannerBatchVO,
+  discardReason: string,
+): Promise<string> {
+  const scannerDeviceId = batch.scannerDeviceId?.trim()
+  const scannerStationId = batch.scannerStationId?.trim()
+  if (!scannerDeviceId || !scannerStationId) {
+    return '批次缺少扫描设备或扫描站点，无法定位本机 Agent 任务'
+  }
+  const response = await listScanJobs({
+    examId: batch.examId,
+    scannerDeviceId,
+    scannerStationId,
+    includeTerminal: true,
+  })
+  const matchedJobs = response.jobs.filter((job) => {
+    if (!job.reported || job.status !== 'REPORTED') {
+      return false
+    }
+    if (job.scanBatchId && job.scanBatchId === batch.scanBatchId) {
+      return true
+    }
+    return Boolean(batch.batchExternalNo && job.batchExternalNo === batch.batchExternalNo)
+  })
+  if (matchedJobs.length === 0) {
+    return `本机 Agent 未找到批次 ${batch.batchNo} 对应的已上报扫描任务，请在原扫描工作站清理`
+  }
+  if (matchedJobs.length > 1) {
+    return `本机 Agent 匹配到 ${matchedJobs.length} 个批次 ${batch.batchNo} 的已上报任务，已阻断本机自动清理`
+  }
+  const cleared = await discardScanJob(matchedJobs[0].scanJobId, discardReason)
+  return cleared ? '' : `本机 Agent 未确认批次 ${batch.batchNo} 的任务清理结果`
 }
 
 async function loadBatches(pageNum?: number): Promise<void> {
@@ -829,7 +1078,7 @@ async function loadBatches(pageNum?: number): Promise<void> {
     }
     const result = await pageScannerBatches(request)
     batches.value = readPageList(result, '扫描批次加载失败，请稍后重试')
-    batchTotal.value = Number(result.total)
+    batchTotal.value = readPageTotal(result, '扫描批次加载失败，请稍后重试')
   } catch (error) {
     batchesLoadError.value = toUserError(error, '扫描批次列表加载失败')
     showUserError(error, '扫描批次列表加载失败')
@@ -846,7 +1095,7 @@ function onBatchPageChange(page: { current: number, pageSize: number }): void {
 
 // ─── 生命周期 ─────────────────────────────
 async function loadAllForExam(): Promise<void> {
-  await Promise.all([loadDevices(), loadBatches(1), loadProgress()])
+  await Promise.all([loadDevices(), loadBatches(1), loadProgress(), refreshScanLive()])
 }
 
 watch(selectedExamId, (value) => {
@@ -862,40 +1111,33 @@ watch(selectedExamId, (value) => {
     previewLoadError.value = null
     batchCreateError.value = ''
     batchDiscardError.value = ''
+    stopScanLive()
   }
 })
 
 onMounted(async () => {
   await initExamSelector()
+  await startScanLive()
   if (selectedExamId.value) {
     await loadAllForExam()
   }
+})
+
+onBeforeUnmount(() => {
+  stopScanLive()
 })
 </script>
 
 <style lang="scss" scoped>
 .scan-batch-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
+  }
+
+  &__advanced-links {
+    display: inline-flex;
+    gap: 12px;
+    margin-left: 8px;
   }
 
   &__empty {
@@ -946,11 +1188,101 @@ onMounted(async () => {
     max-width: 140px;
   }
 
+  &__monitor-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  &__device-card,
+  &__events-card {
+    min-width: 0;
+  }
+
+  &__panel-meta {
+    margin-left: 8px;
+    color: var(--dp-text-secondary, #475569);
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  &__device-list,
+  &__event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+
+  &__device-row,
+  &__event-row {
+    padding: 12px;
+    border: 1px solid var(--dp-border, #e5e7eb);
+    border-radius: 8px;
+    background: var(--dp-surface, #fff);
+  }
+
+  &__device-main,
+  &__event-main,
+  &__device-meta,
+  &__event-meta {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  &__device-main,
+  &__event-main {
+    gap: 8px;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__device-main {
+    justify-content: space-between;
+
+    span {
+      color: var(--dp-text-secondary, #475569);
+      font-size: 12px;
+    }
+  }
+
+  &__device-meta,
+  &__event-meta {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+    color: var(--dp-text-secondary, #475569);
+    font-size: 12px;
+  }
+
+  &__device-diagnostic {
+    margin-top: 8px;
+    color: var(--ant-color-error, #ff4d4f);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  &__action-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--dp-surface, #fff);
+    color: var(--ant-color-error, #ff4d4f);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .info-card {
@@ -990,5 +1322,13 @@ onMounted(async () => {
 
 .empty-block {
   padding: 60px 0;
+}
+
+@media (max-width: 980px) {
+  .scan-batch-page {
+    &__monitor-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 }
 </style>

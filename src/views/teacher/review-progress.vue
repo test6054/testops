@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="progress-page__context">
-        <div class="progress-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="progress-page__exam-select"
@@ -17,8 +17,8 @@
           <UiTag v-if="selectedExamId" :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
             已确认 {{ confirmedPercent }}%
           </UiTag>
-        </div>
-        <div class="progress-page__context-right">
+        </template>
+        <template #actions>
           <UiButton
             variant="outline"
             size="sm"
@@ -29,8 +29,8 @@
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- D-9 错误态：复核进度加载失败时提供重试 + 上报入口 -->
@@ -48,12 +48,12 @@
     />
 
     <template v-else-if="progress">
-      <a-row :gutter="16" class="overview-row">
+        <a-row :gutter="16" class="overview-row">
         <a-col :xs="24" :md="8">
           <UiCard class="overview-card">
             <template #title>
               <DashboardOutlined />
-              <span>整体批改进度</span>
+              <span>教师复核进度</span>
             </template>
             <div class="overview-progress">
               <a-progress
@@ -64,7 +64,7 @@
               />
               <div class="overview-meta">
                 <div>
-                  <span class="meta-label">已确认 / 应批阅：</span>
+                  <span class="meta-label">已确认 / 应复核：</span>
                   <a-typography-text strong>
                     {{ progress.confirmedQuestionGradeCount }} /
                     {{ progress.totalQuestionGradeCount }}
@@ -73,11 +73,11 @@
                 <div><span class="meta-label">题目：</span>{{ progress.questionCount }} 道</div>
                 <div><span class="meta-label">已扫描试卷：</span>{{ progress.paperCount }} 份</div>
                 <div>
-                  <span class="meta-label">可阅卷试卷：</span>
+                  <span class="meta-label">可进入复核试卷：</span>
                   <a-typography-text strong>
                     {{ progress.gradablePaperCount }}
                   </a-typography-text>
-                  <span class="meta-hint">（已绑定身份，完成率分母真源）</span>
+                  <span class="meta-hint">（已完成身份绑定，可进入教师复核）</span>
                 </div>
               </div>
             </div>
@@ -88,7 +88,6 @@
             <template #title>
               <PieChartOutlined />
               <span>复核任务状态分布</span>
-              <UiBadge tone="blue">{{ totalTaskCount }} 条任务</UiBadge>
             </template>
             <a-row :gutter="16">
               <a-col v-for="item in statusBreakdown" :key="item.code" :xs="12" :md="6">
@@ -118,7 +117,7 @@
               </a-col>
               <a-col :xs="12" :md="8">
                 <a-statistic
-                  title="处理中未闭合任务"
+                  title="复核中未完成任务"
                   :value="progress.openProcessingTaskCount"
                   suffix="项"
                   :value-style="{
@@ -135,7 +134,6 @@
         <template #title>
           <TableOutlined />
           <span>按题目维度的复核进度</span>
-          <UiBadge tone="blue">{{ questionRows.length }} 道</UiBadge>
         </template>
 
         <div v-if="reviewProgressBarOption" class="progress-page__chart">
@@ -154,7 +152,7 @@
           :total="questionRows.length"
           row-key="questionTemplateId"
           size="middle"
-          class="question-table"
+          class="question-table student-detail-table__data-table"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'questionNo'">
@@ -229,7 +227,6 @@ import {
 } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
-  UiBadge,
   UiButton,
   UiCard,
   UiDataTable,
@@ -237,7 +234,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
 import { buildReviewProgressBarOption } from '@/utils/mark-statistics-chart'
@@ -339,25 +336,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .progress-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }
@@ -370,7 +348,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: 16px;
   padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .overview-row {

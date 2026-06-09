@@ -17,17 +17,8 @@ defineOptions({ name: 'App' })
 const THEME_CONFIG = Object.freeze({
   cssVar: true,
   token: Object.freeze({
-    borderRadius: 8,
+    borderRadius: 6,
     fontSize: 14,
-    colorPrimary: '#2563eb',
-    colorBgLayout: '#f8fafc',
-    colorBorder: '#e2e8f0',
-    colorBorderSecondary: '#f1f5f9',
-    boxShadow: '0 4px 24px rgba(15, 23, 42, 0.02), 0 1px 2px rgba(15, 23, 42, 0.04)',
-  }),
-  components: Object.freeze({
-    Card: { paddingLG: 24 },
-    Table: { colorBorderSecondary: 'transparent', borderRadiusLG: 8 },
   }),
   algorithm: theme.defaultAlgorithm,
 })

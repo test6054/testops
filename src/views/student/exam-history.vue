@@ -1,50 +1,55 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="exam-history-page__context">
-        <div class="exam-history-page__context-left">
+      <ContextBar>
+        <template #status>
           <UiTag tone="blue" size="sm">{{ exams.length }} 场</UiTag>
           <UiTag v-if="publishedCount > 0" tone="green" size="sm">
             已发布 {{ publishedCount }}
           </UiTag>
-        </div>
-        <div class="exam-history-page__context-right">
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
-    <!-- 筛选 + 列表 -->
-    <UiCard class="exam-history-page__list-card">
+    <a-card :bordered="false" class="detail-table-card exam-history-page__table-card">
       <template #title>
         <FileSearchOutlined />
         <span>考试列表</span>
-        <UiBadge tone="blue">{{ filteredExams.length }} 条</UiBadge>
       </template>
-      <template #extra>
-        <a-space wrap>
-          <a-input
-            v-model:value="keyword"
-            placeholder="按考试名称或编号筛选"
-            allow-clear
-            style="width: 240px"
-          >
-            <template #prefix>
-              <SearchOutlined />
-            </template>
-          </a-input>
-          <a-select
-            v-model:value="statusFilter"
-            placeholder="成绩状态"
-            allow-clear
-            style="width: 160px"
-            :options="statusOptions"
-          />
-        </a-space>
-      </template>
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent>
+          <a-form-item label="关键词">
+            <a-input
+              v-model:value="keyword"
+              placeholder="按考试名称或编号筛选"
+              allow-clear
+              style="width: 240px"
+            >
+              <template #prefix>
+                <SearchOutlined />
+              </template>
+            </a-input>
+          </a-form-item>
+          <a-form-item label="成绩状态">
+            <a-select
+              v-model:value="statusFilter"
+              placeholder="全部状态"
+              allow-clear
+              style="width: 160px"
+              :options="statusOptions"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <span class="op-link" role="button" @click="handleFilterReset">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
+                <template #icon><ReloadOutlined /></template>
+                刷新
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
       <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
       <UiErrorRetryPanel
@@ -70,11 +75,16 @@
         flat
         row-key="examId"
         size="middle"
-        class="history-table"
+        class="history-table student-detail-table__data-table"
       >
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'examName'">
-            <button type="button" class="link-cell" @click="goDetail(filteredExams[index].examId)">
+            <button
+              type="button"
+              class="link-cell"
+              :disabled="filteredExams[index].finalScoreStatus !== 'PUBLISHED'"
+              @click="goDetail(filteredExams[index].examId)"
+            >
               {{ filteredExams[index].examName }}
             </button>
             <div v-if="filteredExams[index].examNo" class="link-cell__sub">
@@ -122,28 +132,31 @@
             <span v-else class="muted">未开放</span>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton
-                size="sm"
-                variant="ghost"
-                :disabled="filteredExams[index].finalScoreStatus !== 'PUBLISHED'"
-                @click="goDetail(filteredExams[index].examId)"
+            <div class="operations-cell" @click.stop>
+              <span
+                class="op-link"
+                role="button"
+                :class="{ 'is-disabled': filteredExams[index].finalScoreStatus !== 'PUBLISHED' }"
+                @click="
+                  filteredExams[index].finalScoreStatus === 'PUBLISHED'
+                    && goDetail(filteredExams[index].examId)
+                "
               >
                 查看详情
-              </UiButton>
-              <UiButton
-                size="sm"
-                variant="ghost"
-                :disabled="!canSubmitReview(filteredExams[index])"
-                @click="goAppeal(filteredExams[index].examId)"
+              </span>
+              <span
+                class="op-link"
+                role="button"
+                :class="{ 'is-disabled': !canSubmitReview(filteredExams[index]) }"
+                @click="canSubmitReview(filteredExams[index]) && goAppeal(filteredExams[index].examId)"
               >
                 提交复核
-              </UiButton>
-            </a-space>
+              </span>
+            </div>
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </a-card>
   </StageWorkbenchShell>
 </template>
 
@@ -164,13 +177,12 @@ import {
 import {
   UiBadge,
   UiButton,
-  UiCard,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -260,35 +272,19 @@ function goAppeal(examId: string) {
   router.push({ name: 'StudentAppeal', query: { examId } })
 }
 
+function handleFilterReset() {
+  keyword.value = ''
+  statusFilter.value = undefined
+}
+
 onMounted(loadExams)
 </script>
 
 <style lang="scss" scoped>
-.exam-history-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
+.exam-history-page__table-card {
+  :deep(.ant-card-body) {
+    padding-top: 0;
   }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    flex-shrink: 0;
-  }
-
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
-  min-height: 100vh;
 }
 
 .history-table {

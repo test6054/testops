@@ -169,24 +169,6 @@ export interface PaperMasterVO {
 
 // ─── 印刷包考生明细 ────────────────────────────────────────────────────
 
-/** 考生印刷明细请求 */
-export interface PrintPackageItemRequest {
-  /** 学生用户ID */
-  studentUserId: string
-  /** 考场名称 */
-  examRoom?: string
-  /** 座位号 */
-  seatNo?: string
-  /** 二维码内容 */
-  qrCode: string
-  /** 条形码内容 */
-  barCode: string
-  /** 防伪码 */
-  securityCode: string
-  /** 考生印刷文件ID */
-  printFileId: string
-}
-
 /** 考生印刷明细响应 */
 export interface PrintPackageItemVO {
   printPackageItemId: string
@@ -203,22 +185,6 @@ export interface PrintPackageItemVO {
 }
 
 // ─── 批量印刷封装 ──────────────────────────────────────────────────────
-
-/** 印刷包保存请求 */
-export interface PrintPackageSaveRequest {
-  /** 考试ID */
-  examId: string
-  /** 印刷包编号 */
-  packageNo: string
-  /** 印刷包名称 */
-  packageName: string
-  /** 合并印刷文件ID */
-  packageFileId: string
-  /** 封装备注 */
-  sealRemark?: string
-  /** 考生印刷明细集合 */
-  items?: PrintPackageItemRequest[]
-}
 
 /** 印刷包查询请求 */
 export interface PrintPackageQueryRequest {
@@ -324,6 +290,43 @@ export function savePaperMaster(request: PaperMasterSaveRequest): Promise<string
   return http.post<string>('/api/mark/exams/paper-master/save', request)
 }
 
+/** 生成标准试卷 PDF 请求 */
+export interface StandardPaperGenerateRequest {
+  examId: string
+  universityName: string
+  academicYear: string
+  semester: string
+  courseName: string
+  examType?: string
+  durationMin?: number
+  questionHeaders?: string[]
+}
+
+/**
+ * 生成中国高校标准期末考试试卷 PDF 并上传，返回母版 fileId
+ * POST /api/mark/exams/paper-master/generate-standard
+ */
+export function generateStandardPaper(request: StandardPaperGenerateRequest): Promise<string> {
+  return http.post<string>('/api/mark/exams/paper-master/generate-standard', request)
+}
+
+/** 生成标准答题卡 PDF 请求 */
+export interface StandardAnswerSheetGenerateRequest {
+  examId: string
+  choiceCount?: number
+  trueFalseCount?: number
+  subjectNames?: string[]
+  subjectLines?: number[]
+}
+
+/**
+ * 生成中国高校标准答题卡 PDF 并上传，返回母版 fileId
+ * POST /api/mark/exams/answer-sheet/generate-standard
+ */
+export function generateStandardAnswerSheet(request: StandardAnswerSheetGenerateRequest): Promise<string> {
+  return http.post<string>('/api/mark/exams/answer-sheet/generate-standard', request)
+}
+
 /**
  * 查询考试当前试卷线上母版
  * POST /api/mark/exams/paper-master/detail
@@ -339,14 +342,6 @@ export function getPaperMaster(examId: string): Promise<PaperMasterVO> {
 export function isPaperMasterNotConfiguredError(error: MarkBusinessError): boolean {
   const code = error.code ?? error.response?.data.code
   return Number(code) === PAPER_MASTER_NOT_CONFIGURED_CODE
-}
-
-/**
- * 保存批量打印封装
- * POST /api/mark/exams/print-package/save
- */
-export function savePrintPackage(request: PrintPackageSaveRequest): Promise<string> {
-  return http.post<string>('/api/mark/exams/print-package/save', request)
 }
 
 /**

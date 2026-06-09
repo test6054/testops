@@ -1,9 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="org-detail__context">
-        <div class="org-detail__context-info">
-          <h2 class="org-detail__title">阅卷交付 - 阅卷组织详情</h2>
+      <ContextBar>
+        <template #status>
           <UiTag
             v-if="organization"
             :tone="
@@ -26,9 +25,9 @@
           <UiTag v-if="organization" tone="blue" size="sm">
             题组 {{ organization.groups.length }}
           </UiTag>
-          <UiTag v-if="organization?.anonymousMode" tone="green" size="sm"> 匿名阅卷 </UiTag>
-        </div>
-        <div class="org-detail__context-actions">
+          <UiTag v-if="organization?.anonymousMode" tone="green" size="sm">匿名阅卷</UiTag>
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadOrganization">
             刷新
           </UiButton>
@@ -52,9 +51,9 @@
               删除组织
             </UiButton>
           </a-popconfirm>
-          <UiButton variant="primary" size="sm" @click="goSessions"> 试评 / 正评 </UiButton>
-        </div>
-      </div>
+          <UiButton size="sm" @click="goSessions">试评 / 正评</UiButton>
+        </template>
+      </ContextBar>
     </template>
 
     <!-- D-9 错误态：阅卷组织详情加载失败时提供重试 + 上报入口 -->
@@ -72,6 +71,23 @@
     />
 
     <a-spin v-else :spinning="loading">
+      <UiAlertStrip
+        v-if="organization && !canManageOrganization"
+        tone="info"
+        title="协作查看模式"
+        description="当前考试由其他教师创建。题组与策略为只读，修改需联系考试创建人。"
+        dense
+        class="org-detail__collab-alert"
+      />
+      <!-- P1-3 阅卷组织步骤引导 -->
+      <UiAlertStrip
+        v-if="organization && canManageOrganization"
+        :tone="organizationStepAlertTone"
+        :title="organizationStepAlertTitle"
+        :description="organizationStepAlertDescription"
+        dense
+        class="org-detail__step-guide"
+      />
       <section v-if="organization" class="org-detail__panel">
         <a-tabs v-model:active-key="activeTab" class="detail-tabs">
           <a-tab-pane key="info" tab="基本信息 + 题组">
@@ -138,7 +154,7 @@
               :show-pagination="false"
               flat
               :total="groups.length"
-              class="group-table"
+              class="group-table student-detail-table__data-table"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'groupName'">
@@ -572,6 +588,7 @@ import {
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
 import {
+  UiAlertStrip,
   UiButton,
   UiDataTable,
   UiDrawer,
@@ -583,10 +600,12 @@ import { StageWorkbenchShell } from '@/components/workbench'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readPageList } from '@/utils/page-result'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminMarkingOrganizationDetail' })
+
+const MARKING_TEACHER_OPTION_PAGE_SIZE = 100
 
 const route = useRoute()
 const router = useRouter()
@@ -613,9 +632,41 @@ const canManageOrganization = computed(
   () => !!examDetail.value?.createUser && examDetail.value.createUser === userStore.userInfo.userId,
 )
 
+/** P1-3: 阅卷组织步骤引导 — 根据当前状态给出下一步建议 */
+const organizationStepAlertTone = computed(() => {
+  if (!organization.value) return 'info'
+  const status = organization.value.organizationStatus
+  if (status === 'ORG_DRAFT' || status === 'ORG_CONFIGURED') return 'warning'
+  if (status === 'TRIAL_MARKING') return 'info'
+  if (status === 'FORMAL_MARKING') return 'success'
+  return 'info'
+})
+
+const organizationStepAlertTitle = computed(() => {
+  if (!organization.value) return ''
+  const status = organization.value.organizationStatus
+  if (status === 'ORG_DRAFT') return '第1步：配置题组与分配策略'
+  if (status === 'ORG_CONFIGURED') return '第2步：开始试评校准'
+  if (status === 'TRIAL_MARKING') return '第3步：试评完成后启动正评'
+  if (status === 'FORMAL_MARKING') return '第4步：正评进行中，前往阅卷任务池'
+  if (status === 'QUALITY_REVIEW') return '第5步：质量抽检与仲裁'
+  return ''
+})
+
+const organizationStepAlertDescription = computed(() => {
+  if (!organization.value) return ''
+  const status = organization.value.organizationStatus
+  if (status === 'ORG_DRAFT') return '先配置题组（分配要批阅的题目），再保存分配策略（设置分配模式、匿名模式）'
+  if (status === 'ORG_CONFIGURED') return '题组和策略已就绪，请创建试评会话，组织阅卷教师校准评分标准'
+  if (status === 'TRIAL_MARKING') return '试评校准完成后，请进入「试评 / 正评」页面启动正式阅卷会话'
+  if (status === 'FORMAL_MARKING') return '正评已启动，阅卷教师可在任务池中 claim 并批阅。请持续关注进度看板'
+  if (status === 'QUALITY_REVIEW') return '可对已批阅答卷进行抽检，如有评分差异提交仲裁处理'
+  return ''
+})
+
 function guardOrganizationOwnerAction(): boolean {
   if (canManageOrganization.value) return true
-  message.warning('仅考试创建人可分配批阅任务')
+  message.warning('仅考试创建人可修改阅卷安排')
   return false
 }
 
@@ -688,8 +739,14 @@ async function loadTeachers(): Promise<void> {
   if (teacherList.value.length > 0) return
   teacherLoading.value = true
   try {
-    const result = await adminGetUserPage({ pageNum: 1, pageSize: 200, roleKey: 'SCH_TECH' })
-    teacherList.value = readPageList(result, '阅卷教师列表加载失败，请稍后重试')
+    teacherList.value = await readAllPages(
+      (pageNum) => adminGetUserPage({
+        pageNum,
+        pageSize: MARKING_TEACHER_OPTION_PAGE_SIZE,
+        roleKey: 'SCH_TECH',
+      }),
+      '阅卷教师列表加载失败，请稍后重试',
+    )
   } catch (error) {
     showUserError(error, '阅卷教师列表加载失败')
   } finally {
@@ -1111,37 +1168,6 @@ onMounted(loadOrganization)
 
 <style lang="scss" scoped>
 .org-detail {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 280px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__panel {
     background: var(--dp-surface, #fff);
     border: 1px solid var(--dp-border, #e2e8f0);

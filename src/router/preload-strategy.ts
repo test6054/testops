@@ -12,7 +12,7 @@
  *   2. 业务主链顺序：考试管理 → 制卷 → 扫描 → 批阅 → 成绩 → 归档；学生：成绩 → 详情 →
  *      复核；质量评价：配置 → 数据接入 → 达成度 → 改进 → 报告。
  *   3. 列表 ↔ 详情：所有 `:id/detail` 类路由都和其入口列表互相邻接。
- *   4. 跨工作台跳转：阅卷概览 → 异常待办 / 进度看板 / 阅卷任务池等高频入口。
+ *   4. 跨工作台跳转：阅卷概览 → 扫描监控中控台 / 进度看板 / 阅卷任务池等高频入口。
  *
  * 行业参考：
  *   - egoist/vue-router-prefetch：视口可见即预加载链接 chunk
@@ -55,10 +55,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   StudentAppeal: () => import('@/views/student/appeal.vue'),
   StudentScoreDetail: () => import('@/views/student/score-detail.vue'),
 
-  // ── 教师阅卷 - 顶层 ───────────────────────────────
-  TeacherMarkingOverview: () => import('@/views/teacher/marking-overview.vue'),
-
-  // ── 教师 ① 考试管理 ──────────────────────────────
+  // ── 教师 ① 考试管理（考试工作台为默认首页） ────────
   TeacherExamPrepWorkbench: () => import('@/views/teacher/exam-prep-workbench.vue'),
   TeacherExamList: () => import('@/views/teacher/exam-list.vue'),
   TeacherPaperTemplate: () => import('@/views/teacher/paper-template.vue'),
@@ -73,7 +70,6 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   // ── 教师 ③ 扫描与识别 ────────────────────────────
   TeacherScanUpload: () => import('@/views/teacher/scan-upload.vue'),
   TeacherScanLiveMonitor: () => import('@/views/teacher/scan-live-monitor.vue'),
-  TeacherScanAttention: () => import('@/views/teacher/scan-attention.vue'),
   TeacherImageLedger: () => import('@/views/teacher/image-ledger.vue'),
   TeacherPrinterManagement: () => import('@/views/teacher/printer-management.vue'),
   TeacherOcrSettings: () => import('@/views/teacher/ocr-settings.vue'),
@@ -151,25 +147,22 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
 const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
   [RoleEnum.SCH_STU]: ['StudentScore', 'StudentExamHistory', 'UserMessage', 'UserProfile'],
   [RoleEnum.SCH_TECH]: [
-    'TeacherMarkingOverview',
     'TeacherExamList',
-    'TeacherScanAttention',
+    'TeacherScanLiveMonitor',
     'TeacherReviewProgress',
     'UserMessage',
     'UserProfile',
   ],
   [RoleEnum.CROP_ADMIN]: [
-    'TeacherMarkingOverview',
     'TeacherExamList',
-    'TeacherScanAttention',
+    'TeacherScanLiveMonitor',
     'TeacherReviewProgress',
     'UserMessage',
     'UserProfile',
   ],
   [RoleEnum.CROP_USER]: [
-    'TeacherMarkingOverview',
     'TeacherExamList',
-    'TeacherScanAttention',
+    'TeacherScanLiveMonitor',
     'TeacherReviewProgress',
     'UserMessage',
     'UserProfile',
@@ -188,7 +181,7 @@ const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
 // ============================================================================
 //
 // 关系来源说明：
-//   - 同 menuGroup 内的同事工作流：用户进入扫描录入后大概率会去看实时看板 / 异常待办
+//   - 同 menuGroup 内的同事工作流：用户进入扫描录入后大概率会去看扫描监控中控台 / 影像账本
 //   - 列表 ↔ 详情：进入列表必然伴随点击详情
 //   - 主链上下游：成绩确认 → 成绩发布 → 复核处理
 //   - 跨工作台高频入口：阅卷概览的 KPI 卡片可点击进各专项工作台
@@ -202,17 +195,7 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   StudentScoreDetail: ['StudentScore', 'StudentAppeal', 'StudentExamHistory'],
   StudentAppeal: ['StudentScoreDetail', 'StudentScore'],
 
-  // ── 教师阅卷概览（跨工作台聚合页，KPI 卡片直达专项页）─
-  TeacherMarkingOverview: [
-    'TeacherExamList',
-    'TeacherScanAttention',
-    'TeacherReviewProgress',
-    'TeacherMarkingTaskPool',
-    'TeacherScoreFinalize',
-    'TeacherAppealHandle',
-  ],
-
-  // ── ① 考试管理 ──────────────────────────────────
+  // ── ① 考试管理（考试工作台为默认首页与跨流程枢纽） ─
   TeacherExamPrepWorkbench: [
     'TeacherExamList',
     'TeacherPaperTemplate',
@@ -225,11 +208,16 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherPaperTemplate',
     'TeacherAnswerSheetTemplate',
     'TeacherCandidateRoster',
+    'TeacherScanLiveMonitor',
+    'TeacherReviewProgress',
+    'TeacherMarkingTaskPool',
+    'TeacherScoreFinalize',
+    'TeacherAppealHandle',
   ],
   TeacherPaperTemplate: ['TeacherAnswerSheetTemplate', 'TeacherExamList', 'TeacherPaperMaster'],
   TeacherAnswerSheetTemplate: ['TeacherPaperTemplate', 'TeacherExamList', 'TeacherCandidateRoster'],
   TeacherCandidateRoster: ['TeacherExamList', 'TeacherAnswerSheetTemplate'],
-  TeacherExamDetail: ['TeacherExamList', 'TeacherScanAttention', 'TeacherReviewProgress'],
+  TeacherExamDetail: ['TeacherExamList', 'TeacherScanLiveMonitor', 'TeacherReviewProgress'],
 
   // ── ② 制卷管理 ──────────────────────────────────
   TeacherPaperMaster: ['TeacherPrintPackage', 'TeacherPaperTemplate'],
@@ -238,13 +226,11 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   // ── ③ 扫描与识别 ────────────────────────────────
   TeacherScanUpload: [
     'TeacherScanLiveMonitor',
-    'TeacherScanAttention',
     'TeacherImageLedger',
     'TeacherPrinterManagement',
   ],
-  TeacherScanLiveMonitor: ['TeacherScanUpload', 'TeacherScanAttention', 'TeacherImageLedger'],
-  TeacherScanAttention: ['TeacherImageLedger', 'TeacherScanLiveMonitor', 'TeacherScanUpload'],
-  TeacherImageLedger: ['TeacherScanAttention', 'TeacherScanLiveMonitor'],
+  TeacherScanLiveMonitor: ['TeacherScanUpload', 'TeacherImageLedger'],
+  TeacherImageLedger: ['TeacherScanLiveMonitor'],
   TeacherPrinterManagement: ['TeacherOcrSettings', 'TeacherScanUpload'],
   TeacherOcrSettings: ['TeacherPrinterManagement', 'TeacherScanLiveMonitor'],
 

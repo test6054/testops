@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="exam-detail-page__context">
-        <div class="exam-detail-page__context-left">
+      <ContextBar>
+        <template #status>
           <UiTag v-if="detail?.status" :tone="examStatusTone(detail.status)" size="sm">
             {{ examStatusLabel(detail.status) }}
           </UiTag>
@@ -10,8 +10,8 @@
           <UiTag v-if="detail" tone="blue" size="sm">
             {{ detail.candidateCount }} 人 · {{ detail.questionCount }} 题
           </UiTag>
-        </div>
-        <div class="exam-detail-page__context-right">
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadDetail">
             <template #icon><ReloadOutlined /></template>
             刷新
@@ -26,8 +26,8 @@
           <UiButton size="sm" variant="outline" :disabled="!examId" @click="goRoster">
             考生名册
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <a-spin :spinning="loading">
@@ -124,7 +124,6 @@
             <template #title>
               <TeamOutlined />
               <span>班级范围</span>
-              <UiBadge tone="blue">{{ detail.classRefs.length }}</UiBadge>
             </template>
             <UiEmpty v-if="!detail.classRefs.length" description="尚未设置班级范围" />
             <div v-else class="class-list">
@@ -193,7 +192,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -273,28 +272,6 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .exam-detail-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__empty {
     padding: 48px 0;
   }

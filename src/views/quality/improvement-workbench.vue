@@ -78,11 +78,12 @@ import {
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
 import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -412,8 +413,8 @@ async function loadImprovementList() {
       status: improvementQuery.status || undefined,
       keyword: improvementQuery.keyword?.trim() || undefined,
     })
-    improvementList.value = page.list
-    improvementTotal.value = Number(page.total)
+    improvementList.value = readPageList(page, '持续改进任务加载失败，请稍后重试')
+    improvementTotal.value = readPageTotal(page, '持续改进任务加载失败，请稍后重试')
   } finally {
     improvementLoading.value = false
   }
@@ -717,8 +718,8 @@ async function loadIssueList() {
       trainingPlanId: issueQuery.trainingPlanId || qualityStore.currentTrainingPlanId || undefined,
       keyword: issueQuery.keyword?.trim() || undefined,
     })
-    issueList.value = page.list
-    issueTotal.value = Number(page.total)
+    issueList.value = readPageList(page, '审核评估问题加载失败，请稍后重试')
+    issueTotal.value = readPageTotal(page, '审核评估问题加载失败，请稍后重试')
   } finally {
     issueLoading.value = false
   }
@@ -930,8 +931,8 @@ async function loadRectList() {
       ...rectQuery,
       keyword: rectQuery.keyword?.trim() || undefined,
     })
-    rectList.value = page.list
-    rectTotal.value = Number(page.total)
+    rectList.value = readPageList(page, '整改任务加载失败，请稍后重试')
+    rectTotal.value = readPageTotal(page, '整改任务加载失败，请稍后重试')
     const issueIds = Array.from(new Set(rectList.value.map((r) => r.auditIssueId).filter(Boolean)))
     for (const id of issueIds) {
       if (rectIssuesCache.value.has(id)) continue
@@ -1296,8 +1297,8 @@ async function loadSupList() {
       programId: supQuery.programId || qualityStore.currentProgramId || undefined,
       keyword: supQuery.keyword?.trim() || undefined,
     })
-    supList.value = page.list
-    supTotal.value = Number(page.total)
+    supList.value = readPageList(page, '督导复查记录加载失败，请稍后重试')
+    supTotal.value = readPageTotal(page, '督导复查记录加载失败，请稍后重试')
   } finally {
     supLoading.value = false
   }
@@ -1571,11 +1572,8 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="iwb__context">
-        <div class="iwb__context-info">
-          <h2 class="iwb__title">持续改进与审核闭环</h2>
-        </div>
-        <div class="iwb__context-actions">
+      <ContextBar>
+        <template #status>
           <span class="iwb__context-meta">
             培养方案：
             <span v-if="qualityStore.currentPlan" class="iwb__context-strong">
@@ -1584,8 +1582,8 @@ onMounted(async () => {
             </span>
             <span v-else class="iwb__context-muted">未选择</span>
           </span>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <SignalBand :metrics="signals" compact class="iwb__signals" />
@@ -1598,56 +1596,63 @@ onMounted(async () => {
           description="尚未选择培养方案，请在工作台顶部选择后再回来"
           class="iwb__empty"
         />
-        <section v-else class="iwb__panel">
-          <header class="iwb__panel-header">
-            <h3 class="iwb__panel-title">改进任务台账</h3>
-            <div class="iwb__panel-actions">
-              <CourseSelector
-                :value="improvementQuery.qualityCourseId || null"
-                :training-plan-id="qualityStore.currentTrainingPlanId || null"
-                placeholder="关联课程"
-                class="iwb__filter iwb__filter--xs"
-                @change="handleImprovementQueryCourseChange"
-              />
-              <TeacherSelector
-                :value="improvementQuery.ownerUserId || null"
-                placeholder="负责人"
-                class="iwb__filter iwb__filter--xs"
-                @change="handleImprovementQueryOwnerChange"
-              />
-              <a-select
-                v-model:value="improvementQuery.status"
-                placeholder="状态"
-                class="iwb__filter"
-                allow-clear
-                :options="improvementStatusOptions"
-              />
-              <a-input
-                v-model:value="improvementQuery.keyword"
-                placeholder="关键字"
-                class="iwb__filter"
-                @press-enter="loadImprovementList"
-              />
-              <UiButton variant="ghost" size="sm" @click="resetImprovementQuery"> 重置 </UiButton>
-              <UiButton
-                variant="outline"
-                size="sm"
-                :loading="improvementLoading"
-                @click="loadImprovementList"
-              >
-                查询
-              </UiButton>
-              <UiButton
-                variant="primary"
-                size="sm"
-                :disabled="!qualityStore.currentTrainingPlanId"
-                @click="openImprovementCreate"
-              >
-                新建改进任务
-              </UiButton>
-            </div>
-          </header>
-          <UiDataTable
+        <a-card v-else :bordered="false" class="detail-table-card iwb__table-card">
+          <template #title>改进任务台账</template>
+
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadImprovementList">
+              <a-form-item label="关联课程">
+                <CourseSelector
+                  :value="improvementQuery.qualityCourseId || null"
+                  :training-plan-id="qualityStore.currentTrainingPlanId || null"
+                  placeholder="关联课程"
+                  :width="160"
+                  @change="handleImprovementQueryCourseChange"
+                />
+              </a-form-item>
+              <a-form-item label="负责人">
+                <TeacherSelector
+                  :value="improvementQuery.ownerUserId || null"
+                  placeholder="负责人"
+                  :width="140"
+                  @change="handleImprovementQueryOwnerChange"
+                />
+              </a-form-item>
+              <a-form-item label="状态">
+                <a-select
+                  v-model:value="improvementQuery.status"
+                  placeholder="状态"
+                  style="width: 120px"
+                  allow-clear
+                  :options="improvementStatusOptions"
+                />
+              </a-form-item>
+              <a-form-item label="关键字">
+                <a-input
+                  v-model:value="improvementQuery.keyword"
+                  placeholder="关键字"
+                  style="width: 160px"
+                  @press-enter="loadImprovementList"
+                />
+              </a-form-item>
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton size="sm" :loading="improvementLoading" @click="loadImprovementList">查询</UiButton>
+                  <span class="op-link" role="button" @click="resetImprovementQuery">重置</span>
+                  <UiButton
+                    variant="primary"
+                    size="sm"
+                    :disabled="!qualityStore.currentTrainingPlanId"
+                    @click="openImprovementCreate"
+                  >
+                    新建改进任务
+                  </UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
+          </div>
+
+          <UiDataTable class="student-detail-table__data-table"
             v-model:current="improvementQuery.pageNum"
             v-model:page-size="improvementQuery.pageSize"
             :columns="improvementColumns"
@@ -1679,102 +1684,86 @@ onMounted(async () => {
                   {{ improvementStatusLabel(record.status) }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space wrap>
-                  <UiButton variant="ghost" size="sm" @click="openImprovementDetail(record)">
-                    详情
-                  </UiButton>
-                  <UiButton
-                    variant="ghost"
-                    size="sm"
-                    :disabled="!canEditImprovementTask(record.status)"
-                    @click="openImprovementEdit(record)"
-                  >
-                    编辑
-                  </UiButton>
-                  <UiButton
+              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openImprovementDetail(record)">详情</span>
+                  <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditImprovementTask(record.status)) }" @click="!canEditImprovementTask(record.status) && (openImprovementEdit(record))">编辑</span>
+                  <span
                     v-for="to in nextImprovementStatuses(record.status)"
                     :key="to"
-                    :variant="to === 'RETURNED' ? 'ghost' : 'outline'"
-                    :status="to === 'RETURNED' ? 'danger' : 'normal'"
-                    size="sm"
+                    class="op-link"
+                    :class="to === 'RETURNED' ? 'danger' : 'primary'"
+                    role="button"
                     @click="handleImprovementTransit(record, to)"
                   >
                     → {{ improvementStatusLabel(to) }}
-                  </UiButton>
-                  <UiButton
-                    variant="ghost"
-                    size="sm"
-                    :disabled="!record.achievementResultId"
-                    @click="handleImprovementAiSuggestion(record)"
-                  >
-                    AI 改进
-                  </UiButton>
-                  <UiButton
-                    v-if="record.status === 'OPEN'"
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click="handleImprovementDelete(record)"
-                  >
-                    删除
-                  </UiButton>
-                </a-space>
-              </template>
+                  </span>
+                  <span class="op-link" role="button" :class="{ 'is-disabled': !(!record.achievementResultId) }" @click="!record.achievementResultId && (handleImprovementAiSuggestion(record))">AI 改进</span>
+                  <span class="op-link danger" role="button" v-if="record.status === 'OPEN'" @click="handleImprovementDelete(record)">删除</span>
+            </div></template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
       </a-tab-pane>
 
       <!-- Tab 2: 审核评估问题 -->
       <a-tab-pane key="issue" tab="审核评估问题">
-        <section class="iwb__panel">
-          <header class="iwb__panel-header">
-            <h3 class="iwb__panel-title">审核评估问题清单</h3>
-            <div class="iwb__panel-actions">
-              <a-select
-                v-model:value="issueQuery.issueSource"
-                placeholder="来源"
-                allow-clear
-                class="iwb__filter"
-                :options="issueSourceOptions"
-              />
-              <a-select
-                v-model:value="issueQuery.severity"
-                placeholder="严重度"
-                allow-clear
-                class="iwb__filter"
-                :options="severityOptions"
-              />
-              <a-select
-                v-model:value="issueQuery.status"
-                placeholder="状态"
-                allow-clear
-                class="iwb__filter"
-              >
-                <a-select-option v-for="s in issueStatusOptions" :key="s" :value="s">
-                  {{ issueStatusLabel(s) }}
-                </a-select-option>
-              </a-select>
-              <a-input
-                v-model:value="issueQuery.auditYear"
-                placeholder="年度"
-                class="iwb__filter iwb__filter--xs"
-              />
-              <a-input
-                v-model:value="issueQuery.keyword"
-                placeholder="编码/标题"
-                class="iwb__filter"
-                @press-enter="loadIssueList"
-              />
-              <UiButton variant="ghost" size="sm" @click="resetIssueQuery"> 重置 </UiButton>
-              <UiButton variant="outline" size="sm" :loading="issueLoading" @click="loadIssueList">
-                查询
-              </UiButton>
-              <UiButton variant="primary" size="sm" @click="openIssueCreate"> 登记问题 </UiButton>
-            </div>
-          </header>
-          <UiDataTable
+        <a-card :bordered="false" class="detail-table-card iwb__table-card">
+          <template #title>审核评估问题清单</template>
+
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadIssueList">
+              <a-form-item label="来源">
+                <a-select
+                  v-model:value="issueQuery.issueSource"
+                  placeholder="来源"
+                  style="width: 120px"
+                  allow-clear
+                  :options="issueSourceOptions"
+                />
+              </a-form-item>
+              <a-form-item label="严重度">
+                <a-select
+                  v-model:value="issueQuery.severity"
+                  placeholder="严重度"
+                  style="width: 120px"
+                  allow-clear
+                  :options="severityOptions"
+                />
+              </a-form-item>
+              <a-form-item label="状态">
+                <a-select
+                  v-model:value="issueQuery.status"
+                  placeholder="状态"
+                  style="width: 120px"
+                  allow-clear
+                >
+                  <a-select-option v-for="s in issueStatusOptions" :key="s" :value="s">
+                    {{ issueStatusLabel(s) }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="年度">
+                <a-input v-model:value="issueQuery.auditYear" placeholder="年度" style="width: 100px" />
+              </a-form-item>
+              <a-form-item label="关键字">
+                <a-input
+                  v-model:value="issueQuery.keyword"
+                  placeholder="编码/标题"
+                  style="width: 160px"
+                  @press-enter="loadIssueList"
+                />
+              </a-form-item>
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton size="sm" :loading="issueLoading" @click="loadIssueList">查询</UiButton>
+                  <span class="op-link" role="button" @click="resetIssueQuery">重置</span>
+                  <UiButton variant="primary" size="sm" @click="openIssueCreate">登记问题</UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
+          </div>
+
+          <UiDataTable class="student-detail-table__data-table"
             v-model:current="issueQuery.pageNum"
             v-model:page-size="issueQuery.pageSize"
             :columns="issueColumns"
@@ -1807,18 +1796,10 @@ onMounted(async () => {
                   {{ issueStatusLabel(record.status) }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space wrap>
-                  <UiButton
-                    variant="ghost"
-                    size="sm"
-                    :disabled="!canEditAuditIssue(record.status)"
-                    @click="openIssueEdit(record)"
-                  >
-                    编辑
-                  </UiButton>
+              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditAuditIssue(record.status)) }" @click="!canEditAuditIssue(record.status) && (openIssueEdit(record))">编辑</span>
                   <a-dropdown v-if="nextAuditIssueStatuses(record.status).length">
-                    <UiButton variant="outline" size="sm"> 状态 </UiButton>
+                    <span class="op-link primary" role="button" @click.prevent>状态</span>
                     <template #overlay>
                       <a-menu @click="handleIssueStatusMenuClick(record, $event)">
                         <a-menu-item v-for="s in nextAuditIssueStatuses(record.status)" :key="s">
@@ -1827,60 +1808,59 @@ onMounted(async () => {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <UiButton
-                    v-if="record.status === 'OPEN'"
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click="handleIssueDelete(record)"
-                  >
-                    删除
-                  </UiButton>
-                </a-space>
-              </template>
+                  <span class="op-link danger" role="button" v-if="record.status === 'OPEN'" @click="handleIssueDelete(record)">删除</span>
+            </div></template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
       </a-tab-pane>
 
       <!-- Tab 3: 整改任务台账 -->
       <a-tab-pane key="rectification" tab="整改任务台账">
-        <section class="iwb__panel">
-          <header class="iwb__panel-header">
-            <h3 class="iwb__panel-title">整改任务台账</h3>
-            <div class="iwb__panel-actions">
-              <a-select
-                v-model:value="rectQuery.status"
-                placeholder="状态"
-                allow-clear
-                class="iwb__filter"
-              >
-                <a-select-option v-for="s in rectStatusOptions" :key="s" :value="s">
-                  {{ rectificationStatusLabel(s) }}
-                </a-select-option>
-              </a-select>
-              <AuditIssueSelector
-                :value="rectQuery.auditIssueId || null"
-                placeholder="关联问题"
-                :width="220"
-                @change="handleRectQueryAuditIssueChange"
-              />
-              <a-input
-                v-model:value="rectQuery.keyword"
-                placeholder="编码/标题"
-                class="iwb__filter"
-                @press-enter="loadRectList"
-              />
-              <UiButton variant="ghost" size="sm" @click="resetRectQuery"> 重置 </UiButton>
-              <UiButton variant="outline" size="sm" :loading="rectLoading" @click="loadRectList">
-                查询
-              </UiButton>
-              <UiButton variant="primary" size="sm" @click="openRectCreate">
-                新建整改任务
-              </UiButton>
-            </div>
-          </header>
-          <UiDataTable
+        <a-card :bordered="false" class="detail-table-card iwb__table-card">
+          <template #title>整改任务台账</template>
+
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadRectList">
+              <a-form-item label="状态">
+                <a-select
+                  v-model:value="rectQuery.status"
+                  placeholder="状态"
+                  style="width: 120px"
+                  allow-clear
+                >
+                  <a-select-option v-for="s in rectStatusOptions" :key="s" :value="s">
+                    {{ rectificationStatusLabel(s) }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="关联问题">
+                <AuditIssueSelector
+                  :value="rectQuery.auditIssueId || null"
+                  placeholder="关联问题"
+                  :width="220"
+                  @change="handleRectQueryAuditIssueChange"
+                />
+              </a-form-item>
+              <a-form-item label="关键字">
+                <a-input
+                  v-model:value="rectQuery.keyword"
+                  placeholder="编码/标题"
+                  style="width: 160px"
+                  @press-enter="loadRectList"
+                />
+              </a-form-item>
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton size="sm" :loading="rectLoading" @click="loadRectList">查询</UiButton>
+                  <span class="op-link" role="button" @click="resetRectQuery">重置</span>
+                  <UiButton variant="primary" size="sm" @click="openRectCreate">新建整改任务</UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
+          </div>
+
+          <UiDataTable class="student-detail-table__data-table"
             v-model:current="rectQuery.pageNum"
             v-model:page-size="rectQuery.pageSize"
             :columns="rectColumns"
@@ -1907,118 +1887,103 @@ onMounted(async () => {
                   {{ rectificationStatusLabel(record.status) }}
                 </a-tag>
               </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space wrap>
-                  <UiButton
-                    variant="ghost"
-                    size="sm"
-                    :disabled="!canEditAuditRectification(record.status)"
-                    @click="openRectEdit(record)"
-                  >
-                    编辑
-                  </UiButton>
-                  <UiButton
+              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditAuditRectification(record.status)) }" @click="!canEditAuditRectification(record.status) && (openRectEdit(record))">编辑</span>
+                  <span
                     v-if="record.status === 'PLANNED'"
-                    variant="outline"
-                    size="sm"
+                    class="op-link primary"
+                    role="button"
                     @click="advanceRectProgress(record, 'IN_PROGRESS')"
                   >
                     开始
-                  </UiButton>
-                  <UiButton
+                  </span>
+                  <span
                     v-if="record.status === 'IN_PROGRESS'"
-                    variant="outline"
-                    size="sm"
+                    class="op-link primary"
+                    role="button"
                     @click="advanceRectProgress(record, 'SUBMITTED')"
                   >
                     提交复核
-                  </UiButton>
-                  <UiButton
+                  </span>
+                  <span
                     v-if="record.status === 'RETURNED'"
-                    variant="outline"
-                    size="sm"
+                    class="op-link primary"
+                    role="button"
                     @click="advanceRectProgress(record, 'IN_PROGRESS')"
                   >
                     重新整改
-                  </UiButton>
-                  <UiButton
+                  </span>
+                  <span
                     v-if="record.status === 'SUBMITTED'"
-                    variant="outline"
-                    size="sm"
+                    class="op-link primary"
+                    role="button"
                     @click="verifyRect(record, 'APPROVED')"
                   >
                     通过
-                  </UiButton>
-                  <UiButton
-                    v-if="record.status === 'SUBMITTED'"
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click="verifyRect(record, 'REJECTED')"
-                  >
-                    退回
-                  </UiButton>
-                  <UiButton
+                  </span>
+                  <span class="op-link danger" role="button" v-if="record.status === 'SUBMITTED'" @click="verifyRect(record, 'REJECTED')">退回</span>
+                  <span
                     v-if="record.status === 'VERIFIED'"
-                    variant="primary"
-                    size="sm"
+                    class="op-link primary"
+                    role="button"
                     @click="closeRect(record)"
                   >
                     闭环
-                  </UiButton>
-                  <UiButton
-                    v-if="record.status === 'PLANNED'"
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click="handleRectDelete(record)"
-                  >
-                    删除
-                  </UiButton>
-                </a-space>
-              </template>
+                  </span>
+                  <span class="op-link danger" role="button" v-if="record.status === 'PLANNED'" @click="handleRectDelete(record)">删除</span>
+            </div></template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
       </a-tab-pane>
 
       <!-- Tab 4: 督导复查 -->
       <a-tab-pane key="supervision" tab="督导复查">
-        <section class="iwb__panel">
-          <header class="iwb__panel-header">
-            <h3 class="iwb__panel-title">督导复查 / 现场检查</h3>
-            <div class="iwb__panel-actions">
-              <a-select
-                v-model:value="supQuery.supervisionType"
-                placeholder="类型"
-                allow-clear
-                class="iwb__filter"
-                :options="supervisionTypeOptions"
-              />
-              <a-select
-                v-model:value="supQuery.conclusion"
-                placeholder="结论"
-                allow-clear
-                class="iwb__filter"
-              >
-                <a-select-option v-for="c in supConclusionOptions" :key="c.value" :value="c.value">
-                  {{ c.label }}
-                </a-select-option>
-              </a-select>
-              <a-input
-                v-model:value="supQuery.keyword"
-                placeholder="编码/标题"
-                class="iwb__filter"
-                @press-enter="loadSupList"
-              />
-              <UiButton variant="ghost" size="sm" @click="resetSupQuery"> 重置 </UiButton>
-              <UiButton variant="outline" size="sm" :loading="supLoading" @click="loadSupList">
-                查询
-              </UiButton>
-              <UiButton variant="primary" size="sm" @click="openSupCreate"> 新建督导记录 </UiButton>
-            </div>
-          </header>
-          <UiDataTable
+        <a-card :bordered="false" class="detail-table-card iwb__table-card">
+          <template #title>督导复查 / 现场检查</template>
+
+          <div class="filter-card">
+            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadSupList">
+              <a-form-item label="类型">
+                <a-select
+                  v-model:value="supQuery.supervisionType"
+                  placeholder="类型"
+                  style="width: 120px"
+                  allow-clear
+                  :options="supervisionTypeOptions"
+                />
+              </a-form-item>
+              <a-form-item label="结论">
+                <a-select
+                  v-model:value="supQuery.conclusion"
+                  placeholder="结论"
+                  style="width: 120px"
+                  allow-clear
+                >
+                  <a-select-option v-for="c in supConclusionOptions" :key="c.value" :value="c.value">
+                    {{ c.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="关键字">
+                <a-input
+                  v-model:value="supQuery.keyword"
+                  placeholder="编码/标题"
+                  style="width: 160px"
+                  @press-enter="loadSupList"
+                />
+              </a-form-item>
+              <a-form-item class="filter-form__actions">
+                <a-space class="filter-form__action-group">
+                  <UiButton size="sm" :loading="supLoading" @click="loadSupList">查询</UiButton>
+                  <span class="op-link" role="button" @click="resetSupQuery">重置</span>
+                  <UiButton variant="primary" size="sm" @click="openSupCreate">新建督导记录</UiButton>
+                </a-space>
+              </a-form-item>
+            </a-form>
+          </div>
+
+          <UiDataTable class="student-detail-table__data-table"
             v-model:current="supQuery.pageNum"
             v-model:page-size="supQuery.pageSize"
             :columns="supColumns"
@@ -2052,22 +2017,13 @@ onMounted(async () => {
                 </a-tag>
                 <span v-else class="iwb__muted">未形成结论</span>
               </template>
-              <template v-else-if="column.key === 'actions'">
-                <a-space>
-                  <UiButton variant="ghost" size="sm" @click="openSupEdit(record)"> 编辑 </UiButton>
-                  <UiButton
-                    variant="ghost"
-                    status="danger"
-                    size="sm"
-                    @click="handleSupDelete(record)"
-                  >
-                    删除
-                  </UiButton>
-                </a-space>
-              </template>
+              <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openSupEdit(record)">编辑</span>
+                  <span class="op-link danger" role="button" @click="handleSupDelete(record)">删除</span>
+            </div></template>
             </template>
           </UiDataTable>
-        </section>
+        </a-card>
       </a-tab-pane>
     </a-tabs>
 
@@ -2716,33 +2672,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .iwb {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__context-meta {
     font-size: 13px;
     color: var(--dp-text-muted, #64748b);

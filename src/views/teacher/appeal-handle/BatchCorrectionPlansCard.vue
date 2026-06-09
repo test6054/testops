@@ -26,7 +26,7 @@
       compact
       @retry="reload"
     />
-    <UiDataTable
+    <UiDataTable class="student-detail-table__data-table"
       v-else
       :columns="columns"
       :data-source="rows"
@@ -59,8 +59,8 @@
           {{ formatDateTime(record.createTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <a-space size="small">
-            <a-popconfirm
+            <div class="operations-cell" @click.stop>
+<a-popconfirm
               title="确认提交审批？"
               :disabled="!canSubmit(record)"
               @confirm="handleSubmitPlan(record.id)"
@@ -88,16 +88,7 @@
                 通过
               </a-button>
             </a-popconfirm>
-            <a-button
-              type="link"
-              size="small"
-              danger
-              :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
-              :loading="isOperating(record.id, 'reject')"
-              @click="openRejectModal(record.id)"
-            >
-              驳回
-            </a-button>
+            <span class="op-link danger" role="button" @click="openRejectModal(record.id)">驳回</span>
             <a-popconfirm
               title="确认执行批量更正？执行后会写入当前成绩并刷新统计。"
               :disabled="record.approvalStatus !== 'APPROVED'"
@@ -112,8 +103,7 @@
                 执行
               </a-button>
             </a-popconfirm>
-          </a-space>
-        </template>
+            </div></template>
       </template>
     </UiDataTable>
 
@@ -254,11 +244,14 @@ import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
 
 const props = defineProps<{ examId: string, reloadToken: number }>()
+
+const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
 type OperationAction = 'submit' | 'approve' | 'reject' | 'execute' | ''
 
@@ -414,14 +407,18 @@ async function loadApprovedReviewRequests(): Promise<void> {
   if (!props.examId) return
   reviewRequestLoading.value = true
   try {
-    const page = await listReviewRequests({
-      examId: props.examId,
-      requestStatus: 'APPROVED',
-      pageNum: 1,
-      pageSize: 200,
-    })
-    validateReviewRequestDisplayContracts(page.list)
-    approvedReviewRequests.value = page.list
+    const requests = await readAllPages(
+      (pageNum) =>
+        listReviewRequests({
+          examId: props.examId,
+          requestStatus: 'APPROVED',
+          pageNum,
+          pageSize: APPROVED_REVIEW_REQUEST_PAGE_SIZE,
+        }),
+      '已通过复核申请加载失败',
+    )
+    validateReviewRequestDisplayContracts(requests)
+    approvedReviewRequests.value = requests
   } catch (e) {
     approvedReviewRequests.value = []
     showUserError(e, '已通过复核申请加载失败')

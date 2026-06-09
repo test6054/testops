@@ -13,14 +13,14 @@ import type {
   AccreditationStandardVO,
   AccreditationType,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
-import { UiButton, UiDataTable, UiSearchForm } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const list = ref<AccreditationStandardVO[]>([])
@@ -89,38 +89,6 @@ const columns: ColumnsType<AccreditationStandardVO> = [
   { title: '操作', key: 'actions', width: 180, fixed: 'right' },
 ]
 
-const filterFields: FilterField[] = [
-  {
-    key: 'accreditationType',
-    label: '认证类型',
-    type: 'select',
-    placeholder: '认证类型',
-    allowClear: true,
-    options: accreditationOptions,
-    width: 220,
-  },
-  {
-    key: 'enabled',
-    label: '状态',
-    type: 'select',
-    placeholder: '状态',
-    allowClear: true,
-    width: 130,
-    options: [
-      { value: 'enabled', label: '启用' },
-      { value: 'disabled', label: '停用' },
-    ],
-  },
-  {
-    key: 'keyword',
-    label: '关键字',
-    type: 'input',
-    placeholder: '编码/名称',
-    width: 200,
-    inputPrefixIcon: 'search',
-  },
-]
-
 const filterModel = ref<AccreditationStandardFilterModel>({
   accreditationType: undefined,
   enabled: undefined,
@@ -138,8 +106,8 @@ async function loadList() {
       ...query,
       keyword: query.keyword?.trim() || undefined,
     })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, '认证标准加载失败，请稍后重试')
+    total.value = readPageTotal(page, '认证标准加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -276,34 +244,54 @@ onMounted(() => loadPageData())
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="as__context">
-        <div class="as__context-info">
-          <h2 class="as__title">认证标准库</h2>
-        </div>
-      </div>
-    </template>
-
     <SignalBand :metrics="signals" compact class="as__signals" />
 
-    <section class="as__panel">
-      <header class="as__panel-header">
-        <h3 class="as__panel-title">认证标准台账</h3>
-        <div class="as__panel-actions">
-          <UiButton variant="primary" size="sm" @click="openCreate"> 新建认证标准 </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card as__table-card">
+      <template #title>认证标准台账</template>
 
-      <UiSearchForm
-        v-model="filterModel"
-        :fields="filterFields"
-        :show-labels="false"
-        class="as__search-form"
-        @search="handleSearch"
-        @reset="handleResetSearch"
-      />
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
+          <a-form-item label="认证类型">
+            <a-select
+              v-model:value="filterModel.accreditationType"
+              placeholder="认证类型"
+              allow-clear
+              style="width: 220px"
+              :options="accreditationOptions"
+            />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="filterModel.enabled"
+              placeholder="状态"
+              allow-clear
+              style="width: 130px"
+              :options="[
+                { value: 'enabled', label: '启用' },
+                { value: 'disabled', label: '停用' },
+              ]"
+            />
+          </a-form-item>
+          <a-form-item label="关键字">
+            <a-input
+              v-model:value="filterModel.keyword"
+              placeholder="编码/名称"
+              allow-clear
+              style="width: 200px"
+              @press-enter="handleSearch"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="handleSearch">查询</UiButton>
+              <span class="op-link" role="button" @click="handleResetSearch">重置</span>
+              <UiButton variant="primary" size="sm" @click="openCreate">新建认证标准</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -325,17 +313,13 @@ onMounted(() => loadPageData())
             </a-tag>
             <a-tag v-if="record.isPilotOnly" color="orange">试点</a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <UiButton variant="ghost" size="sm" @click="openEdit(record)"> 编辑 </UiButton>
-              <UiButton variant="ghost" status="danger" size="sm" @click="handleDelete(record)">
-                删除
-              </UiButton>
-            </a-space>
-          </template>
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
+              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <a-modal
       v-model:open="editorVisible"
@@ -394,26 +378,6 @@ onMounted(() => loadPageData())
 
 <style scoped lang="scss">
 .as {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 240px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;

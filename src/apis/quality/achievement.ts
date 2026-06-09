@@ -6,16 +6,16 @@ import type {
   EvaluationMethod,
 } from './types'
 /**
- * 达成度计算 + 结果维护 API - 对接 edu-quality
+ * 达成度计算 + 结果查询 / 审核 API - 对接 edu-quality
  *
  * 后端路径：
  * - /api/quality/achievement            确定性计算入口（6 个 compute-* 子端点）
- * - /api/quality/achievement-results    结果维护（page/detail/delete/update-audit-status）
+ * - /api/quality/achievement-results    结果查询与审核（page/detail/update-audit-status）
  *
  * 字段严格对齐 AchievementResultVO / AchievementResultQueryRequest / AchievementResultAuditRequest
  * 以及各 compute-* 入参 / 出参 VO。
  *
- * 审核责任链、明细、人工复核的完整 CRUD 分别位于：
+ * 审核责任链、明细、人工复核的相关查询 / 处理 API 分别位于：
  * - ./achievement-audit       (achievementAuditApi / achievementManualReviewApi)
  * - ./achievement-detail      (achievementDetailApi)
  */
@@ -56,6 +56,11 @@ export interface AchievementResultVO {
   scoreBatchIds: string[]
   auditStatus: AchievementAuditStatus
   auditRemark?: string
+  staleFlag?: boolean
+  staleReason?: string
+  staleAt?: string
+  staleSourceType?: string
+  staleSourceId?: string
   calculatedAt?: string
   createTime?: string
   updateTime?: string
@@ -256,11 +261,10 @@ export const achievementApi = {
       data,
     ),
 
-  // ─── 结果维护 ─────────────────────────────────────────
+  // ─── 结果查询与审核 ───────────────────────────────────
   page: (data: AchievementResultQueryRequest) =>
     http.post<PageResult<AchievementResultVO>>(`${RESULT}/page`, data),
   detail: (id: string) => http.post<AchievementResultVO>(`${RESULT}/detail`, { id }),
-  delete: (id: string) => http.post<void>(`${RESULT}/delete`, { id }),
   /** 审核状态流转：DRAFT ↔ CALCULATED ↔ SUBMITTED ↔ CONFIRMED / RETURNED / ARCHIVED */
   updateAuditStatus: (data: AchievementResultAuditRequest) =>
     http.post<void>(`${RESULT}/update-audit-status`, data),

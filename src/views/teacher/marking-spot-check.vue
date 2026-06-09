@@ -1,8 +1,8 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <div class="spot-check-page__context">
-        <div class="spot-check-page__context-left">
+      <ContextBar>
+        <template #status>
           <a-select
             :value="selectedExamId"
             class="spot-check-page__exam-select"
@@ -17,14 +17,14 @@
           <UiTag :tone="pendingItems.length > 0 ? 'orange' : 'green'" size="sm">
             待处理 {{ pendingItems.length }}
           </UiTag>
-        </div>
-        <div class="spot-check-page__context-right">
+        </template>
+        <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-        </div>
-      </div>
+        </template>
+      </ContextBar>
     </template>
 
     <UiCard class="info-card">
@@ -49,7 +49,7 @@
         description="当前没有待处理的抽检任务"
       />
 
-      <UiDataTable
+      <UiDataTable class="student-detail-table__data-table"
         v-else
         :columns="columns"
         :data-source="pendingItems"
@@ -94,7 +94,9 @@
             {{ formatDateTime(pendingItems[index].createTime) }}
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" @click="openHandleModal(pendingItems[index])"> 处理结论 </UiButton>
+            <div class="operations-cell" @click.stop>
+              <span class="op-link primary" role="button" @click="openHandleModal(pendingItems[index])">处理结论</span>
+            </div>
           </template>
         </template>
       </UiDataTable>
@@ -202,7 +204,7 @@ import {
   UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -320,28 +322,6 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .spot-check-page {
-  &__context {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__context-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  &__context-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
   &__exam-select {
     width: 280px;
   }

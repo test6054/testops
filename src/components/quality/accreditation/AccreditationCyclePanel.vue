@@ -96,6 +96,12 @@ const conclusionForm = reactive<
 
 const activeCycle = computed(() => props.cockpit?.activeCycle)
 
+const conclusionReadinessItems = computed(() => props.cockpit?.conclusionReadinessItems || [])
+
+const blockedConclusionItems = computed(() =>
+  conclusionReadinessItems.value.filter(item => !item.ready),
+)
+
 const deadlineHints = computed(() => {
   const c = props.cockpit
   if (!c) return []
@@ -227,6 +233,10 @@ async function submitReview() {
 }
 
 function openConclusion(row: AccreditationCycleVO) {
+  if (blockedConclusionItems.value.length) {
+    message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
+    return
+  }
   activeRow.value = row
   conclusionForm.conclusionType = 'FULL_6Y'
   conclusionForm.validFrom = ''
@@ -238,7 +248,8 @@ function openConclusion(row: AccreditationCycleVO) {
 
 async function submitConclusion() {
   if (!activeRow.value) return
-  if (!conclusionForm.validFrom) {
+  const requiresValidity = conclusionForm.conclusionType !== 'NOT_PASS'
+  if (requiresValidity && !conclusionForm.validFrom) {
     message.error('请填写有效期起')
     return
   }
@@ -251,9 +262,12 @@ async function submitConclusion() {
       accreditationApi.registerConclusion({
         accreditationCycleId: activeRow.value!.id,
         conclusionType: conclusionForm.conclusionType,
-        validFrom: conclusionForm.validFrom,
-        validUntil: conclusionForm.validUntil || undefined,
-        conditionalDueDate: conclusionForm.conditionalDueDate || undefined,
+        validFrom: requiresValidity ? conclusionForm.validFrom : undefined,
+        validUntil: requiresValidity ? conclusionForm.validUntil || undefined : undefined,
+        conditionalDueDate:
+          conclusionForm.conclusionType === 'CONDITIONAL_6Y'
+            ? conclusionForm.conditionalDueDate || undefined
+            : undefined,
         conclusionRemark: conclusionForm.conclusionRemark || undefined,
       }),
     '确认登记认证结论？登记后周期进入保持改进阶段。',
@@ -276,7 +290,7 @@ function buildMenuItems(row: AccreditationCycleVO): AccreditationCycleMenuItem[]
   if (canReview(row)) {
     items.push({ key: 'review', label: '自评审阅决议' })
   }
-  if (canConclusion(row) && !row.conclusionRegisteredAt) {
+  if (canConclusion(row)) {
     items.push({ key: 'conclusion', label: '登记认证结论' })
   }
   if (canDeleteCycle(row)) {
@@ -336,6 +350,13 @@ defineExpose({ openCreate, loadCycles })
       <div>
         <strong>{{ activeCycle.cycleName }}</strong>
         <UiTag class="ml-8">{{ phaseLabel(activeCycle.currentPhase) }}</UiTag>
+        <UiTag
+          class="ml-8"
+          :tone="props.cockpit?.conclusionRegistrationReady ? 'green' : 'orange'"
+          size="sm"
+        >
+          {{ props.cockpit?.conclusionRegistrationReady ? '结论登记已就绪' : '结论登记未就绪' }}
+        </UiTag>
         <span v-for="hint in deadlineHints" :key="hint" class="meta">{{ hint }}</span>
       </div>
       <div class="banner-actions">
@@ -343,6 +364,30 @@ defineExpose({ openCreate, loadCycles })
           AI 生成自评报告
         </UiButton>
         <UiButton size="sm" @click="openDetail(activeCycle)">周期详情</UiButton>
+      </div>
+    </div>
+    <div v-if="conclusionReadinessItems.length" class="readiness-panel">
+      <div class="readiness-header">
+        <strong>结论登记前置条件</strong>
+        <span class="muted">
+          {{ blockedConclusionItems.length ? `阻断 ${blockedConclusionItems.length} 项` : '全部就绪' }}
+        </span>
+      </div>
+      <div class="readiness-grid">
+        <div
+          v-for="item in conclusionReadinessItems"
+          :key="item.itemKey"
+          class="readiness-item"
+          :class="{ 'is-blocked': !item.ready }"
+        >
+          <UiTag :tone="item.ready ? 'green' : 'orange'" size="sm">
+            {{ item.ready ? '已就绪' : '未就绪' }}
+          </UiTag>
+          <div>
+            <strong>{{ item.itemName }}</strong>
+            <p>{{ item.message }}</p>
+          </div>
+        </div>
       </div>
     </div>
     <UiDataTable
@@ -393,7 +438,7 @@ defineExpose({ openCreate, loadCycles })
           </a-dropdown>
         </template>
       </template>
-      <template #emptyText>
+      <template #empty>
         <UiEmpty description="暂无认证周期" />
       </template>
     </UiDataTable>
@@ -401,6 +446,8 @@ defineExpose({ openCreate, loadCycles })
       v-model:open="drawerOpen"
       :title="form.id ? '编辑认证周期' : '新建认证周期'"
       width="480"
+      :hide-footer="false"
+      ok-text="保存"
       @ok="submitCycle"
     >
       <a-form layout="vertical">
@@ -469,7 +516,14 @@ defineExpose({ openCreate, loadCycles })
         <dd>{{ detailRecord.conditionalDueDate || '—' }}</dd>
       </dl>
     </UiDrawer>
-    <UiDrawer v-model:open="reviewOpen" title="自评审阅决议" width="480" @ok="submitReview">
+    <UiDrawer
+      v-model:open="reviewOpen"
+      title="自评审阅决议"
+      width="480"
+      :hide-footer="false"
+      ok-text="提交决议"
+      @ok="submitReview"
+    >
       <a-form layout="vertical">
         <a-form-item label="决议" required>
           <a-select v-model:value="reviewForm.reviewDecision">
@@ -494,7 +548,14 @@ defineExpose({ openCreate, loadCycles })
         </a-form-item>
       </a-form>
     </UiDrawer>
-    <UiDrawer v-model:open="conclusionOpen" title="认证结论登记" width="480" @ok="submitConclusion">
+    <UiDrawer
+      v-model:open="conclusionOpen"
+      title="认证结论登记"
+      width="480"
+      :hide-footer="false"
+      ok-text="登记结论"
+      @ok="submitConclusion"
+    >
       <a-form layout="vertical">
         <a-form-item label="结论类型" required>
           <a-select v-model:value="conclusionForm.conclusionType">
@@ -503,14 +564,18 @@ defineExpose({ openCreate, loadCycles })
             <a-select-option value="NOT_PASS">不通过</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="有效期起" required>
+        <a-form-item
+          v-if="conclusionForm.conclusionType !== 'NOT_PASS'"
+          label="有效期起"
+          required
+        >
           <a-date-picker
             v-model:value="conclusionForm.validFrom"
             value-format="YYYY-MM-DD"
             class="w-full"
           />
         </a-form-item>
-        <a-form-item label="有效期止">
+        <a-form-item v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期止">
           <a-date-picker
             v-model:value="conclusionForm.validUntil"
             value-format="YYYY-MM-DD"
@@ -551,6 +616,42 @@ defineExpose({ openCreate, loadCycles })
   background: var(--dp-surface, #fff);
   border: 1px solid var(--dp-border, #e5e7eb);
   border-radius: 4px;
+}
+.readiness-panel {
+  padding: 14px 16px;
+  background: #fffaf0;
+  border: 1px solid #f6d58b;
+  border-radius: 4px;
+}
+.readiness-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+.readiness-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(52, 95, 74, 0.16);
+  border-radius: 4px;
+}
+.readiness-item.is-blocked {
+  border-color: rgba(180, 83, 9, 0.32);
+  background: #fff7ed;
+}
+.readiness-item p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.5;
 }
 .banner-actions {
   display: flex;

@@ -9,7 +9,7 @@ import type { QualityCourseVO } from '@/apis/quality'
 import { onMounted, ref, watch } from 'vue'
 import { qualityCourseApi } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -56,16 +56,19 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await qualityCourseApi.page({
-      pageNum: 1,
-      pageSize: 200,
-      trainingPlanId: props.trainingPlanId || undefined,
-      programId: props.programId || undefined,
-      schoolYear: props.schoolYear || undefined,
-      semester: props.semester || undefined,
-      enabled: props.onlyEnabled ? true : undefined,
-    })
-    options.value = requirePageList(res, '质量评价课程')
+    options.value = await requireAllPages(
+      (pageNum) =>
+        qualityCourseApi.page({
+          pageNum,
+          pageSize: 100,
+          trainingPlanId: props.trainingPlanId || undefined,
+          programId: props.programId || undefined,
+          schoolYear: props.schoolYear || undefined,
+          semester: props.semester || undefined,
+          enabled: props.onlyEnabled ? true : undefined,
+        }),
+      '质量评价课程',
+    )
   } catch (e) {
     showUserError(e, '质量评价课程列表加载失败')
   } finally {

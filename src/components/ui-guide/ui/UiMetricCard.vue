@@ -100,11 +100,9 @@ const handleClick = (evt: MouseEvent) => {
   min-width: 0;
   padding: 16px 18px;
   border: 1px solid var(--metric-border);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.92) 100%);
-  box-shadow:
-    0 10px 24px rgba(15, 23, 42, 0.04),
-    0 1px 2px rgba(15, 23, 42, 0.04);
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary);
+  box-shadow: none;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,

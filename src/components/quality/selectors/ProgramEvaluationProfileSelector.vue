@@ -19,7 +19,7 @@ import {
 } from '@/apis/quality'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import { requirePageList } from './page-contract'
+import { requireAllPages } from './page-contract'
 
 interface Props {
   value?: string | null
@@ -65,12 +65,15 @@ watch(
 async function loadOptions() {
   loading.value = true
   try {
-    const res = await programEvaluationProfileApi.page({
-      pageNum: 1,
-      pageSize: 200,
-      enabled: props.onlyEnabled ? true : undefined,
-    })
-    const all = requirePageList(res, '专业评价口径')
+    const all = await requireAllPages(
+      (pageNum) =>
+        programEvaluationProfileApi.page({
+          pageNum,
+          pageSize: 100,
+          enabled: props.onlyEnabled ? true : undefined,
+        }),
+      '专业评价口径',
+    )
     options.value = props.programId ? all.filter((p) => p.programId === props.programId) : all
   } catch (e) {
     showUserError(e, '评价口径列表加载失败')

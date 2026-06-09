@@ -160,10 +160,10 @@ async function removePlan(id: string) {
   }
 }
 
-async function markCompleted(courseRowId: string) {
+async function updateCourseStatus(courseRowId: string, evaluationCompleted: boolean) {
   try {
-    await accreditationApi.markCourseCompleted(courseRowId)
-    message.success('已登记课程评价完成')
+    await accreditationApi.updateAnnualPlanCourseStatus({ id: courseRowId, evaluationCompleted })
+    message.success(evaluationCompleted ? '已登记课程评价完成' : '已撤销课程评价完成')
     if (selectedPlan.value) await selectPlan(selectedPlan.value.id)
     await loadPlans()
     emit('refresh')
@@ -208,7 +208,7 @@ defineExpose({ openCreate, loadPlans })
           </UiButton>
         </template>
       </template>
-      <template #emptyText>
+      <template #empty>
         <UiEmpty description="暂无年度评价计划" />
       </template>
     </UiDataTable>
@@ -243,16 +243,30 @@ defineExpose({ openCreate, loadPlans })
               v-if="record.evaluationRequired && !record.evaluationCompleted"
               size="sm"
               variant="primary"
-              @click="markCompleted(record.id)"
+              @click="updateCourseStatus(record.id, true)"
             >
               登记完成
             </UiButton>
-            <span v-else-if="record.evaluationCompleted" class="done">已完成</span>
+            <UiButton
+              v-else-if="record.evaluationCompleted"
+              size="sm"
+              variant="outline"
+              @click="updateCourseStatus(record.id, false)"
+            >
+              撤销完成
+            </UiButton>
           </template>
         </template>
       </UiDataTable>
     </div>
-    <UiDrawer v-model:open="drawerOpen" :title="drawerTitle" width="480" @ok="submitPlan">
+    <UiDrawer
+      v-model:open="drawerOpen"
+      :title="drawerTitle"
+      width="480"
+      :hide-footer="false"
+      ok-text="保存"
+      @ok="submitPlan"
+    >
       <a-form layout="vertical">
         <a-form-item label="计划年度" required>
           <a-input v-model:value="form.planYear" />
@@ -327,9 +341,5 @@ defineExpose({ openCreate, loadPlans })
 }
 .w-full {
   width: 100%;
-}
-.done {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
 }
 </style>

@@ -70,6 +70,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const aiTaskStore = useAiTaskStore()
@@ -279,8 +280,8 @@ async function loadList() {
       achievementResultId: query.achievementResultId?.trim() || undefined,
       reportId: query.reportId?.trim() || undefined,
     })
-    list.value = page.list
-    total.value = Number(page.total)
+    list.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
+    total.value = readPageTotal(page, 'AI 任务加载失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -681,7 +682,7 @@ async function openAuditDrawer(record: AiTaskVO) {
       category: 'QUALITY',
       description: record.id,
     })
-    auditEvents.value = page.list.map((log) => {
+    auditEvents.value = readPageList(page, 'AI 任务审计记录加载失败，请稍后重试').map((log) => {
       return {
         id: log.id,
         operatorName: log.userDto.nickName,
@@ -802,20 +803,6 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <template #context>
-      <div class="ai-task__context">
-        <div class="ai-task__context-info">
-          <h2 class="ai-task__title">质量评价 - AI 任务与结果审计</h2>
-        </div>
-        <div class="ai-task__context-actions">
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            刷新
-          </UiButton>
-          <UiButton variant="primary" size="sm" @click="openSubmit"> 提交任务 </UiButton>
-        </div>
-      </div>
-    </template>
-
     <StageRail :stages="stages" compact class="ai-task__stages" />
     <SignalBand :metrics="signals" compact class="ai-task__signals" />
 
@@ -827,112 +814,135 @@ onMounted(async () => {
       @action="handleTaskResultAction"
     />
 
-    <section class="ai-task__panel">
-      <header class="ai-task__panel-header">
-        <h3 class="ai-task__panel-title">任务列表</h3>
-        <div class="ai-task__panel-actions">
-          <a-select
-            v-model:value="query.taskType"
-            placeholder="能力"
-            class="ai-task__filter ai-task__filter--md"
-            allow-clear
-            :options="taskTypeOptions"
-          />
-          <a-select
-            v-model:value="query.status"
-            placeholder="状态"
-            class="ai-task__filter"
-            allow-clear
-            :options="statusOptions"
-          />
-          <a-select
-            :value="query.businessType || undefined"
-            placeholder="业务类型"
-            class="ai-task__filter"
-            allow-clear
-            :options="businessTypeOptions"
-            @change="handleQueryBusinessTypeChange"
-          />
-          <AchievementResultSelector
-            v-if="query.businessType === 'ACHIEVEMENT_RESULT'"
-            :value="query.businessId || null"
-            placeholder="业务对象"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryBusinessObjectChange"
-          />
-          <CourseSelector
-            v-else-if="query.businessType === 'QUALITY_COURSE'"
-            :value="query.businessId || null"
-            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-            placeholder="业务对象"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryBusinessObjectChange"
-          />
-          <TrainingPlanSelector
-            v-else-if="query.businessType === 'TRAINING_PLAN'"
-            :value="query.businessId || null"
-            placeholder="业务对象"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryBusinessObjectChange"
-          />
-          <ReportSelector
-            v-else-if="query.businessType === 'REPORT'"
-            :value="query.businessId || null"
-            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-            placeholder="业务对象"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryBusinessObjectChange"
-          />
-          <IndirectFormSelector
-            v-else-if="query.businessType === 'INDIRECT_FORM'"
-            :value="query.businessId || null"
-            placeholder="业务对象"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryBusinessObjectChange"
-          />
-          <TeacherSelector
-            :value="query.operatorUserId || null"
-            placeholder="操作人"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryOperatorChange"
-          />
-          <TrainingPlanSelector
-            :value="query.trainingPlanId || null"
-            :placeholder="qualityStore.currentTrainingPlanId ? '当前培养方案' : '培养方案'"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryTrainingPlanChange"
-          />
-          <CourseSelector
-            :value="query.qualityCourseId || null"
-            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-            placeholder="关联课程"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryQualityCourseChange"
-          />
-          <AchievementResultSelector
-            :value="query.achievementResultId || null"
-            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-            :quality-course-id="query.qualityCourseId || null"
-            placeholder="达成结果"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryAchievementResultChange"
-          />
-          <ReportSelector
-            :value="query.reportId || null"
-            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-            :quality-course-id="query.qualityCourseId || null"
-            placeholder="质量报告"
-            class="ai-task__filter ai-task__filter--md"
-            @change="handleQueryReportChange"
-          />
-          <UiButton variant="ghost" size="sm" @click="resetQuery"> 重置 </UiButton>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            查询
-          </UiButton>
-        </div>
-      </header>
+    <a-card :bordered="false" class="detail-table-card ai-task__table-card">
+      <template #title>任务列表</template>
 
-      <UiDataTable
+      <div class="filter-card">
+        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
+          <a-form-item label="能力">
+            <a-select
+              v-model:value="query.taskType"
+              placeholder="能力"
+              class="ai-task__filter ai-task__filter--md"
+              allow-clear
+              :options="taskTypeOptions"
+            />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="query.status"
+              placeholder="状态"
+              class="ai-task__filter"
+              allow-clear
+              :options="statusOptions"
+            />
+          </a-form-item>
+          <a-form-item label="业务类型">
+            <a-select
+              :value="query.businessType || undefined"
+              placeholder="业务类型"
+              class="ai-task__filter"
+              allow-clear
+              :options="businessTypeOptions"
+              @change="handleQueryBusinessTypeChange"
+            />
+          </a-form-item>
+          <a-form-item v-if="query.businessType" label="业务对象">
+            <AchievementResultSelector
+              v-if="query.businessType === 'ACHIEVEMENT_RESULT'"
+              :value="query.businessId || null"
+              placeholder="业务对象"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryBusinessObjectChange"
+            />
+            <CourseSelector
+              v-else-if="query.businessType === 'QUALITY_COURSE'"
+              :value="query.businessId || null"
+              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+              placeholder="业务对象"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryBusinessObjectChange"
+            />
+            <TrainingPlanSelector
+              v-else-if="query.businessType === 'TRAINING_PLAN'"
+              :value="query.businessId || null"
+              placeholder="业务对象"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryBusinessObjectChange"
+            />
+            <ReportSelector
+              v-else-if="query.businessType === 'REPORT'"
+              :value="query.businessId || null"
+              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+              placeholder="业务对象"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryBusinessObjectChange"
+            />
+            <IndirectFormSelector
+              v-else-if="query.businessType === 'INDIRECT_FORM'"
+              :value="query.businessId || null"
+              placeholder="业务对象"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryBusinessObjectChange"
+            />
+          </a-form-item>
+          <a-form-item label="操作人">
+            <TeacherSelector
+              :value="query.operatorUserId || null"
+              placeholder="操作人"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryOperatorChange"
+            />
+          </a-form-item>
+          <a-form-item label="培养方案">
+            <TrainingPlanSelector
+              :value="query.trainingPlanId || null"
+              :placeholder="qualityStore.currentTrainingPlanId ? '当前培养方案' : '培养方案'"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryTrainingPlanChange"
+            />
+          </a-form-item>
+          <a-form-item label="关联课程">
+            <CourseSelector
+              :value="query.qualityCourseId || null"
+              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+              placeholder="关联课程"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryQualityCourseChange"
+            />
+          </a-form-item>
+          <a-form-item label="达成结果">
+            <AchievementResultSelector
+              :value="query.achievementResultId || null"
+              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+              :quality-course-id="query.qualityCourseId || null"
+              placeholder="达成结果"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryAchievementResultChange"
+            />
+          </a-form-item>
+          <a-form-item label="质量报告">
+            <ReportSelector
+              :value="query.reportId || null"
+              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+              :quality-course-id="query.qualityCourseId || null"
+              placeholder="质量报告"
+              class="ai-task__filter ai-task__filter--md"
+              @change="handleQueryReportChange"
+            />
+          </a-form-item>
+          <a-form-item class="filter-form__actions">
+            <a-space class="filter-form__action-group">
+              <UiButton size="sm" @click="loadList">查询</UiButton>
+              <span class="op-link" role="button" @click="resetQuery">重置</span>
+              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
+              <UiButton size="sm" @click="openSubmit">提交任务</UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </div>
+
+      <UiDataTable class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -986,35 +996,25 @@ onMounted(async () => {
           <template v-else-if="column.key === 'startedAt'">
             {{ record.startedAt || '未开始' }}
           </template>
-          <template v-else-if="column.key === 'actions'">
-            <a-space wrap>
-              <UiButton variant="ghost" size="sm" @click="openDetail(record)"> 详情 </UiButton>
-              <UiButton
+          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
+<span class="op-link" role="button" @click="openDetail(record)">详情</span>
+              <span
                 v-if="record.status === 'PENDING'"
-                variant="outline"
-                size="sm"
+                class="op-link primary"
+                role="button"
                 @click="runNow(record)"
               >
                 立即执行
-              </UiButton>
-              <UiButton
-                v-if="record.status === 'PENDING' || record.status === 'PROCESSING'"
-                variant="ghost"
-                status="danger"
-                size="sm"
-                @click="cancelTask(record)"
-              >
-                取消
-              </UiButton>
-              <UiButton variant="outline" size="sm" @click="openManualHandle(record)">
+              </span>
+              <span class="op-link danger" role="button" v-if="record.status === 'PENDING' || record.status === 'PROCESSING'" @click="cancelTask(record)">取消</span>
+              <span class="op-link primary" role="button" @click="openManualHandle(record)">
                 人工处置
-              </UiButton>
-              <UiButton variant="ghost" size="sm" @click="openAuditDrawer(record)"> 审计 </UiButton>
-            </a-space>
-          </template>
+              </span>
+              <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
+            </div></template>
         </template>
       </UiDataTable>
-    </section>
+    </a-card>
 
     <UiDrawer
       v-model:open="submitVisible"
@@ -1266,14 +1266,7 @@ onMounted(async () => {
         <a-descriptions-item label="脱敏映射">
           <a-space>
             <span>{{ detailRecord.maskMappingId ? '已生成脱敏映射' : '未生成脱敏映射' }}</span>
-            <UiButton
-              v-if="detailRecord.maskMappingId"
-              variant="ghost"
-              size="sm"
-              @click="gotoMaskAudit(detailRecord.id)"
-            >
-              查看脱敏审计
-            </UiButton>
+            <span class="op-link" role="button" v-if="detailRecord.maskMappingId" @click="gotoMaskAudit(detailRecord.id)">查看脱敏审计</span>
           </a-space>
         </a-descriptions-item>
         <a-descriptions-item label="AI 结果">
@@ -1423,33 +1416,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .ai-task {
-  &__context {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__context-info {
-    flex: 1;
-    min-width: 320px;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__context-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   &__stages {
     margin-bottom: 16px;
   }
