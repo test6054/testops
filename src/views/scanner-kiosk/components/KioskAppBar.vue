@@ -5,12 +5,11 @@
  * 内容：
  *   左   · Brand mark + 名称（始终）
  *   中   · 当前考试 pill（点击跳到 setup stage）
- *   右   · SSE LED + 刷新 / 检测信息导出 / 设备设置
+ *   右   · SSE LED + 刷新 / 设备设置
  *
  * 自取 ctx，不接受 prop。父级通过 provide(KIOSK_CTX_KEY) 注入。
  */
 import {
-  CloudDownloadOutlined,
   QuestionCircleOutlined,
   ReloadOutlined,
   SettingOutlined,
@@ -46,10 +45,6 @@ function handleExamPillClick() {
 function handleRefresh() {
   if (workflow.loading.value) return
   workflow.refreshAll()
-}
-
-function handleDiagnosticsExport() {
-  workflow.triggerDiagnosticsExport()
 }
 
 function handleOpenSettings() {
@@ -89,14 +84,6 @@ function handleOpenHints() {
         @click="handleRefresh"
       >
         <ReloadOutlined />
-      </button>
-      <button
-        type="button"
-        class="icon-button"
-        title="导出检测信息"
-        @click="handleDiagnosticsExport"
-      >
-        <CloudDownloadOutlined />
       </button>
       <button type="button" class="icon-button" title="键盘快捷键 [?]" @click="handleOpenHints">
         <QuestionCircleOutlined />

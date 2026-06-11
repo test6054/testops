@@ -11,9 +11,37 @@
  * 自取 ctx，无 prop。响应式：≤1280 → 300px；≤1024 → 整列隐藏（在 KioskLayout 处理）。
  */
 import { computed } from 'vue'
+import KioskBoundStudentsPanel from './KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, stage, ui } = useKioskCtx()
+
+const showBoundStudents = computed(
+  () => stage.currentStage.value !== 'setup',
+)
+
+/** 侧栏/主区展示用的批次 ID：活跃任务优先，复核/封存回退 latestBatch */
+const boundBatchIdForDisplay = computed(() => {
+  if (workflow.boundPaperScanBatchId.value) {
+    return workflow.boundPaperScanBatchId.value
+  }
+  if (!showBoundStudents.value) return ''
+  const stageId = stage.currentStage.value
+  if (stageId === 'review' || stageId === 'finalize') {
+    return workflow.kioskContext.value?.latestBatch?.scanBatchId || ''
+  }
+  return ''
+})
+
+const boundBatchKpiCount = computed(() => {
+  const batch = workflow.kioskContext.value?.latestBatch
+  const batchId = boundBatchIdForDisplay.value
+  if (batch && batchId && batch.scanBatchId === batchId && batch.boundStudentCount != null) {
+    return batch.boundStudentCount
+  }
+  if (batchId) return workflow.boundPaperSummary.value.studentCount
+  return '—'
+})
 
 const policy = computed(() => workflow.kioskContext.value?.policy)
 const device = computed(() => workflow.kioskContext.value?.device)
@@ -110,8 +138,8 @@ function handleOpenSettings() {
       </dl>
     </article>
 
-    <!-- 当前考试 KPI -->
-    <article class="rail-card">
+    <!-- 当前考试 KPI（扫描链路阶段才展示批次进度） -->
+    <article v-if="showBoundStudents" class="rail-card">
       <header class="rail-card-head">
         <h4>当前考试概览</h4>
       </header>
@@ -123,7 +151,7 @@ function handleOpenSettings() {
           <span>试卷份数</span><strong>{{ workflow.kioskMetrics.value.paperInstances }}</strong>
         </li>
         <li>
-          <span>已绑定</span><strong>{{ workflow.kioskMetrics.value.boundPaperInstances }}</strong>
+          <span>已绑定</span><strong>{{ boundBatchKpiCount }}</strong>
         </li>
         <li>
           <span>异常</span><strong>{{ workflow.kioskMetrics.value.attentionCount }}</strong>
@@ -131,31 +159,9 @@ function handleOpenSettings() {
       </ul>
     </article>
 
-    <!-- 已绑定学生 -->
-    <article class="rail-card rail-card--bound">
-      <header class="rail-card-head">
-        <h4>已绑定学生</h4>
-        <button
-          type="button"
-          class="rail-link rail-link--inline"
-          :disabled="workflow.boundPapersLoading.value"
-          @click="workflow.refreshBoundPapers()"
-        >
-          刷新
-        </button>
-      </header>
-      <p v-if="workflow.boundPapersError.value" class="rail-bound-error">
-        {{ workflow.boundPapersError.value.message }}
-      </p>
-      <p v-else-if="workflow.boundPapersLoading.value" class="rail-empty">加载中…</p>
-      <p v-else-if="workflow.boundPapers.value.length === 0" class="rail-empty">暂无已绑定学生</p>
-      <ul v-else class="rail-bound-list">
-        <li v-for="item in workflow.boundPapers.value" :key="item.paperInstanceId">
-          <strong>{{ item.studentName }}（{{ item.studentNo }}）</strong>
-          <span v-if="item.className">{{ item.className }}</span>
-          <small>{{ item.registeredPageCount }} 页 · {{ item.scanBatchDisplayName }}</small>
-        </li>
-      </ul>
+    <!-- 本批次已绑定学生 -->
+    <article v-if="showBoundStudents" class="rail-card rail-card--bound">
+      <KioskBoundStudentsPanel variant="rail" :scan-batch-id="boundBatchIdForDisplay" />
     </article>
 
     <!-- 最近批次 -->
@@ -323,58 +329,10 @@ function handleOpenSettings() {
   margin-bottom: var(--kiosk-space-2);
 }
 
-.rail-bound-error {
-  margin: 0;
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-danger);
-}
-
-.rail-bound-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--kiosk-space-2);
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.rail-bound-list li {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-bottom: var(--kiosk-space-2);
-  border-bottom: 1px solid var(--kiosk-divider);
-}
-
-.rail-bound-list li:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.rail-bound-list strong {
-  font-size: var(--kiosk-fz-label);
-  font-weight: var(--kiosk-fw-semibold);
-  color: var(--kiosk-ink-primary);
-}
-
-.rail-bound-list span,
-.rail-bound-list small {
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-ink-tertiary);
-}
-
-.rail-link--inline {
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: var(--kiosk-fz-caption);
-  cursor: pointer;
-  color: var(--kiosk-accent);
-}
-
 .rail-card--bound {
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 </style>

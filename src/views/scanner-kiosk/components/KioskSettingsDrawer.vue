@@ -3,32 +3,26 @@
  * KioskSettingsDrawer - 设备设置抽屉（右侧 480px）
  *
  * 内容分组：
- *   1. 扫描组件状态与设备信息（只读）
- *   2. 重新激活（gateway / activationCode / endpointName + activate 按钮）
- *   3. 扫描仪选择（可用列表 + 当前选中 + 刷新）
- *   4. 维护操作（检测信息导出 + 解绑一体机）
- *
- * 由 KioskAppBar / KioskSideRail 触发 ui.openSettings() 打开；
- * 关闭通过 v-model:open 双向绑定 ui.settingsDrawerOpen。
+ *   1. 扫描设备（组件状态 + 设备信息 + 扫描仪与配置）
+ *   2. 实时连接
+ *   3. 维护操作（重新激活入口）
  */
 import {
   ApiOutlined,
   ArrowUpOutlined,
   CheckCircleFilled,
   CloseCircleFilled,
-  CloudDownloadOutlined,
-  DisconnectOutlined,
   ReloadOutlined,
   ScanOutlined,
   ThunderboltFilled,
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
+import { getKioskBindingProfile } from '@/utils/kiosk-auth'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, ui } = useKioskCtx()
 
-// 抽屉打开时自动启动扫描仪枚举轮询，关闭时停止
 watch(
   () => ui.settingsDrawerOpen.value,
   (isOpen) => {
@@ -49,6 +43,8 @@ const open = computed({
 
 const health = computed(() => workflow.health.value)
 const device = computed(() => workflow.kioskContext.value?.device)
+const selectedScanner = computed(() => workflow.selectedScanner.value)
+const bindingProfile = computed(() => getKioskBindingProfile())
 
 const agentStatusTone = computed(() => {
   const h = health.value
@@ -66,8 +62,19 @@ const agentStatusText = computed(() => {
 
 const deviceOnlineText = computed(() => {
   const d = device.value
-  if (!d) return '未定位设备'
+  if (!d) return health.value?.bound ? '已绑定' : '未绑定'
   return workflow.endpointOnlineStatusLabel(d.onlineStatus)
+})
+
+const scannerConfigRows = computed(() => {
+  const scanner = selectedScanner.value
+  if (!scanner) return []
+  return [
+    { label: '驱动类型', value: scanner.driverType || '—' },
+    { label: '最大 DPI', value: scanner.maxDpi ? String(scanner.maxDpi) : '—' },
+    { label: '进纸器 ADF', value: scanner.supportsAdf ? '支持' : '不支持' },
+    { label: '双面扫描', value: scanner.supportsDuplex ? '支持' : '不支持' },
+  ]
 })
 
 function handleRefreshScanners() {
@@ -77,28 +84,19 @@ function handleSelectScanner(localScannerId: string) {
   if (workflow.selectedScannerId.value === localScannerId) return
   workflow.selectedScannerId.value = localScannerId
 }
-function handleActivate() {
-  if (!workflow.canActivateAgent.value || workflow.loading.value) return
-  workflow.activateAgent()
-}
-function handleUnbind() {
-  workflow.unbindAgent()
-}
-function handleDiagnosticsExport() {
-  workflow.triggerDiagnosticsExport()
+function handleReactivate() {
+  workflow.openActivationModal()
 }
 function handleClose() {
   ui.closeSettings()
 }
 
-// SSE 实时流派生（注意：账本细节只在主区显示，本抽屉不重复展示账本数据，避免双源真值）
 const sseStatusTone = computed(() => (workflow.sseStreaming.value ? 'success' : 'muted'))
 const sseStatusText = computed(() =>
   workflow.sseStreaming.value ? '已连接（实时推送）' : '未连接',
 )
 const liveEventCount = computed(() => workflow.liveEvents.value.length)
 
-// 升级 / 维护提示派生
 const upgradeRequired = computed(() => Boolean(health.value?.upgradeRequired))
 const tokenResetRequired = computed(() => Boolean(health.value?.tokenResetRequired))
 const kioskBrowserSessionLost = computed(() => workflow.kioskBrowserSessionLost.value)
@@ -123,11 +121,10 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
     :destroy-on-close="false"
   >
     <div class="settings-drawer">
-      <!-- Drawer 自绘标题栏（接管 ant 默认样式） -->
       <header class="drawer-head">
         <div>
           <h2>设备设置</h2>
-          <small>一体机激活 / 扫描仪 / 维护</small>
+          <small>扫描设备 / 实时连接 / 维护</small>
         </div>
         <button type="button" class="drawer-close" title="关闭 [Esc]" @click="handleClose">
           ×
@@ -135,7 +132,6 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
       </header>
 
       <div class="drawer-body">
-        <!-- 升级 / 维护提示（仅当 upgradeRequired 或 tokenResetRequired 时显示） -->
         <section v-if="showMaintenanceSection" class="section section--alert">
           <header class="section-head">
             <h3>
@@ -151,12 +147,14 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 
           <div v-if="kioskBrowserSessionLost" class="alert-block">
             <p>浏览器未保存一体机鉴权凭证</p>
-            <small>页面刷新后需重新激活。请使用下方激活码完成激活，实时推送与批次操作才会恢复。</small>
+            <small>请通过激活弹窗重新激活，实时推送与批次操作才会恢复。</small>
+            <button type="button" class="ghost-btn" @click="handleReactivate">打开激活窗口</button>
           </div>
 
           <div v-if="tokenResetRequired" class="alert-block">
             <p>系统要求重新激活一体机</p>
-            <small>请使用下方激活码重新激活，本机当前任务在激活后会被中断。</small>
+            <small>请通过激活弹窗重新激活，本机当前任务在激活后会被中断。</small>
+            <button type="button" class="ghost-btn" @click="handleReactivate">打开激活窗口</button>
           </div>
 
           <div v-if="upgradeRequired" class="alert-block">
@@ -187,10 +185,13 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
           </div>
         </section>
 
-        <!-- Section 1: 扫描组件状态 -->
+        <!-- 扫描设备：组件状态 + 绑定信息 + 扫描仪 -->
         <section class="section">
           <header class="section-head">
-            <h3>扫描组件状态</h3>
+            <h3>
+              <ScanOutlined />
+              扫描设备
+            </h3>
             <span class="status-pill" :class="`tone-${agentStatusTone}`">
               <CheckCircleFilled v-if="agentStatusTone === 'success'" />
               <WarningFilled v-else-if="agentStatusTone === 'warning'" />
@@ -209,10 +210,6 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               <dd>{{ health?.machineCode || '—' }}</dd>
             </div>
             <div>
-              <dt>本地超时任务</dt>
-              <dd>{{ health?.pendingUploadJobs ?? '—' }}</dd>
-            </div>
-            <div>
               <dt>扫描仪连接</dt>
               <dd>{{ health?.scannerConnected ? '已连接' : '未连接' }}</dd>
             </div>
@@ -220,110 +217,48 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               <dt>服务允许扫描</dt>
               <dd>{{ health?.scanAllowed ? '是' : '否' }}</dd>
             </div>
+            <div>
+              <dt>本地超时任务</dt>
+              <dd>{{ health?.pendingUploadJobs ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt>设备在线</dt>
+              <dd>{{ deviceOnlineText }}</dd>
+            </div>
+            <div>
+              <dt>扫描设备编号</dt>
+              <dd>{{ device?.scannerDeviceId || bindingProfile?.scannerDeviceId || '—' }}</dd>
+            </div>
+            <div>
+              <dt>扫描站点编号</dt>
+              <dd>{{ device?.scannerStationId || bindingProfile?.scannerStationId || '—' }}</dd>
+            </div>
+            <div>
+              <dt>设备名称</dt>
+              <dd>{{ device?.deviceName || bindingProfile?.deviceName || '—' }}</dd>
+            </div>
+            <div>
+              <dt>站点名称</dt>
+              <dd>{{ device?.scannerStationName || bindingProfile?.endpointName || '—' }}</dd>
+            </div>
             <div v-if="health?.lastHeartbeatAt">
               <dt>最后心跳</dt>
               <dd>{{ workflow.formatTime(health.lastHeartbeatAt) }}</dd>
             </div>
           </dl>
-        </section>
 
-        <!-- Section 1.5: 实时流 SSE 状态（仅显示连接信息，账本数据由主区单一真源呈现） -->
-        <section class="section">
-          <header class="section-head">
-            <h3>
-              <ApiOutlined />
-              实时连接
-            </h3>
-            <span class="status-pill" :class="`tone-${sseStatusTone}`">
-              <CheckCircleFilled v-if="sseStatusTone === 'success'" />
-              <CloseCircleFilled v-else />
-              <span>{{ sseStatusText }}</span>
-            </span>
-          </header>
-
-          <dl class="kv">
-            <div>
-              <dt>已接收事件</dt>
-              <dd>{{ liveEventCount }}</dd>
-            </div>
-            <div>
-              <dt>实时连接说明</dt>
-              <dd class="small">扫描中页面会自动接收活跃批次更新</dd>
-            </div>
-          </dl>
-          <p class="section-note">
-            扫描页面账本细节请在「复核」或「封存 · 历史批次详情」页面查看；
-            此处仅展示实时连接信息，避免与主区账本视图分裂。
-          </p>
-        </section>
-
-        <!-- Section 2: 重新激活 -->
-        <section class="section">
-          <header class="section-head">
-            <h3>重新激活一体机</h3>
-            <small v-if="!workflow.canActivateAgent.value" class="section-hint">
-              当前扫描任务未结束，无法激活
-            </small>
-          </header>
-
-          <div class="form">
-            <label class="form-row">
-              <span class="form-label">平台服务地址</span>
-              <input
-                v-model="workflow.activationForm.value.gatewayBaseUrl"
-                type="text"
-                class="form-input"
-                placeholder="由管理员提供"
-                :disabled="!workflow.canActivateAgent.value"
-              />
-            </label>
-            <label class="form-row">
-              <span class="form-label">激活码</span>
-              <input
-                v-model="workflow.activationForm.value.activationCode"
-                type="text"
-                class="form-input"
-                placeholder="由教务平台下发"
-                :disabled="!workflow.canActivateAgent.value"
-              />
-            </label>
-            <label class="form-row">
-              <span class="form-label">端点名称</span>
-              <input
-                v-model="workflow.activationForm.value.endpointName"
-                type="text"
-                class="form-input"
-                placeholder="如：教学楼 A-501"
-                :disabled="!workflow.canActivateAgent.value"
-              />
-            </label>
-            <button
-              type="button"
-              class="primary-btn"
-              :disabled="!workflow.canActivateAgent.value || workflow.loading.value"
-              @click="handleActivate"
-            >
-              <ThunderboltFilled />
-              <span>激活一体机</span>
-            </button>
-          </div>
-        </section>
-
-        <!-- Section 3: 扫描仪选择 -->
-        <section class="section">
-          <header class="section-head">
-            <h3>扫描仪 ({{ workflow.scanners.value.length }})</h3>
+          <div class="subsection-head">
+            <h4>扫描仪 ({{ workflow.scanners.value.length }})</h4>
             <button
               type="button"
               class="ghost-btn"
               :disabled="workflow.loading.value"
-              :title="workflow.loading.value ? '正在处理中' : '重新枚举扫描仪'"
               @click="handleRefreshScanners"
             >
               <ReloadOutlined />
               <span>刷新</span>
             </button>
-          </header>
+          </div>
 
           <div v-if="workflow.scanners.value.length === 0" class="empty-block">
             <ScanOutlined class="empty-icon" />
@@ -358,67 +293,68 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
               </button>
             </li>
           </ul>
+
+          <div v-if="selectedScanner" class="scanner-config">
+            <h4>当前扫描仪配置</h4>
+            <dl class="kv">
+              <div v-for="row in scannerConfigRows" :key="row.label">
+                <dt>{{ row.label }}</dt>
+                <dd>{{ row.value }}</dd>
+              </div>
+              <div v-if="selectedScanner.diagnostic">
+                <dt>诊断信息</dt>
+                <dd>{{ selectedScanner.diagnostic }}</dd>
+              </div>
+            </dl>
+          </div>
         </section>
 
-        <!-- Section 4: 设备信息 -->
+        <!-- 实时连接 -->
         <section class="section">
           <header class="section-head">
-            <h3>设备信息</h3>
-            <span class="status-pill" :class="`tone-${device ? 'success' : 'muted'}`">
-              <span>{{ deviceOnlineText }}</span>
+            <h3>
+              <ApiOutlined />
+              实时连接
+            </h3>
+            <span class="status-pill" :class="`tone-${sseStatusTone}`">
+              <CheckCircleFilled v-if="sseStatusTone === 'success'" />
+              <CloseCircleFilled v-else />
+              <span>{{ sseStatusText }}</span>
             </span>
           </header>
 
           <dl class="kv">
             <div>
-              <dt>扫描设备编号</dt>
-              <dd>{{ device?.scannerDeviceId || '—' }}</dd>
+              <dt>已接收事件</dt>
+              <dd>{{ liveEventCount }}</dd>
             </div>
             <div>
-              <dt>扫描站点编号</dt>
-              <dd>{{ device?.scannerStationId || '—' }}</dd>
-            </div>
-            <div>
-              <dt>设备名称</dt>
-              <dd>{{ device?.deviceName || '—' }}</dd>
-            </div>
-            <div>
-              <dt>站点名称</dt>
-              <dd>{{ device?.scannerStationName || '—' }}</dd>
-            </div>
-            <div v-if="device">
-              <dt>系统连接</dt>
-              <dd>{{ device.scannerConnected ? '已连接' : '未连接' }}</dd>
-            </div>
-            <div v-if="device">
-              <dt>待处理任务</dt>
-              <dd>{{ device.pendingJobCount }} / {{ device.pendingUploadPageCount }} 页</dd>
+              <dt>连接说明</dt>
+              <dd class="small">激活后打开页面会自动建立实时连接，扫描中自动接收活跃批次更新</dd>
             </div>
           </dl>
         </section>
 
-        <!-- Section 5: 维护操作 -->
+        <!-- 维护操作 -->
         <section class="section">
           <header class="section-head">
             <h3>维护操作</h3>
           </header>
 
           <div class="ops-row">
-            <button type="button" class="ghost-btn" @click="handleDiagnosticsExport">
-              <CloudDownloadOutlined />
-              <span>导出检测信息包</span>
-            </button>
             <button
               type="button"
-              class="danger-btn"
-              :disabled="workflow.loading.value"
-              :title="workflow.loading.value ? '正在处理中' : '解绑后需重新激活才能使用'"
-              @click="handleUnbind"
+              class="primary-btn primary-btn--compact"
+              :disabled="!workflow.canActivateAgent.value || workflow.loading.value"
+              @click="handleReactivate"
             >
-              <DisconnectOutlined />
-              <span>解绑一体机</span>
+              <ThunderboltFilled />
+              <span>重新激活</span>
             </button>
           </div>
+          <p class="section-note">
+            一体机客户端不支持解绑；如需解绑请联系管理员在教务平台操作。
+          </p>
         </section>
       </div>
     </div>
@@ -468,11 +404,6 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   font-size: 22px;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color var(--kiosk-dur-fast) var(--kiosk-easing);
-}
-.drawer-close:hover {
-  border-color: var(--kiosk-primary);
-  color: var(--kiosk-primary);
 }
 
 .drawer-body {
@@ -494,26 +425,31 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   gap: var(--kiosk-space-3);
 }
 
-.section-head {
+.section-head,
+.subsection-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--kiosk-space-2);
+}
+.section-head {
   padding-bottom: var(--kiosk-space-2);
   border-bottom: 1px solid var(--kiosk-divider);
 }
-.section-head h3 {
+.section-head h3,
+.subsection-head h4 {
   margin: 0;
   font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-semibold);
   color: var(--kiosk-ink-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--kiosk-space-2);
 }
-.section-hint {
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-warning);
+.subsection-head h4 {
+  font-size: var(--kiosk-fz-label);
 }
 
-/* Status pill */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -541,7 +477,6 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   color: var(--kiosk-ink-tertiary);
 }
 
-/* KV grid */
 .kv {
   margin: 0;
   display: flex;
@@ -565,65 +500,22 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   text-align: right;
   word-break: break-all;
 }
-/* Form */
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--kiosk-space-3);
-}
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--kiosk-space-1);
-}
-.form-label {
+.kv dd.small {
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
 }
-.form-input {
-  height: 44px;
-  padding: 0 var(--kiosk-space-3);
+
+.scanner-config {
+  padding: var(--kiosk-space-3);
   background: var(--kiosk-surface-alt);
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-md);
-  font-family: inherit;
-  font-size: var(--kiosk-fz-body);
-  color: var(--kiosk-ink-primary);
-  outline: none;
-  transition: border-color var(--kiosk-dur-fast) var(--kiosk-easing);
 }
-.form-input:focus {
-  border-color: var(--kiosk-primary);
-}
-.form-input:disabled {
-  background: var(--kiosk-neutral-soft);
-  cursor: not-allowed;
-}
-
-/* Buttons */
-.primary-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--kiosk-space-2);
-  height: 48px;
-  background: var(--kiosk-primary);
-  color: var(--kiosk-primary-on);
-  border: none;
-  border-radius: var(--kiosk-radius-md);
-  font-family: inherit;
-  font-size: var(--kiosk-fz-body);
+.scanner-config h4 {
+  margin: 0 0 var(--kiosk-space-2);
+  font-size: var(--kiosk-fz-label);
   font-weight: var(--kiosk-fw-semibold);
-  cursor: pointer;
-  transition: background var(--kiosk-dur-fast) var(--kiosk-easing);
-}
-.primary-btn:hover:not(:disabled) {
-  background: var(--kiosk-primary-pressed);
-}
-.primary-btn:disabled {
-  background: var(--kiosk-neutral);
-  color: var(--kiosk-ink-disabled);
-  cursor: not-allowed;
+  color: var(--kiosk-ink-secondary);
 }
 
 .ghost-btn {
@@ -638,62 +530,54 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   color: var(--kiosk-ink-secondary);
   font-family: inherit;
   font-size: var(--kiosk-fz-label);
-  font-weight: var(--kiosk-fw-medium);
   cursor: pointer;
-  transition: border-color var(--kiosk-dur-fast) var(--kiosk-easing);
-}
-.ghost-btn:hover:not(:disabled) {
-  border-color: var(--kiosk-primary);
-  color: var(--kiosk-primary);
 }
 .ghost-btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-.danger-btn {
+.primary-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--kiosk-space-2);
-  height: 36px;
-  padding: 0 var(--kiosk-space-3);
-  background: var(--kiosk-danger-soft);
-  border: 1px solid rgba(197, 38, 62, 0.3);
-  border-radius: var(--kiosk-radius-sm);
-  color: var(--kiosk-danger);
+  height: 44px;
+  background: var(--kiosk-primary);
+  color: var(--kiosk-primary-on);
+  border: none;
+  border-radius: var(--kiosk-radius-md);
   font-family: inherit;
   font-size: var(--kiosk-fz-label);
-  font-weight: var(--kiosk-fw-medium);
+  font-weight: var(--kiosk-fw-semibold);
   cursor: pointer;
 }
-.danger-btn:hover:not(:disabled) {
-  border-color: var(--kiosk-danger);
+.primary-btn--compact {
+  height: 44px;
 }
-.danger-btn:disabled {
+.primary-btn:disabled {
+  background: var(--kiosk-neutral);
+  color: var(--kiosk-ink-disabled);
   cursor: not-allowed;
-  opacity: 0.5;
 }
 
-/* Empty block */
 .empty-block {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: var(--kiosk-space-2);
-  padding: var(--kiosk-space-5);
+  padding: var(--kiosk-space-4);
   background: var(--kiosk-surface-alt);
   border: 1px dashed var(--kiosk-divider-strong);
   border-radius: var(--kiosk-radius-md);
   text-align: center;
 }
 .empty-icon {
-  font-size: 36px;
+  font-size: 32px;
   color: var(--kiosk-ink-tertiary);
 }
 .empty-block p {
   margin: 0;
-  font-size: var(--kiosk-fz-body);
   color: var(--kiosk-ink-secondary);
 }
 .empty-block small {
@@ -701,7 +585,6 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   color: var(--kiosk-ink-tertiary);
 }
 
-/* Scanner list */
 .scanner-list {
   list-style: none;
   margin: 0;
@@ -721,42 +604,26 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   border-radius: var(--kiosk-radius-md);
   font-family: inherit;
   cursor: pointer;
-  transition: border-color var(--kiosk-dur-fast) var(--kiosk-easing);
 }
-.scanner-item button:hover:not(:disabled) {
+.scanner-item.active button {
   border-color: var(--kiosk-primary);
+  background: var(--kiosk-primary-soft);
 }
 .scanner-item button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
-
-.scanner-item.active button {
-  border-color: var(--kiosk-primary);
-  background: var(--kiosk-primary-soft);
-  box-shadow: 0 0 0 2px rgba(31, 95, 255, 0.18);
-}
-
 .scanner-radio {
   width: 20px;
   height: 20px;
   border-radius: 50%;
   border: 2px solid var(--kiosk-divider-strong);
   flex: 0 0 auto;
-  position: relative;
 }
 .scanner-item.active .scanner-radio {
   border-color: var(--kiosk-primary);
   background: var(--kiosk-primary);
 }
-.scanner-item.active .scanner-radio::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  background: white;
-  border-radius: 50%;
-}
-
 .scanner-text {
   display: flex;
   flex-direction: column;
@@ -764,11 +631,6 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   flex: 1;
   min-width: 0;
   text-align: left;
-}
-.scanner-text strong {
-  font-size: var(--kiosk-fz-body);
-  font-weight: var(--kiosk-fw-semibold);
-  color: var(--kiosk-ink-primary);
 }
 .scanner-meta {
   display: flex;
@@ -782,10 +644,8 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   height: 3px;
   border-radius: 50%;
   background: var(--kiosk-ink-tertiary);
-  flex: 0 0 auto;
 }
 
-/* Ops row */
 .ops-row {
   display: flex;
   gap: var(--kiosk-space-2);
@@ -794,19 +654,18 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 .ops-row > button {
   flex: 1;
   min-width: 140px;
-  height: 44px;
 }
 
-/* 维护提示 / 升级提示 */
+.section-note {
+  margin: 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
+  line-height: var(--kiosk-lh-base);
+}
+
 .section--alert {
   background: var(--kiosk-warning-soft);
   border-color: rgba(217, 119, 6, 0.3);
-}
-.section--alert .section-head h3 {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--kiosk-space-2);
-  color: var(--kiosk-warning);
 }
 .alert-block {
   display: flex;
@@ -817,33 +676,13 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
   border: 1px solid rgba(217, 119, 6, 0.25);
   border-radius: var(--kiosk-radius-sm);
 }
-.alert-block + .alert-block {
-  margin-top: var(--kiosk-space-2);
-}
 .alert-block p {
   margin: 0;
-  font-size: var(--kiosk-fz-body);
   font-weight: var(--kiosk-fw-semibold);
   color: var(--kiosk-warning);
 }
 .alert-block small {
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
-}
-.kv .danger,
-.alert-block .danger {
-  color: var(--kiosk-danger);
-}
-
-.kv dd.small {
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-ink-tertiary);
-}
-
-.section-note {
-  margin: 0;
-  font-size: var(--kiosk-fz-caption);
-  color: var(--kiosk-ink-tertiary);
-  line-height: var(--kiosk-lh-base);
 }
 </style>

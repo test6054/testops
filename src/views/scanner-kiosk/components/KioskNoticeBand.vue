@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
-const { workflow, ui } = useKioskCtx()
+const { workflow } = useKioskCtx()
 
 const visible = computed(
   () => Boolean(workflow.errorMessage.value) || Boolean(workflow.successMessage.value),
@@ -20,8 +20,8 @@ function clearError() {
 function clearSuccess() {
   workflow.successMessage.value = ''
 }
-function openReactivationSettings() {
-  ui.openSettings()
+function openReactivationModal() {
+  workflow.openActivationModal()
 }
 </script>
 
@@ -33,9 +33,9 @@ function openReactivationSettings() {
         v-if="workflow.kioskBrowserSessionLost.value"
         type="button"
         class="notice-action"
-        @click="openReactivationSettings"
+        @click="openReactivationModal"
       >
-        打开设备设置
+        打开激活窗口
       </button>
       <button type="button" class="notice-dismiss" title="按 Esc 关闭" @click="clearError">
         关闭

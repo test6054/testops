@@ -13,6 +13,7 @@ import type { KioskUiState } from './composables/kioskInjection'
  * 此文件不再持有 UI 细节，仅负责 grid 布局与组件编排。
  */
 import { computed, onMounted, provide, ref } from 'vue'
+import KioskActivationModal from './components/KioskActivationModal.vue'
 import KioskAppBar from './components/KioskAppBar.vue'
 import KioskBottomBar from './components/KioskBottomBar.vue'
 import KioskHistoryLedgerDrawer from './components/KioskHistoryLedgerDrawer.vue'
@@ -105,6 +106,9 @@ onMounted(() => {
 
     <!-- 设备设置抽屉（teleport 到 body，由 ant-design-vue Drawer 处理 z-index） -->
     <KioskSettingsDrawer />
+
+    <!-- 一体机激活弹窗（未绑定 / 需重新激活时强制弹出） -->
+    <KioskActivationModal />
 
     <!-- 历史批次 ledger 抽屉（点击 FinalizeStage 行触发） -->
     <KioskHistoryLedgerDrawer />

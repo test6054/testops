@@ -11,11 +11,11 @@
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import http from '@/config/axios'
 import {
-  buildMarkScannerStationAuthHeaders,
-  hasMarkScannerJwtAuth,
   hasMarkScannerStationAuth,
-  KIOSK_BROWSER_SESSION_LOST_MESSAGE
+  KIOSK_BROWSER_SESSION_LOST_MESSAGE,
+  resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
+import type { MarkScannerStationAuthSource } from '@/utils/kiosk-auth'
 
 /** SSE 鉴权不可恢复失败：一体机 push_token 无效或缺失，禁止自动重连。 */
 export class ScanLiveFatalAuthError extends Error {
@@ -135,6 +135,22 @@ export function subscribeScanLive(
   }
 
   let retryWithFreshToken = false
+  let currentAuthSource: MarkScannerStationAuthSource | null = null
+
+  /**
+   * 构造 SSE 请求鉴权头，并记录本次订阅实际使用的身份来源。
+   *
+   * 一体机页面即使残留教师 JWT，也必须使用 Agent push_token；只有教师 JWT 流才允许触发
+   * token refresh，push_token 失效时要显式失败并回到激活流程。
+   */
+  function buildAuthHeaders(): Record<string, string> {
+    const auth = resolveMarkScannerStationAuthHeaders({
+      Accept: 'text/event-stream',
+    })
+    currentAuthSource = auth.source
+    return auth.headers
+  }
+
   void fetchEventSource(url, {
     method: 'GET',
     signal: controller.signal,
@@ -142,15 +158,15 @@ export function subscribeScanLive(
     openWhenHidden: true,
     headers: buildAuthHeaders(),
     fetch: async (input, init) => {
-      if (retryWithFreshToken && hasMarkScannerJwtAuth()) {
+      if (retryWithFreshToken && currentAuthSource === 'jwt') {
         retryWithFreshToken = false
         await handler.onAuthRefreshRequired?.()
       }
       return fetch(input, {
         ...init,
         headers: {
-          ...buildAuthHeaders(),
           ...normalizedHeaders(init?.headers),
+          ...buildAuthHeaders(),
         },
       })
     },
@@ -160,7 +176,7 @@ export function subscribeScanLive(
         return
       }
       if (response.status === 401 || response.status === 403) {
-        if (hasMarkScannerJwtAuth()) {
+        if (currentAuthSource === 'jwt') {
           retryWithFreshToken = true
           throw new Error('扫描实时连接暂时不可用，正在尝试重连')
         }
@@ -202,15 +218,6 @@ export function subscribeScanLive(
   })
 
   return controller
-}
-
-/**
- * 构造 SSE 请求的鉴权 header（JWT 或一体机 push_token）。
- */
-function buildAuthHeaders(): Record<string, string> {
-  return buildMarkScannerStationAuthHeaders({
-    Accept: 'text/event-stream',
-  })
 }
 
 function normalizedHeaders(headers: HeadersInit | undefined): Record<string, string> {

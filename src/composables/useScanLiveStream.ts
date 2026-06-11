@@ -39,7 +39,7 @@ import {
 import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
 import { toUserError } from '@/utils/error-handler'
-import { hasMarkScannerJwtAuth } from '@/utils/kiosk-auth'
+import { resolveMarkScannerStationAuthHeaders } from '@/utils/kiosk-auth'
 import mittBus from '@/utils/mitt'
 
 export interface UseScanLiveStreamOptions {
@@ -251,7 +251,10 @@ export function useScanLiveStream(
     error.value = null
 
     // 教师 Web 才订阅 JWT 续期；一体机 push_token 无 refresh 语义。
-    if (!tokenRefreshListenerActive.value && hasMarkScannerJwtAuth()) {
+    if (
+      !tokenRefreshListenerActive.value
+      && resolveMarkScannerStationAuthHeaders().source === 'jwt'
+    ) {
       mittBus.on('auth:token-refreshed', onTokenRefreshed)
       tokenRefreshListenerActive.value = true
     }
@@ -281,7 +284,7 @@ export function useScanLiveStream(
         ready.value = false
       },
       onAuthRefreshRequired: async () => {
-        if (!hasMarkScannerJwtAuth()) {
+        if (resolveMarkScannerStationAuthHeaders().source !== 'jwt') {
           return
         }
         const refreshed = await authStore.refreshTokenAutomatically()

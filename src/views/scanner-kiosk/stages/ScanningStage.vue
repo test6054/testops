@@ -40,6 +40,7 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, stage } = useKioskCtx()
@@ -243,6 +244,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
         <span>已暂停</span>
       </div>
     </header>
+
+    <KioskBoundStudentsPanel
+      v-if="hasJob && workflow.boundPaperScanBatchId.value"
+      variant="panel"
+      class="scan-bound-mobile"
+      :scan-batch-id="workflow.boundPaperScanBatchId.value"
+    />
 
     <div class="stage-body">
       <!-- 大画布预览 -->
@@ -691,6 +699,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   opacity: 0.7;
 }
 
+.scan-bound-mobile {
+  display: none;
+}
+
 /* ----------- Thumbnail strip ----------- */
 
 .thumbs {
@@ -816,6 +828,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   }
 }
 @media (max-width: 1024px) {
+  .scan-bound-mobile {
+    display: block;
+  }
+
   .stage-body {
     grid-template-columns: minmax(0, 1fr);
   }

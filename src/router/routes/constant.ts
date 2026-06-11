@@ -76,6 +76,14 @@ export const constantRoutes: RouteRecordRaw[] = [
     },
     children: [
       {
+        path: 'step',
+        redirect: '/scanner-kiosk/setup',
+        meta: {
+          title: '准备扫描',
+          requiresAuth: false,
+        },
+      },
+      {
         path: 'setup',
         name: 'ScannerKioskSetup',
         component: () => import('@/views/scanner-kiosk/stages/SetupStage.vue'),

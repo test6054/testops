@@ -15,11 +15,10 @@ import { getValidToken } from '@/utils/auth'
 import { getDeviceHeaders } from '@/utils/device'
 import { handleAxiosError } from '@/utils/error-handler'
 import {
-  buildMarkScannerStationAuthHeaders,
   clearKioskAuthSession,
-  hasMarkScannerJwtAuth,
   isMarkScannerStationApiUrl,
-  KIOSK_BROWSER_SESSION_LOST_MESSAGE
+  KIOSK_BROWSER_SESSION_LOST_MESSAGE,
+  resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
 import { getTraceHeaders } from '@/utils/trace'
 import { authRuntimeState } from './auth-state'
@@ -167,13 +166,14 @@ service.interceptors.request.use(
 
     // 扫描工位链路（kiosk + scan-live）使用 JWT 或 Agent push_token，不走教师登录跳转。
     if (isScannerStationApi) {
-      const scannerStationAuthHeaders = buildMarkScannerStationAuthHeaders()
-      if (!scannerStationAuthHeaders.Authorization) {
+      const scannerStationAuth = resolveMarkScannerStationAuthHeaders()
+      extendedConfig.markScannerStationAuthSource = scannerStationAuth.source || undefined
+      if (!scannerStationAuth.headers.Authorization) {
         return Promise.reject(new Error('扫描工位缺少鉴权，请先登录或完成一体机 Agent 激活'))
       }
-      requestConfig.headers.Authorization = scannerStationAuthHeaders.Authorization
-      if (scannerStationAuthHeaders['X-Tenant-Id']) {
-        requestConfig.headers['X-Tenant-Id'] = scannerStationAuthHeaders['X-Tenant-Id']
+      requestConfig.headers.Authorization = scannerStationAuth.headers.Authorization
+      if (scannerStationAuth.headers['X-Tenant-Id']) {
+        requestConfig.headers['X-Tenant-Id'] = scannerStationAuth.headers['X-Tenant-Id']
       }
     }
 
@@ -193,7 +193,7 @@ service.interceptors.request.use(
         return Promise.reject(new Error('缺少租户信息，正在跳转登录页'))
       }
       requestConfig.headers['X-Tenant-Id'] = tenantId
-    } else if (requestConfig.headers['X-Tenant-Id']) {
+    } else if (!isScannerStationApi && requestConfig.headers['X-Tenant-Id']) {
       delete requestConfig.headers['X-Tenant-Id']
     }
 
@@ -269,6 +269,7 @@ service.interceptors.response.use(
         const url = response.config?.url || ''
         const isAuthRequest = url.includes('/login') || url.includes('/oauth2/refresh') || url.includes('/oauth2/token')
         const isScannerStationApi = isMarkScannerStationApiUrl(url)
+        const scannerStationAuthSource = (response.config as ExtendedAxiosRequestConfig).markScannerStationAuthSource
 
         if (isAuthRequest) {
           const authError: InterceptorError = new Error(response.data.msg || '认证失败')
@@ -278,7 +279,7 @@ service.interceptors.response.use(
           return Promise.reject(authError)
         }
 
-        if (isScannerStationApi && !hasMarkScannerJwtAuth()) {
+        if (isScannerStationApi && scannerStationAuthSource === 'kiosk') {
           clearKioskAuthSession()
           const kioskAuthError: InterceptorError = new Error(
             response.data.msg || KIOSK_BROWSER_SESSION_LOST_MESSAGE,
@@ -343,6 +344,7 @@ service.interceptors.response.use(
       const isLogoutRequest = url.includes('/logout')
       const isPublicApi = url.includes('/public/')
       const isScannerStationApi = isMarkScannerStationApiUrl(url)
+      const scannerStationAuthSource = (originalConfig as ExtendedAxiosRequestConfig).markScannerStationAuthSource
 
       if (isAuthRequest || isLogoutRequest || isPublicApi) {
         const backendMsg = response?.data?.msg
@@ -357,6 +359,15 @@ service.interceptors.response.use(
         return Promise.reject(error)
       }
 
+      if (isScannerStationApi && scannerStationAuthSource === 'kiosk') {
+        clearKioskAuthSession()
+        const kioskAuthError: InterceptorError = new Error(KIOSK_BROWSER_SESSION_LOST_MESSAGE)
+        kioskAuthError.code = response?.data?.code || statusCode
+        kioskAuthError.response = response as AxiosResponse<ResultInfo<unknown>>
+        kioskAuthError._handledByInterceptor = true
+        return Promise.reject(kioskAuthError)
+      }
+
       // TOKEN_KICKED(4007) 不可恢复，直接登出
       const bodyCode = response?.data?.code
       if (bodyCode === BUSINESS_CODE.TOKEN_KICKED) {
@@ -366,15 +377,6 @@ service.interceptors.response.use(
         })
         clearAuthAndRedirect()
         return Promise.reject(error)
-      }
-
-      if (isScannerStationApi && !hasMarkScannerJwtAuth()) {
-        clearKioskAuthSession()
-        const kioskAuthError: InterceptorError = new Error(KIOSK_BROWSER_SESSION_LOST_MESSAGE)
-        kioskAuthError.code = response?.data?.code || statusCode
-        kioskAuthError.response = response as AxiosResponse<ResultInfo<unknown>>
-        kioskAuthError._handledByInterceptor = true
-        return Promise.reject(kioskAuthError)
       }
 
       // 尝试用 refresh token 自动续期

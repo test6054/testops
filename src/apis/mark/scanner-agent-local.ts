@@ -2,6 +2,7 @@ import type { ExamScannerKioskContextVO, ScannerKioskScanMode } from './scanner-
 import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'
+const LOCAL_AGENT_UNAVAILABLE_ERROR = '本地扫描服务未连接，请确认一体机组件已启动'
 const LOCAL_AGENT_RESPONSE_ERROR = '本地扫描服务响应异常，请检查扫描服务后重试'
 const LOCAL_AGENT_REQUEST_ERROR = '本地扫描服务处理失败，请检查扫描服务后重试'
 
@@ -86,6 +87,7 @@ export interface ScannerDeviceInfo {
   supportsAdf: boolean
   supportsDuplex: boolean
   available: boolean
+  maxDpi?: number
   diagnostic?: string
 }
 
@@ -97,6 +99,16 @@ export interface ActivateLocalAgentRequest {
   gatewayBaseUrl: string
   activationCode: string
   endpointName: string
+}
+
+export interface AgentSetupContextResponse {
+  defaultGatewayBaseUrl: string
+  bound: boolean
+  scannerDeviceId?: string
+  scannerStationId?: string
+  deviceName?: string
+  gatewayBaseUrl?: string
+  activatedAt?: string
 }
 
 export interface ScannerAgentActivateResponse {
@@ -137,6 +149,20 @@ export class ScannerBusyError extends Error {
     super(message)
     this.name = 'ScannerBusyError'
     this.activeJobId = activeJobId
+  }
+}
+
+/**
+ * 浏览器无法连接本机 Agent 进程时抛出的错误。
+ * 该状态属于一体机现场连接状态，不等同于后端服务不可用或用户会话失效。
+ */
+export class LocalAgentUnavailableError extends Error {
+  readonly agentBaseUrl: string
+
+  constructor(agentBaseUrl: string) {
+    super(LOCAL_AGENT_UNAVAILABLE_ERROR)
+    this.name = 'LocalAgentUnavailableError'
+    this.agentBaseUrl = agentBaseUrl
   }
 }
 
@@ -235,6 +261,11 @@ export function getLocalAgentBaseUrl() {
 export async function getAgentHealth(): Promise<AgentHealthResponse> {
   const payload = await localAgentGet('/api/agent/health')
   return normalizeAgentPayload(() => validateAgentHealthResponse(payload))
+}
+
+export async function getAgentSetupContext(): Promise<AgentSetupContextResponse> {
+  const payload = await localAgentGet('/api/agent/setup-context')
+  return normalizeAgentPayload(() => validateAgentSetupContextResponse(payload))
 }
 
 export async function listLocalScanners(): Promise<ScannerListResponse> {
@@ -367,14 +398,14 @@ export function openDiagnosticsExport() {
 }
 
 async function localAgentGet(path: string): Promise<LocalAgentJsonValue> {
-  const response = await fetch(`${getLocalAgentBaseUrl()}${path}`, {
+  const response = await requestLocalAgent(path, {
     method: 'GET',
   })
   return await parseLocalAgentResponse(response)
 }
 
 async function localAgentPost(path: string, requestBody: object): Promise<LocalAgentJsonValue> {
-  const response = await fetch(`${getLocalAgentBaseUrl()}${path}`, {
+  const response = await requestLocalAgent(path, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -382,6 +413,22 @@ async function localAgentPost(path: string, requestBody: object): Promise<LocalA
     body: JSON.stringify(requestBody),
   })
   return await parseLocalAgentResponse(response)
+}
+
+async function requestLocalAgent(path: string, init: RequestInit): Promise<Response> {
+  const agentBaseUrl = getLocalAgentBaseUrl()
+  try {
+    return await fetch(`${agentBaseUrl}${path}`, init)
+  } catch (error) {
+    if (isFetchNetworkFailure(error)) {
+      throw new LocalAgentUnavailableError(agentBaseUrl)
+    }
+    throw error
+  }
+}
+
+function isFetchNetworkFailure(error: unknown): boolean {
+  return error instanceof TypeError || error instanceof DOMException
 }
 
 async function parseLocalAgentResponse(response: Response): Promise<LocalAgentJsonValue> {
@@ -611,11 +658,44 @@ function validateScannerDeviceInfo(value: LocalAgentJsonValue, field: string): S
     supportsDuplex: requireBoolean(result, 'supportsDuplex'),
     available: requireBoolean(result, 'available'),
   }
+  const maxDpi = requireOptionalNumber(result, 'maxDpi')
+  if (maxDpi !== undefined) {
+    scanner.maxDpi = maxDpi
+  }
   const diagnostic = requireOptionalString(result, 'diagnostic')
   if (diagnostic !== undefined) {
     scanner.diagnostic = diagnostic
   }
   return scanner
+}
+
+function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSetupContextResponse {
+  const result = requireObject(value, 'agentSetupContext')
+  const payload: AgentSetupContextResponse = {
+    defaultGatewayBaseUrl: requireString(result, 'defaultGatewayBaseUrl'),
+    bound: requireBoolean(result, 'bound'),
+  }
+  const scannerDeviceId = requireOptionalString(result, 'scannerDeviceId')
+  if (scannerDeviceId !== undefined) {
+    payload.scannerDeviceId = scannerDeviceId
+  }
+  const scannerStationId = requireOptionalString(result, 'scannerStationId')
+  if (scannerStationId !== undefined) {
+    payload.scannerStationId = scannerStationId
+  }
+  const deviceName = requireOptionalString(result, 'deviceName')
+  if (deviceName !== undefined) {
+    payload.deviceName = deviceName
+  }
+  const gatewayBaseUrl = requireOptionalString(result, 'gatewayBaseUrl')
+  if (gatewayBaseUrl !== undefined) {
+    payload.gatewayBaseUrl = gatewayBaseUrl
+  }
+  const activatedAt = requireOptionalString(result, 'activatedAt')
+  if (activatedAt !== undefined) {
+    payload.activatedAt = activatedAt
+  }
+  return payload
 }
 
 function validateScannerAgentActivateResponse(

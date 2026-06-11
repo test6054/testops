@@ -20,7 +20,9 @@ import type {
   AgentHealthStatus,
   LocalScanJobStatus,
   ScanJobResponse,
+  ScanJobListResponse,
   ScannerDeviceInfo,
+  ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'
 import type {
   ExamScannerBatchLifecycleVO,
@@ -37,7 +39,7 @@ import type {
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { SCANNER_ENDPOINT_ONLINE_STATUS_LABEL } from '@/apis/mark/exam-mark-scanner'
 import {
   activateLocalAgent,
@@ -47,18 +49,18 @@ import {
   discardScanJob,
   endBatch,
   getAgentHealth,
+  getAgentSetupContext,
   getPageImageUrl,
   getScanJob,
   listLocalScanners,
   listScanJobs,
-  openDiagnosticsExport,
+  LocalAgentUnavailableError,
   pauseScanJob,
   resumeScanJob,
   retryCommit,
   retryUpload,
   ScannerBusyError,
   startScanJob,
-  unbindLocalAgent,
 } from '@/apis/mark/scanner-agent-local'
 import {
   closeScannerKioskBatch,
@@ -79,6 +81,8 @@ import { getUserErrorMessage, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import {
   clearKioskAuthSession,
+  getKioskBindingProfile,
+  hasMarkScannerKioskAuth,
   KIOSK_BROWSER_SESSION_LOST_MESSAGE,
   needsKioskBrowserReactivation,
   saveKioskAuthSession,
@@ -125,6 +129,7 @@ export { getSemesterDescription, SemesterOptions }
 
 export function useKioskWorkflow() {
   const route = useRoute()
+  const router = useRouter()
   const gatewayBaseUrlEnv = import.meta.env.VITE_SCANNER_GATEWAY_BASE_URL
   const defaultGatewayBaseUrl
     = typeof gatewayBaseUrlEnv === 'string' ? gatewayBaseUrlEnv.trim() : ''
@@ -144,8 +149,9 @@ export function useKioskWorkflow() {
   const loading = ref(false)
   const errorMessage = ref('')
   const successMessage = ref('')
+  const activationModalOpen = ref(false)
+  const activationErrorMessage = ref('')
   const previewPageNo = ref(0)
-  const expectedPages = ref<number | undefined>()
   const scanMode = ref<ScannerKioskScanMode>('DIRECT')
   const supplementTargetPageNo = ref<number | undefined>()
   const supplementReason = ref('')
@@ -255,8 +261,8 @@ export function useKioskWorkflow() {
   } = useScanLiveStream({
     filter: () => ({
       examId: examId.value || undefined,
-      scannerDeviceId: queryScannerDeviceId.value || undefined,
-      scannerStationId: queryScannerStationId.value || undefined,
+      scannerDeviceId: getActiveScannerDeviceId() || undefined,
+      scannerStationId: getActiveScannerStationId() || undefined,
     }),
     initialLimit: 20,
     maxEvents: 50,
@@ -282,6 +288,7 @@ export function useKioskWorkflow() {
     }
     stopSse()
     errorMessage.value = KIOSK_BROWSER_SESSION_LOST_MESSAGE
+    openActivationModal()
   }
 
   // -------------------------------------------------------------
@@ -409,7 +416,6 @@ export function useKioskWorkflow() {
         return '补扫目标页号不能为空'
       }
       if (!supplementReason.value.trim()) return '补扫原因不能为空'
-      if (expectedPages.value !== 1) return '补扫预计页数必须为 1'
     }
     if (!kioskContext.value.device) return '考试未绑定可用扫描设备'
     if (!kioskContext.value.policy) return '考试扫描策略未配置'
@@ -419,13 +425,18 @@ export function useKioskWorkflow() {
   const canSwitchScanMode = computed(() => !currentJobBlocksWorkspace.value)
   const canSwitchExam = computed(() => !currentJobBlocksWorkspace.value)
   const canSwitchScanner = computed(() => !currentJobBlocksWorkspace.value)
-  const canEditScanSetup = computed(() => !currentJobBlocksWorkspace.value)
   const canActivateAgent = computed(() => !currentJobBlocksWorkspace.value)
-  const canUnbindAgent = computed(() => !currentJobBlocksWorkspace.value)
   const canDiscardLedgerPage = computed(() => !currentJobBlocksWorkspace.value)
   const kioskBrowserSessionLost = computed(() =>
     needsKioskBrowserReactivation(health.value?.bound),
   )
+  const activationModalForced = computed(
+    () =>
+      !health.value?.bound
+      || Boolean(health.value?.tokenResetRequired)
+      || kioskBrowserSessionLost.value,
+  )
+  const needsActivationGate = computed(() => activationModalForced.value)
 
   const workState = computed(() => {
     const job = currentJob.value
@@ -625,7 +636,20 @@ export function useKioskWorkflow() {
   }
 
   function handleError(error: unknown, fallback = '扫描一体机操作失败') {
+    if (error instanceof LocalAgentUnavailableError) {
+      markLocalAgentDisconnected()
+      errorMessage.value = error.message
+      return
+    }
     errorMessage.value = getUserErrorMessage(error, fallback)
+  }
+
+  /** 本机 Agent 进程未监听时清理现场连接态，保留页面“未连接”诊断，不触发全局网络错误。 */
+  function markLocalAgentDisconnected(): void {
+    health.value = null
+    scanners.value = []
+    selectedScannerId.value = ''
+    lastStableScannerId = ''
   }
 
   async function handleScanJobStartFailure(error: unknown, fallback = '启动本地扫描失败') {
@@ -655,12 +679,127 @@ export function useKioskWorkflow() {
     )
   }
 
+  /** 本批次已绑定学生查询锚点：准备阶段无活跃批次时返回空，避免挂上历史批次数据。 */
+  const boundPaperScanBatchId = computed(() => {
+    const job = currentJob.value
+    const jobBatchId = job?.scanBatchId?.trim()
+    if (jobBatchId) return jobBatchId
+
+    const latest = kioskContext.value?.latestBatch
+    if (!latest?.scanBatchId) return ''
+
+    const explicitBatchNo = activeBatchExternalNo.value || job?.batchExternalNo || ''
+    if (explicitBatchNo) {
+      const latestKey = latest.batchExternalNo || latest.batchNo || ''
+      return latestKey === explicitBatchNo ? latest.scanBatchId : ''
+    }
+
+    if (job && (job.status === 'REPORTED' || job.status === 'FAILED')) {
+      return latest.scanBatchId
+    }
+
+    return ''
+  })
+
+  const boundPaperSummary = computed(() => {
+    const batch = kioskContext.value?.latestBatch
+    const batchId = boundPaperScanBatchId.value
+    if (batch && batchId && batch.scanBatchId === batchId) {
+      return {
+        studentCount: batch.boundStudentCount ?? boundPapers.value.length,
+        totalPages: batch.boundRegisteredPageCount ?? boundPapers.value.reduce(
+          (sum, item) => sum + item.registeredPageCount,
+          0,
+        ),
+      }
+    }
+    const items = boundPapers.value
+    let totalPages = 0
+    for (const item of items) {
+      totalPages += item.registeredPageCount
+    }
+    return {
+      studentCount: items.length,
+      totalPages,
+    }
+  })
+
   function getActiveScannerDeviceId() {
-    return queryScannerDeviceId.value || kioskContext.value?.device?.scannerDeviceId || ''
+    return (
+      queryScannerDeviceId.value
+      || getKioskBindingProfile()?.scannerDeviceId
+      || kioskContext.value?.device?.scannerDeviceId
+      || ''
+    )
   }
 
   function getActiveScannerStationId() {
-    return queryScannerStationId.value || kioskContext.value?.device?.scannerStationId || ''
+    return (
+      queryScannerStationId.value
+      || getKioskBindingProfile()?.scannerStationId
+      || kioskContext.value?.device?.scannerStationId
+      || ''
+    )
+  }
+
+  function resolveGatewayBaseUrl(setup?: {
+    gatewayBaseUrl?: string
+    defaultGatewayBaseUrl?: string
+  }): string {
+    const fromBinding = setup?.gatewayBaseUrl?.trim()
+    if (fromBinding) return fromBinding.replace(/\/+$/, '')
+    const fromSetup = setup?.defaultGatewayBaseUrl?.trim()
+    if (fromSetup) return fromSetup.replace(/\/+$/, '')
+    if (typeof window !== 'undefined') {
+      const origin = window.location.origin
+      if (
+        origin
+        && origin !== 'null'
+        && (origin.startsWith('http://') || origin.startsWith('https://'))
+      ) {
+        return origin.replace(/\/+$/, '')
+      }
+    }
+    return defaultGatewayBaseUrl.replace(/\/+$/, '')
+  }
+
+  async function syncActivationFormFromAgent() {
+    try {
+      const setup = await getAgentSetupContext()
+      activationForm.value.gatewayBaseUrl = resolveGatewayBaseUrl(setup)
+      const savedProfile = getKioskBindingProfile()
+      if (setup.deviceName && !activationForm.value.endpointName) {
+        activationForm.value.endpointName = setup.deviceName
+      } else if (savedProfile?.endpointName && !activationForm.value.endpointName) {
+        activationForm.value.endpointName = savedProfile.endpointName
+      }
+    } catch {
+      activationForm.value.gatewayBaseUrl = resolveGatewayBaseUrl()
+      const savedProfile = getKioskBindingProfile()
+      if (savedProfile?.endpointName && !activationForm.value.endpointName) {
+        activationForm.value.endpointName = savedProfile.endpointName
+      }
+    }
+  }
+
+  function openActivationModal() {
+    activationErrorMessage.value = ''
+    void syncActivationFormFromAgent().finally(() => {
+      activationModalOpen.value = true
+    })
+  }
+
+  async function ensureLiveStreamConnected() {
+    if (!health.value?.bound) return
+    if (!hasMarkScannerKioskAuth()) return
+    if (sseStreaming.value) return
+    await startSse()
+  }
+
+  function handleAgentBindingLost() {
+    stopSse()
+    clearKioskAuthSession()
+    openActivationModal()
   }
 
   function isPollingTerminalJob(job: ScanJobResponse) {
@@ -707,20 +846,23 @@ export function useKioskWorkflow() {
     ok: false
     errorMessage: string
   }) {
-    const gatewayBaseUrl = activationForm.value.gatewayBaseUrl.trim().replace(/\/+$/, '')
+    const gatewayBaseUrl = resolveGatewayBaseUrl({
+      gatewayBaseUrl: activationForm.value.gatewayBaseUrl,
+      defaultGatewayBaseUrl: activationForm.value.gatewayBaseUrl,
+    })
     const activationCode = activationForm.value.activationCode.trim()
     const endpointName = activationForm.value.endpointName.trim()
     if (!gatewayBaseUrl) {
-      return { ok: false, errorMessage: '系统服务地址不能为空' }
+      return { ok: false, errorMessage: '无法自动识别平台服务地址，请联系管理员检查一体机配置' }
     }
     let url: URL
     try {
       url = new URL(gatewayBaseUrl)
     } catch {
-      return { ok: false, errorMessage: '系统服务地址格式不正确' }
+      return { ok: false, errorMessage: '平台服务地址格式不正确' }
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return { ok: false, errorMessage: '系统服务地址必须以 http:// 或 https:// 开头' }
+      return { ok: false, errorMessage: '平台服务地址必须以 http:// 或 https:// 开头' }
     }
     if (!activationCode) {
       return { ok: false, errorMessage: '激活码不能为空' }
@@ -728,6 +870,7 @@ export function useKioskWorkflow() {
     if (!endpointName) {
       return { ok: false, errorMessage: '端点名称不能为空' }
     }
+    activationForm.value.gatewayBaseUrl = gatewayBaseUrl
     return { ok: true, gatewayBaseUrl, activationCode, endpointName }
   }
 
@@ -749,12 +892,41 @@ export function useKioskWorkflow() {
   }
 
   async function refreshHealth() {
-    health.value = await getAgentHealth()
-    syncKioskBrowserAuthState()
+    try {
+      const previousBound = health.value?.bound
+      health.value = await getAgentHealth()
+      if (previousBound && !health.value.bound) {
+        handleAgentBindingLost()
+        return
+      }
+      if (health.value.tokenResetRequired) {
+        handleAgentBindingLost()
+        return
+      }
+      syncKioskBrowserAuthState()
+      if (health.value.bound && hasMarkScannerKioskAuth()) {
+        await ensureLiveStreamConnected()
+      }
+    } catch (error) {
+      if (error instanceof LocalAgentUnavailableError) {
+        markLocalAgentDisconnected()
+        return
+      }
+      throw error
+    }
   }
 
   async function refreshScanners() {
-    const response = await listLocalScanners()
+    let response: ScannerListResponse
+    try {
+      response = await listLocalScanners()
+    } catch (error) {
+      if (error instanceof LocalAgentUnavailableError) {
+        markLocalAgentDisconnected()
+        return
+      }
+      throw error
+    }
     scanners.value = response.devices
     if (
       !selectedScannerId.value
@@ -771,25 +943,30 @@ export function useKioskWorkflow() {
       boundPapers.value = []
       return
     }
-    if (!queryScannerDeviceId.value || !queryScannerStationId.value) {
+    const scannerDeviceId = getActiveScannerDeviceId()
+    const scannerStationId = getActiveScannerStationId()
+    if (!scannerDeviceId || !scannerStationId) {
       kioskContext.value = null
       boundPapers.value = []
-      errorMessage.value = '扫描工作台地址缺少 scannerDeviceId 或 scannerStationId，无法加载考试上下文'
+      if (health.value?.bound) {
+        errorMessage.value = '扫描设备身份缺失，请重新激活一体机'
+      }
       return
     }
     kioskContext.value = await getScannerKioskContext({
       examId: examId.value,
-      scannerDeviceId: queryScannerDeviceId.value,
-      scannerStationId: queryScannerStationId.value,
+      scannerDeviceId,
+      scannerStationId,
       scanMode: scanMode.value,
     })
     await refreshBoundPapers()
   }
 
-  async function refreshBoundPapers() {
+  async function refreshBoundPapers(forcedScanBatchId?: string) {
     const device = getActiveScannerDeviceId()
     const station = getActiveScannerStationId()
-    if (!examId.value || !device || !station) {
+    const scanBatchId = forcedScanBatchId?.trim() || boundPaperScanBatchId.value
+    if (!examId.value || !device || !station || !scanBatchId) {
       boundPapers.value = []
       boundPapersError.value = null
       return
@@ -797,12 +974,11 @@ export function useKioskWorkflow() {
     boundPapersLoading.value = true
     boundPapersError.value = null
     try {
-      const scanBatchId = kioskContext.value?.latestBatch?.scanBatchId
       boundPapers.value = await listScannerKioskBoundPapers({
         examId: examId.value,
         scannerDeviceId: device,
         scannerStationId: station,
-        ...(scanBatchId ? { scanBatchId } : {}),
+        scanBatchId,
       })
     } catch (error) {
       boundPapersError.value = toUserError(error, '已绑定学生列表加载失败')
@@ -1056,12 +1232,21 @@ export function useKioskWorkflow() {
     if (!examId.value || !ctx || !deviceId || !stationId) {
       return
     }
-    const response = await listScanJobs({
-      examId: examId.value,
-      scannerDeviceId: deviceId,
-      scannerStationId: stationId,
-      includeTerminal: true,
-    })
+    let response: ScanJobListResponse
+    try {
+      response = await listScanJobs({
+        examId: examId.value,
+        scannerDeviceId: deviceId,
+        scannerStationId: stationId,
+        includeTerminal: true,
+      })
+    } catch (error) {
+      if (error instanceof LocalAgentUnavailableError) {
+        markLocalAgentDisconnected()
+        return
+      }
+      throw error
+    }
     const currentJobId = currentJob.value?.scanJobId || ''
     const hasActiveCurrentJob = Boolean(
       currentJob.value && currentJob.value.status !== 'REPORTED',
@@ -1123,8 +1308,6 @@ export function useKioskWorkflow() {
       supplementTargetPageNo.value = undefined
       supplementReason.value = ''
       supplementReplaceTargetPage.value = false
-    } else {
-      expectedPages.value = 1
     }
     errorMessage.value = ''
     await refreshKioskContext()
@@ -1194,10 +1377,6 @@ export function useKioskWorkflow() {
       return
     }
     const isSupplement = scanMode.value === 'SUPPLEMENT'
-    if (isSupplement && expectedPages.value !== 1) {
-      errorMessage.value = '补扫只能扫描 1 个物理页'
-      return
-    }
     loading.value = true
     errorMessage.value = ''
     successMessage.value = ''
@@ -1248,7 +1427,7 @@ export function useKioskWorkflow() {
         localScannerId: selectedScannerId.value,
         batchExternalNo: batchLifecycle.batchExternalNo,
         reportId: batchLifecycle.reportId,
-        expectedPages: isSupplement ? 1 : expectedPages.value,
+        expectedPages: isSupplement ? 1 : undefined,
         scanMode: lifecycleScanSource.scanMode,
         targetPageNo: lifecycleScanSource.targetPageNo,
         supplementReason: lifecycleScanSource.supplementReason,
@@ -1541,52 +1720,43 @@ export function useKioskWorkflow() {
 
   async function activateAgent() {
     if (!canActivateAgent.value) {
-      errorMessage.value = '当前扫描任务未结束，不能重新激活一体机'
+      activationErrorMessage.value = '当前扫描任务未结束，不能重新激活一体机'
       return
     }
     loading.value = true
+    activationErrorMessage.value = ''
     errorMessage.value = ''
     successMessage.value = ''
     try {
+      await syncActivationFormFromAgent()
       const request = validateActivationForm()
       if (!request.ok) {
-        errorMessage.value = request.errorMessage
+        activationErrorMessage.value = request.errorMessage
         return
       }
       const activation = await activateLocalAgent(request)
-      saveKioskAuthSession(activation)
+      saveKioskAuthSession({
+        ...activation,
+        endpointName: request.endpointName,
+      })
+      activationForm.value.activationCode = ''
       successMessage.value = '一体机已激活'
+      activationModalOpen.value = false
+      await router.replace({
+        query: {
+          ...route.query,
+          scannerDeviceId: activation.scannerDeviceId,
+          scannerStationId: activation.scannerStationId,
+        },
+      })
       await refreshAll()
+      await ensureLiveStreamConnected()
     } catch (error) {
+      activationErrorMessage.value = getUserErrorMessage(error, '一体机激活失败')
       handleError(error)
     } finally {
       loading.value = false
     }
-  }
-
-  async function unbindAgent() {
-    if (currentJobBlocksWorkspace.value) {
-      errorMessage.value = '当前扫描任务未结束，不能解除绑定'
-      return
-    }
-    loading.value = true
-    errorMessage.value = ''
-    successMessage.value = ''
-    try {
-      await unbindLocalAgent()
-      clearKioskAuthSession()
-      currentJob.value = null
-      successMessage.value = '一体机绑定已清除'
-      await refreshAll()
-    } catch (error) {
-      handleError(error)
-    } finally {
-      loading.value = false
-    }
-  }
-
-  function triggerDiagnosticsExport() {
-    openDiagnosticsExport()
   }
 
   function onManualRefreshLedger() {
@@ -1722,12 +1892,14 @@ export function useKioskWorkflow() {
           successMessage.value = '上一扫描任务已结束'
         }
       }
-    } catch {
+    } catch (error) {
       busyPollFailureCount += 1
-      errorMessage.value
-        = busyPollFailureCount >= 3
+      handleError(
+        error,
+        busyPollFailureCount >= 3
           ? '无法确认上一扫描任务状态，请检查本机扫描组件后重试'
-          : '本机扫描组件状态查询失败，正在重试'
+          : '本机扫描组件状态查询失败，正在重试',
+      )
       if (busyPollFailureCount >= 3 && busyPollTimer) {
         window.clearInterval(busyPollTimer)
         busyPollTimer = undefined
@@ -1762,7 +1934,7 @@ export function useKioskWorkflow() {
     refreshKioskContext().then(recoverLocalScanJob).catch((error) => {
       handleError(error)
     })
-    if (newVal) {
+    if (newVal && health.value?.bound && hasMarkScannerKioskAuth()) {
       refreshSse().catch((error) => {
         handleError(error)
       })
@@ -1796,6 +1968,18 @@ export function useKioskWorkflow() {
     },
   )
 
+  watch(boundPaperScanBatchId, (newId, oldId) => {
+    if (newId === oldId) return
+    if (newId) {
+      refreshBoundPapers().catch((error) => {
+        handleError(error)
+      })
+    } else {
+      boundPapers.value = []
+      boundPapersError.value = null
+    }
+  })
+
   watch(
     liveEvents,
     (newEvents, oldEvents) => {
@@ -1823,11 +2007,16 @@ export function useKioskWorkflow() {
   // -------------------------------------------------------------
 
   onMounted(async () => {
-    // 先加载考试下拉，保证用户可以在工作台首屏立即看到可选考试列表。
+    await syncActivationFormFromAgent()
     await loadExamOptions().catch((error) => {
       handleError(error)
     })
     await refreshAll()
+    if (needsActivationGate.value) {
+      openActivationModal()
+    } else {
+      await ensureLiveStreamConnected()
+    }
     healthTimer = window.setInterval(() => {
       refreshHealth().catch((error) => {
         handleError(error)
@@ -1838,11 +2027,6 @@ export function useKioskWorkflow() {
         handleError(error)
       })
     }, 15000)
-    if (examId.value) {
-      startSse().catch((error) => {
-        handleError(error)
-      })
-    }
   })
 
   onBeforeUnmount(() => {
@@ -1869,12 +2053,16 @@ export function useKioskWorkflow() {
     boundPapers,
     boundPapersLoading,
     boundPapersError,
+    boundPaperScanBatchId,
+    boundPaperSummary,
     currentJob,
     loading,
     errorMessage,
     successMessage,
+    activationModalOpen,
+    activationModalForced,
+    activationErrorMessage,
     previewPageNo,
-    expectedPages,
     scanMode,
     supplementTargetPageNo,
     supplementReason,
@@ -1922,9 +2110,7 @@ export function useKioskWorkflow() {
     canStartScan,
     canSwitchScanMode,
     canSwitchExam,
-    canEditScanSetup,
     canActivateAgent,
-    canUnbindAgent,
     canDiscardLedgerPage,
     kioskBrowserSessionLost,
     workState,
@@ -1996,8 +2182,7 @@ export function useKioskWorkflow() {
 
     // ---- Agent 操作 ----
     activateAgent,
-    unbindAgent,
-    triggerDiagnosticsExport,
+    openActivationModal,
   }
 }
 

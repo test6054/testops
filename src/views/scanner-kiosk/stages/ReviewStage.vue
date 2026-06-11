@@ -18,6 +18,7 @@ import {
   WarningFilled,
 } from '@ant-design/icons-vue'
 import { computed } from 'vue'
+import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow } = useKioskCtx()
@@ -101,6 +102,10 @@ const batch = computed(() => workflow.kioskContext.value?.latestBatch ?? null)
 const totalIssues = computed(() => reviewItems.value.length)
 const failedCount = computed(() => failedPages.value.length)
 const attentionCount = computed(() => ledgerAttentions.value.length)
+
+const reviewBoundBatchId = computed(
+  () => workflow.boundPaperScanBatchId.value || batch.value?.scanBatchId || '',
+)
 </script>
 
 <template>
@@ -197,6 +202,12 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
 
     <!-- 右：操作面板 + 批次摘要 -->
     <aside class="actions-panel">
+      <KioskBoundStudentsPanel
+        variant="panel"
+        class="panel-bound"
+        :scan-batch-id="reviewBoundBatchId"
+      />
+
       <section class="panel-section">
         <header><h4>处置操作</h4></header>
         <button
@@ -292,6 +303,10 @@ const attentionCount = computed(() => ledgerAttentions.value.length)
   gap: var(--kiosk-space-3);
   height: 100%;
   min-height: 0;
+}
+
+.panel-bound {
+  flex-shrink: 0;
 }
 
 /* ============ 左：异常列表 ============ */

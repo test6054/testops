@@ -12,6 +12,8 @@ import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 export interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   /** 是否跳过认证 */
   skipAuth?: boolean
+  /** 扫描工位接口本次请求实际使用的鉴权来源 */
+  markScannerStationAuthSource?: 'jwt' | 'kiosk'
   /** 是否跳过错误处理 */
   skipErrorHandler?: boolean
   /** 是否显示加载状态 */

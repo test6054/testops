@@ -6,7 +6,7 @@
  * 不再让多个组件各自重复实现规则推导。
  *
  * 业务约束：
- *   - 任务非终态时阻断切考试 / 切扫描仪 / 切模式 / 激活 / 解绑
+ *   - 任务非终态时阻断切考试 / 切扫描仪 / 切模式 / 激活
  *   - 任务在 SCANNING/PAUSED 才允许暂停或继续
  *   - 任务在 SCANNING/PAUSED 才允许结束本批次
  *   - 已落库扫描页才允许单页废弃
@@ -23,7 +23,7 @@ export interface KioskBlockedReasons {
   switchScanner: string
   /** 切换扫描模式 / 编辑扫描启动参数 */
   switchScanMode: string
-  /** 编辑扫描启动设置（如预计页数） */
+  /** 编辑扫描启动设置（补扫参数等） */
   editScanSetup: string
   /** 启动扫描（最严格的入口阻断） */
   startScan: string
@@ -49,8 +49,6 @@ export interface KioskBlockedReasons {
   discardLedgerPage: string
   /** 激活一体机 */
   activateAgent: string
-  /** 解除一体机绑定 */
-  unbindAgent: string
 }
 
 export function useKioskMutex(workflow: KioskWorkflow) {
@@ -110,7 +108,6 @@ export function useKioskMutex(workflow: KioskWorkflow) {
       discardLedgerPage: workflow.canDiscardLedgerPage.value ? '' : jobInflightBlocked.value,
 
       activateAgent: workflow.canActivateAgent.value ? '' : jobInflightBlocked.value,
-      unbindAgent: workflow.canUnbindAgent.value ? '' : jobInflightBlocked.value,
     }
   })
 

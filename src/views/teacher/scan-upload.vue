@@ -412,7 +412,7 @@
     >
       <UiEmpty v-if="!sourceFilesTarget?.sourceFiles?.length" description="本批次暂无扫描原件" />
       <a-list v-else size="small" :data-source="sourceFilesTarget.sourceFiles">
-        <template #render-item="{ item }">
+        <template #renderItem="{ item }">
           <a-list-item>
             <a-list-item-meta :title="item.fileName || item.fileId" />
             <template #actions>

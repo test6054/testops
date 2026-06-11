@@ -113,6 +113,10 @@ export interface ExamScannerKioskBatchVO {
   pendingUploadCount: number
   /** 批次级异常处置项数量 */
   attentionItemCount: number
+  /** 批次级已绑定学生数 */
+  boundStudentCount: number
+  /** 批次级已绑定学生登记页数 */
+  boundRegisteredPageCount: number
   status: ScanBatchStatusCode
   statusMessage: string
   diagnostic?: string
@@ -430,7 +434,8 @@ export interface ExamScannerBoundPaperListRequest {
   examId: string
   scannerDeviceId: string
   scannerStationId: string
-  scanBatchId?: string
+  /** 当前活跃扫描批次 ID，必填 */
+  scanBatchId: string
 }
 
 export interface ExamScannerBoundPaperItemVO {

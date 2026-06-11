@@ -25,6 +25,7 @@ import {
   SafetyCertificateFilled,
 } from '@ant-design/icons-vue'
 import { computed, onMounted, ref, watch } from 'vue'
+import KioskBoundStudentsPanel from '../components/KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const { workflow, ui } = useKioskCtx()
@@ -276,6 +277,11 @@ watch(
             </li>
           </ul>
         </article>
+
+        <KioskBoundStudentsPanel
+          variant="panel"
+          :scan-batch-id="batch?.scanBatchId"
+        />
 
         <article class="card">
           <header><h3>批次明细</h3></header>
