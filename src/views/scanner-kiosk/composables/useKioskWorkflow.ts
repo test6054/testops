@@ -19,8 +19,8 @@ import type {
   AgentHealthResponse,
   AgentHealthStatus,
   LocalScanJobStatus,
-  ScanJobResponse,
   ScanJobListResponse,
+  ScanJobResponse,
   ScannerDeviceInfo,
   ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'

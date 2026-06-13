@@ -11,8 +11,8 @@
  * 自取 ctx，无 prop。响应式：≤1280 → 300px；≤1024 → 整列隐藏（在 KioskLayout 处理）。
  */
 import { computed } from 'vue'
-import KioskBoundStudentsPanel from './KioskBoundStudentsPanel.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
+import KioskBoundStudentsPanel from './KioskBoundStudentsPanel.vue'
 
 const { workflow, stage, ui } = useKioskCtx()
 

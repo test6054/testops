@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ExamScannerKioskExamOptionVO } from '@/apis/mark/scanner-kiosk'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ExamScannerKioskExamOptionVO } from '@/apis/mark/scanner-kiosk'
 /**
  * Stage 1 - 准备扫描：考试下拉 + 模式分段 + 开始按钮，单屏完成配置。
  */

@@ -280,11 +280,6 @@ export async function activateLocalAgent(
   return normalizeAgentPayload(() => validateScannerAgentActivateResponse(payload))
 }
 
-export async function unbindLocalAgent(): Promise<{ success: boolean }> {
-  const payload = await localAgentPost('/api/agent/unbind', {})
-  return normalizeAgentPayload(() => validateSuccessObject(payload))
-}
-
 export async function startScanJob(request: StartScanJobRequest): Promise<ScanJobResponse> {
   const payload = await localAgentPost('/api/scan-jobs/start', request)
   return normalizeAgentPayload(() => validateScanJobResponse(payload))
@@ -393,10 +388,6 @@ export function getPageImageUrl(scanJobId: string, pageNo: number): string {
   return `${getLocalAgentBaseUrl()}/api/scan-jobs/${encodeURIComponent(scanJobId)}/pages/${pageNo}/image`
 }
 
-export function openDiagnosticsExport() {
-  window.open(`${getLocalAgentBaseUrl()}/api/diagnostics/export`, '_blank', 'noopener,noreferrer')
-}
-
 async function localAgentGet(path: string): Promise<LocalAgentJsonValue> {
   const response = await requestLocalAgent(path, {
     method: 'GET',
@@ -466,7 +457,7 @@ function normalizeAgentPayload<T>(action: () => T): T {
   return result
 }
 
-function requireObject(value: LocalAgentJsonValue, field: string): LocalAgentJsonObject {
+function requireObject(value: LocalAgentJsonValue): LocalAgentJsonObject {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
@@ -599,7 +590,7 @@ function requireScanPageStatus(value: LocalAgentJsonObject, field: string): Loca
 }
 
 function validateLocalApiResult(value: LocalAgentJsonValue, response: Response): LocalApiResult {
-  const result = requireObject(value, 'response')
+  const result = requireObject(value)
   const envelope: LocalApiResult = {
     success: requireBoolean(result, 'success'),
     code: requireString(result, 'code'),
@@ -616,7 +607,7 @@ function validateLocalApiResult(value: LocalAgentJsonValue, response: Response):
 }
 
 function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthResponse {
-  const result = requireObject(value, 'agentHealth')
+  const result = requireObject(value)
   return {
     status: requireAgentHealthStatus(result, 'status'),
     agentVersion: requireString(result, 'agentVersion'),
@@ -638,18 +629,18 @@ function validateAgentHealthResponse(value: LocalAgentJsonValue): AgentHealthRes
 }
 
 function validateScannerListResponse(value: LocalAgentJsonValue): ScannerListResponse {
-  const result = requireObject(value, 'scannerList')
+  const result = requireObject(value)
   const devices = result.devices
   if (!Array.isArray(devices)) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return {
-    devices: devices.map((item, index) => validateScannerDeviceInfo(item, `devices[${index}]`)),
+    devices: devices.map((item) => validateScannerDeviceInfo(item)),
   }
 }
 
-function validateScannerDeviceInfo(value: LocalAgentJsonValue, field: string): ScannerDeviceInfo {
-  const result = requireObject(value, field)
+function validateScannerDeviceInfo(value: LocalAgentJsonValue): ScannerDeviceInfo {
+  const result = requireObject(value)
   const scanner: ScannerDeviceInfo = {
     localScannerId: requireString(result, 'localScannerId'),
     displayName: requireString(result, 'displayName'),
@@ -670,7 +661,7 @@ function validateScannerDeviceInfo(value: LocalAgentJsonValue, field: string): S
 }
 
 function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSetupContextResponse {
-  const result = requireObject(value, 'agentSetupContext')
+  const result = requireObject(value)
   const payload: AgentSetupContextResponse = {
     defaultGatewayBaseUrl: requireString(result, 'defaultGatewayBaseUrl'),
     bound: requireBoolean(result, 'bound'),
@@ -701,7 +692,7 @@ function validateAgentSetupContextResponse(value: LocalAgentJsonValue): AgentSet
 function validateScannerAgentActivateResponse(
   value: LocalAgentJsonValue,
 ): ScannerAgentActivateResponse {
-  const result = requireObject(value, 'agentActivation')
+  const result = requireObject(value)
   const payload: ScannerAgentActivateResponse = {
     scannerDeviceId: requireString(result, 'scannerDeviceId'),
     scannerStationId: requireString(result, 'scannerStationId'),
@@ -726,33 +717,23 @@ function validateScannerAgentActivateResponse(
   return payload
 }
 
-function validateSuccessObject(value: LocalAgentJsonValue): { success: boolean } {
-  const result = requireObject(value, 'successResult')
-  return {
-    success: requireBoolean(result, 'success'),
-  }
-}
-
 function validateScanJobResponse(value: LocalAgentJsonValue): ScanJobResponse {
-  return validateScanJobResponsePayload(value, 'scanJob')
+  return validateScanJobResponsePayload(value)
 }
 
 function validateScanJobListResponse(value: LocalAgentJsonValue): ScanJobListResponse {
-  const result = requireObject(value, 'scanJobList')
+  const result = requireObject(value)
   const jobs = result.jobs
   if (!Array.isArray(jobs)) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
   }
   return {
-    jobs: jobs.map((item, index) => validateScanJobResponsePayload(item, `jobs[${index}]`)),
+    jobs: jobs.map((item) => validateScanJobResponsePayload(item)),
   }
 }
 
-function validateScanJobResponsePayload(
-  value: LocalAgentJsonValue,
-  field: string,
-): ScanJobResponse {
-  const result = requireObject(value, field)
+function validateScanJobResponsePayload(value: LocalAgentJsonValue): ScanJobResponse {
+  const result = requireObject(value)
   const pages = result.pages
   if (!Array.isArray(pages)) {
     throwUserFacing(LOCAL_AGENT_RESPONSE_ERROR)
@@ -771,7 +752,7 @@ function validateScanJobResponsePayload(
     reported: requireBoolean(result, 'reported'),
     replaceTargetPage: requireBoolean(result, 'replaceTargetPage'),
     message: requireString(result, 'message'),
-    pages: pages.map((item, index) => validateScanPageInfo(item, `${field}.pages[${index}]`)),
+    pages: pages.map((item) => validateScanPageInfo(item)),
   }
   const scanBatchId = requireOptionalString(result, 'scanBatchId')
   if (scanBatchId !== undefined) {
@@ -788,8 +769,8 @@ function validateScanJobResponsePayload(
   return payload
 }
 
-function validateScanPageInfo(value: LocalAgentJsonValue, field: string): ScanPageInfo {
-  const result = requireObject(value, field)
+function validateScanPageInfo(value: LocalAgentJsonValue): ScanPageInfo {
+  const result = requireObject(value)
   const page: ScanPageInfo = {
     pageNo: requireNumber(result, 'pageNo'),
     status: requireScanPageStatus(result, 'status'),
