@@ -700,7 +700,7 @@ onMounted(async () => {
         <a-form-item label="服务根地址" required>
           <a-input
             v-model:value="registerForm.serviceUrl"
-            placeholder="http://host:8080"
+            placeholder="http://host:8095"
           />
         </a-form-item>
         <a-form-item label="设备类型" required>
