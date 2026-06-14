@@ -8,9 +8,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - POST /api/quality/ai/model-profiles/save         保存 / 启用切换，apiKey 留空 = 保留原密钥
  * - POST /api/quality/ai/model-profiles/health-check 人工触发健康检查
  *
- * 唯一启用约束：同租户 enabled=true 最多 1 条。切换启用时后端会在 advisory lock 下
- *   串行化并把同租户其它配置置为停用。abilityCode 仅作为 AI 任务与脱敏证据快照的审计
- *   语义存在，不参与模型选择。
+ * 唯一启用约束：平台同供应商 enabled=true 最多 1 条。切换启用时后端会在 advisory lock 下
+ *   串行化并把平台同供应商其它配置置为停用。mark 直接扫描视觉能力使用 QWEN，
+ *   quality 文本任务和 mark 其他 AI 能力使用 DEEPSEEK。
  */
 import type {
   AiHealthStatus,
@@ -76,10 +76,8 @@ const list = ref<AiModelProfileVO[]>([])
 const loading = ref(false)
 const enabledOnly = ref<boolean>(false)
 
-/** 当前唯一启用配置（list 中 enabled=true 的那一条） */
-const activeProfile = computed<AiModelProfileVO | null>(
-  () => list.value.find((item) => item.enabled) ?? null,
-)
+/** 当前已启用配置集合，按供应商分流后允许 QWEN / DEEPSEEK 各一条。 */
+const activeProfiles = computed<AiModelProfileVO[]>(() => list.value.filter((item) => item.enabled))
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -92,9 +90,9 @@ const editorMode = ref<'create' | 'edit'>('create')
  */
 const editor = reactive<AiModelProfileSaveRequest>({
   profileName: '',
-  providerType: 'OPENAI',
-  modelName: 'gpt-4o-mini',
-  apiHost: 'https://api.openai.com/v1',
+  providerType: 'DEEPSEEK',
+  modelName: 'deepseek-chat',
+  apiHost: 'https://api.deepseek.com',
   apiKey: '',
   temperature: 0.2,
   maxTokens: 4096,
@@ -117,7 +115,7 @@ async function loadList() {
         pageNum,
         pageSize: AI_MODEL_PROFILE_PAGE_SIZE,
       }),
-      'AI 模型配置列表加载失败，请稍后重试',
+      '平台 AI 模型配置列表加载失败，请稍后重试',
     )
   } finally {
     loading.value = false
@@ -129,9 +127,9 @@ function openCreate() {
   Object.assign(editor, {
     id: undefined,
     profileName: '',
-    providerType: 'OPENAI',
-    modelName: 'gpt-4o-mini',
-    apiHost: 'https://api.openai.com/v1',
+    providerType: 'DEEPSEEK',
+    modelName: 'deepseek-chat',
+    apiHost: 'https://api.deepseek.com',
     apiKey: '',
     temperature: 0.2,
     maxTokens: 4096,
@@ -193,22 +191,22 @@ async function submitEditor() {
 }
 
 /**
- * 将某条配置设为全局唯一启用。
+ * 将某条配置设为同供应商唯一启用。
  *
- * 后端会在 advisory lock 下把同租户其它配置都置为停用，前端仅负责颗粒度提交
+ * 后端会在 advisory lock 下把平台同供应商其它配置置为停用，前端仅负责颗粒度提交
  * （携带原记录 + apiKey 留空保留原密钥）。
  */
 async function handleActivate(record: AiModelProfileVO) {
   if (record.enabled) {
     return
   }
-  const current = activeProfile.value
+  const current = activeProfiles.value.find((item) => item.providerType === record.providerType)
   void confirmAsync({
     title: `将「${record.profileName}」设为当前启用模型？`,
     type: 'warning',
     content: current
-      ? `当前启用的「${current.profileName}」将被自动置为停用。同一租户下只会保留一条启用记录。`
-      : '提交后本条配置将作为当前租户唯一启用的 AI 模型。',
+      ? `当前启用的同供应商配置「${current.profileName}」将被自动置为停用。平台同供应商只保留一条启用记录。`
+      : `提交后本条配置将作为平台 ${providerTypeLabel(record.providerType)} 的启用模型。`,
     onOk: async () => {
       activatingId.value = record.id
       try {
@@ -240,7 +238,7 @@ async function handleDisable(record: AiModelProfileVO) {
     title: `停用「${record.profileName}」？`,
     type: 'error',
     content: record.enabled
-      ? '该配置是当前启用模型。停用后本租户将没有可用 AI 模型，AI 任务会进入阻断状态。请谨慎操作。'
+      ? '该配置是当前启用模型。停用后平台对应供应商将没有可用 AI 模型，相关 AI 任务会进入阻断状态。请谨慎操作。'
       : '该配置本来就未启用，停用后仅从候选库序列中维持停用状态。',
     onOk: async () => {
       await aiModelProfileApi.save({
@@ -324,7 +322,7 @@ onMounted(() => {
     <a-alert
       type="warning"
       show-icon
-      message="同一租户全局只能启用 1 条 AI 模型配置，质量评价与阅卷 AI 能力共用该配置。未启用任何配置时，相关 AI 任务将暂停处理。"
+      message="平台同供应商只能启用 1 条 AI 模型配置。阅卷视觉能力使用通义千问，质量评价与阅卷文本能力使用 DeepSeek；缺少对应供应商启用配置时，相关 AI 任务将阻断。"
       class="ai-model__alert"
     />
 
@@ -333,51 +331,57 @@ onMounted(() => {
     <a-card :bordered="false" class="detail-table-card ai-model__active-card">
       <template #title>当前启用模型</template>
 
-      <div v-if="activeProfile" class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar">
-          <a-form-item>
-            <a-tag :color="healthColor(activeProfile.healthStatus)">
-              {{ healthLabel(activeProfile.healthStatus) }}
-            </a-tag>
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
+      <UiEmpty
+        v-if="activeProfiles.length === 0"
+        description="平台尚未启用任何 AI 模型，请从候选仓库中为 QWEN / DEEPSEEK 分别选择启用配置"
+        size="sm"
+      />
+      <a-space v-else direction="vertical" :size="12" class="ai-model__active-list">
+        <a-descriptions
+          v-for="profile in activeProfiles"
+          :key="profile.id"
+          :column="3"
+          size="small"
+          bordered
+        >
+          <template #title>
+            <a-space>
+              <span>{{ providerTypeLabel(profile.providerType) }}</span>
+              <a-tag :color="healthColor(profile.healthStatus)">
+                {{ healthLabel(profile.healthStatus) }}
+              </a-tag>
+            </a-space>
+          </template>
+          <template #extra>
             <UiButton
               variant="outline"
               size="sm"
-              :loading="healthLoading === activeProfile.id"
-              @click="handleHealthCheck(activeProfile)"
+              :loading="healthLoading === profile.id"
+              @click="handleHealthCheck(profile)"
             >
               重新检测
             </UiButton>
-          </a-form-item>
-        </a-form>
-      </div>
-
-      <UiEmpty
-        v-if="!activeProfile"
-        description="当前租户尚未启用任何 AI 模型，请从候选仓库中选择一条设为启用"
-        size="sm"
-      />
-      <a-descriptions v-else :column="3" size="small" bordered>
-        <a-descriptions-item label="配置名称">
-          {{ activeProfile.profileName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="模型服务商">
-          {{ providerTypeLabel(activeProfile.providerType) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="模型">
-          {{ activeProfile.modelName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="模型服务地址" :span="3">
-          {{ activeProfile.apiHost }}
-        </a-descriptions-item>
-        <a-descriptions-item label="上次检测时间">
-          {{ activeProfile.lastHealthCheckAt || '尚未检测' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="最近检测说明" :span="2">
-          {{ aiModelHealthMessageText(activeProfile.lastHealthMessage) }}
-        </a-descriptions-item>
-      </a-descriptions>
+          </template>
+          <a-descriptions-item label="配置名称">
+            {{ profile.profileName }}
+          </a-descriptions-item>
+          <a-descriptions-item label="模型">
+            {{ profile.modelName }}
+          </a-descriptions-item>
+          <a-descriptions-item label="密钥">
+            {{ apiKeyDisplayText(profile) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="模型服务地址" :span="3">
+            {{ profile.apiHost }}
+          </a-descriptions-item>
+          <a-descriptions-item label="上次检测时间">
+            {{ profile.lastHealthCheckAt || '尚未检测' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="最近检测说明" :span="2">
+            {{ aiModelHealthMessageText(profile.lastHealthMessage) }}
+          </a-descriptions-item>
+        </a-descriptions>
+      </a-space>
     </a-card>
 
     <a-card :bordered="false" class="detail-table-card ai-model__table-card">
@@ -476,9 +480,8 @@ onMounted(() => {
           <a-col :span="12">
             <a-form-item label="模型服务商">
               <a-select v-model:value="editor.providerType">
-                <a-select-option value="OPENAI"> OpenAI </a-select-option>
                 <a-select-option value="DEEPSEEK"> DeepSeek </a-select-option>
-                <a-select-option value="QWEN"> Qwen </a-select-option>
+                <a-select-option value="QWEN"> 通义千问 </a-select-option>
               </a-select>
             </a-form-item>
           </a-col>
@@ -489,7 +492,7 @@ onMounted(() => {
           </a-col>
         </a-row>
         <a-form-item label="模型服务地址">
-          <a-input v-model:value="editor.apiHost" placeholder="https://api.openai.com/v1" />
+          <a-input v-model:value="editor.apiHost" placeholder="https://api.deepseek.com" />
         </a-form-item>
         <a-form-item
           :label="
@@ -557,7 +560,7 @@ onMounted(() => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="启用为当前租户唯一 AI 模型">
+        <a-form-item label="启用为平台同供应商唯一 AI 模型">
           <a-switch v-model:checked="editor.enabled" />
         </a-form-item>
       </a-form>

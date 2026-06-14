@@ -1515,11 +1515,10 @@ export interface SubjectiveAiRiskFlagVO {
 }
 
 /** AI 供应商类型编码 - 对应后端 AiProviderType */
-export type AiProviderTypeCode = 'OPENAI' | 'DEEPSEEK' | 'QWEN'
+export type AiProviderTypeCode = 'DEEPSEEK' | 'QWEN'
 
 /** AI 供应商类型中文文案映射 */
 export const AI_PROVIDER_TYPE_LABEL: Record<AiProviderTypeCode, string> = {
-  OPENAI: 'OpenAI 模型服务',
   DEEPSEEK: 'DeepSeek 模型服务',
   QWEN: '通义千问模型服务',
 }

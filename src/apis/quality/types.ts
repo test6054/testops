@@ -584,10 +584,9 @@ export const CIVIC_DIMENSION_LABEL: Record<CivicDimension, string> = {
 }
 
 /** AI 供应商类型 - edu-common AiProviderType */
-export type AiProviderType = 'OPENAI' | 'DEEPSEEK' | 'QWEN'
+export type AiProviderType = 'DEEPSEEK' | 'QWEN'
 
 export const AI_PROVIDER_TYPE_LABEL: Record<AiProviderType, string> = {
-  OPENAI: 'OpenAI',
   DEEPSEEK: 'DeepSeek',
   QWEN: '通义千问',
 }

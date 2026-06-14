@@ -131,7 +131,7 @@ export interface AiResultVO {
 /**
  * AI 模型配置 VO - 对齐后端 AiModelProfileVO。
  *
- * 业务规则：同一租户全局只能有一条 enabled=true 记录。
+ * 业务规则：平台同一供应商最多一条 enabled=true 记录。
  * abilityCode / defaultProfile 不属于当前后端下行契约。
  */
 export interface AiModelProfileVO {
@@ -227,7 +227,7 @@ export interface AiResultValidationUpdateRequest {
 
 /**
  * AI 模型配置查询请求 - 对齐后端 AiModelProfileQueryRequest。
- * 后端继承 QueryDto，分页字段必传；仅支持 enabledOnly 过滤，不再接收 abilityCode / defaultProfile / keyword 。
+ * 后端继承 QueryDto，分页字段必传；仅支持 enabledOnly 过滤，不接收 abilityCode / defaultProfile / keyword。
  */
 export interface AiModelProfileQueryRequest extends QueryDto {
   /** true 仅返回当前启用的唯一配置 */
@@ -237,8 +237,8 @@ export interface AiModelProfileQueryRequest extends QueryDto {
 /**
  * AI 模型配置保存请求 - 对齐后端 AiModelProfileSaveRequest。
  *
- * 业务规则：提交 enabled=true 后端会按 tenantId advisory lock 串行化并将
- * 同租户其他配置置为停用；apiKey 留空表示保留原密钥。
+ * 业务规则：提交 enabled=true 后端会按 providerType advisory lock 串行化并将
+ * 平台同供应商其他配置置为停用；apiKey 留空表示保留原密钥。
  */
 export interface AiModelProfileSaveRequest {
   id?: string
@@ -257,7 +257,7 @@ export interface AiModelProfileSaveRequest {
 
 /**
  * 健康检查请求 - 对齐后端 AiModelProfileHealthCheckRequest。
- * 后端仅接收 profileId；abilityCode / promptOverride 字段不参与模型选择。
+ * 后端仅接收 profileId；不再按租户或能力码参与模型选择。
  */
 export interface AiModelProfileHealthCheckRequest {
   profileId: string
