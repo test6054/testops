@@ -401,7 +401,8 @@ onMounted(() => {
         </a-form>
       </div>
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         :columns="columns"
         :data-source="list"
         :loading="loading"
@@ -439,7 +440,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-<span
+              <span
                 v-if="!record.enabled"
                 class="op-link primary"
                 :class="{ 'is-disabled': activatingId === record.id }"
@@ -458,7 +459,8 @@ onMounted(() => {
               </span>
               <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
               <span class="op-link danger" role="button" @click="handleDisable(record)">停用</span>
-            </div></template>
+            </div>
+          </template>
         </template>
       </UiDataTable>
     </a-card>
