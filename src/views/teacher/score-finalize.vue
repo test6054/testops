@@ -560,7 +560,7 @@ import type {
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
   FinalScoreRiskOverviewVO,
-  FinalScoreStatusCode, FinalScoreRiskReasonCode
+  FinalScoreRiskReasonCode, FinalScoreStatusCode
 } from '@/apis/mark/exam'
 import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -879,11 +879,11 @@ const canBatchConfirmSafe = computed(() => {
   const overview = riskOverview.value
   return Boolean(
     overview
-      && overview.safeConfirmableCount > 0
-      && blockingRiskReasons.value.length === 0
-      && !hasHardBlockingRisks.value
-      && !hasDailyScoreConfig.value
-      && !batchConfirming.value,
+    && overview.safeConfirmableCount > 0
+    && blockingRiskReasons.value.length === 0
+    && !hasHardBlockingRisks.value
+    && !hasDailyScoreConfig.value
+    && !batchConfirming.value,
   )
 })
 

@@ -169,7 +169,7 @@ import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE, FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE } from '@/apis/mark/student-exam'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE, MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,

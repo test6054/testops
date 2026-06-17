@@ -373,6 +373,7 @@ import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { listAbsenceRecords } from '@/apis/mark/absence'
 import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
@@ -382,7 +383,6 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import { listAbsenceRecords } from '@/apis/mark/absence'
 import {
   UiAlertStrip,
   UiButton,
