@@ -43,9 +43,10 @@ const boundBatchKpiCount = computed(() => {
   return '—'
 })
 
-const policy = computed(() => workflow.kioskContext.value?.policy)
+const capabilities = computed(() => workflow.kioskContext.value?.capabilities)
 const device = computed(() => workflow.kioskContext.value?.device)
 const latestBatch = computed(() => workflow.kioskContext.value?.latestBatch)
+const activeScanConfig = computed(() => workflow.scanConfig.value)
 
 const railDeviceLed = computed(() => {
   if (!workflow.health.value?.bound) return 'danger'
@@ -67,17 +68,33 @@ const railDeviceStatusText = computed(() => {
   return workflow.endpointOnlineStatusLabel(d.onlineStatus)
 })
 
-const railPolicyDpi = computed(() => (policy.value ? String(policy.value.dpi) : '未加载'))
-const railPolicyColor = computed(() =>
-  policy.value ? workflow.scannerColorModeLabel(policy.value.colorMode) : '未加载',
+const railCapabilityDpi = computed(() =>
+  capabilities.value?.loaded && capabilities.value.maxScanDpi
+    ? String(capabilities.value.maxScanDpi)
+    : '未加载',
 )
-const railPolicyDuplex = computed(() =>
-  policy.value ? workflow.scannerDuplexModeLabel(policy.value.duplexMode) : '未加载',
-)
-const railPolicyBlankPage = computed(() => {
-  if (!policy.value) return '未加载'
-  return policy.value.blankPageDetectionEnabled ? '启用' : '关闭'
+const railCapabilityDuplex = computed(() => {
+  if (!capabilities.value?.loaded) return '未加载'
+  return capabilities.value.supportsDuplex ? '支持双面' : '仅单面'
 })
+const railCapabilityName = computed(() =>
+  capabilities.value?.scannerDisplayName || '未加载',
+)
+
+const railScanDpi = computed(() => String(activeScanConfig.value.dpi ?? '—'))
+const railScanColor = computed(() =>
+  activeScanConfig.value.colorMode
+    ? workflow.scannerColorModeLabel(activeScanConfig.value.colorMode)
+    : '—',
+)
+const railScanDuplex = computed(() =>
+  activeScanConfig.value.duplexMode
+    ? workflow.scannerDuplexModeLabel(activeScanConfig.value.duplexMode)
+    : '—',
+)
+const railScanBlankPage = computed(() =>
+  activeScanConfig.value.blankPageDetectionEnabled ? '启用' : '关闭',
+)
 
 function handleOpenSettings() {
   ui.openSettings()
@@ -113,27 +130,48 @@ function handleOpenSettings() {
       <button type="button" class="rail-link" @click="handleOpenSettings">打开设备设置 →</button>
     </article>
 
-    <!-- 考试扫描策略 -->
+    <!-- 本机扫描仪能力（只读） -->
     <article class="rail-card">
       <header class="rail-card-head">
-        <h4>考试扫描策略</h4>
+        <h4>本机扫描仪能力</h4>
+      </header>
+      <dl class="rail-kv">
+        <div>
+          <dt>设备</dt>
+          <dd>{{ railCapabilityName }}</dd>
+        </div>
+        <div>
+          <dt>最大 DPI</dt>
+          <dd>{{ railCapabilityDpi }}</dd>
+        </div>
+        <div>
+          <dt>双面</dt>
+          <dd>{{ railCapabilityDuplex }}</dd>
+        </div>
+      </dl>
+    </article>
+
+    <!-- 当前批次扫描参数 -->
+    <article class="rail-card">
+      <header class="rail-card-head">
+        <h4>当前扫描参数</h4>
       </header>
       <dl class="rail-kv">
         <div>
           <dt>DPI</dt>
-          <dd>{{ railPolicyDpi }}</dd>
+          <dd>{{ railScanDpi }}</dd>
         </div>
         <div>
           <dt>色彩</dt>
-          <dd>{{ railPolicyColor }}</dd>
+          <dd>{{ railScanColor }}</dd>
         </div>
         <div>
           <dt>单双面</dt>
-          <dd>{{ railPolicyDuplex }}</dd>
+          <dd>{{ railScanDuplex }}</dd>
         </div>
         <div>
           <dt>空白页检测</dt>
-          <dd>{{ railPolicyBlankPage }}</dd>
+          <dd>{{ railScanBlankPage }}</dd>
         </div>
       </dl>
     </article>

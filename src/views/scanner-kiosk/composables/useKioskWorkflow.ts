@@ -35,6 +35,7 @@ import type {
   ExamScannerLedgerDataSource,
   ExamScannerPageLedgerVO,
   ExamScannerPageRegistrationStatus,
+  ExamScannerScanConfigVO,
   ScanAttentionTypeCode,
   ScannerKioskScanMode,
 } from '@/apis/mark/scanner-kiosk'
@@ -95,15 +96,16 @@ import { promptModal } from '@/views/quality/_helpers'
 // 静态字典：扫描策略色彩 / 单双面文案，由 UI / SideRail 直接读取。
 // ================================================================
 
-type ScannerPolicy = NonNullable<ExamScannerKioskContextVO['policy']>
+type ScanColorMode = ExamScannerScanConfigVO['colorMode']
+type ScanDuplexMode = ExamScannerScanConfigVO['duplexMode']
 
-export const SCANNER_COLOR_MODE_LABEL: Record<ScannerPolicy['colorMode'], string> = {
+export const SCANNER_COLOR_MODE_LABEL: Record<ScanColorMode, string> = {
   COLOR: '彩色',
   GRAY: '灰度',
   LINEART: '黑白',
 }
 
-export const SCANNER_DUPLEX_MODE_LABEL: Record<ScannerPolicy['duplexMode'], string> = {
+export const SCANNER_DUPLEX_MODE_LABEL: Record<ScanDuplexMode, string> = {
   SIMPLEX: '单面',
   DUPLEX: '双面',
 }
@@ -161,6 +163,12 @@ export function useKioskWorkflow() {
    * 仅在 scanMode==='SUPPLEMENT' 时有效；切到其他模式由 changeScanMode 自动重置。
    */
   const supplementReplaceTargetPage = ref(false)
+  const scanConfig = ref<ExamScannerScanConfigVO>({
+    dpi: 300,
+    colorMode: 'COLOR',
+    duplexMode: 'SIMPLEX',
+    blankPageDetectionEnabled: true,
+  })
   const busyState = ref<{
     active: boolean
     activeJobId: string
@@ -418,7 +426,8 @@ export function useKioskWorkflow() {
       if (!supplementReason.value.trim()) return '补扫原因不能为空'
     }
     if (!kioskContext.value.device) return '考试未绑定可用扫描设备'
-    if (!kioskContext.value.policy) return '考试扫描策略未配置'
+    if (!kioskContext.value.capabilities?.loaded) return '扫描仪能力未上报，请确认 Agent 心跳正常'
+    if (!scanConfig.value.dpi) return '请选择扫描分辨率'
     return ''
   })
   const canStartScan = computed(() => !scanBlockedReason.value && !loading.value)
@@ -587,11 +596,11 @@ export function useKioskWorkflow() {
     return strictEnumLabel(SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, status, '扫描端点在线状态')
   }
 
-  function scannerColorModeLabel(status: ScannerPolicy['colorMode']) {
+  function scannerColorModeLabel(status: ScanColorMode) {
     return strictEnumLabel(SCANNER_COLOR_MODE_LABEL, status, '扫描色彩模式')
   }
 
-  function scannerDuplexModeLabel(status: ScannerPolicy['duplexMode']) {
+  function scannerDuplexModeLabel(status: ScanDuplexMode) {
     return strictEnumLabel(SCANNER_DUPLEX_MODE_LABEL, status, '扫描单双面模式')
   }
 
@@ -984,6 +993,9 @@ export function useKioskWorkflow() {
       scannerStationId,
       scanMode: scanMode.value,
     })
+    if (kioskContext.value?.scanConfigOptions?.defaultScanConfig) {
+      scanConfig.value = { ...kioskContext.value.scanConfigOptions.defaultScanConfig }
+    }
     await refreshBoundPapers()
   }
 
@@ -1436,6 +1448,7 @@ export function useKioskWorkflow() {
         targetPageNo: isSupplement ? supplementTargetPageNo.value : undefined,
         supplementReason: isSupplement ? supplementReason.value.trim() || undefined : undefined,
         replaceTargetPage: isSupplement ? supplementReplaceTargetPage.value : false,
+        scanConfig: { ...scanConfig.value },
       })
       if (!batchLifecycle.batchExternalNo) {
         await handleScanJobStartFailure(
@@ -1449,6 +1462,13 @@ export function useKioskWorkflow() {
         await handleScanJobStartFailure(
           null,
           '扫描批次创建结果缺少扫描报告 ID，无法启动本地扫描',
+        )
+        return
+      }
+      if (!batchLifecycle.resolvedScanConfig) {
+        await handleScanJobStartFailure(
+          null,
+          '扫描批次创建结果缺少冻结扫描参数，无法启动本地扫描',
         )
         return
       }
@@ -1467,6 +1487,7 @@ export function useKioskWorkflow() {
         targetPageNo: lifecycleScanSource.targetPageNo,
         supplementReason: lifecycleScanSource.supplementReason,
         replaceTargetPage: lifecycleScanSource.replaceTargetPage,
+        resolvedScanConfig: batchLifecycle.resolvedScanConfig,
       })
       startJobPolling(currentJob.value.scanJobId)
     } catch (error) {
@@ -2107,6 +2128,7 @@ export function useKioskWorkflow() {
     supplementTargetPageNo,
     supplementReason,
     supplementReplaceTargetPage,
+    scanConfig,
     activationForm,
     examId,
     examOptions,

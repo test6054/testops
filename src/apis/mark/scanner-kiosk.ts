@@ -27,7 +27,7 @@ export type {
 export type { ScannerAgentDiagnosticStatusCode, ScannerEndpointOnlineStatusCode }
 
 export type ScannerKioskScanMode = 'DIRECT' | 'SUPPLEMENT' | 'ARCHIVE'
-export type ScanBatchStatusCode = 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED' | 'DISCARDED'
+export type ScanBatchStatusCode = 'IN_PROGRESS' | 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED' | 'DISCARDED'
 export type ExamScannerLedgerDataSource = 'DATABASE' | 'REDIS_PENDING' | 'NONE'
 export type ExamScannerPageScanStatus = 'SCANNED'
 export type ExamScannerPageUploadStatus = 'UPLOADED'
@@ -75,12 +75,31 @@ export interface ExamScannerKioskDeviceVO {
   lastHeartbeatAt?: string
 }
 
-export interface ExamScannerKioskPolicyVO {
+export interface ExamScannerScanConfigVO {
   dpi: number
   colorMode: 'COLOR' | 'GRAY' | 'LINEART'
   duplexMode: 'SIMPLEX' | 'DUPLEX'
   blankPageDetectionEnabled: boolean
-  kioskLockEnabled: boolean
+}
+
+export interface ExamScannerCapabilitiesVO {
+  loaded: boolean
+  maxScanDpi?: number
+  supportsAdf?: boolean
+  supportsDuplex?: boolean
+  localScannerId?: string
+  driverType?: string
+  scannerDisplayName?: string
+  scannerConnected?: boolean
+}
+
+export interface ExamScannerScanConfigOptionsVO {
+  minScanDpi: number
+  maxScanDpi: number
+  allowedDpis: number[]
+  colorModes: Array<'COLOR' | 'GRAY' | 'LINEART'>
+  duplexModes: Array<'SIMPLEX' | 'DUPLEX'>
+  defaultScanConfig: ExamScannerScanConfigVO
 }
 
 export interface ExamScannerKioskBatchVO {
@@ -122,6 +141,8 @@ export interface ExamScannerKioskBatchVO {
   diagnostic?: string
   scanStartTime?: string
   scanEndTime?: string
+  scanConfig?: ExamScannerScanConfigVO
+  capabilitySnapshot?: ExamScannerCapabilitiesVO
 }
 
 export interface ExamScannerKioskContextVO {
@@ -130,7 +151,9 @@ export interface ExamScannerKioskContextVO {
   /** 与 classIds 顺序一致的班级名称；班级被删除时该位置为 null */
   declaredClassNames: (string | null)[]
   device?: ExamScannerKioskDeviceVO
-  policy?: ExamScannerKioskPolicyVO
+  capabilities?: ExamScannerCapabilitiesVO
+  scanConfigOptions?: ExamScannerScanConfigOptionsVO
+  kioskLockEnabled?: boolean
   latestBatch?: ExamScannerKioskBatchVO
   scannedPages: number
   paperInstances: number
@@ -227,6 +250,8 @@ export interface ExamScannerBatchStartRequest {
   supplementReason?: string
   /** 仅 SUPPLEMENT 模式有效：true=替换目标页，false=追加补扫 */
   replaceTargetPage: boolean
+  /** 操作员在扫描前选择的参数 */
+  scanConfig: ExamScannerScanConfigVO
 }
 
 /**
@@ -312,6 +337,10 @@ export interface ExamScannerBatchLifecycleVO {
   sealedAt?: string
   /** 封存操作人，仅 seal 成功时填写 */
   sealedBy?: string
+  /** batch/start 落库的扫描批次 ID */
+  scanBatchId?: string
+  /** 服务端冻结的扫描参数 */
+  resolvedScanConfig?: ExamScannerScanConfigVO
 }
 
 export function startScannerKioskBatch(

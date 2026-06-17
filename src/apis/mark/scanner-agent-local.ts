@@ -202,6 +202,8 @@ export interface StartScanJobRequest {
    * false 表示纯追加补扫（保留旧页）。
    */
   replaceTargetPage: boolean
+  /** batch/start 响应中服务端冻结的扫描参数 */
+  resolvedScanConfig: ExamScannerScanConfigVO
 }
 
 export interface ScanPageInfo {

@@ -32,6 +32,22 @@ function formatExamLabel(opt: ExamScannerKioskExamOptionVO): string {
 
 const isSupplement = computed(() => workflow.scanMode.value === 'SUPPLEMENT')
 const classChips = computed(() => workflow.declaredClassChips.value)
+const scanConfigOptions = computed(() => workflow.kioskContext.value?.scanConfigOptions)
+const dpiOptions = computed(() =>
+  (scanConfigOptions.value?.allowedDpis ?? [300]).map((dpi) => ({ value: dpi, label: `${dpi} DPI` })),
+)
+const colorModeOptions = computed(() =>
+  (scanConfigOptions.value?.colorModes ?? ['COLOR', 'GRAY', 'LINEART']).map((mode) => ({
+    value: mode,
+    label: workflow.scannerColorModeLabel(mode),
+  })),
+)
+const duplexModeOptions = computed(() =>
+  (scanConfigOptions.value?.duplexModes ?? ['SIMPLEX']).map((mode) => ({
+    value: mode,
+    label: workflow.scannerDuplexModeLabel(mode),
+  })),
+)
 const startReason = computed(() => mutex.reasonOf('startScan'))
 const blockingMessage = computed(() => {
   if (!workflow.examId.value) return '请选择考试'
@@ -75,7 +91,7 @@ watch(
   <section class="setup">
     <header class="setup__head">
       <h2>准备扫描</h2>
-      <p>选择考试与扫描模式，确认后即可开始本批次。</p>
+      <p>选择考试、扫描模式与扫描参数，确认后即可开始本批次。</p>
     </header>
 
     <article class="setup__panel">
@@ -131,6 +147,47 @@ watch(
           >
             {{ mode.label }}
           </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label">扫描参数</label>
+        <div class="scan-params">
+          <div class="scan-params__row">
+            <span class="scan-params__label">分辨率</span>
+            <a-select
+              v-model:value="workflow.scanConfig.value.dpi"
+              :options="dpiOptions"
+              :disabled="!workflow.canSwitchScanMode.value || !scanConfigOptions"
+              class="scan-params__select"
+            />
+          </div>
+          <div class="scan-params__row">
+            <span class="scan-params__label">色彩</span>
+            <a-select
+              v-model:value="workflow.scanConfig.value.colorMode"
+              :options="colorModeOptions"
+              :disabled="!workflow.canSwitchScanMode.value || !scanConfigOptions"
+              class="scan-params__select"
+            />
+          </div>
+          <div class="scan-params__row">
+            <span class="scan-params__label">单双面</span>
+            <a-select
+              v-model:value="workflow.scanConfig.value.duplexMode"
+              :options="duplexModeOptions"
+              :disabled="!workflow.canSwitchScanMode.value || !scanConfigOptions"
+              class="scan-params__select"
+            />
+          </div>
+          <label class="scan-params__check">
+            <input
+              v-model="workflow.scanConfig.value.blankPageDetectionEnabled"
+              type="checkbox"
+              :disabled="!workflow.canSwitchScanMode.value"
+            />
+            <span>启用空白页检测</span>
+          </label>
         </div>
       </div>
 
@@ -302,6 +359,42 @@ watch(
 .icon-btn:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.scan-params {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kiosk-space-2);
+}
+
+.scan-params__row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: var(--kiosk-space-2);
+}
+
+.scan-params__label {
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-secondary);
+}
+
+.scan-params__select {
+  width: 100%;
+}
+
+.scan-params__check {
+  display: flex;
+  align-items: center;
+  gap: var(--kiosk-space-2);
+  font-size: var(--kiosk-fz-body);
+  color: var(--kiosk-ink-primary);
+  cursor: pointer;
+}
+
+.scan-params__check input {
+  width: 16px;
+  height: 16px;
 }
 
 .seg {
