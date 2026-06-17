@@ -438,6 +438,11 @@ export function useKioskWorkflow() {
   )
   const needsActivationGate = computed(() => activationModalForced.value)
 
+  /** 未激活时不应调用 edu-mark 扫描工位 API，只走本机 Agent。 */
+  function isActivatedForMarkApis(): boolean {
+    return Boolean(health.value?.bound) && hasMarkScannerKioskAuth()
+  }
+
   const workState = computed(() => {
     const job = currentJob.value
     const status = job?.status
@@ -882,8 +887,11 @@ export function useKioskWorkflow() {
     loading.value = true
     errorMessage.value = ''
     try {
-      await Promise.all([refreshHealth(), refreshScanners(), refreshKioskContext()])
-      await recoverLocalScanJob()
+      await Promise.all([refreshHealth(), refreshScanners()])
+      if (isActivatedForMarkApis()) {
+        await refreshKioskContext()
+        await recoverLocalScanJob()
+      }
     } catch (error) {
       handleError(error)
     } finally {
@@ -938,6 +946,11 @@ export function useKioskWorkflow() {
   }
 
   async function refreshKioskContext() {
+    if (!isActivatedForMarkApis()) {
+      kioskContext.value = null
+      boundPapers.value = []
+      return
+    }
     if (!examId.value) {
       kioskContext.value = null
       boundPapers.value = []
@@ -997,6 +1010,11 @@ export function useKioskWorkflow() {
   }
 
   async function loadExamOptions() {
+    if (!isActivatedForMarkApis()) {
+      examOptions.value = []
+      examOptionTotal.value = 0
+      return
+    }
     examOptionLoading.value = true
     try {
       const request: ExamScannerKioskExamOptionRequest = {
@@ -1750,6 +1768,7 @@ export function useKioskWorkflow() {
         },
       })
       await refreshAll()
+      await loadExamOptions()
       await ensureLiveStreamConnected()
     } catch (error) {
       activationErrorMessage.value = getUserErrorMessage(error, '一体机激活失败')
@@ -2008,13 +2027,13 @@ export function useKioskWorkflow() {
 
   onMounted(async () => {
     await syncActivationFormFromAgent()
-    await loadExamOptions().catch((error) => {
-      handleError(error)
-    })
     await refreshAll()
     if (needsActivationGate.value) {
       openActivationModal()
     } else {
+      await loadExamOptions().catch((error) => {
+        handleError(error)
+      })
       await ensureLiveStreamConnected()
     }
     healthTimer = window.setInterval(() => {
@@ -2023,6 +2042,9 @@ export function useKioskWorkflow() {
       })
     }, 5000)
     contextTimer = window.setInterval(() => {
+      if (!isActivatedForMarkApis()) {
+        return
+      }
       refreshKioskContext().then(recoverLocalScanJob).catch((error) => {
         handleError(error)
       })
