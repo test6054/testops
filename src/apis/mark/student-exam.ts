@@ -133,6 +133,9 @@ export interface StudentExamItemVO {
   finalScoreId?: string
   finalScoreStatus: FinalScoreStatusCode
   finalScore?: number
+  examScore?: number
+  dailyScore?: number
+  dailyScoreFull?: number
   publishedTime?: string
   reviewWindowOpenTime?: string
   reviewWindowCloseTime?: string
@@ -169,6 +172,9 @@ export interface StudentScoreDetailVO {
   finalScoreId?: string
   finalScoreStatus: FinalScoreStatusCode
   totalScore?: number
+  examScore?: number
+  dailyScore?: number
+  dailyScoreFull?: number
   fullScore?: number
   publishedTime?: string
   questions: StudentQuestionScoreVO[]
@@ -284,6 +290,8 @@ export function validateStudentExamItemContract(record: StudentExamItemVO): void
   validateStudentReviewWindowContract(record)
   if (record.finalScoreStatus === 'PUBLISHED') {
     requireStudentExamNumber(record.finalScore)
+    requireStudentExamNumber(record.examScore)
+    requireStudentExamNumber(record.dailyScore)
     requireStudentExamText(record.publishedTime)
   }
 }
@@ -318,6 +326,8 @@ export function validateStudentScoreDetailContract(record: StudentScoreDetailVO)
   validateStudentReviewWindowContract(record)
   if (record.finalScoreStatus === 'PUBLISHED') {
     requireStudentExamNumber(record.totalScore)
+    requireStudentExamNumber(record.examScore)
+    requireStudentExamNumber(record.dailyScore)
     requireStudentExamNumber(record.fullScore)
     requireStudentExamText(record.publishedTime)
   }

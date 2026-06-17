@@ -152,6 +152,8 @@ export interface ExamSummaryVO {
   /** 创建人用户ID - 对应后端 ExamSummaryResponse.createUser */
   createUser: string
   createTime?: string
+  /** 日常成绩满分；为空表示本场考试不纳入日常成绩 */
+  dailyScoreFull?: number
 }
 
 /** 考试范围班级引用 - 对应 ExamClassRefVO */
@@ -1001,6 +1003,8 @@ export interface ExamScoreSummaryItemVO {
   finalScoreStatus: FinalScoreStatusCode
   finalScoreStatusMessage: string
   finalScore?: number
+  examScore?: number
+  dailyScore?: number
   confirmedTime?: string
   confirmedBy?: string
   paperDisplay: PaperInstanceDisplayVO
@@ -1402,6 +1406,8 @@ export interface ExamGradeConfirmRequest {
 export interface ExamFinalScoreConfirmRequest {
   examId: string
   paperInstanceId: string
+  /** 日常成绩；本场考试配置 dailyScoreFull 时必填 */
+  dailyScore?: number
 }
 
 /** 试卷题目得分明细 - 对应 ExamQuestionScoreDto */
@@ -1423,6 +1429,8 @@ export interface ExamPaperScoreVO {
   studentUserId: string
   studentNo: string
   studentName: string
+  examScore?: number
+  dailyScore?: number
   totalScore?: number
   finalScoreStatus: FinalScoreStatusCode
   questions?: ExamQuestionScoreVO[]

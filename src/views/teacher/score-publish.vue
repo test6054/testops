@@ -144,6 +144,18 @@
                 </span>
               </div>
             </template>
+            <template v-else-if="column.key === 'examScore'">
+              <a-typography-text v-if="candidates[index].examScore != null" strong>
+                {{ candidates[index].examScore }} 分
+              </a-typography-text>
+              <span v-else class="score-publish__hint">-</span>
+            </template>
+            <template v-else-if="column.key === 'dailyScore'">
+              <a-typography-text v-if="candidates[index].dailyScore != null" strong>
+                {{ candidates[index].dailyScore }} 分
+              </a-typography-text>
+              <span v-else class="score-publish__hint">-</span>
+            </template>
             <template v-else-if="column.key === 'finalScore'">
               <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
                 {{ candidates[index].finalScore }} 分
@@ -211,7 +223,13 @@
             <a-descriptions-item label="班级">
               {{ detailCandidate?.studentClassName }}
             </a-descriptions-item>
-            <a-descriptions-item label="总分">
+            <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
+              <a-typography-text strong>{{ paperScore.examScore ?? 0 }} 分</a-typography-text>
+            </a-descriptions-item>
+            <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
+              <a-typography-text strong>{{ paperScore.dailyScore ?? 0 }} 分</a-typography-text>
+            </a-descriptions-item>
+            <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
               <a-typography-text strong type="success">
                 {{ paperScore.totalScore ?? 0 }} 分
               </a-typography-text>
@@ -411,10 +429,31 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExam,
   selectedExamLabel,
   onExamChange,
   init: initExamSelector,
 } = useMarkExamSelector()
+
+const hasDailyScoreConfig = computed(() => selectedExam.value?.dailyScoreFull != null)
+
+const columns = computed<ColumnType<ExamScoreSummaryItemVO>[]>(() => {
+  const scoreColumns: ColumnType<ExamScoreSummaryItemVO>[] = hasDailyScoreConfig.value
+    ? [
+        { title: '考试分', key: 'examScore', width: 90 },
+        { title: '日常分', key: 'dailyScore', width: 90 },
+        { title: '总成绩', key: 'finalScore', width: 90 },
+      ]
+    : [{ title: '教师复核评分', key: 'finalScore', width: 120 }]
+  return [
+    { title: '答卷', key: 'paperDisplay', width: 220 },
+    { title: '班级', dataIndex: 'studentClassName', key: 'studentClassName', width: 160 },
+    ...scoreColumns,
+    { title: '成绩状态', key: 'finalScoreStatus', width: 110 },
+    { title: '确认时间', key: 'confirmedTime', width: 170 },
+    { title: '操作', key: 'actions', width: 320, fixed: 'right' },
+  ]
+})
 
 function onScoreReleaseStepChange(value: string | number): void {
   const examId = selectedExamId.value
@@ -445,15 +484,6 @@ const pagination = reactive<TablePaginationConfig>({
   showSizeChanger: true,
   showTotal: (t: number) => `共 ${t} 条`,
 })
-
-const columns: ColumnType<ExamScoreSummaryItemVO>[] = [
-  { title: '答卷', key: 'paperDisplay', width: 220 },
-  { title: '班级', dataIndex: 'studentClassName', key: 'studentClassName', width: 160 },
-  { title: '教师复核评分', key: 'finalScore', width: 120 },
-  { title: '成绩状态', key: 'finalScoreStatus', width: 110 },
-  { title: '确认时间', key: 'confirmedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 320, fixed: 'right' },
-]
 
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
