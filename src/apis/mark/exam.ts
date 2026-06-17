@@ -823,10 +823,9 @@ export function saveAnswerSheetTemplate(
  *
  * 注意：模板不存在、缺少页面或缺少题目时，后端返回 PAPER_TEMPLATE_NOT_CONFIGURED_CODE。
  */
-export function getExamTemplate(examId: string): Promise<ExamTemplateVO> {
-  return http
-    .post<ExamTemplateVO>('/api/mark/exams/template', { examId })
-    .then(validateExamTemplateContract)
+export async function getExamTemplate(examId: string): Promise<ExamTemplateVO> {
+  const record = await http.post<ExamTemplateVO>('/api/mark/exams/template', { examId })
+  return validateExamTemplateContract(record)
 }
 
 /**
@@ -850,12 +849,14 @@ export function saveStandardAnswer(request: ExamStandardAnswerSaveRequest): Prom
  * 查询题目当前标准答案
  * POST /api/mark/exams/standard-answer/get
  */
-export function getStandardAnswer(
+export async function getStandardAnswer(
   request: ExamStandardAnswerQueryRequest,
 ): Promise<ExamStandardAnswerVO | null> {
-  return http
-    .post<ExamStandardAnswerVO | null>('/api/mark/exams/standard-answer/get', request)
-    .then(validateStandardAnswerContract)
+  const record = await http.post<ExamStandardAnswerVO | null>(
+    '/api/mark/exams/standard-answer/get',
+    request,
+  )
+  return validateStandardAnswerContract(record)
 }
 
 /**
@@ -1245,13 +1246,13 @@ export interface ScanAttentionItemVO {
  * - DISCARDED：教师在扫描审阅 / 异常处置时显式废弃整批，与封存（sealed_at）互斥；
  *   状态机进入 DISCARDED 后不再产生新页、不再纳入归档与统计。
  */
-export type ScanBatchStatusCode =
-  | 'IN_PROGRESS'
-  | 'RECEIVED'
-  | 'BLOCKED'
-  | 'BOUND'
-  | 'COMPLETED'
-  | 'DISCARDED'
+export type ScanBatchStatusCode
+  = | 'IN_PROGRESS'
+    | 'RECEIVED'
+    | 'BLOCKED'
+    | 'BOUND'
+    | 'COMPLETED'
+    | 'DISCARDED'
 
 /** 扫描批次状态文案映射 - 与后端 ScanBatchStatus.message 完整一致 */
 export const SCAN_BATCH_STATUS_LABEL: Record<ScanBatchStatusCode, string> = {
@@ -2000,13 +2001,6 @@ export function listAnnotations(
 export function getMarkingProgress(examId: string): Promise<MarkingProgressVO> {
   return http.post<MarkingProgressVO>('/api/mark/exams/marking-progress', { examId })
 }
-
-/** 批量阅卷进度查询请求 */
-export interface MarkingProgressBatchQueryRequest {
-  /** 考试 ID 列表，单次最多 50 场 */
-  examIds: string[]
-}
-
 /** 批量阅卷进度响应 */
 export interface MarkingProgressBatchVO {
   items: MarkingProgressVO[]
@@ -2016,10 +2010,12 @@ export interface MarkingProgressBatchVO {
  * 批量查询阅卷进度（考试工作台列表聚合，一次请求）
  * POST /api/mark/exams/marking-progress/batch
  */
-export function batchGetMarkingProgress(examIds: string[]): Promise<MarkingProgressVO[]> {
-  return http
-    .post<MarkingProgressBatchVO>('/api/mark/exams/marking-progress/batch', { examIds })
-    .then((response) => response.items)
+export async function batchGetMarkingProgress(examIds: string[]): Promise<MarkingProgressVO[]> {
+  const response = await http.post<MarkingProgressBatchVO>(
+    '/api/mark/exams/marking-progress/batch',
+    { examIds },
+  )
+  return response.items
 }
 
 /** 考试分数分布查询请求 */
