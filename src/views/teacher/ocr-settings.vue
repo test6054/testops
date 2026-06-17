@@ -13,7 +13,6 @@ import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
@@ -23,16 +22,12 @@ import {
   pageExamScoreSummary,
 } from '@/apis/mark/exam'
 import {
-  checkMarkOcrHealth,
   getCurrentMarkOcrConfig,
   listPaddleOcrInstances,
   MARK_OCR_HEALTH_STATUS_COLOR,
   MARK_OCR_HEALTH_STATUS_LABEL,
   MARK_OCR_PROVIDER_LABEL,
-  MARK_OCR_PROVIDER_OPTIONS,
   recognizeMarkOcr,
-  registerPaddleOcrInstance,
-  saveMarkOcrConfig,
 } from '@/apis/mark/ocr'
 import {
   UiBadge,
@@ -53,28 +48,19 @@ defineOptions({ name: 'TeacherOcrSettings' })
 
 const PAPER_CANDIDATE_FILTER_PAGE_SIZE = 50
 
-interface ConfigFormState {
-  providerType?: MarkOcrProviderTypeCode
-  enabled: boolean
-}
-
 interface DebugFormState {
   examId?: string
   paperInstanceId?: string
   questionTemplateId?: string
 }
 
-const configFormRef = ref<FormInstance | null>(null)
 const debugFormRef = ref<FormInstance | null>(null)
 const loading = ref(false)
 // D-9 错误态：OCR 配置加载失败时 UiErrorRetryPanel 重试 + 上报
 const configLoadError = ref<Error | null>(null)
-const saving = ref(false)
-const checking = ref(false)
 const recognizing = ref(false)
 const currentConfig = ref<MarkOcrConfigVO | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
-const configForm = ref<ConfigFormState>({ enabled: false })
 const debugForm = ref<DebugFormState>({})
 const {
   examOptions,
@@ -89,14 +75,6 @@ const {
 const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
 const paddleInstancesLoading = ref(false)
 const paddleInstancesError = ref<Error | null>(null)
-const registerModalOpen = ref(false)
-const registering = ref(false)
-const registerForm = ref({
-  instanceName: '',
-  serviceUrl: '',
-  deviceType: 'cpu',
-  localAutoDeploy: false,
-})
 const questions = ref<ExamQuestionTemplateVO[]>([])
 const questionsLoading = ref(false)
 const questionsError = ref<Error | null>(null)
@@ -105,11 +83,6 @@ const paperCandidatesLoading = ref(false)
 const paperCandidatesError = ref<Error | null>(null)
 const paperCandidateKeyword = ref('')
 
-const providerOptions = MARK_OCR_PROVIDER_OPTIONS
-const configRules: Record<string, Rule[]> = {
-  providerType: [{ required: true, message: '请选择 OCR 渠道', trigger: 'change' }],
-  enabled: [{ required: true, type: 'boolean', message: '请选择启用状态', trigger: 'change' }],
-}
 const debugRules: Record<string, Rule[]> = {
   examId: [{ required: true, message: '请选择当前考试', trigger: 'change' }],
   paperInstanceId: [{ required: true, message: '请选择答题卡', trigger: 'change' }],
@@ -133,7 +106,6 @@ const currentProviderLabel = computed(() =>
   currentConfig.value?.providerType ? providerLabel(currentConfig.value.providerType) : '未配置',
 )
 
-const canCheckHealth = computed(() => Boolean(currentConfig.value?.providerType))
 const canRecognize = computed(() =>
   Boolean(currentConfig.value?.providerType && currentConfig.value.enabled),
 )
@@ -191,10 +163,6 @@ function applyConfig(config: MarkOcrConfigVO): void {
     assertUserFacing(Boolean(config.providerType), dataError)
   }
   currentConfig.value = config
-  configForm.value = {
-    providerType: config.providerType,
-    enabled: config.enabled,
-  }
 }
 
 async function loadConfig(): Promise<void> {
@@ -207,41 +175,6 @@ async function loadConfig(): Promise<void> {
     showUserError(error, 'OCR 识别配置加载失败')
   } finally {
     loading.value = false
-  }
-}
-
-async function handleSave(): Promise<void> {
-  await configFormRef.value?.validate()
-  if (!configForm.value.providerType) {
-    showUserError(null, '请选择 OCR 识别渠道')
-    return
-  }
-  saving.value = true
-  try {
-    await saveMarkOcrConfig({
-      providerType: configForm.value.providerType,
-      enabled: configForm.value.enabled,
-    })
-    message.success('OCR 渠道配置已保存')
-    recognizeResult.value = null
-    await loadConfig()
-  } finally {
-    saving.value = false
-  }
-}
-
-async function handleHealthCheck(): Promise<void> {
-  checking.value = true
-  try {
-    const result = await checkMarkOcrHealth()
-    if (result.healthStatus === 'HEALTHY') {
-      message.success('OCR 渠道检测通过')
-    } else {
-      message.warning(ocrHealthMessageText(result.healthMessage))
-    }
-    await loadConfig()
-  } finally {
-    checking.value = false
   }
 }
 
@@ -345,42 +278,6 @@ async function loadPaddleInstances(): Promise<void> {
   }
 }
 
-function openRegisterModal(): void {
-  registerForm.value = {
-    instanceName: '',
-    serviceUrl: '',
-    deviceType: 'cpu',
-    localAutoDeploy: false,
-  }
-  registerModalOpen.value = true
-}
-
-async function handleRegisterInstance(): Promise<void> {
-  const name = registerForm.value.instanceName.trim()
-  const url = registerForm.value.serviceUrl.trim()
-  const device = registerForm.value.deviceType.trim()
-  if (!name || !url || !device) {
-    message.warning('请填写实例名称、服务地址与设备类型')
-    return
-  }
-  registering.value = true
-  try {
-    await registerPaddleOcrInstance({
-      instanceName: name,
-      serviceUrl: url,
-      deviceType: device,
-      localAutoDeploy: registerForm.value.localAutoDeploy,
-    })
-    message.success('PaddleOCR 实例已注册')
-    registerModalOpen.value = false
-    await loadPaddleInstances()
-  } catch (error) {
-    showUserError(error, 'PaddleOCR 实例注册失败')
-  } finally {
-    registering.value = false
-  }
-}
-
 watch(
   isPaddleProvider,
   (paddle) => {
@@ -460,38 +357,13 @@ onMounted(async () => {
       <UiCard class="info-card">
         <template #title>
           <ApiOutlined />
-          <span>租户 OCR 渠道</span>
+          <span>当前 OCR 渠道</span>
         </template>
-        <a-form ref="configFormRef" :model="configForm" :rules="configRules" layout="vertical">
-          <a-form-item label="当前渠道" name="providerType" required>
-            <a-radio-group v-model:value="configForm.providerType" class="provider-group">
-              <a-radio-button v-for="item in providerOptions" :key="item.value" :value="item.value">
-                {{ item.label }}
-              </a-radio-button>
-            </a-radio-group>
-          </a-form-item>
-          <a-form-item label="启用状态" name="enabled" required class="switch-row">
-            <a-switch
-              v-model:checked="configForm.enabled"
-              checked-children="启用"
-              un-checked-children="关闭"
-            />
-          </a-form-item>
-          <a-space>
-            <UiButton :loading="saving" @click="handleSave">
-              <template #icon><SaveOutlined /></template>
-              保存配置
-            </UiButton>
-            <UiButton
-              variant="outline"
-              :disabled="!canCheckHealth"
-              :loading="checking"
-              @click="handleHealthCheck"
-            >
-              健康检查
-            </UiButton>
-          </a-space>
-        </a-form>
+        <a-alert
+          type="info"
+          show-icon
+          message="OCR 渠道由平台超级管理员统一配置，租户侧仅可查看运行状态与执行调试。"
+        />
       </UiCard>
 
       <UiCard class="info-card">
@@ -531,20 +403,15 @@ onMounted(async () => {
         </UiBadge>
       </template>
       <template #extra>
-        <a-space>
-          <UiButton size="sm" variant="outline" @click="openRegisterModal">
-            注册实例
-          </UiButton>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :loading="paddleInstancesLoading"
-            @click="loadPaddleInstances"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </a-space>
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="paddleInstancesLoading"
+          @click="loadPaddleInstances"
+        >
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
       </template>
 
       <UiErrorRetryPanel
@@ -684,33 +551,6 @@ onMounted(async () => {
       </template>
       <UiEmpty v-else-if="!recognizing" description="暂无识别结果" />
     </UiCard>
-
-    <a-modal
-      v-model:open="registerModalOpen"
-      title="注册 PaddleOCR 实例"
-      :confirm-loading="registering"
-      ok-text="注册"
-      cancel-text="取消"
-      @ok="handleRegisterInstance"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="实例名称" required>
-          <a-input v-model:value="registerForm.instanceName" placeholder="例如 paddle-gpu-01" />
-        </a-form-item>
-        <a-form-item label="服务根地址" required>
-          <a-input
-            v-model:value="registerForm.serviceUrl"
-            placeholder="http://host:8095"
-          />
-        </a-form-item>
-        <a-form-item label="设备类型" required>
-          <a-input v-model:value="registerForm.deviceType" placeholder="cpu 或 gpu:0" />
-        </a-form-item>
-        <a-form-item>
-          <a-checkbox v-model:checked="registerForm.localAutoDeploy">本地自动部署实例</a-checkbox>
-        </a-form-item>
-      </a-form>
-    </a-modal>
   </StageWorkbenchShell>
 </template>
 

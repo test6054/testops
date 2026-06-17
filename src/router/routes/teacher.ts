@@ -232,7 +232,7 @@ export const teacherRoutes: RouteRecordRaw[] = [
         name: 'TeacherOcrSettings',
         component: () => import('@/views/teacher/ocr-settings.vue'),
         meta: {
-          title: 'OCR 配置',
+          title: 'OCR 状态',
           roles: TEACHER_ROLES,
           icon: 'file-search',
           hideInMenu: true,

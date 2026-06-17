@@ -41,6 +41,7 @@ export const MARK_OCR_HEALTH_STATUS_COLOR: Record<MarkOcrHealthStatusCode, Badge
 
 export interface MarkOcrConfigVO {
   id?: string
+  tenantId?: string
   providerType?: MarkOcrProviderTypeCode
   providerName?: string
   enabled: boolean
@@ -50,8 +51,13 @@ export interface MarkOcrConfigVO {
 }
 
 export interface MarkOcrConfigSaveRequest {
+  tenantId: string
   providerType: MarkOcrProviderTypeCode
   enabled: boolean
+}
+
+export interface MarkOcrConfigHealthCheckRequest {
+  tenantId: string
 }
 
 export interface MarkOcrConfigHealthCheckVO {
@@ -92,16 +98,18 @@ export interface PaddleOcrInstanceVO {
   localAutoDeploy: boolean
 }
 
-export function getCurrentMarkOcrConfig(): Promise<MarkOcrConfigVO> {
-  return http.get<MarkOcrConfigVO>('/api/mark/ocr/config/current')
+export function getCurrentMarkOcrConfig(tenantId?: string): Promise<MarkOcrConfigVO> {
+  return http.get<MarkOcrConfigVO>('/api/mark/ocr/config/current', {
+    params: tenantId ? { tenantId } : undefined,
+  })
 }
 
 export function saveMarkOcrConfig(request: MarkOcrConfigSaveRequest): Promise<string> {
   return http.post<string>('/api/mark/ocr/config/save', request)
 }
 
-export function checkMarkOcrHealth(): Promise<MarkOcrConfigHealthCheckVO> {
-  return http.post<MarkOcrConfigHealthCheckVO>('/api/mark/ocr/config/health-check')
+export function checkMarkOcrHealth(tenantId: string): Promise<MarkOcrConfigHealthCheckVO> {
+  return http.post<MarkOcrConfigHealthCheckVO>('/api/mark/ocr/config/health-check', { tenantId })
 }
 
 export function recognizeMarkOcr(request: MarkOcrRecognizeRequest): Promise<MarkOcrRecognizeVO> {
