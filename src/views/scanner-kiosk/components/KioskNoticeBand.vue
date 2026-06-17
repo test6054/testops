@@ -1,122 +1,89 @@
 <script setup lang="ts">
 /**
- * KioskNoticeBand - 全局通知带
+ * KioskNoticeBand - 全局通知宿主
  *
- * 显示 errorMessage / successMessage 两类常驻 banner，可点关闭按钮或按 Esc 清空。
- * 自动占据 KioskLayout grid 第 3 行 auto 高度，无消息时整个组件渲染为空（不占空间）。
+ * 将 workflow.errorMessage / successMessage 映射为右上角单条 notification；
+ * 错误优先于成功，同一时刻只展示一条。
  */
-import { computed } from 'vue'
+import { Button, notification } from 'ant-design-vue'
+import { h, onBeforeUnmount, watch } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
+import { KIOSK_NOTICE_KEY } from '../constants/kioskNotice'
 
 const { workflow } = useKioskCtx()
 
-const visible = computed(
-  () => Boolean(workflow.errorMessage.value) || Boolean(workflow.successMessage.value),
-)
+notification.config({
+  placement: 'topRight',
+  top: '72px',
+  maxCount: 1,
+})
 
-function clearError() {
-  workflow.errorMessage.value = ''
+function closeNotice() {
+  notification.close(KIOSK_NOTICE_KEY)
 }
-function clearSuccess() {
-  workflow.successMessage.value = ''
-}
+
 function openReactivationModal() {
+  closeNotice()
+  workflow.errorMessage.value = ''
   workflow.openActivationModal()
 }
+
+function syncNotice() {
+  const err = workflow.errorMessage.value.trim()
+  const ok = workflow.successMessage.value.trim()
+
+  closeNotice()
+
+  if (err) {
+    if (ok) {
+      workflow.successMessage.value = ''
+    }
+    notification.error({
+      key: KIOSK_NOTICE_KEY,
+      message: err,
+      duration: workflow.kioskBrowserSessionLost.value ? 0 : 4.5,
+      onClose: () => {
+        workflow.errorMessage.value = ''
+      },
+      ...(workflow.kioskBrowserSessionLost.value
+        ? {
+            btn: () =>
+              h(
+                Button,
+                {
+                  type: 'primary',
+                  size: 'small',
+                  onClick: openReactivationModal,
+                },
+                () => '打开激活窗口',
+              ),
+          }
+        : {}),
+    })
+    return
+  }
+
+  if (ok) {
+    notification.success({
+      key: KIOSK_NOTICE_KEY,
+      message: ok,
+      duration: 3,
+      onClose: () => {
+        workflow.successMessage.value = ''
+      },
+    })
+  }
+}
+
+watch(
+  [
+    () => workflow.errorMessage.value,
+    () => workflow.successMessage.value,
+    () => workflow.kioskBrowserSessionLost.value,
+  ],
+  syncNotice,
+)
+
+onBeforeUnmount(closeNotice)
 </script>
 
-<template>
-  <div v-if="visible" class="notice-band">
-    <div v-if="workflow.errorMessage.value" class="notice notice-danger" role="alert">
-      <span>{{ workflow.errorMessage.value }}</span>
-      <button
-        v-if="workflow.kioskBrowserSessionLost.value"
-        type="button"
-        class="notice-action"
-        @click="openReactivationModal"
-      >
-        打开激活窗口
-      </button>
-      <button type="button" class="notice-dismiss" title="按 Esc 关闭" @click="clearError">
-        关闭
-      </button>
-    </div>
-    <div v-if="workflow.successMessage.value" class="notice notice-success">
-      <span>{{ workflow.successMessage.value }}</span>
-      <button type="button" class="notice-dismiss" title="按 Esc 关闭" @click="clearSuccess">
-        关闭
-      </button>
-    </div>
-  </div>
-</template>
-
-<style scoped>
-.notice-band {
-  display: flex;
-  flex-direction: column;
-  gap: var(--kiosk-space-2);
-  padding: var(--kiosk-space-2) var(--kiosk-space-4);
-  background: var(--kiosk-page-bg);
-  border-bottom: 1px solid var(--kiosk-divider);
-  z-index: var(--kiosk-z-base);
-}
-
-.notice {
-  display: flex;
-  align-items: center;
-  gap: var(--kiosk-space-3);
-  padding: var(--kiosk-space-3) var(--kiosk-space-4);
-  border-radius: var(--kiosk-radius-md);
-  font-size: var(--kiosk-fz-body);
-  border: 1px solid transparent;
-}
-.notice span {
-  flex: 1;
-  min-width: 0;
-}
-
-.notice-danger {
-  background: var(--kiosk-danger-soft);
-  color: var(--kiosk-danger);
-  border-color: rgba(197, 38, 62, 0.3);
-}
-
-.notice-success {
-  background: var(--kiosk-success-soft);
-  color: var(--kiosk-success);
-  border-color: rgba(31, 157, 85, 0.3);
-}
-
-.notice-dismiss {
-  height: 32px;
-  padding: 0 var(--kiosk-space-3);
-  background: transparent;
-  border: 1px solid currentColor;
-  border-radius: var(--kiosk-radius-sm);
-  color: inherit;
-  font-family: inherit;
-  font-size: var(--kiosk-fz-label);
-  cursor: pointer;
-  opacity: 0.75;
-  transition: opacity var(--kiosk-dur-fast) var(--kiosk-easing);
-}
-.notice-action {
-  height: 32px;
-  padding: 0 var(--kiosk-space-3);
-  background: var(--kiosk-surface);
-  border: 1px solid currentColor;
-  border-radius: var(--kiosk-radius-sm);
-  color: inherit;
-  font-family: inherit;
-  font-size: var(--kiosk-fz-label);
-  font-weight: var(--kiosk-fw-medium);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.notice-dismiss:hover {
-  opacity: 1;
-}
-.notice-action:hover {
-  background: var(--kiosk-surface-alt);
-}
-</style>

@@ -22,7 +22,9 @@ import type { KioskCtx } from './kioskInjection'
  *   Alt+3    切到 review
  *   Alt+4    切到 finalize
  */
+import { notification } from 'ant-design-vue'
 import { onBeforeUnmount, onMounted } from 'vue'
+import { KIOSK_NOTICE_KEY } from '../constants/kioskNotice'
 import { KIOSK_STAGES } from './useStageMachine'
 
 /**
@@ -111,6 +113,7 @@ export function useKioskShortcuts(ctx: KioskCtx): void {
       workflow.successMessage.value = ''
       cleared = true
     }
+    notification.close(KIOSK_NOTICE_KEY)
     return cleared
   }
 

@@ -85,7 +85,6 @@ onMounted(() => {
 
     <KioskStageBar />
 
-    <!-- v-if 内部已处理；不渲染时该 grid 行高度自动塌缩为 0 -->
     <KioskNoticeBand />
 
     <div class="kiosk-body">
@@ -127,11 +126,9 @@ onMounted(() => {
   --rail-width: var(--kiosk-w-side-rail);
 
   display: grid;
-  /* 第 3 行 auto 给 NoticeBand（v-if 不存在时高度为 0），第 4 行 1fr 给 kiosk-body */
   grid-template-rows:
     var(--kiosk-h-app-bar)
     var(--kiosk-h-stage-bar)
-    auto
     minmax(0, 1fr);
   height: 100vh;
   background: var(--kiosk-page-bg);

@@ -651,6 +651,7 @@ export function useKioskWorkflow() {
   }
 
   function handleError(error: unknown, fallback = '扫描一体机操作失败') {
+    successMessage.value = ''
     if (error instanceof LocalAgentUnavailableError) {
       markLocalAgentDisconnected()
       errorMessage.value = error.message
@@ -1774,7 +1775,6 @@ export function useKioskWorkflow() {
         endpointName: request.endpointName,
       })
       activationForm.value.activationCode = ''
-      successMessage.value = '一体机已激活'
       activationModalOpen.value = false
       await router.replace({
         query: {
@@ -1786,6 +1786,7 @@ export function useKioskWorkflow() {
       await refreshAll()
       await loadExamOptions()
       await ensureLiveStreamConnected()
+      successMessage.value = '一体机已激活'
     } catch (error) {
       activationErrorMessage.value = getUserErrorMessage(error, '一体机激活失败')
       handleError(error)
