@@ -11,9 +11,7 @@
             复核进行中
           </UiTag>
           <UiTag v-if="detail" tone="blue" size="sm">
-            {{ detail.finalScoreStatus === 'PUBLISHED' ? formatPublishedTotalScore(detail) : '--' }}
-            /
-            {{ detail.finalScoreStatus === 'PUBLISHED' ? formatPublishedFullScore(detail) : '--' }}
+            {{ formatPublishedScoreSummary(detail) }}
           </UiTag>
         </template>
         <template #actions>
@@ -711,6 +709,16 @@ function formatPublishedTotalScore(item: StudentScoreDetailVO): string {
   return (item.totalScore as number).toFixed(2)
 }
 
+function formatPublishedScoreSummary(item: StudentScoreDetailVO): string {
+  if (item.finalScoreStatus !== 'PUBLISHED') {
+    return '--'
+  }
+  if (item.dailyScoreFull != null) {
+    return `考试 ${(item.examScore as number).toFixed(2)} + 日常 ${(item.dailyScore as number).toFixed(2)} = 总 ${formatPublishedTotalScore(item)} / ${formatPublishedFullScore(item)}`
+  }
+  return `${formatPublishedTotalScore(item)} / ${formatPublishedFullScore(item)}`
+}
+
 function formatPublishedFullScore(item: StudentScoreDetailVO): string {
   return (item.fullScore as number).toFixed(2)
 }
@@ -774,6 +782,8 @@ function validateScoreDetailContract(item: StudentScoreDetailVO): void {
   if (item.finalScoreStatus !== 'PUBLISHED') return
   const dataError = '成绩详情数据异常，请刷新后重试'
   assertUserFacing(item.totalScore != null, dataError)
+  assertUserFacing(item.examScore != null, dataError)
+  assertUserFacing(item.dailyScore != null, dataError)
   assertUserFacing(item.fullScore != null, dataError)
   for (const question of item.questions) {
     assertUserFacing(question.teacherReviewScore != null, dataError)

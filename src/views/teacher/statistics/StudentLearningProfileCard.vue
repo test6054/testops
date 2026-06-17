@@ -79,6 +79,54 @@
           <strong>整体表现：</strong>{{ record.overallSummary }}
         </a-typography-paragraph>
 
+        <div v-if="scoreComposition" class="ai-items">
+          <strong>成绩构成：</strong>
+          <a-descriptions :column="3" size="small" bordered>
+            <a-descriptions-item label="卷面得分">
+              {{ formatScore(scoreComposition.examScore) }}
+              <span v-if="scoreComposition.paperFullScore != null" class="score-full">
+                / {{ formatScore(scoreComposition.paperFullScore) }}
+              </span>
+            </a-descriptions-item>
+            <a-descriptions-item label="平时成绩">
+              <template v-if="hasDailyScoreConfig">
+                {{ formatScore(scoreComposition.dailyScore) }}
+                <span v-if="scoreComposition.dailyScoreFull != null" class="score-full">
+                  / {{ formatScore(scoreComposition.dailyScoreFull) }}
+                </span>
+              </template>
+              <span v-else class="text-muted">未配置</span>
+            </a-descriptions-item>
+            <a-descriptions-item label="总成绩">
+              <template v-if="scoreComposition.totalScore != null">
+                {{ formatScore(scoreComposition.totalScore) }} 分
+                <a-tag v-if="scoreComposition.finalScoreStatus" size="small" :color="finalScoreTone(scoreComposition.finalScoreStatus)">
+                  {{ finalScoreLabel(scoreComposition.finalScoreStatus) }}
+                </a-tag>
+              </template>
+              <span v-else class="text-muted">未录入</span>
+            </a-descriptions-item>
+            <a-descriptions-item label="班级卷面均分">
+              {{ formatScore(scoreComposition.classAvgExamScore) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="班级平时均分">
+              {{ hasDailyScoreConfig ? formatScore(scoreComposition.classAvgDailyScore) : '—' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="班级总成绩均分">
+              {{ formatScore(scoreComposition.classAvgTotalScore) }}
+            </a-descriptions-item>
+          </a-descriptions>
+        </div>
+
+        <div v-if="suggestions.length > 0" class="ai-items">
+          <strong>学习建议：</strong>
+          <a-list size="small" :data-source="suggestions" bordered>
+            <template #renderItem="{ item, index }">
+              <a-list-item>{{ index + 1 }}. {{ item }}</a-list-item>
+            </template>
+          </a-list>
+        </div>
+
         <div v-if="diagnosisItems.length > 0" class="ai-items">
           <strong>知识掌握分析：</strong>
           <a-list size="small" :data-source="diagnosisItems" bordered>
@@ -115,13 +163,13 @@
 </template>
 
 <script lang="ts" setup>
-import type { MasteryLevelCode } from '@/apis/mark/student-exam'
+import type { FinalScoreStatusCode, MasteryLevelCode } from '@/apis/mark/student-exam'
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
+import { FINAL_SCORE_STATUS_LABEL, FINAL_SCORE_STATUS_TONE, MASTERY_LEVEL_LABEL, MASTERY_LEVEL_TONE } from '@/apis/mark/student-exam'
 import {
   aiAnalysisStatusColor,
   aiAnalysisStatusLabel,
@@ -169,6 +217,9 @@ const filteredStudentOptions = computed<MarkStudentOption[]>(() => {
 })
 
 const diagnosisItems = computed(() => record.value?.diagnosisItems ?? [])
+const scoreComposition = computed(() => record.value?.scoreComposition)
+const suggestions = computed(() => record.value?.suggestions ?? [])
+const hasDailyScoreConfig = computed(() => scoreComposition.value?.dailyScoreFull != null)
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 学生学情分析未完成，请稍后重新生成')
@@ -190,6 +241,8 @@ function acceptStudentLearningProfileRecord(
     assertUserFacing(typeof value.latencyMs === 'number', dataError)
     assertUserFacing(Boolean(value.overallSummary?.trim()), dataError)
     assertUserFacing(Boolean(value.diagnosisItems?.length), dataError)
+    assertUserFacing(value.scoreComposition != null, dataError)
+    assertUserFacing(Boolean(value.suggestions?.length), dataError)
   }
   if (value.analysisStatus === 'FAILED' || value.analysisStatus === 'BLOCKED') {
     assertUserFacing(Boolean(value.errorMessage?.trim()), dataError)
@@ -269,6 +322,19 @@ function formatRate(rate: string): string {
   const value = Number(rate)
   if (!Number.isFinite(value)) return '—'
   return `${(value * 100).toFixed(1)}%`
+}
+
+function formatScore(score?: number): string {
+  if (score == null || !Number.isFinite(score)) return '—'
+  return `${score}`
+}
+
+function finalScoreLabel(status: FinalScoreStatusCode): string {
+  return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
+}
+
+function finalScoreTone(status: FinalScoreStatusCode): string {
+  return strictEnumTone(FINAL_SCORE_STATUS_TONE, status, '最终成绩状态')
 }
 
 function masteryLabel(level: MasteryLevelCode): string {
@@ -359,6 +425,9 @@ watch(
   font-size: 13px;
   line-height: 1.6;
   color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
+}
+.score-full {
+  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
 }
 .text-muted {
   color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));

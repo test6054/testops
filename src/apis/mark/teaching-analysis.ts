@@ -1,5 +1,5 @@
 import type { QuestionTypeCode } from './grading-experience'
-import type { MasteryLevelCode } from './student-exam'
+import type { FinalScoreStatusCode, MasteryLevelCode } from './student-exam'
 /**
  * AI 教学分析 API - 对接 edu-mark 模块 TeachingAnalysisController
  *
@@ -94,6 +94,20 @@ export interface StudentLearningDiagnosisItemVO {
   suggestion?: string
 }
 
+/** 学生学情成绩构成 */
+export interface StudentLearningScoreCompositionVO {
+  classId?: string
+  paperFullScore?: number
+  dailyScoreFull?: number
+  examScore?: number
+  dailyScore?: number
+  totalScore?: number
+  finalScoreStatus?: FinalScoreStatusCode
+  classAvgExamScore?: number
+  classAvgDailyScore?: number
+  classAvgTotalScore?: number
+}
+
 /** AI 教学分析记录 - 对应 ExamTeachingAnalysisRecord */
 export interface ExamTeachingAnalysisRecordVO {
   id: string
@@ -106,6 +120,8 @@ export interface ExamTeachingAnalysisRecordVO {
   improvementItems?: TeachingImprovementItemVO[]
   weaknessItems?: ClassWeaknessItemVO[]
   diagnosisItems?: StudentLearningDiagnosisItemVO[]
+  scoreComposition?: StudentLearningScoreCompositionVO
+  suggestions?: string[]
   analysisStatus: AiAnalysisStatusCode
   errorMessage?: string
   latencyMs?: number

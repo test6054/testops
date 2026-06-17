@@ -162,6 +162,18 @@
                 </span>
               </div>
             </template>
+            <template v-else-if="column.key === 'examScore'">
+              <a-typography-text v-if="candidates[index].examScore != null" strong>
+                {{ candidates[index].examScore }} 分
+              </a-typography-text>
+              <span v-else class="score-finalize__hint">-</span>
+            </template>
+            <template v-else-if="column.key === 'dailyScore'">
+              <a-typography-text v-if="candidates[index].dailyScore != null" strong>
+                {{ candidates[index].dailyScore }} 分
+              </a-typography-text>
+              <span v-else class="score-finalize__hint">-</span>
+            </template>
             <template v-else-if="column.key === 'finalScore'">
               <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
                 {{ candidates[index].finalScore }} 分
@@ -253,7 +265,13 @@
             <a-descriptions-item label="班级">
               {{ detailCandidate?.studentClassName }}
             </a-descriptions-item>
-            <a-descriptions-item label="总分">
+            <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
+              <a-typography-text strong>{{ paperScore.examScore ?? 0 }} 分</a-typography-text>
+            </a-descriptions-item>
+            <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
+              <a-typography-text strong>{{ paperScore.dailyScore ?? 0 }} 分</a-typography-text>
+            </a-descriptions-item>
+            <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
               <a-typography-text strong type="success">
                 {{ paperScore.totalScore ?? 0 }} 分
               </a-typography-text>
@@ -356,11 +374,31 @@
             disabled
           />
         </a-form-item>
-        <a-form-item label="试卷计算总分将作为教师复核评分">
+        <a-form-item :label="hasDailyScoreConfig ? '考试分（各题教师复核评分之和）' : '试卷计算总分将作为教师复核评分'">
           <a-input
-            :value="confirmComputedScore != null ? `${confirmComputedScore} 分` : '加载中...'"
+            :value="confirmComputedExamScore != null ? `${confirmComputedExamScore} 分` : '加载中...'"
             disabled
           />
+        </a-form-item>
+        <a-form-item
+          v-if="hasDailyScoreConfig"
+          label="日常成绩"
+          :required="true"
+        >
+          <a-input-number
+            v-model:value="confirmDailyScore"
+            :min="0"
+            :max="dailyScoreFull ?? undefined"
+            :precision="2"
+            style="width: 100%"
+            placeholder="请输入日常成绩"
+          />
+          <div v-if="dailyScoreFull != null" class="score-finalize__hint">
+            日常满分 {{ dailyScoreFull }} 分
+          </div>
+        </a-form-item>
+        <a-form-item v-if="hasDailyScoreConfig" label="总成绩预览">
+          <a-input :value="`${confirmTotalScorePreview} 分`" disabled />
         </a-form-item>
         <a-form-item>
           <a-checkbox
@@ -522,7 +560,7 @@ import type {
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
   FinalScoreRiskOverviewVO,
-  FinalScoreStatusCode, FinalScoreRiskReasonCode
+  FinalScoreRiskReasonCode, FinalScoreStatusCode
 } from '@/apis/mark/exam'
 import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -636,15 +674,27 @@ const pagination = reactive<TablePaginationConfig>({
   showTotal: (t: number) => `共 ${t} 条`,
 })
 
-const columns: ColumnType<ExamScoreSummaryItemVO>[] = [
-  { title: '答卷', key: 'paperDisplay', width: 220 },
-  { title: '班级', dataIndex: 'studentClassName', key: 'studentClassName', width: 160 },
-  { title: '教师复核评分', key: 'finalScore', width: 130 },
-  { title: '偏差', key: 'bias', width: 130 },
-  { title: '成绩状态', key: 'finalScoreStatus', width: 110 },
-  { title: '确认时间', key: 'confirmedTime', width: 170 },
-  { title: '操作', key: 'actions', width: 320, fixed: 'right' },
-]
+const columns = computed<ColumnType<ExamScoreSummaryItemVO>[]>(() => {
+  const scoreColumns: ColumnType<ExamScoreSummaryItemVO>[] = hasDailyScoreConfig.value
+    ? [
+        { title: '考试分', key: 'examScore', width: 90 },
+        { title: '日常分', key: 'dailyScore', width: 90 },
+        { title: '总成绩', key: 'finalScore', width: 90 },
+      ]
+    : [{ title: '教师复核评分', key: 'finalScore', width: 130 }]
+  return [
+    { title: '答卷', key: 'paperDisplay', width: 220 },
+    { title: '班级', dataIndex: 'studentClassName', key: 'studentClassName', width: 160 },
+    ...scoreColumns,
+    { title: '偏差', key: 'bias', width: 130 },
+    { title: '成绩状态', key: 'finalScoreStatus', width: 110 },
+    { title: '确认时间', key: 'confirmedTime', width: 170 },
+    { title: '操作', key: 'actions', width: 320, fixed: 'right' },
+  ]
+})
+
+const hasDailyScoreConfig = computed(() => selectedExam.value?.dailyScoreFull != null)
+const dailyScoreFull = computed(() => selectedExam.value?.dailyScoreFull ?? null)
 
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
@@ -829,10 +879,11 @@ const canBatchConfirmSafe = computed(() => {
   const overview = riskOverview.value
   return Boolean(
     overview
-      && overview.safeConfirmableCount > 0
-      && blockingRiskReasons.value.length === 0
-      && !hasHardBlockingRisks.value
-      && !batchConfirming.value,
+    && overview.safeConfirmableCount > 0
+    && blockingRiskReasons.value.length === 0
+    && !hasHardBlockingRisks.value
+    && !hasDailyScoreConfig.value
+    && !batchConfirming.value,
   )
 })
 
@@ -1322,18 +1373,29 @@ async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
 const confirmOpen = ref(false)
 const confirming = ref(false)
 const confirmCandidate = ref<ExamScoreSummaryItemVO | null>(null)
-const confirmComputedScore = ref<number | null>(null)
+const confirmComputedExamScore = ref<number | null>(null)
+const confirmDailyScore = ref<number | null>(null)
 const confirmAndPublish = ref(false)
+
+const confirmTotalScorePreview = computed(() => {
+  const examScore = confirmComputedExamScore.value ?? 0
+  const dailyScore = hasDailyScoreConfig.value ? (confirmDailyScore.value ?? 0) : 0
+  return Number((examScore + dailyScore).toFixed(2))
+})
 
 async function openConfirmModal(record: ExamScoreSummaryItemVO): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
   confirmCandidate.value = record
   confirmOpen.value = true
-  confirmComputedScore.value = null
+  confirmComputedExamScore.value = null
+  confirmDailyScore.value = null
   confirmAndPublish.value = false
   try {
     const score = await getPaperScore(selectedExamId.value, record.paperInstanceId)
-    confirmComputedScore.value = score.totalScore ?? 0
+    confirmComputedExamScore.value = score.examScore ?? score.totalScore ?? 0
+    if (hasDailyScoreConfig.value) {
+      confirmDailyScore.value = score.dailyScore ?? null
+    }
   } catch (error) {
     message.warning(getUserErrorMessage(error, '试卷总分加载失败'))
   }
@@ -1428,11 +1490,19 @@ function handleNextStepGoPublish(): void {
 async function handleConfirm(): Promise<void> {
   if (!selectedExamId.value || !confirmCandidate.value?.paperInstanceId) return
   if (warnUnreviewedBlockingRisks()) return
+  if (hasDailyScoreConfig.value && confirmDailyScore.value == null) {
+    message.warning('请录入日常成绩')
+    return
+  }
   const examId = selectedExamId.value
   const paperInstanceId = confirmCandidate.value.paperInstanceId
   confirming.value = true
   try {
-    await confirmFinalScore({ examId, paperInstanceId })
+    await confirmFinalScore({
+      examId,
+      paperInstanceId,
+      dailyScore: hasDailyScoreConfig.value ? confirmDailyScore.value ?? undefined : undefined,
+    })
     if (confirmAndPublish.value) {
       await publishFinalScore({ examId, paperInstanceId })
       message.success('成绩已确认并发布，学生通知已下发')
