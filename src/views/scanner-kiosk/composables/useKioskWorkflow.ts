@@ -159,6 +159,8 @@ export function useKioskWorkflow() {
   const supplementTargetPageNo = ref<number | undefined>()
   const supplementReason = ref('')
   const activeBatchExternalNo = ref('')
+  /** batch/start 落库的当前工作台批次 ID，供绑定查询与侧栏展示锚定。 */
+  const activeScanBatchId = ref('')
   /**
    * 补扫子模式：true=替换目标页（旧扫描页 SUPERSEDED），false=纯追加补扫。
    * 仅在 scanMode==='SUPPLEMENT' 时有效；切到其他模式由 changeScanMode 自动重置。
@@ -552,6 +554,9 @@ export function useKioskWorkflow() {
     const batch = kioskContext.value?.latestBatch
     if (!batch) return '-'
     const start = formatTime(batch.scanStartTime)
+    if (!batch.scanEndTime) {
+      return start === '-' ? '进行中' : `${start} → 进行中`
+    }
     const end = formatTime(batch.scanEndTime)
     if (start === '-' && end === '-') return '-'
     return `${start} → ${end}`
@@ -696,13 +701,22 @@ export function useKioskWorkflow() {
     const jobBatchId = job?.scanBatchId?.trim()
     if (jobBatchId) return jobBatchId
 
+    const anchoredBatchId = activeScanBatchId.value.trim()
+    if (anchoredBatchId) return anchoredBatchId
+
     const latest = kioskContext.value?.latestBatch
     if (!latest?.scanBatchId) return ''
 
     const explicitBatchNo = activeBatchExternalNo.value || job?.batchExternalNo || ''
     if (explicitBatchNo) {
       const latestKey = latest.batchExternalNo || latest.batchNo || ''
-      return latestKey === explicitBatchNo ? latest.scanBatchId : ''
+      if (latestKey === explicitBatchNo) return latest.scanBatchId
+      if (job && job.status !== 'CANCELLED') return latest.scanBatchId
+      return ''
+    }
+
+    if (job && job.status !== 'CANCELLED') {
+      return latest.scanBatchId
     }
 
     if (job && (job.status === 'REPORTED' || job.status === 'FAILED')) {
@@ -1091,6 +1105,7 @@ export function useKioskWorkflow() {
     }
     currentJob.value = null
     activeBatchExternalNo.value = ''
+    activeScanBatchId.value = ''
     examId.value = value != null ? String(value) : ''
   }
 
@@ -1307,6 +1322,9 @@ export function useKioskWorkflow() {
     if (hasActiveCurrentJob && recoverableJob) {
       currentJob.value = recoverableJob
       activeBatchExternalNo.value = recoverableJob.batchExternalNo
+      if (recoverableJob.scanBatchId?.trim()) {
+        activeScanBatchId.value = recoverableJob.scanBatchId.trim()
+      }
       if (shouldPollRecoveredJob(recoverableJob)) {
         startJobPolling(recoverableJob.scanJobId)
       }
@@ -1320,6 +1338,9 @@ export function useKioskWorkflow() {
     }
     currentJob.value = recoverableJob
     activeBatchExternalNo.value = recoverableJob.batchExternalNo
+    if (recoverableJob.scanBatchId?.trim()) {
+      activeScanBatchId.value = recoverableJob.scanBatchId.trim()
+    }
     if (shouldPollRecoveredJob(recoverableJob)) {
       startJobPolling(recoverableJob.scanJobId)
     }
@@ -1443,7 +1464,15 @@ export function useKioskWorkflow() {
         )
         return
       }
+      if (!batchLifecycle.scanBatchId?.trim()) {
+        await handleScanJobStartFailure(
+          null,
+          '扫描批次创建结果缺少批次 ID，无法启动本地扫描',
+        )
+        return
+      }
       activeBatchExternalNo.value = batchLifecycle.batchExternalNo
+      activeScanBatchId.value = batchLifecycle.scanBatchId.trim()
       if (!batchLifecycle.reportId) {
         await handleScanJobStartFailure(
           null,
@@ -1635,6 +1664,7 @@ export function useKioskWorkflow() {
         })
         await discardScanJob(job.scanJobId, reason)
         activeBatchExternalNo.value = ''
+        activeScanBatchId.value = ''
         successMessage.value = '已废弃扫描批次并清理本地扫描任务'
         currentJob.value = null
         await refreshKioskContext()
@@ -1781,6 +1811,10 @@ export function useKioskWorkflow() {
         const prevPageCount = currentJob.value?.pages.length ?? 0
         currentJob.value = await getScanJob(scanJobId)
         jobPollFailureCount = 0
+        const polledBatchId = currentJob.value.scanBatchId?.trim()
+        if (polledBatchId) {
+          activeScanBatchId.value = polledBatchId
+        }
         if (currentJob.value.pages.length > prevPageCount) {
           const lastPage = visiblePages.value.at(-1)
           if (lastPage) previewPageNo.value = lastPage.pageNo
@@ -1841,6 +1875,7 @@ export function useKioskWorkflow() {
       }
     }
     activeBatchExternalNo.value = ''
+    activeScanBatchId.value = ''
   }
 
   async function handleTerminalBatchClosure(job: ScanJobResponse) {
@@ -1930,6 +1965,7 @@ export function useKioskWorkflow() {
     }
     kioskContext.value = null
     activeBatchExternalNo.value = ''
+    activeScanBatchId.value = ''
     currentJob.value = null
     previewPageNo.value = 0
     if (jobTimer) {

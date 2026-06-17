@@ -82,8 +82,10 @@ export function useStageMachine(workflow: KioskWorkflow) {
     if (job.status === 'CANCELLED') return 'setup'
 
     if (job.status === 'REPORTED') {
-      const attentionCount = ctx.latestBatch?.attentionItemCount ?? ctx.attentionCount ?? 0
-      const pendingUpload = ctx.latestBatch?.pendingUploadCount ?? 0
+      const batch = ctx.latestBatch
+      if (!batch) return 'setup'
+      const attentionCount = batch.attentionItemCount ?? 0
+      const pendingUpload = batch.pendingUploadCount ?? 0
       if (attentionCount > 0 || pendingUpload > 0) return 'review'
       return 'setup'
     }

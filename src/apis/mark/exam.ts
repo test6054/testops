@@ -1245,10 +1245,17 @@ export interface ScanAttentionItemVO {
  * - DISCARDED：教师在扫描审阅 / 异常处置时显式废弃整批，与封存（sealed_at）互斥；
  *   状态机进入 DISCARDED 后不再产生新页、不再纳入归档与统计。
  */
-export type ScanBatchStatusCode = 'RECEIVED' | 'BLOCKED' | 'BOUND' | 'COMPLETED' | 'DISCARDED'
+export type ScanBatchStatusCode =
+  | 'IN_PROGRESS'
+  | 'RECEIVED'
+  | 'BLOCKED'
+  | 'BOUND'
+  | 'COMPLETED'
+  | 'DISCARDED'
 
 /** 扫描批次状态文案映射 - 与后端 ScanBatchStatus.message 完整一致 */
 export const SCAN_BATCH_STATUS_LABEL: Record<ScanBatchStatusCode, string> = {
+  IN_PROGRESS: '进行中',
   RECEIVED: '已接收',
   BLOCKED: '已阻断',
   BOUND: '已绑定',
@@ -1258,6 +1265,7 @@ export const SCAN_BATCH_STATUS_LABEL: Record<ScanBatchStatusCode, string> = {
 
 /** 扫描批次状态 BadgeTone 映射 */
 export const SCAN_BATCH_STATUS_TONE: Record<ScanBatchStatusCode, BadgeTone> = {
+  IN_PROGRESS: 'blue',
   RECEIVED: 'blue',
   BLOCKED: 'red',
   BOUND: 'green',
@@ -1285,6 +1293,12 @@ export interface ExamScannerBatchVO {
   /** 补扫原因 */
   supplementReason?: string
   pageCount: number
+  /** 服务端已落库页数 */
+  receivedPageCount?: number
+  /** 待落库页数 */
+  pendingUploadCount?: number
+  /** 批次内未处置异常项数量 */
+  attentionItemCount?: number
   status: ScanBatchStatusCode
   statusMessage: string
   diagnostic?: string

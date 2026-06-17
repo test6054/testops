@@ -2,51 +2,31 @@
 /**
  * KioskSideRail - 右侧持久 360px 栏
  *
- * 4 张紧凑卡片：
- *   1. 一体机就绪（Agent / 扫描仪 / 设备 / 待处理 + 设置入口）
- *   2. 服务端扫描策略（DPI / 色彩 / 单双面 / 空白页检测）
- *   3. 当前考试 KPI（已扫页 / 试卷实例 / 已绑定 / 异常）
- *   4. 最近批次（标题 + 时段 + 跳到 history）
- *
- * 自取 ctx，无 prop。响应式：≤1280 → 300px；≤1024 → 整列隐藏（在 KioskLayout 处理）。
+ * 紧凑卡片：一体机就绪 / 本机能力 / 扫描参数 / 当前考试概览（含本机最近批次）
  */
 import { computed } from 'vue'
 import { useKioskCtx } from '../composables/kioskInjection'
-import KioskBoundStudentsPanel from './KioskBoundStudentsPanel.vue'
 
 const { workflow, stage, ui } = useKioskCtx()
 
-const showBoundStudents = computed(
+const showExamOverview = computed(
   () => stage.currentStage.value !== 'setup',
 )
-
-/** 侧栏/主区展示用的批次 ID：活跃任务优先，复核/封存回退 latestBatch */
-const boundBatchIdForDisplay = computed(() => {
-  if (workflow.boundPaperScanBatchId.value) {
-    return workflow.boundPaperScanBatchId.value
-  }
-  if (!showBoundStudents.value) return ''
-  const stageId = stage.currentStage.value
-  if (stageId === 'review' || stageId === 'history') {
-    return workflow.kioskContext.value?.latestBatch?.scanBatchId || ''
-  }
-  return ''
-})
-
-const boundBatchKpiCount = computed(() => {
-  const batch = workflow.kioskContext.value?.latestBatch
-  const batchId = boundBatchIdForDisplay.value
-  if (batch && batchId && batch.scanBatchId === batchId && batch.boundStudentCount != null) {
-    return batch.boundStudentCount
-  }
-  if (batchId) return workflow.boundPaperSummary.value.studentCount
-  return '—'
-})
 
 const capabilities = computed(() => workflow.kioskContext.value?.capabilities)
 const device = computed(() => workflow.kioskContext.value?.device)
 const latestBatch = computed(() => workflow.kioskContext.value?.latestBatch)
 const activeScanConfig = computed(() => workflow.scanConfig.value)
+
+const boundBatchKpiCount = computed(() => {
+  const batchId = workflow.boundPaperScanBatchId.value
+  if (!batchId) return '—'
+  const batch = workflow.kioskContext.value?.latestBatch
+  if (batch && batch.scanBatchId === batchId && batch.boundStudentCount != null) {
+    return batch.boundStudentCount
+  }
+  return workflow.boundPaperSummary.value.studentCount
+})
 
 const railDeviceLed = computed(() => {
   if (!workflow.health.value?.bound) return 'danger'
@@ -96,6 +76,12 @@ const railScanBlankPage = computed(() =>
   activeScanConfig.value.blankPageDetectionEnabled ? '启用' : '关闭',
 )
 
+const railBatchEmptyText = computed(() => {
+  const count = workflow.kioskContext.value?.scanBatchCount ?? 0
+  if (count > 0) return `本机已有 ${count} 个批次，刷新后可见`
+  return '暂无批次'
+})
+
 function handleOpenSettings() {
   ui.openSettings()
 }
@@ -103,7 +89,6 @@ function handleOpenSettings() {
 
 <template>
   <aside class="side-rail">
-    <!-- 一体机就绪 -->
     <article class="rail-card">
       <header class="rail-card-head">
         <h4>一体机就绪</h4>
@@ -130,7 +115,6 @@ function handleOpenSettings() {
       <button type="button" class="rail-link" @click="handleOpenSettings">打开设备设置 →</button>
     </article>
 
-    <!-- 本机扫描仪能力（只读） -->
     <article class="rail-card">
       <header class="rail-card-head">
         <h4>本机扫描仪能力</h4>
@@ -151,7 +135,6 @@ function handleOpenSettings() {
       </dl>
     </article>
 
-    <!-- 当前批次扫描参数 -->
     <article class="rail-card">
       <header class="rail-card-head">
         <h4>当前扫描参数</h4>
@@ -176,8 +159,7 @@ function handleOpenSettings() {
       </dl>
     </article>
 
-    <!-- 当前考试 KPI（扫描链路阶段才展示批次进度） -->
-    <article v-if="showBoundStudents" class="rail-card">
+    <article v-if="showExamOverview" class="rail-card rail-card--exam">
       <header class="rail-card-head">
         <h4>当前考试概览</h4>
       </header>
@@ -195,26 +177,19 @@ function handleOpenSettings() {
           <span>异常</span><strong>{{ workflow.kioskMetrics.value.attentionCount }}</strong>
         </li>
       </ul>
-    </article>
 
-    <!-- 本批次已绑定学生 -->
-    <article v-if="showBoundStudents" class="rail-card rail-card--bound">
-      <KioskBoundStudentsPanel variant="rail" :scan-batch-id="boundBatchIdForDisplay" />
-    </article>
+      <div class="rail-batch-block">
+        <p class="rail-batch-label">本机最近批次</p>
+        <template v-if="latestBatch">
+          <p class="rail-batch-title">{{ workflow.latestBatchText.value }}</p>
+          <p class="rail-batch-period">{{ workflow.latestBatchPeriodText.value }}</p>
+        </template>
+        <p v-else class="rail-batch-empty">{{ railBatchEmptyText }}</p>
+      </div>
 
-    <!-- 最近批次 -->
-    <article class="rail-card rail-card--last">
-      <header class="rail-card-head">
-        <h4>最近批次</h4>
-      </header>
-      <template v-if="latestBatch">
-        <p class="rail-batch-title">{{ workflow.latestBatchText.value }}</p>
-        <p class="rail-batch-period">{{ workflow.latestBatchPeriodText.value }}</p>
-        <button type="button" class="rail-link" @click="stage.gotoStage('history')">
-          查看本机历史 →
-        </button>
-      </template>
-      <p v-else class="rail-empty">暂无批次</p>
+      <button type="button" class="rail-link" @click="stage.gotoStage('history')">
+        查看本机历史 →
+      </button>
     </article>
   </aside>
 </template>
@@ -340,16 +315,24 @@ function handleOpenSettings() {
   color: var(--kiosk-ink-primary);
 }
 
-.rail-empty {
-  margin: 0;
-  text-align: center;
+.rail-card--exam {
+  margin-bottom: var(--kiosk-space-2);
+}
+
+.rail-batch-block {
+  margin-top: var(--kiosk-space-4);
+  padding-top: var(--kiosk-space-3);
+  border-top: 1px solid var(--kiosk-divider);
+}
+
+.rail-batch-label {
+  margin: 0 0 var(--kiosk-space-2);
   font-size: var(--kiosk-fz-caption);
   color: var(--kiosk-ink-tertiary);
-  padding: var(--kiosk-space-4) 0;
 }
 
 .rail-batch-title {
-  margin: 0 0 var(--kiosk-space-2);
+  margin: 0 0 var(--kiosk-space-1);
   font-size: var(--kiosk-fz-label);
   font-weight: var(--kiosk-fw-semibold);
   color: var(--kiosk-ink-primary);
@@ -363,14 +346,9 @@ function handleOpenSettings() {
   color: var(--kiosk-ink-tertiary);
 }
 
-.rail-card--last {
-  margin-bottom: var(--kiosk-space-2);
-}
-
-.rail-card--bound {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+.rail-batch-empty {
+  margin: 0;
+  font-size: var(--kiosk-fz-caption);
+  color: var(--kiosk-ink-tertiary);
 }
 </style>

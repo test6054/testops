@@ -395,8 +395,8 @@ import type {
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
   FinalScoreBatchPublishVO,
-  FinalScoreStatusCode,
   FinalScoreRiskOverviewVO,
+  FinalScoreStatusCode,
 } from '@/apis/mark/exam'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'

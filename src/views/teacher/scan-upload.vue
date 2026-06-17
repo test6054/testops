@@ -331,7 +331,7 @@
           :data-source="batches"
           :loading="batchLoading"
           :total="batchTotal"
-          :scroll="{ x: 1290 }"
+          :scroll="{ x: 1470 }"
           flat
           @page-change="onBatchPageChange"
           row-key="scanBatchId"
@@ -361,6 +361,17 @@
               <template v-if="record.sourceFileCount"> {{ record.sourceFileCount }} 份 </template>
               <template v-else>0 份</template>
             </template>
+            <template v-else-if="column.key === 'pageProgress'">
+              <span :class="{ warn: (record.pendingUploadCount ?? 0) > 0 }">
+                {{ record.receivedPageCount ?? 0 }} / {{ record.pageCount }}
+              </span>
+            </template>
+            <template v-else-if="column.key === 'attentionCount'">
+              <UiTag v-if="(record.attentionItemCount ?? 0) > 0" tone="orange" size="sm">
+                {{ record.attentionItemCount }} 项
+              </UiTag>
+              <span v-else class="muted">0</span>
+            </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
                 <span
@@ -379,13 +390,7 @@
                       || !canSealBatch(record),
                   }"
                   role="button"
-                  :title="
-                    record.sealedAt
-                      ? '批次已封存'
-                      : record.status === 'DISCARDED' || record.discardedAt
-                        ? '已废弃批次不可封存'
-                        : '封存批次'
-                  "
+                  :title="batchSealBlockedReason(record) || '封存批次'"
                   @click="
                     batchSealing !== record.scanBatchId
                       && canSealBatch(record)
@@ -494,12 +499,37 @@
       ok-text="确认封存"
       cancel-text="取消"
       :confirm-loading="Boolean(batchSealing)"
+      :ok-button-props="{ disabled: !batchSealReady }"
       @ok="confirmSealBatch"
       @cancel="cancelSealBatch"
     >
-      <p v-if="batchSealTarget">
-        确认封存批次 <strong>{{ batchSealTarget.batchNo }}</strong>？封存后无法再追加扫描。
-      </p>
+      <template v-if="batchSealTarget">
+        <p class="scan-batch-page__seal-intro">
+          封存批次 <strong>{{ batchSealTarget.batchNo }}</strong> 后，扫描端将无法再向该批次追加页面。
+        </p>
+        <ul class="scan-batch-page__seal-checklist">
+          <li
+            v-for="item in batchSealChecklist"
+            :key="item.key"
+            :class="item.ok ? 'is-pass' : 'is-fail'"
+          >
+            <span class="scan-batch-page__seal-check-label">{{ item.label }}</span>
+            <span v-if="item.detail" class="scan-batch-page__seal-check-detail">{{ item.detail }}</span>
+          </li>
+        </ul>
+        <UiAlertStrip
+          v-if="batchSealBlockedReasonActive"
+          tone="warning"
+          title="暂不满足封存条件"
+          :description="batchSealBlockedReasonActive"
+          dense
+        />
+        <p v-if="(batchSealTarget.attentionItemCount ?? 0) > 0" class="scan-batch-page__seal-hint">
+          请先前往
+          <span class="op-link" role="button" @click="openSealAttentionMonitor">扫描监控</span>
+          处置异常后再封存。
+        </p>
+      </template>
       <UiAlertStrip
         v-if="batchSealError"
         tone="error"
@@ -542,9 +572,9 @@ import {
   getMarkingProgress,
   pageScannerBatches,
   previewScanBatchAggregation,
-  sealScanBatchByTeacher,
   SCAN_BATCH_STATUS_LABEL,
   SCAN_BATCH_STATUS_TONE,
+  sealScanBatchByTeacher,
 } from '@/apis/mark/exam'
 import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
@@ -568,6 +598,11 @@ import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-h
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import {
+  batchSealBlockedReason,
+  buildBatchSealChecklist,
+  canSealBatch,
+} from '@/utils/scan-batch-seal'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanUpload' })
@@ -594,8 +629,10 @@ function batchStatusLabel(batch: ExamScannerBatchVO): string {
   return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
 }
 
-function canSealBatch(batch: ExamScannerBatchVO): boolean {
-  return !batch.sealedAt && batch.status !== 'DISCARDED' && !batch.discardedAt
+function openSealAttentionMonitor(): void {
+  if (!selectedExamId.value) return
+  batchSealModalOpen.value = false
+  void router.push({ name: 'TeacherScanLiveMonitor', query: { examId: selectedExamId.value } })
 }
 
 const {
@@ -960,7 +997,9 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '扫描时间窗', key: 'scanWindow', width: 220 },
   { title: '事件数', key: 'eventCount', width: 90 },
   { title: '文件数', key: 'fileCount', width: 90 },
-  { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 80 },
+  { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 70 },
+  { title: '落库进度', key: 'pageProgress', width: 100 },
+  { title: '异常', key: 'attentionCount', width: 80 },
   { title: '操作', key: 'actions', width: 280, fixed: 'right' as const },
 ]
 
@@ -979,6 +1018,14 @@ const batchSealing = ref<string | null>(null)
 const batchSealModalOpen = ref(false)
 const batchSealTarget = ref<ExamScannerBatchVO | null>(null)
 const batchSealError = ref('')
+
+const batchSealChecklist = computed(() =>
+  batchSealTarget.value ? buildBatchSealChecklist(batchSealTarget.value) : [],
+)
+const batchSealBlockedReasonActive = computed(() =>
+  batchSealTarget.value ? batchSealBlockedReason(batchSealTarget.value) : '',
+)
+const batchSealReady = computed(() => batchSealBlockedReasonActive.value === '')
 
 const sourceFilesDrawerOpen = ref(false)
 const sourceFilesTarget = ref<ExamScannerBatchVO | null>(null)
@@ -1048,6 +1095,10 @@ async function confirmSealBatch(): Promise<void> {
     cancelSealBatch()
     return
   }
+  if (!canSealBatch(batch)) {
+    batchSealError.value = batchSealBlockedReason(batch) || '当前批次不满足封存条件'
+    return
+  }
   batchSealError.value = ''
   batchSealing.value = batch.scanBatchId
   try {
@@ -1055,7 +1106,7 @@ async function confirmSealBatch(): Promise<void> {
     message.success(`扫描批次已封存：${batch.batchNo}`)
     batchSealModalOpen.value = false
     batchSealTarget.value = null
-    await loadBatches()
+    await Promise.all([loadBatches(), loadProgress(), refreshScanLive()])
   } catch (error) {
     batchSealError.value = getUserErrorMessage(error, '扫描批次封存失败')
   } finally {
@@ -1371,6 +1422,56 @@ onBeforeUnmount(() => {
     font-weight: 700;
   }
 
+  &__seal-intro {
+    margin: 0 0 12px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  &__seal-checklist {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__seal-checklist > li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--dp-border, #e5e7eb);
+  }
+
+  &__seal-checklist > li.is-pass {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+  }
+
+  &__seal-checklist > li.is-fail {
+    background: #fffbeb;
+    border-color: #fde68a;
+  }
+
+  &__seal-check-label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  &__seal-check-detail {
+    font-size: 12px;
+    color: var(--dp-text-secondary, #475569);
+  }
+
+  &__seal-hint {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: var(--dp-text-secondary, #475569);
+  }
+
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1388,6 +1489,11 @@ onBeforeUnmount(() => {
 .batch-table {
   :deep(.ant-table-thead > tr > th) {
     background: var(--ant-color-fill-quaternary);
+    font-weight: 600;
+  }
+
+  .warn {
+    color: var(--ant-color-warning, #faad14);
     font-weight: 600;
   }
 }

@@ -320,9 +320,9 @@ export interface ExamScannerBatchLifecycleVO {
   pendingPagesDiagnostic?: string
   /** close 时 Redis 中仍残留的 pending pages 数量；无残留为 0 / undefined */
   pendingPageCount?: number
-  /** 封存时间，仅 seal 成功时填写 */
+  /** 批次封存时间 */
   sealedAt?: string
-  /** 封存操作人，仅 seal 成功时填写 */
+  /** 封存操作人 */
   sealedBy?: string
   /** batch/start 落库的扫描批次 ID */
   scanBatchId?: string
