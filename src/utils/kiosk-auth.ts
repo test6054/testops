@@ -123,7 +123,7 @@ export function hasMarkScannerKioskAuth(): boolean {
  * 一体机页面部署在 /mark/scanner-kiosk/* 时，浏览器 pathname 会带上部署前缀；
  * 因此按路径片段判断，而不是按 Vue Router 内部 path 判断。
  */
-function isScannerKioskBrowserPage(): boolean {
+export function isScannerKioskBrowserPage(): boolean {
   if (typeof window === 'undefined') {
     return false
   }

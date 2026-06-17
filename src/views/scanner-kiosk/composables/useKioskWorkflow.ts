@@ -443,6 +443,16 @@ export function useKioskWorkflow() {
     return Boolean(health.value?.bound) && hasMarkScannerKioskAuth()
   }
 
+  /** Agent 未绑定时清理浏览器残留 push_token，避免误用旧会话调用后端。 */
+  function clearStaleKioskSessionWhenUnbound(): void {
+    if (health.value?.bound) {
+      return
+    }
+    if (hasMarkScannerKioskAuth() || getKioskBindingProfile()) {
+      clearKioskAuthSession()
+    }
+  }
+
   const workState = computed(() => {
     const job = currentJob.value
     const status = job?.status
@@ -903,6 +913,7 @@ export function useKioskWorkflow() {
     try {
       const previousBound = health.value?.bound
       health.value = await getAgentHealth()
+      clearStaleKioskSessionWhenUnbound()
       if (previousBound && !health.value.bound) {
         handleAgentBindingLost()
         return
@@ -1095,6 +1106,11 @@ export function useKioskWorkflow() {
    * 一体机时误触发后端权限校验失败。
    */
   async function loadBatchHistory(): Promise<void> {
+    if (!isActivatedForMarkApis()) {
+      batchHistoryList.value = []
+      batchHistoryTotal.value = 0
+      return
+    }
     const device = getActiveScannerDeviceId()
     const station = getActiveScannerStationId()
     if (!examId.value || !device || !station) {
@@ -1981,6 +1997,7 @@ export function useKioskWorkflow() {
     () => getActiveBatchExternalNo(),
     (newBatchNo, oldBatchNo) => {
       if (newBatchNo === oldBatchNo) return
+      if (!isActivatedForMarkApis()) return
       refreshPageLedger().catch((error) => {
         handleError(error)
       })

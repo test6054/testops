@@ -16,7 +16,9 @@ import { getDeviceHeaders } from '@/utils/device'
 import { handleAxiosError } from '@/utils/error-handler'
 import {
   clearKioskAuthSession,
+  hasMarkScannerKioskAuth,
   isMarkScannerStationApiUrl,
+  isScannerKioskBrowserPage,
   KIOSK_BROWSER_SESSION_LOST_MESSAGE,
   resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
@@ -33,6 +35,20 @@ const service: AxiosInstance = axios.create({
   timeout: config.timeout,
   withCredentials: false,
 })
+
+/** 一体机未激活时，扫描工位 API 的失败属于预期状态，不弹全局「网络异常」。 */
+function shouldSuppressKioskPreActivationAxiosError(
+  error: AxiosError<ResultInfo<unknown>>,
+): boolean {
+  if (!isScannerKioskBrowserPage() || hasMarkScannerKioskAuth()) {
+    return false
+  }
+  const url = error.config?.url || ''
+  if (isMarkScannerStationApiUrl(url)) {
+    return true
+  }
+  return !error.response
+}
 
 /**
  * 获取租户ID
@@ -169,7 +185,11 @@ service.interceptors.request.use(
       const scannerStationAuth = resolveMarkScannerStationAuthHeaders()
       extendedConfig.markScannerStationAuthSource = scannerStationAuth.source || undefined
       if (!scannerStationAuth.headers.Authorization) {
-        return Promise.reject(new Error('扫描工位缺少鉴权，请先登录或完成一体机 Agent 激活'))
+        const authError: InterceptorError = new Error(
+          '扫描工位缺少鉴权，请先登录或完成一体机 Agent 激活',
+        )
+        authError._handledByInterceptor = isScannerKioskBrowserPage()
+        return Promise.reject(authError)
       }
       requestConfig.headers.Authorization = scannerStationAuth.headers.Authorization
       if (scannerStationAuth.headers['X-Tenant-Id']) {
@@ -423,10 +443,12 @@ service.interceptors.response.use(
       const isNetworkError = !response
 
       if (isNetworkError || errorStatusCode >= 500) {
-        handleAxiosError(error, {
-          showMessage: shouldShowError(errorStatusCode),
-          useNotification: shouldUseNotification(errorStatusCode, isNetworkError)
-        });
+        if (!shouldSuppressKioskPreActivationAxiosError(error)) {
+          handleAxiosError(error, {
+            showMessage: shouldShowError(errorStatusCode),
+            useNotification: shouldUseNotification(errorStatusCode, isNetworkError)
+          });
+        }
         (error as InterceptorError)._handledByInterceptor = true
       }
     }

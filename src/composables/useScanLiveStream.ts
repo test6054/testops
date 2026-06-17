@@ -191,6 +191,11 @@ export function useScanLiveStream(
     if (!options.ledgerFilter) {
       return
     }
+    if (!hasMarkScannerStationAuth()) {
+      ledger.value = null
+      ledgerError.value = null
+      return
+    }
     const filter = options.ledgerFilter()
     if (!filter) {
       ledger.value = null
@@ -244,6 +249,9 @@ export function useScanLiveStream(
 
   async function start(): Promise<void> {
     if (isStreaming.value) {
+      return
+    }
+    if (!hasMarkScannerStationAuth()) {
       return
     }
     isStreaming.value = true
