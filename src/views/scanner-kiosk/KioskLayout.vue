@@ -109,7 +109,7 @@ onMounted(() => {
     <!-- 一体机激活弹窗（未绑定 / 需重新激活时强制弹出） -->
     <KioskActivationModal />
 
-    <!-- 历史批次 ledger 抽屉（点击 FinalizeStage 行触发） -->
+    <!-- 历史批次 ledger 抽屉（点击 HistoryStage 行触发） -->
     <KioskHistoryLedgerDrawer />
 
     <!-- 键盘快捷键参考卡 overlay（按 ? 打开） -->

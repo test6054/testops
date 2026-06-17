@@ -34,6 +34,14 @@
     <a-divider v-if="canManage" class="section-divider" />
 
     <h4 v-if="canManage" class="subsection-title">会话推进</h4>
+    <a-alert
+      v-if="canManage"
+      type="info"
+      show-icon
+      class="completion-semantics-alert"
+      message="完成正评仅表示本场派发的阅卷任务已全部提交"
+      description="不等于整张试卷全部题目成绩已确认。随机题目 / 指定题目模式下，以本会话题目范围与派发任务为准。"
+    />
     <a-form v-if="canManage" layout="vertical" class="session-form">
       <a-form-item label="正评会话" required>
         <a-select
@@ -52,7 +60,7 @@
         </UiButton>
         <UiButton
           variant="outline"
-          :disabled="!actionSessionId"
+          :disabled="!canCompleteSelectedSession"
           :loading="completing"
           @click="submitComplete"
         >
@@ -60,6 +68,16 @@
           完成正评
         </UiButton>
       </a-space>
+      <div v-if="selectedSession && selectedSession.sessionStatus === 'SESSION_ACTIVE'" class="session-progress-hint">
+        <span>{{ formatSessionTaskProgress(selectedSession) }}</span>
+        <span>{{ formatSessionGradeClosureProgress(selectedSession) }}</span>
+        <span v-if="selectedSession.sessionCompletionBlockedReason" class="session-blocked-reason">
+          {{ selectedSession.sessionCompletionBlockedReason }}
+        </span>
+        <span v-else-if="selectedSession.sessionGradeClosureBlockedReason" class="session-blocked-reason">
+          {{ selectedSession.sessionGradeClosureBlockedReason }}
+        </span>
+      </div>
     </a-form>
 
     <a-divider class="section-divider" />
@@ -85,11 +103,20 @@
             <span>
               正评会话 · 创建于 {{ formatDateTime(item.createTime) }} ·
               {{ strictEnumLabel(ALLOCATION_UNIT_LABEL, item.allocationUnit, '批阅任务单元') }}
+              · {{ formatSessionQuestionScope(item) }}
+              · {{ formatSessionTaskProgress(item) }}
+              · {{ formatSessionGradeClosureProgress(item) }}
               <template v-if="item.startTime">· 开始 {{ formatDateTime(item.startTime) }}</template>
               <template v-if="item.endTime">· 结束 {{ formatDateTime(item.endTime) }}</template>
               <template v-if="item.pauseReason"> · 暂停原因：{{ item.pauseReason }} </template>
               <template v-if="item.closeReason"> · 关闭原因：{{ item.closeReason }} </template>
             </span>
+            <div
+              v-if="item.allocationUnit === 'RANDOM_QUESTIONS' && item.questionScopes.length > 0"
+              class="session-scope-note"
+            >
+              随机抽题结果已在启动时固化；完成正评仅表示本场抽中题目的阅卷任务已交卷，不代表整卷批阅完成。
+            </div>
           </template>
         </a-list-item-meta>
         <template #actions>
@@ -202,6 +229,18 @@ const formalSessionOptions = computed(() =>
   })),
 )
 
+const selectedSession = computed(() =>
+  props.sessions.find((item) => item.id === actionSessionId.value),
+)
+
+const canCompleteSelectedSession = computed(() => {
+  const session = selectedSession.value
+  if (!session || session.sessionStatus !== 'SESSION_ACTIVE') {
+    return false
+  }
+  return session.sessionTaskCompletionReady
+})
+
 const allocationUnitOptions = Object.entries(ALLOCATION_UNIT_LABEL).map(([value, label]) => ({
   value,
   label,
@@ -233,6 +272,37 @@ function canClose(status: FormalSessionStatusCode): boolean {
 
 function canDelete(status: FormalSessionStatusCode): boolean {
   return props.canManage && status === 'SESSION_CREATED'
+}
+
+function formatSessionQuestionScope(session: FormalSessionVO): string {
+  if (session.allocationUnit === 'WHOLE_PAPER') {
+    return '整卷批阅'
+  }
+  if (!session.questionScopes.length) {
+    return '题目范围待启动固化'
+  }
+  const questionNos = session.questionScopes.map((scope) => {
+    const progress = scope.scopedTaskCount > 0
+      ? `（任务 ${scope.scopedFinalizedTaskCount}/${scope.scopedTaskCount}，成绩 ${scope.scopedConfirmedGradeCount}/${scope.scopedGradeItemCount}）`
+      : ''
+    return `题 ${scope.questionNo}${progress}`
+  }).join('、')
+  const prefix = session.allocationUnit === 'RANDOM_QUESTIONS' ? '随机抽题' : '指定题目'
+  return `${prefix} ${session.questionScopeCount} 题：${questionNos}`
+}
+
+function formatSessionTaskProgress(session: FormalSessionVO): string {
+  if (session.totalTaskCount <= 0) {
+    return '阅卷任务待生成'
+  }
+  return `${session.completionScopeLabel} 已定稿 ${session.finalizedTaskCount}/${session.totalTaskCount}`
+}
+
+function formatSessionGradeClosureProgress(session: FormalSessionVO): string {
+  if (session.sessionGradeItemCount <= 0) {
+    return '会话成绩闭环待形成'
+  }
+  return `${session.sessionGradeClosureLabel} ${session.sessionConfirmedGradeCount}/${session.sessionGradeItemCount}`
 }
 
 function guardManageAction(): boolean {
@@ -282,7 +352,7 @@ async function submitComplete(): Promise<void> {
   completing.value = true
   try {
     await completeFormalSession(actionSessionId.value)
-    message.success('正评会话已完成')
+    message.success('本场正评任务已标记完成')
     emit('refresh')
   } catch (error) {
     showUserError(error, '完成正评会话失败')
@@ -347,5 +417,28 @@ async function submitDelete(sessionId: string): Promise<void> {
 
 .status-tag {
   margin-left: 8px;
+}
+
+.session-scope-note {
+  margin-top: 6px;
+  color: var(--ant-color-warning);
+  font-size: 12px;
+}
+
+.completion-semantics-alert {
+  margin-bottom: 12px;
+}
+
+.session-progress-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #595959;
+  line-height: 1.6;
+}
+
+.session-blocked-reason {
+  display: block;
+  margin-top: 4px;
+  color: var(--ant-color-error);
 }
 </style>

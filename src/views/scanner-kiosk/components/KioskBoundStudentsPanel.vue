@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * 本批次已绑定学生面板：扫描 / 复核 / 封存阶段展示，含学号、姓名、班级、页数。
+ * 本批次已绑定学生面板：扫描 / 复核 / 历史阶段展示，含学号、姓名、班级、页数。
  */
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
@@ -10,7 +10,7 @@ const props = withDefaults(
   defineProps<{
     /** rail=侧栏紧凑；panel=主区表格 */
     variant?: 'rail' | 'panel'
-    /** 封存等场景显式指定批次 ID，覆盖 workflow 推导值 */
+    /** 历史等场景显式指定批次 ID，覆盖 workflow 推导值 */
     scanBatchId?: string
   }>(),
   { variant: 'panel' },

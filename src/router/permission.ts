@@ -215,7 +215,7 @@ export function requiresAuth(path: string): boolean {
   if (path.startsWith('/survey/')) {
     return false
   }
-  // /scanner-kiosk 父路由及其全部子路由（/setup、/scanning、/review、/finalize）均部署在
+  // /scanner-kiosk 父路由及其子路由（/setup、/scanning、/review、/history）均部署在
   // 一体机本地浏览器，不走教师/学生认证体系，统一前缀匹配放行。
   if (path === '/scanner-kiosk' || path.startsWith('/scanner-kiosk/')) {
     return false

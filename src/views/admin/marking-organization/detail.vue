@@ -303,6 +303,9 @@
                       style="width: 100%"
                       :disabled="!canManageOrganization"
                     />
+                    <div class="policy-hint">
+                      抽样题池来自当前题组题目范围；正评启动后会固化本次随机抽题结果，后续可在正评会话列表审计复盘。
+                    </div>
                   </a-form-item>
                   <a-form-item label="每批分配任务数">
                     <a-input-number
@@ -1218,6 +1221,13 @@ onMounted(loadOrganization)
     font-size: 14px;
     font-weight: 500;
     color: var(--dp-text-primary, #0f172a);
+  }
+
+  .policy-hint {
+    margin-top: 6px;
+    color: var(--dp-text-muted, #64748b);
+    font-size: 12px;
+    line-height: 1.5;
   }
 }
 

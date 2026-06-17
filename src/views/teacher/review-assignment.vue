@@ -155,6 +155,9 @@ const readOnlyGroupColumns: ColumnType<QuestionMarkingGroupVO>[] = [
 const readOnlySessionColumns: ColumnType<FormalSessionVO>[] = [
   { title: '题组', dataIndex: 'groupName', key: 'groupName', width: 180 },
   { title: '批阅单元', key: 'allocationUnit', width: 120 },
+  { title: '题目范围', key: 'questionScopes', width: 280 },
+  { title: '任务进度', key: 'taskProgress', width: 200 },
+  { title: '成绩闭环', key: 'gradeClosure', width: 200 },
   { title: '会话状态', key: 'sessionStatus', width: 120 },
   { title: '开始时间', key: 'startTime', width: 170 },
 ]
@@ -663,6 +666,37 @@ function allocationModeLabel(value: MarkingAllocationModeCode): string {
   return strictEnumLabel(MARKING_ALLOCATION_MODE_LABEL, value, '批阅分配模式')
 }
 
+function formatSessionQuestionScope(session: FormalSessionVO): string {
+  if (session.allocationUnit === 'WHOLE_PAPER') {
+    return '整卷批阅'
+  }
+  if (!session.questionScopes.length) {
+    return '待启动后固化'
+  }
+  const prefix = session.allocationUnit === 'RANDOM_QUESTIONS' ? '随机抽题' : '指定题目'
+  const questionNos = session.questionScopes.map((scope) => {
+    const progress = scope.scopedTaskCount > 0
+      ? `（任务 ${scope.scopedFinalizedTaskCount}/${scope.scopedTaskCount}，成绩 ${scope.scopedConfirmedGradeCount}/${scope.scopedGradeItemCount}）`
+      : ''
+    return `题 ${scope.questionNo}${progress}`
+  }).join('、')
+  return `${prefix} ${session.questionScopeCount} 题：${questionNos}`
+}
+
+function formatSessionTaskProgress(session: FormalSessionVO): string {
+  if (session.totalTaskCount <= 0) {
+    return '阅卷任务待生成'
+  }
+  return `${session.completionScopeLabel} 已定稿 ${session.finalizedTaskCount}/${session.totalTaskCount}`
+}
+
+function formatSessionGradeClosureProgress(session: FormalSessionVO): string {
+  if (session.sessionGradeItemCount <= 0) {
+    return '会话成绩闭环待形成'
+  }
+  return `${session.sessionGradeClosureLabel} ${session.sessionConfirmedGradeCount}/${session.sessionGradeItemCount}`
+}
+
 function formatQuestionLabel(question: ExamQuestionTemplateVO): string {
   return `题 ${question.questionNo} · ${question.fullScore} 分`
 }
@@ -905,6 +939,15 @@ onMounted(async () => {
                 <template v-if="column.key === 'allocationUnit'">
                   {{ allocationUnitLabel((session as FormalSessionVO).allocationUnit) }}
                 </template>
+                <template v-else-if="column.key === 'questionScopes'">
+                  {{ formatSessionQuestionScope(session as FormalSessionVO) }}
+                </template>
+                <template v-else-if="column.key === 'taskProgress'">
+                  {{ formatSessionTaskProgress(session as FormalSessionVO) }}
+                </template>
+                <template v-else-if="column.key === 'gradeClosure'">
+                  {{ formatSessionGradeClosureProgress(session as FormalSessionVO) }}
+                </template>
                 <template v-else-if="column.key === 'sessionStatus'">
                   <UiTag
                     :tone="
@@ -1009,6 +1052,9 @@ onMounted(async () => {
                 class="review-assignment__number"
                 @change="handleRandomQuestionSampleSizeChange"
               />
+              <div class="review-assignment__hint">
+                启动后本次随机抽题结果会固化为正式会话范围，可在会话列表复盘。
+              </div>
             </a-form-item>
 
             <div class="review-assignment__question-list">
@@ -1384,6 +1430,13 @@ onMounted(async () => {
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.review-assignment__hint {
+  margin-top: 8px;
+  color: var(--ant-color-warning);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .review-assignment__summary {

@@ -39,7 +39,10 @@ import {
 import { fetchScannerPageLedger } from '@/apis/mark/scanner-kiosk'
 import { useAuthStore } from '@/stores/modules/auth'
 import { toUserError } from '@/utils/error-handler'
-import { resolveMarkScannerStationAuthHeaders } from '@/utils/kiosk-auth'
+import {
+  hasMarkScannerStationAuth,
+  resolveMarkScannerStationAuthHeaders,
+} from '@/utils/kiosk-auth'
 import mittBus from '@/utils/mitt'
 
 export interface UseScanLiveStreamOptions {

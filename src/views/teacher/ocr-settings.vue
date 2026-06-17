@@ -26,6 +26,7 @@ import {
   listPaddleOcrInstances,
   MARK_OCR_HEALTH_STATUS_COLOR,
   MARK_OCR_HEALTH_STATUS_LABEL,
+  MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_LABEL,
   recognizeMarkOcr,
 } from '@/apis/mark/ocr'
@@ -105,6 +106,17 @@ const healthLabel = computed(() =>
 const currentProviderLabel = computed(() =>
   currentConfig.value?.providerType ? providerLabel(currentConfig.value.providerType) : '未配置',
 )
+const paperCutCapabilityText = computed(() =>
+  currentConfig.value?.providerType
+    ? strictEnumLabel(MARK_OCR_PAPER_CUT_CAPABILITY, currentConfig.value.providerType, 'OCR 切题能力')
+    : '未配置 OCR 渠道，不能执行直接扫描整页切题。',
+)
+const paperCutCapabilityAlertType = computed<'success' | 'warning' | 'error'>(() => {
+  if (!currentConfig.value?.enabled || !currentConfig.value.providerType) {
+    return 'warning'
+  }
+  return currentConfig.value.providerType === 'TENCENT' ? 'error' : 'success'
+})
 
 const canRecognize = computed(() =>
   Boolean(currentConfig.value?.providerType && currentConfig.value.enabled),
@@ -364,6 +376,12 @@ onMounted(async () => {
           show-icon
           message="OCR 渠道由平台超级管理员统一配置，租户侧仅可查看运行状态与执行调试。"
         />
+        <a-alert
+          class="state-message"
+          :type="paperCutCapabilityAlertType"
+          show-icon
+          :message="paperCutCapabilityText"
+        />
       </UiCard>
 
       <UiCard class="info-card">
@@ -421,43 +439,51 @@ onMounted(async () => {
         compact
         @retry="loadPaddleInstances"
       />
-      <a-skeleton v-else-if="paddleInstancesLoading && paddleInstances.length === 0" active />
-      <UiEmpty
-        v-else-if="paddleInstances.length === 0"
-        description="当前没有可用的 OCR 识别服务，请联系管理员检查识别服务状态。"
-      />
-      <a-list v-else :data-source="paddleInstances" item-layout="horizontal">
-        <template #renderItem="{ item }: { item: PaddleOcrInstanceVO }">
-          <a-list-item>
-            <a-list-item-meta>
-              <template #title>
-                <span class="paddle-instance__name">{{ item.instanceName }}</span>
-                <UiTag :tone="paddleInstanceHealthTone(item.healthStatus)" size="sm">
-                  {{ paddleInstanceHealthLabel(item.healthStatus) }}
-                </UiTag>
-                <UiTag v-if="item.localAutoDeploy" tone="blue" size="sm">本地自动部署</UiTag>
-                <UiTag tone="gray" size="sm">{{ item.deviceType }}</UiTag>
-              </template>
-              <template #description>
-                <div class="paddle-instance__meta">
-                  <span class="paddle-instance__url">
-                    {{ item.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
-                  </span>
-                  <span class="paddle-instance__sep">·</span>
-                  <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
-                  <template v-if="item.consecutiveFailures > 0">
+      <template v-else>
+        <a-alert
+          class="state-message"
+          type="info"
+          show-icon
+          message="承担直接扫描批改的 PaddleOCR 实例必须暴露 /paper-cut；该接口需返回真实题块 ROI，不能仅返回普通 OCR 文本。"
+        />
+        <a-skeleton v-if="paddleInstancesLoading && paddleInstances.length === 0" active />
+        <UiEmpty
+          v-else-if="paddleInstances.length === 0"
+          description="当前没有可用的 OCR 识别服务，请联系管理员检查识别服务状态。"
+        />
+        <a-list v-else :data-source="paddleInstances" item-layout="horizontal">
+          <template #renderItem="{ item }: { item: PaddleOcrInstanceVO }">
+            <a-list-item>
+              <a-list-item-meta>
+                <template #title>
+                  <span class="paddle-instance__name">{{ item.instanceName }}</span>
+                  <UiTag :tone="paddleInstanceHealthTone(item.healthStatus)" size="sm">
+                    {{ paddleInstanceHealthLabel(item.healthStatus) }}
+                  </UiTag>
+                  <UiTag v-if="item.localAutoDeploy" tone="blue" size="sm">本地自动部署</UiTag>
+                  <UiTag tone="gray" size="sm">{{ item.deviceType }}</UiTag>
+                </template>
+                <template #description>
+                  <div class="paddle-instance__meta">
+                    <span class="paddle-instance__url">
+                      {{ item.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
+                    </span>
                     <span class="paddle-instance__sep">·</span>
-                    <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
-                  </template>
-                </div>
-                <div v-if="item.lastHealthMessage" class="paddle-instance__msg">
-                  {{ ocrHealthMessageText(item.lastHealthMessage) }}
-                </div>
-              </template>
-            </a-list-item-meta>
-          </a-list-item>
-        </template>
-      </a-list>
+                    <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
+                    <template v-if="item.consecutiveFailures > 0">
+                      <span class="paddle-instance__sep">·</span>
+                      <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
+                    </template>
+                  </div>
+                  <div v-if="item.lastHealthMessage" class="paddle-instance__msg">
+                    {{ ocrHealthMessageText(item.lastHealthMessage) }}
+                  </div>
+                </template>
+              </a-list-item-meta>
+            </a-list-item>
+          </template>
+        </a-list>
+      </template>
     </UiCard>
 
     <UiCard v-if="currentConfig" class="info-card">

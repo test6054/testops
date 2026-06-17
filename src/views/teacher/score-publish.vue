@@ -112,7 +112,7 @@
                   @click="openBulkPublishModal"
                 >
                   <template #icon><ThunderboltOutlined /></template>
-                  批量发布
+                  全场发布
                 </UiButton>
               </a-space>
             </a-form-item>
@@ -303,54 +303,83 @@
       </a-form>
     </UiDrawer>
 
-    <!-- B-5 批量发布 Modal：列出本页可发布候选，串行调用 publishFinalScore -->
+    <!-- 全场发布 Modal：后端按考试全场口径筛选并逐卷发布 -->
     <a-modal
       v-model:open="bulkOpen"
-      title="批量发布成绩预览"
+      title="全场发布成绩"
       :confirm-loading="bulkRunning"
-      :ok-button-props="{ disabled: bulkRunning || bulkCandidates.length === 0 }"
+      :ok-button-props="{ disabled: bulkRunning || !canBulkPublish }"
       :cancel-button-props="{ disabled: bulkRunning }"
       :mask-closable="!bulkRunning"
       :closable="!bulkRunning"
-      :width="640"
-      ok-text="确认发布"
+      :width="720"
+      ok-text="确认全场发布"
       cancel-text="取消"
       @ok="runBulkPublish"
     >
-      <div v-if="bulkProgress.total > 0" class="score-publish__bulk-progress">
+      <UiAlertStrip
+        tone="warning"
+        title="全场发布确认"
+        description="本操作会发布当前考试全场所有已确认、已撤回或已订正的最终成绩，并逐名向学生发送成绩通知。未完成确认或存在阻塞风险的成绩不会被伪装成已发布。"
+        dense
+        class="score-publish__alert"
+      />
+      <a-descriptions
+        v-if="finalScoreOverview"
+        :column="3"
+        size="small"
+        bordered
+        class="score-publish__bulk-overview"
+      >
+        <a-descriptions-item label="全场考生">
+          {{ finalScoreOverview.totalCandidateCount }} 人
+        </a-descriptions-item>
+        <a-descriptions-item label="可发布">
+          {{ publishableOverviewCount }} 人
+        </a-descriptions-item>
+        <a-descriptions-item label="已发布">
+          {{ finalScoreOverview.publishedCount }} 人
+        </a-descriptions-item>
+        <a-descriptions-item label="未确认">
+          {{ finalScoreOverview.pendingCount + finalScoreOverview.calculatedCount }} 人
+        </a-descriptions-item>
+        <a-descriptions-item label="阻塞">
+          {{ finalScoreOverview.blockedCount }} 人
+        </a-descriptions-item>
+        <a-descriptions-item label="可安全确认">
+          {{ finalScoreOverview.safeConfirmableCount }} 人
+        </a-descriptions-item>
+      </a-descriptions>
+      <div v-if="bulkResult" class="score-publish__bulk-result">
         <a-progress
-          :percent="
-            bulkProgress.total > 0
-              ? Math.round((bulkProgress.completed / bulkProgress.total) * 100)
-              : 0
-          "
-          :status="bulkProgress.failed > 0 ? 'exception' : 'active'"
+          :percent="bulkResultPercent"
+          :status="bulkResult.failureCount > 0 || bulkResult.remainingCount > 0 ? 'exception' : 'success'"
         />
         <div class="score-publish__bulk-meta">
-          已发布 {{ bulkProgress.completed }} / {{ bulkProgress.total }} · 失败
-          {{ bulkProgress.failed }} 条
+          本次成功 {{ bulkResult.successCount }} 条 · 失败 {{ bulkResult.failureCount }} 条 ·
+          全场已发布 {{ bulkResult.alreadyPublishedCount }} / {{ bulkResult.totalCandidateCount }}
         </div>
       </div>
-      <a-list size="small" :data-source="bulkCandidates" class="score-publish__bulk-list">
+      <a-list
+        v-if="bulkResult?.failures.length"
+        size="small"
+        :data-source="bulkResult.failures"
+        class="score-publish__bulk-list"
+      >
         <template #renderItem="{ item, index }">
           <a-list-item>
             <a-list-item-meta>
               <template #title>
-                {{ item.paperDisplay.primaryText }}
+                试卷实例 {{ item.paperInstanceId }}
               </template>
               <template #description>
-                <span>当前 {{ finalScoreStatusLabel(item.finalScoreStatus) }}</span>
-                <UiTag
-                  v-if="bulkErrors[index]"
-                  tone="red"
-                  size="sm"
-                  class="score-publish__bulk-error-tag"
-                >
-                  {{ bulkErrors[index] }}
+                <UiTag tone="red" size="sm" class="score-publish__bulk-error-tag">
+                  {{ item.code }}
                 </UiTag>
+                {{ item.message }}
               </template>
             </a-list-item-meta>
-            <UiTag v-if="bulkSuccess[index]" tone="green" size="sm">已发布</UiTag>
+            <UiTag tone="red" size="sm">失败 {{ index + 1 }}</UiTag>
           </a-list-item>
         </template>
       </a-list>
@@ -365,7 +394,9 @@ import type {
   ExamPaperScoreVO,
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
+  FinalScoreBatchPublishVO,
   FinalScoreStatusCode,
+  FinalScoreRiskOverviewVO,
 } from '@/apis/mark/exam'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
 import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
@@ -375,9 +406,11 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listAbsenceRecords } from '@/apis/mark/absence'
 import {
+  batchPublishFinalScores,
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
+  getFinalScoreRiskOverview,
   getPaperScore,
   pageExamScoreSummary,
   publishFinalScore,
@@ -396,7 +429,7 @@ import {
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useMarkStageStore } from '@/stores/modules/markStage'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -474,6 +507,7 @@ const loading = ref(false)
 const candidatesLoadError = ref<Error | null>(null)
 const pendingAbsenceCount = ref(0)
 const absenceGuardLoading = ref(false)
+const finalScoreOverview = ref<FinalScoreRiskOverviewVO | null>(null)
 const keyword = ref('')
 const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
@@ -505,6 +539,19 @@ async function loadCandidates(): Promise<void> {
     showUserError(error, '成绩发布名单加载失败，请稍后重试')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadFinalScoreOverview(): Promise<void> {
+  if (!selectedExamId.value) {
+    finalScoreOverview.value = null
+    return
+  }
+  try {
+    finalScoreOverview.value = await getFinalScoreRiskOverview({ examId: selectedExamId.value })
+  } catch (error) {
+    finalScoreOverview.value = null
+    showUserError(error, '全场成绩概览加载失败')
   }
 }
 
@@ -572,33 +619,35 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
 }
-// ─── B-5 批量发布 ─────────────────────────────
-/** 本页中处于「可发布」状态（CONFIRMED / WITHDRAWN / CORRECTED）且具备 paperInstanceId 的候选 */
-const bulkCandidates = computed<ExamScoreSummaryItemVO[]>(() => candidates.value.filter(canPublish))
-const canBulkPublish = computed(
-  () => Boolean(selectedExamId.value) && bulkCandidates.value.length > 0,
-)
+// ─── 全场发布 ─────────────────────────────
+const publishableOverviewCount = computed(() => {
+  const overview = finalScoreOverview.value
+  if (!overview) return 0
+  return overview.confirmedCount + overview.withdrawnCount + overview.correctedCount
+})
+
+const canBulkPublish = computed(() => Boolean(selectedExamId.value) && publishableOverviewCount.value > 0)
 
 const bulkOpen = ref(false)
 const bulkRunning = ref(false)
-const bulkProgress = reactive({ total: 0, completed: 0, failed: 0 })
-const bulkSuccess = ref<boolean[]>([])
-const bulkErrors = ref<string[]>([])
+const bulkResult = ref<FinalScoreBatchPublishVO | null>(null)
+const bulkResultPercent = computed(() => {
+  const result = bulkResult.value
+  if (!result || result.totalCandidateCount <= 0) return 0
+  return Math.round((result.alreadyPublishedCount / result.totalCandidateCount) * 100)
+})
 
 function resetBulkState(): void {
-  bulkProgress.total = 0
-  bulkProgress.completed = 0
-  bulkProgress.failed = 0
-  bulkSuccess.value = []
-  bulkErrors.value = []
+  bulkResult.value = null
 }
 
 function openBulkPublishModal(): void {
   if (!canBulkPublish.value) {
-    message.warning('本页没有可发布的候选；请切换分页或筛选状态后再试')
+    message.warning('当前考试没有可发布的最终成绩')
     return
   }
   void (async () => {
+    await loadFinalScoreOverview()
     const canContinue = await ensureNoPendingAbsenceBeforePublish()
     if (!canContinue) {
       return
@@ -608,7 +657,7 @@ function openBulkPublishModal(): void {
   })()
 }
 
-/** 串行调用 publishFinalScore，逐条更新进度；过程中可见已成功/失败明细 */
+/** 调用后端全场发布入口，避免前端用当前分页候选误当全场候选。 */
 async function runBulkPublish(): Promise<void> {
   if (!selectedExamId.value || bulkRunning.value) return
   const canContinue = await ensureNoPendingAbsenceBeforePublish()
@@ -616,46 +665,28 @@ async function runBulkPublish(): Promise<void> {
     bulkOpen.value = false
     return
   }
-  const targets = bulkCandidates.value
-  if (targets.length === 0) {
-    bulkOpen.value = false
-    return
-  }
   bulkRunning.value = true
-  bulkProgress.total = targets.length
-  bulkProgress.completed = 0
-  bulkProgress.failed = 0
-  bulkSuccess.value = Array.from({ length: targets.length }, () => false)
-  bulkErrors.value = Array.from({ length: targets.length }, () => '')
-  for (let i = 0; i < targets.length; i += 1) {
-    const item = targets[i]
-    if (!item.paperInstanceId) {
-      bulkErrors.value[i] = '该考生暂未关联可发布的试卷'
-      bulkProgress.failed += 1
-      continue
+  try {
+    bulkResult.value = await batchPublishFinalScores({ examId: selectedExamId.value })
+    finalScoreOverview.value = bulkResult.value.afterOverview
+    if (bulkResult.value.failureCount === 0 && bulkResult.value.remainingCount === 0) {
+      message.success('全场成绩已发布，学生通知已下发')
+      bulkOpen.value = false
+    } else if (bulkResult.value.failureCount === 0) {
+      message.warning(
+        `全场发布完成：成功 ${bulkResult.value.successCount} 条，仍有 ${bulkResult.value.remainingCount} 条需处理`,
+      )
+    } else {
+      message.warning(
+        `全场发布完成：成功 ${bulkResult.value.successCount} 条，失败 ${bulkResult.value.failureCount} 条，请查看明细`,
+      )
     }
-    try {
-      await publishFinalScore({
-        examId: selectedExamId.value,
-        paperInstanceId: item.paperInstanceId,
-      })
-      bulkSuccess.value[i] = true
-      bulkProgress.completed += 1
-    } catch (err) {
-      bulkErrors.value[i] = getUserErrorMessage(err, '成绩发布失败')
-      bulkProgress.failed += 1
-    }
+    await Promise.all([loadCandidates(), loadPendingAbsenceCount(), loadFinalScoreOverview()])
+  } catch (error) {
+    showUserError(error, '全场成绩发布失败')
+  } finally {
+    bulkRunning.value = false
   }
-  bulkRunning.value = false
-  if (bulkProgress.failed === 0) {
-    message.success(`已批量发布 ${bulkProgress.completed} 条成绩`)
-    bulkOpen.value = false
-  } else {
-    message.warning(
-      `批量发布完成：成功 ${bulkProgress.completed} 条，失败 ${bulkProgress.failed} 条，请查看明细`,
-    )
-  }
-  await loadCandidates()
 }
 
 /* ========== 信号指标：发布流程状态分布 ========== */
@@ -668,28 +699,26 @@ async function runBulkPublish(): Promise<void> {
  * - 其余过程中 → SCORE_PUBLISH=active
  * - 存在 WITHDRAWN → SCORE_PUBLISH=blocked（需要重新处理）
  */
-function syncPublishStageToStore(buckets: Record<FinalScoreStatusCode, number>): void {
+function syncPublishStageToStore(overview: FinalScoreRiskOverviewVO | null): void {
   const examId = selectedExamId.value
-  if (!examId) return
-  const totalLoaded = Object.values(buckets).reduce((sum, n) => sum + n, 0)
-  if (totalLoaded === 0) return
-  const published = buckets.PUBLISHED
-  const pendingPipeline = buckets.PENDING + buckets.CALCULATED + buckets.CONFIRMED
-  const withdrawn = buckets.WITHDRAWN
+  if (!examId || !overview || overview.totalCandidateCount === 0) return
+  const published = overview.publishedCount
+  const pendingPipeline = overview.pendingCount + overview.calculatedCount + overview.confirmedCount
+  const withdrawn = overview.withdrawnCount
   let stageStatus: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
   let hint = ''
-  if (withdrawn > 0) {
+  if (overview.blockedCount > 0 || withdrawn > 0) {
     stageStatus = 'blocked'
-    hint = `${withdrawn} 人已撤回，需重新发布`
+    hint = withdrawn > 0 ? `${withdrawn} 人已撤回，需重新发布` : `${overview.blockedCount} 项阻塞需处理`
   } else if (published > 0 && pendingPipeline === 0) {
     stageStatus = 'completed'
     hint = `全部 ${published} 人已发布`
   } else if (published > 0) {
     stageStatus = 'active'
     hint = `已发布 ${published} / 待发布 ${pendingPipeline}`
-  } else if (buckets.CONFIRMED > 0 || buckets.CALCULATED > 0) {
+  } else if (overview.confirmedCount > 0 || overview.calculatedCount > 0) {
     stageStatus = 'active'
-    hint = `已确认 ${buckets.CONFIRMED}，待发布`
+    hint = `已确认 ${overview.confirmedCount}，待发布`
   }
   markStageStore.setStageStatus(examId, 'SCORE_PUBLISH', stageStatus, hint)
   if (stageStatus === 'completed') {
@@ -700,21 +729,14 @@ function syncPublishStageToStore(buckets: Record<FinalScoreStatusCode, number>):
 }
 
 const statMetrics = computed(() => {
-  const buckets: Record<FinalScoreStatusCode, number> = {
-    PENDING: 0,
-    CALCULATED: 0,
-    CONFIRMED: 0,
-    PUBLISHED: 0,
-    CORRECTED: 0,
-    WITHDRAWN: 0,
-  }
-  for (const c of candidates.value) {
-    const s = c.finalScoreStatus
-    buckets[s] += 1
-  }
-  syncPublishStageToStore(buckets)
-  const total = pagination.total ?? 0
-  const publishable = buckets.CONFIRMED + buckets.WITHDRAWN + buckets.CORRECTED
+  const overview = finalScoreOverview.value
+  syncPublishStageToStore(overview)
+  const total = overview?.totalCandidateCount ?? pagination.total ?? 0
+  const publishable = publishableOverviewCount.value
+  const published = overview?.publishedCount ?? 0
+  const corrected = overview?.correctedCount ?? 0
+  const withdrawn = overview?.withdrawnCount ?? 0
+  const unconfirmed = overview ? overview.pendingCount + overview.calculatedCount : 0
   return [
     { label: '考生总数', value: total, unit: '人', tone: 'blue' as const },
     {
@@ -725,25 +747,25 @@ const statMetrics = computed(() => {
     },
     {
       label: '已发布',
-      value: buckets.PUBLISHED,
+      value: published,
       unit: '人',
-      tone: (buckets.PUBLISHED > 0 ? 'green' : 'gray') as 'green' | 'gray',
+      tone: (published > 0 ? 'green' : 'gray') as 'green' | 'gray',
     },
     {
       label: '已订正',
-      value: buckets.CORRECTED,
+      value: corrected,
       unit: '人',
-      tone: (buckets.CORRECTED > 0 ? 'purple' : 'gray') as 'purple' | 'gray',
+      tone: (corrected > 0 ? 'purple' : 'gray') as 'purple' | 'gray',
     },
     {
       label: '已撤回',
-      value: buckets.WITHDRAWN,
+      value: withdrawn,
       unit: '人',
-      tone: (buckets.WITHDRAWN > 0 ? 'red' : 'gray') as 'red' | 'gray',
+      tone: (withdrawn > 0 ? 'red' : 'gray') as 'red' | 'gray',
     },
     {
       label: '未确认',
-      value: buckets.PENDING + buckets.CALCULATED,
+      value: unconfirmed,
       unit: '人',
       tone: 'gray' as const,
     },
@@ -777,7 +799,7 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
       paperInstanceId: record.paperInstanceId,
     })
     message.success('成绩已发布，学生通知已下发')
-    await loadCandidates()
+    await Promise.all([loadCandidates(), loadFinalScoreOverview()])
   } catch (error) {
     showUserError(error, '成绩发布失败')
   }
@@ -811,7 +833,7 @@ async function handleWithdraw(): Promise<void> {
     })
     message.success('成绩已撤回')
     withdrawOpen.value = false
-    await loadCandidates()
+    await Promise.all([loadCandidates(), loadFinalScoreOverview()])
   } catch (error) {
     showUserError(error, '成绩撤回失败')
   } finally {
@@ -855,11 +877,12 @@ async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
 watch(selectedExamId, (value) => {
   pagination.current = 1
   if (value) {
-    void Promise.all([loadCandidates(), loadPendingAbsenceCount()])
+    void Promise.all([loadCandidates(), loadPendingAbsenceCount(), loadFinalScoreOverview()])
   } else {
     candidates.value = []
     pagination.total = 0
     pendingAbsenceCount.value = 0
+    finalScoreOverview.value = null
   }
 })
 
@@ -871,7 +894,7 @@ watch(statusFilter, () => {
 onMounted(async () => {
   await initExamSelector()
   if (selectedExamId.value) {
-    await Promise.all([loadCandidates(), loadPendingAbsenceCount()])
+    await Promise.all([loadCandidates(), loadPendingAbsenceCount(), loadFinalScoreOverview()])
   }
 })
 </script>

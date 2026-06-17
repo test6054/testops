@@ -72,7 +72,6 @@ import {
   listScannerKioskBoundPapers,
   pageScannerKioskBatchHistory,
   pageScannerKioskExamOptions,
-  sealScannerKioskBatch,
   startScannerKioskBatch,
 } from '@/apis/mark/scanner-kiosk'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -122,6 +121,8 @@ const LOCAL_SCAN_JOB_STATUS_LABEL: Record<LocalScanJobStatus, string> = {
   RETRYING: '重试中',
   CANCELLED: '已取消',
 }
+
+const KIOSK_BATCH_SUBMITTED_HINT = '本批次已提交，请在教师 Web 端「扫描录入」页面封存'
 
 export { getSemesterDescription, SemesterOptions }
 
@@ -209,7 +210,7 @@ export function useKioskWorkflow() {
     pageSize: 50,
   })
 
-  // 历史批次浏览（FinalizeStage 使用）：受 (examId, scannerDeviceId, scannerStationId) 严格隔离，
+  // 历史批次浏览（HistoryStage）
   // 缺少任一身份字段时直接返回空列表，避免误调后端。
   const batchHistoryList = ref<ExamScannerKioskBatchHistoryItem[]>([])
   const batchHistoryTotal = ref(0)
@@ -229,7 +230,7 @@ export function useKioskWorkflow() {
     scanStartTimeTo: '',
   })
 
-  // 历史批次 ledger 快照（FinalizeStage 行点击「查看 ledger」触发，独立于 SSE 流活跃 ledger）
+  // 历史批次 ledger 快照（HistoryStage 行点击「查看 ledger」触发，独立于 SSE 流活跃 ledger）
   const historyLedgerBatch = ref<ExamScannerKioskBatchHistoryItem | null>(null)
   const historyLedgerSnapshot = ref<ExamScannerPageLedgerVO | null>(null)
   const historyLedgerLoading = ref(false)
@@ -502,21 +503,6 @@ export function useKioskWorkflow() {
     const targetText = batch.targetPageNo ? `第 ${batch.targetPageNo} 页` : '未指定目标页'
     return `${mode} · ${replaceText} · ${targetText}`
   })
-
-  const latestBatchSealBlockedReason = computed(() => {
-    const batch = kioskContext.value?.latestBatch
-    const device = kioskContext.value?.device
-    if (!batch?.scanBatchId) return '当前考试尚无已落库扫描批次'
-    if (!device?.scannerDeviceId) return '考试扫描设备缺失'
-    if (currentJobBlocksWorkspace.value) return '当前扫描任务未结束，不能封存批次'
-    if (batch.sealedAt) return '批次已封存'
-    if (batch.status === 'DISCARDED' || batch.discardedAt) return '批次已废弃'
-    if (batch.pendingUploadCount > 0) return `仍有 ${batch.pendingUploadCount} 页待上传`
-    return ''
-  })
-  const canSealLatestBatch = computed(
-    () => !latestBatchSealBlockedReason.value && !loading.value,
-  )
 
   const examTermText = computed(() => {
     const exam = kioskContext.value?.exam
@@ -1109,7 +1095,7 @@ export function useKioskWorkflow() {
   }
 
   // -------------------------------------------------------------
-  // 历史批次浏览（FinalizeStage）
+  // 历史批次浏览（HistoryStage）
   // -------------------------------------------------------------
 
   /**
@@ -1578,7 +1564,7 @@ export function useKioskWorkflow() {
       currentJob.value = await endBatch(currentJob.value.scanJobId)
       if (isPollingTerminalJob(currentJob.value)) {
         await handleTerminalBatchClosure(currentJob.value)
-        successMessage.value = '本批次已结束并完成提交'
+        successMessage.value = KIOSK_BATCH_SUBMITTED_HINT
         return
       }
       startJobPolling(currentJob.value.scanJobId)
@@ -1673,45 +1659,6 @@ export function useKioskWorkflow() {
       await deleteScanJob(job.scanJobId, true)
       successMessage.value = '已删除本地扫描任务并关闭当前扫描工作台记录'
       currentJob.value = null
-      await refreshKioskContext()
-      await refreshPageLedger()
-    } catch (error) {
-      handleError(error)
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function sealLatestBatch() {
-    const batch = kioskContext.value?.latestBatch
-    const device = kioskContext.value?.device
-    const blockedReason = latestBatchSealBlockedReason.value
-    if (blockedReason) {
-      errorMessage.value = blockedReason
-      return
-    }
-    if (!batch || !batch.scanBatchId || !device || !device.scannerDeviceId) {
-      errorMessage.value = '当前考试尚无已落库扫描批次或设备信息缺失，无法封存'
-      return
-    }
-    if (!device.scannerStationId) {
-      errorMessage.value = '当前考试扫描站点缺失，无法封存批次'
-      return
-    }
-    const confirmed = await confirmAsync({
-      title: '封存批次',
-      content: `确认封存批次 ${batch.batchNo || batch.batchExternalNo}？封存后无法再追加扫描。`,
-    })
-    if (!confirmed) return
-    loading.value = true
-    errorMessage.value = ''
-    try {
-      await sealScannerKioskBatch({
-        scanBatchId: batch.scanBatchId,
-        scannerDeviceId: device.scannerDeviceId,
-        scannerStationId: device.scannerStationId,
-      })
-      successMessage.value = '批次已封存'
       await refreshKioskContext()
       await refreshPageLedger()
     } catch (error) {
@@ -1902,6 +1849,7 @@ export function useKioskWorkflow() {
       await closeActiveBatch(false)
       await refreshKioskContext()
       await refreshPageLedger()
+      successMessage.value = KIOSK_BATCH_SUBMITTED_HINT
       return
     }
     if (job.status === 'CANCELLED') {
@@ -2136,7 +2084,7 @@ export function useKioskWorkflow() {
     examOptionLoading,
     examOptionFilter,
 
-    // ---- 历史批次浏览（FinalizeStage） ----
+    // ---- 历史批次浏览（HistoryStage） ----
     batchHistoryList,
     batchHistoryTotal,
     batchHistoryLoading,
@@ -2179,8 +2127,6 @@ export function useKioskWorkflow() {
     uploadStage,
     latestBatchText,
     latestBatchModeText,
-    latestBatchSealBlockedReason,
-    canSealLatestBatch,
     examTermText,
     declaredClassChips,
     kioskMetrics,
@@ -2239,7 +2185,6 @@ export function useKioskWorkflow() {
     endCurrentBatch,
     retryCurrentCommit,
     removeCurrentScanJob,
-    sealLatestBatch,
     discardLedgerPage,
 
     // ---- Agent 操作 ----

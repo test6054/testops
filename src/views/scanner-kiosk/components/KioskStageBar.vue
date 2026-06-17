@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * KioskStageBar - 4 阶段切换条
+ * KioskStageBar - 三阶段切换条
  *
  * 点击切换路由 + URL 同步变化；过去的 stage 用 completed 描边。
  * 阶段从 KIOSK_STAGES 静态常量读出，避免重复定义。

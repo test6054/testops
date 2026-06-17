@@ -6,7 +6,7 @@ import type { KioskCtx } from './kioskInjection'
  *   1. 仅在 KioskLayout 中调用一次（避免多次绑定 window listener）
  *   2. 仅处理 *跨 stage 公共* 快捷键；stage 内部纯视图键（如缩放 +/-）由各 stage 自处理
  *   3. 焦点在 INPUT / TEXTAREA / contenteditable 时全部跳过
- *   4. Alt+1/2/3/4 切 stage 在所有阶段生效（其它修饰键不处理）
+ *   4. Alt+1/2/3 切 stage 在所有阶段生效（其它修饰键不处理）
  *   5. 当 shortcutHintsOpen=true 时，仅响应 Esc（由 hint overlay 内部处理），其它键全部跳过
  *
  * 公共键映射：
@@ -20,7 +20,7 @@ import type { KioskCtx } from './kioskInjection'
  *   Alt+1    切到 setup
  *   Alt+2    切到 scanning
  *   Alt+3    切到 review
- *   Alt+4    切到 finalize
+ *   Alt+1..3 切 stage（Alt+4 已移除；历史页从侧栏进入）
  */
 import { notification } from 'ant-design-vue'
 import { onBeforeUnmount, onMounted } from 'vue'
@@ -130,8 +130,8 @@ export function useKioskShortcuts(ctx: KioskCtx): void {
       return
     }
 
-    // Alt+1/2/3/4 切 stage（独立分支，不论焦点在哪都生效）
-    if (event.altKey && /^[1-4]$/.test(event.key)) {
+    // Alt+1/2/3 切 stage（独立分支，不论焦点在哪都生效）
+    if (event.altKey && /^[1-3]$/.test(event.key)) {
       const idx = Number.parseInt(event.key, 10) - 1
       const target = KIOSK_STAGES[idx]
       if (target) {

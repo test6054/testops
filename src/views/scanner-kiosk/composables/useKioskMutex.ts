@@ -2,15 +2,7 @@
  * 扫描一体机互斥规则聚合
  *
  * 把 useKioskWorkflow 中分散的 canStartScan / canSwitchExam / scanBlockedReason 等
- * 全部聚合为统一的 blockedReasons 对象，UI 层只读这一个 computed 决定 disable 状态，
- * 不再让多个组件各自重复实现规则推导。
- *
- * 业务约束：
- *   - 任务非终态时阻断切考试 / 切扫描仪 / 切模式 / 激活
- *   - 任务在 SCANNING/PAUSED 才允许暂停或继续
- *   - 任务在 SCANNING/PAUSED 才允许结束本批次
- *   - 已落库扫描页才允许单页废弃
- *   - 仅在 latestBatch 已提交且 pending=0 时允许封存
+ * 全部聚合为统一的 blockedReasons 对象，UI 层只读这一个 computed 决定 disable 状态。
  */
 
 import type { KioskWorkflow } from './useKioskWorkflow'
@@ -43,8 +35,6 @@ export interface KioskBlockedReasons {
   retryCommit: string
   /** 删除 / 废弃当前任务 */
   removeJob: string
-  /** 封存最近批次 */
-  sealLatestBatch: string
   /** 单页废弃 */
   discardLedgerPage: string
   /** 激活一体机 */
@@ -104,7 +94,6 @@ export function useKioskMutex(workflow: KioskWorkflow) {
         : workflow.currentJobAllPagesUploadedButUnconfirmed.value
             ? '页面已上传完成但批次未确认，请先重试提交'
             : workflow.removeCurrentJobTitle.value,
-      sealLatestBatch: workflow.latestBatchSealBlockedReason.value,
       discardLedgerPage: workflow.canDiscardLedgerPage.value ? '' : jobInflightBlocked.value,
 
       activateAgent: workflow.canActivateAgent.value ? '' : jobInflightBlocked.value,

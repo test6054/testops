@@ -2,15 +2,10 @@
 import type { Component } from 'vue'
 import type { ExamScannerKioskBatchHistoryItem } from '@/apis/mark/scanner-kiosk'
 /**
- * Stage 4 - 封存与历史
+ * 本机历史批次（只读）
  *
- * 业务定位：最近批次已 commit 上报（latestBatch 存在），等待教师确认封存；
- * 同时提供本一体机 (examId, scannerDeviceId, scannerStationId) 名下的历史批次浏览。
- *
- * 三段布局：
- *   1) 顶部 banner   · 最近批次概要 + 封存/废弃 badge
- *   2) 中部双栏      · 左：时间线 + 明细 ｜ 右：检查清单 + 封存 CTA
- *   3) 底部历史 list · 同设备同站点的历史批次分页浏览（含已废弃可选过滤）
+ * 展示本一体机 (examId, scannerDeviceId, scannerStationId) 名下的最近批次概览与历史列表。
+ * 批次封存仅在教师 Web 端「扫描录入」页面执行。
  */
 import {
   CheckCircleFilled,
@@ -31,70 +26,12 @@ import { useKioskCtx } from '../composables/kioskInjection'
 const { workflow, ui } = useKioskCtx()
 
 const batch = computed(() => workflow.kioskContext.value?.latestBatch ?? null)
-const sealReason = computed(() => workflow.latestBatchSealBlockedReason.value)
-const canSeal = computed(() => workflow.canSealLatestBatch.value)
 
 const isDiscarded = computed(() => batch.value?.discardedAt || batch.value?.status === 'DISCARDED')
 const isSealed = computed(() => Boolean(batch.value?.sealedAt))
-
-/** 封存检查清单（每项含 ok / label / detail） */
-interface ChecklistItem {
-  key: string
-  ok: boolean
-  label: string
-  detail?: string
-}
-
-const checklist = computed<ChecklistItem[]>(() => {
-  if (!batch.value) return []
-  const b = batch.value
-  return [
-    {
-      key: 'has-pages',
-      ok: b.receivedPageCount >= 1,
-      label: '批次包含已落库扫描页',
-      detail: `已落库 ${b.receivedPageCount} 页`,
-    },
-    {
-      key: 'no-pending',
-      ok: b.pendingUploadCount === 0,
-      label: '所有页面已上传完成',
-      detail: b.pendingUploadCount === 0 ? '0 页待上传' : `还有 ${b.pendingUploadCount} 页待上传`,
-    },
-    {
-      key: 'no-attention',
-      ok: b.attentionItemCount === 0,
-      label: '无未处理异常项',
-      detail:
-        b.attentionItemCount === 0 ? '所有异常已处置' : `仍有 ${b.attentionItemCount} 项未处理`,
-    },
-    {
-      key: 'no-active-job',
-      ok: !workflow.currentJob.value || workflow.currentJob.value.status === 'REPORTED',
-      label: '当前扫描任务已结束',
-      detail:
-        workflow.currentJob.value && workflow.currentJob.value.status !== 'REPORTED'
-          ? `任务状态 ${workflow.localScanJobStatusText(workflow.currentJob.value.status)}`
-          : '本机扫描组件无活跃任务',
-    },
-    {
-      key: 'not-sealed',
-      ok: !b.sealedAt,
-      label: '批次未封存',
-      detail: b.sealedAt
-        ? `已于 ${workflow.formatTime(b.sealedAt)} 封存${b.sealedBy ? ` · 操作人 ${b.sealedBy}` : ''}`
-        : '可执行封存',
-    },
-    {
-      key: 'not-discarded',
-      ok: !isDiscarded.value,
-      label: '批次未废弃',
-      detail: isDiscarded.value
-        ? `已于 ${workflow.formatTime(b.discardedAt)} 废弃${b.discardReason ? ` · ${b.discardReason}` : ''}`
-        : '批次状态正常',
-    },
-  ]
-})
+const awaitingWebSeal = computed(
+  () => Boolean(batch.value && !isSealed.value && !isDiscarded.value),
+)
 
 /** 时间线（综合 lifecycle、扫描起止与批次提交状态） */
 interface TimelineEvent {
@@ -169,11 +106,6 @@ const timeline = computed<TimelineEvent[]>(() => {
   return events
 })
 
-function trySeal() {
-  if (!canSeal.value) return
-  workflow.sealLatestBatch()
-}
-
 // ============ 历史批次列表 ============
 
 const expandedHistoryId = ref<string | null>(null)
@@ -233,7 +165,7 @@ watch(
 </script>
 
 <template>
-  <section class="finalize-stage">
+  <section class="history-stage">
     <!-- 顶部摘要 banner -->
     <header v-if="batch" class="batch-banner">
       <div class="banner-main">
@@ -252,18 +184,21 @@ watch(
         <span v-else-if="isDiscarded" class="badge badge-danger">
           <CloseCircleFilled />已废弃
         </span>
-        <span v-else class="badge badge-warning"> 待封存 </span>
+        <span v-else-if="awaitingWebSeal" class="badge badge-warning"> 待 Web 封存 </span>
       </div>
     </header>
+    <div v-if="awaitingWebSeal" class="web-seal-hint">
+      <ExclamationCircleFilled />
+      <span>本批次已提交，请在教师 Web 端「扫描录入」页面核对后封存。</span>
+    </div>
     <div v-else class="batch-empty">
       <SafetyCertificateFilled class="batch-empty-icon" />
       <p>当前考试暂无已落库扫描批次</p>
       <small>请先返回「准备扫描」完成一次扫描并等待扫描页入库</small>
     </div>
 
-    <div v-if="batch" class="finalize-body">
-      <!-- 左：时间线 + 明细 -->
-      <main class="finalize-main">
+    <div v-if="batch" class="history-body">
+      <main class="history-main">
         <article class="card">
           <header><h3>批次时间线</h3></header>
           <ul class="timeline">
@@ -321,53 +256,6 @@ watch(
           </dl>
         </article>
       </main>
-
-      <!-- 右：检查清单 + CTA -->
-      <aside class="finalize-aside">
-        <article class="card">
-          <header><h3>封存检查清单</h3></header>
-          <ul class="checklist">
-            <li
-              v-for="item in checklist"
-              :key="item.key"
-              class="check-item"
-              :class="{ pass: item.ok, fail: !item.ok }"
-            >
-              <span class="check-icon">
-                <CheckCircleFilled v-if="item.ok" />
-                <CloseCircleFilled v-else />
-              </span>
-              <div class="check-text">
-                <strong>{{ item.label }}</strong>
-                <small v-if="item.detail">{{ item.detail }}</small>
-              </div>
-            </li>
-          </ul>
-
-          <div v-if="sealReason && !isSealed" class="seal-blocked">
-            <ExclamationCircleFilled />
-            <span>{{ sealReason }}</span>
-          </div>
-        </article>
-
-        <button
-          type="button"
-          class="cta-seal"
-          :disabled="!canSeal"
-          :title="sealReason || '封存最近批次'"
-          @click="trySeal"
-        >
-          <LockFilled class="cta-icon" />
-          <span class="cta-label">
-            <strong v-if="isSealed">批次已封存</strong>
-            <strong v-else-if="isDiscarded">批次已废弃</strong>
-            <strong v-else>封存批次</strong>
-            <small v-if="isSealed">{{ workflow.formatTime(batch.sealedAt) }}</small>
-            <small v-else-if="!canSeal">{{ sealReason || '请先完善上方检查项' }}</small>
-            <small v-else>封存后无法再追加扫描</small>
-          </span>
-        </button>
-      </aside>
     </div>
 
     <!-- 历史批次列表 Section（独立行，宽度全宽） -->
@@ -591,7 +479,7 @@ watch(
 </template>
 
 <style scoped>
-.finalize-stage {
+.history-stage {
   max-width: 1280px;
   margin: 0 auto;
   padding: var(--kiosk-space-4) var(--kiosk-space-5);
@@ -714,15 +602,15 @@ watch(
 
 /* ============ Body grid ============ */
 
-.finalize-body {
+.history-body {
   flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  display: flex;
+  flex-direction: column;
   gap: var(--kiosk-space-4);
   min-height: 0;
 }
 
-.finalize-main {
+.history-main {
   display: flex;
   flex-direction: column;
   gap: var(--kiosk-space-3);
@@ -730,12 +618,19 @@ watch(
   overflow-y: auto;
 }
 
-.finalize-aside {
+.web-seal-hint {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--kiosk-space-3);
-  min-height: 0;
+  padding: var(--kiosk-space-3) var(--kiosk-space-4);
+  background: var(--kiosk-warning-soft);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  border-radius: var(--kiosk-radius-md);
+  font-size: var(--kiosk-fz-label);
+  color: var(--kiosk-ink-primary);
 }
+
+/* ============ 卡片 ============ */
 
 .card {
   background: var(--kiosk-surface);
@@ -1369,7 +1264,7 @@ watch(
 }
 
 @media (max-width: 1280px) {
-  .finalize-body {
+  .history-body {
     grid-template-columns: minmax(0, 1fr) 320px;
   }
   .detail-kv {
@@ -1380,7 +1275,7 @@ watch(
   }
 }
 @media (max-width: 1024px) {
-  .finalize-body {
+  .history-body {
     grid-template-columns: 1fr;
   }
   .history-row {

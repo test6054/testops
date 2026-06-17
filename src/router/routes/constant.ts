@@ -64,8 +64,7 @@ export const constantRoutes: RouteRecordRaw[] = [
     },
   },
   {
-    // 一体机扫描工作站：父路由挂载 KioskLayout（AppBar / StageBar / SideRail / BottomBar），
-    // 4 个子路由对应扫描 lifecycle 的 4 个阶段，由 router-view 轮换主区。
+    // 一体机扫描工作站：父路由挂载 KioskLayout，三阶段主链 + 独立历史页。
     path: '/scanner-kiosk',
     name: 'ScannerKiosk',
     component: () => import('@/views/scanner-kiosk/KioskLayout.vue'),
@@ -111,11 +110,11 @@ export const constantRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'finalize',
-        name: 'ScannerKioskFinalize',
-        component: () => import('@/views/scanner-kiosk/stages/FinalizeStage.vue'),
+        path: 'history',
+        name: 'ScannerKioskHistory',
+        component: () => import('@/views/scanner-kiosk/stages/HistoryStage.vue'),
         meta: {
-          title: '封存与历史',
+          title: '本机历史批次',
           requiresAuth: false,
         },
       },

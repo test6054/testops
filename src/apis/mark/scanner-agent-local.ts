@@ -1,4 +1,8 @@
-import type { ExamScannerKioskContextVO, ScannerKioskScanMode } from './scanner-kiosk'
+import type {
+  ExamScannerKioskContextVO,
+  ExamScannerScanConfigVO,
+  ScannerKioskScanMode,
+} from './scanner-kiosk'
 import { runContractGuard, throwUserFacing } from '@/utils/contract-guard'
 
 const DEFAULT_AGENT_BASE_URL = 'http://127.0.0.1:18761'

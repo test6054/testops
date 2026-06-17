@@ -1374,7 +1374,7 @@ const confirmOpen = ref(false)
 const confirming = ref(false)
 const confirmCandidate = ref<ExamScoreSummaryItemVO | null>(null)
 const confirmComputedExamScore = ref<number | null>(null)
-const confirmDailyScore = ref<number | null>(null)
+const confirmDailyScore = ref<number | undefined>(undefined)
 const confirmAndPublish = ref(false)
 
 const confirmTotalScorePreview = computed(() => {
@@ -1388,13 +1388,13 @@ async function openConfirmModal(record: ExamScoreSummaryItemVO): Promise<void> {
   confirmCandidate.value = record
   confirmOpen.value = true
   confirmComputedExamScore.value = null
-  confirmDailyScore.value = null
+  confirmDailyScore.value = undefined
   confirmAndPublish.value = false
   try {
     const score = await getPaperScore(selectedExamId.value, record.paperInstanceId)
     confirmComputedExamScore.value = score.examScore ?? score.totalScore ?? 0
     if (hasDailyScoreConfig.value) {
-      confirmDailyScore.value = score.dailyScore ?? null
+      confirmDailyScore.value = score.dailyScore ?? undefined
     }
   } catch (error) {
     message.warning(getUserErrorMessage(error, '试卷总分加载失败'))

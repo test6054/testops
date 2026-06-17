@@ -618,6 +618,28 @@ export interface TrialSessionVO {
 }
 
 /** 正评会话详情响应 - 对应后端 FormalSessionResponse */
+export interface FormalSessionQuestionScopeVO {
+  sessionId: string
+  questionTemplateId: string
+  questionNo: string
+  questionType: QuestionTypeCode
+  questionTypeMessage: string
+  fullScore: number
+  questionStem?: string
+  scopeOrder: number
+  selectedByRandom: boolean
+  /** 该题目在本会话内派发任务数 */
+  scopedTaskCount: number
+  /** 该题目在本会话内已定稿任务数 */
+  scopedFinalizedTaskCount: number
+  /** 该题目在本会话覆盖的卷题项数量 */
+  scopedGradeItemCount: number
+  /** 该题目在本会话覆盖范围内已确认成绩的卷题项数量 */
+  scopedConfirmedGradeCount: number
+  /** 该题目在本会话覆盖范围内是否已完成题目成绩闭环 */
+  scopedGradeClosureReady: boolean
+}
+
 export interface FormalSessionVO {
   id: string
   examId: string
@@ -629,6 +651,36 @@ export interface FormalSessionVO {
   endTime?: string
   /** 批阅任务单元 */
   allocationUnit: AllocationUnitCode
+  /** 正评会话实际题目范围数量；题目级会话启动后由后端固化 */
+  questionScopeCount: number
+  /** 正评会话实际题目范围；随机题目模式展示本次启动固化后的抽题结果 */
+  questionScopes: FormalSessionQuestionScopeVO[]
+  /** 本会话派发阅卷任务总数 */
+  totalTaskCount: number
+  /** 本会话已定稿阅卷任务数 */
+  finalizedTaskCount: number
+  /** 待领取或批改中任务数 */
+  pendingTaskCount: number
+  /** 回收待处理任务数 */
+  recycledTaskCount: number
+  /** 是否允许标记本场正评完成 */
+  sessionTaskCompletionReady: boolean
+  /** 不允许完成时的阻断原因 */
+  sessionCompletionBlockedReason?: string
+  /** 本会话覆盖的卷题项数量 */
+  sessionGradeItemCount: number
+  /** 本会话覆盖范围内已确认成绩的卷题项数量 */
+  sessionConfirmedGradeCount: number
+  /** 本会话覆盖范围内题目成绩是否已闭环 */
+  sessionGradeClosureReady: boolean
+  /** 会话范围题目成绩闭环口径说明 */
+  sessionGradeClosureLabel: string
+  /** 会话范围题目成绩未闭环时的原因 */
+  sessionGradeClosureBlockedReason?: string
+  /** 完成标记口径说明 */
+  completionScopeLabel: string
+  /** 完成语义补充说明 */
+  completionSemanticsNote: string
   /** 正评暂停原因，pauseFormalSession 写入 */
   pauseReason?: string
   /** 正评最近一次进入 SESSION_PAUSED 的时刻 */
@@ -676,6 +728,9 @@ export function validateFormalSessionContract(record: FormalSessionVO): void {
   strictEnumLabel(FORMAL_SESSION_STATUS_LABEL, record.sessionStatus, '正评会话状态')
   strictEnumTone(FORMAL_SESSION_STATUS_TONE, record.sessionStatus, '正评会话状态')
   strictEnumLabel(ALLOCATION_UNIT_LABEL, record.allocationUnit, '批阅任务单元')
+  record.questionScopes.forEach((scope) => {
+    strictEnumLabel(QUESTION_TYPE_LABEL, scope.questionType, '正评会话题型')
+  })
 }
 
 // ─── API 调用 ────────────────────────────────────────────────

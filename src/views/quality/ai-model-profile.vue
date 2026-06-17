@@ -161,11 +161,14 @@ function openEdit(record: AiModelProfileVO) {
 }
 
 async function submitEditor() {
-  if (!editor.profileName.trim() || !editor.modelName.trim()) {
+  const profileName = editor.profileName.trim()
+  const modelName = editor.modelName.trim()
+  const apiHost = editor.apiHost.trim()
+  if (!profileName || !modelName) {
     message.error('请填写配置名称 / 模型名')
     return
   }
-  if (!editor.apiHost.trim()) {
+  if (!apiHost) {
     message.error('请填写模型服务地址')
     return
   }
@@ -173,13 +176,33 @@ async function submitEditor() {
     message.error('新建模型配置时必须填写模型访问密钥')
     return
   }
+  if (!editor.maxInputChars || editor.maxInputChars <= 0) {
+    message.error('最大输入字符数必须大于 0')
+    return
+  }
+  if (editor.temperature != null && (editor.temperature < 0 || editor.temperature > 1)) {
+    message.error('温度参数必须在 0 到 1 之间')
+    return
+  }
+  if (editor.maxTokens != null && editor.maxTokens <= 0) {
+    message.error('最大输出 Token 数必须大于 0')
+    return
+  }
+  if (editor.connectTimeoutSecs != null && editor.connectTimeoutSecs <= 0) {
+    message.error('连接超时秒数必须大于 0')
+    return
+  }
+  if (editor.readTimeoutSecs != null && editor.readTimeoutSecs <= 0) {
+    message.error('读取超时秒数必须大于 0')
+    return
+  }
   submitting.value = true
   try {
     await aiModelProfileApi.save({
       ...editor,
-      profileName: editor.profileName.trim(),
-      modelName: editor.modelName.trim(),
-      apiHost: editor.apiHost.trim(),
+      profileName,
+      modelName,
+      apiHost,
       apiKey: editor.apiKey?.trim() || undefined,
     })
     message.success('已保存')
@@ -493,7 +516,7 @@ onMounted(() => {
             </a-form-item>
           </a-col>
         </a-row>
-        <a-form-item label="模型服务地址">
+        <a-form-item label="模型服务地址" required>
           <a-input v-model:value="editor.apiHost" placeholder="https://api.deepseek.com" />
         </a-form-item>
         <a-form-item

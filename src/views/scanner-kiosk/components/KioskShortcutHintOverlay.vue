@@ -35,7 +35,6 @@ const GROUPS: ShortcutGroup[] = [
       { keys: ['Alt', '1'], desc: '准备扫描' },
       { keys: ['Alt', '2'], desc: '扫描中' },
       { keys: ['Alt', '3'], desc: '复核与异常处置' },
-      { keys: ['Alt', '4'], desc: '封存与历史' },
     ],
   },
   {

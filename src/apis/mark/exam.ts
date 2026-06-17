@@ -1093,6 +1093,32 @@ export interface FinalScoreSafeBatchConfirmVO {
   skipReasons: FinalScoreRiskReasonVO[]
 }
 
+/** 全场批量发布最终成绩请求 - 对应 FinalScoreBatchPublishRequest */
+export interface FinalScoreBatchPublishRequest {
+  examId: string
+}
+
+/** 全场批量发布最终成绩失败明细 - 对应 FinalScoreBatchPublishFailureResponse */
+export interface FinalScoreBatchPublishFailureVO {
+  paperInstanceId: string
+  code: string
+  message: string
+}
+
+/** 全场批量发布最终成绩响应 - 对应 FinalScoreBatchPublishResponse */
+export interface FinalScoreBatchPublishVO {
+  totalCandidateCount: number
+  publishableCount: number
+  successCount: number
+  alreadyPublishedCount: number
+  remainingCount: number
+  failureCount: number
+  publishedPaperInstanceIds: string[]
+  failures: FinalScoreBatchPublishFailureVO[]
+  beforeOverview: FinalScoreRiskOverviewVO
+  afterOverview: FinalScoreRiskOverviewVO
+}
+
 /**
  * 查询最终成绩全场风险概览。
  * 该接口提供全场确认 / 发布 / 风险口径，前端分页列表不得自行推断全场状态。
@@ -1131,6 +1157,20 @@ export function batchConfirmSafeFinalScores(
 ): Promise<FinalScoreSafeBatchConfirmVO> {
   return http.post<FinalScoreSafeBatchConfirmVO>(
     '/api/mark/exams/final-scores/batch-confirm-safe',
+    request,
+  )
+}
+
+/**
+ * 全场批量发布最终成绩。
+ * 后端按考试全场口径筛选可发布成绩，逐卷复用单卷发布状态机、审计与学生通知。
+ * POST /api/mark/exams/final-scores/batch-publish
+ */
+export function batchPublishFinalScores(
+  request: FinalScoreBatchPublishRequest,
+): Promise<FinalScoreBatchPublishVO> {
+  return http.post<FinalScoreBatchPublishVO>(
+    '/api/mark/exams/final-scores/batch-publish',
     request,
   )
 }
@@ -1346,6 +1386,21 @@ export function previewScanBatchAggregation(
   request: ExamScannerBatchCreateRequest,
 ): Promise<ExamScannerBatchPreviewVO> {
   return http.post<ExamScannerBatchPreviewVO>('/api/mark/exams/scanner-batches/preview', request)
+}
+
+/** 教师 Web 端封存扫描批次请求 */
+export interface ExamScannerBatchTeacherSealRequest {
+  scanBatchId: string
+}
+
+/**
+ * 教师在 Web 端封存已 commit 的扫描批次
+ * POST /api/mark/exams/scanner-batches/seal
+ */
+export function sealScanBatchByTeacher(
+  request: ExamScannerBatchTeacherSealRequest,
+): Promise<boolean> {
+  return http.post<boolean>('/api/mark/exams/scanner-batches/seal', request)
 }
 
 /**

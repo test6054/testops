@@ -272,19 +272,6 @@ export interface ExamScannerBatchCloseRequest {
 }
 
 /**
- * 扫描工作台封存批次请求。
- *
- * scanBatchId 必须是当前租户已落库的批次 ID；封存后仅写入 sealed_at / sealed_by，
- * 该批次后续 push / commit 都将被服务端拒绝。
- */
-export interface ExamScannerBatchSealRequest {
-  scanBatchId: string
-  scannerDeviceId: string
-  /** 扫描站点 ID，用于校验封存请求与批次所属工位一致 */
-  scannerStationId: string
-}
-
-/**
  * 扫描工作台废弃已落库批次请求。
  *
  * scanBatchId 必须是当前租户已落库的扫描批次；废弃后批次状态变为 DISCARDED，
@@ -299,7 +286,7 @@ export interface ExamScanBatchDiscardRequest {
  * 扫描工作台批次 lifecycle 响应视图。
  *
  * <p>对齐后端 {@code com.nybc.mark.model.response.ExamScannerBatchLifecycleVO}。
- * Redis 锚点投影：start / close / seal 三个端点共用此结构。锚点已不存在（关闭后或未开启）
+ * Redis 锚点投影：start / close 端点共用此结构。锚点已不存在（关闭后或未开启）
  * 时 {@code anchorExists=false}，{@code anchorMutated} 表示本次调用是否真正改写了锚点状态
  * （幂等回放为 false）。close 端点遇到 Redis 中残留 pending pages 时通过
  * {@code pendingPageCount} 与 {@code pendingPagesDiagnostic} 反馈给调用方决定 commit 或主动丢弃。</p>
@@ -307,7 +294,7 @@ export interface ExamScanBatchDiscardRequest {
 export interface ExamScannerBatchLifecycleVO {
   /** 锚点是否存在（true=Redis 锚点存在或本次新建，false=不存在或已被清理） */
   anchorExists: boolean
-  /** 本次调用是否变更了锚点状态（start 新建 / close 清理 / seal 固定 false） */
+  /** 本次调用是否变更了锚点状态（start 新建 / close 清理） */
   anchorMutated: boolean
   /** 后端签发的批次外部号；前端 push / commit 时必须使用此值 */
   batchExternalNo?: string
@@ -353,12 +340,6 @@ export function closeScannerKioskBatch(
   request: ExamScannerBatchCloseRequest,
 ): Promise<ExamScannerBatchLifecycleVO> {
   return http.post<ExamScannerBatchLifecycleVO>('/api/mark/scanner/kiosk/batch/close', request)
-}
-
-export function sealScannerKioskBatch(
-  request: ExamScannerBatchSealRequest,
-): Promise<ExamScannerBatchLifecycleVO> {
-  return http.post<ExamScannerBatchLifecycleVO>('/api/mark/scanner/kiosk/batch/seal', request)
 }
 
 export function discardScannerKioskBatch(request: ExamScanBatchDiscardRequest): Promise<boolean> {

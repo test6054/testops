@@ -6,7 +6,7 @@
  *   1. 一体机就绪（Agent / 扫描仪 / 设备 / 待处理 + 设置入口）
  *   2. 服务端扫描策略（DPI / 色彩 / 单双面 / 空白页检测）
  *   3. 当前考试 KPI（已扫页 / 试卷实例 / 已绑定 / 异常）
- *   4. 最近批次（标题 + 时段 + 跳到 finalize）
+ *   4. 最近批次（标题 + 时段 + 跳到 history）
  *
  * 自取 ctx，无 prop。响应式：≤1280 → 300px；≤1024 → 整列隐藏（在 KioskLayout 处理）。
  */
@@ -27,7 +27,7 @@ const boundBatchIdForDisplay = computed(() => {
   }
   if (!showBoundStudents.value) return ''
   const stageId = stage.currentStage.value
-  if (stageId === 'review' || stageId === 'finalize') {
+  if (stageId === 'review' || stageId === 'history') {
     return workflow.kioskContext.value?.latestBatch?.scanBatchId || ''
   }
   return ''
@@ -210,8 +210,8 @@ function handleOpenSettings() {
       <template v-if="latestBatch">
         <p class="rail-batch-title">{{ workflow.latestBatchText.value }}</p>
         <p class="rail-batch-period">{{ workflow.latestBatchPeriodText.value }}</p>
-        <button type="button" class="rail-link" @click="stage.gotoStage('finalize')">
-          查看历史批次 →
+        <button type="button" class="rail-link" @click="stage.gotoStage('history')">
+          查看本机历史 →
         </button>
       </template>
       <p v-else class="rail-empty">暂无批次</p>

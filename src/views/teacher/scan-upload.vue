@@ -372,6 +372,29 @@
                   查看扫描原件
                 </span>
                 <span
+                  class="op-link"
+                  :class="{
+                    'is-disabled':
+                      batchSealing === record.scanBatchId
+                      || !canSealBatch(record),
+                  }"
+                  role="button"
+                  :title="
+                    record.sealedAt
+                      ? '批次已封存'
+                      : record.status === 'DISCARDED' || record.discardedAt
+                        ? '已废弃批次不可封存'
+                        : '封存批次'
+                  "
+                  @click="
+                    batchSealing !== record.scanBatchId
+                      && canSealBatch(record)
+                      && onSealBatch(record)
+                  "
+                >
+                  {{ record.sealedAt ? '已封存' : '封存' }}
+                </span>
+                <span
                   class="op-link danger"
                   :class="{
                     'is-disabled':
@@ -464,6 +487,27 @@
         dense
       />
     </a-modal>
+
+    <a-modal
+      v-model:open="batchSealModalOpen"
+      title="封存扫描批次"
+      ok-text="确认封存"
+      cancel-text="取消"
+      :confirm-loading="Boolean(batchSealing)"
+      @ok="confirmSealBatch"
+      @cancel="cancelSealBatch"
+    >
+      <p v-if="batchSealTarget">
+        确认封存批次 <strong>{{ batchSealTarget.batchNo }}</strong>？封存后无法再追加扫描。
+      </p>
+      <UiAlertStrip
+        v-if="batchSealError"
+        tone="error"
+        title="扫描批次封存失败"
+        :description="batchSealError"
+        dense
+      />
+    </a-modal>
   </StageWorkbenchShell>
 </template>
 
@@ -498,6 +542,7 @@ import {
   getMarkingProgress,
   pageScannerBatches,
   previewScanBatchAggregation,
+  sealScanBatchByTeacher,
   SCAN_BATCH_STATUS_LABEL,
   SCAN_BATCH_STATUS_TONE,
 } from '@/apis/mark/exam'
@@ -540,11 +585,17 @@ function goScanLiveMonitor(): void {
 }
 
 function batchStatusTone(batch: ExamScannerBatchVO): BadgeTone {
+  if (batch.sealedAt) return 'green'
   return strictEnumTone(SCAN_BATCH_STATUS_TONE, batch.status, '扫描批次状态')
 }
 
 function batchStatusLabel(batch: ExamScannerBatchVO): string {
+  if (batch.sealedAt) return '已封存'
   return strictEnumLabel(SCAN_BATCH_STATUS_LABEL, batch.status, '扫描批次状态')
+}
+
+function canSealBatch(batch: ExamScannerBatchVO): boolean {
+  return !batch.sealedAt && batch.status !== 'DISCARDED' && !batch.discardedAt
 }
 
 const {
@@ -910,7 +961,7 @@ const batchColumns: ColumnType<ExamScannerBatchVO>[] = [
   { title: '事件数', key: 'eventCount', width: 90 },
   { title: '文件数', key: 'fileCount', width: 90 },
   { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 80 },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' as const },
+  { title: '操作', key: 'actions', width: 280, fixed: 'right' as const },
 ]
 
 /**
@@ -923,6 +974,11 @@ const batchDiscardTarget = ref<ExamScannerBatchVO | null>(null)
 const batchDiscardReason = ref('')
 const batchDiscardReasonError = ref('')
 const batchDiscardError = ref('')
+
+const batchSealing = ref<string | null>(null)
+const batchSealModalOpen = ref(false)
+const batchSealTarget = ref<ExamScannerBatchVO | null>(null)
+const batchSealError = ref('')
 
 const sourceFilesDrawerOpen = ref(false)
 const sourceFilesTarget = ref<ExamScannerBatchVO | null>(null)
@@ -970,6 +1026,41 @@ async function onDiscardBatch(batch: ExamScannerBatchVO): Promise<void> {
   batchDiscardReasonError.value = ''
   batchDiscardError.value = ''
   batchDiscardModalOpen.value = true
+}
+
+function onSealBatch(batch: ExamScannerBatchVO): void {
+  if (!batch.scanBatchId || !canSealBatch(batch)) return
+  batchSealTarget.value = batch
+  batchSealError.value = ''
+  batchSealModalOpen.value = true
+}
+
+function cancelSealBatch(): void {
+  if (batchSealing.value) return
+  batchSealModalOpen.value = false
+  batchSealTarget.value = null
+  batchSealError.value = ''
+}
+
+async function confirmSealBatch(): Promise<void> {
+  const batch = batchSealTarget.value
+  if (!batch?.scanBatchId) {
+    cancelSealBatch()
+    return
+  }
+  batchSealError.value = ''
+  batchSealing.value = batch.scanBatchId
+  try {
+    await sealScanBatchByTeacher({ scanBatchId: batch.scanBatchId })
+    message.success(`扫描批次已封存：${batch.batchNo}`)
+    batchSealModalOpen.value = false
+    batchSealTarget.value = null
+    await loadBatches()
+  } catch (error) {
+    batchSealError.value = getUserErrorMessage(error, '扫描批次封存失败')
+  } finally {
+    batchSealing.value = null
+  }
 }
 
 function closeBatchDiscardModal(): void {

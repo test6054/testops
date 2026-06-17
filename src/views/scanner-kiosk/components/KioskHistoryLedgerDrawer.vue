@@ -3,7 +3,7 @@ import type { ExamScannerPageLedgerItemVO } from '@/apis/mark/scanner-kiosk'
 /**
  * KioskHistoryLedgerDrawer - 历史批次页级账本抽屉
  *
- * 由 FinalizeStage 行点击「查看 ledger」触发：
+ * 由 HistoryStage 行点击「查看 ledger」触发：
  *   1. workflow.viewBatchHistoryLedger(item) 拉取 page-ledger 快照
  *   2. 抽屉显示批次概要 + ledger items + attentionItems
  *   3. 关闭时调用 workflow.closeBatchHistoryLedger() 清理快照
