@@ -279,7 +279,7 @@
           v-model:value="examForm.semester"
           placeholder="选择学期"
           allow-clear
-          :options="semesterOptions"
+          :options="SemesterOptions"
         />
       </a-form-item>
       <a-form-item label="考试时间窗" name="examWindow">
@@ -409,7 +409,6 @@ const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.ACTIVE, value: 'ACTIVE' },
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
-
 const filterFields: FilterField[] = [
   {
     key: 'status',
@@ -433,7 +432,7 @@ const filterFields: FilterField[] = [
     placeholder: '全部学期',
     allowClear: true,
     width: 140,
-    options: semesterOptions.map((item) => ({ label: item.label, value: item.value })),
+    options: SemesterOptions.map((item) => ({ label: item.label, value: item.value })),
   },
   {
     key: 'keyword',
@@ -761,9 +760,6 @@ function handleUiPageChange(page: { current: number, pageSize: number }): void {
   void loadExams()
 }
 
-function goPrepWorkbench(exam: ExamSummaryVO): void {
-  void router.push({ name: 'TeacherExamPrepWorkbench', query: { examId: exam.examId } })
-}
 
 function goPrepWorkbenchById(examId: string): void {
   void router.push({ name: 'TeacherExamPrepWorkbench', query: { examId } })

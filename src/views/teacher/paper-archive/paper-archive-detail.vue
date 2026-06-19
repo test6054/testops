@@ -49,7 +49,9 @@
           <UiTag v-for="tag in set.tags ?? []" :key="tag" tone="purple" size="sm" class="tag-chip">
             {{ tag }}
           </UiTag>
-          <UiTextAction @click="openSetTagModal">{{ set.tags?.length ? '编辑标签' : '添加标签' }}</UiTextAction>
+          <UiTextAction @click="openSetTagModal">{{
+            set.tags?.length ? '编辑标签' : '添加标签'
+          }}</UiTextAction>
         </a-descriptions-item>
       </a-descriptions>
     </UiCard>
@@ -142,10 +144,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <UiTextAction
-                :disabled="!record.fileId"
-                @click="handleDownloadItem(record)"
-              >
+              <UiTextAction :disabled="!record.fileId" @click="handleDownloadItem(record)">
                 <template #icon><DownloadOutlined /></template>
                 原图
               </UiTextAction>
@@ -296,6 +295,7 @@
 
 <script setup lang="ts">
 import type { UploadFile } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PaperArchiveItemVO,
@@ -303,19 +303,6 @@ import type {
   PaperArchiveSetStatusCode,
   PaperArchiveSetVO,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import {
-  ArrowLeftOutlined,
-  DownloadOutlined,
-  FileSearchOutlined,
-  ProfileOutlined,
-  ReloadOutlined,
-  UploadOutlined,
-} from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile, uploadFile } from '@/apis/edu/file-management'
 import {
   getPaperArchiveSetDetail,
   PAPER_ARCHIVE_OCR_STATUS_LABEL,
@@ -328,7 +315,27 @@ import {
   updatePaperArchiveItemTags,
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import {
+  ArrowLeftOutlined,
+  DownloadOutlined,
+  FileSearchOutlined,
+  ProfileOutlined,
+  ReloadOutlined,
+  UploadOutlined,
+} from '@ant-design/icons-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile, uploadFile } from '@/apis/edu/file-management'
+import {
+  UiButton,
+  UiCard,
+  UiDataTable,
+  UiEmpty,
+  UiFilterBar,
+  UiTag,
+  UiTextAction,
+} from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
@@ -468,7 +475,7 @@ const archiveItemFilterFields: FilterField[] = [
     placeholder: '全部状态',
     allowClear: true,
     width: 140,
-    options: ocrStatusOptions,
+    options: PAPER_ARCHIVE_OCR_STATUS_OPTIONS,
   },
   { key: 'tagAny', label: '标签', width: 220 },
 ]
@@ -708,7 +715,10 @@ async function submitTagUpdate(): Promise<void> {
     tagModal.open = false
     await reload()
   } catch (error) {
-    showUserError(error, tagModal.target === 'set' ? '纸质试卷档案集标签更新失败' : '试卷档案项标签更新失败')
+    showUserError(
+      error,
+      tagModal.target === 'set' ? '纸质试卷档案集标签更新失败' : '试卷档案项标签更新失败',
+    )
   } finally {
     tagSaving.value = false
   }

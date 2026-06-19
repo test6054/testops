@@ -413,16 +413,8 @@ import type {
   ExperienceCaseStatusCode,
   GradingExperienceCaseVO,
   QuestionSignatureVO,
-  QuestionTypeCode,
+  QuestionTypeCode
 } from '@/apis/mark/grading-experience'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
-import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -436,8 +428,16 @@ import {
   listExperiencesByQuestion,
   listSignatures,
   QUESTION_TYPE_LABEL,
-  searchSimilar,
+  searchSimilar
 } from '@/apis/mark/grading-experience'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   UiBadge,
   UiButton,
@@ -447,7 +447,7 @@ import {
   UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
-  UiTextAction,
+  UiTextAction
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -652,11 +652,10 @@ async function loadLatestCluster(): Promise<void> {
   clusterLoading.value = true
   clusterLoadError.value = null
   try {
-    const cluster = await getLatestAnswerCluster(
+    latestCluster.value = await getLatestAnswerCluster(
       selectedExamId.value,
       clusterFilterForm.questionTemplateId,
     )
-    latestCluster.value = cluster
   } catch (error) {
     clusterLoadError.value = toUserError(error, '错误簇加载失败')
     showUserError(error, '答案聚类结果加载失败')
