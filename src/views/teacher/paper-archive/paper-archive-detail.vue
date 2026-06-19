@@ -49,7 +49,8 @@
           <UiTag v-for="tag in set.tags ?? []" :key="tag" tone="purple" size="sm" class="tag-chip">
             {{ tag }}
           </UiTag>
-          <UiTextAction @click="openSetTagModal">{{
+          <UiTextAction @click="openSetTagModal">
+{{
             set.tags?.length ? '编辑标签' : '添加标签'
           }}</UiTextAction>
         </a-descriptions-item>
@@ -757,10 +758,6 @@ function setStatusTone(status: PaperArchiveSetStatusCode): BadgeTone {
 
 function ocrStatusTone(status: PaperArchiveOcrStatusCode): BadgeTone {
   return strictEnumTone(PAPER_ARCHIVE_OCR_STATUS_TONE, status, '试卷档案 OCR 状态')
-}
-
-function ocrStatusLabel(status: PaperArchiveOcrStatusCode): string {
-  return strictEnumLabel(PAPER_ARCHIVE_OCR_STATUS_LABEL, status, '试卷档案 OCR 状态')
 }
 
 function ocrStatusMessage(item: PaperArchiveItemVO): string {
