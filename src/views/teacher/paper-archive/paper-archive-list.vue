@@ -270,9 +270,6 @@ const createForm = reactive<PaperArchiveSetCreateForm>({
   permanentRetention: false,
   tags: [],
 })
-
-const statusOptions = PAPER_ARCHIVE_SET_STATUS_OPTIONS
-
 const paperArchiveFilterFields: FilterField[] = [
   {
     key: 'archiveNoKeyword',
@@ -312,7 +309,7 @@ const paperArchiveFilterFields: FilterField[] = [
     placeholder: '全部状态',
     allowClear: true,
     width: 160,
-    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+    options: PAPER_ARCHIVE_SET_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value })),
   },
 ]
 

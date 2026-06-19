@@ -13,7 +13,7 @@ import type { GradeStatusCode, ObjectiveResultCode } from './student-exam'
  * - 后端 Long ID 统一用 string 表达到前端
  */
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PageResult } from '@/types'
+import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
 // ─── 题目质量分析 ─────────────────────────────────
@@ -275,15 +275,23 @@ export interface RejudgePlanExecuteRequest {
   executeReason?: string
 }
 
-/**
- * 查询重判计划列表
- * GET /api/exam/question-analysis/rejudge-plan/list
- */
-export function listRejudgePlans(params: {
+/** 重判计划列表查询 - 对应 RejudgePlanListQuery */
+export interface RejudgePlanListQueryRequest extends QueryDto {
   examId: string
   planStatus?: RejudgePlanStatusCode
-}): Promise<ExamRejudgePlanVO[]> {
-  return http.get<ExamRejudgePlanVO[]>('/api/exam/question-analysis/rejudge-plan/list', { params })
+}
+
+/**
+ * 分页查询重判计划列表
+ * POST /api/exam/question-analysis/rejudge-plan/list
+ */
+export function listRejudgePlans(
+  request: RejudgePlanListQueryRequest,
+): Promise<PageResult<ExamRejudgePlanVO>> {
+  return http.post<PageResult<ExamRejudgePlanVO>>(
+    '/api/exam/question-analysis/rejudge-plan/list',
+    request,
+  )
 }
 
 /**

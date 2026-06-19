@@ -10,7 +10,7 @@
       v-model="filterForm"
       :fields="filterFields"
       search-text="查询"
-      @search="reload"
+      @search="handleSearch"
       @reset="handleFilterReset"
     />
 
@@ -24,14 +24,16 @@
     <UiDataTable
       class="student-detail-table__data-table"
       v-else
+      v-model:current="pagination.current"
+      v-model:page-size="pagination.pageSize"
       :columns="columns"
       :data-source="rows"
       :loading="loading"
       row-key="id"
       size="small"
-      :page-size="20"
-      :total="rows.length"
+      :total="pagination.total"
       flat
+      @page-change="handlePageChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'correctionType'">
@@ -84,21 +86,22 @@
                 通过
               </a-button>
             </a-popconfirm>
-            <UiTextAction tone="danger" @click="openRejectModal(record.id)">驳回</UiTextAction>
-            <a-popconfirm
-              title="确认执行批量更正？执行后会写入当前成绩并刷新统计。"
-              :disabled="record.approvalStatus !== 'APPROVED'"
-              @confirm="handleExecute(record.id)"
+            <UiTextAction
+              tone="danger"
+              :disabled="record.approvalStatus !== 'PENDING_APPROVAL'"
+              @click="openRejectModal(record.id)"
             >
-              <a-button
-                type="link"
-                size="small"
-                :disabled="record.approvalStatus !== 'APPROVED'"
-                :loading="isOperating(record.id, 'execute')"
-              >
-                执行
-              </a-button>
-            </a-popconfirm>
+              驳回
+            </UiTextAction>
+            <a-button
+              type="link"
+              size="small"
+              :disabled="record.approvalStatus !== 'APPROVED'"
+              :loading="isOperating(record.id, 'execute')"
+              @click="openExecuteModal(record.id)"
+            >
+              执行
+            </a-button>
           </div>
         </template>
       </template>
@@ -208,6 +211,29 @@
         placeholder="请输入驳回原因"
       />
     </a-modal>
+
+    <a-modal
+      v-model:open="executeModalOpen"
+      title="执行批量更正计划"
+      ok-text="确认执行"
+      cancel-text="取消"
+      :confirm-loading="operatingAction === 'execute'"
+      @ok="handleExecute"
+    >
+      <a-alert
+        type="warning"
+        show-icon
+        message="执行后会写入当前成绩并刷新统计，此操作不可撤销。"
+        style="margin-bottom: 12px"
+      />
+      <a-textarea
+        v-model:value="executeReason"
+        :maxlength="500"
+        :rows="4"
+        show-count
+        placeholder="请输入执行说明（不少于 5 字，将写入审计记录）"
+      />
+    </a-modal>
   </a-card>
 </template>
 
@@ -241,7 +267,7 @@ import { UiDataTable, UiErrorRetryPanel, UiFilterBar } from '@/components/ui-gui
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'BatchCorrectionPlansCard' })
@@ -261,6 +287,12 @@ interface PlanItemForm {
 const rows = ref<ExamBatchGradeCorrectionPlanVO[]>([])
 const loading = ref(false)
 const loadError = ref<Error | null>(null)
+
+const pagination = reactive({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+})
 
 const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode }>({})
 
@@ -285,6 +317,9 @@ const operatingAction = ref<OperationAction>('')
 const rejectModalOpen = ref(false)
 const rejectPlanId = ref('')
 const rejectReason = ref('')
+const executeModalOpen = ref(false)
+const executePlanId = ref('')
+const executeReason = ref('')
 const nextLocalId = ref(1)
 const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
 const reviewRequestLoading = ref(false)
@@ -361,14 +396,21 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    const plans = await listBatchCorrectionPlans({
+    const result = await listBatchCorrectionPlans({
       examId: props.examId,
       approvalStatus: filterForm.status,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
     })
-    validateBatchCorrectionPlanDisplayContracts(plans)
-    rows.value = plans
+    const list = readPageList(result, '批量成绩更正计划加载失败')
+    validateBatchCorrectionPlanDisplayContracts(list)
+    rows.value = list
+    pagination.total = readPageTotal(result, '批量成绩更正计划加载失败')
+    pagination.current = result.pageNum ?? pagination.current
+    pagination.pageSize = result.pageSize ?? pagination.pageSize
   } catch (e) {
     rows.value = []
+    pagination.total = 0
     loadError.value = toUserError(e, '批量成绩更正计划加载失败')
     showUserError(e, '批量成绩更正计划加载失败')
   } finally {
@@ -376,8 +418,20 @@ async function reload(): Promise<void> {
   }
 }
 
+function handleSearch(): void {
+  pagination.current = 1
+  void reload()
+}
+
 function handleFilterReset(): void {
   filterForm.status = undefined
+  pagination.current = 1
+  void reload()
+}
+
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
   void reload()
 }
 
@@ -574,6 +628,10 @@ async function handleApprove(planId: string): Promise<void> {
 }
 
 function openRejectModal(planId: string): void {
+  const row = rows.value.find((item) => item.id === planId)
+  if (!row || row.approvalStatus !== 'PENDING_APPROVAL') {
+    return
+  }
   rejectPlanId.value = planId
   rejectReason.value = ''
   rejectModalOpen.value = true
@@ -600,12 +658,30 @@ async function handleReject(): Promise<void> {
   }
 }
 
-async function handleExecute(planId: string): Promise<void> {
+function openExecuteModal(planId: string): void {
+  const row = rows.value.find((item) => item.id === planId)
+  if (!row || row.approvalStatus !== 'APPROVED') {
+    return
+  }
+  executePlanId.value = planId
+  executeReason.value = ''
+  executeModalOpen.value = true
+}
+
+async function handleExecute(): Promise<void> {
+  const reason = executeReason.value.trim()
+  if (reason.length < 5) {
+    message.warning('请输入不少于 5 字的执行说明')
+    return
+  }
+  const planId = executePlanId.value
+  if (!planId) return
   operatingId.value = planId
   operatingAction.value = 'execute'
   try {
-    await executeBatchCorrectionPlan({ planId, executeReason: '阅卷中心执行批量成绩更正计划' })
+    await executeBatchCorrectionPlan({ planId, executeReason: reason })
     message.success('批量更正执行完成')
+    executeModalOpen.value = false
     await reload()
   } catch (e) {
     showUserError(e, '批量成绩更正计划执行失败')
@@ -670,7 +746,10 @@ function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): string {
 watch(
   () => [props.examId, props.reloadToken],
   () => {
-    if (props.examId) void reload()
+    if (props.examId) {
+      pagination.current = 1
+      void reload()
+    }
   },
   { immediate: true },
 )

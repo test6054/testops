@@ -410,9 +410,6 @@ const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
   { label: EXAM_STATUS_LABEL.CLOSED, value: 'CLOSED' },
 ]
 
-/** 学期下拉选项：直接复用 SemesterOptions 的强类型枚举，避免本地重复定义。 */
-const semesterOptions = SemesterOptions
-
 const filterFields: FilterField[] = [
   {
     key: 'status',

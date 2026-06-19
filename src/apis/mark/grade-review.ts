@@ -503,17 +503,22 @@ export interface BatchCorrectionPlanExecuteRequest {
   executeReason?: string
 }
 
-/**
- * 查询批量更正计划
- * GET /api/exam/grade-review/batch-correction/list?examId=&approvalStatus=
- */
-export function listBatchCorrectionPlans(params: {
+/** 批量更正计划列表查询 - 对应 BatchCorrectionPlanListQuery */
+export interface BatchCorrectionPlanListQueryRequest extends QueryDto {
   examId: string
   approvalStatus?: BatchCorrectionApprovalStatusCode
-}): Promise<ExamBatchGradeCorrectionPlanVO[]> {
-  return http.get<ExamBatchGradeCorrectionPlanVO[]>(
+}
+
+/**
+ * 分页查询批量更正计划
+ * POST /api/exam/grade-review/batch-correction/list
+ */
+export function listBatchCorrectionPlans(
+  request: BatchCorrectionPlanListQueryRequest,
+): Promise<PageResult<ExamBatchGradeCorrectionPlanVO>> {
+  return http.post<PageResult<ExamBatchGradeCorrectionPlanVO>>(
     '/api/exam/grade-review/batch-correction/list',
-    { params },
+    request,
   )
 }
 

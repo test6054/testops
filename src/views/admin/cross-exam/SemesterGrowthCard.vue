@@ -198,12 +198,16 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SemesterGrowthCard' })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     defaultRecentSemesterCount?: number
+    drillClassId?: string | null
+    drillClassLabel?: string
   }>(),
   {
     defaultRecentSemesterCount: 0,
+    drillClassId: null,
+    drillClassLabel: '',
   },
 )
 
@@ -231,6 +235,35 @@ const growthBarItems = computed(() =>
 )
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
+)
+
+/** 将父级班级钻取同步到班级筛选，并在选项未加载时注入班级标签。 */
+function applyDrillClassSelection(): void {
+  const classId = props.drillClassId?.trim()
+  if (!classId) {
+    return
+  }
+  if (classOptions.value.some((option) => option.value === classId)) {
+    form.classId = classId
+    return
+  }
+  const label = props.drillClassLabel?.trim()
+  if (label) {
+    classOptions.value = [{ value: classId, label }, ...classOptions.value]
+    form.classId = classId
+  }
+}
+
+watch(
+  () => props.drillClassId,
+  (classId) => {
+    if (!classId) {
+      form.classId = ''
+      return
+    }
+    applyDrillClassSelection()
+  },
+  { immediate: true },
 )
 
 watch(
@@ -261,6 +294,7 @@ watch(
       if (classOptions.value.length === 0 && details.length > 0) {
         message.warning('所选考试没有共同班级，请调整考试范围')
       }
+      applyDrillClassSelection()
     } catch (e) {
       showUserError(e, '考试班级范围加载失败')
     } finally {

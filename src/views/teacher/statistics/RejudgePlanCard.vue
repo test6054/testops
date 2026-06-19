@@ -9,7 +9,7 @@
       v-model="filterForm"
       :fields="filterFields"
       search-text="查询"
-      @search="reload"
+      @search="handleSearch"
       @reset="handleFilterReset"
     />
 
@@ -24,14 +24,16 @@
     <UiDataTable
       class="student-detail-table__data-table"
       v-else
+      v-model:current="pagination.current"
+      v-model:page-size="pagination.pageSize"
       :columns="columns"
       :data-source="rows"
       :loading="loading"
       row-key="id"
       size="small"
-      :page-size="20"
-      :total="rows.length"
+      :total="pagination.total"
       flat
+      @page-change="handlePageChange"
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'triggerType'">
@@ -70,8 +72,19 @@
                 通过
               </a-button>
             </a-popconfirm>
-            <UiTextAction tone="danger" @click="openRejectModal(rows[index].id)">驳回</UiTextAction>
-            <UiTextAction @click="openExecuteModal(rows[index].id)">执行</UiTextAction>
+            <UiTextAction
+              tone="danger"
+              :disabled="rows[index].planStatus !== 'PENDING_APPROVAL'"
+              @click="openRejectModal(rows[index].id)"
+            >
+              驳回
+            </UiTextAction>
+            <UiTextAction
+              :disabled="rows[index].planStatus !== 'APPROVED'"
+              @click="openExecuteModal(rows[index].id)"
+            >
+              执行
+            </UiTextAction>
           </div>
         </template>
       </template>
@@ -139,6 +152,7 @@ import {
 import { UiCard, UiDataTable, UiErrorRetryPanel, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'RejudgePlanCard' })
@@ -149,6 +163,12 @@ const rows = ref<ExamRejudgePlanVO[]>([])
 const loading = ref(false)
 // D-9 错误态：重判计划加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
+
+const pagination = reactive({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+})
 
 const filterForm = reactive<{ status?: RejudgePlanStatusCode }>({})
 
@@ -198,12 +218,19 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    rows.value = await listRejudgePlans({
+    const result = await listRejudgePlans({
       examId: props.examId,
       planStatus: filterForm.status,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
     })
+    rows.value = readPageList(result, '重判计划加载失败')
+    pagination.total = readPageTotal(result, '重判计划加载失败')
+    pagination.current = result.pageNum ?? pagination.current
+    pagination.pageSize = result.pageSize ?? pagination.pageSize
   } catch (e) {
     rows.value = []
+    pagination.total = 0
     loadError.value = toUserError(e, '重判计划加载失败')
     showUserError(e, '重判计划加载失败')
   } finally {
@@ -211,8 +238,20 @@ async function reload(): Promise<void> {
   }
 }
 
+function handleSearch(): void {
+  pagination.current = 1
+  void reload()
+}
+
 function handleFilterReset(): void {
   filterForm.status = undefined
+  pagination.current = 1
+  void reload()
+}
+
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
   void reload()
 }
 
@@ -232,6 +271,10 @@ async function handleApprove(planId: string): Promise<void> {
 }
 
 function openRejectModal(planId: string): void {
+  const row = rows.value.find((item) => item.id === planId)
+  if (!row || row.planStatus !== 'PENDING_APPROVAL') {
+    return
+  }
   rejectPlanId.value = planId
   rejectReason.value = ''
   rejectModalOpen.value = true
@@ -260,6 +303,10 @@ async function handleReject(): Promise<void> {
 }
 
 function openExecuteModal(planId: string): void {
+  const row = rows.value.find((item) => item.id === planId)
+  if (!row || row.planStatus !== 'APPROVED') {
+    return
+  }
   executePlanId.value = planId
   executeReason.value = ''
   executeModalOpen.value = true
@@ -315,7 +362,10 @@ function planStatusLabel(code: RejudgePlanStatusCode): string {
 watch(
   () => [props.examId, props.reloadToken],
   () => {
-    if (props.examId) void reload()
+    if (props.examId) {
+      pagination.current = 1
+      void reload()
+    }
   },
   { immediate: true },
 )

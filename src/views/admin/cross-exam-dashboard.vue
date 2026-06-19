@@ -16,8 +16,16 @@
     </template>
 
     <div class="cross-exam-dashboard__cards">
-      <CrossExamTrendCard :default-recent-semester-count="2" />
-      <SemesterGrowthCard :default-recent-semester-count="2" />
+      <CrossExamTrendCard
+        :default-recent-semester-count="2"
+        :drill-class-id="drillClassId"
+        :drill-class-label="drillClassLabel"
+      />
+      <SemesterGrowthCard
+        :default-recent-semester-count="2"
+        :drill-class-id="drillClassId"
+        :drill-class-label="drillClassLabel"
+      />
       <CourseAchievementCard :default-recent-semester-count="2" />
     </div>
   </StageWorkbenchShell>

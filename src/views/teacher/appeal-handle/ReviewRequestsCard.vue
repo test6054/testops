@@ -6,17 +6,12 @@
         <a-tag color="orange">待处理 {{ pendingCount }}</a-tag>
       </a-space>
     </template>
-    <template #extra>
-      <a-space>
-        <a-tag color="orange">待处理 {{ pendingCount }}</a-tag>
-      </a-space>
-    </template>
 
     <UiFilterBar
       v-model="filterForm"
       :fields="filterFields"
       search-text="查询"
-      @search="reload"
+      @search="handleSearch"
       @reset="handleFilterReset"
     />
 
@@ -31,14 +26,16 @@
     <UiDataTable
       class="student-detail-table__data-table"
       v-else
+      v-model:current="pagination.current"
+      v-model:page-size="pagination.pageSize"
       :columns="columns"
       :data-source="rows"
       :loading="loading"
       row-key="id"
       size="small"
-      :page-size="20"
-      :total="rows.length"
+      :total="pagination.total"
       flat
+      @page-change="handlePageChange"
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'reasonType'">
@@ -62,7 +59,7 @@
           {{ formatDateTime(rows[index].reviewTime) }}
         </template>
         <template v-else-if="column.key === 'actions'">
-          <div class="operations-cell" @click.stop>
+          <div v-if="canHandleReviewRequest(rows[index].requestStatus)" class="operations-cell" @click.stop>
             <UiTextAction @click="openHandleModal(rows[index], 'APPROVED')">通过</UiTextAction>
             <UiTextAction tone="danger" @click="openHandleModal(rows[index], 'REJECTED')">驳回</UiTextAction>
           </div>
@@ -134,6 +131,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
+  getReviewSummary,
   GRADE_REVIEW_REASON_TYPE_LABEL,
   handleReviewRequest,
   listReviewRequests,
@@ -141,11 +139,11 @@ import {
   REVIEW_REQUEST_STATUS_LABEL,
   REVIEW_REQUEST_STATUS_OPTIONS,
 } from '@/apis/mark/grade-review'
-import { UiDataTable, UiErrorRetryPanel, UiFilterBar } from '@/components/ui-guide/ui'
+import { UiDataTable, UiErrorRetryPanel, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { readAllPages } from '@/utils/page-result'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
@@ -153,12 +151,16 @@ defineOptions({ name: 'ReviewRequestsCard' })
 const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'handled'): void }>()
 
-const GRADE_REVIEW_REQUEST_PAGE_SIZE = 100
-
 const rows = ref<GradeReviewRequestItemResponse[]>([])
 const loading = ref(false)
-// D-9 错误态：复核申请加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
+const pendingCount = ref(0)
+
+const pagination = reactive({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+})
 
 const filterForm = reactive<{ status?: GradeReviewRequestStatusCode }>({})
 
@@ -187,12 +189,6 @@ const columns: ColumnType<GradeReviewRequestItemResponse>[] = [
   { title: '操作', key: 'actions', width: 160, fixed: 'right' },
 ]
 
-const pendingCount = computed(
-  () =>
-    rows.value.filter((r) => r.requestStatus === 'PENDING' || r.requestStatus === 'IN_REVIEW')
-      .length,
-)
-
 const handleOpen = ref(false)
 const handling = ref(false)
 const targetRequest = ref<GradeReviewRequestItemResponse | null>(null)
@@ -203,14 +199,31 @@ const handleTitle = computed(() =>
   conclusionDraft.value === 'APPROVED' ? '通过复核申请' : '驳回复核申请',
 )
 
+/** 后端仅允许 PENDING / IN_REVIEW 状态进入 handleReviewRequest。 */
+function canHandleReviewRequest(status: GradeReviewRequestStatusCode): boolean {
+  return status === 'PENDING' || status === 'IN_REVIEW'
+}
+
 function openHandleModal(
   record: GradeReviewRequestItemResponse,
   conclusion: ReviewConclusion,
 ): void {
+  if (!canHandleReviewRequest(record.requestStatus)) {
+    return
+  }
   targetRequest.value = record
   conclusionDraft.value = conclusion
   reviewNote.value = ''
   handleOpen.value = true
+}
+
+async function loadPendingCount(): Promise<void> {
+  if (!props.examId) {
+    pendingCount.value = 0
+    return
+  }
+  const summary = await getReviewSummary(props.examId)
+  pendingCount.value = summary.pendingRequestCount + summary.inReviewRequestCount
 }
 
 async function reload(): Promise<void> {
@@ -218,20 +231,22 @@ async function reload(): Promise<void> {
   loading.value = true
   loadError.value = null
   try {
-    const requests = await readAllPages(
-      (pageNum) =>
-        listReviewRequests({
-          examId: props.examId,
-          requestStatus: filterForm.status,
-          pageNum,
-          pageSize: GRADE_REVIEW_REQUEST_PAGE_SIZE,
-        }),
-      '复核申请加载失败',
-    )
-    validateReviewRequestDisplayContracts(requests)
-    rows.value = requests
+    const result = await listReviewRequests({
+      examId: props.examId,
+      requestStatus: filterForm.status,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+    })
+    const list = readPageList(result, '复核申请加载失败')
+    validateReviewRequestDisplayContracts(list)
+    rows.value = list
+    pagination.total = readPageTotal(result, '复核申请加载失败')
+    pagination.current = result.pageNum ?? pagination.current
+    pagination.pageSize = result.pageSize ?? pagination.pageSize
+    await loadPendingCount()
   } catch (e) {
     rows.value = []
+    pagination.total = 0
     loadError.value = toUserError(e, '复核申请加载失败')
     showUserError(e, '复核申请加载失败')
   } finally {
@@ -239,12 +254,23 @@ async function reload(): Promise<void> {
   }
 }
 
-function handleFilterReset(): void {
-  filterForm.status = undefined
+function handleSearch(): void {
+  pagination.current = 1
   void reload()
 }
 
-/** 校验复核申请列表所需学生展示字段，缺失时进入组件错误态。 */
+function handleFilterReset(): void {
+  filterForm.status = undefined
+  pagination.current = 1
+  void reload()
+}
+
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
+  void reload()
+}
+
 function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemResponse[]): void {
   const dataError = '复核申请加载失败，请刷新后重试'
   for (const record of list) {
@@ -258,6 +284,10 @@ function validateReviewRequestDisplayContracts(list: GradeReviewRequestItemRespo
 async function submitHandle(): Promise<void> {
   if (!targetRequest.value?.id) {
     message.warning('未选中申请')
+    return
+  }
+  if (!canHandleReviewRequest(targetRequest.value.requestStatus)) {
+    message.warning('当前申请状态不可处理')
     return
   }
   handling.value = true
@@ -278,7 +308,6 @@ async function submitHandle(): Promise<void> {
   }
 }
 
-// 严格 typed helper：rows[index].requestStatus 是后端必填枚举，避免 slot record 类型丢失。
 function requestStatusColor(status: GradeReviewRequestStatusCode): BadgeTone {
   return strictEnumTone(REVIEW_REQUEST_STATUS_COLOR, status, '复核申请状态')
 }
@@ -312,7 +341,10 @@ function formatQuestionRefs(record: GradeReviewRequestItemResponse): string {
 watch(
   () => [props.examId, props.reloadToken],
   () => {
-    if (props.examId) void reload()
+    if (props.examId) {
+      pagination.current = 1
+      void reload()
+    }
   },
   { immediate: true },
 )

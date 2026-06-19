@@ -433,8 +433,6 @@ const tagModal = reactive<{
   tags: [],
 })
 
-const ocrStatusOptions = PAPER_ARCHIVE_OCR_STATUS_OPTIONS
-
 const archiveItemFilterFields: FilterField[] = [
   {
     key: 'ocrTextKeyword',

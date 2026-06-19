@@ -29,7 +29,7 @@ import {
   aiMaskMappingApi,
   aiTaskApi,
 } from '@/apis/quality'
-import { UiEmpty, UiFilterBar } from '@/components/ui-guide/ui'
+import { UiCard, UiEmpty, UiFilterBar } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'

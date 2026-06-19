@@ -1,8 +1,4 @@
-import type {
-  CourseAchievementItemVO,
-  ExamStatSnapshotVO,
-  SemesterGrowthItemVO,
-} from '@/apis/mark/cross-exam-analysis'
+import type { CourseAchievementItemVO, ExamStatSnapshotVO, SemesterGrowthItemVO } from '@/apis/mark/cross-exam-analysis'
 import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
 import type { ReviewQuestionProgressItemVO } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
@@ -158,12 +154,11 @@ export function correctRatioToBarItems(
 export function errorCauseToBarItems(
   items: ErrorCauseClusterItemVO[],
 ): UiBarChartItem[] {
-  const data: UiBarChartItem[] = items
+  return items
     .filter((item) => item.proportion != null && item.proportion > 0)
     .map((item, index) => {
-      const percent = Number(item.proportion) <= 1
-        ? Number(item.proportion) * 100
-        : Number(item.proportion)
+      const percent
+        = Number(item.proportion) <= 1 ? Number(item.proportion) * 100 : Number(item.proportion)
       return {
         key: item.causeName || item.questionType || `cause-${index}`,
         label: truncateLabel(item.causeName || item.questionType || '错因', 10),
@@ -172,7 +167,6 @@ export function errorCauseToBarItems(
         helper: `${percent.toFixed(1)}%`,
       }
     })
-  return data
 }
 
 /** UiScatterChart 区段色：与 CHART_PALETTE 对齐 */

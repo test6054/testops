@@ -146,8 +146,8 @@ export type DashboardFinalScoreStatusCode = FinalScoreStatusCode
  *
  * 字段契约：
  * - examMetrics 供管理员 Dashboard 考试规模卡片与环形图消费；
- * - gradingMetrics / incidentMetrics / recentExams / recentIncidents 为前端必需字段，
- *   缺失会在 validateDashboardOverview 抛 TypeError，由调用方 catch 走错误面板。
+ * - gradingMetrics / incidentMetrics / recentExams / recentIncidents 为前端必需字段；
+ *   缺失时 validateDashboardOverview 抛 TypeError，由页面错误面板捕获。
  */
 export interface MarkDashboardOverviewVO {
   examMetrics?: DashboardExamMetricsVO
@@ -157,12 +157,54 @@ export interface MarkDashboardOverviewVO {
   recentIncidents: DashboardIncidentRecordVO[]
 }
 
+function assertDashboardCount(value: unknown, field: string): number {
+  const count = Number(value)
+  if (!Number.isFinite(count) || count < 0) {
+    throw new TypeError(`Dashboard 响应缺少合法字段：${field}`)
+  }
+  return count
+}
+
+/** 校验 MarkDashboardResponse 必需字段，缺失时抛 TypeError 供页面错误面板捕获。 */
+export function validateDashboardOverview(data: MarkDashboardOverviewVO): MarkDashboardOverviewVO {
+  if (!data || typeof data !== 'object') {
+    throw new TypeError('Dashboard 响应为空')
+  }
+  const grading = data.gradingMetrics
+  if (!grading) {
+    throw new TypeError('Dashboard 响应缺少 gradingMetrics')
+  }
+  assertDashboardCount(grading.publishedScoreCount, 'gradingMetrics.publishedScoreCount')
+  assertDashboardCount(grading.pendingScoreCount, 'gradingMetrics.pendingScoreCount')
+  assertDashboardCount(grading.confirmedScoreCount, 'gradingMetrics.confirmedScoreCount')
+  assertDashboardCount(grading.withdrawnScoreCount, 'gradingMetrics.withdrawnScoreCount')
+  assertDashboardCount(grading.confirmedQuestionResultCount, 'gradingMetrics.confirmedQuestionResultCount')
+  assertDashboardCount(grading.openReviewTaskCount, 'gradingMetrics.openReviewTaskCount')
+  assertDashboardCount(grading.openProcessingTaskCount, 'gradingMetrics.openProcessingTaskCount')
+
+  const incident = data.incidentMetrics
+  if (!incident) {
+    throw new TypeError('Dashboard 响应缺少 incidentMetrics')
+  }
+  assertDashboardCount(incident.unresolvedIncidentCount, 'incidentMetrics.unresolvedIncidentCount')
+  assertDashboardCount(incident.pendingDuplicateCount, 'incidentMetrics.pendingDuplicateCount')
+
+  if (!Array.isArray(data.recentExams)) {
+    throw new TypeError('Dashboard 响应缺少 recentExams')
+  }
+  if (!Array.isArray(data.recentIncidents)) {
+    throw new TypeError('Dashboard 响应缺少 recentIncidents')
+  }
+  return data
+}
+
 /**
  * 加载阅卷管理员 Dashboard 概览。
  * GET /api/mark/admin/dashboard/overview?recentLimit=
  */
-export function loadDashboardOverview(recentLimit = 5): Promise<MarkDashboardOverviewVO> {
-  return http.get<MarkDashboardOverviewVO>('/api/mark/admin/dashboard/overview', {
+export async function loadDashboardOverview(recentLimit = 5): Promise<MarkDashboardOverviewVO> {
+  const data = await http.get<MarkDashboardOverviewVO>('/api/mark/admin/dashboard/overview', {
     params: { recentLimit },
   })
+  return validateDashboardOverview(data)
 }

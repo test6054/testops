@@ -280,7 +280,7 @@ const overview = ref<MarkDashboardOverviewVO | null>(null)
 /**
  * 概览字段访问：
  *
- * 字段完整性由 API 层 validateDashboardOverview 在 loadOverview 内强校验，
+ * 字段完整性由 API 层 validateDashboardOverview 在 loadDashboardOverview 内强校验，
  * 缺失会直接抛 TypeError 并落到 overviewLoadError；
  * 模板已通过 `v-if="overview && !overviewLoadError"` 守护渲染，因此 computed
  * 只在 overview 为空时返回 null（未加载态），不再承担"验证响应完整性"职责。

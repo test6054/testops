@@ -524,7 +524,7 @@ async function loadSignatures(): Promise<void> {
   signaturesLoading.value = true
   signaturesLoadError.value = null
   try {
-    signatures.value = (await listSignatures(selectedExamId.value)).map(acceptQuestionSignature)
+    signatures.value = await listSignatures(selectedExamId.value)
   } catch (error) {
     signaturesLoadError.value = toUserError(error, '题目特征加载失败')
     showUserError(error, '题目签名加载失败')
@@ -538,7 +538,7 @@ async function handleGenerateSignatures(): Promise<void> {
   generatingSignatures.value = true
   try {
     const result = await generateSignatures(selectedExamId.value)
-    signatures.value = result.map(acceptQuestionSignature)
+    signatures.value = result
     message.success(`已生成 ${result.length} 条题目签名`)
   } catch (error) {
     showUserError(error, '题目签名生成失败')
@@ -561,13 +561,11 @@ async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
   similarLoading.value = true
   similarResults.value = []
   try {
-    similarResults.value = (
-      await searchSimilar({
-        examId: selectedExamId.value,
-        questionTemplateId: record.questionTemplateId,
-        limit: 20,
-      })
-    ).map(acceptQuestionSignature)
+    similarResults.value = await searchSimilar({
+      examId: selectedExamId.value,
+      questionTemplateId: record.questionTemplateId,
+      limit: 20,
+    })
   } catch (error) {
     showUserError(error, '题目相似关系检索失败')
   } finally {
@@ -597,11 +595,12 @@ async function loadExperiences(): Promise<void> {
   experiencesLoadError.value = null
   try {
     if (experienceFilterForm.questionTemplateId) {
-      experiences.value = (
-        await listExperiencesByQuestion(selectedExamId.value, experienceFilterForm.questionTemplateId)
-      ).map(acceptExperienceCase)
+      experiences.value = await listExperiencesByQuestion(
+        selectedExamId.value,
+        experienceFilterForm.questionTemplateId,
+      )
     } else {
-      experiences.value = (await listExperiences(selectedExamId.value)).map(acceptExperienceCase)
+      experiences.value = await listExperiences(selectedExamId.value)
     }
   } catch (error) {
     experiencesLoadError.value = toUserError(error, '评分经验加载失败')
@@ -657,7 +656,7 @@ async function loadLatestCluster(): Promise<void> {
       selectedExamId.value,
       clusterFilterForm.questionTemplateId,
     )
-    latestCluster.value = cluster ? acceptAnswerClusterRecord(cluster) : null
+    latestCluster.value = cluster
   } catch (error) {
     clusterLoadError.value = toUserError(error, '错误簇加载失败')
     showUserError(error, '答案聚类结果加载失败')
@@ -670,8 +669,9 @@ async function handleGenerateCluster(): Promise<void> {
   if (!selectedExamId.value || !clusterFilterForm.questionTemplateId) return
   clustering.value = true
   try {
-    latestCluster.value = acceptAnswerClusterRecord(
-      await generateAnswerCluster(selectedExamId.value, clusterFilterForm.questionTemplateId),
+    latestCluster.value = await generateAnswerCluster(
+      selectedExamId.value,
+      clusterFilterForm.questionTemplateId,
     )
     message.success('AI 答案聚类已完成')
   } catch (error) {
@@ -709,28 +709,6 @@ function questionTypeLabel(value: QuestionTypeCode): string {
   return strictEnumLabel(QUESTION_TYPE_LABEL, value, '题型')
 }
 
-function requireText(value: string | undefined, _fieldName: string): string {
-  const normalized = value?.trim()
-  if (!normalized) {
-    throw toUserError(null, '阅卷经验数据不完整，请刷新后重试')
-  }
-  return normalized
-}
-
-function requireNumber(value: number | undefined, _fieldName: string): number {
-  if (value == null || !Number.isFinite(value)) {
-    throw toUserError(null, '阅卷经验数据不完整，请刷新后重试')
-  }
-  return value
-}
-
-function requireArray<T>(value: T[] | undefined, _fieldName: string): T[] {
-  if (!Array.isArray(value)) {
-    throw toUserError(null, '阅卷经验数据不完整，请刷新后重试')
-  }
-  return value
-}
-
 function ellipsis(
   text: QuestionSignatureVO['questionDigest'] | GradingExperienceCaseVO['experienceSummary'],
   len = 60,
@@ -739,99 +717,51 @@ function ellipsis(
   return text.length > len ? `${text.slice(0, len)}…` : text
 }
 
-function acceptQuestionSignature(item: QuestionSignatureVO): QuestionSignatureVO {
-  requireText(item.examName, 'examName')
-  requireText(item.examNo, 'examNo')
-  requireText(item.questionTemplateId, 'questionTemplateId')
-  requireText(item.questionNo, 'questionNo')
-  questionTypeLabel(item.questionType)
-  return item
-}
-
-function acceptExperienceCase(item: GradingExperienceCaseVO): GradingExperienceCaseVO {
-  requireText(item.sourceExamName, 'sourceExamName')
-  requireText(item.sourceExamNo, 'sourceExamNo')
-  requireText(item.questionTemplateId, 'questionTemplateId')
-  requireText(item.questionNo, 'questionNo')
-  questionTypeLabel(item.questionType)
-  aiStatusLabel(item.analysisStatus)
-  caseStatusLabel(item.caseStatus)
-  if (item.analysisStatus === 'SUCCESS') {
-    requireText(item.aiTraceId, 'aiTraceId')
-    requireText(item.experienceSummary, 'experienceSummary')
-    requireArray(item.experienceItems, 'experienceItems')
-    requireText(item.applicableScope, 'applicableScope')
-    requireNumber(item.latencyMs, 'latencyMs')
-  } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
-    requireText(item.errorMessage, 'errorMessage')
-  }
-  return item
-}
-
-function acceptAnswerClusterRecord(item: AnswerClusterRecordVO): AnswerClusterRecordVO {
-  aiStatusLabel(item.analysisStatus)
-  if (item.analysisStatus === 'SUCCESS') {
-    requireText(item.aiTraceId, 'aiTraceId')
-    requireText(item.clusterSummary, 'clusterSummary')
-    requireNumber(item.groupCount, 'groupCount')
-    requireNumber(item.latencyMs, 'latencyMs')
-    for (const group of requireArray(item.answerGroups, 'answerGroups')) {
-      requireNumber(group.groupNo, 'answerGroups.groupNo')
-      requireText(group.groupLabel, 'answerGroups.groupLabel')
-      requireNumber(group.answerCount, 'answerGroups.answerCount')
-    }
-  } else if (item.analysisStatus === 'FAILED' || item.analysisStatus === 'BLOCKED') {
-    requireText(item.errorMessage, 'errorMessage')
-  }
-  return item
-}
-
 function clusterLatencyText(item: AnswerClusterRecordVO): string {
   if (item.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
-  if (item.analysisStatus === 'SUCCESS') return `${requireNumber(item.latencyMs, 'latencyMs')} ms`
+  if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
 function clusterTraceText(item: AnswerClusterRecordVO): string {
   if (item.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
-  if (item.analysisStatus === 'SUCCESS') return requireText(item.aiTraceId, 'aiTraceId')
+  if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
 function clusterSummaryText(item: AnswerClusterRecordVO): string {
   if (item.analysisStatus === 'PENDING') return 'AI 答案聚类处理中，完成后展示聚类总结'
-  if (item.analysisStatus === 'SUCCESS') return requireText(item.clusterSummary, 'clusterSummary')
+  if (item.analysisStatus === 'SUCCESS') return item.clusterSummary ?? '—'
   return aiClusterFailureMessage(item.errorMessage)
 }
 
 function clusterGroupCountText(item: AnswerClusterRecordVO): string {
   if (item.analysisStatus === 'PENDING') return '处理中'
-  if (item.analysisStatus === 'SUCCESS') return String(requireNumber(item.groupCount, 'groupCount'))
+  if (item.analysisStatus === 'SUCCESS' && item.groupCount != null) return String(item.groupCount)
   return '处理失败'
 }
 
 function experienceTraceText(item: GradingExperienceCaseVO): string {
   if (item.analysisStatus === 'PENDING') return '处理中，尚未生成追踪编号'
-  if (item.analysisStatus === 'SUCCESS') return requireText(item.aiTraceId, 'aiTraceId')
+  if (item.analysisStatus === 'SUCCESS') return item.aiTraceId ?? '—'
   return '处理失败，未生成追踪编号'
 }
 
 function experienceLatencyText(item: GradingExperienceCaseVO): string {
   if (item.analysisStatus === 'PENDING') return '处理中，尚未生成耗时'
-  if (item.analysisStatus === 'SUCCESS') return `${requireNumber(item.latencyMs, 'latencyMs')} ms`
+  if (item.analysisStatus === 'SUCCESS' && item.latencyMs != null) return `${item.latencyMs} ms`
   return '处理失败，未生成耗时'
 }
 
 function experienceSummaryText(item: GradingExperienceCaseVO): string {
   if (item.analysisStatus === 'PENDING') return 'AI 阅卷经验提炼处理中，完成后展示经验总结'
-  if (item.analysisStatus === 'SUCCESS')
-    return requireText(item.experienceSummary, 'experienceSummary')
+  if (item.analysisStatus === 'SUCCESS') return item.experienceSummary ?? '—'
   return gradingExperienceFailureMessage(item.errorMessage)
 }
 
 function experienceApplicableScopeText(item: GradingExperienceCaseVO): string {
   if (item.analysisStatus === 'PENDING') return '处理中，尚未生成适用边界'
-  if (item.analysisStatus === 'SUCCESS') return requireText(item.applicableScope, 'applicableScope')
+  if (item.analysisStatus === 'SUCCESS') return item.applicableScope ?? '—'
   return '处理失败，未生成适用边界'
 }
 
