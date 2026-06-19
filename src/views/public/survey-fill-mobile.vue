@@ -124,10 +124,35 @@
       </div>
 
       <!-- 题目页 -->
-      <div v-else-if="currentStep === 'question'" class="m-survey__page">
+      <div
+        v-else-if="currentStep === 'question'"
+        class="m-survey__page"
+        :class="{
+          'm-survey__page--half': answerCardHeight === 'half',
+          'm-survey__page--full': answerCardHeight === 'full',
+        }"
+      >
         <div class="m-survey__progress">
           <div class="m-survey__progress-bar" :style="{ width: `${progressPercent}%` }" />
           <span class="m-survey__progress-text">{{ currentIndex + 1 }} / {{ totalCount }}</span>
+          <div class="m-survey__height-toggle">
+            <button
+              type="button"
+              class="m-survey__height-btn"
+              :class="{ 'm-survey__height-btn--active': answerCardHeight === 'half' }"
+              @click="answerCardHeight = 'half'"
+            >
+              半屏
+            </button>
+            <button
+              type="button"
+              class="m-survey__height-btn"
+              :class="{ 'm-survey__height-btn--active': answerCardHeight === 'full' }"
+              @click="answerCardHeight = 'full'"
+            >
+              全屏
+            </button>
+          </div>
         </div>
 
         <transition :name="slideDirection" mode="out-in">
@@ -312,9 +337,12 @@ const {
 } = useSurveyFill()
 
 type Step = 'cover' | 'identity' | 'question'
+type AnswerCardHeightMode = 'half' | 'full'
+
 const currentStep = ref<Step>('cover')
 const currentIndex = ref(0)
 const slideDirection = ref<'slide-left' | 'slide-right'>('slide-left')
+const answerCardHeight = ref<AnswerCardHeightMode>('half')
 
 const currentItem = computed(() => survey.value?.items[currentIndex.value] ?? null)
 const scaleOptions = computed(() => (currentItem.value ? getScaleOptions(currentItem.value) : []))
@@ -588,6 +616,42 @@ async function handleSubmit() {
   z-index: 10;
   height: 4px;
   background: #e8e8e8;
+}
+
+.m-survey__height-toggle {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e8e8e8;
+  border-radius: 999px;
+}
+
+.m-survey__height-btn {
+  border: none;
+  background: transparent;
+  color: #666;
+  font-size: 11px;
+  line-height: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.m-survey__height-btn--active {
+  background: #667eea;
+  color: #fff;
+}
+
+.m-survey__page--half .m-survey__page-body {
+  min-height: calc(50dvh - 72px);
+}
+
+.m-survey__page--full .m-survey__page-body {
+  min-height: calc(100dvh - 72px);
 }
 
 .m-survey__progress-bar {

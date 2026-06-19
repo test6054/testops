@@ -3,17 +3,7 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="score-finalize__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
+          <MarkExamContextPicker select-class="score-finalize__exam-select" />
         </template>
         <template #actions>
           <a-segmented
@@ -23,6 +13,10 @@
           />
         </template>
       </ContextBar>
+    </template>
+
+    <template #rail>
+      <MarkExamStageRail />
     </template>
 
     <UiEmpty
@@ -85,47 +79,13 @@
           <span>考生名单</span>
         </template>
 
-        <div class="filter-card">
-          <a-form layout="inline" class="score-finalize__filter-form filter-form filter-form--toolbar">
-            <a-form-item label="关键词">
-              <a-input
-                v-model:value="keyword"
-                placeholder="按学号 / 姓名搜索"
-                allow-clear
-                class="score-finalize__search"
-                @press-enter="handleSearch"
-              >
-                <template #prefix>
-                  <SearchOutlined />
-                </template>
-              </a-input>
-            </a-form-item>
-            <a-form-item label="最终状态">
-              <a-select
-                v-model:value="statusFilter"
-                placeholder="按最终状态过滤"
-                allow-clear
-                class="score-finalize__status-select"
-                :options="finalStatusOptions"
-              />
-            </a-form-item>
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <UiButton size="sm" @click="handleSearch">查询</UiButton>
-                <span class="op-link" role="button" @click="handleReset">重置</span>
-                <UiButton
-                  variant="outline"
-                  size="sm"
-                  :disabled="!selectedExamId"
-                  :loading="loading || riskOverviewLoading"
-                  @click="refreshScoreFinalizeData"
-                >
-                  刷新
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <UiFilterBar
+          v-model="scoreFilterForm"
+          :fields="scoreFilterFields"
+          search-text="查询"
+          @search="handleSearch"
+          @reset="handleReset"
+        />
 
         <!-- D-9 错误态：考生名单加载失败时提供重试 + 上报入口 -->
         <UiErrorRetryPanel
@@ -203,42 +163,30 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span
-                  class="op-link"
-                  role="button"
-                  :class="{ 'is-disabled': !candidates[index].paperInstanceId }"
-                  @click="
-                    candidates[index].paperInstanceId && openDetailDrawer(candidates[index])
-                  "
+                <UiTextAction
+                  :disabled="!candidates[index].paperInstanceId"
+                  @click="openDetailDrawer(candidates[index])"
                 >
                   明细
-                </span>
-                <span
-                  class="op-link primary"
-                  role="button"
-                  :class="{ 'is-disabled': !canConfirm(candidates[index]) }"
-                  @click="canConfirm(candidates[index]) && openConfirmModal(candidates[index])"
+                </UiTextAction>
+                <UiTextAction
+                  :disabled="!canConfirm(candidates[index])"
+                  @click="openConfirmModal(candidates[index])"
                 >
                   {{ confirmButtonLabel(candidates[index]) }}
-                </span>
-                <span
-                  class="op-link primary"
-                  role="button"
-                  :class="{ 'is-disabled': !canPublish(candidates[index]) }"
-                  @click="canPublish(candidates[index]) && handlePublish(candidates[index])"
+                </UiTextAction>
+                <UiTextAction
+                  :disabled="!canPublish(candidates[index])"
+                  @click="handlePublish(candidates[index])"
                 >
                   {{ publishButtonLabel(candidates[index]) }}
-                </span>
-                <span
-                  class="op-link"
-                  role="button"
-                  :class="{ 'is-disabled': !canWithdraw(candidates[index]) }"
-                  @click="
-                    canWithdraw(candidates[index]) && openWithdrawModal(candidates[index])
-                  "
+                </UiTextAction>
+                <UiTextAction
+                  :disabled="!canWithdraw(candidates[index])"
+                  @click="openWithdrawModal(candidates[index])"
                 >
                   撤回
-                </span>
+                </UiTextAction>
               </div>
             </template>
           </template>
@@ -459,7 +407,7 @@
           <UiButton
             v-if="isHardBlockingRiskReason(reason.reasonCode)"
             size="sm"
-            variant="primary"
+            variant="outline"
             @click="goAbsenceConfirm"
           >
             前往缺考核对
@@ -467,7 +415,7 @@
           <UiButton
             v-else
             size="sm"
-            :variant="isRiskReasonReviewed(reason.reasonCode) ? 'outline' : 'primary'"
+            variant="outline"
             :loading="riskReviewSavingReasonCode === reason.reasonCode"
             :disabled="riskReviewSavingReasonCode !== null && riskReviewSavingReasonCode !== reason.reasonCode"
             @click="toggleRiskReasonReviewed(reason.reasonCode)"
@@ -562,9 +510,8 @@ import type {
   FinalScoreRiskOverviewVO,
   FinalScoreRiskReasonCode, FinalScoreStatusCode
 } from '@/apis/mark/exam'
-import type { BadgeTone, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiStatPanelItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -584,6 +531,8 @@ import {
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
+import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
+import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import {
   UiActivityTimeline,
   UiAlertStrip,
@@ -592,12 +541,14 @@ import {
   UiDrawer,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiStatPanel,
   UiTag,
+  UiTextAction,
   UiTrendChart,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { provideMarkExamContext } from '@/composables/useMarkExamContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -617,6 +568,34 @@ function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
 
 const finalStatusOptions = FINAL_SCORE_STATUS_OPTIONS
 
+const scoreFilterForm = reactive<{
+  keyword: string
+  statusFilter?: FinalScoreStatusCode
+}>({
+  keyword: '',
+  statusFilter: undefined,
+})
+
+const scoreFilterFields: FilterField[] = [
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '按学号 / 姓名搜索',
+    allowClear: true,
+    width: 240,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'statusFilter',
+    type: 'select',
+    placeholder: '按最终状态过滤',
+    allowClear: true,
+    width: 200,
+    options: finalStatusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+]
+
 const router = useRouter()
 const route = useRoute()
 
@@ -630,14 +609,11 @@ const scoreReleaseStep = computed(() =>
 )
 
 const {
-  examOptions,
-  loading: examLoading,
   selectedExamId,
   selectedExamLabel,
   selectedExam,
-  onExamChange,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = provideMarkExamContext()
 
 function onScoreReleaseStepChange(value: string | number): void {
   const examId = selectedExamId.value
@@ -659,8 +635,6 @@ const batchConfirming = ref(false)
 const riskReviewDrawerOpen = ref(false)
 const riskReviewSavingReasonCode = ref<FinalScoreRiskReasonCode | null>(null)
 const reviewedRiskReasonCodes = ref<Set<FinalScoreRiskReasonCode>>(new Set())
-const keyword = ref('')
-const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
 const HARD_BLOCKING_RISK_REASON_CODES = new Set<FinalScoreRiskReasonCode>([
   'UNRECONCILED_ABSENCE',
@@ -703,8 +677,8 @@ async function loadCandidates(): Promise<void> {
   try {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
-      keyword: keyword.value.trim() || undefined,
-      finalScoreStatus: statusFilter.value,
+      keyword: scoreFilterForm.keyword.trim() || undefined,
+      finalScoreStatus: scoreFilterForm.statusFilter,
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
@@ -748,8 +722,6 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
-  keyword.value = ''
-  statusFilter.value = undefined
   pagination.current = 1
   void loadCandidates()
 }
@@ -1585,11 +1557,6 @@ watch(selectedExamId, (value) => {
   }
 })
 
-watch(statusFilter, () => {
-  pagination.current = 1
-  void loadCandidates()
-})
-
 onMounted(async () => {
   await initExamSelector()
   if (selectedExamId.value) {
@@ -1616,18 +1583,6 @@ onMounted(async () => {
     width: 280px;
   }
 
-  &__filter-form {
-    margin-bottom: 16px;
-  }
-
-  &__search {
-    width: 240px;
-  }
-
-  &__status-select {
-    width: 200px;
-  }
-
   &__empty {
     padding: 60px 0;
   }
@@ -1650,7 +1605,7 @@ onMounted(async () => {
   &__detail-section-title {
     margin: 16px 0 8px 0;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   &__hint {
@@ -1694,7 +1649,7 @@ onMounted(async () => {
 
   &__risk-review-title {
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--dp-text-primary, #0f172a);
   }
 

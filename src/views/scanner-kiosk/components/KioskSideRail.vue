@@ -229,23 +229,23 @@ function handleOpenSettings() {
 }
 
 .rail-led {
-  width: 10px;
-  height: 10px;
+  width: var(--kiosk-led-size);
+  height: var(--kiosk-led-size);
   border-radius: 50%;
   background: var(--kiosk-neutral);
   flex: 0 0 auto;
 }
 .rail-led.led-success {
   background: var(--kiosk-success);
-  box-shadow: 0 0 0 2px var(--kiosk-success-soft);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-success-soft);
 }
 .rail-led.led-warning {
   background: var(--kiosk-warning);
-  box-shadow: 0 0 0 2px var(--kiosk-warning-soft);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-warning-soft);
 }
 .rail-led.led-danger {
   background: var(--kiosk-danger);
-  box-shadow: 0 0 0 2px var(--kiosk-danger-soft);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-danger-soft);
 }
 
 .rail-kv {

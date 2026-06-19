@@ -1,11 +1,14 @@
 <template>
-  <a-card title="AI 错因聚类分析" :bordered="false" size="small">
+  <UiCard class="stats-card" compact>
+    <template #title>AI 错因聚类分析</template>
     <template #extra>
       <a-space>
-        <a-button type="primary" :loading="generating" @click="handleGenerate"> 重新生成 </a-button>
-        <a-button :loading="loading" @click="reload">
+        <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerate">
+          重新生成
+        </UiButton>
+        <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新最新
-        </a-button>
+        </UiButton>
       </a-space>
     </template>
 
@@ -23,7 +26,7 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!record" description="暂无 AI 错因聚类，可点击重新生成。" />
+      <UiEmpty v-else-if="!record" description="暂无 AI 错因聚类，可点击重新生成。" />
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -57,14 +60,14 @@
           <strong>总体摘要：</strong>{{ record.overallSummary }}
         </a-typography-paragraph>
 
-        <div v-if="clusterPieOption" class="ai-chart">
+        <div v-if="clusterBarItems.length" class="ai-chart">
           <div class="ai-chart__meta">
             <strong>错因占比分布</strong>
           </div>
-          <VChart
-            class="ai-chart__canvas ai-chart__canvas--pie"
-            :option="clusterPieOption"
-            autoresize
+          <UiBarChart
+            :items="clusterBarItems"
+            :max-value="100"
+            class="ai-chart__canvas"
           />
         </div>
 
@@ -108,7 +111,7 @@
         </div>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -116,17 +119,16 @@ import type { ExamErrorCauseClusterVO } from '@/apis/mark/error-cause-cluster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import {
   generateErrorCauseCluster,
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiBarChart, UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildErrorCausePieOption } from '@/utils/mark-statistics-chart'
+import { errorCauseToBarItems } from '@/utils/mark-statistics-chart'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
 defineOptions({ name: 'ErrorCauseClusterCard' })
@@ -140,7 +142,7 @@ const generating = ref(false)
 const loadError = ref<Error | null>(null)
 
 const clusterItems = computed(() => record.value?.clusterItems ?? [])
-const clusterPieOption = computed(() => buildErrorCausePieOption(record.value?.clusterItems ?? []))
+const clusterBarItems = computed(() => errorCauseToBarItems(record.value?.clusterItems ?? []))
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 错因聚类分析未完成，请稍后重新生成')
@@ -243,11 +245,6 @@ watch(
 </script>
 
 <style lang="scss" scoped>
-.ai-record {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
 .ai-summary {
   margin: 0;
 }
@@ -256,21 +253,8 @@ watch(
   flex-direction: column;
   gap: 8px;
 }
-.ai-chart {
-  padding: 12px 16px;
-  border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-md, 6px);
-  background: var(--dp-surface, #fff);
-}
-.ai-chart__meta {
-  margin-bottom: 8px;
-}
 .ai-chart__canvas {
   width: 100%;
-  height: 320px;
-}
-.ai-chart__canvas--pie {
-  height: 280px;
 }
 .analysis-item {
   display: flex;
@@ -283,19 +267,7 @@ watch(
   align-items: center;
   gap: 8px;
 }
-.analysis-item__title {
-  font-weight: 600;
-}
 .analysis-item__metric {
   margin-left: auto;
-  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.65));
-}
-.analysis-item__text {
-  margin: 0;
-  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
-  line-height: 1.6;
-}
-.text-muted {
-  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
 }
 </style>

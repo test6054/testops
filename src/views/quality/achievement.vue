@@ -20,7 +20,7 @@ import type {
   AchievementStatus,
   AchievementTargetType,
 } from '@/apis/quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -47,7 +47,7 @@ import {
   ProgramSelector,
   TrainingObjectiveSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
   SignalBand,
@@ -174,6 +174,77 @@ const achievementStatusOptions: Array<{ value: AchievementStatus, label: string 
   { value: 'NOT_ACHIEVED', label: ACHIEVEMENT_STATUS_LABEL.NOT_ACHIEVED },
   { value: 'INSUFFICIENT_EVIDENCE', label: ACHIEVEMENT_STATUS_LABEL.INSUFFICIENT_EVIDENCE },
 ]
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => query as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(query, value)
+  },
+})
+
+const filterFields: FilterField[] = [
+  {
+    key: 'targetType',
+    type: 'select',
+    label: '目标类型',
+    placeholder: '目标类型',
+    allowClear: true,
+    width: 160,
+    options: targetTypeOptions,
+  },
+  {
+    key: 'auditStatus',
+    type: 'select',
+    label: '审核状态',
+    placeholder: '审核状态',
+    allowClear: true,
+    width: 120,
+    options: auditStatusOptions,
+  },
+  {
+    key: 'achievementStatus',
+    type: 'select',
+    label: '达成结论',
+    placeholder: '达成结论',
+    allowClear: true,
+    width: 120,
+    options: achievementStatusOptions,
+  },
+  {
+    key: 'qualityCourseId',
+    type: 'custom',
+    label: '关联课程',
+    width: 180,
+  },
+  {
+    key: 'classId',
+    type: 'custom',
+    label: '关联班级',
+    width: 160,
+  },
+  {
+    key: 'schoolYear',
+    type: 'input',
+    label: '学年',
+    placeholder: '学年',
+    width: 120,
+  },
+  {
+    key: 'semester',
+    type: 'input',
+    label: '学期',
+    placeholder: '学期',
+    width: 100,
+  },
+]
+
+function handleSearch() {
+  loadList()
+}
+
+function handleReset() {
+  resetQuery()
+}
 
 const trainingPlanRequired = computed(() => !qualityStore.currentTrainingPlanId)
 const programRequired = computed(
@@ -597,75 +668,42 @@ onMounted(async () => {
         @action="handleResultAction"
       />
 
-      <a-card :bordered="false" class="detail-table-card achievement__table-card">
+      <UiCard class="detail-table-card achievement__table-card">
         <template #title>达成度结果</template>
+        <template #extra>
+          <UiButton size="sm" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
+            触发达成度计算
+          </UiButton>
+        </template>
 
-        <div class="filter-card">
-          <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
-            <a-form-item label="目标类型">
-              <a-select
-                v-model:value="query.targetType"
-                placeholder="目标类型"
-                style="width: 160px"
-                allow-clear
-                :options="targetTypeOptions"
-              />
-            </a-form-item>
-            <a-form-item label="审核状态">
-              <a-select
-                v-model:value="query.auditStatus"
-                placeholder="审核状态"
-                style="width: 120px"
-                allow-clear
-                :options="auditStatusOptions"
-              />
-            </a-form-item>
-            <a-form-item label="达成结论">
-              <a-select
-                v-model:value="query.achievementStatus"
-                placeholder="达成结论"
-                style="width: 120px"
-                allow-clear
-                :options="achievementStatusOptions"
-              />
-            </a-form-item>
-            <a-form-item label="关联课程">
-              <CourseSelector
-                :value="query.qualityCourseId || null"
-                :training-plan-id="qualityStore.currentTrainingPlanId || null"
-                placeholder="关联课程"
-                :width="180"
-                @change="handleQueryQualityCourseChange"
-              />
-            </a-form-item>
-            <a-form-item label="关联班级">
-              <ClassSelector
-                :value="query.classId || null"
-                placeholder="关联班级"
-                :width="160"
-                @change="handleQueryClassChange"
-              />
-            </a-form-item>
-            <a-form-item label="学年">
-              <a-input v-model:value="query.schoolYear" placeholder="学年" style="width: 120px" />
-            </a-form-item>
-            <a-form-item label="学期">
-              <a-input v-model:value="query.semester" placeholder="学期" style="width: 100px" />
-            </a-form-item>
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <UiButton size="sm" @click="loadList">查询</UiButton>
-                <span class="op-link" role="button" @click="resetQuery">重置</span>
-                <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
-                <UiButton size="sm" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
-                  触发达成度计算
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <UiFilterBar
+          v-model="filterModel"
+          :fields="filterFields"
+          show-labels
+          @search="handleSearch"
+          @reset="handleReset"
+        >
+          <template #field-qualityCourseId>
+            <CourseSelector
+              :value="query.qualityCourseId || null"
+              :training-plan-id="qualityStore.currentTrainingPlanId || null"
+              placeholder="关联课程"
+              :width="180"
+              @change="handleQueryQualityCourseChange"
+            />
+          </template>
+          <template #field-classId>
+            <ClassSelector
+              :value="query.classId || null"
+              placeholder="关联班级"
+              :width="160"
+              @change="handleQueryClassChange"
+            />
+          </template>
+        </UiFilterBar>
 
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           v-model:current="query.pageNum"
           v-model:page-size="query.pageSize"
           :columns="columns"
@@ -673,7 +711,7 @@ onMounted(async () => {
           :loading="loading"
           row-key="id"
           size="middle"
-                     :total="total"
+          :total="total"
           flat
           @page-change="handlePageChange"
         >
@@ -734,23 +772,23 @@ onMounted(async () => {
                 {{ auditStatusLabel(record.auditStatus) }}
               </a-tag>
             </template>
-            <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="goDetail(record)">详情</span>
-                <span
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction @click="goDetail(record)">详情</UiTextAction>
+                <UiTextAction
                   v-for="to in nextStatuses(record.auditStatus)"
                   :key="to"
-                  class="op-link"
-                  :class="to === 'RETURNED' ? 'danger' : 'primary'"
-                  role="button"
+                  :tone="to === 'RETURNED' ? 'danger' : 'primary'"
                   @click="handleTransit(record, to)"
                 >
                   -> {{ auditStatusLabel(to) }}
-                </span>
-                <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
-            </div></template>
+                </UiTextAction>
+                <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
+              </div>
+            </template>
           </template>
         </UiDataTable>
-      </a-card>
+      </UiCard>
     </template>
 
     <UiDrawer v-model:open="triggerVisible" title="触发达成度计算" :width="720" :hide-footer="true">

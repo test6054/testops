@@ -70,68 +70,44 @@
           <UserOutlined />
           <span>考生名册</span>
         </template>
-        <div class="filter-card">
-          <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleRosterSearch">
-            <a-form-item label="关键词">
-              <a-input
-                v-model:value="rosterKeyword"
-                placeholder="按学号 / 姓名搜索"
-                allow-clear
-                class="roster-filter__keyword"
-                @press-enter="handleRosterSearch"
-              >
-                <template #prefix>
-                  <SearchOutlined />
-                </template>
-              </a-input>
-            </a-form-item>
-            <a-form-item label="班级">
-              <a-select
-                v-model:value="rosterClassFilter"
-                placeholder="全部班级"
-                allow-clear
-                show-search
-                option-filter-prop="label"
-                class="roster-filter__class"
-                :options="rosterClassFilterOptions"
-              />
-            </a-form-item>
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <UiButton size="sm" @click="handleRosterSearch">查询</UiButton>
-                <UiButton size="sm" variant="outline" @click="handleRosterReset">重置</UiButton>
-                <template v-if="!classScopeReadOnly">
-                  <UiButton
-                    size="sm"
-                    variant="outline"
-                    :disabled="!classIds.length"
-                    @click="openSelectDrawer"
-                  >
-                    <template #icon><UserAddOutlined /></template>
-                    从学生库选择
-                  </UiButton>
-                  <UiButton size="sm" variant="outline" @click="openImportModal">
-                    <template #icon><UploadOutlined /></template>
-                    批量导入
-                  </UiButton>
-                  <UiButton size="sm" @click="openSingleAddModal">
-                    <template #icon><PlusOutlined /></template>
-                    添加单个
-                  </UiButton>
-                  <UiButton
-                    size="sm"
-                    variant="outline"
-                    :loading="fullScopeSaving"
-                    :disabled="!classIds.length || candidateTotal === 0"
-                    @click="confirmSaveFullScope"
-                  >
-                    全量保存名册
-                  </UiButton>
-                </template>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <template v-if="!classScopeReadOnly" #extra>
+          <a-space>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :disabled="!classIds.length"
+              @click="openSelectDrawer"
+            >
+              <template #icon><UserAddOutlined /></template>
+              从学生库选择
+            </UiButton>
+            <UiButton size="sm" variant="outline" @click="openImportModal">
+              <template #icon><UploadOutlined /></template>
+              批量导入
+            </UiButton>
+            <UiButton size="sm" @click="openSingleAddModal">
+              <template #icon><PlusOutlined /></template>
+              添加单个
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="fullScopeSaving"
+              :disabled="!classIds.length || candidateTotal === 0"
+              @click="confirmSaveFullScope"
+            >
+              全量保存名册
+            </UiButton>
+          </a-space>
+        </template>
+
+        <UiFilterBar
+          v-model="rosterFilterForm"
+          :fields="rosterFilterFields"
+          search-text="查询"
+          @search="handleRosterSearch"
+          @reset="handleRosterReset"
+        />
 
         <UiErrorRetryPanel
           v-if="tableLoadError"
@@ -169,14 +145,15 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span
+                <UiConfirmPopover
                   v-if="!classScopeReadOnly"
-                  class="op-link danger"
-                  role="button"
-                  @click="removeCandidate((record as CandidateRow).studentUserId)"
+                  title="确认移除该考生？"
+                  description="移除后需重新加入名册。"
+                  danger
+                  @confirm="removeCandidate((record as CandidateRow).studentUserId)"
                 >
-                  移除
-                </span>
+                  <UiTextAction tone="danger">移除</UiTextAction>
+                </UiConfirmPopover>
                 <span v-else class="muted">—</span>
               </div>
             </template>
@@ -286,13 +263,17 @@
             </div>
           </div>
         </div>
-        <a-table
+        <UiDataTable
           v-if="importPreview"
           :columns="importColumns"
-          :data-source="importPreview.rows"
-          :pagination="{ pageSize: 8, showSizeChanger: false }"
+          :data-source="importPreviewPagedRows"
+          v-model:current="importPreviewPage"
+          v-model:page-size="importPreviewPageSize"
+          :total="importPreview.rows.length"
+          :show-size-changer="false"
           row-key="rowNo"
           size="small"
+          flat
           class="roster-import__table"
         >
           <template #bodyCell="{ column, record }">
@@ -325,7 +306,7 @@
               </span>
             </template>
           </template>
-        </a-table>
+        </UiDataTable>
       </div>
     </a-modal>
 
@@ -374,17 +355,17 @@ import type {
   ExamCandidateRosterRequest,
   ExamClassRefVO,
 } from '@/apis/mark/exam'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
-import * as XLSX from 'xlsx'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import * as XLSX from 'xlsx'
 import {
   commitExamCandidateImport,
   getExamDetail,
@@ -393,8 +374,8 @@ import {
   mergeExamCandidates,
   pageExamCandidates,
   pageScannerBatches,
-  previewExamCandidates,
   previewExamCandidateImport,
+  previewExamCandidates,
   removeExamCandidates,
   saveExamClassScope,
   saveExamScope,
@@ -405,10 +386,13 @@ import {
   UiAlertStrip,
   UiButton,
   UiCard,
+  UiConfirmPopover,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -480,8 +464,14 @@ const tableLoadError = ref<Error | null>(null)
 const removingStudentUserId = ref<string | null>(null)
 const singleAddSubmitting = ref(false)
 
-const rosterKeyword = ref('')
-const rosterClassFilter = ref<string | undefined>(undefined)
+const rosterFilterForm = reactive<{
+  keyword: string
+  classId?: string
+}>({
+  keyword: '',
+  classId: undefined,
+})
+
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
   pageSize: 20,
@@ -498,6 +488,8 @@ const importFieldMapping = reactive<ImportFieldMapping>({})
 const importRows = ref<ExamCandidateImportRowRequest[]>([])
 const importPreview = ref<ExamCandidateImportPreviewResponse | null>(null)
 const importPreviewing = ref(false)
+const importPreviewPage = ref(1)
+const importPreviewPageSize = ref(8)
 const importCommitting = ref(false)
 let importPreviewTimer: ReturnType<typeof setTimeout> | null = null
 let importPreviewSeq = 0
@@ -518,6 +510,30 @@ const rosterClassFilterOptions = computed(() =>
     label: item.className,
   })),
 )
+
+const rosterFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '按学号 / 姓名搜索',
+    allowClear: true,
+    width: 220,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'classId',
+    type: 'select',
+    placeholder: '全部班级',
+    allowClear: true,
+    allowSearch: true,
+    width: 200,
+    options: rosterClassFilterOptions.value.map((item) => ({
+      label: item.label,
+      value: item.value,
+    })),
+  },
+])
 
 const columns: ColumnType<CandidateRow>[] = [
   { title: '考生', key: 'student', width: 220 },
@@ -572,13 +588,19 @@ const importPreviewSampleRows = computed<ImportPreviewSampleRow[]>(() =>
   })),
 )
 
+const importPreviewPagedRows = computed(() => {
+  if (!importPreview.value) return []
+  const start = (importPreviewPage.value - 1) * importPreviewPageSize.value
+  return importPreview.value.rows.slice(start, start + importPreviewPageSize.value)
+})
+
 const canPreviewImport = computed(() =>
   Boolean(
     selectedExamId.value
-      && importDataRowCount.value > 0
-      && importFieldMapping.className !== undefined
-      && importFieldMapping.studentNo !== undefined
-      && importFieldMapping.studentName !== undefined,
+    && importDataRowCount.value > 0
+    && importFieldMapping.className !== undefined
+    && importFieldMapping.studentNo !== undefined
+    && importFieldMapping.studentName !== undefined,
   ),
 )
 
@@ -665,8 +687,8 @@ async function loadCandidatePage(): Promise<void> {
   try {
     const result = await pageExamCandidates({
       examId,
-      keyword: rosterKeyword.value.trim() || undefined,
-      classId: rosterClassFilter.value,
+      keyword: rosterFilterForm.keyword.trim() || undefined,
+      classId: rosterFilterForm.classId,
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
@@ -757,8 +779,6 @@ function handleRosterSearch(): void {
 }
 
 function handleRosterReset(): void {
-  rosterKeyword.value = ''
-  rosterClassFilter.value = undefined
   pagination.current = 1
   void loadCandidatePage()
 }
@@ -1237,8 +1257,8 @@ watch(selectedExamId, (value) => {
   }
   rosterLocked.value = false
   rosterWriteForbidden.value = false
-  rosterKeyword.value = ''
-  rosterClassFilter.value = undefined
+  rosterFilterForm.keyword = ''
+  rosterFilterForm.classId = undefined
   pagination.current = 1
   if (value) {
     void loadExamContext().then(() => loadCandidatePage())
@@ -1303,16 +1323,6 @@ onMounted(async () => {
   &__empty {
     font-size: 13px;
     color: var(--ant-color-text-secondary);
-  }
-}
-
-.roster-filter {
-  &__keyword {
-    width: 220px;
-  }
-
-  &__class {
-    width: 200px;
   }
 }
 

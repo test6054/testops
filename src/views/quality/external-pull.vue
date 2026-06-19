@@ -17,6 +17,7 @@ import type {
   ExternalSourceFieldScope,
   ExternalSourceType,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, TaskResultItem } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -44,7 +45,7 @@ import {
   ReportSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
@@ -219,6 +220,52 @@ const businessAnchorOptions = Object.entries(BUSINESS_ANCHOR_LABEL).map(([value,
   value,
   label,
 }))
+
+interface ExternalPullTaskFilterModel {
+  sourceId?: string
+  status?: ExternalPullTaskVO['status']
+  businessAnchor?: string
+}
+
+const taskFilterForm = reactive<ExternalPullTaskFilterModel>({
+  sourceId: undefined,
+  status: undefined,
+  businessAnchor: undefined,
+})
+
+const taskFilterModel = computed<Record<string, unknown>>({
+  get: () => taskFilterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(taskFilterForm, value)
+  },
+})
+
+const taskFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'sourceId',
+    type: 'select',
+    placeholder: '按数据源筛选',
+    allowClear: true,
+    width: 200,
+    options: sources.value.map((source) => ({ value: source.id, label: source.sourceName })),
+  },
+  {
+    key: 'status',
+    type: 'select',
+    placeholder: '状态',
+    allowClear: true,
+    width: 120,
+    options: taskStatusOptions,
+  },
+  {
+    key: 'businessAnchor',
+    type: 'select',
+    placeholder: '业务归属',
+    allowClear: true,
+    width: 160,
+    options: businessAnchorOptions,
+  },
+])
 
 const enabledSourceOptions = computed(() =>
   sources.value.filter((s) => s.enabled).map((s) => ({ value: s.id, label: s.sourceName })),
@@ -434,6 +481,29 @@ function handleTaskPageChange(page: { current: number, pageSize: number }) {
   taskQuery.pageNum = page.current
   taskQuery.pageSize = page.pageSize
   loadTasks()
+}
+
+function syncTaskFilterToQuery() {
+  taskQuery.sourceId = taskFilterForm.sourceId || undefined
+  taskQuery.status = taskFilterForm.status
+  taskQuery.businessAnchor = taskFilterForm.businessAnchor
+}
+
+function handleTaskSearch() {
+  taskQuery.pageNum = 1
+  syncTaskFilterToQuery()
+  void loadTasks()
+}
+
+function handleTaskReset() {
+  Object.assign(taskFilterForm, {
+    sourceId: undefined,
+    status: undefined,
+    businessAnchor: undefined,
+  })
+  taskQuery.pageNum = 1
+  syncTaskFilterToQuery()
+  void loadTasks()
 }
 
 function resetTaskRuleAfterSourceChange() {
@@ -833,30 +903,26 @@ onMounted(async () => {
       @action="handlePullResultAction"
     />
 
-    <a-card :bordered="false" class="detail-table-card external-pull__source-card">
+    <UiCard class="detail-table-card external-pull__source-card">
       <template #title>
         外部只读数据源
         <span class="external-pull__panel-meta">{{ sourceTotal }} 个</span>
       </template>
-
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar">
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <span class="op-link" role="button" @click="reloadAll">刷新</span>
-              <UiButton variant="outline" size="sm" @click="openSourceCreate">新建数据源</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <template #extra>
+        <a-space>
+          <UiTextAction @click="reloadAll">刷新</UiTextAction>
+          <UiButton variant="outline" size="sm" @click="openSourceCreate">新建数据源</UiButton>
+        </a-space>
+      </template>
 
       <UiEmpty
         v-if="!sources.length && !sourceLoading"
         description="尚未配置任何外部只读数据源；请先新建数据源以便创建拔取任务"
         size="sm"
       />
-      <UiDataTable class="student-detail-table__data-table"
-                   v-else
+      <UiDataTable
+        class="student-detail-table__data-table"
+        v-else
         :columns="sourceColumns"
         :data-source="sources"
         :loading="sourceLoading"
@@ -880,68 +946,43 @@ onMounted(async () => {
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openSourceEdit(record)">编辑</span>
-              <span class="op-link" role="button" @click="toggleSourceEnabled(record)">{{ record.enabled ? '停用' : '启用' }}</span>
-              <span class="op-link danger" role="button" @click="deleteSource(record)">删除</span>
-            </div></template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="openSourceEdit(record)">编辑</UiTextAction>
+              <UiTextAction @click="toggleSourceEnabled(record)">{{ record.enabled ? '停用' : '启用' }}</UiTextAction>
+              <UiTextAction tone="danger" @click="deleteSource(record)">删除</UiTextAction>
+            </div>
+          </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
-    <a-card :bordered="false" class="detail-table-card external-pull__task-card">
+    <UiCard class="detail-table-card external-pull__task-card">
       <template #title>拔取任务</template>
+      <template #extra>
+        <UiButton
+          size="sm"
+          :disabled="!sources.some((s) => s.enabled)"
+          @click="openTaskCreate"
+        >
+          新建拔取任务
+        </UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadTasks">
-          <a-form-item label="数据源">
-            <a-select
-              v-model:value="taskQuery.sourceId"
-              placeholder="按数据源筛选"
-              style="width: 200px"
-              allow-clear
-              :options="sources.map((s) => ({ value: s.id, label: s.sourceName }))"
-            />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="taskQuery.status"
-              placeholder="状态"
-              style="width: 120px"
-              allow-clear
-              :options="taskStatusOptions"
-            />
-          </a-form-item>
-          <a-form-item label="业务归属">
-            <a-select
-              v-model:value="taskQuery.businessAnchor"
-              placeholder="业务归属"
-              style="width: 160px"
-              allow-clear
-              :options="businessAnchorOptions"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" :loading="taskLoading" @click="loadTasks">查询</UiButton>
-              <UiButton
-                size="sm"
-                :disabled="!sources.some((s) => s.enabled)"
-                @click="openTaskCreate"
-              >
-                新建拔取任务
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="taskFilterModel"
+        :fields="taskFilterFields"
+        @search="handleTaskSearch"
+        @reset="handleTaskReset"
+      />
 
       <UiEmpty
         v-if="!tasks.length && !taskLoading"
         description="当前筛选条件下无拔取任务；请新建拔取任务或调整筛选"
         size="sm"
       />
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-else
         v-model:current="taskQuery.pageNum"
         v-model:page-size="taskQuery.pageSize"
@@ -993,13 +1034,17 @@ onMounted(async () => {
               {{ taskStatusLabel(record.status) }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openDetail(record)">详情</span>
-              <span class="op-link danger" role="button" v-if="canCancelTask(record.status)" @click="cancelTask(record)">取消</span>
-            </div></template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="openDetail(record)">详情</UiTextAction>
+              <UiTextAction v-if="canCancelTask(record.status)" tone="danger" @click="cancelTask(record)">
+                取消
+              </UiTextAction>
+            </div>
+          </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <UiDrawer
       v-model:open="sourceEditorVisible"
@@ -1092,7 +1137,13 @@ onMounted(async () => {
             >
               <div class="external-pull__entry-header">
                 <span class="external-pull__entry-title">字段 {{ index + 1 }}</span>
-                <span class="op-link danger" role="button" :class="{ 'is-disabled': !(sourceFieldScopes.length === 1) }" @click="sourceFieldScopes.length === 1 && (sourceFieldScopes.splice(index, 1))">删除</span>
+                <UiTextAction
+                  tone="danger"
+                  :disabled="sourceFieldScopes.length !== 1"
+                  @click="sourceFieldScopes.splice(index, 1)"
+                >
+                  删除
+                </UiTextAction>
               </div>
               <a-row :gutter="12">
                 <a-col :span="6">
@@ -1248,7 +1299,13 @@ onMounted(async () => {
             >
               <div class="external-pull__entry-header">
                 <span class="external-pull__entry-title">条件 {{ index + 1 }}</span>
-                <span class="op-link danger" role="button" :class="{ 'is-disabled': !(taskFilters.length === 1) }" @click="taskFilters.length === 1 && (taskFilters.splice(index, 1))">删除</span>
+                <UiTextAction
+                  tone="danger"
+                  :disabled="taskFilters.length !== 1"
+                  @click="taskFilters.splice(index, 1)"
+                >
+                  删除
+                </UiTextAction>
               </div>
               <a-row :gutter="12">
                 <a-col :span="8">
@@ -1307,7 +1364,7 @@ onMounted(async () => {
                   <a-select v-model:value="entry.sortDirection" :options="sortDirectionOptions" />
                 </a-col>
                 <a-col :span="6">
-                  <span class="op-link danger" role="button" @click="taskSorts.splice(index, 1)">删除</span>
+                  <UiTextAction tone="danger" @click="taskSorts.splice(index, 1)">删除</UiTextAction>
                 </a-col>
               </a-row>
             </div>
@@ -1475,7 +1532,8 @@ onMounted(async () => {
           description="任务暂未生成结果批次；任务执行成功后会出现预览状态的批次"
           size="sm"
         />
-        <UiDataTable class="student-detail-table__data-table"
+        <UiDataTable
+          class="student-detail-table__data-table"
           v-else
           :columns="detailResultColumns"
           :data-source="detailResults"
@@ -1511,17 +1569,24 @@ onMounted(async () => {
                 {{ confirmationStatusLabel(record.confirmationStatus) }}
               </a-tag>
             </template>
-            <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction
                   v-if="record.confirmationStatus === 'PREVIEW'"
-                  class="op-link primary"
-                  role="button"
+                  tone="primary"
                   @click="confirmResult(record)"
                 >
                   确认
-                </span>
-                <span class="op-link danger" role="button" v-if="record.confirmationStatus === 'PREVIEW'" @click="rejectResult(record)">驳回</span>
-            </div></template>
+                </UiTextAction>
+                <UiTextAction
+                  v-if="record.confirmationStatus === 'PREVIEW'"
+                  tone="danger"
+                  @click="rejectResult(record)"
+                >
+                  驳回
+                </UiTextAction>
+              </div>
+            </template>
           </template>
         </UiDataTable>
 
@@ -1612,14 +1677,6 @@ onMounted(async () => {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-  }
-
-  &__filter {
-    width: 160px;
-
-    &--lg {
-      width: 220px;
-    }
   }
 
   &__editor-alert {

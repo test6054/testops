@@ -1,5 +1,5 @@
 <template>
-  <a-card title="AI 校级质量分析" :bordered="false" size="small">
+  <UiCard title="AI 校级质量分析" compact>
     <div class="ai-form">
       <a-form layout="inline" :model="form" size="small">
         <a-form-item label="分析维度">
@@ -57,7 +57,7 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!record" description="暂无校级质量分析，请填写参数后生成。" />
+      <UiEmpty v-else-if="!record" description="暂无校级质量分析，请填写参数后生成。" />
       <div v-else class="ai-record">
         <a-row :gutter="12" class="metric-row">
           <a-col :span="8">
@@ -101,7 +101,7 @@
           </a-col>
         </a-row>
 
-        <a-descriptions :column="3" size="small" bordered>
+        <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
             <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
@@ -145,17 +145,22 @@
           <strong>质量摘要：</strong>{{ record.qualitySummary }}
         </a-typography-paragraph>
 
-        <div v-if="examStatChartOption" class="ai-chart">
+        <div v-if="examStatTrendPoints.length >= 2" class="ai-chart">
           <div class="ai-chart__meta">
             <strong>参与考试得分走势</strong>
-            <span class="ai-chart__hint">多考试对比：得分率、及格率与平均分</span>
+            <span class="ai-chart__hint">多考试对比：得分率走势</span>
           </div>
-          <VChart class="ai-chart__canvas" :option="examStatChartOption" autoresize />
+          <UiTrendChart
+            :items="examStatTrendPoints"
+            area
+            show-bubble
+            class="ai-chart__canvas"
+          />
         </div>
 
         <div v-if="qualityItems.length > 0" class="ai-items">
           <strong>分项评估：</strong>
-          <a-list size="small" :data-source="qualityItems" bordered>
+          <a-list compact :data-source="qualityItems" bordered>
             <template #renderItem="{ item, index }">
               <a-list-item>
                 <div class="analysis-item">
@@ -190,7 +195,7 @@
         </div>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -202,7 +207,6 @@ import type {
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
@@ -215,11 +219,12 @@ import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.v
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiCard, UiEmpty, UiErrorRetryPanel, UiTrendChart } from '@/components/ui-guide/ui'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildExamStatTrendChartOption } from '@/utils/mark-statistics-chart'
+import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
+import { scoreTone, toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SchoolQualityCard' })
@@ -244,8 +249,8 @@ const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const qualityItems = computed(() => record.value?.qualityItems ?? [])
-const examStatChartOption = computed(() =>
-  buildExamStatTrendChartOption(record.value?.examStatSnapshots ?? []),
+const examStatTrendPoints = computed(() =>
+  examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
 
 function qualityRatingLabel(rating: SchoolQualityRatingCode): string {
@@ -328,10 +333,7 @@ async function handleGenerate(): Promise<void> {
 
 function scoreStyle(score?: number): Record<string, string> {
   if (score == null) return { color: 'inherit' }
-  if (score >= 80) return { color: '#52c41a' }
-  if (score >= 60) return { color: '#1677ff' }
-  if (score >= 40) return { color: '#faad14' }
-  return { color: '#f5222d' }
+  return { color: toneToColor(scoreTone(score)) }
 }
 </script>
 

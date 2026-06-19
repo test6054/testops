@@ -1,14 +1,19 @@
 <template>
-  <a-card title="AI 课程目标达成度分析" :bordered="false" size="small">
+  <UiCard title="AI 课程目标达成度分析" compact>
     <div class="ai-form">
       <a-form layout="inline" :model="form" size="small">
         <a-form-item label="学年学期">
-          <AnalysisSemesterSelect v-model="form.semesterCode" placeholder="请选择学年学期" />
+          <AnalysisSemesterSelect
+            v-model="form.semesterCode"
+            placeholder="请选择学年学期"
+            :default-recent-semester-count="defaultRecentSemesterCount"
+          />
         </a-form-item>
         <a-form-item label="参与考试列表" style="flex: 1; min-width: 320px">
           <AnalysisExamMultiSelect
             v-model="form.examIds"
             placeholder="请选择至少 1 场考试"
+            :default-recent-semester-count="defaultRecentSemesterCount"
             @selected-exams-change="selectedExams = $event"
           />
         </a-form-item>
@@ -34,7 +39,7 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!record" description="暂无达成度分析，请填写参数后生成。" />
+      <UiEmpty v-else-if="!record" description="暂无达成度分析，请填写参数后生成。" />
       <div v-else class="ai-record">
         <a-row :gutter="12" class="metric-row">
           <a-col :span="8">
@@ -62,7 +67,7 @@
           </a-col>
         </a-row>
 
-        <a-descriptions :column="3" size="small" bordered>
+        <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
             <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
@@ -101,23 +106,33 @@
           <strong>达成度摘要：</strong>{{ record.achievementSummary }}
         </a-typography-paragraph>
 
-        <div v-if="examStatChartOption" class="ai-chart">
+        <div v-if="examStatTrendPoints.length >= 2" class="ai-chart">
           <div class="ai-chart__meta">
             <strong>参与考试得分走势</strong>
           </div>
-          <VChart class="ai-chart__canvas" :option="examStatChartOption" autoresize />
+          <UiTrendChart
+            :items="examStatTrendPoints"
+            area
+            show-bubble
+            class="ai-chart__canvas"
+          />
         </div>
 
-        <div v-if="achievementBarOption" class="ai-chart">
+        <div v-if="achievementBarItems.length > 0" class="ai-chart">
           <div class="ai-chart__meta">
             <strong>分目标达成率</strong>
           </div>
-          <VChart class="ai-chart__canvas" :option="achievementBarOption" autoresize />
+          <UiBarChart
+            :items="achievementBarItems"
+            :max-value="100"
+            orientation="vertical"
+            class="ai-chart__canvas"
+          />
         </div>
 
         <div v-if="achievementItems.length > 0" class="ai-items">
           <strong>分目标达成情况：</strong>
-          <a-list size="small" :data-source="achievementItems" bordered>
+          <a-list compact :data-source="achievementItems" bordered>
             <template #renderItem="{ item, index }">
               <a-list-item>
                 <div class="analysis-item">
@@ -152,7 +167,7 @@
         </div>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -165,7 +180,6 @@ import type { ExamSummaryVO } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
-import VChart from 'vue-echarts'
 import {
   COURSE_ACHIEVEMENT_STATUS_COLOR,
   COURSE_ACHIEVEMENT_STATUS_LABEL,
@@ -176,18 +190,28 @@ import {
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiBarChart, UiCard, UiEmpty, UiErrorRetryPanel, UiTrendChart } from '@/components/ui-guide/ui'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
-  buildAchievementBarOption,
-  buildExamStatTrendChartOption,
+  achievementItemsToBarItems,
+  examStatSnapshotsToTrendPoints,
 } from '@/utils/mark-statistics-chart'
+import { rateTone, toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CourseAchievementCard' })
+
+withDefaults(
+  defineProps<{
+    defaultRecentSemesterCount?: number
+  }>(),
+  {
+    defaultRecentSemesterCount: 0,
+  },
+)
 
 const form = reactive({
   semesterCode: '',
@@ -202,11 +226,11 @@ const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const achievementItems = computed(() => record.value?.achievementItems ?? [])
-const examStatChartOption = computed(() =>
-  buildExamStatTrendChartOption(record.value?.examStatSnapshots ?? []),
+const examStatTrendPoints = computed(() =>
+  examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
-const achievementBarOption = computed(() =>
-  buildAchievementBarOption(record.value?.achievementItems ?? []),
+const achievementBarItems = computed(() =>
+  achievementItemsToBarItems(record.value?.achievementItems ?? []),
 )
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
@@ -276,10 +300,7 @@ async function handleGenerate(): Promise<void> {
 
 function achievementStyle(rate?: number): Record<string, string> {
   if (rate == null) return { color: 'inherit' }
-  if (rate >= 0.8) return { color: '#52c41a' }
-  if (rate >= 0.6) return { color: '#1677ff' }
-  if (rate >= 0.4) return { color: '#faad14' }
-  return { color: '#f5222d' }
+  return { color: toneToColor(rateTone(rate)) }
 }
 
 function formatPercent(value: number): string {

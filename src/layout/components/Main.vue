@@ -1,8 +1,11 @@
 <template>
   <a-layout class="main" role="main">
-    <div class="main-scroll-wrapper">
-      <router-view v-slot="{ Component, route }">
-        <component v-if="Component" :is="Component" :key="getRouteKey(route)" />
+    <div
+      class="main-scroll-wrapper"
+      :class="{ 'main-scroll-wrapper--wide': route.meta.layoutWide }"
+    >
+      <router-view v-slot="{ Component, route: childRoute }">
+        <component v-if="Component" :is="Component" :key="getRouteKey(childRoute)" />
       </router-view>
     </div>
   </a-layout>
@@ -10,8 +13,11 @@
 
 <script lang="ts" setup>
 import type { RouteLocationNormalized } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 defineOptions({ name: 'LayoutMain' })
+
+const route = useRoute()
 
 /**
  * 获取路由缓存key
@@ -89,6 +95,10 @@ const getRouteKey = (route: RouteLocationNormalized) => {
     width: 100%;
     max-width: 1400px;
     box-sizing: border-box;
+  }
+
+  &--wide :deep(> *) {
+    max-width: min(100%, 1680px);
   }
 
   // 移动端适配

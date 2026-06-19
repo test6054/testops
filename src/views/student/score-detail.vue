@@ -47,128 +47,184 @@
     />
 
     <template v-else-if="detail">
-      <UiCard v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__questions-card">
-        <template #title>
-          <BarChartOutlined />
-          <span>题目得分明细</span>
-          <UiBadge v-if="clusterLabelOptions.length > 0" tone="orange">
-            错题聚类 {{ clusterLabelOptions.length }} 项
-          </UiBadge>
-        </template>
-        <template #extra>
-          <a-space>
+      <UiAlertStrip
+        v-if="detail.finalScoreStatus !== 'PUBLISHED'"
+        tone="info"
+        title="成绩尚未公布"
+        :description="`${detail.examName} 的最终成绩仍在处理中，当前状态：${finalScoreStatusLabel(detail)}。公布后可查看答题卡与题目明细。`"
+        dense
+        class="score-detail__unpublished"
+      />
+
+      <div v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__layout">
+        <UiCard class="score-detail__sheet-card">
+          <template #title>
+            <BarChartOutlined />
+            <span>答题卡</span>
+          </template>
+          <template #extra>
             <a-select
               v-if="clusterLabelOptions.length > 0"
               v-model:value="selectedClusterLabel"
               class="score-detail__cluster-select"
-              placeholder="按错题聚类筛选"
+              placeholder="错题聚类"
               :options="clusterLabelOptions"
               allow-clear
-              size="middle"
+              size="small"
             />
+          </template>
+
+          <div class="score-detail__stats">
             <UiTag tone="green" size="sm">满分 {{ correctCount }} 题</UiTag>
-            <UiTag tone="orange" size="sm">部分得分 {{ partialCount }} 题</UiTag>
+            <UiTag tone="orange" size="sm">部分 {{ partialCount }} 题</UiTag>
             <UiTag tone="red" size="sm">零分 {{ zeroCount }} 题</UiTag>
-          </a-space>
-        </template>
+          </div>
 
-        <UiEmpty v-if="detail.questions.length === 0" description="暂无题目得分明细" />
-        <UiEmpty
-          v-else-if="filteredQuestions.length === 0"
-          :description="`当前错题聚类筛选下无题目：${selectedClusterLabel}`"
-        />
+          <UiEmpty v-if="detail.questions.length === 0" description="暂无题目得分明细" />
+          <UiEmpty
+            v-else-if="filteredQuestions.length === 0"
+            :description="`当前错题聚类筛选下无题目：${selectedClusterLabel}`"
+          />
+          <div v-else class="score-detail__sheet-grid">
+            <button
+              v-for="question in filteredQuestions"
+              :key="question.questionTemplateId"
+              type="button"
+              class="score-detail__sheet-cell"
+              :class="[
+                getSheetCellToneClass(question),
+                {
+                  'score-detail__sheet-cell--active':
+                    selectedQuestionId === question.questionTemplateId,
+                },
+              ]"
+              @click="selectQuestion(question)"
+            >
+              <span class="score-detail__sheet-no">{{ question.questionNo }}</span>
+              <span class="score-detail__sheet-score">
+                {{ formatQuestionFinalScore(question) }}
+              </span>
+            </button>
+          </div>
+        </UiCard>
 
-        <a-table
-          v-else
-          :columns="questionColumns"
-          :data-source="filteredQuestions"
-          :pagination="false"
-          row-key="questionTemplateId"
-          size="middle"
-          class="questions-table"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'questionNo'">
-              <div class="question-no-cell">
-                <UiTag tone="blue" size="sm">
-                  {{ filteredQuestions[index].questionNo }}
+        <UiCard class="score-detail__panel-card">
+          <template #title>
+            <ProfileOutlined />
+            <span>题目详情</span>
+          </template>
+          <UiEmpty v-if="!selectedQuestion" description="请从左侧答题卡选择题目" />
+          <a-spin v-else :spinning="panelLoading">
+            <UiAlertStrip
+              v-if="panelError"
+              tone="error"
+              title="答题明细加载失败"
+              :description="panelError"
+              dense
+            />
+            <UiEmpty v-else-if="!panelLoading && !currentDetail" description="未加载到答题明细" />
+            <div v-else-if="currentDetail && selectedQuestion" class="answer-panel">
+              <div class="answer-panel__summary">
+                <UiTag tone="blue" size="sm">第 {{ currentDetail.questionNo }} 题</UiTag>
+                <UiTag tone="gray" size="sm">{{ currentDetail.questionType }}</UiTag>
+                <UiTag tone="gray" size="sm">满分 {{ currentDetail.fullScore.toFixed(2) }}</UiTag>
+                <UiTag :tone="getScoreTagTone(currentDetail)" size="sm">
+                  得分 {{ currentDetail.teacherReviewScore.toFixed(2) }}
                 </UiTag>
                 <UiTag
-                  v-if="filteredQuestions[index].mistakeClusterLabel"
-                  tone="orange"
+                  v-if="currentDetail.objectiveResult"
+                  :tone="
+                    strictEnumTone(OBJECTIVE_RESULT_TONE, currentDetail.objectiveResult, '客观判定')
+                  "
                   size="sm"
-                  class="question-no-cell__cluster"
-                  @click.stop="setClusterFilter(filteredQuestions[index].mistakeClusterLabel)"
                 >
-                  {{ filteredQuestions[index].mistakeClusterLabel }}
+                  {{
+                    strictEnumLabel(OBJECTIVE_RESULT_LABEL, currentDetail.objectiveResult, '客观判定')
+                  }}
+                </UiTag>
+                <UiTag :tone="getGradeStatusTone(currentDetail.gradeStatus)" size="sm">
+                  {{ formatGradeStatus(currentDetail.gradeStatus) }}
                 </UiTag>
               </div>
-            </template>
-            <template v-else-if="column.key === 'questionType'">
-              <span>{{ filteredQuestions[index].questionType }}</span>
-            </template>
-            <template v-else-if="column.key === 'fullScore'">
-              <span class="score-cell">
-                {{ filteredQuestions[index].fullScore.toFixed(2) }}
-              </span>
-            </template>
-            <template v-else-if="column.key === 'teacherReviewScore'">
-              <span
-                v-if="filteredQuestions[index].teacherReviewScore != null"
-                class="score-cell score-cell--strong"
-                :class="getScoreToneClass(filteredQuestions[index])"
-              >
-                {{ formatQuestionFinalScore(filteredQuestions[index]) }}
-              </span>
-              <span v-else class="score-detail__hint">-</span>
-            </template>
-            <template v-else-if="column.key === 'objectiveResult'">
-              <UiTag
-                v-if="filteredQuestions[index].objectiveResult"
-                :tone="objectiveResultTone(filteredQuestions[index])"
-                size="sm"
-              >
-                {{ objectiveResultLabel(filteredQuestions[index]) }}
-              </UiTag>
-              <span v-else class="score-detail__hint">-</span>
-            </template>
-            <template v-else-if="column.key === 'gradeStatus'">
-              <UiTag :tone="getGradeStatusTone(filteredQuestions[index].gradeStatus)" size="sm">
-                {{ formatGradeStatus(filteredQuestions[index].gradeStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <span
-                  class="op-link"
-                  role="button"
-                  @click="openAnswerDrawer(filteredQuestions[index])"
-                >
+
+              <section class="answer-panel__section">
+                <header class="answer-panel__section-title">
+                  <FileImageOutlined />
+                  <span>作答切片</span>
+                </header>
+                <UiEmpty
+                  v-if="!currentDetail.sliceFileId"
+                  description="该题暂无作答切片图（客观题或未生成切片）"
+                />
+                <div v-else class="answer-panel__slice">
+                  <a-spin :spinning="sliceLoading" tip="加载切片中...">
+                    <a-image
+                      v-if="sliceImageUrl"
+                      :src="sliceImageUrl"
+                      :preview="{}"
+                      class="answer-panel__slice-img"
+                    >
+                      <template #previewMask>点击放大查看</template>
+                    </a-image>
+                    <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
+                  </a-spin>
+                </div>
+              </section>
+
+              <section class="answer-panel__section">
+                <header class="answer-panel__section-title">
                   <ProfileOutlined />
-                  查看答题
-                </span>
-                <span
-                  v-if="canApplyReviewOnQuestion(filteredQuestions[index])"
-                  class="op-link"
-                  role="button"
-                  @click="goAppealForQuestion(filteredQuestions[index])"
-                >
-                  申请复核
-                </span>
+                  <span>OCR 识别作答</span>
+                </header>
+                <UiEmpty v-if="!currentDetail.recognizedAnswer" description="本题未识别到作答文本" />
+                <div v-else class="answer-panel__text">{{ currentDetail.recognizedAnswer }}</div>
+              </section>
+
+              <section class="answer-panel__section">
+                <header class="answer-panel__section-title">
+                  <FormOutlined />
+                  <span>教师评语</span>
+                </header>
+                <UiEmpty v-if="!currentDetail.commentText" description="教师未填写评语" />
+                <div v-else class="answer-panel__text">{{ currentDetail.commentText }}</div>
+              </section>
+
+              <section
+                v-if="
+                  currentDetail.improvementSuggestion
+                    || currentDetail.mistakeClusterLabel
+                    || currentDetail.aiDiagnostic
+                "
+                class="answer-panel__section"
+              >
+                <header class="answer-panel__section-title">
+                  <BulbOutlined />
+                  <span>AI 学习内容</span>
+                </header>
+                <div class="answer-panel__ai">
+                  <p v-if="currentDetail.improvementSuggestion" class="answer-panel__ai-line">
+                    <strong>改进内容：</strong>{{ currentDetail.improvementSuggestion }}
+                  </p>
+                  <p v-if="currentDetail.mistakeClusterLabel" class="answer-panel__ai-line">
+                    <strong>错题聚类：</strong>
+                    <UiTag tone="orange" size="sm">{{ currentDetail.mistakeClusterLabel }}</UiTag>
+                  </p>
+                  <p v-if="currentDetail.aiDiagnostic" class="answer-panel__ai-line">
+                    <strong>AI 处理说明：</strong>{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
+                  </p>
+                </div>
+              </section>
+
+              <div v-if="selectedQuestion && canApplyReviewOnQuestion(selectedQuestion)" class="answer-panel__actions">
+                <UiButton size="sm" @click="goAppealForQuestion(selectedQuestion)">
+                  <template #icon><FormOutlined /></template>
+                  对此题申请复核
+                </UiButton>
               </div>
-            </template>
-          </template>
-          <template #expandedRowRender="{ index }">
-            <div v-if="filteredQuestions[index].improvementSuggestion" class="question-ai-tip">
-              <UiTag tone="purple" size="sm">AI 学习内容</UiTag>
-              <p class="question-ai-tip__text">
-                {{ filteredQuestions[index].improvementSuggestion }}
-              </p>
             </div>
-            <UiEmpty v-else description="本题暂无 AI 学习内容" />
-          </template>
-        </a-table>
-      </UiCard>
+          </a-spin>
+        </UiCard>
+      </div>
 
       <UiCard
         v-if="detail.finalScoreStatus === 'PUBLISHED'"
@@ -185,15 +241,19 @@
           </UiButton>
         </template>
         <UiEmpty v-if="!wrongBookLoading && wrongBookRows.length === 0" description="暂无错题记录" />
-        <a-table
+        <UiDataTable
           v-else
+          v-model:current="wrongBookPagination.current"
+          v-model:page-size="wrongBookPagination.pageSize"
           :columns="wrongBookColumns"
           :data-source="wrongBookRows"
           :loading="wrongBookLoading"
-          :pagination="wrongBookPagination"
+          :total="wrongBookPagination.total"
+          :show-size-changer="wrongBookPagination.showSizeChanger"
           row-key="gradeResultId"
           size="middle"
-          @change="handleWrongBookPageChange"
+          flat
+          @page-change="handleWrongBookPageChange"
         >
           <template #bodyCell="{ column, record: item }">
             <template v-if="column.key === 'score'">
@@ -216,134 +276,8 @@
               <span v-else class="score-detail__hint">-</span>
             </template>
           </template>
-        </a-table>
+        </UiDataTable>
       </UiCard>
-
-      <a-drawer
-        v-model:open="drawerOpen"
-        :title="drawerTitle"
-        :width="640"
-        placement="right"
-        destroy-on-close
-        @close="closeAnswerDrawer"
-      >
-        <a-spin :spinning="drawerLoading">
-          <UiAlertStrip
-            v-if="drawerError"
-            tone="error"
-            title="答题明细加载失败"
-            :description="drawerError"
-            dense
-          />
-          <UiEmpty v-else-if="!drawerLoading && !currentDetail" description="未加载到答题明细" />
-          <div v-else-if="currentDetail" class="answer-drawer">
-            <div class="answer-drawer__summary">
-              <UiTag tone="blue" size="sm">第 {{ currentDetail.questionNo }} 题</UiTag>
-              <UiTag tone="gray" size="sm">{{ currentDetail.questionType }}</UiTag>
-              <UiTag tone="gray" size="sm">满分 {{ currentDetail.fullScore.toFixed(2) }}</UiTag>
-              <UiTag :tone="getScoreTagTone(currentDetail)" size="sm">
-                得分 {{ currentDetail.teacherReviewScore.toFixed(2) }}
-              </UiTag>
-              <UiTag
-                v-if="currentDetail.objectiveResult"
-                :tone="
-                  strictEnumTone(OBJECTIVE_RESULT_TONE, currentDetail.objectiveResult, '客观判定')
-                "
-                size="sm"
-              >
-                {{
-                  strictEnumLabel(OBJECTIVE_RESULT_LABEL, currentDetail.objectiveResult, '客观判定')
-                }}
-              </UiTag>
-              <UiTag :tone="getGradeStatusTone(currentDetail.gradeStatus)" size="sm">
-                {{ formatGradeStatus(currentDetail.gradeStatus) }}
-              </UiTag>
-            </div>
-
-            <section class="answer-drawer__section">
-              <header class="answer-drawer__section-title">
-                <FileImageOutlined />
-                <span>作答切片</span>
-              </header>
-              <UiEmpty
-                v-if="!currentDetail.sliceFileId"
-                description="该题暂无作答切片图（客观题或未生成切片）"
-              />
-              <div v-else class="answer-drawer__slice">
-                <a-spin :spinning="sliceLoading" tip="加载切片中...">
-                  <a-image
-                    v-if="sliceImageUrl"
-                    :src="sliceImageUrl"
-                    :preview="{}"
-                    class="answer-drawer__slice-img"
-                  >
-                    <template #previewMask>点击放大查看</template>
-                  </a-image>
-                  <UiEmpty v-else-if="!sliceLoading" description="切片加载失败" />
-                </a-spin>
-              </div>
-            </section>
-
-            <section class="answer-drawer__section">
-              <header class="answer-drawer__section-title">
-                <ProfileOutlined />
-                <span>OCR 识别作答</span>
-              </header>
-              <UiEmpty v-if="!currentDetail.recognizedAnswer" description="本题未识别到作答文本" />
-              <div v-else class="answer-drawer__text">{{ currentDetail.recognizedAnswer }}</div>
-            </section>
-
-            <section class="answer-drawer__section">
-              <header class="answer-drawer__section-title">
-                <FormOutlined />
-                <span>教师评语</span>
-              </header>
-              <UiEmpty v-if="!currentDetail.commentText" description="教师未填写评语" />
-              <div v-else class="answer-drawer__text">{{ currentDetail.commentText }}</div>
-            </section>
-
-            <section
-              v-if="
-                currentDetail.improvementSuggestion
-                  || currentDetail.mistakeClusterLabel
-                  || currentDetail.aiDiagnostic
-              "
-              class="answer-drawer__section"
-            >
-              <header class="answer-drawer__section-title">
-                <BulbOutlined />
-                <span>AI 学习内容</span>
-              </header>
-              <div class="answer-drawer__ai">
-                <p v-if="currentDetail.improvementSuggestion" class="answer-drawer__ai-line">
-                  <strong>改进内容：</strong>{{ currentDetail.improvementSuggestion }}
-                </p>
-                <p v-if="currentDetail.mistakeClusterLabel" class="answer-drawer__ai-line">
-                  <strong>错题聚类：</strong>
-                  <UiTag tone="orange" size="sm">{{ currentDetail.mistakeClusterLabel }}</UiTag>
-                </p>
-                <p v-if="currentDetail.aiDiagnostic" class="answer-drawer__ai-line">
-                  <strong>AI 处理说明：</strong>{{ aiLearningDiagnosticText(currentDetail.aiDiagnostic) }}
-                </p>
-              </div>
-            </section>
-          </div>
-        </a-spin>
-
-        <template #footer>
-          <div class="answer-drawer__footer">
-            <UiButton size="md" variant="outline" @click="closeAnswerDrawer">关闭</UiButton>
-            <UiButton
-              v-if="currentDetailQuestion && canApplyReviewOnQuestion(currentDetailQuestion)"
-              size="md"
-              @click="goAppealForCurrentDetail"
-            >
-              <template #icon><FormOutlined /></template>
-              对此题申请复核
-            </UiButton>
-          </div>
-        </template>
-      </a-drawer>
 
       <UiCard v-if="detail.finalScoreStatus === 'PUBLISHED'" class="score-detail__profile-card">
         <template #title>
@@ -484,7 +418,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
+import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentWrongBookItemVO } from '@/apis/mark/question-analysis'
 import type {
   StudentAiDiagnosisItemVO,
@@ -502,7 +436,7 @@ import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { pageStudentWrongBook } from '@/apis/mark/question-analysis'
@@ -527,6 +461,7 @@ import {
   UiBadge,
   UiButton,
   UiCard,
+  UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
@@ -567,6 +502,12 @@ const wrongBookColumns: ColumnType<StudentWrongBookItemVO>[] = [
 
 /** 当前选中的错题聚类标签，为 undefined 表示不过滤 */
 const selectedClusterLabel = ref<string | undefined>(undefined)
+const selectedQuestionId = ref<string | null>(null)
+const panelLoading = ref(false)
+const panelError = ref<string | null>(null)
+const currentDetail = ref<StudentQuestionAnswerDetailVO | null>(null)
+const sliceImageUrl = ref<string | null>(null)
+const sliceLoading = ref(false)
 
 /**
  * 从题目明细中提取所有出现过的 mistakeClusterLabel，供顶部下拉选择。
@@ -590,49 +531,21 @@ const filteredQuestions = computed<StudentQuestionScoreVO[]>(() => {
   )
 })
 
-/** 从题号单元格点击标签时完成筛选下钻，重复点击取消筛选 */
-function setClusterFilter(label?: string): void {
-  if (!label) return
-  selectedClusterLabel.value = selectedClusterLabel.value === label ? undefined : label
-}
+const selectedQuestion = computed<StudentQuestionScoreVO | null>(() => {
+  if (!selectedQuestionId.value) {
+    return null
+  }
+  return (
+    filteredQuestions.value.find((item) => item.questionTemplateId === selectedQuestionId.value)
+    ?? null
+  )
+})
 
 const examId = computed<string | null>(() => {
   const value = route.params.examId
   if (typeof value === 'string') return value
   if (Array.isArray(value) && value.length > 0) return value[0]
   return null
-})
-
-const questionColumns = computed(() => {
-  const cols: ColumnType<StudentQuestionScoreVO>[] = [
-    { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 100 },
-    { title: '题型', key: 'questionType', dataIndex: 'questionType', width: 140 },
-    {
-      title: '满分',
-      key: 'fullScore',
-      dataIndex: 'fullScore',
-      width: 100,
-      align: 'right' as const,
-    },
-    {
-      title: '得分',
-      key: 'teacherReviewScore',
-      dataIndex: 'teacherReviewScore',
-      width: 110,
-      align: 'right' as const,
-    },
-    { title: '客观判定', key: 'objectiveResult', dataIndex: 'objectiveResult', width: 130 },
-    { title: '批改状态', key: 'gradeStatus', dataIndex: 'gradeStatus' },
-  ]
-  if (detail.value?.finalScoreStatus === 'PUBLISHED') {
-    cols.push({
-      title: '操作',
-      key: 'actions',
-      fixed: 'right' as const,
-      width: 200,
-    })
-  }
-  return cols
 })
 
 const correctCount = computed(() => detailQuestions.value.filter(isFullMark).length)
@@ -651,10 +564,10 @@ function isPartial(q: StudentQuestionScoreVO) {
   return q.teacherReviewScore != null
 }
 
-function getScoreToneClass(record: StudentQuestionScoreVO): string {
-  if (isFullMark(record)) return 'score-cell--full'
-  if (isZero(record)) return 'score-cell--zero'
-  return 'score-cell--partial'
+function getSheetCellToneClass(record: StudentQuestionScoreVO): string {
+  if (isFullMark(record)) return 'score-detail__sheet-cell--full'
+  if (isZero(record)) return 'score-detail__sheet-cell--zero'
+  return 'score-detail__sheet-cell--partial'
 }
 
 function finalScoreStatusTone(item: StudentScoreDetailVO): BadgeTone {
@@ -675,22 +588,6 @@ function getGradeStatusTone(status: StudentQuestionScoreVO['gradeStatus']): Badg
 
 function formatQuestionFinalScore(question: StudentQuestionScoreVO): string {
   return question.teacherReviewScore.toFixed(2)
-}
-
-function objectiveResultLabel(question: StudentQuestionScoreVO): string {
-  return strictEnumLabel(
-    OBJECTIVE_RESULT_LABEL,
-    question.objectiveResult as NonNullable<StudentQuestionScoreVO['objectiveResult']>,
-    '客观判定',
-  )
-}
-
-function objectiveResultTone(question: StudentQuestionScoreVO): BadgeTone {
-  return strictEnumTone(
-    OBJECTIVE_RESULT_TONE,
-    question.objectiveResult as NonNullable<StudentQuestionScoreVO['objectiveResult']>,
-    '客观判定',
-  )
 }
 
 function aiAnalysisStatusLabel(
@@ -747,9 +644,9 @@ async function loadWrongBook(): Promise<void> {
   }
 }
 
-function handleWrongBookPageChange(pagination: TablePaginationConfig): void {
-  wrongBookPagination.current = pagination.current ?? 1
-  wrongBookPagination.pageSize = pagination.pageSize ?? 10
+function handleWrongBookPageChange(pageEvent: { current: number, pageSize: number }): void {
+  wrongBookPagination.current = pageEvent.current
+  wrongBookPagination.pageSize = pageEvent.pageSize
   void loadWrongBook()
 }
 
@@ -883,40 +780,21 @@ function masteryTone(level: StudentAiDiagnosisItemVO['masteryLevel']): BadgeTone
 }
 
 /**
- * 答题明细抽屉 — 学生在题目得分明细中点击"查看答题"后展示。
- *
- * 守门：
- * - 调用前要求 detail.value.finalScoreStatus === 'PUBLISHED'，否则后端 CONFLICT。
- * - 切片图通过 getImageBlobUrl 拉 blob URL，关闭抽屉或组件卸载时必须 URL.revokeObjectURL 释放。
+ * 答题卡选题后加载题目作答明细；成绩未发布时后端会 CONFLICT，入口已在 selectQuestion 拦截。
  */
-const drawerOpen = ref(false)
-const drawerLoading = ref(false)
-const drawerError = ref<string | null>(null)
-const currentDetail = ref<StudentQuestionAnswerDetailVO | null>(null)
-const currentDetailQuestion = ref<StudentQuestionScoreVO | null>(null)
-const sliceImageUrl = ref<string | null>(null)
-const sliceLoading = ref(false)
-
-const drawerTitle = computed<string>(() => {
-  const q = currentDetailQuestion.value
-  if (!q) return '查看答题'
-  return `第 ${q.questionNo} 题（${q.questionType}）— 满分 ${q.fullScore.toFixed(2)}`
-})
-
-async function openAnswerDrawer(question: StudentQuestionScoreVO): Promise<void> {
+async function selectQuestion(question: StudentQuestionScoreVO): Promise<void> {
   if (!detail.value || detail.value.finalScoreStatus !== 'PUBLISHED') {
     message.warning('成绩尚未发布，暂不能查看答题明细')
     return
   }
   if (!detail.value.examId) {
-    drawerError.value = '已发布成绩详情缺少考试信息。'
+    panelError.value = '已发布成绩详情缺少考试信息。'
     return
   }
-  drawerOpen.value = true
-  drawerLoading.value = true
-  drawerError.value = null
+  selectedQuestionId.value = question.questionTemplateId
+  panelLoading.value = true
+  panelError.value = null
   currentDetail.value = null
-  currentDetailQuestion.value = question
   releaseSliceImage()
 
   try {
@@ -926,19 +804,10 @@ async function openAnswerDrawer(question: StudentQuestionScoreVO): Promise<void>
       void loadSliceImage(result.sliceFileId)
     }
   } catch (error) {
-    drawerError.value = getUserErrorMessage(error, '答题明细加载失败')
+    panelError.value = getUserErrorMessage(error, '答题明细加载失败')
   } finally {
-    drawerLoading.value = false
+    panelLoading.value = false
   }
-}
-
-function closeAnswerDrawer(): void {
-  drawerOpen.value = false
-  drawerLoading.value = false
-  drawerError.value = null
-  currentDetail.value = null
-  currentDetailQuestion.value = null
-  releaseSliceImage()
 }
 
 async function loadSliceImage(fileId: string): Promise<void> {
@@ -960,12 +829,6 @@ function releaseSliceImage(): void {
   }
 }
 
-function goAppealForCurrentDetail(): void {
-  if (!currentDetailQuestion.value) return
-  goAppealForQuestion(currentDetailQuestion.value)
-  closeAnswerDrawer()
-}
-
 /** 抽屉内得分标签的着色：满分绿，零分红，部分得分橙 */
 function getScoreTagTone(answer: StudentQuestionAnswerDetailVO): BadgeTone {
   if (answer.teacherReviewScore >= answer.fullScore) return 'green'
@@ -975,7 +838,22 @@ function getScoreTagTone(answer: StudentQuestionAnswerDetailVO): BadgeTone {
 
 watch(examId, () => loadDetail())
 watch(detail, () => {
+  selectedQuestionId.value = null
+  currentDetail.value = null
+  panelError.value = null
+  releaseSliceImage()
   void loadLearningReport()
+})
+watch(filteredQuestions, (list) => {
+  if (list.length === 0) {
+    selectedQuestionId.value = null
+    currentDetail.value = null
+    releaseSliceImage()
+    return
+  }
+  if (!selectedQuestionId.value || !list.some((item) => item.questionTemplateId === selectedQuestionId.value)) {
+    void selectQuestion(list[0])
+  }
 })
 onMounted(loadDetail)
 onBeforeUnmount(() => {
@@ -985,8 +863,88 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .score-detail {
-  &__questions-card {
+  &__unpublished {
     margin-top: 8px;
+  }
+
+  &__layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    margin-top: 8px;
+
+    @media (max-width: 991px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__sheet-card,
+  &__panel-card {
+    min-width: 0;
+  }
+
+  &__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  &__sheet-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 56px;
+    padding: 8px 4px;
+    border: 1px solid var(--dp-border, #e2e8f0);
+    border-radius: 8px;
+    background: var(--dp-surface, #fff);
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease,
+      box-shadow 0.2s ease;
+
+    &--full {
+      border-color: var(--ant-color-success-border, #86efac);
+      background: var(--ant-color-success-bg, #f0fdf4);
+    }
+
+    &--partial {
+      border-color: var(--ant-color-warning-border, #fdba74);
+      background: var(--ant-color-warning-bg, #fff7ed);
+    }
+
+    &--zero {
+      border-color: var(--ant-color-error-border, #fca5a5);
+      background: var(--ant-color-error-bg, #fef2f2);
+    }
+
+    &--active {
+      border-color: var(--ant-color-primary);
+      box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
+    }
+  }
+
+  &__sheet-no {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dp-text-primary, #0f172a);
+  }
+
+  &__sheet-score {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--dp-text-secondary, #475569);
   }
 
   &__empty {
@@ -998,63 +956,96 @@ onBeforeUnmount(() => {
   }
 }
 
-.questions-table {
-  :deep(.ant-table-thead > tr > th) {
-    background: var(--dp-surface-soft, #f8fafc);
-    font-weight: 600;
-  }
-}
-
-.score-cell {
-  font-variant-numeric: tabular-nums;
-
-  &--strong {
-    font-weight: 700;
-  }
-
-  &--full {
-    color: var(--ant-color-success, #16a34a);
-  }
-
-  &--partial {
-    color: var(--ant-color-warning, #ea580c);
-  }
-
-  &--zero {
-    color: var(--ant-color-error, #dc2626);
-  }
-}
-
 .score-detail__cluster-select {
-  min-width: 200px;
+  min-width: 160px;
 }
 
-.question-no-cell {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.question-no-cell__cluster {
-  cursor: pointer;
-}
-
-.question-ai-tip {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 4px;
-}
-
-.question-ai-tip__text {
-  margin: 0;
-  line-height: 1.7;
-  color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
-}
-
+.score-detail__wrong-book-card,
 .score-detail__profile-card {
   margin-top: 16px;
+}
+
+.answer-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--ant-color-border-secondary, #e5e7eb);
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+  }
+
+  &__slice {
+    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+    border-radius: 6px;
+    padding: 8px;
+    background: var(--dp-surface-soft, #f8fafc);
+    text-align: center;
+    min-height: 120px;
+  }
+
+  &__slice-img {
+    max-width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+  }
+
+  &__text {
+    margin: 0;
+    padding: 12px;
+    background: var(--dp-surface-soft, #f8fafc);
+    border-radius: 6px;
+    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.7;
+    font-size: 13px;
+    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+  }
+
+  &__ai {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    background: var(--dp-surface-soft, #f8fafc);
+    border-radius: 6px;
+    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+  }
+
+  &__ai-line {
+    margin: 0;
+    line-height: 1.7;
+    font-size: 13px;
+    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
 }
 
 .profile-block {
@@ -1110,91 +1101,5 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 4px;
   line-height: 1.7;
-}
-
-.answer-drawer {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 16px 20px 24px;
-
-  &__summary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding-bottom: 12px;
-    border-bottom: 1px dashed var(--ant-color-border-secondary, #e5e7eb);
-  }
-
-  &__section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  &__section-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 600;
-    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
-  }
-
-  &__slice {
-    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
-    border-radius: 6px;
-    padding: 8px;
-    background: var(--dp-surface-soft, #f8fafc);
-    text-align: center;
-    min-height: 120px;
-  }
-
-  &__slice-img {
-    max-width: 100%;
-    max-height: 480px;
-    object-fit: contain;
-  }
-
-  &__text {
-    margin: 0;
-    padding: 12px;
-    background: var(--dp-surface-soft, #f8fafc);
-    border-radius: 6px;
-    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
-    white-space: pre-wrap;
-    word-break: break-word;
-    font-family: inherit;
-    line-height: 1.7;
-    font-size: 13px;
-    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
-  }
-
-  &__ai {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 12px;
-    background: var(--dp-surface-soft, #f8fafc);
-    border-radius: 6px;
-    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
-  }
-
-  &__ai-line {
-    margin: 0;
-    line-height: 1.7;
-    font-size: 13px;
-    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  &__footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-  }
 }
 </style>

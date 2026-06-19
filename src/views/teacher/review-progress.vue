@@ -3,17 +3,7 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="progress-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
+          <MarkExamContextPicker select-class="progress-page__exam-select" />
           <UiTag v-if="selectedExamId" :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
             已确认 {{ confirmedPercent }}%
           </UiTag>
@@ -31,6 +21,10 @@
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template #rail>
+      <MarkExamStageRail />
     </template>
 
     <!-- D-9 错误态：复核进度加载失败时提供重试 + 上报入口 -->
@@ -111,7 +105,7 @@
                   :value="progress.scanAttentionCount"
                   suffix="条"
                   :value-style="{
-                    color: progress.scanAttentionCount > 0 ? '#dc2626' : undefined,
+                    color: progress.scanAttentionCount > 0 ? errorColor : undefined,
                   }"
                 />
               </a-col>
@@ -121,7 +115,7 @@
                   :value="progress.openProcessingTaskCount"
                   suffix="项"
                   :value-style="{
-                    color: progress.openProcessingTaskCount > 0 ? '#ea580c' : undefined,
+                    color: progress.openProcessingTaskCount > 0 ? warningColor : undefined,
                   }"
                 />
               </a-col>
@@ -136,8 +130,26 @@
           <span>按题目维度的复核进度</span>
         </template>
 
-        <div v-if="reviewProgressBarOption" class="progress-page__chart">
-          <VChart class="progress-page__chart-canvas" :option="reviewProgressBarOption" autoresize />
+        <div v-if="questionMatrixCells.length" class="question-matrix" aria-label="按题号复核进度矩阵">
+          <button
+            v-for="cell in questionMatrixCells"
+            :key="cell.questionTemplateId"
+            type="button"
+            class="question-matrix__cell"
+            :class="`question-matrix__cell--${cell.tone}`"
+            :title="`题${cell.questionNo}：${cell.percent}% 已确认`"
+          >
+            <span class="question-matrix__no">{{ cell.questionNo }}</span>
+            <span class="question-matrix__pct">{{ cell.percent }}%</span>
+          </button>
+        </div>
+
+        <div v-if="reviewProgressBarItems.length" class="progress-page__chart">
+          <UiBarChart
+            :items="reviewProgressBarItems"
+            orientation="vertical"
+            class="progress-page__chart-canvas"
+          />
         </div>
 
         <UiEmpty v-if="!loading && questionRows.length === 0" description="暂无题目复核数据" />
@@ -171,8 +183,8 @@
                 size="small"
                 :stroke-color="
                   record.totalTaskCount > 0 && record.approvedTaskCount >= record.totalTaskCount
-                    ? '#16a34a'
-                    : '#2563eb'
+                    ? successColor
+                    : primaryColor
                 "
               />
               <div class="progress-detail">
@@ -219,14 +231,16 @@ import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import {
   getMarkingProgress,
   REVIEW_TASK_STATUS_LABEL as STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
+import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import {
+  UiBarChart,
   UiButton,
   UiCard,
   UiDataTable,
@@ -235,24 +249,24 @@ import {
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { provideMarkExamContext } from '@/composables/useMarkExamContext'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
-import { buildReviewProgressBarOption } from '@/utils/mark-statistics-chart'
+import { reviewProgressToBarItems } from '@/utils/mark-statistics-chart'
+import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewProgress' })
 
 const {
-  examOptions,
-  loading: examLoading,
   selectedExamId,
   selectedExamLabel,
-  onExamChange,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = provideMarkExamContext()
 
-const successColor = 'var(--ant-color-success, #16a34a)'
-const primaryColor = 'var(--ant-color-primary, #2563eb)'
+const successColor = toneToColor('green')
+const primaryColor = toneToColor('blue')
+const errorColor = toneToColor('red')
+const warningColor = toneToColor('orange')
 
 const progress = ref<MarkingProgressVO | null>(null)
 const loading = ref(false)
@@ -290,7 +304,32 @@ const statusBreakdown = computed(() => {
 const questionRows = computed<ReviewQuestionProgressItemVO[]>(
   () => progress.value?.reviewQuestionProgressList ?? [],
 )
-const reviewProgressBarOption = computed(() => buildReviewProgressBarOption(questionRows.value))
+const reviewProgressBarItems = computed(() => reviewProgressToBarItems(questionRows.value))
+
+interface QuestionMatrixCell {
+  questionTemplateId: string
+  questionNo: string
+  percent: number
+  tone: 'done' | 'progress' | 'pending'
+}
+
+/** 题号进度矩阵：按题号展示确认率色块，便于快速扫视整卷复核完成度。 */
+const questionMatrixCells = computed<QuestionMatrixCell[]>(() =>
+  questionRows.value.map((row) => {
+    const percent = row.totalTaskCount === 0
+      ? 0
+      : Math.round((row.approvedTaskCount * 100) / row.totalTaskCount)
+    let tone: QuestionMatrixCell['tone'] = 'pending'
+    if (percent >= 100) tone = 'done'
+    else if (percent > 0) tone = 'progress'
+    return {
+      questionTemplateId: row.questionTemplateId,
+      questionNo: row.questionNo,
+      percent,
+      tone,
+    }
+  }),
+)
 
 function questionTypeLabel(questionType: ReviewQuestionProgressItemVO['questionType']): string {
   return strictEnumLabel(QUESTION_TYPE_LABEL, questionType, '题型')
@@ -403,7 +442,7 @@ onMounted(async () => {
 
 .status-value {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ant-color-text);
 }
 
@@ -431,6 +470,50 @@ onMounted(async () => {
   border: 1px solid var(--ant-color-border-secondary);
   border-radius: var(--dp-radius-md, 6px);
   background: var(--ant-color-bg-container);
+}
+
+.question-matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+
+  &__cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 4px;
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: var(--dp-radius-sm, 4px);
+    background: var(--ant-color-bg-container);
+    cursor: default;
+
+    &--done {
+      border-color: var(--ant-color-success-border);
+      background: var(--ant-color-success-bg);
+    }
+
+    &--progress {
+      border-color: var(--ant-color-primary-border);
+      background: var(--ant-color-primary-bg);
+    }
+
+    &--pending {
+      background: var(--ant-color-fill-quaternary);
+    }
+  }
+
+  &__no {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ant-color-text);
+  }
+
+  &__pct {
+    font-size: 11px;
+    color: var(--ant-color-text-secondary);
+  }
 }
 
 .progress-page__chart-canvas {

@@ -61,6 +61,11 @@
   --dp-font-size-2xl: 20px;
   --dp-font-size-3xl: 24px;
 
+  --dp-font-weight-body: 400;
+  --dp-font-weight-emphasis: 500;
+  --dp-font-weight-title: 600;
+  --dp-font-weight-metric: 700;
+
   --dp-line-height-tight: 1.25;
   --dp-line-height-normal: 1.5;
   --dp-line-height-relaxed: 1.75;
@@ -172,4 +177,11 @@
   --dp-duration-fast: 150ms;
   --dp-duration-normal: 200ms;
   --dp-duration-slow: 300ms;
+
+  // 扫描看片台（mark 域专用，浅色画布；影像优先、控件让位，对齐一体机结构而非深色化）
+  --scan-canvas-bg: #f1f3f7;
+  --scan-canvas-border: #dde2ea;
+  --scan-paper-shadow: 0 6px 24px rgba(15, 23, 42, 0.12);
+  --scan-toolbar-bg: rgba(255, 255, 255, 0.94);
+  --scan-toolbar-border: #e2e8f0;
 }

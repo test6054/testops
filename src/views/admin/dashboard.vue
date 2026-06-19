@@ -43,7 +43,7 @@
 
     <!-- 考试规模 + 批改进度 + 异常告警 -->
     <a-row v-if="gradingMetrics && incidentMetrics && !overviewLoadError" :gutter="16">
-      <a-col v-if="examMetrics && examScaleChartOption" :xs="24" :lg="6">
+      <a-col v-if="examMetrics && examScaleBarItems.length" :xs="24" :lg="6">
         <UiCard class="metric-card">
           <template #title>
             <PieChartOutlined />
@@ -53,10 +53,10 @@
             <a-statistic title="考试总数" :value="examMetrics.totalExamCount" suffix="场" />
             <a-statistic title="考生总数" :value="examMetrics.totalCandidateCount" suffix="人" />
           </div>
-          <VChart class="exam-scale-chart" :option="examScaleChartOption" autoresize />
+          <UiBarChart :items="examScaleBarItems" class="exam-scale-chart" />
         </UiCard>
       </a-col>
-      <a-col :xs="24" :lg="examMetrics && examScaleChartOption ? 10 : 14">
+      <a-col :xs="24" :lg="examMetrics && examScaleBarItems.length ? 10 : 14">
         <UiCard class="metric-card">
           <template #title>
             <BarChartOutlined />
@@ -94,7 +94,7 @@
         </UiCard>
       </a-col>
 
-      <a-col :xs="24" :lg="examMetrics && examScaleChartOption ? 8 : 10">
+      <a-col :xs="24" :lg="examMetrics && examScaleBarItems.length ? 8 : 10">
         <UiCard class="metric-card">
           <template #title>
             <ExclamationCircleOutlined />
@@ -193,7 +193,13 @@
           <UiEmpty v-if="recentIncidents.length === 0" description="无未解决事件" />
 
           <div v-else class="incident-list">
-            <article v-for="incident in recentIncidents" :key="incident.id" class="incident-item">
+            <button
+              v-for="incident in recentIncidents"
+              :key="incident.id"
+              type="button"
+              class="incident-item incident-item--actionable"
+              @click="goIncidentDetail(incident)"
+            >
               <UiTag
                 v-if="incident.incidentLevel"
                 :tone="incidentLevelTone(incident.incidentLevel)"
@@ -209,7 +215,8 @@
                   <span>{{ formatDateTime(incident.createTime) }}</span>
                 </div>
               </div>
-            </article>
+              <span class="incident-item__drill">查看详情 →</span>
+            </button>
           </div>
         </UiCard>
       </a-col>
@@ -238,7 +245,6 @@ import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import { useRouter } from 'vue-router'
 import {
   INCIDENT_LEVEL_LABEL,
@@ -249,6 +255,7 @@ import {
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import {
   UiBadge,
+  UiBarChart,
   UiButton,
   UiCard,
   UiEmpty,
@@ -258,7 +265,7 @@ import {
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildExamScalePieOption } from '@/utils/mark-statistics-chart'
+import { examScaleMetricsToBarItems } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminDashboard' })
@@ -286,9 +293,9 @@ const gradingMetrics = computed<DashboardGradingMetricsVO | null>(
 const examMetrics = computed<DashboardExamMetricsVO | null>(
   () => overview.value?.examMetrics ?? null,
 )
-const examScaleChartOption = computed(() => {
-  if (!examMetrics.value) return null
-  return buildExamScalePieOption(examMetrics.value)
+const examScaleBarItems = computed(() => {
+  if (!examMetrics.value) return []
+  return examScaleMetricsToBarItems(examMetrics.value)
 })
 const incidentMetrics = computed<DashboardIncidentMetricsVO | null>(
   () => overview.value?.incidentMetrics ?? null,
@@ -333,6 +340,17 @@ async function loadOverview() {
 
 function goAuditTrail() {
   router.push({ name: 'AdminAuditTrail' })
+}
+
+function goIncidentDetail(incident: DashboardIncidentRecordVO) {
+  router.push({
+    name: 'AdminAuditTrail',
+    query: {
+      examId: incident.examId,
+      tab: 'incidents',
+      unresolvedOnly: '1',
+    },
+  })
 }
 
 watch(recentLimit, () => loadOverview())
@@ -391,7 +409,7 @@ onMounted(loadOverview)
   &__value {
     margin: 0;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--ant-color-text);
     font-variant-numeric: tabular-nums;
 
@@ -479,7 +497,7 @@ onMounted(loadOverview)
 
   &__value {
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--ant-color-text);
 
     /* exam 子卡片同步使用深色版 */
@@ -502,10 +520,30 @@ onMounted(loadOverview)
 .incident-item {
   display: flex;
   gap: 10px;
+  width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--ant-color-border-secondary);
   border-radius: var(--dp-radius-md, 6px);
   align-items: flex-start;
+  text-align: left;
+  background: var(--ant-color-bg-container);
+
+  &--actionable {
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+
+    &:hover {
+      border-color: var(--ant-color-primary-border);
+      background: var(--ant-color-primary-bg);
+    }
+  }
+
+  &__drill {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--ant-color-primary);
+    align-self: center;
+  }
 
   &__main {
     flex: 1;

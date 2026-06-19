@@ -77,23 +77,17 @@
           </a-descriptions>
 
           <div class="package-actions">
-            <span class="op-link" role="button" @click="viewDetail(pkg)">查看明细</span>
-            <span
+            <UiTextAction @click="viewDetail(pkg)">查看明细</UiTextAction>
+            <UiTextAction
               v-if="pkg.packageFileId"
-              class="op-link primary"
-              role="button"
+              tone="primary"
               @click="previewPackagePdf(pkg)"
             >
               预览
-            </span>
-            <span
-              v-if="pkg.packageFileId"
-              class="op-link"
-              role="button"
-              @click="downloadPackagePdf(pkg)"
-            >
+            </UiTextAction>
+            <UiTextAction v-if="pkg.packageFileId" @click="downloadPackagePdf(pkg)">
               下载 PDF
-            </span>
+            </UiTextAction>
           </div>
         </UiCard>
 
@@ -221,6 +215,7 @@ import {
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'

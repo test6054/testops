@@ -1,8 +1,6 @@
 import Antd from 'ant-design-vue'
 import message from 'ant-design-vue/es/message'
 import { createApp } from 'vue'
-// ECharts全局配置
-import { setupECharts } from '@/config/echarts'
 // 错误处理
 import { DEV_ERROR_CONFIG, initGlobalErrorHandler, PROD_ERROR_CONFIG } from '@/config/error-config'
 // 状态管理
@@ -62,9 +60,6 @@ if (typeof window !== 'undefined') {
 // 初始化全局错误处理
 const isDevelopment = import.meta.env.DEV
 initGlobalErrorHandler(isDevelopment ? DEV_ERROR_CONFIG : PROD_ERROR_CONFIG)
-
-// 初始化ECharts（必须在创建Vue应用之前）
-setupECharts()
 
 const app = createApp(App)
 

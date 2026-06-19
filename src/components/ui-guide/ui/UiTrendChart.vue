@@ -538,7 +538,7 @@ function handleSelect(key: string) {
 
 .ui-trend-chart__label-value {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: var(--dp-font-weight-title, 600);
   color: var(--dp-text-secondary, #475569);
   text-align: center;
 }

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 校院两级评价工作组管理
@@ -16,6 +15,7 @@ import type {
   WorkgroupMember,
   WorkgroupMemberRole,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -27,7 +27,7 @@ import {
 } from '@/apis/quality'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
-import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
@@ -39,10 +39,35 @@ interface EvaluationWorkgroupFilterModel {
   levelCode?: WorkgroupLevel
 }
 
-const filterModel = ref<EvaluationWorkgroupFilterModel>({
+const filterForm = reactive<EvaluationWorkgroupFilterModel>({
   programId: undefined,
   levelCode: undefined,
 })
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
+const filterFields: FilterField[] = [
+  {
+    key: 'programId',
+    type: 'custom',
+    label: '专业大类',
+    width: 200,
+  },
+  {
+    key: 'levelCode',
+    type: 'select',
+    label: '层级',
+    placeholder: '层级',
+    allowClear: true,
+    width: 130,
+    options: WORKGROUP_LEVEL_OPTIONS,
+  },
+]
 
 const columns: ColumnsType = [
   { title: '编码', dataIndex: 'workgroupCode', key: 'workgroupCode', width: 140 },
@@ -120,8 +145,8 @@ function handlePageChange(page: { current: number, pageSize: number }) {
 }
 
 function syncFilterToQuery() {
-  query.programId = filterModel.value.programId || undefined
-  query.levelCode = filterModel.value.levelCode
+  query.programId = filterForm.programId || undefined
+  query.levelCode = filterForm.levelCode
 }
 
 function handleSearch() {
@@ -130,28 +155,17 @@ function handleSearch() {
   loadList()
 }
 
-function handleResetSearch() {
-  filterModel.value = { programId: undefined, levelCode: undefined }
+function handleReset() {
+  filterForm.programId = undefined
+  filterForm.levelCode = undefined
   query.pageNum = 1
   query.enabled = undefined
   syncFilterToQuery()
   loadList()
 }
 
-function isWorkgroupLevel(value: string): value is WorkgroupLevel {
-  return WORKGROUP_LEVEL_OPTIONS.some((item) => item.value === value)
-}
-
-function onFilterLevelChange(value: SelectValue): void {
-  if (value === undefined || value === null) {
-    filterModel.value.levelCode = undefined
-    return
-  }
-  if (typeof value !== 'string' || !isWorkgroupLevel(value)) {
-    showUserError(null, '工作组层级选择无效，请重新选择')
-    return
-  }
-  filterModel.value.levelCode = value
+function handleFilterProgramChange(value: string | null) {
+  filterForm.programId = value ?? undefined
 }
 
 function openCreate() {
@@ -362,40 +376,31 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <SignalBand :metrics="signals" compact class="ewg__signals" />
 
-    <a-card :bordered="false" class="detail-table-card ewg__table-card">
+    <UiCard class="detail-table-card ewg__table-card">
       <template #title>工作组台账</template>
+      <template #extra>
+        <UiButton variant="primary" size="sm" @click="openCreate">新建工作组</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
-          <a-form-item label="专业大类">
-            <ProgramSelector
-              :value="filterModel.programId ?? null"
-              placeholder="专业大类"
-              :width="200"
-              @change="(value: string | null) => { filterModel.programId = value ?? undefined }"
-            />
-          </a-form-item>
-          <a-form-item label="层级">
-            <a-select
-              :value="filterModel.levelCode"
-              placeholder="层级"
-              allow-clear
-              style="width: 130px"
-              :options="levelOptions"
-              @update:value="onFilterLevelChange"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <span class="op-link" role="button" @click="handleResetSearch">重置</span>
-              <UiButton variant="primary" size="sm" @click="openCreate">新建工作组</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        show-labels
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #field-programId>
+          <ProgramSelector
+            :value="filterForm.programId ?? null"
+            placeholder="专业大类"
+            :width="200"
+            @change="handleFilterProgramChange"
+          />
+        </template>
+      </UiFilterBar>
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -427,15 +432,17 @@ onMounted(async () => {
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openMembersDrawer(record)">成员</span>
-              <span class="op-link" role="button" @click="openImportMembers(record)">Excel 导入</span>
-              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
-            </div></template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="openMembersDrawer(record)">成员</UiTextAction>
+              <UiTextAction @click="openImportMembers(record)">Excel 导入</UiTextAction>
+              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+            </div>
+          </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <a-modal
       v-model:open="editorVisible"
@@ -502,7 +509,13 @@ onMounted(async () => {
                   />
                 </a-col>
                 <a-col :span="2" class="ewg__member-row-action">
-                  <span class="op-link danger" role="button" :class="{ 'is-disabled': !(editor.members.length === 1) }" @click="editor.members.length === 1 && (removeMember(index))">删除</span>
+                  <UiTextAction
+                    tone="danger"
+                    :disabled="editor.members.length !== 1"
+                    @click="removeMember(index)"
+                  >
+                    删除
+                  </UiTextAction>
                 </a-col>
               </a-row>
             </div>
@@ -537,8 +550,9 @@ onMounted(async () => {
       :width="720"
       placement="right"
     >
-      <a-empty v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
-      <UiDataTable class="student-detail-table__data-table"
+      <UiEmpty v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-else
         :columns="memberColumns"
         :data-source="membersDrawerRows"

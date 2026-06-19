@@ -190,6 +190,25 @@ export interface UiBarChartItem {
   color?: string
 }
 
+/** 散点图单个点位：x/y 为业务坐标，weight 用于气泡半径 */
+export interface UiScatterPoint {
+  key: string
+  x: number
+  y: number
+  weight?: number
+  label: string
+  helper?: string
+  color?: string
+}
+
+/** 散点图序列：按质量区段或业务分组着色 */
+export interface UiScatterSeries {
+  key: string
+  name: string
+  color: string
+  points: UiScatterPoint[]
+}
+
 /** 趋势图点位 */
 export interface UiTrendPoint {
   key?: string

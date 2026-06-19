@@ -86,9 +86,9 @@
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" @click="openSimilarDrawer(signatures[index])">
+                  <UiTextAction @click="openSimilarDrawer(signatures[index])">
                     查找相似题
-                  </span>
+                  </UiTextAction>
                 </div>
               </template>
             </template>
@@ -107,38 +107,24 @@
             <span class="section-title">阅卷经验案例</span>
           </template>
           <template #extra>
-            <a-space>
-              <a-select
-                v-model:value="experienceQuestionTemplateId"
-                class="experience-page__question-select"
-                placeholder="选择题目"
-                :options="questionOptions"
-                allow-clear
-                show-search
-                option-filter-prop="label"
-                style="width: 220px"
-                @change="loadExperiences"
-              />
-              <UiButton
-                size="sm"
-                variant="outline"
-                :loading="experienceLoading"
-                @click="loadExperiences"
-              >
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-              <UiButton
-                size="sm"
-                :disabled="!experienceQuestionTemplateId"
-                :loading="extracting"
-                @click="handleExtract"
-              >
-                <template #icon><ThunderboltOutlined /></template>
-                AI 提炼经验
-              </UiButton>
-            </a-space>
+            <UiButton
+              size="sm"
+              :disabled="!experienceFilterForm.questionTemplateId"
+              :loading="extracting"
+              @click="handleExtract"
+            >
+              <template #icon><ThunderboltOutlined /></template>
+              AI 提炼经验
+            </UiButton>
           </template>
+
+          <UiFilterBar
+            v-model="experienceFilterForm"
+            :fields="experienceFilterFields"
+            search-text="查询"
+            @search="loadExperiences"
+            @reset="handleExperienceFilterReset"
+          />
 
           <!-- D-9 错误态：AI 阅卷经验案例加载失败时提供重试 + 上报入口 -->
           <UiErrorRetryPanel
@@ -181,13 +167,7 @@
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span
-                    class="op-link"
-                    role="button"
-                    @click="openExperienceDrawer(experiences[index])"
-                  >
-                    详情
-                  </span>
+                  <UiTextAction @click="openExperienceDrawer(experiences[index])">详情</UiTextAction>
                 </div>
               </template>
             </template>
@@ -209,38 +189,24 @@
             </UiBadge>
           </template>
           <template #extra>
-            <a-space>
-              <a-select
-                v-model:value="clusterQuestionTemplateId"
-                class="experience-page__question-select"
-                placeholder="选择题目"
-                :options="questionOptions"
-                allow-clear
-                show-search
-                option-filter-prop="label"
-                style="width: 200px"
-              />
-              <UiButton
-                size="sm"
-                variant="outline"
-                :disabled="!clusterQuestionTemplateId"
-                :loading="clusterLoading"
-                @click="loadLatestCluster"
-              >
-                <template #icon><ReloadOutlined /></template>
-                查询最新
-              </UiButton>
-              <UiButton
-                size="sm"
-                :disabled="!clusterQuestionTemplateId"
-                :loading="clustering"
-                @click="handleGenerateCluster"
-              >
-                <template #icon><ThunderboltOutlined /></template>
-                AI 聚类
-              </UiButton>
-            </a-space>
+            <UiButton
+              size="sm"
+              :disabled="!clusterFilterForm.questionTemplateId"
+              :loading="clustering"
+              @click="handleGenerateCluster"
+            >
+              <template #icon><ThunderboltOutlined /></template>
+              AI 聚类
+            </UiButton>
           </template>
+
+          <UiFilterBar
+            v-model="clusterFilterForm"
+            :fields="clusterFilterFields"
+            search-text="查询最新"
+            @search="loadLatestCluster"
+            @reset="handleClusterFilterReset"
+          />
 
           <!-- D-9 错误态：AI 答案聚类加载失败时提供重试 + 上报入口 -->
           <UiErrorRetryPanel
@@ -250,7 +216,7 @@
             compact
             @retry="loadLatestCluster"
           />
-          <a-empty
+          <UiEmpty
             v-else-if="!latestCluster"
             description="尚无聚类结果，请先选择题目并点击「AI 聚类」"
           />
@@ -337,7 +303,7 @@
     :destroy-on-close="true"
   >
     <a-spin :spinning="similarLoading">
-      <a-empty v-if="!similarLoading && similarResults.length === 0" description="未检索到相似题" />
+      <UiEmpty v-if="!similarLoading && similarResults.length === 0" description="未检索到相似题" />
       <a-list v-else :data-source="similarResults" item-layout="vertical">
         <template #renderItem="{ item }: { item: QuestionSignatureVO }">
           <a-list-item>
@@ -449,14 +415,14 @@ import type {
   QuestionSignatureVO,
   QuestionTypeCode,
 } from '@/apis/mark/grading-experience'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import BulbOutlined from '@ant-design/icons-vue/BulbOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import PartitionOutlined from '@ant-design/icons-vue/PartitionOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_STATUS_COLOR,
   AI_ANALYSIS_STATUS_LABEL,
@@ -479,7 +445,9 @@ import {
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -518,6 +486,34 @@ const questionOptions = computed(() =>
     value: item.questionTemplateId,
   })),
 )
+
+const experienceFilterForm = reactive<{ questionTemplateId?: string }>({})
+
+const experienceFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'questionTemplateId',
+    type: 'select',
+    placeholder: '选择题目',
+    width: 220,
+    allowClear: true,
+    allowSearch: true,
+    options: questionOptions.value,
+  },
+])
+
+const clusterFilterForm = reactive<{ questionTemplateId?: string }>({})
+
+const clusterFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'questionTemplateId',
+    type: 'select',
+    placeholder: '选择题目',
+    width: 220,
+    allowClear: true,
+    allowSearch: true,
+    options: questionOptions.value,
+  },
+])
 
 // D-9 错误态：三个标签页各自加载失败时由 UiErrorRetryPanel 重试 + 上报
 const signaturesLoadError = ref<Error | null>(null)
@@ -584,7 +580,6 @@ async function openSimilarDrawer(record: QuestionSignatureVO): Promise<void> {
 const experiences = ref<GradingExperienceCaseVO[]>([])
 const experienceLoading = ref(false)
 const extracting = ref(false)
-const experienceQuestionTemplateId = ref<string | undefined>(undefined)
 
 const experienceColumns: ColumnType<GradingExperienceCaseVO>[] = [
   { title: '题号', key: 'questionNo', dataIndex: 'questionNo', width: 100 },
@@ -601,9 +596,9 @@ async function loadExperiences(): Promise<void> {
   experienceLoading.value = true
   experiencesLoadError.value = null
   try {
-    if (experienceQuestionTemplateId.value) {
+    if (experienceFilterForm.questionTemplateId) {
       experiences.value = (
-        await listExperiencesByQuestion(selectedExamId.value, experienceQuestionTemplateId.value)
+        await listExperiencesByQuestion(selectedExamId.value, experienceFilterForm.questionTemplateId)
       ).map(acceptExperienceCase)
     } else {
       experiences.value = (await listExperiences(selectedExamId.value)).map(acceptExperienceCase)
@@ -617,10 +612,10 @@ async function loadExperiences(): Promise<void> {
 }
 
 async function handleExtract(): Promise<void> {
-  if (!selectedExamId.value || !experienceQuestionTemplateId.value) return
+  if (!selectedExamId.value || !experienceFilterForm.questionTemplateId) return
   extracting.value = true
   try {
-    await extractExperience(selectedExamId.value, experienceQuestionTemplateId.value)
+    await extractExperience(selectedExamId.value, experienceFilterForm.questionTemplateId)
     message.success('AI 经验已提取')
     await loadExperiences()
   } catch (error) {
@@ -640,9 +635,13 @@ function openExperienceDrawer(record: GradingExperienceCaseVO): void {
   experienceDrawerOpen.value = true
 }
 
+function handleExperienceFilterReset(): void {
+  experienceFilterForm.questionTemplateId = undefined
+  void loadExperiences()
+}
+
 // ─── AI 答案聚类 ─────────────────────────────────
 
-const clusterQuestionTemplateId = ref<string | undefined>(undefined)
 const latestCluster = ref<AnswerClusterRecordVO | null>(null)
 const clusterLoading = ref(false)
 const clustering = ref(false)
@@ -650,13 +649,13 @@ const clustering = ref(false)
 const clusterLoadError = ref<Error | null>(null)
 
 async function loadLatestCluster(): Promise<void> {
-  if (!selectedExamId.value || !clusterQuestionTemplateId.value) return
+  if (!selectedExamId.value || !clusterFilterForm.questionTemplateId) return
   clusterLoading.value = true
   clusterLoadError.value = null
   try {
     const cluster = await getLatestAnswerCluster(
       selectedExamId.value,
-      clusterQuestionTemplateId.value,
+      clusterFilterForm.questionTemplateId,
     )
     latestCluster.value = cluster ? acceptAnswerClusterRecord(cluster) : null
   } catch (error) {
@@ -668,11 +667,11 @@ async function loadLatestCluster(): Promise<void> {
 }
 
 async function handleGenerateCluster(): Promise<void> {
-  if (!selectedExamId.value || !clusterQuestionTemplateId.value) return
+  if (!selectedExamId.value || !clusterFilterForm.questionTemplateId) return
   clustering.value = true
   try {
     latestCluster.value = acceptAnswerClusterRecord(
-      await generateAnswerCluster(selectedExamId.value, clusterQuestionTemplateId.value),
+      await generateAnswerCluster(selectedExamId.value, clusterFilterForm.questionTemplateId),
     )
     message.success('AI 答案聚类已完成')
   } catch (error) {
@@ -680,6 +679,11 @@ async function handleGenerateCluster(): Promise<void> {
   } finally {
     clustering.value = false
   }
+}
+
+function handleClusterFilterReset(): void {
+  clusterFilterForm.questionTemplateId = undefined
+  latestCluster.value = null
 }
 
 // ─── 共用 ─────────────────────────────────
@@ -847,8 +851,8 @@ function handleExamChange(
   signatures.value = []
   experiences.value = []
   latestCluster.value = null
-  experienceQuestionTemplateId.value = undefined
-  clusterQuestionTemplateId.value = undefined
+  experienceFilterForm.questionTemplateId = undefined
+  clusterFilterForm.questionTemplateId = undefined
   if (selectedExamId.value) {
     void reloadActiveTab()
   }
@@ -877,8 +881,8 @@ watch(selectedExamId, (value) => {
   signatures.value = []
   experiences.value = []
   latestCluster.value = null
-  experienceQuestionTemplateId.value = undefined
-  clusterQuestionTemplateId.value = undefined
+  experienceFilterForm.questionTemplateId = undefined
+  clusterFilterForm.questionTemplateId = undefined
   if (value) {
     void reloadActiveTab()
   }

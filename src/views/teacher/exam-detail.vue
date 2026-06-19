@@ -314,8 +314,8 @@ onMounted(() => {
     background 0.2s ease;
 
   &:hover {
-    border-color: rgba(22, 119, 255, 0.3);
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.05) 0%, rgba(22, 119, 255, 0.02) 100%);
+    border-color: var(--ant-color-primary-border);
+    background: var(--dp-blue-50);
   }
 }
 

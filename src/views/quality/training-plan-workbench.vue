@@ -67,7 +67,7 @@ import {
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -1094,7 +1094,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
           </span>
         </template>
         <template #actions>
-          <span class="op-link" role="button" @click="openPlanCreate">新建方案</span>
+          <UiTextAction @click="openPlanCreate">新建方案</UiTextAction>
           <UiButton variant="outline" size="sm" :disabled="!currentPlan" @click="openPlanEdit">
             编辑方案
           </UiButton>
@@ -1102,7 +1102,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
           <UiButton v-if="canRevokePlan" variant="outline" size="sm" @click="revokePlan">
             撤回修订
           </UiButton>
-          <span class="op-link danger" role="button" @click="deletePlan">删除方案</span>
+          <UiTextAction tone="danger" @click="deletePlan">删除方案</UiTextAction>
         </template>
       </ContextBar>
     </template>
@@ -1137,7 +1137,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
       <div v-if="activeTab === 'objective'" class="tpw__tab-content">
         <a-row :gutter="12">
           <a-col :span="9">
-            <a-card :bordered="false" class="tpw__card">
+            <UiCard class="tpw__card">
               <template #title>
                 <span>培养目标列表</span>
               </template>
@@ -1185,20 +1185,20 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <div class="operations-cell" @click.stop>
-                      <span class="op-link" role="button" @click.stop="openObjectiveEdit(record)">编辑</span>
-                      <span class="op-link danger" role="button" @click.stop="deleteObjective(record)">删除</span>
+                      <UiTextAction @click.stop="openObjectiveEdit(record)">编辑</UiTextAction>
+                      <UiTextAction tone="danger" @click.stop="deleteObjective(record)">删除</UiTextAction>
                     </div>
                   </template>
                 </template>
               </UiDataTable>
-            </a-card>
+            </UiCard>
           </a-col>
 
           <a-col :span="15">
-            <a-card v-if="!selectedObjective" :bordered="false" class="tpw__card">
+            <UiCard v-if="!selectedObjective" class="tpw__card">
               <UiEmpty description="请在左侧选择培养目标查看其支撑毕业要求映射" />
-            </a-card>
-            <a-card v-else :bordered="false" class="tpw__card">
+            </UiCard>
+            <UiCard v-else class="tpw__card">
               <template #title>
                 <span>「{{ selectedObjective.objectiveName }}」支撑毕业要求映射</span>
               </template>
@@ -1245,13 +1245,13 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <div class="operations-cell" @click.stop>
-                      <span class="op-link" role="button" @click="openObjMappingEdit(record)">编辑</span>
-                      <span class="op-link danger" role="button" @click="deleteObjMapping(record)">删除</span>
+                      <UiTextAction @click="openObjMappingEdit(record)">编辑</UiTextAction>
+                      <UiTextAction tone="danger" @click="deleteObjMapping(record)">删除</UiTextAction>
                     </div>
                   </template>
                 </template>
               </UiDataTable>
-            </a-card>
+            </UiCard>
           </a-col>
         </a-row>
 
@@ -1275,7 +1275,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
       <div v-else class="tpw__tab-content">
         <a-row :gutter="12">
           <a-col :span="9">
-            <a-card :bordered="false" class="tpw__card">
+            <UiCard class="tpw__card">
               <template #title>
                 <span>毕业要求列表</span>
               </template>
@@ -1323,22 +1323,22 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <div class="operations-cell" @click.stop>
-                      <span class="op-link" role="button" @click.stop="openRequirementEdit(record)">编辑</span>
-                      <span class="op-link" role="button" @click.stop="validateIndicatorWeights(record)">校验权重</span>
-                      <span class="op-link danger" role="button" @click.stop="deleteRequirement(record)">删除</span>
+                      <UiTextAction @click.stop="openRequirementEdit(record)">编辑</UiTextAction>
+                      <UiTextAction @click.stop="validateIndicatorWeights(record)">校验权重</UiTextAction>
+                      <UiTextAction tone="danger" @click.stop="deleteRequirement(record)">删除</UiTextAction>
                     </div>
                   </template>
                 </template>
               </UiDataTable>
-            </a-card>
+            </UiCard>
           </a-col>
 
           <a-col :span="15">
-            <a-card v-if="!selectedRequirement" :bordered="false" class="tpw__card">
+            <UiCard v-if="!selectedRequirement" class="tpw__card">
               <UiEmpty description="请在左侧选择毕业要求查看观测点和标准条款映射" />
-            </a-card>
+            </UiCard>
             <template v-else>
-              <a-card :bordered="false" class="tpw__card" style="margin-bottom: 12px">
+              <UiCard class="tpw__card" style="margin-bottom: 12px">
                 <template #title>
                   <span>「{{ selectedRequirement.requirementName }}」观测点</span>
                 </template>
@@ -1387,15 +1387,15 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     </template>
                     <template v-else-if="column.key === 'actions'">
                       <div class="operations-cell" @click.stop>
-                        <span class="op-link" role="button" @click="openIndicatorEdit(record)">编辑</span>
-                        <span class="op-link danger" role="button" @click="deleteIndicator(record)">删除</span>
+                        <UiTextAction @click="openIndicatorEdit(record)">编辑</UiTextAction>
+                        <UiTextAction tone="danger" @click="deleteIndicator(record)">删除</UiTextAction>
                       </div>
                     </template>
                   </template>
                 </UiDataTable>
-              </a-card>
+              </UiCard>
 
-              <a-card :bordered="false" class="tpw__card">
+              <UiCard class="tpw__card">
                 <template #title>
                   <span>「{{ selectedRequirement.requirementName }}」对应认证标准条款</span>
                 </template>
@@ -1436,13 +1436,13 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     </template>
                     <template v-else-if="column.key === 'actions'">
                       <div class="operations-cell" @click.stop>
-                        <span class="op-link" role="button" @click="openStdMappingEdit(record)">编辑</span>
-                        <span class="op-link danger" role="button" @click="deleteStdMapping(record)">删除</span>
+                        <UiTextAction @click="openStdMappingEdit(record)">编辑</UiTextAction>
+                        <UiTextAction tone="danger" @click="deleteStdMapping(record)">删除</UiTextAction>
                       </div>
                     </template>
                   </template>
                 </UiDataTable>
-              </a-card>
+              </UiCard>
             </template>
           </a-col>
         </a-row>

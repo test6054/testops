@@ -17,6 +17,7 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -29,7 +30,7 @@ import {
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
 import { ProgramSelector } from '@/components/quality/selectors'
-import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -77,10 +78,56 @@ const query = reactive<ProfessionAlgorithmProfileQueryRequest>({
   keyword: '',
 })
 
-function handleQueryProgramChange(value: string | null): void {
-  query.programId = value ?? undefined
-  void loadList()
+interface ProfessionAlgorithmProfileFilterModel {
+  programId?: string
+  accreditationType?: AccreditationType
+  confirmationStatus?: ConfirmationStatus
+  keyword: string
 }
+
+const filterForm = reactive<ProfessionAlgorithmProfileFilterModel>({
+  programId: undefined,
+  accreditationType: undefined,
+  confirmationStatus: undefined,
+  keyword: '',
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
+const filterFields = computed<FilterField[]>(() => [
+  { key: 'programId', type: 'custom' },
+  {
+    key: 'accreditationType',
+    type: 'select',
+    placeholder: '认证类型',
+    allowClear: true,
+    width: 160,
+    options: accreditationOptions,
+  },
+  {
+    key: 'confirmationStatus',
+    type: 'select',
+    placeholder: '状态',
+    allowClear: true,
+    width: 120,
+    options: statusOptions.map((value) => ({
+      value,
+      label: confirmationStatusLabel(value),
+    })),
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '编码/名称',
+    allowClear: true,
+    width: 160,
+  },
+])
 
 const accreditationTypes: AccreditationType[] = [
   'ENGINEERING_ACCREDITATION',
@@ -323,14 +370,29 @@ function handlePageChange(page: { current: number, pageSize: number }) {
   loadList()
 }
 
-function resetQuery() {
+function syncFilterToQuery() {
+  query.programId = filterForm.programId || undefined
+  query.accreditationType = filterForm.accreditationType
+  query.confirmationStatus = filterForm.confirmationStatus
+  query.keyword = filterForm.keyword
+}
+
+function handleSearch() {
   query.pageNum = 1
-  query.programId = undefined
-  query.accreditationType = undefined
-  query.confirmationStatus = undefined
-  query.enabled = undefined
-  query.keyword = ''
-  loadList()
+  syncFilterToQuery()
+  void loadList()
+}
+
+function handleReset() {
+  Object.assign(filterForm, {
+    programId: undefined,
+    accreditationType: undefined,
+    confirmationStatus: undefined,
+    keyword: '',
+  })
+  query.pageNum = 1
+  syncFilterToQuery()
+  void loadList()
 }
 
 /* ========== 信号指标：专业算法实例健康度 ========== */
@@ -391,60 +453,30 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <SignalBand :metrics="signals" compact class="pap__signals" />
 
-    <a-card :bordered="false" class="detail-table-card pap__table-card">
+    <UiCard class="detail-table-card pap__table-card">
       <template #title>实例台账</template>
+      <template #extra>
+        <UiButton variant="primary" size="sm" @click="openCreate">新建实例</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
-          <a-form-item label="专业大类">
-            <ProgramSelector
-              :value="query.programId || null"
-              placeholder="专业大类"
-              :width="200"
-              @change="handleQueryProgramChange"
-            />
-          </a-form-item>
-          <a-form-item label="认证类型">
-            <a-select
-              v-model:value="query.accreditationType"
-              placeholder="认证类型"
-              allow-clear
-              style="width: 160px"
-              :options="accreditationOptions"
-            />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="query.confirmationStatus"
-              placeholder="状态"
-              allow-clear
-              style="width: 120px"
-            >
-              <a-select-option v-for="s in statusOptions" :key="s" :value="s">
-                {{ confirmationStatusLabel(s) }}
-              </a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item label="关键字">
-            <a-input
-              v-model:value="query.keyword"
-              placeholder="编码/名称"
-              style="width: 160px"
-              @press-enter="loadList"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="loadList">查询</UiButton>
-              <span class="op-link" role="button" @click="resetQuery">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
-              <UiButton variant="primary" size="sm" @click="openCreate">新建实例</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #field-programId>
+          <ProgramSelector
+            :value="filterForm.programId ?? null"
+            placeholder="专业大类"
+            :width="200"
+            @change="(value: string | null) => { filterForm.programId = value ?? undefined }"
+          />
+        </template>
+      </UiFilterBar>
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -473,29 +505,29 @@ onMounted(async () => {
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-              <span
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction
                 v-if="record.confirmationStatus === 'DRAFT'"
-                class="op-link primary"
-                role="button"
+                tone="primary"
                 @click="handleConfirm(record)"
               >
                 确认
-              </span>
-              <span
+              </UiTextAction>
+              <UiTextAction
                 v-if="record.confirmationStatus === 'CONFIRMED'"
-                class="op-link danger"
-                role="button"
+                tone="danger"
                 @click="handleRevoke(record)"
               >
                 退回
-              </span>
-              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
-            </div></template>
+              </UiTextAction>
+              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+            </div>
+          </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <a-modal
       v-model:open="editorVisible"
@@ -771,14 +803,6 @@ onMounted(async () => {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-  }
-
-  &__filter {
-    width: 130px;
-
-    &--md {
-      width: 180px;
-    }
   }
 }
 </style>

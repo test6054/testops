@@ -16,40 +16,12 @@
         <FileSearchOutlined />
         <span>考试列表</span>
       </template>
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent>
-          <a-form-item label="关键词">
-            <a-input
-              v-model:value="keyword"
-              placeholder="按考试名称或编号筛选"
-              allow-clear
-              style="width: 240px"
-            >
-              <template #prefix>
-                <SearchOutlined />
-              </template>
-            </a-input>
-          </a-form-item>
-          <a-form-item label="成绩状态">
-            <a-select
-              v-model:value="statusFilter"
-              placeholder="全部状态"
-              allow-clear
-              style="width: 160px"
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <span class="op-link" role="button" @click="handleFilterReset">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadExams">
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+
+      <UiFilterBar
+        v-model="historyFilterForm"
+        :fields="historyFilterFields"
+        search-text="查询"
+      />
 
       <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
       <UiErrorRetryPanel
@@ -106,7 +78,7 @@
             >
               {{ filteredExams[index].finalScore.toFixed(2) }}
             </span>
-            <span v-else class="muted">--</span>
+            <span v-else class="muted">{{ unpublishedScoreText(filteredExams[index].finalScoreStatus) }}</span>
           </template>
           <template v-else-if="column.key === 'examStartTime'">
             {{ formatDateTime(filteredExams[index].examStartTime) }}
@@ -133,25 +105,18 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span
-                class="op-link"
-                role="button"
-                :class="{ 'is-disabled': filteredExams[index].finalScoreStatus !== 'PUBLISHED' }"
-                @click="
-                  filteredExams[index].finalScoreStatus === 'PUBLISHED'
-                    && goDetail(filteredExams[index].examId)
-                "
+              <UiTextAction
+                :disabled="filteredExams[index].finalScoreStatus !== 'PUBLISHED'"
+                @click="goDetail(filteredExams[index].examId)"
               >
                 查看详情
-              </span>
-              <span
-                class="op-link"
-                role="button"
-                :class="{ 'is-disabled': !canSubmitReview(filteredExams[index]) }"
-                @click="canSubmitReview(filteredExams[index]) && goAppeal(filteredExams[index].examId)"
+              </UiTextAction>
+              <UiTextAction
+                :disabled="!canSubmitReview(filteredExams[index])"
+                @click="goAppeal(filteredExams[index].examId)"
               >
                 提交复核
-              </span>
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -162,11 +127,9 @@
 
 <script lang="ts" setup>
 import type { FinalScoreStatusCode, StudentExamItemVO } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   canSubmitReview,
@@ -175,11 +138,12 @@ import {
   listMyExams,
 } from '@/apis/mark/student-exam'
 import {
-  UiButton,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -193,8 +157,14 @@ const loading = ref(false)
 // D-9 错误态：学生考试列表加载失败时 UiErrorRetryPanel 重试入口
 const examsLoadError = ref<Error | null>(null)
 const exams = ref<StudentExamItemVO[]>([])
-const keyword = ref('')
-const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
+
+const historyFilterForm = reactive<{
+  keyword: string
+  statusFilter?: FinalScoreStatusCode
+}>({
+  keyword: '',
+  statusFilter: undefined,
+})
 
 const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
   { value: 'PENDING', label: '待计算' },
@@ -203,6 +173,26 @@ const statusOptions: Array<{ value: FinalScoreStatusCode, label: string }> = [
   { value: 'CORRECTED', label: '已更正' },
   { value: 'PUBLISHED', label: '已发布' },
   { value: 'WITHDRAWN', label: '已撤回' },
+]
+
+const historyFilterFields: FilterField[] = [
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '按考试名称或编号筛选',
+    allowClear: true,
+    width: 240,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'statusFilter',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
 ]
 
 const columns = [
@@ -223,11 +213,11 @@ const columns = [
 
 const filteredExams = computed<StudentExamItemVO[]>(() => {
   return exams.value.filter((item) => {
-    if (statusFilter.value && item.finalScoreStatus !== statusFilter.value) {
+    if (historyFilterForm.statusFilter && item.finalScoreStatus !== historyFilterForm.statusFilter) {
       return false
     }
-    if (keyword.value.trim()) {
-      const kw = keyword.value.trim().toLowerCase()
+    if (historyFilterForm.keyword.trim()) {
+      const kw = historyFilterForm.keyword.trim().toLowerCase()
       const name = item.examName.toLowerCase()
       const no = item.examNo.toLowerCase()
       if (!name.includes(kw) && !no.includes(kw)) {
@@ -263,17 +253,20 @@ function finalScoreStatusLabel(status: FinalScoreStatusCode): string {
   return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
 }
 
+/** 未发布成绩列展示固定文案，避免 `--` 让学生误以为数据缺失 */
+function unpublishedScoreText(status: FinalScoreStatusCode): string {
+  if (status === 'PUBLISHED') {
+    return '--'
+  }
+  return '尚未公布'
+}
+
 function goDetail(examId: string) {
   router.push({ name: 'StudentScoreDetail', params: { examId } })
 }
 
 function goAppeal(examId: string) {
   router.push({ name: 'StudentAppeal', query: { examId } })
-}
-
-function handleFilterReset() {
-  keyword.value = ''
-  statusFilter.value = undefined
 }
 
 onMounted(loadExams)
@@ -315,7 +308,7 @@ onMounted(loadExams)
 }
 
 .score-cell {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ant-color-success);
   font-variant-numeric: tabular-nums;
 }

@@ -17,6 +17,7 @@ import type {
   ReportType,
   ReportVO,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -43,7 +44,7 @@ import {
   ProgramSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
   SignalBand,
@@ -156,6 +157,69 @@ const statusOptions: Array<{ value: ReportStatus, label: string }> = [
   { value: 'RETURNED', label: REPORT_STATUS_LABEL.RETURNED },
   { value: 'ARCHIVED', label: REPORT_STATUS_LABEL.ARCHIVED },
 ]
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => query as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(query, value)
+  },
+})
+
+const filterFields: FilterField[] = [
+  {
+    key: 'reportType',
+    type: 'select',
+    label: '类型',
+    placeholder: '类型',
+    allowClear: true,
+    width: 140,
+    options: reportTypeOptions,
+  },
+  {
+    key: 'qualityCourseId',
+    type: 'custom',
+    label: '关联课程',
+    width: 160,
+  },
+  {
+    key: 'schoolYear',
+    type: 'input',
+    label: '学年',
+    placeholder: '学年',
+    width: 120,
+  },
+  {
+    key: 'semester',
+    type: 'input',
+    label: '学期',
+    placeholder: '学期',
+    width: 100,
+  },
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '状态',
+    allowClear: true,
+    width: 120,
+    options: statusOptions,
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '关键字',
+    width: 160,
+  },
+]
+
+function handleSearch() {
+  loadList()
+}
+
+function handleReset() {
+  resetQuery()
+}
 
 const transitMap: Record<ReportStatus, ReportStatus[]> = {
   DRAFT: ['SUBMITTED'],
@@ -573,65 +637,33 @@ onMounted(loadList)
       @action="handleReportResultAction"
     />
 
-    <a-card :bordered="false" class="detail-table-card report__table-card">
+    <UiCard class="detail-table-card report__table-card">
       <template #title>报告列表</template>
+      <template #extra>
+        <UiButton size="sm" @click="openCreate">新建报告</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
-          <a-form-item label="类型">
-            <a-select
-              v-model:value="query.reportType"
-              placeholder="类型"
-              style="width: 140px"
-              allow-clear
-              :options="reportTypeOptions"
-            />
-          </a-form-item>
-          <a-form-item label="关联课程">
-            <CourseSelector
-              :value="query.qualityCourseId || null"
-              :training-plan-id="qualityStore.currentTrainingPlanId || null"
-              placeholder="关联课程"
-              :width="160"
-              @change="handleQueryQualityCourseChange"
-            />
-          </a-form-item>
-          <a-form-item label="学年">
-            <a-input v-model:value="query.schoolYear" placeholder="学年" style="width: 120px" />
-          </a-form-item>
-          <a-form-item label="学期">
-            <a-input v-model:value="query.semester" placeholder="学期" style="width: 100px" />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="query.status"
-              placeholder="状态"
-              style="width: 120px"
-              allow-clear
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item label="关键字">
-            <a-input
-              v-model:value="query.keyword"
-              placeholder="关键字"
-              style="width: 160px"
-              @press-enter="loadList"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="loadList">查询</UiButton>
-              <span class="op-link" role="button" @click="resetQuery">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
-              <UiButton size="sm" @click="openCreate">新建报告</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        show-labels
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #field-qualityCourseId>
+          <CourseSelector
+            :value="query.qualityCourseId || null"
+            :training-plan-id="qualityStore.currentTrainingPlanId || null"
+            placeholder="关联课程"
+            :width="160"
+            @change="handleQueryQualityCourseChange"
+          />
+        </template>
+      </UiFilterBar>
 
-      <UiDataTable class="student-detail-table__data-table"
-                   v-model:current="query.pageNum"
+      <UiDataTable
+        class="student-detail-table__data-table"
+        v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
         :data-source="list"
@@ -684,26 +716,38 @@ onMounted(loadList)
               </a-tooltip>
             </a-space>
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openDetail(record)">详情</span>
-              <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditReport(record.status)) }" @click="!canEditReport(record.status) && (openEdit(record))">编辑</span>
-              <span
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="openDetail(record)">详情</UiTextAction>
+              <UiTextAction
+                :disabled="canEditReport(record.status)"
+                @click="openEdit(record)"
+              >
+                编辑
+              </UiTextAction>
+              <UiTextAction
                 v-for="to in nextStatuses(record.status)"
                 :key="to"
-                class="op-link"
-                :class="to === 'RETURNED' ? 'danger' : 'primary'"
-                role="button"
+                :tone="to === 'RETURNED' ? 'danger' : 'primary'"
                 @click="handleTransit(record, to)"
               >
                 -> {{ reportStatusLabel(to) }}
-            </span>
-              <span class="op-link" role="button" v-if="record.status === 'SUBMITTED'|| record.status === 'CONFIRMED'|| record.status === 'ARCHIVED'" @click="handleExport(record)">导出三格式</span>
-              <span class="op-link danger" role="button" v-if="record.status === 'DRAFT'" @click="handleDelete(record)">删除</span>
-              <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
-            </div></template>
+              </UiTextAction>
+              <UiTextAction
+                v-if="record.status === 'SUBMITTED' || record.status === 'CONFIRMED' || record.status === 'ARCHIVED'"
+                @click="handleExport(record)"
+              >
+                导出三格式
+              </UiTextAction>
+              <UiTextAction v-if="record.status === 'DRAFT'" tone="danger" @click="handleDelete(record)">
+                删除
+              </UiTextAction>
+              <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
+            </div>
+          </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <UiDrawer
       v-model:open="editorVisible"

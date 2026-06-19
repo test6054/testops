@@ -16,11 +16,13 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
-import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
-import UserOutlined from '@ant-design/icons-vue/UserOutlined'
+import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
+import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
+import MailOutlined from '@ant-design/icons-vue/MailOutlined'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDevice } from '@/hooks'
@@ -52,29 +54,15 @@ const allTabBarItems: TabBarItem[] = [
     roles: [RoleEnum.SCH_STU],
   },
   {
-    path: '/student/tasks',
-    label: '我的任务',
-    icon: UnorderedListOutlined,
+    path: '/student/exam-history',
+    label: '历次考试',
+    icon: HistoryOutlined,
     roles: [RoleEnum.SCH_STU],
   },
-  // 实训市场暂时隐藏
-  // {
-  //   path: '/student/practice-market',
-  //   label: '实训市场',
-  //   icon: IconApps,
-  //   roles: [RoleEnum.SCH_STU],
-  // },
-  // 我的成绩暂时隐藏
-  // {
-  //   path: '/student/grades',
-  //   label: '我的成绩',
-  //   icon: IconTrophy,
-  //   roles: [RoleEnum.SCH_STU],
-  // },
   {
-    path: '/student/order-center',
-    label: '订单',
-    icon: UnorderedListOutlined,
+    path: '/student/appeal',
+    label: '复核申请',
+    icon: MailOutlined,
     roles: [RoleEnum.SCH_STU],
   },
 
@@ -97,6 +85,12 @@ const allTabBarItems: TabBarItem[] = [
     icon: EditOutlined,
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
+  {
+    path: '/teacher/review-progress',
+    label: '复核进度',
+    icon: LineChartOutlined,
+    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
+  },
 
   // 管理员菜单
   {
@@ -106,9 +100,9 @@ const allTabBarItems: TabBarItem[] = [
     roles: [RoleEnum.SUPER_ADMIN],
   },
   {
-    path: '/admin/tenants',
-    label: '租户',
-    icon: UserOutlined,
+    path: '/admin/audit-trail',
+    label: '批改审计',
+    icon: AuditOutlined,
     roles: [RoleEnum.SUPER_ADMIN],
   },
 ]
@@ -140,7 +134,14 @@ function isActive(path: string): boolean {
     return (
       route.path.startsWith('/teacher/marking-task-pool')
       || route.path.startsWith('/teacher/marking-task/')
+    )
+  }
+  if (path === '/teacher/review-progress') {
+    return (
+      route.path.startsWith('/teacher/review-progress')
       || route.path.startsWith('/teacher/review-workspace')
+      || route.path.startsWith('/teacher/review/task/')
+      || route.path.startsWith('/teacher/review-batch-confirm')
     )
   }
   return route.path.startsWith(path)

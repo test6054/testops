@@ -1,4 +1,3 @@
-import type { EChartsCoreOption } from 'echarts/core'
 import type {
   CourseAchievementItemVO,
   ExamStatSnapshotVO,
@@ -7,14 +6,24 @@ import type {
 import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
 import type { ReviewQuestionProgressItemVO } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
+import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import { COURSE_OBJECTIVE_DIMENSION_LABEL } from '@/apis/mark/cross-exam-analysis'
+import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
+import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const CHART_AXIS = {
-  axisLine: { lineStyle: { color: '#94a3b8' } },
-  axisLabel: { color: '#64748b', fontSize: 11 },
-  splitLine: { lineStyle: { color: '#e2e8f0' } },
-}
+/** UiScatterChart 区段色：canvas/SVG 不解析 CSS 变量，故用十六进制单一真源，取值与 --dp/--ant 主题色对齐 */
+const CHART_PALETTE = {
+  primary: '#2563eb',
+  success: '#16a34a',
+  warning: '#f59e0b',
+  danger: '#dc2626',
+  purple: '#7c3aed',
+  muted: '#94a3b8',
+  axisLabel: '#64748b',
+  axisLine: '#94a3b8',
+  splitLine: '#e2e8f0',
+} as const
 
 function truncateLabel(label: string, max = 8): string {
   const text = label.trim()
@@ -32,321 +41,193 @@ function formatPercentText(value: number | undefined): string {
   return percent == null ? '—' : `${percent.toFixed(1)}%`
 }
 
-export function buildExamStatTrendChartOption(
-  snapshots: ExamStatSnapshotVO[],
-): EChartsCoreOption | null {
-  if (snapshots.length === 0) return null
-  const categories = snapshots.map((item) => truncateLabel(item.examName || '考试'))
-  const scoreRates = snapshots.map((item) => toPercent(item.scoreRate))
-  const passRates = snapshots.map((item) => toPercent(item.passRate))
-  const avgScores = snapshots.map((item) => (item.avgScore == null ? null : Number(item.avgScore)))
-  return {
-    tooltip: {
-      trigger: 'axis',
-      formatter: (
-        params: Array<{ seriesName: string, value: number | null, dataIndex: number }>,
-      ) => {
-        const index = params[0]?.dataIndex ?? 0
-        const snapshot = snapshots[index]
-        const lines = [
-          snapshot.examName || '考试',
-          snapshot.examTime ? `时间 ${snapshot.examTime}` : '',
-          `参考 ${snapshot.participantCount ?? '—'} 人`,
-          `得分率 ${formatPercentText(snapshot.scoreRate)}`,
-          `及格率 ${formatPercentText(snapshot.passRate)}`,
-          snapshot.avgScore != null ? `平均分 ${Number(snapshot.avgScore).toFixed(1)}` : '',
-        ].filter(Boolean)
-        return lines.join('<br/>')
-      },
-    },
-    legend: { top: 0, textStyle: { fontSize: 12 } },
-    grid: { left: 48, right: 48, top: 36, bottom: 28 },
-    xAxis: { type: 'category', data: categories, ...CHART_AXIS },
-    yAxis: [
-      {
-        type: 'value',
-        name: '比率(%)',
-        min: 0,
-        max: 100,
-        ...CHART_AXIS,
-      },
-      {
-        type: 'value',
-        name: '平均分',
-        ...CHART_AXIS,
-      },
-    ],
-    series: [
-      {
-        name: '得分率',
-        type: 'line',
-        smooth: true,
-        yAxisIndex: 0,
-        symbolSize: 7,
-        itemStyle: { color: '#2563eb' },
-        data: scoreRates,
-      },
-      {
-        name: '及格率',
-        type: 'line',
-        smooth: true,
-        yAxisIndex: 0,
-        symbolSize: 7,
-        itemStyle: { color: '#16a34a' },
-        data: passRates,
-      },
-      {
-        name: '平均分',
-        type: 'bar',
-        yAxisIndex: 1,
-        barMaxWidth: 28,
-        itemStyle: { color: '#ea580c', borderRadius: [4, 4, 0, 0] },
-        data: avgScores,
-      },
-    ],
-  }
+/** 考试统计快照 → UiTrendChart 点位：纵轴为得分率百分制 */
+export function examStatSnapshotsToTrendPoints(snapshots: ExamStatSnapshotVO[]): UiTrendPoint[] {
+  if (snapshots.length === 0) return []
+  return snapshots.map((snapshot, index) => ({
+    key: snapshot.examId || `exam-${index}`,
+    label: truncateLabel(snapshot.examName || '考试'),
+    value: toPercent(snapshot.scoreRate) ?? 0,
+  }))
 }
 
-export function buildGrowthItemsBarOption(items: SemesterGrowthItemVO[]): EChartsCoreOption | null {
-  if (items.length === 0) return null
-  const categories = items.map((item) =>
-    truncateLabel(item.dimensionLabel || item.dimension || '能力点', 10),
-  )
-  return {
-    tooltip: { trigger: 'axis' },
-    legend: { top: 0, textStyle: { fontSize: 12 } },
-    grid: { left: 48, right: 16, top: 36, bottom: 28 },
-    xAxis: { type: 'category', data: categories, ...CHART_AXIS },
-    yAxis: { type: 'value', name: '指标值', ...CHART_AXIS },
-    series: [
-      {
-        name: '起始值',
-        type: 'bar',
-        barMaxWidth: 24,
-        itemStyle: { color: '#94a3b8', borderRadius: [4, 4, 0, 0] },
-        data: items.map((item) => item.startValue ?? null),
-      },
-      {
-        name: '结束值',
-        type: 'bar',
-        barMaxWidth: 24,
-        itemStyle: { color: '#2563eb', borderRadius: [4, 4, 0, 0] },
-        data: items.map((item) => item.endValue ?? null),
-      },
-    ],
-  }
-}
-
-export function buildErrorCausePieOption(
-  items: ErrorCauseClusterItemVO[],
-): EChartsCoreOption | null {
-  const data = items
-    .filter((item) => item.proportion != null && item.proportion > 0)
-    .map((item) => ({
-      name: item.causeName || item.questionType || '错因',
-      value: Number(item.proportion),
-    }))
-  if (data.length === 0) return null
-  return {
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: { name: string, value: number, percent: number }) =>
-        `${params.name}<br/>占比 ${params.percent.toFixed(1)}%`,
-    },
-    legend: { type: 'scroll', bottom: 0, textStyle: { fontSize: 11 } },
-    series: [
-      {
-        type: 'pie',
-        radius: ['42%', '68%'],
-        center: ['50%', '46%'],
-        label: { formatter: '{b}\n{d}%' },
-        data,
-      },
-    ],
-  }
-}
-
-export function buildAchievementBarOption(
-  items: CourseAchievementItemVO[],
-): EChartsCoreOption | null {
-  if (items.length === 0) return null
-  const categories = items.map((item) => {
-    if (item.objectiveDimension) {
-      return strictEnumLabel(
-        COURSE_OBJECTIVE_DIMENSION_LABEL,
-        item.objectiveDimension,
-        '课程目标维度',
-      )
-    }
-    return truncateLabel(item.objectiveDescription || '课程目标', 10)
-  })
-  return {
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: Array<{ dataIndex: number }>) => {
-        const item = items[params[0]?.dataIndex ?? 0]
-        return [
-          categories[params[0]?.dataIndex ?? 0],
-          `达成率 ${formatPercentText(item.achievementRate)}`,
-        ].join('<br/>')
-      },
-    },
-    grid: { left: 48, right: 16, top: 16, bottom: 28 },
-    xAxis: { type: 'category', data: categories, ...CHART_AXIS },
-    yAxis: { type: 'value', name: '达成率(%)', min: 0, max: 100, ...CHART_AXIS },
-    series: [
-      {
-        type: 'bar',
-        barMaxWidth: 36,
-        itemStyle: { color: '#2563eb', borderRadius: [4, 4, 0, 0] },
-        data: items.map((item) => toPercent(item.achievementRate)),
-      },
-    ],
-  }
-}
-
-export function buildCorrectRatioBarOption(
-  rows: ExamQuestionAnalysisRecordVO[],
-): EChartsCoreOption | null {
-  const validRows = rows.filter((row) => row.totalCount > 0)
-  if (validRows.length === 0) return null
-  const categories = validRows.map((row) => `题${row.questionNo}`)
-  return {
-    tooltip: {
-      trigger: 'axis',
-      formatter: (params: Array<{ dataIndex: number }>) => {
-        const row = validRows[params[0]?.dataIndex ?? 0]
-        const ratio = (row.correctCount / row.totalCount) * 100
-        return [
-          `题${row.questionNo}`,
-          `正确率 ${ratio.toFixed(1)}%`,
-          `已批 ${row.totalCount} 人`,
-        ].join('<br/>')
-      },
-    },
-    grid: { left: 48, right: 16, top: 16, bottom: 28 },
-    xAxis: { type: 'category', data: categories, ...CHART_AXIS },
-    yAxis: { type: 'value', name: '正确率(%)', min: 0, max: 100, ...CHART_AXIS },
-    series: [
-      {
-        type: 'bar',
-        barMaxWidth: 28,
-        itemStyle: { color: '#2563eb', borderRadius: [4, 4, 0, 0] },
-        data: validRows.map((row) => (row.correctCount / row.totalCount) * 100),
-      },
-    ],
-  }
-}
-
-export function buildReviewProgressBarOption(
-  rows: ReviewQuestionProgressItemVO[],
-): EChartsCoreOption | null {
-  if (rows.length === 0) return null
-  const categories = rows.map((row) => `题${row.questionNo}`)
-  return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    legend: { top: 0, textStyle: { fontSize: 12 } },
-    grid: { left: 48, right: 16, top: 36, bottom: 28 },
-    xAxis: { type: 'category', data: categories, ...CHART_AXIS },
-    yAxis: { type: 'value', name: '任务数', minInterval: 1, ...CHART_AXIS },
-    series: [
-      {
-        name: '已通过',
-        type: 'bar',
-        stack: 'review',
-        itemStyle: { color: '#16a34a' },
-        data: rows.map((row) => row.approvedTaskCount),
-      },
-      {
-        name: '复核中',
-        type: 'bar',
-        stack: 'review',
-        itemStyle: { color: '#2563eb' },
-        data: rows.map((row) => row.inProgressTaskCount),
-      },
-      {
-        name: '待领取',
-        type: 'bar',
-        stack: 'review',
-        itemStyle: { color: '#ea580c' },
-        data: rows.map((row) => row.pendingTaskCount),
-      },
-      {
-        name: '已驳回',
-        type: 'bar',
-        stack: 'review',
-        itemStyle: { color: '#dc2626' },
-        data: rows.map((row) => row.rejectedTaskCount),
-      },
-    ],
-  }
-}
-
-export function buildExamScalePieOption(metrics: {
+/** 考试规模指标 → UiBarChart 条目 */
+export function examScaleMetricsToBarItems(metrics: {
   activeExamCount: number
   closedExamCount: number
   recentExamCount: number
-}): EChartsCoreOption | null {
-  const data = [
-    { name: '进行中', value: metrics.activeExamCount },
-    { name: '已结束', value: metrics.closedExamCount },
-    { name: '近期新增', value: metrics.recentExamCount },
-  ].filter((item) => item.value > 0)
-  if (data.length === 0) return null
-  return {
-    tooltip: { trigger: 'item' },
-    legend: { bottom: 0, textStyle: { fontSize: 11 } },
-    series: [
-      {
-        type: 'pie',
-        radius: ['40%', '66%'],
-        center: ['50%', '44%'],
-        label: { formatter: '{b}\n{c} 场' },
-        data,
-      },
-    ],
-  }
+}): UiBarChartItem[] {
+  const items: UiBarChartItem[] = [
+    { key: 'active', label: '进行中', value: metrics.activeExamCount, tone: 'blue' },
+    { key: 'closed', label: '已结束', value: metrics.closedExamCount, tone: 'gray' },
+    { key: 'recent', label: '近期新增', value: metrics.recentExamCount, tone: 'green' },
+  ]
+  return items.filter((item) => item.value > 0)
 }
 
-export function buildScoreHistogramOption(distribution: {
+/** 课程目标达成条目 → UiBarChart 条目（百分制纵轴） */
+export function achievementItemsToBarItems(items: CourseAchievementItemVO[]): UiBarChartItem[] {
+  if (items.length === 0) return []
+  return items.map((item, index) => {
+    const label = item.objectiveDimension
+      ? strictEnumLabel(COURSE_OBJECTIVE_DIMENSION_LABEL, item.objectiveDimension, '课程目标维度')
+      : truncateLabel(item.objectiveDescription || '课程目标', 10)
+    const tone: BadgeTone = item.achievementRate == null ? 'gray' : rateTone(item.achievementRate)
+    return {
+      key: item.objectiveDimension || `objective-${index}`,
+      label,
+      value: toPercent(item.achievementRate) ?? 0,
+      tone,
+      helper: formatPercentText(item.achievementRate),
+    }
+  })
+}
+
+/** 学期成长条目 → UiBarChart 条目：展示结束值，helper 标注起止对照 */
+export function growthItemsToBarItems(items: SemesterGrowthItemVO[]): UiBarChartItem[] {
+  if (items.length === 0) return []
+  return items.map((item, index) => {
+    const helperParts = [
+      item.startValue != null ? `起始 ${item.startValue}` : '',
+      item.endValue != null ? `结束 ${item.endValue}` : '',
+    ].filter(Boolean)
+    return {
+      key: item.dimension || `growth-${index}`,
+      label: truncateLabel(item.dimensionLabel || item.dimension || '能力点', 10),
+      value: item.endValue ?? 0,
+      tone: 'blue' satisfies BadgeTone,
+      helper: helperParts.length ? helperParts.join(' · ') : undefined,
+    }
+  })
+}
+
+/** 分数段分布 → UiBarChart 条目 */
+export function scoreHistogramToBarItems(distribution: {
   ranges: string[]
   counts: number[]
-}): EChartsCoreOption | null {
+}): UiBarChartItem[] {
   if (!distribution.ranges.length || distribution.ranges.length !== distribution.counts.length) {
-    return null
+    return []
   }
-  const hasData = distribution.counts.some((count) => count > 0)
-  if (!hasData) return null
-  return {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      formatter: (params: Array<{ name: string, value: number }>) => {
-        const item = params[0]
-        return `${item.name}<br/>人数 ${item.value}`
-      },
-    },
-    grid: { left: 48, right: 16, top: 16, bottom: 48 },
-    xAxis: {
-      type: 'category',
-      data: distribution.ranges,
-      axisLabel: { interval: 0, rotate: 18, fontSize: 11, color: '#64748b' },
-      axisLine: { lineStyle: { color: '#94a3b8' } },
-    },
-    yAxis: {
-      type: 'value',
-      name: '人数',
-      minInterval: 1,
-      axisLine: { lineStyle: { color: '#94a3b8' } },
-      splitLine: { lineStyle: { color: '#e2e8f0' } },
-    },
-    series: [
-      {
-        type: 'bar',
-        barMaxWidth: 48,
-        itemStyle: { color: '#2563eb', borderRadius: [4, 4, 0, 0] },
-        data: distribution.counts,
-      },
-    ],
+  const items: UiBarChartItem[] = distribution.ranges.map((label, index) => ({
+    key: `range-${index}`,
+    label,
+    value: distribution.counts[index] ?? 0,
+    tone: 'blue' satisfies BadgeTone,
+    helper: `${distribution.counts[index] ?? 0} 人`,
+  }))
+  return items.filter((item) => item.value > 0)
+}
+
+/** 题目复核进度 → UiBarChart 条目：展示已通过任务数 */
+export function reviewProgressToBarItems(
+  rows: ReviewQuestionProgressItemVO[],
+): UiBarChartItem[] {
+  if (rows.length === 0) return []
+  return rows.map((row) => ({
+    key: row.questionTemplateId,
+    label: `题${row.questionNo}`,
+    value: row.approvedTaskCount,
+    tone: row.approvedTaskCount >= row.totalTaskCount && row.totalTaskCount > 0
+      ? ('green' satisfies BadgeTone)
+      : ('blue' satisfies BadgeTone),
+    helper: `已通过 ${row.approvedTaskCount} / ${row.totalTaskCount}`,
+  }))
+}
+
+/** 各题正确率 → UiBarChart 条目（百分制） */
+export function correctRatioToBarItems(
+  rows: ExamQuestionAnalysisRecordVO[],
+): UiBarChartItem[] {
+  const validRows = rows.filter((row) => row.totalCount > 0)
+  if (validRows.length === 0) return []
+  return validRows.map((row) => {
+    const ratio = (row.correctCount / row.totalCount) * 100
+    const tone: BadgeTone = ratio < 40 ? 'red' : ratio < 60 ? 'orange' : 'green'
+    return {
+      key: row.questionTemplateId,
+      label: `题${row.questionNo}`,
+      value: Number(ratio.toFixed(1)),
+      tone,
+      helper: `已批 ${row.totalCount} 人`,
+    }
+  })
+}
+
+/** 错因占比 → UiBarChart 条目（百分制占比） */
+export function errorCauseToBarItems(
+  items: ErrorCauseClusterItemVO[],
+): UiBarChartItem[] {
+  const data: UiBarChartItem[] = items
+    .filter((item) => item.proportion != null && item.proportion > 0)
+    .map((item, index) => {
+      const percent = Number(item.proportion) <= 1
+        ? Number(item.proportion) * 100
+        : Number(item.proportion)
+      return {
+        key: item.causeName || item.questionType || `cause-${index}`,
+        label: truncateLabel(item.causeName || item.questionType || '错因', 10),
+        value: Number(percent.toFixed(1)),
+        tone: 'blue' satisfies BadgeTone,
+        helper: `${percent.toFixed(1)}%`,
+      }
+    })
+  return data
+}
+
+/** UiScatterChart 区段色：与 CHART_PALETTE 对齐 */
+export const SCATTER_ZONE_COLORS = {
+  ideal: CHART_PALETTE.success,
+  tooHard: CHART_PALETTE.danger,
+  tooEasy: CHART_PALETTE.warning,
+  lowDiscrim: CHART_PALETTE.purple,
+} as const
+
+/** 题目质量分析 → UiScatterChart 序列：按难度/区分度四区段分组 */
+export function buildQuestionQualityScatterSeries(
+  rows: ExamQuestionAnalysisRecordVO[],
+): UiScatterSeries[] {
+  const ideal: UiScatterSeries['points'] = []
+  const tooHard: UiScatterSeries['points'] = []
+  const tooEasy: UiScatterSeries['points'] = []
+  const lowDiscrim: UiScatterSeries['points'] = []
+
+  for (const row of rows) {
+    if (row.difficultyIndex == null || row.discriminationIndex == null) continue
+    const difficulty = Number(row.difficultyIndex)
+    const discrimination = Number(row.discriminationIndex)
+    const questionType = strictEnumLabel(QUESTION_TYPE_LABEL, row.questionType, '题型')
+    const point = {
+      key: row.questionTemplateId,
+      x: difficulty,
+      y: discrimination,
+      weight: row.totalCount,
+      label: `题${row.questionNo} · ${questionType}`,
+      helper: [
+        `难度系数 ${difficulty.toFixed(2)} · 区分度 ${discrimination.toFixed(2)}`,
+        `已批 ${row.totalCount} 人`,
+      ].join(' · '),
+    }
+    if (difficulty < 0.3) {
+      tooHard.push(point)
+    } else if (difficulty > 0.8) {
+      tooEasy.push(point)
+    } else if (discrimination < 0.4) {
+      lowDiscrim.push(point)
+    } else {
+      ideal.push(point)
+    }
   }
+
+  return [
+    { key: 'ideal', name: '理想区间', color: SCATTER_ZONE_COLORS.ideal, points: ideal },
+    { key: 'tooHard', name: '偏难', color: SCATTER_ZONE_COLORS.tooHard, points: tooHard },
+    { key: 'tooEasy', name: '偏易', color: SCATTER_ZONE_COLORS.tooEasy, points: tooEasy },
+    {
+      key: 'lowDiscrim',
+      name: '区分度不足',
+      color: SCATTER_ZONE_COLORS.lowDiscrim,
+      points: lowDiscrim,
+    },
+  ].filter((series) => series.points.length > 0)
 }

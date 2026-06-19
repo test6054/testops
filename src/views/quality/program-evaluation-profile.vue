@@ -15,6 +15,7 @@ import type {
   ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -26,7 +27,7 @@ import {
   programEvaluationProfileApi,
 } from '@/apis/quality'
 import { ProgramSelector } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiFilterBar } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -57,6 +58,16 @@ const query = reactive<ProgramEvaluationProfileQueryRequest>({
   keyword: '',
 })
 
+interface ProgramProfileFilterModel {
+  accreditationType?: AccreditationType
+  keyword: string
+}
+
+const listFilterForm = reactive<ProgramProfileFilterModel>({
+  accreditationType: undefined,
+  keyword: '',
+})
+
 const accreditationTypes: AccreditationType[] = [
   'ENGINEERING_ACCREDITATION',
   'TEACHER_ACCREDITATION',
@@ -78,6 +89,27 @@ const accreditationOptions = accreditationTypes.map((value) => ({
   value,
   label: strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型'),
 }))
+
+const filterFields: FilterField[] = [
+  {
+    key: 'accreditationType',
+    type: 'select',
+    label: '认证类型',
+    placeholder: '认证类型',
+    allowClear: true,
+    width: 160,
+    options: accreditationOptions,
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '专业名称',
+    placeholder: '专业名称',
+    allowClear: true,
+    width: 160,
+    triggerSearchOnChange: false,
+  },
+]
 const evaluationMethodOptions = evaluationMethods.map((value) => ({
   value,
   label: strictEnumLabel(EVALUATION_METHOD_LABEL, value, '评价方法'),
@@ -194,11 +226,20 @@ function handlePageChange(page: { current: number, pageSize: number }) {
   loadList()
 }
 
+function syncListFilterToQuery() {
+  query.accreditationType = listFilterForm.accreditationType
+  query.keyword = listFilterForm.keyword
+}
+
+function handleSearch() {
+  query.pageNum = 1
+  syncListFilterToQuery()
+  loadList()
+}
+
 function resetQuery() {
   query.pageNum = 1
-  query.accreditationType = undefined
-  query.enabled = undefined
-  query.keyword = ''
+  syncListFilterToQuery()
   loadList()
 }
 
@@ -281,38 +322,20 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <SignalBand :metrics="signals" compact class="program-profile__signals" />
 
-    <a-card :bordered="false" class="detail-table-card program-profile__table-card">
+    <UiCard class="detail-table-card program-profile__table-card">
       <template #title>口径列表</template>
+      <template #extra>
+        <UiButton size="sm" @click="openCreate">新建评价口径</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
-          <a-form-item label="认证类型">
-            <a-select
-              v-model:value="query.accreditationType"
-              placeholder="认证类型"
-              allow-clear
-              style="width: 160px"
-              :options="accreditationOptions"
-            />
-          </a-form-item>
-          <a-form-item label="专业名称">
-            <a-input
-              v-model:value="query.keyword"
-              placeholder="专业名称"
-              style="width: 160px"
-              @press-enter="loadList"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="loadList">查询</UiButton>
-              <span class="op-link" role="button" @click="resetQuery">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
-              <UiButton size="sm" @click="openCreate">新建评价口径</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="listFilterForm"
+        :fields="filterFields"
+        show-labels
+        search-text="查询"
+        @search="handleSearch"
+        @reset="resetQuery"
+      />
 
       <UiDataTable
         class="student-detail-table__data-table"
@@ -350,13 +373,13 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
             </div>
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <UiDrawer
       v-model:open="editorVisible"

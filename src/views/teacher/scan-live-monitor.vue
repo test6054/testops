@@ -3,22 +3,12 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="scan-monitor__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            popup-class-name="ui-select-dropdown"
-            :dropdown-match-select-width="false"
-            :dropdown-style="scanMonitorSelectDropdownStyle"
-            :get-popup-container="scanMonitorSelectPopupContainer"
-            @change="onExamChange"
-          />
-          <UiTag :tone="connectionTone" size="sm">
+          <MarkExamContextPicker select-class="scan-monitor__exam-select" />
+          <UiTag
+            :tone="connectionTone"
+            size="sm"
+            :class="{ 'scan-monitor__connection--pulse': connectionPulsing }"
+          >
             {{ connectionLabel }}
           </UiTag>
           <UiTag :tone="abnormalAttentionTotal > 0 ? 'red' : 'green'" size="sm">
@@ -29,6 +19,14 @@
           </UiTag>
         </template>
         <template #actions>
+          <UiButton
+            v-if="selectedExamId && abnormalAttentionTotal > 0"
+            size="sm"
+            variant="primary"
+            @click="jumpToAbnormalTab"
+          >
+            查看异常 {{ abnormalAttentionTotal }}
+          </UiButton>
           <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="openLedger">
             影像账本
           </UiButton>
@@ -37,6 +35,10 @@
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template #rail>
+      <MarkExamStageRail />
     </template>
 
     <UiEmpty
@@ -55,7 +57,7 @@
           compact
           class="scan-monitor__stats"
         />
-        <a-card :bordered="false" size="small" class="scan-monitor__health-card">
+        <UiCard :show-header="false" compact class="scan-monitor__health-card">
           <UiRingProgress
             :percent="healthPercent"
             :color="healthColor"
@@ -68,7 +70,7 @@
             <span>异常阻断 {{ abnormalAttentionTotal }} 条</span>
             <span>重复影像 {{ duplicateAttentionTotal }} 条</span>
           </div>
-        </a-card>
+        </UiCard>
       </div>
 
       <UiSectionTabs
@@ -129,190 +131,179 @@
             </section>
           </div>
         </section>
-        <a-card v-else :bordered="false" class="detail-table-card scan-monitor__list-card">
-        <template #title>{{ activeTab === 'duplicate' ? '重复影像' : '异常阻断' }}</template>
-        <div class="filter-card">
-        <a-form
-          layout="inline"
-          :model="filterForm"
-          class="scan-monitor__filter-form filter-form filter-form--toolbar"
-          @submit.prevent="reloadAttentionsFromFirstPage"
-        >
-          <a-form-item v-if="activeTab === 'abnormal'" label="异常类型">
-            <a-select
-              v-model:value="filterForm.attentionType"
-              placeholder="全部异常"
-              :options="attentionTypeOptions"
-              allow-clear
-              class="scan-monitor__type-select"
-              popup-class-name="ui-select-dropdown"
-              :dropdown-match-select-width="false"
-              :dropdown-style="scanMonitorSelectDropdownStyle"
-              :get-popup-container="scanMonitorSelectPopupContainer"
-              @change="onAttentionTypeChange"
-            />
-          </a-form-item>
-          <a-form-item label="扫描批次">
-            <a-select
-              v-model:value="filterForm.scanBatchId"
-              placeholder="选择扫描批次"
-              :options="scanBatchOptions"
-              :loading="scanBatchesLoading"
-              show-search
-              :filter-option="false"
-              allow-clear
-              class="scan-monitor__filter-select"
-              popup-class-name="ui-select-dropdown"
-              :dropdown-match-select-width="false"
-              :dropdown-style="scanMonitorSelectDropdownStyle"
-              :get-popup-container="scanMonitorSelectPopupContainer"
-              @search="handleScanBatchSearch"
-              @dropdown-visible-change="handleScanBatchDropdownVisibleChange"
-              @change="handleScanBatchFilterChange"
-            />
-          </a-form-item>
-          <a-form-item label="答题卡">
-            <a-select
-              v-model:value="filterForm.paperInstanceId"
-              placeholder="选择答题卡"
-              :options="paperCandidateOptions"
-              :loading="paperCandidatesLoading"
-              show-search
-              :filter-option="false"
-              allow-clear
-              class="scan-monitor__filter-select"
-              popup-class-name="ui-select-dropdown"
-              :dropdown-match-select-width="false"
-              :dropdown-style="scanMonitorSelectDropdownStyle"
-              :get-popup-container="scanMonitorSelectPopupContainer"
-              @search="handlePaperCandidateSearch"
-              @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
-              @change="handlePaperCandidateFilterChange"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" :loading="loading" @click="reloadAttentionsFromFirstPage">查询</UiButton>
-              <span class="op-link" role="button" @click="resetFilter">重置</span>
-            </a-space>
-          </a-form-item>
-        </a-form>
-        </div>
-
-        <!-- D-9 错误态：扫描异常列表加载失败时提供重试 + 上报入口 -->
-        <UiErrorRetryPanel
-          v-if="attentionsLoadError"
-          :error="attentionsLoadError"
-          title="扫描异常列表加载失败"
-          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-          compact
-          @retry="loadAttentions"
-        />
-        <UiDataTable class="student-detail-table__data-table"
-          v-else
-          v-model:current="attentionPagination.current"
-          v-model:page-size="attentionPagination.pageSize"
-          :columns="columns"
-          :data-source="activeAttentionRows"
-          :loading="loading"
-          :total="attentionPagination.total"
-          row-key="id"
-          :enable-selection="activeTab === 'abnormal'"
-          :selected-row-keys="selectedRowKeys"
-          flat
-          :empty-title="activeTab === 'duplicate' ? '当前无重复影像' : '当前无异常阻断'"
-          :empty-description="activeTab === 'duplicate' ? '当前筛选条件下没有重复影像' : '当前筛选条件下没有异常阻断待办'"
-          v-bind="activeTab === 'abnormal' ? { rowSelection } : {}"
-          @page-change="handleAttentionPageChange"
-        >
-          <template #toolbar-right>
-            <UiButton
-              v-if="activeTab === 'abnormal'"
-              size="sm"
-              :disabled="selectedRowKeys.length === 0"
-              :loading="batchBinding"
-              @click="handleBatchBind"
-            >
-              批量绑定 ({{ selectedRowKeys.length }})
-            </UiButton>
-          </template>
-
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'attentionType'">
-              <UiTag :tone="attentionTypeTone(record.attentionType)" size="sm">
-                {{ attentionTypeLabel(record.attentionType) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'sourceInfo'">
-              <div class="scan-monitor__source-cell">
-                <span>
-                  <b>{{ sourceTypeLabel(record.sourceType) }}</b>
-                </span>
-                <span class="scan-monitor__hint">{{ record.sourceDisplayName }}</span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'scanBatch'">
-              <span>{{ record.scanBatchDisplayName }}</span>
-            </template>
-            <template v-else-if="column.key === 'paperDisplay'">
-              <div class="scan-monitor__paper-cell">
-                <span>{{ record.paperDisplay.primaryText }}</span>
-                <span v-if="record.paperDisplay.secondaryText" class="scan-monitor__hint">
-                  {{ record.paperDisplay.secondaryText }}
-                </span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'status'">
-              <UiTag :tone="scanAttentionStatusTone(record)" size="sm">
-                {{ scanAttentionStatusLabel(record) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'diagnostic'">
-              <a-typography-text
-                :content="scanAttentionDiagnosticText(record.diagnostic)"
-                :ellipsis="{ tooltip: true }"
+        <UiCard v-else class="detail-table-card scan-monitor__list-card">
+          <template #title>{{ activeTab === 'duplicate' ? '重复影像' : '异常阻断' }}</template>
+          <UiFilterBar
+            v-model="filterForm"
+            :fields="attentionFilterFields"
+            show-labels
+            search-text="查询"
+            @search="handleAttentionFilterSearch"
+            @reset="resetFilter"
+          >
+            <template v-if="activeTab === 'abnormal'" #field-attentionType>
+              <a-select
+                v-model:value="filterForm.attentionType"
+                placeholder="全部异常"
+                :options="attentionTypeOptions"
+                allow-clear
+                class="scan-monitor__type-select"
+                style="width: 100%"
+                popup-class-name="ui-select-dropdown"
+                :dropdown-match-select-width="false"
+                :dropdown-style="scanMonitorSelectDropdownStyle"
+                :get-popup-container="scanMonitorSelectPopupContainer"
+                @change="onAttentionTypeChange"
               />
             </template>
-            <template v-else-if="column.key === 'updateTime'">
-              {{ formatDateTimeWithSeconds(record.updateTime) }}
+            <template #field-scanBatchId>
+              <a-select
+                v-model:value="filterForm.scanBatchId"
+                placeholder="选择扫描批次"
+                :options="scanBatchOptions"
+                :loading="scanBatchesLoading"
+                show-search
+                :filter-option="false"
+                allow-clear
+                class="scan-monitor__filter-select"
+                style="width: 100%"
+                popup-class-name="ui-select-dropdown"
+                :dropdown-match-select-width="false"
+                :dropdown-style="scanMonitorSelectDropdownStyle"
+                :get-popup-container="scanMonitorSelectPopupContainer"
+                @search="handleScanBatchSearch"
+                @dropdown-visible-change="handleScanBatchDropdownVisibleChange"
+                @change="handleScanBatchFilterChange"
+              />
             </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <span class="op-link" role="button" @click="openDetail(record)">详情</span>
-                <span
-                  v-if="record.attentionType === 'BINDING_CONFLICT'"
-                  class="op-link primary"
-                  :class="{ 'is-disabled': !record.paperInstanceId || !record.scanBatchId }"
-                  role="button"
-                  @click="
-                    record.paperInstanceId && record.scanBatchId && openBindDrawer(record)
-                  "
-                >
-                  身份绑定
-                </span>
-                <span
-                  v-else
-                  class="op-link primary"
-                  role="button"
-                  @click="openLedger"
-                >
-                  处置入口
-                </span>
-                <span
-                  v-if="record.sourceType === 'SCANNED_PAGE' && record.pageId"
-                  class="op-link danger"
-                  :class="{ 'is-disabled': pageDiscarding === record.pageId }"
-                  role="button"
-                  title="将该扫描页标记为废弃，不影响所属批次"
-                  @click="pageDiscarding !== record.pageId && onDiscardPage(record)"
-                >
-                  废弃此页
-                </span>
-              </div>
+            <template #field-paperInstanceId>
+              <a-select
+                v-model:value="filterForm.paperInstanceId"
+                placeholder="选择答题卡"
+                :options="paperCandidateOptions"
+                :loading="paperCandidatesLoading"
+                show-search
+                :filter-option="false"
+                allow-clear
+                class="scan-monitor__filter-select"
+                style="width: 100%"
+                popup-class-name="ui-select-dropdown"
+                :dropdown-match-select-width="false"
+                :dropdown-style="scanMonitorSelectDropdownStyle"
+                :get-popup-container="scanMonitorSelectPopupContainer"
+                @search="handlePaperCandidateSearch"
+                @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
+                @change="handlePaperCandidateFilterChange"
+              />
             </template>
-          </template>
-        </UiDataTable>
-        </a-card>
+          </UiFilterBar>
+
+          <!-- D-9 错误态：扫描异常列表加载失败时提供重试 + 上报入口 -->
+          <UiErrorRetryPanel
+            v-if="attentionsLoadError"
+            :error="attentionsLoadError"
+            title="扫描异常列表加载失败"
+            :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
+            compact
+            @retry="loadAttentions"
+          />
+          <UiDataTable
+            class="student-detail-table__data-table"
+            v-else
+            v-model:current="attentionPagination.current"
+            v-model:page-size="attentionPagination.pageSize"
+            :columns="columns"
+            :data-source="activeAttentionRows"
+            :loading="loading"
+            :total="attentionPagination.total"
+            row-key="id"
+            :enable-selection="activeTab === 'abnormal'"
+            :selected-row-keys="selectedRowKeys"
+            flat
+            :empty-title="activeTab === 'duplicate' ? '当前无重复影像' : '当前无异常阻断'"
+            :empty-description="activeTab === 'duplicate' ? '当前筛选条件下没有重复影像' : '当前筛选条件下没有异常阻断待办'"
+            v-bind="activeTab === 'abnormal' ? { rowSelection } : {}"
+            @page-change="handleAttentionPageChange"
+          >
+            <template #toolbar-right>
+              <UiButton
+                v-if="activeTab === 'abnormal'"
+                size="sm"
+                :disabled="selectedRowKeys.length === 0"
+                :loading="batchBinding"
+                @click="handleBatchBind"
+              >
+                批量绑定 ({{ selectedRowKeys.length }})
+              </UiButton>
+            </template>
+
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'attentionType'">
+                <UiTag :tone="attentionTypeTone(record.attentionType)" size="sm">
+                  {{ attentionTypeLabel(record.attentionType) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'sourceInfo'">
+                <div class="scan-monitor__source-cell">
+                  <span>
+                    <b>{{ sourceTypeLabel(record.sourceType) }}</b>
+                  </span>
+                  <span class="scan-monitor__hint">{{ record.sourceDisplayName }}</span>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'scanBatch'">
+                <span>{{ record.scanBatchDisplayName }}</span>
+              </template>
+              <template v-else-if="column.key === 'paperDisplay'">
+                <div class="scan-monitor__paper-cell">
+                  <span>{{ record.paperDisplay.primaryText }}</span>
+                  <span v-if="record.paperDisplay.secondaryText" class="scan-monitor__hint">
+                    {{ record.paperDisplay.secondaryText }}
+                  </span>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'status'">
+                <UiTag :tone="scanAttentionStatusTone(record)" size="sm">
+                  {{ scanAttentionStatusLabel(record) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'diagnostic'">
+                <a-typography-text
+                  :content="scanAttentionDiagnosticText(record.diagnostic)"
+                  :ellipsis="{ tooltip: true }"
+                />
+              </template>
+              <template v-else-if="column.key === 'updateTime'">
+                {{ formatDateTimeWithSeconds(record.updateTime) }}
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <div class="operations-cell" @click.stop>
+                  <UiTextAction @click="openDetail(record)">详情</UiTextAction>
+                  <UiTextAction
+                    v-if="record.attentionType === 'BINDING_CONFLICT'"
+                    tone="primary"
+                    :disabled="!record.paperInstanceId || !record.scanBatchId"
+                    @click="openBindDrawer(record)"
+                  >
+                    身份绑定
+                  </UiTextAction>
+                  <UiTextAction v-else tone="primary" @click="openLedger">
+                    处置入口
+                  </UiTextAction>
+                  <UiTextAction
+                    v-if="record.sourceType === 'SCANNED_PAGE' && record.pageId"
+                    tone="danger"
+                    :disabled="pageDiscarding === record.pageId"
+                    title="将该扫描页标记为废弃，不影响所属批次"
+                    @click="onDiscardPage(record)"
+                  >
+                    废弃此页
+                  </UiTextAction>
+                </div>
+              </template>
+            </template>
+          </UiDataTable>
+        </UiCard>
       </UiSectionTabs>
     </template>
 
@@ -699,7 +690,7 @@ import type {
 import type { ExamPaperBatchBindResultVO } from '@/apis/mark/exam-mark-scanner'
 import type { ScanEventStatusCode, ScanLiveEventVO } from '@/apis/mark/scan-live'
 import type { GradeStatusCode } from '@/apis/mark/student-exam'
-import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -716,21 +707,26 @@ import {
 } from '@/apis/mark/exam'
 import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
+import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
+import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import {
   UiAlertStrip,
   UiButton,
+  UiCard,
   UiDataTable,
   UiDrawer,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiRingProgress,
   UiSectionTabs,
   UiStatPanel,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { provideMarkExamContext } from '@/composables/useMarkExamContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
 import { readArrayResponse, readPageList, readPageTotal } from '@/utils/page-result'
@@ -752,13 +748,10 @@ function scanMonitorSelectPopupContainer(): HTMLElement {
 const router = useRouter()
 
 const {
-  examOptions,
-  loading: examLoading,
   selectedExamId,
   selectedExamLabel,
-  onExamChange,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = provideMarkExamContext()
 
 // ─── 列表筛选 + 数据 ─────────────────────────────
 const filterForm = reactive<{
@@ -771,9 +764,43 @@ const filterForm = reactive<{
   paperInstanceId: '',
 })
 
+const activeTab = ref<'normal' | 'abnormal' | 'duplicate'>('normal')
+
+const attentionFilterFields = computed<FilterField[]>(() => {
+  const fields: FilterField[] = []
+  if (activeTab.value === 'abnormal') {
+    fields.push({
+      key: 'attentionType',
+      type: 'custom',
+      label: '异常类型',
+      width: 160,
+      minWidth: 140,
+      maxWidth: 200,
+    })
+  }
+  fields.push(
+    {
+      key: 'scanBatchId',
+      type: 'custom',
+      label: '扫描批次',
+      width: 200,
+      minWidth: 180,
+      maxWidth: 260,
+    },
+    {
+      key: 'paperInstanceId',
+      type: 'custom',
+      label: '答题卡',
+      width: 200,
+      minWidth: 180,
+      maxWidth: 260,
+    },
+  )
+  return fields
+})
+
 const attentions = ref<ScanAttentionItemVO[]>([])
 const loading = ref(false)
-const activeTab = ref<'normal' | 'abnormal' | 'duplicate'>('normal')
 const attentionPagination = reactive({
   current: 1,
   pageSize: 20,
@@ -847,6 +874,15 @@ const connectionLabel = computed(() => {
   if (scanLiveStreaming.value) return '连接建立中'
   return '未连接'
 })
+
+/** SSE 已连接时顶栏状态标签 pulse，提示实时监控活跃 */
+const connectionPulsing = computed(
+  () => scanLiveReady.value && !scanLiveError.value && !!selectedExamId.value,
+)
+
+function jumpToAbnormalTab(): void {
+  activeTab.value = 'abnormal'
+}
 
 const groupedByStation = computed(() => {
   const groups = new Map<
@@ -1342,9 +1378,10 @@ const statPanelMetrics = computed(() => [
 ])
 
 function resetFilter(): void {
-  filterForm.attentionType = ''
-  filterForm.scanBatchId = ''
-  filterForm.paperInstanceId = ''
+  reloadAttentionsFromFirstPage()
+}
+
+function handleAttentionFilterSearch(): void {
   reloadAttentionsFromFirstPage()
 }
 
@@ -1973,6 +2010,10 @@ onBeforeUnmount(() => {
     min-width: 0;
   }
 
+  &__connection--pulse {
+    animation: scan-monitor-connection-pulse 1.6s ease-in-out infinite;
+  }
+
   &__health-meta {
     display: flex;
     flex-direction: column;
@@ -2018,7 +2059,7 @@ onBeforeUnmount(() => {
     margin: 0;
     color: var(--dp-text-primary, #0f172a);
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   &__event-group-meta {
@@ -2217,24 +2258,31 @@ onBeforeUnmount(() => {
     margin-bottom: 8px;
     color: var(--dp-text-primary, #0f172a);
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   &__identity-image-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
-    min-height: 120px;
-    max-height: 220px;
-    border: 1px solid var(--dp-border, #e2e8f0);
+    min-height: 200px;
+    max-height: 360px;
+    padding: 12px;
+    border: 1px solid var(--scan-canvas-border, #dde2ea);
     border-radius: 6px;
-    background: var(--dp-surface, #fff);
+    background: var(--scan-canvas-bg, #f1f3f7);
   }
 
   &__identity-image {
     display: block;
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     height: auto;
-    max-height: 220px;
+    max-height: 336px;
     object-fit: contain;
+    background: #fff;
+    box-shadow: var(--scan-paper-shadow, 0 6px 24px rgba(15, 23, 42, 0.12));
   }
 
   &__identity-empty {
@@ -2294,6 +2342,17 @@ onBeforeUnmount(() => {
     &__identity-compare {
       grid-template-columns: 1fr;
     }
+  }
+}
+
+@keyframes scan-monitor-connection-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
   }
 }
 </style>

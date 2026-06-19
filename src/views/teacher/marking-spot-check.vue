@@ -96,7 +96,7 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span class="op-link primary" role="button" @click="openHandleModal(pendingItems[index])">处理结论</span>
+              <UiTextAction tone="primary" @click="openHandleModal(pendingItems[index])">处理结论</UiTextAction>
             </div>
           </template>
         </template>

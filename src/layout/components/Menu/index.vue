@@ -10,8 +10,39 @@
     @click="onMenuItemClick"
     @open-change="onOpenChange"
   >
+    <!-- 教师阅卷 + 质量评价合并侧栏：按域分区展示 -->
+    <template v-if="useMergedTeacherQualitySidebar">
+      <a-menu-item-group title="阅卷中心">
+        <MenuItem
+          v-for="item in mergedMenuPartitions.marking.ungrouped"
+          :key="item.path || item.name"
+          :item="item"
+        />
+        <a-sub-menu v-for="group in mergedMenuPartitions.marking.groups" :key="`mark-${group.key}`">
+          <template #title>{{ group.title }}</template>
+          <template #icon>
+            <MenuIcon :icon="group.icon" />
+          </template>
+          <MenuItem v-for="item in group.items" :key="item.path || item.name" :item="item" />
+        </a-sub-menu>
+      </a-menu-item-group>
+      <a-menu-item-group title="质量评价">
+        <MenuItem
+          v-for="item in mergedMenuPartitions.quality.ungrouped"
+          :key="item.path || item.name"
+          :item="item"
+        />
+        <a-sub-menu v-for="group in mergedMenuPartitions.quality.groups" :key="`quality-${group.key}`">
+          <template #title>{{ group.title }}</template>
+          <template #icon>
+            <MenuIcon :icon="group.icon" />
+          </template>
+          <MenuItem v-for="item in group.items" :key="item.path || item.name" :item="item" />
+        </a-sub-menu>
+      </a-menu-item-group>
+    </template>
     <!-- 容器路由（/admin、/teacher、/student）：扁平化展开 + menuGroup 分组渲染 -->
-    <template v-if="isRoleLayoutRoute && groupedMenus">
+    <template v-else-if="isRoleLayoutRoute">
       <!-- 无分组（如工作台 / 阅卷概览） -->
       <MenuItem v-for="item in groupedMenus.ungrouped" :key="item.path || item.name" :item="item" />
       <!-- 分组菜单 -->
@@ -161,7 +192,8 @@ interface MenuGroup {
 
 // 按 menuGroup 分组菜单（容器路由启用；无 menuGroup 的项进入 ungrouped 顶部区）
 const groupedMenus = computed(() => {
-  if (!isRoleLayoutRoute.value && !useMergedTeacherQualitySidebar.value) return null
+  const empty = { ungrouped: [] as RouteRecordRaw[], groups: [] as MenuGroup[] }
+  if (!isRoleLayoutRoute.value && !useMergedTeacherQualitySidebar.value) return empty
 
   const routes = sidebarRoutes.value
   const ungrouped: RouteRecordRaw[] = []
@@ -191,6 +223,48 @@ const groupedMenus = computed(() => {
   const groups = Array.from(groupMap.values()).sort((a, b) => a.order - b.order)
 
   return { ungrouped, groups }
+})
+
+function buildGroupedPartition(routes: RouteRecordRaw[]): { ungrouped: RouteRecordRaw[], groups: MenuGroup[] } {
+  const ungrouped: RouteRecordRaw[] = []
+  const groupMap = new Map<string, MenuGroup>()
+
+  for (const item of routes) {
+    const groupKey = item.meta?.menuGroup as string | undefined
+    if (!groupKey) {
+      ungrouped.push(item)
+    } else {
+      if (!groupMap.has(groupKey)) {
+        groupMap.set(groupKey, {
+          key: groupKey,
+          title: (item.meta?.menuGroupTitle as string) || groupKey,
+          icon: (item.meta?.menuGroupIcon as string) || 'folder',
+          order: (item.meta?.menuGroupOrder as number) || 99,
+          items: [],
+        })
+      }
+      groupMap.get(groupKey)!.items.push(item)
+    }
+  }
+
+  return {
+    ungrouped,
+    groups: Array.from(groupMap.values()).sort((left, right) => left.order - right.order),
+  }
+}
+
+const mergedMenuPartitions = computed(() => {
+  const empty = { ungrouped: [] as RouteRecordRaw[], groups: [] as MenuGroup[] }
+  if (!useMergedTeacherQualitySidebar.value) {
+    return { marking: empty, quality: empty }
+  }
+  const routes = sidebarRoutes.value
+  const markingRoutes = routes.filter((item) => !item.path.startsWith('/quality/'))
+  const qualityRoutes = routes.filter((item) => item.path.startsWith('/quality/'))
+  return {
+    marking: buildGroupedPartition(markingRoutes),
+    quality: buildGroupedPartition(qualityRoutes),
+  }
 })
 
 // 添加稳定的菜单数据，避免频繁更新导致的slot警告

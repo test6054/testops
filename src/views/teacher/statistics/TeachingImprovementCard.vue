@@ -1,13 +1,20 @@
 <template>
-  <a-card title="AI 教学改进方案" :bordered="false" size="small">
+  <UiCard class="stats-card" compact>
+    <template #title>AI 教学改进方案</template>
     <template #extra>
       <a-space>
-        <a-button type="primary" :loading="generating" @click="handleGenerate"> 重新生成 </a-button>
-        <a-button :disabled="!canShareRecord" @click="copyShareText">复制分享内容</a-button>
-        <a-button :disabled="!canShareRecord" @click="exportRecordText">导出文本</a-button>
-        <a-button :loading="loading" @click="reload">
+        <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerate">
+          重新生成
+        </UiButton>
+        <UiButton variant="outline" size="sm" :disabled="!canShareRecord" @click="copyShareText">
+          复制分享内容
+        </UiButton>
+        <UiButton variant="outline" size="sm" :disabled="!canShareRecord" @click="exportRecordText">
+          导出文本
+        </UiButton>
+        <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新最新
-        </a-button>
+        </UiButton>
       </a-space>
     </template>
 
@@ -25,7 +32,7 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!record" description="暂无 AI 教学改进方案，可点击重新生成。" />
+      <UiEmpty v-else-if="!record" description="暂无 AI 教学改进方案，可点击重新生成。" />
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -92,7 +99,7 @@
         </div>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -109,7 +116,7 @@ import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
 } from '@/apis/mark/teaching-analysis'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -257,14 +264,13 @@ watch(
   },
   { immediate: true },
 )
+
+defineExpose({
+  exportRecordText,
+})
 </script>
 
 <style lang="scss" scoped>
-.ai-record {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
 .ai-summary {
   margin: 0;
 }
@@ -284,15 +290,11 @@ watch(
   align-items: center;
   gap: 8px;
 }
-.analysis-item__title {
-  font-weight: 600;
+.analysis-item__metric {
+  margin-left: auto;
 }
 .analysis-item__text {
   margin: 0;
-  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
   line-height: 1.6;
-}
-.text-muted {
-  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
 }
 </style>

@@ -18,6 +18,7 @@ import type {
   AiModelProfileVO,
   AiProviderType,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -27,7 +28,7 @@ import {
   AI_PROVIDER_TYPE_LABEL,
   aiModelProfileApi,
 } from '@/apis/quality'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -72,9 +73,27 @@ function aiModelHealthMessageText(messageText?: string): string {
   )
 }
 
+interface AiModelProfileFilterModel {
+  enabledOnly: boolean
+}
+
+const filterForm = reactive<AiModelProfileFilterModel>({
+  enabledOnly: false,
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
+const filterFields: FilterField[] = [
+  { key: 'enabledOnly', type: 'custom' },
+]
+
 const list = ref<AiModelProfileVO[]>([])
 const loading = ref(false)
-const enabledOnly = ref<boolean>(false)
 
 /** 当前已启用配置集合，按供应商分流后允许 QWEN / DEEPSEEK 各一条。 */
 const activeProfiles = computed<AiModelProfileVO[]>(() => list.value.filter((item) => item.enabled))
@@ -111,7 +130,7 @@ async function loadList() {
   try {
     list.value = await readAllPages(
       (pageNum) => aiModelProfileApi.list({
-        enabledOnly: enabledOnly.value || undefined,
+        enabledOnly: filterForm.enabledOnly || undefined,
         pageNum,
         pageSize: AI_MODEL_PROFILE_PAGE_SIZE,
       }),
@@ -120,6 +139,15 @@ async function loadList() {
   } finally {
     loading.value = false
   }
+}
+
+function handleSearch() {
+  void loadList()
+}
+
+function handleReset() {
+  filterForm.enabledOnly = false
+  void loadList()
 }
 
 function openCreate() {
@@ -351,7 +379,7 @@ onMounted(() => {
 
     <SignalBand :metrics="signals" compact class="ai-model__signals" />
 
-    <a-card :bordered="false" class="detail-table-card ai-model__active-card">
+    <UiCard class="detail-table-card ai-model__active-card">
       <template #title>当前启用模型</template>
 
       <UiEmpty
@@ -405,24 +433,24 @@ onMounted(() => {
           </a-descriptions-item>
         </a-descriptions>
       </a-space>
-    </a-card>
+    </UiCard>
 
-    <a-card :bordered="false" class="detail-table-card ai-model__table-card">
+    <UiCard class="detail-table-card ai-model__table-card">
       <template #title>模型候选仓库</template>
+      <template #extra>
+        <UiButton size="sm" @click="openCreate">新建配置</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
-          <a-form-item>
-            <a-checkbox v-model:checked="enabledOnly" @change="loadList">仅看启用</a-checkbox>
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
-              <UiButton size="sm" @click="openCreate">新建配置</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #field-enabledOnly>
+          <a-checkbox v-model:checked="filterForm.enabledOnly">仅看启用</a-checkbox>
+        </template>
+      </UiFilterBar>
 
       <UiDataTable
         class="student-detail-table__data-table"
@@ -463,30 +491,28 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span
+              <UiTextAction
                 v-if="!record.enabled"
-                class="op-link primary"
-                :class="{ 'is-disabled': activatingId === record.id }"
-                role="button"
-                @click="activatingId !== record.id && handleActivate(record)"
+                tone="primary"
+                :disabled="activatingId === record.id"
+                @click="handleActivate(record)"
               >
                 设为启用
-              </span>
-              <span
-                class="op-link primary"
-                :class="{ 'is-disabled': healthLoading === record.id }"
-                role="button"
-                @click="healthLoading !== record.id && handleHealthCheck(record)"
+              </UiTextAction>
+              <UiTextAction
+                tone="primary"
+                :disabled="healthLoading === record.id"
+                @click="handleHealthCheck(record)"
               >
                 健康检查
-              </span>
-              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-              <span class="op-link danger" role="button" @click="handleDisable(record)">停用</span>
+              </UiTextAction>
+              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction tone="danger" @click="handleDisable(record)">停用</UiTextAction>
             </div>
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <UiDrawer
       v-model:open="editorVisible"

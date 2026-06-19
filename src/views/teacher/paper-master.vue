@@ -73,7 +73,7 @@
           <a-button v-if="pdfPreviewUrl" type="link" size="small" @click="openPdfInNewTab">
             新窗口打开
           </a-button>
-          <span class="op-link" role="button" @click="closePdfPreview">关闭预览</span>
+          <UiTextAction @click="closePdfPreview">关闭预览</UiTextAction>
         </template>
         <!-- 预览模式 -->
         <template v-if="pdfViewMode === 'preview'">
@@ -196,8 +196,15 @@
             </template>
             <template v-else-if="column.key === 'action'">
               <a-space>
-                <span class="op-link" role="button" @click="openIdentityEdit(index)">编辑</span>
-                <span class="op-link danger" role="button" @click="removeIdentityArea(index)">删除</span>
+                <UiTextAction @click="openIdentityEdit(index)">编辑</UiTextAction>
+                <UiConfirmPopover
+                  title="确认删除该身份识别区？"
+                  description="删除后需重新配置并保存母版。"
+                  danger
+                  @confirm="removeIdentityArea(index)"
+                >
+                  <UiTextAction tone="danger">删除</UiTextAction>
+                </UiConfirmPopover>
               </a-space>
             </template>
           </template>
@@ -236,8 +243,15 @@
             </template>
             <template v-else-if="column.key === 'action'">
               <a-space>
-                <span class="op-link" role="button" @click="openObjectiveEdit(index)">编辑</span>
-                <span class="op-link danger" role="button" @click="removeObjectiveArea(index)">删除</span>
+                <UiTextAction @click="openObjectiveEdit(index)">编辑</UiTextAction>
+                <UiConfirmPopover
+                  title="确认删除该客观题填涂区？"
+                  description="删除后需重新配置并保存母版。"
+                  danger
+                  @confirm="removeObjectiveArea(index)"
+                >
+                  <UiTextAction tone="danger">删除</UiTextAction>
+                </UiConfirmPopover>
               </a-space>
             </template>
           </template>
@@ -331,7 +345,9 @@
               class="objective-options__item"
             >
               <a-input v-model:value="option.optionLabel" :maxlength="8" size="small" />
-              <span class="op-link danger" role="button" @click="removeObjectiveOption(objectiveDraft, option.sortNo)">删除</span>
+              <UiTextAction tone="danger" @click="removeObjectiveOption(objectiveDraft, option.sortNo)">
+                删除
+              </UiTextAction>
             </div>
             <a-button size="small" type="link" @click="addObjectiveOption(objectiveDraft)">
               添加选项
@@ -387,19 +403,11 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
-import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
 import type {
   PaperMasterIdentityAreaRequest,
   PaperMasterIdentityAreaTypeCode,
   PaperMasterObjectiveAreaRequest,
   PaperMasterVO
-} from '@/apis/mark/paper-master'
-import {
-  generateStandardPaper,
-  getPaperMaster,
-  isPaperMasterNotConfiguredError,
-  PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL,
-  savePaperMaster
 } from '@/apis/mark/paper-master'
 import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
@@ -412,8 +420,16 @@ import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
+import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
+import {
+  generateStandardPaper,
+  getPaperMaster,
+  isPaperMasterNotConfiguredError,
+  PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL,
+  savePaperMaster
+} from '@/apis/mark/paper-master'
 import PdfAnnotationEditor from '@/components/mark/PdfAnnotationEditor.vue'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiConfirmPopover, UiDataTable, UiEmpty, UiErrorRetryPanel, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'

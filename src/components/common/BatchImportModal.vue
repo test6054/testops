@@ -119,12 +119,17 @@
           <ExclamationCircleFilled class="error-icon" />
           异常明细
         </h4>
-        <a-table
+        <UiDataTable
           :columns="errorColumns"
-          :data-source="errorRows"
-          :pagination="errorTablePagination"
+          :data-source="pagedErrorRows"
+          v-model:current="errorTablePage"
+          v-model:page-size="errorTablePageSize"
+          :total="errorRows.length"
+          :show-pagination="errorRows.length > 6"
+          :show-size-changer="false"
           size="small"
           row-key="key"
+          flat
           class="error-table"
         />
       </div>
@@ -168,6 +173,7 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import { computed, ref, watch } from 'vue'
+import { UiDataTable } from '@/components/ui-guide/ui'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 
 type ResultStatus = 'success' | 'warning' | 'error'
@@ -253,6 +259,14 @@ const errorRows = computed<ErrorRow[]>(() => {
   })
 })
 
+const errorTablePage = ref(1)
+const errorTablePageSize = ref(6)
+
+const pagedErrorRows = computed(() => {
+  const start = (errorTablePage.value - 1) * errorTablePageSize.value
+  return errorRows.value.slice(start, start + errorTablePageSize.value)
+})
+
 const errorColumns: TableColumnsType<ErrorRow> = [
   {
     title: '序号',
@@ -273,16 +287,6 @@ const errorColumns: TableColumnsType<ErrorRow> = [
     key: 'message',
   },
 ]
-
-const errorTablePagination = computed(() => {
-  if (errorRows.value.length <= 6) return false
-  return {
-    pageSize: 6,
-    size: 'small' as const,
-    showSizeChanger: false,
-    showTotal: (total: number) => `共 ${total} 条失败明细`,
-  }
-})
 
 const resultTitle = computed(() => {
   switch (resultStatus.value) {

@@ -120,8 +120,8 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span class="op-link" role="button" @click="goReviewDetail(reviewTasks[index])">详情</span>
-                <span class="op-link primary" role="button" @click="goReviewWorkspace(reviewTasks[index])">进入仲裁处理</span>
+                <UiTextAction @click="goReviewDetail(reviewTasks[index])">详情</UiTextAction>
+                <UiTextAction tone="primary" @click="goReviewWorkspace(reviewTasks[index])">进入仲裁处理</UiTextAction>
               </div>
             </template>
           </template>
@@ -199,9 +199,9 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span class="op-link primary" role="button" @click="goMarkingWorkspace(arbitrationTasks[index])">
+                <UiTextAction tone="primary" @click="goMarkingWorkspace(arbitrationTasks[index])">
                   整卷仲裁
-                </span>
+                </UiTextAction>
               </div>
             </template>
           </template>

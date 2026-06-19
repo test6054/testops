@@ -50,8 +50,8 @@
 .sa-workspace__title {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
+  font-weight: 600;
+  color: var(--dp-text-primary, #0f172a);
 }
 
 .sa-toolbar {
@@ -78,7 +78,7 @@
   border: 1px solid var(--ant-color-border-secondary);
   border-radius: 18px;
   background: var(--ant-color-bg-container);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--dp-shadow-soft);
 }
 
 .sa-panel__header {
@@ -92,8 +92,8 @@
 .sa-panel__title {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
+  font-weight: 600;
+  color: var(--dp-text-primary, #0f172a);
 }
 
 .sa-panel__body {
@@ -116,7 +116,7 @@
   border: 1px solid var(--ant-color-border-secondary);
   border-radius: 20px;
   background: var(--ant-color-bg-container);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--dp-shadow-soft);
 }
 
 .sa-side-card__header {
@@ -130,8 +130,8 @@
 .sa-side-card__title {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
+  font-weight: 600;
+  color: var(--dp-text-primary, #0f172a);
 }
 
 .sa-side-card__body {

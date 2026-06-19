@@ -51,36 +51,22 @@
             </span>
           </template>
 
-          <div class="filter-bar">
-            <a-space wrap>
-              <a-input
-                v-model:value="inboxFilter.keyword"
-                placeholder="按主题搜索"
-                allow-clear
-                style="width: 240px"
-                @press-enter="loadMessages(1)"
-              />
-              <a-select
-                v-model:value="inboxFilter.isRead"
-                placeholder="阅读状态"
-                allow-clear
-                style="width: 140px"
-                :options="readStatusOptions"
-                @change="loadMessages(1)"
-              />
-              <UiButton size="sm" :loading="loadingMessages" @click="loadMessages(1)">
-                查询
-              </UiButton>
-              <UiButton
-                v-if="unreadInboxCount > 0"
-                size="sm"
-                variant="outline"
-                :loading="markingAllInbox"
-                @click="markAllInbox"
-              >
-                全部已读
-              </UiButton>
-            </a-space>
+          <UiFilterBar
+            v-model="inboxFilter"
+            :fields="inboxFilterFields"
+            search-text="查询"
+            @search="() => loadMessages(1)"
+            @reset="handleInboxReset"
+          />
+          <div v-if="unreadInboxCount > 0" class="message-tab__mark-all">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="markingAllInbox"
+              @click="markAllInbox"
+            >
+              全部已读
+            </UiButton>
           </div>
 
           <UiEmpty v-if="!loadingMessages && messages.length === 0" description="暂无站内信" />
@@ -144,42 +130,26 @@
             </span>
           </template>
 
-          <div class="filter-bar">
-            <a-space wrap>
-              <a-input
-                v-model:value="announcementFilter.titleKeyword"
-                placeholder="按标题搜索"
-                allow-clear
-                style="width: 240px"
-                @press-enter="loadAnnouncements(1)"
-              />
-              <a-select
-                v-model:value="announcementFilter.priority"
-                placeholder="优先级"
-                allow-clear
-                style="width: 140px"
-                :options="priorityOptions"
-                @change="loadAnnouncements(1)"
-              />
-              <a-checkbox
-                v-model:checked="announcementFilter.unreadOnly"
-                @change="loadAnnouncements(1)"
-              >
-                仅未读
-              </a-checkbox>
-              <UiButton size="sm" :loading="loadingAnnouncements" @click="loadAnnouncements(1)">
-                查询
-              </UiButton>
-              <UiButton
-                v-if="unreadAnnouncementCount > 0"
-                size="sm"
-                variant="outline"
-                :loading="markingAllAnnouncement"
-                @click="markAllAnnouncements"
-              >
-                全部已读
-              </UiButton>
-            </a-space>
+          <UiFilterBar
+            v-model="announcementFilter"
+            :fields="announcementFilterFields"
+            search-text="查询"
+            @search="() => loadAnnouncements(1)"
+            @reset="handleAnnouncementReset"
+          >
+            <template #field-unreadOnly>
+              <a-checkbox v-model:checked="announcementFilter.unreadOnly">仅未读</a-checkbox>
+            </template>
+          </UiFilterBar>
+          <div v-if="unreadAnnouncementCount > 0" class="message-tab__mark-all">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="markingAllAnnouncement"
+              @click="markAllAnnouncements"
+            >
+              全部已读
+            </UiButton>
           </div>
 
           <UiEmpty
@@ -298,6 +268,7 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import BellOutlined from '@ant-design/icons-vue/BellOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -317,7 +288,7 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
-import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'
@@ -364,6 +335,63 @@ const readStatusOptions = [
   { value: 'true', label: '已读' },
 ]
 
+const inboxFilterFields: FilterField[] = [
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '按主题搜索',
+    allowClear: true,
+    width: 240,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'isRead',
+    type: 'select',
+    placeholder: '阅读状态',
+    allowClear: true,
+    width: 140,
+    options: readStatusOptions,
+  },
+]
+
+const announcementFilterFields: FilterField[] = [
+  {
+    key: 'titleKeyword',
+    type: 'input',
+    placeholder: '按标题搜索',
+    allowClear: true,
+    width: 240,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'priority',
+    type: 'select',
+    placeholder: '优先级',
+    allowClear: true,
+    width: 140,
+    options: [
+      { value: 'NORMAL', label: '普通' },
+      { value: 'IMPORTANT', label: '重要' },
+    ],
+  },
+  { key: 'unreadOnly', label: '筛选' },
+]
+
+function handleInboxReset(): void {
+  inboxFilter.keyword = undefined
+  inboxFilter.isRead = undefined
+  messagePageState.pageNum = 1
+  void loadMessages(1)
+}
+
+function handleAnnouncementReset(): void {
+  announcementFilter.titleKeyword = undefined
+  announcementFilter.priority = undefined
+  announcementFilter.unreadOnly = undefined
+  announcementPageState.pageNum = 1
+  void loadAnnouncements(1)
+}
+
 async function loadMessages(page = messagePageState.pageNum) {
   loadingMessages.value = true
   try {
@@ -406,11 +434,6 @@ const announcementPagination = computed(() => ({
     loadAnnouncements(page)
   },
 }))
-
-const priorityOptions = [
-  { value: 'NORMAL', label: '普通' },
-  { value: 'IMPORTANT', label: '重要' },
-]
 
 async function loadAnnouncements(page = announcementPageState.pageNum) {
   loadingAnnouncements.value = true
@@ -666,11 +689,8 @@ onMounted(async () => {
   gap: 6px;
 }
 
-.filter-bar {
-  margin-bottom: 12px;
-  padding: 12px 16px;
-  background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-md, 6px);
+.message-tab__mark-all {
+  margin: -4px 0 12px;
 }
 
 .msg-list {
@@ -692,12 +712,9 @@ onMounted(async () => {
 .msg-item {
   &--unread {
     :deep(.ant-list-item) {
-      border-color: rgba(22, 119, 255, 0.3);
-      background: linear-gradient(
-        135deg,
-        rgba(22, 119, 255, 0.04) 0%,
-        rgba(22, 119, 255, 0.01) 100%
-      );
+      border-color: var(--ant-color-primary-border);
+      border-left: 3px solid var(--ant-color-primary);
+      background: var(--dp-blue-50);
     }
   }
 

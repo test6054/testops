@@ -33,6 +33,7 @@ import {
   PauseCircleOutlined,
   PlusOutlined,
   RedoOutlined,
+  ScanOutlined,
   StepBackwardOutlined,
   StepForwardOutlined,
   UndoOutlined,
@@ -48,6 +49,12 @@ const { workflow, stage } = useKioskCtx()
 const hasJob = computed(() => Boolean(workflow.currentJob.value))
 const job = computed(() => workflow.currentJob.value)
 const pages = computed(() => workflow.visiblePages.value)
+const emptyScanTitle = computed(() => (workflow.activeBackendScanSession.value ? '存在未结束扫描进程' : '暂无扫描批次'))
+const emptyScanHint = computed(() =>
+  workflow.activeBackendScanSession.value
+    ? workflow.activeBackendScanSessionReason.value
+    : '请返回「准备扫描」开始一次扫描，或等待扫描仪送纸。',
+)
 const previewPageNo = computed({
   get: () => workflow.previewPageNo.value,
   set: (v: number) => {
@@ -257,10 +264,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
       <main class="canvas-wrap">
         <div class="canvas">
           <div v-if="!hasJob" class="canvas-empty">
-            <p>暂无扫描批次</p>
-            <small>请返回「准备扫描」开始一次扫描，或等待扫描仪送纸。</small>
+            <ScanOutlined class="canvas-empty-icon" />
+            <p>{{ emptyScanTitle }}</p>
+            <small>{{ emptyScanHint }}</small>
           </div>
           <div v-else-if="pages.length === 0" class="canvas-empty">
+            <ScanOutlined class="canvas-empty-icon canvas-empty-icon--pulse" />
             <p>等待扫描仪送纸…</p>
             <small>送纸后将自动显示首张影像，请勿关闭工作台。</small>
           </div>
@@ -456,16 +465,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 }
 .state-dot.state-success {
   background: var(--kiosk-success);
-  box-shadow: 0 0 0 3px var(--kiosk-success-soft);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-success-soft);
 }
 .state-dot.state-running {
   background: var(--kiosk-primary);
-  box-shadow: 0 0 0 3px var(--kiosk-primary-soft);
-  animation: ribbon-running 1.4s var(--kiosk-easing) infinite;
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-primary-soft);
+  animation: ribbon-running 1.6s var(--kiosk-easing) infinite;
 }
 .state-dot.state-danger {
   background: var(--kiosk-danger);
-  box-shadow: 0 0 0 3px var(--kiosk-danger-soft);
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-danger-soft);
 }
 .state-dot.state-muted {
   background: var(--kiosk-neutral);
@@ -473,10 +482,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 @keyframes ribbon-running {
   0%,
   100% {
-    box-shadow: 0 0 0 3px var(--kiosk-primary-soft);
+    opacity: 1;
   }
   50% {
-    box-shadow: 0 0 0 7px rgba(31, 95, 255, 0.16);
+    opacity: 0.55;
   }
 }
 
@@ -512,7 +521,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
 }
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--kiosk-primary), #6b8eff);
+  background: var(--kiosk-primary);
   border-radius: var(--kiosk-radius-pill);
   transition: width var(--kiosk-dur-base) var(--kiosk-easing);
 }
@@ -612,6 +621,23 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onViewKeyDown))
   gap: var(--kiosk-space-2);
   padding: var(--kiosk-space-5);
   color: var(--kiosk-ink-on-canvas);
+}
+.canvas-empty-icon {
+  font-size: 56px;
+  color: var(--kiosk-ink-on-canvas-secondary);
+  margin-bottom: var(--kiosk-space-2);
+}
+.canvas-empty-icon--pulse {
+  animation: canvas-empty-pulse 1.6s var(--kiosk-easing) infinite;
+}
+@keyframes canvas-empty-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 .canvas-empty p {
   margin: 0;

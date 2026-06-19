@@ -47,39 +47,20 @@
         <FileOutlined />
         <span>考试电子归档包</span>
       </template>
+      <template #extra>
+        <UiButton size="sm" :disabled="!canCreate" @click="openCreateModal">
+          <template #icon><PlusOutlined /></template>
+          新建电子归档包
+        </UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form
-          layout="inline"
-          :model="filterForm"
-          class="filter-form filter-form--toolbar"
-          @submit.prevent="handleSearch"
-        >
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="filterForm.archiveStatus"
-              placeholder="全部状态"
-              allow-clear
-              style="width: 180px"
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <span class="op-link" role="button" @click="handleReset">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadArchives">
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-              <UiButton size="sm" :disabled="!canCreate" @click="openCreateModal">
-                <template #icon><PlusOutlined /></template>
-                新建电子归档包
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterForm"
+        :fields="archiveFilterFields"
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleReset"
+      />
 
       <UiErrorRetryPanel
         v-if="archiveLoadError"
@@ -151,24 +132,17 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span
-                class="op-link"
-                role="button"
-                @click="goDetail(archives[index].archiveId)"
-              >
-                详情
-              </span>
-              <span
+              <UiTextAction @click="goDetail(archives[index].archiveId)">详情</UiTextAction>
+              <UiTextAction
                 v-if="
                   archives[index].archiveStatus === 'DRAFT'
                     || archives[index].archiveStatus === 'PACKAGING_FAILED'
                 "
-                class="op-link primary"
-                role="button"
+                tone="primary"
                 @click="confirmPackage(archives[index])"
               >
                 打包入队
-              </span>
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -246,10 +220,9 @@ import type {
   ArchivePackageVO,
   ArchivePackagingPhase,
 } from '@/apis/mark/archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -264,12 +237,13 @@ import {
 } from '@/apis/mark/archive'
 import {
   UiAlertStrip,
-  UiBadge,
   UiButton,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -325,6 +299,17 @@ const statusOptions = ARCHIVE_PACKAGE_STATUS_CODES.map((value) => ({
   value,
   label: strictEnumLabel(ARCHIVE_STATUS_LABEL, value, '归档状态'),
 }))
+
+const archiveFilterFields: FilterField[] = [
+  {
+    key: 'archiveStatus',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 180,
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+]
 
 const columns: ColumnsType = [
   { title: '归档编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 220 },
@@ -480,7 +465,6 @@ function handleSearch(): void {
 
 function handleReset(): void {
   onExamChange(undefined)
-  filterForm.archiveStatus = undefined
   archivePagination.pageNum = 1
   void loadArchives()
 }

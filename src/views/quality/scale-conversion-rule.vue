@@ -8,11 +8,12 @@ import type {
   ScaleConversionRuleVO,
   ScaleType,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
-import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -41,10 +42,39 @@ interface ScaleConversionRuleFilterModel {
   enabled?: 'true' | 'false'
 }
 
-const filterModel = ref<ScaleConversionRuleFilterModel>({
+const filterForm = reactive<ScaleConversionRuleFilterModel>({
   scaleType: undefined,
   enabled: undefined,
 })
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
+const filterFields = computed<FilterField[]>(() => [
+  {
+    key: 'scaleType',
+    type: 'select',
+    placeholder: '量表类型',
+    allowClear: true,
+    width: 180,
+    options: scaleTypeOptions,
+  },
+  {
+    key: 'enabled',
+    type: 'select',
+    placeholder: '状态',
+    allowClear: true,
+    width: 130,
+    options: [
+      { value: 'true', label: '启用' },
+      { value: 'false', label: '停用' },
+    ],
+  },
+])
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -131,9 +161,9 @@ function handlePageChange(page: { current: number, pageSize: number }) {
 }
 
 function syncFilterToQuery() {
-  query.scaleType = filterModel.value.scaleType
-  if (filterModel.value.enabled === 'true') query.enabled = true
-  else if (filterModel.value.enabled === 'false') query.enabled = false
+  query.scaleType = filterForm.scaleType
+  if (filterForm.enabled === 'true') query.enabled = true
+  else if (filterForm.enabled === 'false') query.enabled = false
   else query.enabled = undefined
 }
 
@@ -143,8 +173,8 @@ function handleSearch() {
   loadList()
 }
 
-function handleResetSearch() {
-  filterModel.value = { scaleType: undefined, enabled: undefined }
+function handleReset() {
+  Object.assign(filterForm, { scaleType: undefined, enabled: undefined })
   query.pageNum = 1
   syncFilterToQuery()
   loadList()
@@ -337,43 +367,21 @@ onMounted(() => loadList())
 
     <SignalBand :metrics="signals" compact class="scr__signals" />
 
-    <a-card :bordered="false" class="detail-table-card scr__table-card">
+    <UiCard class="detail-table-card scr__table-card">
       <template #title>换算规则台账</template>
+      <template #extra>
+        <UiButton variant="primary" size="sm" @click="openCreate">新建换算规则</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
-          <a-form-item label="量表类型">
-            <a-select
-              v-model:value="filterModel.scaleType"
-              placeholder="量表类型"
-              allow-clear
-              style="width: 180px"
-              :options="scaleTypeOptions"
-            />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="filterModel.enabled"
-              placeholder="状态"
-              allow-clear
-              style="width: 130px"
-              :options="[
-                { value: 'true', label: '启用' },
-                { value: 'false', label: '停用' },
-              ]"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <span class="op-link" role="button" @click="handleResetSearch">重置</span>
-              <UiButton variant="primary" size="sm" @click="openCreate">新建换算规则</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        @search="handleSearch"
+        @reset="handleReset"
+      />
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -399,13 +407,15 @@ onMounted(() => loadList())
               {{ record.enabled ? '启用' : '停用' }}
             </a-tag>
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
-            </div></template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+            </div>
+          </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <a-modal
       v-model:open="editorVisible"
@@ -442,7 +452,7 @@ onMounted(() => loadList())
         <a-form-item label="换算条目" required>
           <div class="scr__items-header">
             <span class="scr__items-tip">原始值与换算分值按当前业务条目直接维护</span>
-            <span class="op-link" role="button" @click="addItem">新增条目</span>
+            <UiTextAction @click="addItem">新增条目</UiTextAction>
           </div>
           <div v-if="editor.items.length" class="scr__item-list">
             <div v-for="(item, index) in editor.items" :key="index" class="scr__item-row">
@@ -473,7 +483,7 @@ onMounted(() => loadList())
                 />
               </div>
               <div class="scr__item-cell scr__item-cell--action">
-                <span class="op-link danger" role="button" @click="removeItem(index)">删除</span>
+                <UiTextAction tone="danger" @click="removeItem(index)">删除</UiTextAction>
               </div>
             </div>
           </div>

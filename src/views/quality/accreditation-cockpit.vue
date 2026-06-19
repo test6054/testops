@@ -2,6 +2,7 @@
 import type { AccreditationCyclePhase } from '@/apis/quality'
 import { SafetyCertificateOutlined } from '@ant-design/icons-vue'
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AccreditationAnnualPanel from '@/components/quality/accreditation/AccreditationAnnualPanel.vue'
 import AccreditationAnnualReportMaterialPanel from '@/components/quality/accreditation/AccreditationAnnualReportMaterialPanel.vue'
 import AccreditationCyclePanel from '@/components/quality/accreditation/AccreditationCyclePanel.vue'
@@ -31,7 +32,10 @@ const {
   goAiProgramReport,
   goArchive,
   goCourseMatrix,
+  goImprovement,
 } = useAccreditationWorkbench()
+
+const router = useRouter()
 
 const activeTab = ref('cycle')
 const evidenceCount = ref(0)
@@ -152,6 +156,28 @@ function onCreateCycle() {
   cyclePanelRef.value?.openCreate()
 }
 
+/** CEEAA 未通过项一键跳转至对应修复页面或驾驶舱 Tab */
+function goFixCheckItem(key: string): void {
+  switch (key) {
+    case '4.1-student':
+    case '4.2-objective':
+    case '4.3-graduate':
+      void router.push({ name: 'QualityTrainingPlanWorkbench' })
+      return
+    case '4.4-curriculum':
+      goCourseMatrix()
+      return
+    case '4.5-faculty':
+      void router.push({ name: 'QualityEvaluationWorkgroup' })
+      return
+    case '4.6-support':
+      activeTab.value = 'support'
+      return
+    case '4.7-achievement':
+      goImprovement()
+  }
+}
+
 onMounted(refreshAll)
 </script>
 
@@ -235,13 +261,22 @@ onMounted(refreshAll)
           <span>CEEAA 2024 标准对齐检查</span>
         </template>
         <div class="acc-standard-check__grid">
-          <div v-for="item in ceeaa2024CheckItems" :key="item.key" class="acc-standard-check__item">
+          <button
+            v-for="item in ceeaa2024CheckItems"
+            :key="item.key"
+            type="button"
+            class="acc-standard-check__item"
+            :class="{ 'acc-standard-check__item--actionable': !item.passed }"
+            :disabled="item.passed"
+            @click="goFixCheckItem(item.key)"
+          >
             <UiTag :tone="item.passed ? 'green' : 'orange'" size="sm">
               {{ item.passed ? '已覆盖' : '待完善' }}
             </UiTag>
             <span class="acc-standard-check__label">{{ item.label }}</span>
             <span class="acc-standard-check__desc">{{ item.desc }}</span>
-          </div>
+            <span v-if="!item.passed" class="acc-standard-check__fix">去完善 →</span>
+          </button>
         </div>
         <div v-if="annualCourseCoverages.length" class="acc-course-coverage">
           <span class="acc-course-coverage__title">已到期年度课程评价材料覆盖</span>
@@ -349,6 +384,25 @@ onMounted(refreshAll)
   padding: 8px;
   border: 1px solid var(--dp-border, #e5e7eb);
   border-radius: 4px;
+  background: var(--dp-surface, #fff);
+  text-align: left;
+  width: 100%;
+
+  &--actionable {
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+
+    &:hover {
+      border-color: var(--ant-color-primary-border);
+      box-shadow: var(--dp-shadow-sm);
+    }
+  }
+
+  &:disabled {
+    cursor: default;
+  }
 }
 .acc-standard-check__label {
   font-weight: 600;
@@ -356,7 +410,13 @@ onMounted(refreshAll)
 .acc-standard-check__desc {
   grid-column: 1 / -1;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.55));
+}
+.acc-standard-check__fix {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ant-color-primary);
 }
 .acc-course-coverage {
   display: flex;

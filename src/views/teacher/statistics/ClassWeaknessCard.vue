@@ -1,11 +1,12 @@
 <template>
-  <a-card title="AI 班级薄弱题型分析" :bordered="false" size="small">
+  <UiCard class="stats-card" compact>
+    <template #title>AI 班级薄弱题型分析</template>
     <template #extra>
       <a-space>
         <a-select
           :value="props.classId"
           placeholder="选择班级"
-          style="width: 240px"
+          class="stats-card__select stats-card__select--class-wide"
           show-search
           option-filter-prop="label"
           allow-clear
@@ -15,17 +16,18 @@
           :not-found-content="props.rosterLoading ? '加载中…' : '该考试未关联班级'"
           @change="handleClassSelectChange"
         />
-        <a-button :loading="loading" :disabled="!props.classId" @click="reload">
+        <UiButton variant="outline" size="sm" :loading="loading" :disabled="!props.classId" @click="reload">
           <template #icon><ReloadOutlined /></template>查看最新
-        </a-button>
-        <a-button
-          type="primary"
+        </UiButton>
+        <UiButton
+          variant="outline"
+          size="sm"
           :loading="generating"
           :disabled="!props.classId"
           @click="handleGenerate"
         >
           重新生成
-        </a-button>
+        </UiButton>
       </a-space>
     </template>
 
@@ -43,8 +45,8 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!hasQueried" description="请选择班级后查看或生成。" />
-      <a-empty v-else-if="!record" description="该班级暂无 AI 薄弱题型分析。" />
+      <UiEmpty v-else-if="!hasQueried" description="请选择班级后查看或生成。" />
+      <UiEmpty v-else-if="!record" description="该班级暂无 AI 薄弱题型分析。" />
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -118,7 +120,7 @@
         </div>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -137,7 +139,7 @@ import {
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -307,19 +309,16 @@ watch(
   align-items: center;
   gap: 8px;
 }
-.analysis-item__title {
-  font-weight: 600;
-}
 .analysis-item__metric {
   margin-left: auto;
-  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
 }
 .analysis-item__text {
   margin: 0;
-  color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
   line-height: 1.6;
 }
 .text-muted {
-  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
 }
 </style>

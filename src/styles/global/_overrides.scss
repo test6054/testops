@@ -25,55 +25,6 @@
   }
 }
 
-// echarts 提示
-.echarts-tooltip-diy {
-  background: var(--ant-color-bg-container) !important;
-  border: none !important;
-  /* Note: backdrop-filter has minimal browser support */
-
-  border-radius: var(--ant-border-radius) !important;
-
-  .content-panel {
-    display: flex;
-    justify-content: space-between;
-    padding: 0 9px;
-    background: color-mix(in srgb, var(--ant-color-bg-container) 80%, transparent);
-    width: 164px;
-    height: 32px;
-    line-height: 32px;
-    box-shadow: var(--dp-shadow-card);
-    border-radius: var(--dp-radius-xs);
-    margin-bottom: 4px;
-  }
-
-  .tooltip-title {
-    margin: 0 0 10px 0;
-  }
-
-  p {
-    margin: 0;
-  }
-
-  .tooltip-title,
-  .tooltip-value {
-    font-size: 13px;
-    line-height: 15px;
-    display: flex;
-    align-items: center;
-    text-align: right;
-    color: var(--ant-color-text);
-    font-weight: bold;
-  }
-
-  .tooltip-item-icon {
-    display: inline-block;
-    margin-right: 8px;
-    width: 10px;
-    height: 10px;
-    border-radius: var(--dp-radius-full);
-  }
-}
-
 // ─── Tabs 现代化 ───
 .ant-tabs {
   .ant-tabs-tab {

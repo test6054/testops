@@ -1,5 +1,5 @@
 <template>
-  <a-card title="AI 学期能力成长曲线" :bordered="false" size="small">
+  <UiCard title="AI 学期能力成长曲线" compact>
     <div class="ai-form">
       <a-form layout="inline" :model="form" size="small">
         <a-form-item label="学年学期">
@@ -7,6 +7,7 @@
             v-model="form.semesterCode"
             placeholder="请选择学年学期"
             :allow-clear="false"
+            :default-recent-semester-count="defaultRecentSemesterCount"
           />
         </a-form-item>
         <a-form-item label="班级">
@@ -25,6 +26,7 @@
           <AnalysisExamMultiSelect
             v-model="form.examIds"
             placeholder="请选择至少 2 场考试"
+            :default-recent-semester-count="defaultRecentSemesterCount"
             @selected-exams-change="selectedExams = $event"
           />
         </a-form-item>
@@ -50,9 +52,9 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!record" description="暂无成长曲线，请填写参数后生成。" />
+      <UiEmpty v-else-if="!record" description="暂无成长曲线，请填写参数后生成。" />
       <div v-else class="ai-record">
-        <a-descriptions :column="3" size="small" bordered>
+        <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
             <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
@@ -93,20 +95,29 @@
           </a-descriptions-item>
         </a-descriptions>
 
-        <div v-if="examStatChartOption" class="ai-chart">
+        <div v-if="examStatTrendPoints.length >= 2" class="ai-chart">
           <div class="ai-chart__meta">
             <strong>学期考试得分走势</strong>
-            <span class="ai-chart__hint">按考试时间序列展示得分率与及格率</span>
+            <span class="ai-chart__hint">按考试时间序列展示得分率</span>
           </div>
-          <VChart class="ai-chart__canvas" :option="examStatChartOption" autoresize />
+          <UiTrendChart
+            :items="examStatTrendPoints"
+            area
+            show-bubble
+            class="ai-chart__canvas"
+          />
         </div>
 
-        <div v-if="growthBarChartOption" class="ai-chart">
+        <div v-if="growthBarItems.length > 0" class="ai-chart">
           <div class="ai-chart__meta">
             <strong>能力点起止对比</strong>
-            <span class="ai-chart__hint">各能力维度起始值与结束值</span>
+            <span class="ai-chart__hint">各能力维度结束值，选中查看起止对照</span>
           </div>
-          <VChart class="ai-chart__canvas" :option="growthBarChartOption" autoresize />
+          <UiBarChart
+            :items="growthBarItems"
+            orientation="vertical"
+            class="ai-chart__canvas"
+          />
         </div>
 
         <a-typography-paragraph v-if="record.growthSummary" class="ai-summary">
@@ -115,7 +126,7 @@
 
         <div v-if="growthItems.length > 0" class="ai-items">
           <strong>各阶段能力点：</strong>
-          <a-list size="small" :data-source="growthItems" bordered>
+          <a-list compact :data-source="growthItems" bordered>
             <template #renderItem="{ item, index }">
               <a-list-item>
                 <div class="analysis-item">
@@ -151,7 +162,7 @@
         </div>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -163,7 +174,6 @@ import type { ExamSummaryVO } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import {
   ANALYSIS_SCOPE_TYPE_LABEL,
   generateClassGrowth,
@@ -175,18 +185,27 @@ import { getExamDetail } from '@/apis/mark/exam'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiBarChart, UiCard, UiEmpty, UiErrorRetryPanel, UiTrendChart } from '@/components/ui-guide/ui'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
-  buildExamStatTrendChartOption,
-  buildGrowthItemsBarOption,
+  examStatSnapshotsToTrendPoints,
+  growthItemsToBarItems,
 } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SemesterGrowthCard' })
+
+withDefaults(
+  defineProps<{
+    defaultRecentSemesterCount?: number
+  }>(),
+  {
+    defaultRecentSemesterCount: 0,
+  },
+)
 
 const form = reactive({
   semesterCode: '',
@@ -204,11 +223,11 @@ const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const growthItems = computed(() => record.value?.growthItems ?? [])
-const examStatChartOption = computed(() =>
-  buildExamStatTrendChartOption(record.value?.examStatSnapshots ?? []),
+const examStatTrendPoints = computed(() =>
+  examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
-const growthBarChartOption = computed(() =>
-  buildGrowthItemsBarOption(record.value?.growthItems ?? []),
+const growthBarItems = computed(() =>
+  growthItemsToBarItems(record.value?.growthItems ?? []),
 )
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),

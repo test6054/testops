@@ -18,6 +18,7 @@ import type {
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -34,7 +35,7 @@ import {
   TeacherSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
   ContextBar,
@@ -93,6 +94,36 @@ const filterModel = ref<ArchiveFilterModel>({
   archiveCategory: '',
   keyword: '',
 })
+
+const filterFields: FilterField[] = [
+  {
+    key: 'businessType',
+    type: 'select',
+    label: '业务类型',
+    placeholder: '业务类型',
+    allowClear: true,
+    width: 180,
+    options: businessTypeOptions,
+  },
+  {
+    key: 'archiveCategory',
+    type: 'input',
+    label: '归档分类',
+    placeholder: '归档分类',
+    allowClear: true,
+    width: 130,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '关键字',
+    allowClear: true,
+    width: 180,
+    triggerSearchOnChange: false,
+  },
+]
 
 const exportVisible = ref(false)
 const exportSubmitting = ref(false)
@@ -165,7 +196,6 @@ function handleSearch() {
 }
 
 function handleResetSearch() {
-  filterModel.value = { businessType: undefined, archiveCategory: '', keyword: '' }
   query.pageNum = 1
   query.archiveOfficeConfirmed = undefined
   syncFilterToQuery()
@@ -463,55 +493,27 @@ onMounted(async () => {
             刷新
           </UiButton>
           <UiButton variant="primary" size="sm" @click="openCreate"> 补登台帐 </UiButton>
-          <UiButton variant="primary" size="sm" @click="openExport"> 导出专家材料包 </UiButton>
+          <UiButton variant="outline" size="sm" @click="openExport"> 导出专家材料包 </UiButton>
         </template>
       </ContextBar>
     </template>
 
     <SignalBand :metrics="signals" compact class="archive__signals" />
 
-    <a-card :bordered="false" class="detail-table-card archive__table-card">
+    <UiCard class="detail-table-card archive__table-card">
       <template #title>归档列表</template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
-          <a-form-item label="业务类型">
-            <a-select
-              v-model:value="filterModel.businessType"
-              placeholder="业务类型"
-              allow-clear
-              style="width: 180px"
-              :options="businessTypeOptions"
-            />
-          </a-form-item>
-          <a-form-item label="归档分类">
-            <a-input
-              v-model:value="filterModel.archiveCategory"
-              placeholder="归档分类"
-              allow-clear
-              style="width: 130px"
-            />
-          </a-form-item>
-          <a-form-item label="关键字">
-            <a-input
-              v-model:value="filterModel.keyword"
-              placeholder="关键字"
-              allow-clear
-              style="width: 180px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <span class="op-link" role="button" @click="handleResetSearch">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        show-labels
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleResetSearch"
+      />
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -555,15 +557,17 @@ onMounted(async () => {
           <template v-else-if="column.key === 'archivedAt'">
             {{ record.archivedAt || '尚未归档确认' }}
           </template>
-          <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openDetail(record)">详情</span>
-              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
-              <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
-            </div></template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="openDetail(record)">详情</UiTextAction>
+              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+              <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
+            </div>
+          </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <UiDrawer
       v-model:open="exportVisible"

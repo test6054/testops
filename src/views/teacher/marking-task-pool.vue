@@ -3,23 +3,17 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="marking-task-pool-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
+          <MarkExamContextPicker select-class="marking-task-pool-page__exam-select" />
           <UiTag tone="blue" size="sm">我的任务 {{ tasks.length }}</UiTag>
           <UiTag v-if="inProgressCount > 0" tone="orange" size="sm">
             阅卷中 {{ inProgressCount }}
           </UiTag>
         </template>
       </ContextBar>
+    </template>
+
+    <template #rail>
+      <MarkExamStageRail />
     </template>
 
     <UiEmpty
@@ -100,60 +94,13 @@
           <span class="section-title">任务列表</span>
         </template>
 
-        <div class="filter-card">
-          <a-form layout="inline" :model="filterForm" class="filter-form filter-form--toolbar">
-            <a-form-item label="任务状态">
-              <a-select
-                v-model:value="filterForm.taskStatus"
-                style="width: 160px"
-                placeholder="全部状态"
-                :options="statusOptions"
-                allow-clear
-                @change="loadTasks"
-              />
-            </a-form-item>
-            <a-form-item label="题组">
-              <a-select
-                v-model:value="filterForm.groupId"
-                :options="claimGroupOptions"
-                :loading="claimContextLoading"
-                placeholder="选择题组"
-                allow-clear
-                style="width: 180px"
-                show-search
-                option-filter-prop="label"
-                @change="onFilterGroupChange"
-              />
-            </a-form-item>
-            <a-form-item label="正评会话">
-              <a-select
-                v-model:value="filterForm.sessionId"
-                :options="filterSessionOptions"
-                :disabled="!filterForm.groupId"
-                placeholder="选择正评会话"
-                allow-clear
-                style="width: 180px"
-                @change="loadTasks"
-              />
-            </a-form-item>
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
-                <span class="op-link" role="button" @click="resetFilter">重置</span>
-                <UiButton
-                  variant="outline"
-                  size="sm"
-                  :disabled="!selectedExamId"
-                  :loading="loading"
-                  @click="loadTasks"
-                >
-                  <template #icon><ReloadOutlined /></template>
-                  刷新
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <UiFilterBar
+          v-model="filterForm"
+          :fields="taskFilterFields"
+          search-text="查询"
+          @search="loadTasks"
+          @reset="resetFilter"
+        />
 
         <!-- D-9 错误态：任务列表加载失败时提供重试 + 上报入口 -->
         <UiErrorRetryPanel
@@ -274,7 +221,7 @@ import type {
   MarkingTaskVO,
   TeacherClaimContextVO,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TableOutlined from '@ant-design/icons-vue/TableOutlined'
@@ -290,17 +237,20 @@ import {
   MARKING_TASK_STATUS_OPTIONS,
   MARKING_TASK_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
+import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
+import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import {
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { provideMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
@@ -313,13 +263,10 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const {
-  examOptions,
-  loading: examLoading,
   selectedExamId,
   selectedExamLabel,
-  onExamChange,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = provideMarkExamContext()
 
 /**
  * 当前登录教师 ID 参与查询条件组装。
@@ -407,11 +354,18 @@ async function loadTasks(): Promise<void> {
 }
 
 function resetFilter(): void {
-  filterForm.taskStatus = undefined
-  filterForm.groupId = ''
-  filterForm.sessionId = ''
   void loadTasks()
 }
+
+watch(
+  () => filterForm.groupId,
+  (groupId, previousGroupId) => {
+    if (groupId === previousGroupId) {
+      return
+    }
+    filterForm.sessionId = ''
+  },
+)
 
 const claimForm = reactive<MarkingTaskClaimRequest>({
   sessionId: '',
@@ -457,6 +411,36 @@ const filterSessionOptions = computed(() => {
   }))
 })
 
+const taskFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'taskStatus',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+  {
+    key: 'groupId',
+    type: 'select',
+    placeholder: '选择题组',
+    allowClear: true,
+    allowSearch: true,
+    width: 180,
+    disabled: claimContextLoading.value,
+    options: claimGroupOptions.value.map((item) => ({ label: item.label, value: item.value })),
+  },
+  {
+    key: 'sessionId',
+    type: 'select',
+    placeholder: '选择正评会话',
+    allowClear: true,
+    width: 180,
+    disabled: !filterForm.groupId?.trim(),
+    options: filterSessionOptions.value.map((item) => ({ label: item.label, value: item.value })),
+  },
+])
+
 async function loadClaimContext(): Promise<void> {
   if (!selectedExamId.value) return
   try {
@@ -467,13 +451,7 @@ async function loadClaimContext(): Promise<void> {
 }
 
 function onClaimGroupChange(): void {
-  // 题组变更后会话选择需重置，避免会话 id 与题组 id 不一致
   claimForm.sessionId = ''
-}
-
-function onFilterGroupChange(): void {
-  filterForm.sessionId = ''
-  void loadTasks()
 }
 
 const claiming = ref(false)
@@ -564,7 +542,6 @@ onMounted(async () => {
 }
 
 .claim-card,
-.filter-card,
 .table-card {
   margin-bottom: 0;
 }

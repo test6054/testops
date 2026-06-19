@@ -28,7 +28,6 @@
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.19",
     "dompurify": "^3.3.1",
-    "echarts": "^6.0.0",
     "jwt-decode": "^4.0.0",
     "lodash-es": "^4.17.23",
     "mitt": "^3.0.1",
@@ -38,7 +37,6 @@
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "vue": "^3.5.29",
-    "vue-echarts": "^8.0.1",
     "vue-router": "^5.0.3",
     "xe-utils": "^4.0.1",
     "xlsx": "^0.18.5"

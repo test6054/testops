@@ -93,8 +93,8 @@
         class="marking-task-detail-page__empty"
       />
 
-      <a-row v-if="task" :gutter="16">
-        <a-col :xs="24" :lg="14">
+      <GradingWorkspaceLayout v-if="task">
+        <template #main>
           <UiCard class="info-card">
             <template #title>
               <FileImageOutlined />
@@ -340,9 +340,9 @@
               </a-descriptions-item>
             </a-descriptions>
           </UiCard>
-        </a-col>
+        </template>
 
-        <a-col :xs="24" :lg="10">
+        <template #aside>
           <UiCard class="info-card">
             <template #title>
               <EditOutlined />
@@ -459,6 +459,9 @@
                     采纳并提交
                   </UiButton>
                 </a-space>
+                <p v-if="!usesWholePaperWorkspace" class="marking-task-detail-page__keyboard-hint">
+                  J/K 或 ←/→ 切换任务 · 0-9 快捷给分 · Enter 提交
+                </p>
               </a-form-item>
               <a-form-item v-if="!usesWholePaperWorkspace" label="批改批注" name="annotationNote">
                 <a-textarea
@@ -476,8 +479,8 @@
               </a-form-item>
             </a-form>
           </UiCard>
-        </a-col>
-      </a-row>
+        </template>
+      </GradingWorkspaceLayout>
     </a-spin>
 
     <RevealAnonymousModal
@@ -540,6 +543,7 @@ import {
   MARKING_TASK_STATUS_TONE as STATUS_TONE,
   submitMarkingTask,
 } from '@/apis/mark/marking-organization'
+import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import RevealAnonymousModal from '@/components/mark/RevealAnonymousModal.vue'
 import {
@@ -556,6 +560,7 @@ import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { isGradingEnterInputTarget, isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -918,20 +923,44 @@ function handleWholePageGalleryScroll(event: Event): void {
   )
 }
 
-function isKeyboardInputTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  const tagName = target.tagName.toLowerCase()
-  if (tagName === 'textarea' || tagName === 'select') return true
-  if (target.isContentEditable) return true
-  return tagName === 'input' && target.getAttribute('role') !== 'spinbutton'
-}
-
 function handleWorkspaceKeydown(event: KeyboardEvent): void {
   if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return
   if (event.key === 'Enter') {
-    if (submitting.value || !canSubmit.value || isKeyboardInputTarget(event.target)) return
+    if (submitting.value || !canSubmit.value || isGradingEnterInputTarget(event.target)) return
     event.preventDefault()
     void submit()
+    return
+  }
+  if (isGradingKeyboardInputTarget(event.target)) {
+    return
+  }
+  const key = event.key.toLowerCase()
+  if (key === 'j' || key === 'arrowleft') {
+    if (prevTaskId.value) {
+      event.preventDefault()
+      goToTask(prevTaskId.value)
+    }
+    return
+  }
+  if (key === 'k' || key === 'arrowright') {
+    if (nextTaskId.value) {
+      event.preventDefault()
+      goToTask(nextTaskId.value)
+    }
+    return
+  }
+  if (
+    /^\d$/.test(event.key)
+    && !usesWholePaperWorkspace.value
+    && canSubmit.value
+    && !isReadOnly.value
+  ) {
+    const digit = Number(event.key)
+    const fullScore = questionView.value?.fullScore
+    if (fullScore != null && digit <= fullScore) {
+      event.preventDefault()
+      form.score = digit
+    }
     return
   }
   if (event.key === 'PageDown' && usesWholePaperWorkspace.value) {
@@ -1333,6 +1362,12 @@ onBeforeUnmount(() => {
     color: var(--dp-text-secondary, #475569);
     padding: 0 4px;
     white-space: nowrap;
+  }
+
+  &__keyboard-hint {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
   }
 
   &__empty {

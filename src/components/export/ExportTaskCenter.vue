@@ -44,13 +44,17 @@
       </UiFilterBar>
 
       <!-- 任务列表表格 -->
-      <a-table
+      <UiDataTable
         :columns="columns"
         :data-source="exportTaskStore.tasks"
         :loading="exportTaskStore.loading"
-        :pagination="pagination"
+        :current="exportTaskStore.lastFetchParams.pageNum"
+        :page-size="exportTaskStore.lastFetchParams.pageSize"
+        :total="exportTaskStore.pagination.total"
         row-key="jobId"
         size="small"
+        flat
+        @page-change="handleExportTablePageChange"
       >
         <template #bodyCell="{ column, record }">
           <!-- 文件名 -->
@@ -164,16 +168,14 @@
         </template>
 
         <!-- 空状态 -->
-        <template #emptyText>
-          <a-empty description="暂无导出任务">
+        <template #empty>
+          <UiEmpty description="暂无导出任务">
             <template #image>
-              <FolderAddOutlined
-                :style="{ fontSize: '48px', color: 'var(--ant-color-text-quaternary)' }"
-              />
+              <FolderAddOutlined class="export-task-center__empty-icon" />
             </template>
-          </a-empty>
+          </UiEmpty>
         </template>
-      </a-table>
+      </UiDataTable>
 
       <!-- 导出处理说明展开面板（表格下方） -->
       <template v-if="expandedTask">
@@ -206,7 +208,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
-import { UiFilterBar } from '@/components/ui-guide/ui'
+import { UiDataTable, UiEmpty, UiFilterBar } from '@/components/ui-guide/ui'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { AsyncTaskStatusEnum, ExportFormatEnum } from '@/types/enums'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
@@ -259,17 +261,10 @@ const filterFields: FilterField[] = [
   },
 ]
 
-// 分页配置
-const pagination = computed(() => ({
-  current: exportTaskStore.lastFetchParams.pageNum,
-  pageSize: exportTaskStore.lastFetchParams.pageSize,
-  total: exportTaskStore.pagination.total,
-  showTotal: (total: number) => `共 ${total} 条`,
-  showSizeChanger: true,
-  pageSizeOptions: [10, 20, 50],
-  onChange: (page: number) => handlePageChange(page),
-  onShowSizeChange: (_current: number, size: number) => handlePageSizeChange(size),
-}))
+// 分页变化处理
+function handleExportTablePageChange(pageEvent: { current: number, pageSize: number }): void {
+  exportTaskStore.fetchTasks({ pageNum: pageEvent.current, pageSize: pageEvent.pageSize })
+}
 
 const exportTaskMap = computed(() => {
   return new Map(exportTaskStore.tasks.map((task) => [String(task.jobId), task]))
@@ -340,7 +335,6 @@ const columns: ColumnType[] = [
   },
 ]
 
-// 分页变化处理
 function handlePageChange(page: number) {
   exportTaskStore.fetchTasks({ pageNum: page })
 }
@@ -544,6 +538,11 @@ const getFormatColor = (format: ExportFormatEnum): string => {
 
 .text-muted {
   color: var(--ant-color-text-tertiary);
+}
+
+.export-task-center__empty-icon {
+  font-size: 48px;
+  color: var(--ant-color-text-quaternary);
 }
 
 .progress-cell {

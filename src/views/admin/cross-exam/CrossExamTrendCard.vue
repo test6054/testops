@@ -1,7 +1,7 @@
 <template>
-  <a-card title="AI 跨考试趋势分析" :bordered="false" size="small">
+  <UiCard title="AI 跨考试趋势分析" compact>
     <template #extra>
-      <a-radio-group v-model:value="scopeMode" size="small" button-style="solid">
+      <a-radio-group v-model:value="scopeMode" compact button-style="solid">
         <a-radio-button value="COURSE">课程维度</a-radio-button>
         <a-radio-button value="CLASS">班级维度</a-radio-button>
       </a-radio-group>
@@ -25,6 +25,7 @@
           <AnalysisExamMultiSelect
             v-model="form.examIds"
             placeholder="请选择至少 2 场考试"
+            :default-recent-semester-count="defaultRecentSemesterCount"
             @selected-exams-change="selectedExams = $event"
           />
         </a-form-item>
@@ -50,9 +51,9 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!record" description="暂无趋势分析记录，请填写参数后生成。" />
+      <UiEmpty v-else-if="!record" description="暂无趋势分析记录，请填写参数后生成。" />
       <div v-else class="ai-record">
-        <a-descriptions :column="3" size="small" bordered>
+        <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
             <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
@@ -88,12 +89,17 @@
           </a-descriptions-item>
         </a-descriptions>
 
-        <div v-if="examStatChartOption" class="ai-chart">
+        <div v-if="examStatTrendPoints.length >= 2" class="ai-chart">
           <div class="ai-chart__meta">
             <strong>考试得分趋势</strong>
-            <span class="ai-chart__hint">得分率 / 及格率折线与平均分柱状对比</span>
+            <span class="ai-chart__hint">多考试得分率走势</span>
           </div>
-          <VChart class="ai-chart__canvas" :option="examStatChartOption" autoresize />
+          <UiTrendChart
+            :items="examStatTrendPoints"
+            area
+            show-bubble
+            class="ai-chart__canvas"
+          />
         </div>
 
         <a-typography-paragraph v-if="record.trendSummary" class="ai-summary">
@@ -102,7 +108,7 @@
 
         <div v-if="trendItems.length > 0" class="ai-items">
           <strong>结构化趋势条目：</strong>
-          <a-list size="small" :data-source="trendItems" bordered>
+          <a-list compact :data-source="trendItems" bordered>
             <template #renderItem="{ item, index }">
               <a-list-item>
                 <div class="analysis-item">
@@ -135,7 +141,7 @@
         </div>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -144,7 +150,6 @@ import type { ExamSummaryVO } from '@/apis/mark/exam'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import {
   ANALYSIS_SCOPE_TYPE_LABEL,
   generateClassTrend,
@@ -154,14 +159,23 @@ import {
 import { getExamDetail } from '@/apis/mark/exam'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiCard, UiEmpty, UiErrorRetryPanel, UiTrendChart } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildExamStatTrendChartOption } from '@/utils/mark-statistics-chart'
+import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CrossExamTrendCard' })
+
+withDefaults(
+  defineProps<{
+    defaultRecentSemesterCount?: number
+  }>(),
+  {
+    defaultRecentSemesterCount: 0,
+  },
+)
 
 const scopeMode = ref<'COURSE' | 'CLASS'>('COURSE')
 
@@ -180,8 +194,8 @@ const loadError = ref<Error | null>(null)
 const generating = ref(false)
 
 const trendItems = computed(() => record.value?.trendItems ?? [])
-const examStatChartOption = computed(() =>
-  buildExamStatTrendChartOption(record.value?.examStatSnapshots ?? []),
+const examStatTrendPoints = computed(() =>
+  examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),

@@ -619,7 +619,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
   padding: 18px;
   border: 1px solid var(--dp-border, #e5e7eb);
   border-radius: var(--dp-radius-panel, 4px);
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.78), #fff);
+  background: var(--dp-surface-subtle);
 }
 
 .status-bar,
@@ -640,7 +640,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
   margin: 0 0 4px;
   color: var(--dp-blue-600, #2563eb);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.08em;
 }
 
@@ -648,7 +648,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
   margin: 0;
   color: var(--dp-text-primary, #0f172a);
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .section-desc {
@@ -658,7 +658,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 }
 
 .confirmed {
-  color: #389e0d;
+  color: var(--ant-color-success);
   font-weight: 600;
 }
 
@@ -718,12 +718,12 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 }
 
 .training-yes {
-  color: #389e0d;
+  color: var(--ant-color-success);
   font-weight: 600;
 }
 
 .training-no {
-  color: #d46b08;
+  color: var(--ant-color-warning);
   font-weight: 600;
 }
 

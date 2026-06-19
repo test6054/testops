@@ -8,19 +8,17 @@
     </template>
     <template #extra>
       <a-space>
-        <a-select
-          v-model:value="statusFilter"
-          style="width: 160px"
-          placeholder="全部状态"
-          allow-clear
-          :options="statusOptions"
-          @change="reload"
-        />
-        <a-button :loading="loading" @click="reload">
-          <template #icon><ReloadOutlined /></template>刷新
-        </a-button>
+        <a-tag color="orange">待处理 {{ pendingCount }}</a-tag>
       </a-space>
     </template>
+
+    <UiFilterBar
+      v-model="filterForm"
+      :fields="filterFields"
+      search-text="查询"
+      @search="reload"
+      @reset="handleFilterReset"
+    />
 
     <!-- D-9 错误态：复核申请加载失败时提供重试 + 上报入口 -->
     <UiErrorRetryPanel
@@ -65,8 +63,8 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <div class="operations-cell" @click.stop>
-            <span class="op-link" role="button" @click="openHandleModal(rows[index], 'APPROVED')">通过</span>
-            <span class="op-link danger" role="button" @click="openHandleModal(rows[index], 'REJECTED')">驳回</span>
+            <UiTextAction @click="openHandleModal(rows[index], 'APPROVED')">通过</UiTextAction>
+            <UiTextAction tone="danger" @click="openHandleModal(rows[index], 'REJECTED')">驳回</UiTextAction>
           </div>
         </template>
       </template>
@@ -132,10 +130,9 @@ import type {
   GradeReviewRequestStatusCode,
   ReviewConclusion,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   GRADE_REVIEW_REASON_TYPE_LABEL,
   handleReviewRequest,
@@ -144,7 +141,7 @@ import {
   REVIEW_REQUEST_STATUS_LABEL,
   REVIEW_REQUEST_STATUS_OPTIONS,
 } from '@/apis/mark/grade-review'
-import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiDataTable, UiErrorRetryPanel, UiFilterBar } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -162,9 +159,22 @@ const rows = ref<GradeReviewRequestItemResponse[]>([])
 const loading = ref(false)
 // D-9 错误态：复核申请加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
-const statusFilter = ref<GradeReviewRequestStatusCode | undefined>(undefined)
 
-const statusOptions = REVIEW_REQUEST_STATUS_OPTIONS
+const filterForm = reactive<{ status?: GradeReviewRequestStatusCode }>({})
+
+const filterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: REVIEW_REQUEST_STATUS_OPTIONS.map((item) => ({
+      value: item.value,
+      label: item.label,
+    })),
+  },
+]
 
 const columns: ColumnType<GradeReviewRequestItemResponse>[] = [
   { title: '学生', key: 'student', width: 150 },
@@ -212,7 +222,7 @@ async function reload(): Promise<void> {
       (pageNum) =>
         listReviewRequests({
           examId: props.examId,
-          requestStatus: statusFilter.value,
+          requestStatus: filterForm.status,
           pageNum,
           pageSize: GRADE_REVIEW_REQUEST_PAGE_SIZE,
         }),
@@ -227,6 +237,11 @@ async function reload(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+function handleFilterReset(): void {
+  filterForm.status = undefined
+  void reload()
 }
 
 /** 校验复核申请列表所需学生展示字段，缺失时进入组件错误态。 */

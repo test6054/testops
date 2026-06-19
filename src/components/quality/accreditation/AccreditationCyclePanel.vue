@@ -619,8 +619,8 @@ defineExpose({ openCreate, loadCycles })
 }
 .readiness-panel {
   padding: 14px 16px;
-  background: #fffaf0;
-  border: 1px solid #f6d58b;
+  background: var(--ant-color-warning-bg);
+  border: 1px solid var(--ant-color-warning-border);
   border-radius: 4px;
 }
 .readiness-header {
@@ -644,8 +644,8 @@ defineExpose({ openCreate, loadCycles })
   border-radius: 4px;
 }
 .readiness-item.is-blocked {
-  border-color: rgba(180, 83, 9, 0.32);
-  background: #fff7ed;
+  border-color: var(--ant-color-warning-border);
+  background: var(--dp-orange-50);
 }
 .readiness-item p {
   margin: 4px 0 0;

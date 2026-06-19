@@ -17,8 +17,9 @@ import type {
   AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AI_TASK_BUSINESS_TYPE_LABEL,
@@ -28,7 +29,7 @@ import {
   aiMaskMappingApi,
   aiTaskApi,
 } from '@/apis/quality'
-import { UiButton, UiEmpty } from '@/components/ui-guide/ui'
+import { UiEmpty, UiFilterBar } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -62,6 +63,19 @@ const taskOptions = ref<Array<{ value: string, label: string }>>([])
 const taskVO = ref<AiTaskVO | null>(null)
 const mappingVO = ref<AiMaskMappingVO | null>(null)
 
+const filterForm = reactive({ aiTaskId: '' })
+
+const filterFields: FilterField[] = [
+  {
+    key: 'aiTaskId',
+    type: 'custom',
+    label: 'AI 任务',
+    width: 360,
+    minWidth: 280,
+    maxWidth: 480,
+  },
+]
+
 const selectedTaskSelectValue = computed(() =>
   taskOptions.value.some((option) => option.value === selectedAiTaskId.value)
     ? selectedAiTaskId.value
@@ -87,10 +101,25 @@ async function loadTaskOptions() {
 function handleTaskChange(value: SelectValue): void {
   if (Array.isArray(value) || typeof value === 'number') {
     message.error('AI 任务选择无效，请重新选择')
+    filterForm.aiTaskId = ''
     selectedAiTaskId.value = ''
     return
   }
-  selectedAiTaskId.value = typeof value === 'string' ? value : ''
+  const next = typeof value === 'string' ? value : ''
+  filterForm.aiTaskId = next
+  selectedAiTaskId.value = next
+}
+
+function handleFilterSearch() {
+  selectedAiTaskId.value = filterForm.aiTaskId.trim()
+  void loadMapping()
+}
+
+function handleFilterReset() {
+  filterForm.aiTaskId = ''
+  selectedAiTaskId.value = ''
+  mappingVO.value = null
+  taskVO.value = null
 }
 
 async function loadMapping() {
@@ -136,6 +165,7 @@ watch(
 )
 
 onMounted(async () => {
+  filterForm.aiTaskId = selectedAiTaskId.value
   await loadTaskOptions()
   if (selectedAiTaskId.value) await loadMapping()
 })
@@ -143,31 +173,32 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <a-card :bordered="false" class="detail-table-card ai-mask__main-card">
+    <UiCard class="detail-table-card ai-mask__main-card">
       <template #title>脱敏映射审计</template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadMapping">
-          <a-form-item label="AI 任务">
-            <a-select
-              :value="selectedTaskSelectValue"
-              :options="taskOptions"
-              :loading="taskLoading"
-              allow-clear
-              show-search
-              option-filter-prop="label"
-              placeholder="选择 AI 任务"
-              class="ai-mask__selector"
-              @change="handleTaskChange"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" :loading="loading" @click="loadMapping">查询</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterForm"
+        :fields="filterFields"
+        show-labels
+        search-text="查询"
+        @search="handleFilterSearch"
+        @reset="handleFilterReset"
+      >
+        <template #field-aiTaskId>
+          <a-select
+            :value="selectedTaskSelectValue"
+            :options="taskOptions"
+            :loading="taskLoading"
+            allow-clear
+            show-search
+            option-filter-prop="label"
+            placeholder="选择 AI 任务"
+            class="ai-mask__selector"
+            style="width: 100%"
+            @change="handleTaskChange"
+          />
+        </template>
+      </UiFilterBar>
 
       <template v-if="taskVO">
         <h4 class="ai-mask__section-title">AI 任务概览</h4>
@@ -213,7 +244,7 @@ onMounted(async () => {
           </a-descriptions-item>
         </a-descriptions>
       </template>
-    </a-card>
+    </UiCard>
   </StageWorkbenchShell>
 </template>
 

@@ -8,6 +8,7 @@
 
     <a-layout class="layout-default-right">
       <Header></Header>
+      <AiTaskRunningBar />
       <Main id="main-content" :class="{ 'with-tabbar': isMobile }"></Main>
       <!-- <GiFooter v-if="appStore.copyrightDisplay && !isMobile" /> -->
     </a-layout>
@@ -25,8 +26,9 @@ import { onMounted, ref } from 'vue'
 import { useDevice } from '@/hooks'
 import { getToken } from '@/utils/auth'
 import NoticePopup from '@/views/user/message/components/NoticePopup.vue'
-import Asider from './components/Asider/index.vue'
+import AiTaskRunningBar from './components/AiTaskRunningBar.vue'
 
+import Asider from './components/Asider/index.vue'
 import Header from './components/Header/index.vue'
 import Main from './components/Main.vue'
 import TabBar from './components/TabBar/index.vue'

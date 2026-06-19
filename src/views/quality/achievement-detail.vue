@@ -39,7 +39,7 @@ import {
   achievementManualReviewApi,
   MANUAL_REVIEW_DECISION_LABEL,
 } from '@/apis/quality'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
@@ -292,7 +292,7 @@ onMounted(loadAll)
     <template v-else-if="result">
       <SignalBand :metrics="signals" compact class="achievement-detail__signals" />
 
-      <a-card :bordered="false" class="detail-table-card achievement-detail__meta-card">
+      <UiCard class="achievement-detail__meta-card">
         <template #title>结果元数据</template>
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="目标类型">
@@ -327,9 +327,9 @@ onMounted(loadAll)
             </a-tag>
           </a-descriptions-item>
         </a-descriptions>
-      </a-card>
+      </UiCard>
 
-      <a-card :bordered="false" class="detail-table-card achievement-detail__panel">
+      <UiCard class="achievement-detail__panel">
         <template #title>结果有效性</template>
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="有效性状态">
@@ -357,17 +357,18 @@ onMounted(loadAll)
             }}
           </a-descriptions-item>
         </a-descriptions>
-      </a-card>
+      </UiCard>
 
       <div class="achievement-detail__layout">
-        <a-card :bordered="false" class="detail-table-card achievement-detail__detail-card">
+        <UiCard class="achievement-detail__detail-card">
           <template #title>计算明细</template>
           <UiEmpty
             v-if="!details.length && !loading"
             description="未生成明细记录。仅草稿或已计算状态后才会产出主要明细。"
             size="sm"
           />
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             v-else
             :columns="detailColumns"
             :data-source="details"
@@ -409,9 +410,9 @@ onMounted(loadAll)
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </UiCard>
 
-        <a-card :bordered="false" class="detail-table-card achievement-detail__audit-card">
+        <UiCard class="achievement-detail__audit-card">
           <template #title>审核责任链流水</template>
           <UiEmpty
             v-if="!audits.length && !loading"
@@ -445,10 +446,10 @@ onMounted(loadAll)
               </p>
             </a-timeline-item>
           </a-timeline>
-        </a-card>
+        </UiCard>
       </div>
 
-      <a-card :bordered="false" class="detail-table-card achievement-detail__review-card">
+      <UiCard class="achievement-detail__review-card">
         <template #title>人工复核记录</template>
         <UiEmpty
           v-if="!reviews.length"
@@ -468,7 +469,7 @@ onMounted(loadAll)
             </a-list-item>
           </template>
         </a-list>
-      </a-card>
+      </UiCard>
     </template>
 
     <UiDrawer

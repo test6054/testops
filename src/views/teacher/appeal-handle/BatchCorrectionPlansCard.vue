@@ -1,23 +1,18 @@
 <template>
   <a-card title="批量更正计划" :bordered="false" size="small">
     <template #extra>
-      <a-space>
-        <a-button type="primary" @click="openCreateModal">
-          <template #icon><PlusOutlined /></template>新建计划
-        </a-button>
-        <a-select
-          v-model:value="statusFilter"
-          style="width: 160px"
-          placeholder="全部状态"
-          allow-clear
-          :options="statusOptions"
-          @change="reload"
-        />
-        <a-button :loading="loading" @click="reload">
-          <template #icon><ReloadOutlined /></template>刷新
-        </a-button>
-      </a-space>
+      <a-button type="primary" @click="openCreateModal">
+        <template #icon><PlusOutlined /></template>新建计划
+      </a-button>
     </template>
+
+    <UiFilterBar
+      v-model="filterForm"
+      :fields="filterFields"
+      search-text="查询"
+      @search="reload"
+      @reset="handleFilterReset"
+    />
 
     <UiErrorRetryPanel
       v-if="loadError"
@@ -89,7 +84,7 @@
                 通过
               </a-button>
             </a-popconfirm>
-            <span class="op-link danger" role="button" @click="openRejectModal(record.id)">驳回</span>
+            <UiTextAction tone="danger" @click="openRejectModal(record.id)">驳回</UiTextAction>
             <a-popconfirm
               title="确认执行批量更正？执行后会写入当前成绩并刷新统计。"
               :disabled="record.approvalStatus !== 'APPROVED'"
@@ -226,8 +221,8 @@ import type {
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
@@ -242,7 +237,7 @@ import {
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
-import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiDataTable, UiErrorRetryPanel, UiFilterBar } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -266,7 +261,23 @@ interface PlanItemForm {
 const rows = ref<ExamBatchGradeCorrectionPlanVO[]>([])
 const loading = ref(false)
 const loadError = ref<Error | null>(null)
-const statusFilter = ref<BatchCorrectionApprovalStatusCode | undefined>(undefined)
+
+const filterForm = reactive<{ status?: BatchCorrectionApprovalStatusCode }>({})
+
+const filterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: BATCH_CORRECTION_STATUS_OPTIONS.map((item) => ({
+      value: item.value,
+      label: item.label,
+    })),
+  },
+]
+
 const createOpen = ref(false)
 const creating = ref(false)
 const operatingId = ref('')
@@ -291,8 +302,6 @@ const form = reactive<{
   reason: '',
   items: [],
 })
-
-const statusOptions = BATCH_CORRECTION_STATUS_OPTIONS
 
 const correctionTypeOptions = [
   { value: 'SINGLE_QUESTION', label: GRADE_CORRECTION_TYPE_LABEL.SINGLE_QUESTION },
@@ -354,7 +363,7 @@ async function reload(): Promise<void> {
   try {
     const plans = await listBatchCorrectionPlans({
       examId: props.examId,
-      approvalStatus: statusFilter.value,
+      approvalStatus: filterForm.status,
     })
     validateBatchCorrectionPlanDisplayContracts(plans)
     rows.value = plans
@@ -365,6 +374,11 @@ async function reload(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+function handleFilterReset(): void {
+  filterForm.status = undefined
+  void reload()
 }
 
 async function openCreateModal(): Promise<void> {

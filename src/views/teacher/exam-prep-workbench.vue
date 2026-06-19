@@ -346,6 +346,13 @@ const prepSteps = computed<PrepStepCard[]>(() => {
   return steps
 })
 
+/** 准备步骤按钮：仅当前首个未完成步骤保留 primary，避免同屏多颗主按钮 */
+function prepStepButtonVariant(step: PrepStepCard): 'primary' | 'outline' {
+  if (step.status === 'completed') return 'outline'
+  const firstPending = prepSteps.value.find((item) => item.status !== 'completed')
+  return firstPending?.key === step.key ? 'primary' : 'outline'
+}
+
 const advisoryReasons = computed(() => {
   return prepSteps.value.filter((s) => s.advisoryReason).map((s) => s.advisoryReason as string)
 })
@@ -487,7 +494,7 @@ onMounted(async () => {
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-          <UiButton variant="primary" size="sm" @click="goExamList">考试工作台</UiButton>
+          <UiButton variant="outline" size="sm" @click="goExamList">考试工作台</UiButton>
         </template>
       </ContextBar>
     </template>
@@ -532,7 +539,7 @@ onMounted(async () => {
             <a-form-item>
               <UiButton
                 size="sm"
-                variant="primary"
+                :variant="layoutDirty && !layoutModeLocked ? 'primary' : 'outline'"
                 :disabled="!draftLayoutMode || layoutModeLocked || !layoutDirty"
                 :loading="layoutSaving"
                 @click="handleSaveLayoutMode"
@@ -618,7 +625,7 @@ onMounted(async () => {
               <p class="exam-prep__desc">{{ step.description }}</p>
               <a-space>
                 <UiButton
-                  :variant="step.status === 'completed' ? 'outline' : 'primary'"
+                  :variant="prepStepButtonVariant(step)"
                   size="sm"
                   @click="goPrepStep(step)"
                 >

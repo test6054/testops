@@ -54,7 +54,6 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
           assetFileNames: 'static/[ext]/[name]-[hash].[ext]',
           manualChunks: {
             'ant-design-vue': ['ant-design-vue'],
-            'echarts': ['echarts'],
             'vendor': ['vue', 'vue-router', 'pinia', 'axios'],
           },
         },

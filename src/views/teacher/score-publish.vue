@@ -67,57 +67,25 @@
           <FileDoneOutlined />
           <span>成绩发布列表</span>
         </template>
+        <template #extra>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!canBulkPublish"
+            @click="openBulkPublishModal"
+          >
+            <template #icon><ThunderboltOutlined /></template>
+            全场发布
+          </UiButton>
+        </template>
 
-        <div class="filter-card">
-          <a-form layout="inline" class="score-publish__filter-form filter-form filter-form--toolbar">
-            <a-form-item label="关键词">
-              <a-input
-                v-model:value="keyword"
-                placeholder="按学号 / 姓名搜索"
-                allow-clear
-                class="score-publish__search"
-                @press-enter="handleSearch"
-              >
-                <template #prefix>
-                  <SearchOutlined />
-                </template>
-              </a-input>
-            </a-form-item>
-            <a-form-item label="最终状态">
-              <a-select
-                v-model:value="statusFilter"
-                placeholder="按最终状态过滤"
-                allow-clear
-                class="score-publish__status-select"
-                :options="statusOptions"
-              />
-            </a-form-item>
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <UiButton size="sm" @click="handleSearch">查询</UiButton>
-                <span class="op-link" role="button" @click="handleReset">重置</span>
-                <UiButton
-                  variant="outline"
-                  size="sm"
-                  :disabled="!selectedExamId"
-                  :loading="loading"
-                  @click="loadCandidates"
-                >
-                  刷新
-                </UiButton>
-                <UiButton
-                  variant="outline"
-                  size="sm"
-                  :disabled="!canBulkPublish"
-                  @click="openBulkPublishModal"
-                >
-                  <template #icon><ThunderboltOutlined /></template>
-                  全场发布
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <UiFilterBar
+          v-model="scoreFilterForm"
+          :fields="scoreFilterFields"
+          search-text="查询"
+          @search="handleSearch"
+          @reset="handleReset"
+        />
 
         <UiDataTable
           v-model:current="pagination.current"
@@ -172,31 +140,26 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span
+                <UiTextAction
                   v-if="candidates[index].paperInstanceId"
-                  class="op-link"
-                  role="button"
                   @click="openDetailDrawer(candidates[index])"
                 >
                   明细
-                </span>
+                </UiTextAction>
                 <span v-else class="muted">—</span>
-                <span
-                  class="op-link primary"
-                  role="button"
-                  :class="{ 'is-disabled': !canPublish(candidates[index]) }"
-                  @click="canPublish(candidates[index]) && handlePublish(candidates[index])"
+                <UiTextAction
+                  tone="primary"
+                  :disabled="!canPublish(candidates[index])"
+                  @click="handlePublish(candidates[index])"
                 >
                   {{ publishButtonLabel(candidates[index]) }}
-                </span>
-                <span
-                  class="op-link"
-                  role="button"
-                  :class="{ 'is-disabled': !canWithdraw(candidates[index]) }"
-                  @click="canWithdraw(candidates[index]) && openWithdrawModal(candidates[index])"
+                </UiTextAction>
+                <UiTextAction
+                  :disabled="!canWithdraw(candidates[index])"
+                  @click="openWithdrawModal(candidates[index])"
                 >
                   撤回
-                </span>
+                </UiTextAction>
               </div>
             </template>
           </template>
@@ -398,8 +361,8 @@ import type {
   FinalScoreRiskOverviewVO,
   FinalScoreStatusCode,
 } from '@/apis/mark/exam'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import FileDoneOutlined from '@ant-design/icons-vue/FileDoneOutlined'
-import SearchOutlined from '@ant-design/icons-vue/SearchOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -423,8 +386,10 @@ import {
   UiDrawer,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiStatPanel,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -445,6 +410,34 @@ function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
 }
 
 const statusOptions = FINAL_SCORE_STATUS_OPTIONS
+
+const scoreFilterForm = reactive<{
+  keyword: string
+  statusFilter?: FinalScoreStatusCode
+}>({
+  keyword: '',
+  statusFilter: undefined,
+})
+
+const scoreFilterFields: FilterField[] = [
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '按学号 / 姓名搜索',
+    allowClear: true,
+    width: 240,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'statusFilter',
+    type: 'select',
+    placeholder: '按最终状态过滤',
+    allowClear: true,
+    width: 200,
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+]
 
 const router = useRouter()
 const route = useRoute()
@@ -508,8 +501,6 @@ const candidatesLoadError = ref<Error | null>(null)
 const pendingAbsenceCount = ref(0)
 const absenceGuardLoading = ref(false)
 const finalScoreOverview = ref<FinalScoreRiskOverviewVO | null>(null)
-const keyword = ref('')
-const statusFilter = ref<FinalScoreStatusCode | undefined>(undefined)
 
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -527,8 +518,8 @@ async function loadCandidates(): Promise<void> {
   try {
     const result = await pageExamScoreSummary({
       examId: selectedExamId.value,
-      keyword: keyword.value.trim() || undefined,
-      finalScoreStatus: statusFilter.value,
+      keyword: scoreFilterForm.keyword.trim() || undefined,
+      finalScoreStatus: scoreFilterForm.statusFilter,
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? 20,
     })
@@ -608,8 +599,6 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
-  keyword.value = ''
-  statusFilter.value = undefined
   pagination.current = 1
   void loadCandidates()
 }
@@ -886,11 +875,6 @@ watch(selectedExamId, (value) => {
   }
 })
 
-watch(statusFilter, () => {
-  pagination.current = 1
-  void loadCandidates()
-})
-
 onMounted(async () => {
   await initExamSelector()
   if (selectedExamId.value) {
@@ -917,18 +901,6 @@ onMounted(async () => {
     width: 280px;
   }
 
-  &__filter-form {
-    margin-bottom: 16px;
-  }
-
-  &__search {
-    width: 240px;
-  }
-
-  &__status-select {
-    width: 200px;
-  }
-
   &__empty {
     padding: 60px 0;
   }
@@ -951,7 +923,7 @@ onMounted(async () => {
   &__detail-section-title {
     margin: 16px 0 8px 0;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   &__hint {

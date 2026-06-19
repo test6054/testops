@@ -17,10 +17,11 @@ import type {
   ScoreRecordSaveRequest,
   ScoreRecordVO,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   assessmentItemApi,
   rubricItemApi,
@@ -35,7 +36,7 @@ import {
   StudentSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -122,14 +123,49 @@ const recordsLoading = ref(false)
 const validFilter = ref<boolean | undefined>(undefined)
 const assessmentItems = ref<AssessmentItemVO[]>([])
 
-const validFilterSelect = computed({
-  get(): string | undefined {
-    return validFilter.value === undefined ? undefined : String(validFilter.value)
-  },
-  set(v: string | undefined): void {
-    validFilter.value = v === undefined ? undefined : v === 'true'
+interface ScoreRecordFilterModel {
+  validFlag?: 'true' | 'false'
+}
+
+const filterForm = reactive<ScoreRecordFilterModel>({
+  validFlag: undefined,
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
   },
 })
+
+const filterFields: FilterField[] = [
+  {
+    key: 'validFlag',
+    type: 'select',
+    placeholder: '有效性筛选',
+    allowClear: true,
+    width: 140,
+    options: [
+      { value: 'true', label: '仅有效' },
+      { value: 'false', label: '仅无效' },
+    ],
+  },
+]
+
+function syncFilterToView() {
+  if (filterForm.validFlag === 'true') validFilter.value = true
+  else if (filterForm.validFlag === 'false') validFilter.value = false
+  else validFilter.value = undefined
+}
+
+function handleSearch() {
+  syncFilterToView()
+}
+
+function handleReset() {
+  filterForm.validFlag = undefined
+  syncFilterToView()
+}
 
 const filteredRecords = computed(() => {
   if (validFilter.value === undefined) return records.value
@@ -467,7 +503,7 @@ function handleCourseChange(courseId: string | null) {
       <SignalBand :metrics="signals" compact class="score-record__signals" />
 
       <div class="score-record__layout">
-        <a-card :bordered="false" class="detail-table-card score-record__batch-card">
+        <UiCard class="detail-table-card score-record__batch-card">
           <template #title>
             成绩批次
             <span class="score-record__panel-meta">{{ batches.length }} 批</span>
@@ -498,9 +534,9 @@ function handleCourseChange(courseId: string | null) {
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </UiCard>
 
-        <a-card :bordered="false" class="detail-table-card score-record__detail-card">
+        <UiCard class="detail-table-card score-record__detail-card">
           <template v-if="selectedBatch" #title>
             「{{ selectedBatch.batchName }}」明细
             <span class="score-record__detail-meta">
@@ -511,6 +547,15 @@ function handleCourseChange(courseId: string | null) {
             </span>
           </template>
           <template v-else #title>成绩明细</template>
+          <template v-if="selectedBatch" #extra>
+            <a-space>
+              <UiTextAction @click="openValidByItem">按考核环节查有效</UiTextAction>
+              <router-link :to="{ name: 'QualityScoreBatch' }" class="score-record__import-link">
+                <UiButton variant="outline" size="sm">批量导入（Excel）</UiButton>
+              </router-link>
+              <UiButton variant="primary" size="sm" @click="openCreate">新增明细</UiButton>
+            </a-space>
+          </template>
 
           <UiEmpty
             v-if="!selectedBatch"
@@ -518,30 +563,12 @@ function handleCourseChange(courseId: string | null) {
             class="score-record__empty"
           />
           <template v-else>
-            <div class="filter-card">
-              <a-form layout="inline" class="filter-form filter-form--toolbar">
-                <a-form-item label="有效性">
-                  <a-select
-                    v-model:value="validFilterSelect"
-                    placeholder="有效性筛选"
-                    allow-clear
-                    style="width: 140px"
-                  >
-                    <a-select-option value="true">仅有效</a-select-option>
-                    <a-select-option value="false">仅无效</a-select-option>
-                  </a-select>
-                </a-form-item>
-                <a-form-item class="filter-form__actions">
-                  <a-space class="filter-form__action-group">
-                    <span class="op-link" role="button" @click="openValidByItem">按考核环节查有效</span>
-                    <router-link :to="{ name: 'QualityScoreBatch' }" class="score-record__import-link">
-                      <UiButton variant="outline" size="sm">批量导入（Excel）</UiButton>
-                    </router-link>
-                    <UiButton variant="primary" size="sm" @click="openCreate">新增明细</UiButton>
-                  </a-space>
-                </a-form-item>
-              </a-form>
-            </div>
+            <UiFilterBar
+              v-model="filterModel"
+              :fields="filterFields"
+              @search="handleSearch"
+              @reset="handleReset"
+            />
 
             <UiDataTable
               class="score-record__records-table student-detail-table__data-table"
@@ -581,14 +608,16 @@ function handleCourseChange(courseId: string | null) {
                     </a-tooltip>
                   </a-space>
                 </template>
-                <template v-else-if="column.key === 'actions'"><div class="operations-cell" @click.stop>
-<span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-                  <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
-            </div></template>
+                <template v-else-if="column.key === 'actions'">
+                  <div class="operations-cell" @click.stop>
+                    <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+                    <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
+                  </div>
+                </template>
               </template>
             </UiDataTable>
           </template>
-        </a-card>
+        </UiCard>
       </div>
     </template>
 
@@ -741,7 +770,8 @@ function handleCourseChange(courseId: string | null) {
           查询
         </UiButton>
       </div>
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         :columns="validByItemColumns"
         :data-source="validByItemRecords"
         :loading="validByItemLoading"

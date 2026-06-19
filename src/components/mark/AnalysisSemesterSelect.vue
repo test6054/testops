@@ -3,6 +3,7 @@ import type { ExamSummaryVO } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
+import { pickDefaultSemesterCode } from '@/composables/useCrossExamDefaultScope'
 import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { readAllPages } from '@/utils/page-result'
@@ -11,21 +12,25 @@ defineOptions({ name: 'AnalysisSemesterSelect' })
 
 const selectedSemesterCode = defineModel<string | undefined>()
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     placeholder?: string
     allowClear?: boolean
+    /** 首次加载后默认选中最近 N 个学年学期（按考试时间倒序） */
+    defaultRecentSemesterCount?: number
   }>(),
   {
     placeholder: '请选择学年学期',
     allowClear: true,
+    defaultRecentSemesterCount: 0,
   },
 )
 
 const ANALYSIS_SEMESTER_EXAM_PAGE_SIZE = 100
 
 const loading = ref(false)
-const semesterOptions = ref<{ label: string; value: string }[]>([])
+const semesterOptions = ref<{ label: string, value: string }[]>([])
+const defaultScopeApplied = ref(false)
 
 /** 加载考试中的学年学期范围，供 AI 分析卡片按业务周期选择。 */
 async function loadSemesterOptions(): Promise<void> {
@@ -47,6 +52,17 @@ async function loadSemesterOptions(): Promise<void> {
     semesterOptions.value = Array.from(termMap.entries())
       .map(([value, label]) => ({ label, value }))
       .sort((left, right) => right.value.localeCompare(left.value))
+    if (
+      !defaultScopeApplied.value
+      && props.defaultRecentSemesterCount > 0
+      && !selectedSemesterCode.value
+    ) {
+      const defaultCode = pickDefaultSemesterCode(exams, props.defaultRecentSemesterCount)
+      if (defaultCode) {
+        selectedSemesterCode.value = defaultCode
+        defaultScopeApplied.value = true
+      }
+    }
   } catch (error) {
     showUserError(error, '学年学期列表加载失败')
   } finally {

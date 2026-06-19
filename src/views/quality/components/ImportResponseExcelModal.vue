@@ -18,14 +18,15 @@
 
       <div v-if="selectedFile" class="selected-file">
         <span>已选择：{{ selectedFile.name }}</span>
-        <a-button
-          type="primary"
+        <UiButton
+          variant="primary"
+          size="sm"
           :loading="uploading"
-          style="margin-left: 12px"
+          class="import-response-excel__upload-btn"
           @click="handleUpload"
         >
           开始导入
-        </a-button>
+        </UiButton>
       </div>
     </template>
 
@@ -40,16 +41,22 @@
 
           <template v-if="importResult.errors.length > 0">
             <a-divider>错误详情</a-divider>
-            <a-table
+            <UiDataTable
               :columns="errorColumns"
-              :data-source="importResult.errors"
-              :pagination="{ pageSize: 10 }"
+              :data-source="pagedImportErrors"
+              v-model:current="importErrorPage"
+              v-model:page-size="importErrorPageSize"
+              :total="importResult.errors.length"
+              :show-size-changer="false"
               row-key="rowIndex"
               size="small"
+              flat
             />
           </template>
 
-          <a-button type="primary" style="margin-top: 16px" @click="handleClose"> 完成 </a-button>
+          <UiButton variant="primary" size="sm" class="import-response-excel__done-btn" @click="handleClose">
+            完成
+          </UiButton>
         </template>
       </a-result>
     </template>
@@ -61,6 +68,7 @@ import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evalu
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { computed, ref } from 'vue'
 import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
+import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 
 const props = defineProps<{
   open: boolean
@@ -86,6 +94,15 @@ const errorColumns = [
   { title: '题项编码', dataIndex: 'itemCode', width: 100 },
   { title: '导入处理说明', dataIndex: 'errorMessage' },
 ]
+
+const importErrorPage = ref(1)
+const importErrorPageSize = ref(10)
+
+const pagedImportErrors = computed(() => {
+  if (!importResult.value) return []
+  const start = (importErrorPage.value - 1) * importErrorPageSize.value
+  return importResult.value.errors.slice(start, start + importErrorPageSize.value)
+})
 
 function beforeUpload(file: File) {
   selectedFile.value = file
@@ -119,5 +136,10 @@ function handleClose() {
   margin-top: 12px;
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.import-response-excel__done-btn {
+  margin-top: 16px;
 }
 </style>

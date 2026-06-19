@@ -19,6 +19,20 @@
         <div class="login-brand__layout">
           <div class="login-brand__content-row">
             <div class="login-brand__capability-column">
+              <ul class="login-brand__highlights" aria-label="阅卷主链路">
+                <li class="login-brand__highlight">
+                  <span class="login-brand__highlight-step">1</span>
+                  <span class="login-brand__highlight-text">扫描录入：纸质答卷影像化入库</span>
+                </li>
+                <li class="login-brand__highlight">
+                  <span class="login-brand__highlight-step">2</span>
+                  <span class="login-brand__highlight-text">教师复核：识别结果确认与批注</span>
+                </li>
+                <li class="login-brand__highlight">
+                  <span class="login-brand__highlight-step">3</span>
+                  <span class="login-brand__highlight-text">成绩发布：复核通过后向学生公布</span>
+                </li>
+              </ul>
               <div class="login-brand__hero">
                 <div class="login-brand__visual">
                   <img :src="loginHeroVisual" alt="阅卷中心平台能力示意图" class="login-brand__visual-image">
@@ -311,6 +325,42 @@ onMounted(async () => {
 .login-brand__capability-column {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+.login-brand__highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login-brand__highlight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-brand__highlight-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--login-accent);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.login-brand__highlight-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--login-muted);
 }
 
 .login-brand__hero {

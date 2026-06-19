@@ -61,23 +61,14 @@
           <SyncOutlined />
           <span>同步任务</span>
         </template>
-        <template #extra>
-          <a-select
-            v-model:value="syncStatusFilter"
-            placeholder="状态过滤"
-            style="width: 160px"
-            allow-clear
-            @change="loadSyncTasks"
-          >
-            <a-select-option
-              v-for="(label, code) in SYNC_TASK_STATUS_LABEL"
-              :key="code"
-              :value="code"
-            >
-              {{ label }}
-            </a-select-option>
-          </a-select>
-        </template>
+
+        <UiFilterBar
+          v-model="syncFilterForm"
+          :fields="syncFilterFields"
+          search-text="查询"
+          @search="loadSyncTasks"
+          @reset="handleSyncFilterReset"
+        />
 
         <UiDataTable
           class="student-detail-table__data-table"
@@ -118,42 +109,33 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span
+                <UiTextAction
                   v-if="canExecute(syncTasks[index].taskStatus)"
-                  class="op-link primary"
-                  :class="{ 'is-disabled': actionLoadingId === syncTasks[index].id }"
-                  role="button"
-                  @click="
-                    actionLoadingId !== syncTasks[index].id && handleExecute(syncTasks[index])
-                  "
+                  tone="primary"
+                  :disabled="actionLoadingId === syncTasks[index].id"
+                  @click="handleExecute(syncTasks[index])"
                 >
                   执行回写
-                </span>
-                <span
+                </UiTextAction>
+                <UiTextAction
                   v-if="canRetry(syncTasks[index].taskStatus)"
-                  class="op-link primary"
-                  :class="{ 'is-disabled': actionLoadingId === syncTasks[index].id }"
-                  role="button"
-                  @click="
-                    actionLoadingId !== syncTasks[index].id && handleRetry(syncTasks[index])
-                  "
+                  tone="primary"
+                  :disabled="actionLoadingId === syncTasks[index].id"
+                  @click="handleRetry(syncTasks[index])"
                 >
                   重试
-                </span>
-                <span
+                </UiTextAction>
+                <UiTextAction
                   v-if="canCancel(syncTasks[index].taskStatus)"
-                  class="op-link danger"
-                  :class="{ 'is-disabled': actionLoadingId === syncTasks[index].id }"
-                  role="button"
-                  @click="
-                    actionLoadingId !== syncTasks[index].id && handleCancel(syncTasks[index])
-                  "
+                  tone="danger"
+                  :disabled="actionLoadingId === syncTasks[index].id"
+                  @click="handleCancel(syncTasks[index])"
                 >
                   取消
-                </span>
-                <span class="op-link" role="button" @click="openTaskDetail(syncTasks[index])">
+                </UiTextAction>
+                <UiTextAction @click="openTaskDetail(syncTasks[index])">
                   详情
-                </span>
+                </UiTextAction>
               </div>
             </template>
           </template>
@@ -174,41 +156,14 @@
           <FileSyncOutlined />
           <span>回写记录</span>
         </template>
-        <template #extra>
-          <a-space>
-            <a-input
-              v-model:value="passbackTaskFilter"
-              placeholder="按同步任务编号过滤"
-              style="width: 160px"
-              allow-clear
-              @press-enter="reloadPassbackRecordsFromFirstPage"
-            />
-            <a-select
-              v-model:value="passbackStatusFilter"
-              placeholder="回写状态"
-              style="width: 160px"
-              allow-clear
-              @change="reloadPassbackRecordsFromFirstPage"
-            >
-              <a-select-option
-                v-for="(label, code) in PASSBACK_STATUS_LABEL"
-                :key="code"
-                :value="code"
-              >
-                {{ label }}
-              </a-select-option>
-            </a-select>
-            <UiButton
-              size="sm"
-              variant="outline"
-              :loading="passbackLoading"
-              @click="loadPassbackRecords"
-            >
-              <template #icon><ReloadOutlined /></template>
-              刷新
-            </UiButton>
-          </a-space>
-        </template>
+
+        <UiFilterBar
+          v-model="passbackFilterForm"
+          :fields="passbackFilterFields"
+          search-text="查询"
+          @search="reloadPassbackRecordsFromFirstPage"
+          @reset="handlePassbackFilterReset"
+        />
 
         <UiDataTable
           class="student-detail-table__data-table"
@@ -326,7 +281,7 @@
         <a-progress
           :percent="detailProgressPercent"
           :status="detailProgressStatus"
-          :stroke-color="detailProgressFailed > 0 ? '#d4380d' : undefined"
+          :stroke-color="detailProgressFailed > 0 ? 'var(--ant-color-error)' : undefined"
         />
         <div class="progress-counts">
           <UiTag tone="gray" size="sm">总数 {{ detailProgress.totalCount }}</UiTag>
@@ -416,7 +371,7 @@ import type {
   SyncTaskVO,
   TeachingAffairsSyncTypeCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
@@ -448,7 +403,9 @@ import {
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -473,7 +430,23 @@ const loading = ref(false)
 
 const syncTasks = ref<SyncTaskVO[]>([])
 const syncLoading = ref(false)
-const syncStatusFilter = ref<SyncTaskStatusCode | undefined>(undefined)
+
+const syncFilterForm = reactive<{ status?: SyncTaskStatusCode }>({})
+
+const syncFilterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    placeholder: '状态过滤',
+    allowClear: true,
+    width: 160,
+    options: Object.entries(SYNC_TASK_STATUS_LABEL).map(([value, label]) => ({
+      value,
+      label,
+    })),
+  },
+]
+
 const actionLoadingId = ref<string | undefined>(undefined)
 
 const syncColumns: ColumnType<SyncTaskVO>[] = [
@@ -497,13 +470,18 @@ async function loadSyncTasks(): Promise<void> {
   syncLoading.value = true
   syncTasksLoadError.value = null
   try {
-    syncTasks.value = await listSyncTasks(selectedExamId.value, syncStatusFilter.value)
+    syncTasks.value = await listSyncTasks(selectedExamId.value, syncFilterForm.status)
   } catch (error) {
     syncTasksLoadError.value = toUserError(error, '教务同步任务加载失败')
     showUserError(error, '教务同步任务加载失败')
   } finally {
     syncLoading.value = false
   }
+}
+
+function handleSyncFilterReset(): void {
+  syncFilterForm.status = undefined
+  void loadSyncTasks()
 }
 
 function canExecute(status: SyncTaskStatusCode): boolean {
@@ -683,8 +661,31 @@ async function handleReconcile(record: SyncTaskVO): Promise<void> {
 
 const passbackRecords = ref<PassbackRecordVO[]>([])
 const passbackLoading = ref(false)
-const passbackTaskFilter = ref('')
-const passbackStatusFilter = ref<PassbackStatusCode | undefined>(undefined)
+
+const passbackFilterForm = reactive<{ syncTaskId?: string, passbackStatus?: PassbackStatusCode }>({})
+
+const passbackFilterFields: FilterField[] = [
+  {
+    key: 'syncTaskId',
+    type: 'input',
+    placeholder: '按同步任务编号过滤',
+    allowClear: true,
+    width: 160,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'passbackStatus',
+    type: 'select',
+    placeholder: '回写状态',
+    allowClear: true,
+    width: 160,
+    options: Object.entries(PASSBACK_STATUS_LABEL).map(([value, label]) => ({
+      value,
+      label,
+    })),
+  },
+]
+
 const passbackPagination = reactive({
   pageNum: 1,
   pageSize: 50,
@@ -711,8 +712,8 @@ async function loadPassbackRecords(): Promise<void> {
   try {
     const page = await listPassbackRecords({
       examId: selectedExamId.value,
-      syncTaskId: passbackTaskFilter.value.trim() || undefined,
-      passbackStatus: passbackStatusFilter.value,
+      syncTaskId: passbackFilterForm.syncTaskId?.trim() || undefined,
+      passbackStatus: passbackFilterForm.passbackStatus,
       pageNum: passbackPagination.pageNum,
       pageSize: passbackPagination.pageSize,
     })
@@ -731,6 +732,12 @@ async function loadPassbackRecords(): Promise<void> {
 function reloadPassbackRecordsFromFirstPage(): void {
   passbackPagination.pageNum = 1
   void loadPassbackRecords()
+}
+
+function handlePassbackFilterReset(): void {
+  passbackFilterForm.syncTaskId = undefined
+  passbackFilterForm.passbackStatus = undefined
+  reloadPassbackRecordsFromFirstPage()
 }
 
 function handlePassbackPageChange(pageInfo: { current: number, pageSize: number }): void {
@@ -846,12 +853,12 @@ onMounted(async () => {
 }
 
 .error-text {
-  color: #d4380d;
+  color: var(--ant-color-error);
   font-size: 12px;
 }
 
 .hint-text {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ant-color-text-tertiary);
   font-size: 12px;
 }
 

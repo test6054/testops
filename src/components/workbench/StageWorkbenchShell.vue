@@ -1,6 +1,6 @@
 <template>
   <div class="stage-workbench-shell">
-    <!-- 页面级操作区：勿重复顶栏面包屑标题，按钮应并入列表 filter-form__actions -->
+    <!-- 页面级操作区：勿重复顶栏面包屑标题，按钮应并入 ContextBar #actions -->
     <header v-if="$slots.context" class="stage-workbench-shell__context">
       <slot name="context" />
     </header>

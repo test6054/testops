@@ -70,6 +70,7 @@
 
 <script lang="ts" setup>
 import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
 import { LEDGER_STATUS_COLOR, LEDGER_STATUS_LABEL } from '@/apis/mark/image-ledger'
@@ -83,6 +84,7 @@ import {
 } from '@/components/ui-guide/ui'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'LedgerSummaryCard' })
@@ -110,10 +112,10 @@ const scanPercent = computed(() => {
   return Math.min(Math.round((scanned / expected) * 100), 100)
 })
 
+/** 扫描完成率环色：100% 完成绿 / ≥60% 推进蓝 / 其余推进橙 */
 const scanRingColor = computed(() => {
-  if (scanPercent.value >= 100) return '#16a34a'
-  if (scanPercent.value >= 60) return '#3b82f6'
-  return '#f59e0b'
+  const tone: BadgeTone = scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
+  return toneToColor(tone)
 })
 
 /** 将影像账本诊断转为扫描交付处置提示，避免展示底层对账细节。 */

@@ -48,48 +48,41 @@
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
-      <div v-if="queueTotal > 0" class="review-workspace__queue-progress">
-        <div class="review-workspace__queue-progress-meta">
-          <span class="review-workspace__queue-progress-title">本题复核流水线</span>
-          <span class="review-workspace__queue-progress-text">
-            当前第 {{ currentQueueIndex }} 份，剩余
-            {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
-          </span>
-        </div>
-        <a-progress
-          :percent="queueProgressPercent"
-          :show-info="true"
-          size="small"
-          :status="queueProgressPercent >= 100 ? 'success' : 'active'"
-        />
-        <!-- P2-2: 快速跳转到指定份数 -->
-        <a-space class="review-workspace__queue-jump" size="small">
-          <span class="review-workspace__jump-label">跳转到第</span>
-          <a-input-number
-            :value="jumpTarget ?? undefined"
-            :min="1"
-            :max="queueTotal"
-            size="small"
-            style="width: 80px"
-            @update:value="(value) => { jumpTarget = typeof value === 'number' ? value : null }"
-            @keydown.enter="handleQueueJump"
-          />
-          <span class="review-workspace__jump-label">份</span>
-          <UiButton size="sm" :disabled="!jumpTarget" @click="handleQueueJump">跳转</UiButton>
-        </a-space>
-      </div>
-      <UiAlertStrip
-        v-if="queueLoadError"
-        tone="error"
-        title="同题复核流水线加载失败"
-        :description="queueLoadError"
-        dense
-        class="review-workspace__alert"
-      />
+      <GradingWorkspaceLayout v-if="detail">
+        <template #queue>
+          <div v-if="queueTotal > 0" class="review-workspace__queue-progress">
+            <div class="review-workspace__queue-progress-meta">
+              <span class="review-workspace__queue-progress-title">本题复核流水线</span>
+              <span class="review-workspace__queue-progress-text">
+                当前第 {{ currentQueueIndex }} 份，剩余
+                {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
+              </span>
+              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
+            </div>
+            <a-progress
+              :percent="queueProgressPercent"
+              :show-info="true"
+              size="small"
+              :status="queueProgressPercent >= 100 ? 'success' : 'active'"
+            />
+            <a-space class="review-workspace__queue-jump" size="small">
+              <span class="review-workspace__jump-label">跳转到第</span>
+              <a-input-number
+                :value="jumpTarget ?? undefined"
+                :min="1"
+                :max="queueTotal"
+                size="small"
+                style="width: 80px"
+                @update:value="(value) => { jumpTarget = typeof value === 'number' ? value : null }"
+                @keydown.enter="handleQueueJump"
+              />
+              <span class="review-workspace__jump-label">份</span>
+              <UiButton size="sm" :disabled="!jumpTarget" @click="handleQueueJump">跳转</UiButton>
+            </a-space>
+          </div>
+        </template>
 
-      <a-row v-if="detail" :gutter="16" class="review-workspace__row">
-        <!-- 左：切片图 + 识别答案 + 标准答案 + AI 复评说明 -->
-        <a-col :xs="24" :lg="16">
+        <template #main>
           <!-- FIX-3: 题目题干 -->
           <UiCard v-if="detail?.questionStem" class="review-workspace__card">
             <template #title>
@@ -194,7 +187,7 @@
             <div class="review-workspace__ai-actions">
               <UiButton
                 size="sm"
-                variant="primary"
+                variant="outline"
                 :disabled="!canAdoptAiSuggestion"
                 :loading="submitting"
                 @click="adoptAiSuggestionAndSubmit"
@@ -283,11 +276,9 @@
               </a-timeline>
             </a-spin>
           </a-drawer>
+        </template>
 
-        </a-col>
-
-        <!-- 右：教师复核给分 + 批注列表 -->
-        <a-col :xs="24" :lg="8">
+        <template #aside>
           <UiCard class="review-workspace__card">
             <template #title>
               <EditOutlined />
@@ -362,51 +353,59 @@
               </template>
             </a-list>
           </UiCard>
-        </a-col>
-      </a-row>
-    </a-spin>
+        </template>
 
-    <!-- 底部 sticky 操作条（流水线教师复核主入口） -->
-    <footer v-if="detail" class="review-workspace__sticky">
-      <div class="review-workspace__sticky-left">
-        <span class="review-workspace__hint">
-          当前任务：{{ detail.paperDisplay.primaryText }} · 题 {{ detail.questionNo }}
-        </span>
-        <span v-if="queueTotal > 0" class="review-workspace__hint">
-          · 同题剩余 {{ Math.max(0, queueTotal - 1) }} 份
-        </span>
-      </div>
-      <div class="review-workspace__sticky-actions">
-        <UiButton variant="ghost" size="md" @click="goBack"> 返回 </UiButton>
-        <UiButton
-          variant="outline"
-          size="md"
-          :disabled="!canConfirm"
-          :loading="submitting"
-          @click="openSubmitConfirm(false)"
-        >
-          仅提交
-        </UiButton>
-        <UiButton
-          variant="outline"
-          size="md"
-          :disabled="!canConfirm || !detail.gradeResultId"
-          :loading="rejecting"
-          @click="openRejectConfirm"
-        >
-          驳回
-        </UiButton>
-        <UiButton
-          variant="primary"
-          size="md"
-          :disabled="!canConfirm || !detail.gradeResultId || queueTotal <= 1"
-          :loading="submitting"
-          @click="openSubmitConfirm(true)"
-        >
-          提交并取下一份
-        </UiButton>
-      </div>
-    </footer>
+        <template #footer>
+          <div class="review-workspace__sticky-left">
+            <span class="review-workspace__hint">
+              当前任务：{{ detail.paperDisplay.primaryText }} · 题 {{ detail.questionNo }}
+            </span>
+            <span v-if="queueTotal > 0" class="review-workspace__hint">
+              · 同题剩余 {{ Math.max(0, queueTotal - 1) }} 份
+            </span>
+          </div>
+          <div class="review-workspace__sticky-actions">
+            <UiButton variant="ghost" size="md" @click="goBack"> 返回 </UiButton>
+            <UiButton
+              variant="outline"
+              size="md"
+              :disabled="!canConfirm"
+              :loading="submitting"
+              @click="openSubmitConfirm(false)"
+            >
+              仅提交
+            </UiButton>
+            <UiButton
+              variant="outline"
+              size="md"
+              :disabled="!canConfirm || !detail.gradeResultId"
+              :loading="rejecting"
+              @click="openRejectConfirm"
+            >
+              驳回
+            </UiButton>
+            <UiButton
+              variant="primary"
+              size="md"
+              :disabled="!canConfirm || !detail.gradeResultId || queueTotal <= 1"
+              :loading="submitting"
+              @click="openSubmitConfirm(true)"
+            >
+              提交并取下一份
+            </UiButton>
+          </div>
+        </template>
+      </GradingWorkspaceLayout>
+
+      <UiAlertStrip
+        v-if="queueLoadError"
+        tone="error"
+        title="同题复核流水线加载失败"
+        :description="queueLoadError"
+        dense
+        class="review-workspace__alert"
+      />
+    </a-spin>
   </StageWorkbenchShell>
 </template>
 
@@ -430,7 +429,7 @@ import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
 import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AI_ABILITY_LABEL,
@@ -449,6 +448,7 @@ import {
   REVIEW_TASK_STATUS_LABEL,
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam'
+import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import {
   UiAlertStrip,
@@ -463,6 +463,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -631,11 +632,59 @@ function handleQueueJump(): void {
   }
   const targetTask = reviewQueue.value[idx - 1]
   if (targetTask) {
+    resetGradeForm()
     void router.replace({
-      name: 'TeacherReviewTaskDetail',
-      params: { taskId: targetTask.reviewTaskId },
-      query: { examId: examId.value },
+      name: 'TeacherReviewWorkspace',
+      query: { examId: examId.value, taskId: targetTask.reviewTaskId },
     })
+  }
+}
+
+/** 同题队列相对跳转：J/K 或方向键切换份数，不提交当前任务 */
+function navigateQueueRelative(offset: -1 | 1): void {
+  if (reviewQueue.value.length === 0) {
+    return
+  }
+  const currentIdx = reviewQueue.value.findIndex((item) => item.reviewTaskId === taskId.value)
+  if (currentIdx < 0) {
+    return
+  }
+  const targetIdx = currentIdx + offset
+  if (targetIdx < 0 || targetIdx >= reviewQueue.value.length) {
+    message.info(offset < 0 ? '已是第一份' : '已是最后一份')
+    return
+  }
+  const targetTask = reviewQueue.value[targetIdx]
+  resetGradeForm()
+  void router.replace({
+    query: { ...route.query, examId: examId.value, taskId: targetTask.reviewTaskId },
+  })
+}
+
+function handleReviewWorkspaceKeydown(event: KeyboardEvent): void {
+  if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) {
+    return
+  }
+  if (isGradingKeyboardInputTarget(event.target)) {
+    return
+  }
+  const key = event.key.toLowerCase()
+  if (key === 'j' || key === 'arrowleft') {
+    event.preventDefault()
+    navigateQueueRelative(-1)
+    return
+  }
+  if (key === 'k' || key === 'arrowright') {
+    event.preventDefault()
+    navigateQueueRelative(1)
+    return
+  }
+  if (/^\d$/.test(event.key) && detail.value && canConfirm.value) {
+    const digit = Number(event.key)
+    if (digit <= detail.value.fullScore) {
+      event.preventDefault()
+      setQuickScore(digit)
+    }
   }
 }
 
@@ -1079,9 +1128,14 @@ watch(
 )
 
 onMounted(() => {
+  window.addEventListener('keydown', handleReviewWorkspaceKeydown)
   if (canSubmit.value) {
     void loadTask()
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleReviewWorkspaceKeydown)
 })
 </script>
 
@@ -1109,8 +1163,13 @@ onMounted(() => {
   &__queue-progress-meta {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+
+  &__keyboard-hint {
+    font-size: 12px;
+    color: var(--dp-text-muted, #64748b);
   }
 
   &__queue-progress-title {
@@ -1186,21 +1245,6 @@ onMounted(() => {
 
   &__empty {
     padding: 60px 0;
-  }
-
-  &__sticky {
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 20px;
-    margin: 16px -12px -12px;
-    background: var(--dp-surface, #fff);
-    border-top: 1px solid var(--dp-border, #e2e8f0);
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
   }
 
   &__sticky-left {

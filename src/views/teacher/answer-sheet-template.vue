@@ -244,7 +244,7 @@ async function handleSheetGenerate() {
       ? sheetGenForm.subjectNamesText.trim().split('\n').filter(Boolean)
 : []
     const lines = sheetGenForm.subjectLinesText.trim()
-      ? sheetGenForm.subjectLinesText.trim().split(',').map(Number).filter(n => !isNaN(n))
+      ? sheetGenForm.subjectLinesText.trim().split(',').map(Number).filter(n => !Number.isNaN(n))
 : []
     const fileId = await generateStandardAnswerSheet({
       examId: selectedExamId.value,

@@ -37,7 +37,7 @@
           </a-tag>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <span class="op-link" role="button" @click="$emit('resolve', rows[index])">处置</span>
+          <UiTextAction @click="$emit('resolve', rows[index])">处置</UiTextAction>
         </template>
       </template>
     </UiDataTable>

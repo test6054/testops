@@ -3,17 +3,7 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="stats-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
+          <MarkExamContextPicker select-class="stats-page__exam-select" />
           <UiTag v-if="selectedExamId" tone="blue" size="sm">已选考试</UiTag>
         </template>
         <template #actions>
@@ -23,6 +13,10 @@
           </UiButton>
         </template>
       </ContextBar>
+    </template>
+
+    <template #rail>
+      <MarkExamStageRail />
     </template>
 
     <UiEmpty
@@ -56,6 +50,16 @@
           @click="clearLinkage"
         >
           清空联动
+        </UiButton>
+      </div>
+
+      <div v-if="selectedExamId" class="stats-page__export-bar">
+        <span class="stats-page__export-label">考后讲评</span>
+        <UiButton variant="primary" size="sm" @click="exportTeachingLecture">
+          导出讲评讲义
+        </UiButton>
+        <UiButton variant="ghost" size="sm" @click="scrollToTeachingImprovement">
+          定位到教学改进方案
         </UiButton>
       </div>
 
@@ -106,6 +110,7 @@
           </header>
           <div class="stats-page__cards">
             <TeachingImprovementCard
+              ref="teachingImprovementRef"
               :exam-id="selectedExamId"
               :reload-token="improvementToken"
               :class-id="activeClassId"
@@ -137,10 +142,12 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
+import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
+import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { provideMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
 import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
 import QuestionAnalysisCard from './statistics/QuestionAnalysisCard.vue'
@@ -152,12 +159,9 @@ import TeachingImprovementCard from './statistics/TeachingImprovementCard.vue'
 defineOptions({ name: 'TeacherStatistics' })
 
 const {
-  examOptions,
-  loading: examLoading,
   selectedExamId,
-  onExamChange,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = provideMarkExamContext()
 
 // B-12 联动：考试切换后统一加载考生名册，派生班级 / 学生选项交给子卡片，避免教师手输 ID
 const {
@@ -175,6 +179,8 @@ const improvementToken = ref(0)
 const weaknessToken = ref(0)
 const errorCauseToken = ref(0)
 const profileToken = ref(0)
+
+const teachingImprovementRef = ref<InstanceType<typeof TeachingImprovementCard> | null>(null)
 
 // B-12 子卡片联动：跨卡片记录活跃的班级 / 学生上下文
 const activeClassId = ref<string>('')
@@ -241,6 +247,14 @@ function reloadRejudge(): void {
   rejudgeToken.value += 1
 }
 
+function exportTeachingLecture(): void {
+  teachingImprovementRef.value?.exportRecordText()
+}
+
+function scrollToTeachingImprovement(): void {
+  teachingImprovementRef.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 watch(selectedExamId, (v) => {
   // 切换考试时清空联动上下文，避免跨考试串号
   clearLinkage()
@@ -297,11 +311,30 @@ onMounted(async () => {
   &__linkage-label {
     color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
     font-size: var(--dp-font-size-sm, 13px);
-    font-weight: 600;
+    font-weight: var(--dp-font-weight-title, 600);
   }
 
   &__class-select {
     width: 240px;
+  }
+
+  &__export-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--ant-color-primary-border);
+    border-radius: var(--dp-radius-panel, 8px);
+    background: var(--ant-color-primary-bg);
+  }
+
+  &__export-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ant-color-primary);
+    margin-right: 4px;
   }
 
   &__sections {
@@ -335,7 +368,7 @@ onMounted(async () => {
     margin: 0;
     color: var(--dp-text-primary, rgba(0, 0, 0, 0.88));
     font-size: 18px;
-    font-weight: 600;
+    font-weight: var(--dp-font-weight-title, 600);
     line-height: 1.5;
   }
 
@@ -349,7 +382,115 @@ onMounted(async () => {
   &__cards {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--dp-space-4, 16px);
+
+    :deep(.stats-card) {
+      box-shadow: var(--dp-shadow-sm);
+    }
+
+    :deep(.stats-card.dp-card--compact .dp-card__header) {
+      padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px);
+    }
+
+    :deep(.stats-card.dp-card--compact .dp-card__body) {
+      padding: var(--dp-space-4, 16px) var(--dp-space-5, 20px);
+    }
+
+    :deep(.stats-card .stats-card__select--class) {
+      width: 200px;
+    }
+
+    :deep(.stats-card .stats-card__select--class-wide) {
+      width: 240px;
+    }
+
+    :deep(.stats-card .stats-card__select--question),
+    :deep(.stats-card .stats-card__select--student) {
+      width: 280px;
+    }
+
+    :deep(.stats-card .stats-card__select--status) {
+      width: 160px;
+    }
+
+    :deep(.stats-card .question-analysis-card) {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dp-space-3, 12px);
+    }
+
+    :deep(.stats-card .score-dist),
+    :deep(.stats-card .ai-record) {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dp-space-3, 12px);
+    }
+
+    :deep(.stats-card .score-dist__chart),
+    :deep(.stats-card .question-analysis-card__chart),
+    :deep(.stats-card .ai-chart__canvas) {
+      width: 100%;
+      height: 300px;
+    }
+
+    :deep(.stats-card .score-dist__metrics) {
+      padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+      background: var(--dp-surface-subtle);
+      border-radius: var(--dp-radius-sm, 4px);
+    }
+
+    :deep(.stats-card .score-dist__chart-wrap),
+    :deep(.stats-card .question-analysis-card__chart-wrap),
+    :deep(.stats-card .ai-chart) {
+      padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+      border: 1px solid var(--dp-border, #e2e8f0);
+      border-radius: var(--dp-radius-md, 6px);
+      background: var(--dp-surface, #fff);
+    }
+
+    :deep(.stats-card .score-dist__chart-meta),
+    :deep(.stats-card .question-analysis-card__chart-meta),
+    :deep(.stats-card .ai-chart__meta) {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--dp-space-3, 12px);
+      margin-bottom: var(--dp-space-2, 8px);
+
+      strong {
+        font-size: var(--dp-font-size-md, 14px);
+        font-weight: var(--dp-font-weight-title, 600);
+      }
+    }
+
+    :deep(.stats-card .score-dist__chart-hint),
+    :deep(.stats-card .question-analysis-card__chart-hint) {
+      font-size: var(--dp-font-size-xs, 12px);
+      color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+    }
+
+    :deep(.stats-card .analysis-item__title),
+    :deep(.stats-card .diagnosis-type) {
+      font-weight: var(--dp-font-weight-emphasis, 500);
+    }
+
+    :deep(.stats-card .ai-items > strong),
+    :deep(.stats-card .ai-summary strong) {
+      font-weight: var(--dp-font-weight-title, 600);
+    }
+
+    :deep(.stats-card .analysis-item__metric),
+    :deep(.stats-card .analysis-item__text),
+    :deep(.stats-card .diagnosis-rate),
+    :deep(.stats-card .diagnosis-text),
+    :deep(.stats-card .text-muted) {
+      color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
+    }
+
+    :deep(.stats-card .text-muted),
+    :deep(.stats-card .diagnosis-rate) {
+      color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
+    }
   }
 }
 </style>

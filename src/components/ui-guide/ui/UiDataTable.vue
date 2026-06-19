@@ -252,8 +252,8 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table__title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--dp-font-size-lg, 16px);
+  font-weight: var(--dp-font-weight-title, 600);
   color: var(--dp-text-primary, #0f172a);
 }
 
@@ -298,7 +298,7 @@ const handlePageChange = (page: number, size: number) => {
   background: var(--dp-table-header-bg, #f8fafc);
   color: var(--dp-text-secondary, #475569);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: var(--dp-font-weight-title, 600);
   line-height: 1.2;
   vertical-align: middle;
   border-bottom: 1px solid var(--dp-border, #e5e7eb);

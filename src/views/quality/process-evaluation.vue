@@ -22,6 +22,7 @@ import type {
   ProcessEvaluationRecordVO,
   ProcessNodeType,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -44,7 +45,7 @@ import {
   StudentSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiErrorRetryPanel, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -218,7 +219,26 @@ async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: Confirm
 const records = ref<ProcessEvaluationRecordVO[]>([])
 const recordsLoading = ref(false)
 const recordsError = ref<Error | null>(null)
-const recordStatusFilter = ref<ConfirmationStatus | undefined>(undefined)
+const recordFilterForm = reactive<{ status?: ConfirmationStatus }>({
+  status: undefined,
+})
+
+const recordFilterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '状态筛选',
+    allowClear: true,
+    width: 140,
+    options: [
+      { value: 'DRAFT', label: '起草' },
+      { value: 'SUBMITTED', label: '已提交' },
+      { value: 'CONFIRMED', label: '已确认' },
+      { value: 'RETURNED', label: '已退回' },
+    ],
+  },
+]
 
 async function loadRecords() {
   if (!selectedNode.value) {
@@ -231,7 +251,7 @@ async function loadRecords() {
   try {
     const result = await processRecordApi.listByNode(
       selectedNode.value.id,
-      recordStatusFilter.value,
+      recordFilterForm.status,
     )
     if (!isRecordStudentContractValid(result)) {
       records.value = []
@@ -526,7 +546,6 @@ watch(
 )
 
 watch(selectedNode, () => loadRecords())
-watch(recordStatusFilter, () => loadRecords())
 
 onMounted(async () => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -586,16 +605,11 @@ function handleCourseChange(courseId: string | null) {
 
     <a-row v-if="qualityStore.currentQualityCourseId" :gutter="12">
       <a-col :span="10">
-        <a-card :bordered="false" class="detail-table-card pe__node-card">
+        <UiCard class="detail-table-card pe__node-card">
           <template #title>过程性评价节点</template>
-
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar">
-              <a-form-item class="filter-form__actions">
-                <UiButton variant="primary" size="sm" @click="openNodeCreate">新建节点</UiButton>
-              </a-form-item>
-            </a-form>
-          </div>
+          <template #extra>
+            <UiButton variant="primary" size="sm" @click="openNodeCreate">新建节点</UiButton>
+          </template>
 
           <UiDataTable
             class="student-detail-table__data-table"
@@ -634,9 +648,9 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" @click.stop="openNodeEdit(record)">编辑</span>
+                  <UiTextAction @click.stop="openNodeEdit(record)">编辑</UiTextAction>
                   <a-dropdown>
-                    <span class="op-link primary" role="button" @click.stop.prevent>状态</span>
+                    <UiTextAction tone="primary" @click.stop.prevent>状态</UiTextAction>
                     <template #overlay>
                       <a-menu>
                         <a-menu-item key="DRAFT" @click.stop="changeNodeStatus(record, 'DRAFT')">
@@ -663,62 +677,51 @@ function handleCourseChange(courseId: string | null) {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <span class="op-link danger" role="button" @click.stop="handleNodeDelete(record)">
-                    删除
-                  </span>
+                  <UiTextAction tone="danger" @click.stop="handleNodeDelete(record)">删除</UiTextAction>
                 </div>
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </UiCard>
       </a-col>
 
       <a-col :span="14">
         <UiEmpty v-if="!selectedNode" description="请在左侧选择节点查看记录" class="pe__empty" />
 
-        <a-card v-else :bordered="false" class="detail-table-card pe__record-card">
+        <UiCard v-else class="detail-table-card pe__record-card">
           <template #title>「{{ selectedNode.nodeName }}」记录</template>
+          <template #extra>
+            <a-space>
+              <UiButton
+                variant="primary"
+                size="sm"
+                :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
+                @click="openRecordCreate"
+              >
+                录入记录
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
+                :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
+                @click="openImportExcel"
+              >
+                Excel 导入
+              </UiButton>
+              <UiButton variant="outline" size="sm" @click="openConfirmedByGoal">
+                按课程目标查有效
+              </UiButton>
+            </a-space>
+          </template>
 
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar">
-              <a-form-item label="状态">
-                <a-select
-                  v-model:value="recordStatusFilter"
-                  placeholder="状态筛选"
-                  allow-clear
-                  style="width: 140px"
-                >
-                  <a-select-option value="DRAFT">起草</a-select-option>
-                  <a-select-option value="SUBMITTED">已提交</a-select-option>
-                  <a-select-option value="CONFIRMED">已确认</a-select-option>
-                  <a-select-option value="RETURNED">已退回</a-select-option>
-                </a-select>
-              </a-form-item>
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton
-                    variant="primary"
-                    size="sm"
-                    :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
-                    @click="openRecordCreate"
-                  >
-                    录入记录
-                  </UiButton>
-                  <UiButton
-                    variant="outline"
-                    size="sm"
-                    :disabled="selectedNode.confirmationStatus !== 'CONFIRMED'"
-                    @click="openImportExcel"
-                  >
-                    Excel 导入
-                  </UiButton>
-                  <UiButton variant="outline" size="sm" @click="openConfirmedByGoal">
-                    按课程目标查有效
-                  </UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <UiFilterBar
+            v-model="recordFilterForm"
+            :fields="recordFilterFields"
+            show-labels
+            search-text="查询"
+            @search="loadRecords"
+            @reset="loadRecords"
+          />
 
           <a-alert
             v-if="selectedNode.confirmationStatus !== 'CONFIRMED'"
@@ -769,21 +772,31 @@ function handleCourseChange(courseId: string | null) {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" v-if="record.confirmationStatus !== 'CONFIRMED'" @click="openRecordEdit(record)">编辑</span>
-                  <span
+                  <UiTextAction
                     v-if="record.confirmationStatus !== 'CONFIRMED'"
-                    class="op-link primary"
-                    role="button"
+                    @click="openRecordEdit(record)"
+                  >
+                    编辑
+                  </UiTextAction>
+                  <UiTextAction
+                    v-if="record.confirmationStatus !== 'CONFIRMED'"
+                    tone="primary"
                     @click="confirmRecord(record)"
                   >
                     确认
-                  </span>
-                  <span class="op-link danger" role="button" v-if="record.confirmationStatus !== 'CONFIRMED'" @click="deleteRecord(record)">删除</span>
+                  </UiTextAction>
+                  <UiTextAction
+                    v-if="record.confirmationStatus !== 'CONFIRMED'"
+                    tone="danger"
+                    @click="deleteRecord(record)"
+                  >
+                    删除
+                  </UiTextAction>
                 </div>
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </UiCard>
       </a-col>
     </a-row>
 

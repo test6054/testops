@@ -81,8 +81,9 @@ export type {
   UiProgressStepItem,
   UiQuotaItem,
   UiRankListItem,
+  UiScatterPoint,
+  UiScatterSeries,
   UiSectionTabItem,
-  UiSelectOption,
   UiSelectorExtraItem,
   UiSessionListItem,
   UiSimpleListItem,
@@ -166,6 +167,7 @@ export {default as UiRankListCard} from './UiRankListCard.vue'
 export {default as UiReferenceFileField} from './UiReferenceFileField.vue'
 export {default as UiResourceCard} from './UiResourceCard.vue'
 export {default as UiRingProgress} from './UiRingProgress.vue'
+export {default as UiScatterChart} from './UiScatterChart.vue'
 export {default as UiSearchForm} from './UiSearchForm.vue'
 export {default as UiSearchTableDialog} from './UiSearchTableDialog.vue'
 export {default as UiSectionTabs} from './UiSectionTabs.vue'
@@ -183,13 +185,14 @@ export {default as UiStageEditorShell} from './UiStageEditorShell.vue'
 export {default as UiStateBlock} from './UiStateBlock.vue'
 export {default as UiStatisticChartCard} from './UiStatisticChartCard.vue'
 export {default as UiStatisticSummaryGrid} from './UiStatisticSummaryGrid.vue'
-
 export {default as UiStatPanel} from './UiStatPanel.vue'
-export {default as UiSteps} from './UiSteps.vue'
 
+export {default as UiSteps} from './UiSteps.vue'
 export {default as UiTableActions} from './UiTableActions.vue'
+
 export {default as UiTabsPill} from './UiTabsPill.vue'
 export {default as UiTemplateCard} from './UiTemplateCard.vue'
+export {default as UiTextAction} from './UiTextAction.vue'
 export {default as UiTooltip} from './UiTooltip.vue'
 export {default as UiTreeSelectionDialog} from './UiTreeSelectionDialog.vue'
 export {default as UiTreeSelectionDrawer} from './UiTreeSelectionDrawer.vue'

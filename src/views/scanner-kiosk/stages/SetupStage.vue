@@ -49,6 +49,13 @@ const duplexModeOptions = computed(() =>
   })),
 )
 const startReason = computed(() => mutex.reasonOf('startScan'))
+
+// 触屏直选阈值：选项 ≤4 时用 seg 分段直选，>4 退回 a-select 下拉
+const SEG_MAX_OPTIONS = 4
+const useDpiSeg = computed(() => dpiOptions.value.length <= SEG_MAX_OPTIONS)
+const useColorSeg = computed(() => colorModeOptions.value.length <= SEG_MAX_OPTIONS)
+const useDuplexSeg = computed(() => duplexModeOptions.value.length <= SEG_MAX_OPTIONS)
+const paramsDisabled = computed(() => !workflow.canSwitchScanMode.value || !scanConfigOptions.value)
 const blockingMessage = computed(() => {
   if (!workflow.examId.value) return '请选择考试'
   return workflow.scanBlockedReason.value || startReason.value || ''
@@ -155,28 +162,70 @@ watch(
         <div class="scan-params">
           <div class="scan-params__row">
             <span class="scan-params__label">分辨率</span>
+            <div v-if="useDpiSeg" class="seg seg--params" role="group">
+              <button
+                v-for="opt in dpiOptions"
+                :key="opt.value"
+                type="button"
+                class="seg__btn"
+                :class="{ 'seg__btn--active': workflow.scanConfig.value.dpi === opt.value }"
+                :disabled="paramsDisabled"
+                @click="workflow.scanConfig.value.dpi = opt.value"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
             <a-select
+              v-else
               v-model:value="workflow.scanConfig.value.dpi"
               :options="dpiOptions"
-              :disabled="!workflow.canSwitchScanMode.value || !scanConfigOptions"
+              :disabled="paramsDisabled"
               class="scan-params__select"
             />
           </div>
           <div class="scan-params__row">
             <span class="scan-params__label">色彩</span>
+            <div v-if="useColorSeg" class="seg seg--params" role="group">
+              <button
+                v-for="opt in colorModeOptions"
+                :key="opt.value"
+                type="button"
+                class="seg__btn"
+                :class="{ 'seg__btn--active': workflow.scanConfig.value.colorMode === opt.value }"
+                :disabled="paramsDisabled"
+                @click="workflow.scanConfig.value.colorMode = opt.value"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
             <a-select
+              v-else
               v-model:value="workflow.scanConfig.value.colorMode"
               :options="colorModeOptions"
-              :disabled="!workflow.canSwitchScanMode.value || !scanConfigOptions"
+              :disabled="paramsDisabled"
               class="scan-params__select"
             />
           </div>
           <div class="scan-params__row">
             <span class="scan-params__label">单双面</span>
+            <div v-if="useDuplexSeg" class="seg seg--params" role="group">
+              <button
+                v-for="opt in duplexModeOptions"
+                :key="opt.value"
+                type="button"
+                class="seg__btn"
+                :class="{ 'seg__btn--active': workflow.scanConfig.value.duplexMode === opt.value }"
+                :disabled="paramsDisabled"
+                @click="workflow.scanConfig.value.duplexMode = opt.value"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
             <a-select
+              v-else
               v-model:value="workflow.scanConfig.value.duplexMode"
               :options="duplexModeOptions"
-              :disabled="!workflow.canSwitchScanMode.value || !scanConfigOptions"
+              :disabled="paramsDisabled"
               class="scan-params__select"
             />
           </div>
@@ -383,6 +432,11 @@ watch(
   width: 100%;
 }
 
+/* 触屏直选：扫描参数 ≤4 选项时用分段按钮替代下拉 */
+.seg--params {
+  width: 100%;
+}
+
 .scan-params__check {
   display: flex;
   align-items: center;
@@ -565,12 +619,12 @@ watch(
   justify-content: center;
   gap: var(--kiosk-space-2);
   width: 100%;
-  height: 48px;
+  height: var(--kiosk-h-action-lg);
   background: var(--kiosk-primary);
   border: none;
   border-radius: var(--kiosk-radius-md);
   font-family: inherit;
-  font-size: var(--kiosk-fz-body);
+  font-size: var(--kiosk-fz-h3);
   font-weight: var(--kiosk-fw-semibold);
   color: #fff;
   cursor: pointer;

@@ -49,13 +49,7 @@
             <UiRingProgress
               :percent="attendancePercent"
               size="lg"
-              :color="
-                attendancePercent >= 90
-                  ? '#16a34a'
-                  : attendancePercent >= 70
-                    ? '#3b82f6'
-                    : '#f59e0b'
-              "
+              :color="attendanceRingColor"
               label="出勤率"
             />
           </div>
@@ -87,13 +81,12 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span
-                  class="op-link primary"
-                  role="button"
+                <UiTextAction
+                  tone="primary"
                   @click="openConfirmModal(record.studentUserId, formatStudentSnapshot(record))"
                 >
                   确认缺考
-                </span>
+                </UiTextAction>
               </div>
             </template>
           </template>
@@ -114,32 +107,14 @@
           <SolutionOutlined />
           <span>缺考记录</span>
         </template>
-        <div class="filter-card">
-          <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadRecords">
-            <a-form-item label="状态">
-              <a-select
-                v-model:value="statusFilter"
-                placeholder="全部状态"
-                style="width: 160px"
-                allow-clear
-              >
-                <a-select-option value="PENDING">待确认</a-select-option>
-                <a-select-option value="CONFIRMED">已确认</a-select-option>
-                <a-select-option value="REVOKED">已撤销</a-select-option>
-              </a-select>
-            </a-form-item>
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <span class="op-link" role="button" @click="handleRecordFilterReset">重置</span>
-                <UiButton size="sm" @click="loadRecords">查询</UiButton>
-                <UiButton size="sm" variant="outline" :loading="recordLoading" @click="loadRecords">
-                  <template #icon><ReloadOutlined /></template>
-                  刷新
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <UiFilterBar
+          v-model="recordFilterForm"
+          :fields="recordFilterFields"
+          show-labels
+          search-text="查询"
+          @search="handleRecordFilterSearch"
+          @reset="handleRecordFilterReset"
+        />
         <UiDataTable
           class="student-detail-table__data-table"
           :columns="recordColumns"
@@ -167,18 +142,15 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span
+                <UiTextAction
                   v-if="records[index].absenceStatus === 'CONFIRMED'"
-                  class="op-link"
-                  role="button"
                   @click="openRevokeModal(records[index])"
                 >
                   撤销
-                </span>
-                <span
+                </UiTextAction>
+                <UiTextAction
                   v-else-if="records[index].absenceStatus === 'PENDING'"
-                  class="op-link primary"
-                  role="button"
+                  tone="primary"
                   @click="
                     openConfirmModal(
                       records[index].studentUserId,
@@ -187,7 +159,7 @@
                   "
                 >
                   确认
-                </span>
+                </UiTextAction>
                 <span v-else class="hint-text">-</span>
               </div>
             </template>
@@ -266,14 +238,13 @@ import type {
   AbsentStudentSnapshotVO,
   AttendanceReconcileVO,
 } from '@/apis/mark/absence'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -290,14 +261,17 @@ import {
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiRingProgress,
   UiStatPanel,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherAbsenceConfirm' })
@@ -326,7 +300,25 @@ const records = ref<AbsenceRecordVO[]>([])
 const recordLoading = ref(false)
 // D-9 错误态：缺考记录加载失败时 UiErrorRetryPanel 重试 + 上报
 const recordsLoadError = ref<Error | null>(null)
-const statusFilter = ref<AbsenceStatusCode | undefined>(undefined)
+const recordFilterForm = reactive<{ status?: AbsenceStatusCode }>({
+  status: undefined,
+})
+
+const recordFilterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: [
+      { value: 'PENDING', label: '待确认' },
+      { value: 'CONFIRMED', label: '已确认' },
+      { value: 'REVOKED', label: '已撤销' },
+    ],
+  },
+]
 const recordPagination = reactive({
   pageNum: 1,
   pageSize: 20,
@@ -349,6 +341,12 @@ const attendancePercent = computed(() => {
   const total = reconcileVO.value?.expectedCount ?? 0
   const attended = reconcileVO.value?.attendedCount ?? 0
   return total > 0 ? Math.round((attended / total) * 100) : 0
+})
+
+/** 出勤率环色：≥90 充足绿 / ≥70 一般蓝 / 偏低橙 */
+const attendanceRingColor = computed(() => {
+  const tone: BadgeTone = attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
+  return toneToColor(tone)
 })
 
 const reconcileMetrics = computed(() => [
@@ -444,7 +442,7 @@ async function loadRecords(): Promise<void> {
   try {
     const page = await listAbsenceRecords({
       examId: selectedExamId.value,
-      absenceStatus: statusFilter.value,
+      absenceStatus: recordFilterForm.status,
       pageNum: recordPagination.pageNum,
       pageSize: recordPagination.pageSize,
     })
@@ -590,19 +588,18 @@ async function handleExamChange(
   }
 }
 
-function handleRecordFilterReset() {
-  statusFilter.value = undefined
+function handleRecordFilterSearch() {
+  if (!selectedExamId.value) return
+  recordPagination.pageNum = 1
+  void loadRecords()
 }
 
-watch(
-  () => statusFilter.value,
-  () => {
-    if (selectedExamId.value) {
-      recordPagination.pageNum = 1
-      void loadRecords()
-    }
-  },
-)
+function handleRecordFilterReset() {
+  recordPagination.pageNum = 1
+  if (selectedExamId.value) {
+    void loadRecords()
+  }
+}
 
 onMounted(async () => {
   await initExamSelector()

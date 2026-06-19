@@ -13,11 +13,12 @@ import type {
   AccreditationStandardVO,
   AccreditationType,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
-import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -95,6 +96,39 @@ const filterModel = ref<AccreditationStandardFilterModel>({
   keyword: '',
 })
 
+const filterFields: FilterField[] = [
+  {
+    key: 'accreditationType',
+    type: 'select',
+    label: '认证类型',
+    placeholder: '认证类型',
+    allowClear: true,
+    width: 220,
+    options: accreditationOptions,
+  },
+  {
+    key: 'enabled',
+    type: 'select',
+    label: '状态',
+    placeholder: '状态',
+    allowClear: true,
+    width: 130,
+    options: [
+      { value: 'enabled', label: '启用' },
+      { value: 'disabled', label: '停用' },
+    ],
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '编码/名称',
+    allowClear: true,
+    width: 200,
+    triggerSearchOnChange: false,
+  },
+]
+
 function accreditationTypeLabel(value: AccreditationType): string {
   return strictEnumLabel(ACCREDITATION_TYPE_LABEL, value, '认证类型')
 }
@@ -145,7 +179,6 @@ function handleSearch() {
 }
 
 function handleResetSearch() {
-  filterModel.value = { accreditationType: undefined, enabled: undefined, keyword: '' }
   query.pageNum = 1
   syncFilterToQuery()
   loadList()
@@ -246,50 +279,20 @@ onMounted(() => loadPageData())
   <StageWorkbenchShell>
     <SignalBand :metrics="signals" compact class="as__signals" />
 
-    <a-card :bordered="false" class="detail-table-card as__table-card">
+    <UiCard class="detail-table-card as__table-card">
       <template #title>认证标准台账</template>
+      <template #extra>
+        <UiButton variant="primary" size="sm" @click="openCreate">新建认证标准</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
-          <a-form-item label="认证类型">
-            <a-select
-              v-model:value="filterModel.accreditationType"
-              placeholder="认证类型"
-              allow-clear
-              style="width: 220px"
-              :options="accreditationOptions"
-            />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="filterModel.enabled"
-              placeholder="状态"
-              allow-clear
-              style="width: 130px"
-              :options="[
-                { value: 'enabled', label: '启用' },
-                { value: 'disabled', label: '停用' },
-              ]"
-            />
-          </a-form-item>
-          <a-form-item label="关键字">
-            <a-input
-              v-model:value="filterModel.keyword"
-              placeholder="编码/名称"
-              allow-clear
-              style="width: 200px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <span class="op-link" role="button" @click="handleResetSearch">重置</span>
-              <UiButton variant="primary" size="sm" @click="openCreate">新建认证标准</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        show-labels
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleResetSearch"
+      />
 
       <UiDataTable
         class="student-detail-table__data-table"
@@ -316,13 +319,13 @@ onMounted(() => loadPageData())
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span class="op-link" role="button" @click="openEdit(record)">编辑</span>
-              <span class="op-link danger" role="button" @click="handleDelete(record)">删除</span>
+              <UiTextAction @click="openEdit(record)">编辑</UiTextAction>
+              <UiTextAction tone="danger" @click="handleDelete(record)">删除</UiTextAction>
             </div>
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <a-modal
       v-model:open="editorVisible"

@@ -280,7 +280,10 @@ export function useKioskWorkflow() {
     ledgerFilter: () => {
       const device = getActiveScannerDeviceId()
       const station = getActiveScannerStationId()
-      const batchExternalNo = getActiveBatchExternalNo()
+      const batchExternalNo
+        = activeBatchExternalNo.value
+          || currentJob.value?.batchExternalNo
+          || ''
       if (!examId.value || !device || !station || !batchExternalNo) {
         return null
       }
@@ -328,14 +331,29 @@ export function useKioskWorkflow() {
   const scanProgress = computed(() => {
     if (!currentJob.value) return 0
     if (currentJob.value.reported) return 100
-    if (currentJob.value.scannedPages === 0) return 3
+    if (currentJob.value.scannedPages === 0) return 0
     const uploadedRatio
       = currentJob.value.uploadedPages / Math.max(currentJob.value.scannedPages, 1)
     return Math.min(Math.round(12 + uploadedRatio * 84), 96)
   })
+  const activeBackendScanSession = computed(() => {
+    return Boolean(
+      kioskContext.value?.mustResumeScanning
+      || kioskContext.value?.hasActiveScanSession
+      || kioskContext.value?.activeBatch,
+    )
+  })
+  const activeBackendBatchExternalNo = computed(() => {
+    return kioskContext.value?.activeBatch?.batchExternalNo?.trim() || ''
+  })
+  const activeBackendScanSessionReason = computed(() => {
+    return kioskContext.value?.activeScanSessionReason
+      || kioskContext.value?.blockReason
+      || '当前设备在该考试下存在未结束扫描进程，请返回扫描进程继续处理或手动确认结束扫描'
+  })
   const currentJobBlocksWorkspace = computed(() => {
     const status = currentJob.value?.status
-    return Boolean(status && status !== 'REPORTED')
+    return Boolean(activeBackendScanSession.value || (status && status !== 'REPORTED'))
   })
   const canCancelJob = computed(() => {
     const status = currentJob.value?.status
@@ -417,6 +435,7 @@ export function useKioskWorkflow() {
     if (health.value.lastHeartbeatAt && !health.value.scanAllowed) return '系统暂未允许开始扫描'
     if (!selectedScannerId.value) return '未检测到可用本地扫描仪'
     if (!kioskContext.value) return '考试扫描上下文未加载'
+    if (activeBackendScanSession.value) return activeBackendScanSessionReason.value
     if (currentJobBlocksWorkspace.value) return '当前扫描任务未结束'
     if (!kioskContext.value.canStartScan) return kioskContext.value.blockReason
     if (scanMode.value === 'SUPPLEMENT') {
@@ -993,6 +1012,10 @@ export function useKioskWorkflow() {
       scannerStationId,
       scanMode: scanMode.value,
     })
+    if (kioskContext.value.activeBatch) {
+      activeBatchExternalNo.value = kioskContext.value.activeBatch.batchExternalNo
+      activeScanBatchId.value = kioskContext.value.activeBatch.scanBatchId
+    }
     if (kioskContext.value?.scanConfigOptions?.defaultScanConfig) {
       scanConfig.value = { ...kioskContext.value.scanConfigOptions.defaultScanConfig }
     }
@@ -1303,6 +1326,7 @@ export function useKioskWorkflow() {
     const currentPersistedJob = currentJobId
       ? recoverableJobs.find((job) => job.scanJobId === currentJobId)
       : undefined
+    const backendBatchExternalNo = activeBackendBatchExternalNo.value
     const recoverableJob
       = (currentPersistedJob
         && (hasActiveCurrentJob || isRecoverableLocalJob(currentPersistedJob))
@@ -1310,14 +1334,22 @@ export function useKioskWorkflow() {
         : undefined)
       || (!hasActiveCurrentJob
           ? recoverableJobs.find((job) => {
-              return (
-                job.examId === examId.value
+              return Boolean(
+                backendBatchExternalNo
+                && job.batchExternalNo === backendBatchExternalNo
+                && job.examId === examId.value
                 && job.scannerDeviceId === deviceId
-                && job.scannerStationId === stationId
-                && sameOrderedStringList(job.declaredClassIds, ctx.classIds)
-                && isRecoverableLocalJob(job)
+                && job.scannerStationId === stationId,
               )
-            })
+            }) || recoverableJobs.find((job) => {
+                return (
+                  job.examId === examId.value
+                  && job.scannerDeviceId === deviceId
+                  && job.scannerStationId === stationId
+                  && sameOrderedStringList(job.declaredClassIds, ctx.classIds)
+                  && isRecoverableLocalJob(job)
+                )
+              })
           : undefined)
     if (hasActiveCurrentJob && recoverableJob) {
       currentJob.value = recoverableJob
@@ -1334,6 +1366,9 @@ export function useKioskWorkflow() {
       return
     }
     if (!recoverableJob) {
+      if (activeBackendScanSession.value) {
+        errorMessage.value = '服务端存在未结束扫描批次，但本机未找到对应扫描任务，请联系管理员处理或在扫描进程中确认结束扫描'
+      }
       return
     }
     currentJob.value = recoverableJob
@@ -1425,7 +1460,12 @@ export function useKioskWorkflow() {
   }
 
   async function submitScanJob() {
-    if (!kioskContext.value || !canStartScan.value) return
+    if (!kioskContext.value) return
+    if (activeBackendScanSession.value) {
+      errorMessage.value = activeBackendScanSessionReason.value
+      return
+    }
+    if (!canStartScan.value) return
     if (currentJobBlocksWorkspace.value) {
       errorMessage.value = '当前扫描任务未结束，不能新建扫描'
       return
@@ -2004,9 +2044,7 @@ export function useKioskWorkflow() {
     (newBatchNo, oldBatchNo) => {
       if (newBatchNo === oldBatchNo) return
       if (!isActivatedForMarkApis()) return
-      refreshPageLedger().catch((error) => {
-        handleError(error)
-      })
+      refreshPageLedger().catch(() => {})
     },
   )
 
@@ -2032,9 +2070,7 @@ export function useKioskWorkflow() {
           refreshKioskContext().catch((error) => {
             handleError(error)
           })
-          refreshPageLedger().catch((error) => {
-            handleError(error)
-          })
+          refreshPageLedger().catch(() => {})
           refreshBoundPapers().catch((error) => {
             handleError(error)
           })
@@ -2144,6 +2180,9 @@ export function useKioskWorkflow() {
     exceptionPages,
     previewImageUrl,
     scanProgress,
+    activeBackendScanSession,
+    activeBackendBatchExternalNo,
+    activeBackendScanSessionReason,
     currentJobBlocksWorkspace,
     canCancelJob,
     canEndBatch,
@@ -2156,6 +2195,7 @@ export function useKioskWorkflow() {
     canStartScan,
     canSwitchScanMode,
     canSwitchExam,
+    canSwitchScanner,
     canActivateAgent,
     canDiscardLedgerPage,
     kioskBrowserSessionLost,

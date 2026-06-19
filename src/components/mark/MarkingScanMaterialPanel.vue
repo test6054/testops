@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import type { MarkingScanPageRefVO } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import RedoOutlined from '@ant-design/icons-vue/RedoOutlined'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam'
-import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import ScanImageStage from '@/components/mark/ScanImageStage.vue'
+import { UiAlertStrip, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
 import { toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -147,13 +147,6 @@ watch(
   { immediate: true },
 )
 
-/** FIX-9: 影像旋转 */
-const rotation = ref(0)
-
-function rotateImage(): void {
-  rotation.value = (rotation.value + 90) % 360
-}
-
 onBeforeUnmount(releaseImages)
 </script>
 
@@ -193,20 +186,11 @@ onBeforeUnmount(releaseImages)
       />
       <a-spin :spinning="loading" tip="加载影像中...">
         <div v-if="activeTab === 'slice'" class="marking-scan-material__viewer">
-          <div v-if="sliceImageUrl" class="marking-scan-material__image-wrap">
-            <a-image
-              :src="sliceImageUrl"
-              :preview="{}"
-              :style="{ transform: `rotate(${rotation}deg)` }"
-              class="marking-scan-material__image"
-            >
-              <template #previewMask>点击查看切片大图</template>
-            </a-image>
-            <UiButton size="sm" variant="outline" class="marking-scan-material__rotate-btn" @click="rotateImage">
-              <template #icon><RedoOutlined /></template>
-              旋转 {{ rotation }}°
-            </UiButton>
-          </div>
+          <ScanImageStage
+            v-if="sliceImageUrl"
+            :src="sliceImageUrl"
+            empty-text="切片图片加载失败"
+          />
           <UiEmpty v-else-if="!loading" description="切片图片加载失败" />
         </div>
         <div v-else-if="activeTab === 'source'" class="marking-scan-material__viewer">
@@ -214,20 +198,11 @@ onBeforeUnmount(releaseImages)
             <UiTag tone="blue" size="sm">{{ sourcePageCaption }}</UiTag>
             <UiTag :tone="sourceQualityTone" size="sm">{{ sourceQualityLabel }}</UiTag>
           </div>
-          <div v-if="sourceImageUrl" class="marking-scan-material__image-wrap">
-            <a-image
-              :src="sourceImageUrl"
-              :preview="{}"
-              :style="{ transform: `rotate(${rotation}deg)` }"
-              class="marking-scan-material__image"
-            >
-              <template #previewMask>点击查看原始扫描页</template>
-            </a-image>
-            <UiButton size="sm" variant="outline" class="marking-scan-material__rotate-btn" @click="rotateImage">
-              <template #icon><RedoOutlined /></template>
-              旋转 {{ rotation }}°
-            </UiButton>
-          </div>
+          <ScanImageStage
+            v-if="sourceImageUrl"
+            :src="sourceImageUrl"
+            empty-text="原始扫描页加载失败"
+          />
           <UiEmpty v-else-if="!loading" description="原始扫描页加载失败" />
         </div>
         <div v-else-if="activeTab === 'master'" class="marking-scan-material__viewer">
@@ -236,30 +211,12 @@ onBeforeUnmount(releaseImages)
             <UiTag tone="green" size="sm">试卷母版 · 题干对照</UiTag>
             <UiTag v-if="masterRoiStyle" tone="blue" size="sm">题目区域已标注</UiTag>
           </div>
-          <div v-if="masterImageUrl" class="marking-scan-material__image-wrap marking-scan-material__image-wrap--roi">
-            <a-image
-              :src="masterImageUrl"
-              :preview="{}"
-              :style="{ transform: `rotate(${rotation}deg)` }"
-              class="marking-scan-material__image"
-            >
-              <template #previewMask>点击查看试卷母版</template>
-            </a-image>
-            <div
-              v-if="masterRoiStyle"
-              class="marking-scan-material__roi-overlay"
-              :style="{
-                left: masterRoiStyle.left,
-                top: masterRoiStyle.top,
-                width: masterRoiStyle.width,
-                height: masterRoiStyle.height,
-              }"
-            />
-            <UiButton size="sm" variant="outline" class="marking-scan-material__rotate-btn" @click="rotateImage">
-              <template #icon><RedoOutlined /></template>
-              旋转 {{ rotation }}°
-            </UiButton>
-          </div>
+          <ScanImageStage
+            v-if="masterImageUrl"
+            :src="masterImageUrl"
+            :roi="masterRoiStyle"
+            empty-text="母版页加载失败"
+          />
           <UiEmpty v-else-if="!loading" description="母版页加载失败" />
         </div>
       </a-spin>
@@ -299,32 +256,5 @@ onBeforeUnmount(releaseImages)
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-}
-
-.marking-scan-material__image {
-  width: 100%;
-  border-radius: 4px;
-  border: 1px solid var(--dp-border-subtle, #e2e8f0);
-}
-
-.marking-scan-material__image-wrap {
-  position: relative;
-  display: inline-block;
-  width: 100%;
-}
-
-.marking-scan-material__roi-overlay {
-  position: absolute;
-  border: 2px dashed #1677ff;
-  background: rgba(22, 119, 255, 0.08);
-  pointer-events: none;
-  border-radius: 2px;
-}
-
-.marking-scan-material__rotate-btn {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  z-index: 1;
 }
 </style>

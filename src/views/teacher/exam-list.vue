@@ -84,20 +84,18 @@
             </div>
           </div>
           <div class="operations-cell exam-list-page__recommend-actions">
-            <span class="op-link primary" role="button" @click="goPrepWorkbenchById(item.examId)">
+            <UiTextAction tone="primary" @click="goPrepWorkbenchById(item.examId)">
               进入考试
-            </span>
-            <span
+            </UiTextAction>
+            <UiTextAction
               v-if="item.attention > 0"
-              class="op-link"
-              role="button"
               @click="goScanLiveMonitor(item.examId)"
             >
               异常
-            </span>
-            <span class="op-link primary" role="button" @click="goMarkingTaskPool(item.examId)">
+            </UiTextAction>
+            <UiTextAction tone="primary" @click="goMarkingTaskPool(item.examId)">
               阅卷
-            </span>
+            </UiTextAction>
           </div>
         </li>
       </ul>
@@ -120,76 +118,31 @@
       <template #title>
         <span class="section-title">全部考试</span>
       </template>
+      <template #extra>
+        <UiButton size="sm" @click="openCreateModal">
+          <template #icon><PlusOutlined /></template>
+          新建考试
+        </UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form
-          layout="inline"
-          :model="filterForm"
-          class="filter-form filter-form--toolbar"
-          @submit.prevent="handleSearch"
-        >
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="filterForm.status"
-              style="width: 140px"
-              placeholder="全部状态"
-              allow-clear
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item label="学年">
-            <a-input
-              v-model:value="filterForm.academicYear"
-              placeholder="2024-2025"
-              allow-clear
-              style="width: 150px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item label="学期">
-            <a-select
-              v-model:value="filterForm.semester"
-              style="width: 140px"
-              placeholder="全部学期"
-              allow-clear
-              :options="semesterOptions"
-            />
-          </a-form-item>
-          <a-form-item label="关键词">
-            <a-input
-              v-model:value="filterForm.keyword"
-              placeholder="考试名称 / 编号"
-              allow-clear
-              style="width: 220px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item label="创建时间">
-            <a-range-picker
-              v-model:value="filterForm.dateRange"
-              style="width: 260px"
-              format="YYYY-MM-DD"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              :placeholder="['开始日期', '结束日期']"
-              allow-clear
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="reloadAll">
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-              <UiButton size="sm" @click="openCreateModal">
-                <template #icon><PlusOutlined /></template>
-                新建考试
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterForm"
+        :fields="filterFields"
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #field-dateRange>
+          <a-range-picker
+            v-model:value="filterForm.dateRange"
+            style="width: 260px"
+            format="YYYY-MM-DD"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            :placeholder="['开始日期', '结束日期']"
+            allow-clear
+          />
+        </template>
+      </UiFilterBar>
 
       <!-- D-9 错误态：考试列表加载失败时提供重试 + 上报入口 -->
       <UiErrorRetryPanel
@@ -252,38 +205,32 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span
+              <UiTextAction
                 v-if="record.status !== 'CLOSED'"
-                class="op-link primary"
-                role="button"
+                tone="primary"
                 @click="goSmartExamEntry(record.examId)"
               >
                 进入考试
-              </span>
-              <span
+              </UiTextAction>
+              <UiTextAction
                 v-if="record.status !== 'CLOSED'"
-                class="op-link"
-                role="button"
                 @click="openEditModal(record)"
               >
                 编辑
-              </span>
-              <span
+              </UiTextAction>
+              <UiTextAction
                 v-if="record.status !== 'CLOSED' && isExamOwner(record)"
-                class="op-link"
-                role="button"
                 @click="confirmClose(record)"
               >
                 关闭
-              </span>
-              <span
+              </UiTextAction>
+              <UiTextAction
                 v-if="record.status !== 'CLOSED'"
-                class="op-link danger"
-                role="button"
+                tone="danger"
                 @click="confirmDelete(record)"
               >
                 删除
-              </span>
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -376,22 +323,21 @@ import type {
   GradingStrategyCode,
   MarkingProgressVO,
 } from '@/apis/mark/exam'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  createExam,
+  batchGetMarkingProgress,
   closeExam,
+  createExam,
   deleteExam,
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
-  batchGetMarkingProgress,
   GRADING_STRATEGY_LABEL,
   pageExams,
   updateExam,
@@ -404,8 +350,10 @@ import {
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiStatPanel,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useAuthStore } from '@/stores/modules/auth'
@@ -464,6 +412,44 @@ const statusOptions: Array<{ label: string, value: ExamStatusCode }> = [
 
 /** 学期下拉选项：直接复用 SemesterOptions 的强类型枚举，避免本地重复定义。 */
 const semesterOptions = SemesterOptions
+
+const filterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 140,
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+  {
+    key: 'academicYear',
+    type: 'input',
+    placeholder: '2024-2025',
+    allowClear: true,
+    width: 150,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'semester',
+    type: 'select',
+    placeholder: '全部学期',
+    allowClear: true,
+    width: 140,
+    options: semesterOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '考试名称 / 编号',
+    allowClear: true,
+    width: 220,
+    inputPrefixIcon: 'search',
+    triggerSearchOnChange: false,
+  },
+  { key: 'dateRange', type: 'custom', width: 260, minWidth: 260, maxWidth: 320 },
+]
+
 const gradingStrategyOptions = Object.entries(GRADING_STRATEGY_LABEL).map(([value, label]) => ({
   value,
   label,
@@ -769,11 +755,6 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
-  filterForm.status = undefined
-  filterForm.academicYear = ''
-  filterForm.semester = undefined
-  filterForm.keyword = ''
-  filterForm.dateRange = undefined
   pagination.current = 1
   void loadExams()
 }
@@ -1190,10 +1171,6 @@ onMounted(() => {
 
 .exam-list-page__progress-text {
   font-size: 13px;
-}
-
-.filter-form {
-  padding: 8px 0;
 }
 
 .link-cell {

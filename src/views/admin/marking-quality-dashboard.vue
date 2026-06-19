@@ -171,42 +171,24 @@
               <span>教师质量指标</span>
             </template>
             <template #extra>
-              <a-space>
-                <a-select
-                  v-model:value="metricStatusFilter"
-                  placeholder="状态过滤"
-                  class="quality-dashboard__metric-filter"
-                  allow-clear
-                  @change="loadReviewerMetrics"
-                >
-                  <a-select-option
-                    v-for="(label, code) in REVIEWER_METRIC_STATUS_LABEL"
-                    :key="code"
-                    :value="code"
-                  >
-                    {{ label }}
-                  </a-select-option>
-                </a-select>
-                <UiButton
-                  size="sm"
-                  variant="outline"
-                  :loading="reviewerLoading"
-                  @click="loadReviewerMetrics"
-                >
-                  <template #icon><ReloadOutlined /></template>
-                  刷新查询
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  :disabled="!scopeValid"
-                  :loading="refreshing"
-                  @click="handleRefreshMetrics"
-                >
-                  <template #icon><SyncOutlined /></template>
-                  立即重算
-                </UiButton>
-              </a-space>
+              <UiButton
+                size="sm"
+                :disabled="!scopeValid"
+                :loading="refreshing"
+                @click="handleRefreshMetrics"
+              >
+                <template #icon><SyncOutlined /></template>
+                立即重算
+              </UiButton>
             </template>
+
+            <UiFilterBar
+              v-model="reviewerFilterForm"
+              :fields="reviewerFilterFields"
+              search-text="查询"
+              @search="loadReviewerMetrics"
+              @reset="handleReviewerFilterReset"
+            />
 
             <!-- D-9 错误态：教师质量指标加载失败时给出可恢复 + 可上报路径 -->
             <UiErrorRetryPanel
@@ -217,8 +199,9 @@
               compact
               @retry="loadReviewerMetrics"
             />
-            <UiDataTable class="student-detail-table__data-table"
-                         v-else
+            <UiDataTable
+              class="student-detail-table__data-table"
+              v-else
               :columns="reviewerColumns"
               :data-source="reviewerMetrics"
               :loading="reviewerLoading"
@@ -406,7 +389,7 @@ import type {
   ReviewerMetricStatusCode,
   ReviewerQualityMetricResponse,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -444,6 +427,7 @@ import {
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
@@ -598,7 +582,23 @@ async function handleSnapshot(): Promise<void> {
 const reviewerMetrics = ref<ReviewerQualityMetricResponse[]>([])
 const reviewerLoading = ref(false)
 const refreshing = ref(false)
-const metricStatusFilter = ref<ReviewerMetricStatusCode | undefined>(undefined)
+
+const reviewerFilterForm = reactive<{ metricStatus?: ReviewerMetricStatusCode }>({})
+
+const reviewerFilterFields: FilterField[] = [
+  {
+    key: 'metricStatus',
+    type: 'select',
+    placeholder: '状态过滤',
+    allowClear: true,
+    width: 160,
+    options: Object.entries(REVIEWER_METRIC_STATUS_LABEL).map(([value, label]) => ({
+      value,
+      label,
+    })),
+  },
+]
+
 // D-9 错误态：教师质量指标加载失败时，UiErrorRetryPanel 上报 + 重试
 const reviewerMetricsLoadError = ref<Error | null>(null)
 
@@ -627,7 +627,7 @@ async function loadReviewerMetrics(): Promise<void> {
         examId: selectedExamId.value!,
         organizationId: selectedOrganizationId.value,
         groupId: selectedGroupId.value,
-        metricStatus: metricStatusFilter.value,
+        metricStatus: reviewerFilterForm.metricStatus,
         pageNum,
         pageSize: REVIEWER_METRIC_PAGE_SIZE,
       }),
@@ -639,6 +639,11 @@ async function loadReviewerMetrics(): Promise<void> {
   } finally {
     reviewerLoading.value = false
   }
+}
+
+function handleReviewerFilterReset(): void {
+  reviewerFilterForm.metricStatus = undefined
+  void loadReviewerMetrics()
 }
 
 async function handleRefreshMetrics(): Promise<void> {

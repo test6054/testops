@@ -7,6 +7,9 @@
           <UiTag v-if="pendingRequestCount > 0" tone="orange" size="sm">
             待处理 {{ pendingRequestCount }}
           </UiTag>
+          <UiTag v-if="selectedExamCountdown" tone="orange" size="sm">
+            {{ selectedExamCountdown }}
+          </UiTag>
         </template>
         <template #actions>
           <UiButton
@@ -73,6 +76,9 @@
                 <ClockCircleOutlined />
                 截止 {{ formatDateTime(exam.reviewWindowCloseTime) }}
               </span>
+              <span v-if="reviewCountdownText(exam)" class="meta-item meta-item--countdown">
+                {{ reviewCountdownText(exam) }}
+              </span>
             </div>
           </div>
         </article>
@@ -85,40 +91,14 @@
         <FileSearchOutlined />
         <span>我的复核申请</span>
       </template>
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadRequests">
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="filterStatus"
-              placeholder="全部状态"
-              allow-clear
-              style="width: 160px"
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item label="考试">
-            <a-select
-              v-model:value="filterExamId"
-              placeholder="全部考试"
-              allow-clear
-              style="width: 220px"
-              :options="examFilterOptions"
-              option-filter-prop="label"
-              show-search
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <span class="op-link" role="button" @click="handleRequestFilterReset">重置</span>
-              <UiButton size="sm" @click="loadRequests">查询</UiButton>
-              <UiButton size="sm" variant="outline" :loading="loadingRequests" @click="loadRequests">
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="requestFilterForm"
+        :fields="requestFilterFields"
+        show-labels
+        search-text="查询"
+        @search="handleRequestFilterSearch"
+        @reset="handleRequestFilterReset"
+      />
 
       <!-- D-9 错误态：复核申请加载失败时提供重试入口 -->
       <UiErrorRetryPanel
@@ -252,14 +232,14 @@ import type {
   StudentGradeReviewRequestItemVO,
 } from '@/apis/mark/grade-review'
 import type { StudentExamItemVO, StudentQuestionScoreVO } from '@/apis/mark/student-exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   GRADE_REVIEW_REASON_TYPE_LABEL,
@@ -276,6 +256,7 @@ import {
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
@@ -302,8 +283,57 @@ const examsLoadError = ref<Error | null>(null)
 const requestsLoadError = ref<Error | null>(null)
 const questionLoadError = ref<Error | null>(null)
 const selectedExamId = ref<string | undefined>(undefined)
-const filterExamId = ref<string | undefined>(undefined)
-const filterStatus = ref<GradeReviewRequestStatusCode | undefined>(undefined)
+const sourceQuestionId = ref<string | undefined>(undefined)
+
+const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
+
+const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
+  { value: 'PENDING', label: '待处理' },
+  { value: 'IN_REVIEW', label: '处理中' },
+  { value: 'APPROVED', label: '通过' },
+  { value: 'REJECTED', label: '驳回' },
+  { value: 'CORRECTED', label: '已更正' },
+]
+
+const requestFilterForm = reactive<{
+  status?: GradeReviewRequestStatusCode
+  examId?: string
+}>({
+  status: undefined,
+  examId: undefined,
+})
+
+const appealableExams = computed<StudentExamItemVO[]>(() => exams.value.filter(canSubmitReview))
+
+const examFilterOptions = computed(() =>
+  exams.value.map((e) => ({
+    value: e.examId,
+    label: `${e.examName} (${e.examNo})`,
+  })),
+)
+
+const requestFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+  {
+    key: 'examId',
+    type: 'select',
+    label: '考试',
+    placeholder: '全部考试',
+    allowClear: true,
+    allowSearch: true,
+    width: 220,
+    options: examFilterOptions.value,
+  },
+])
+
 const DEFAULT_REASON_TYPE: GradeReviewReasonTypeCode = 'SCORE_ERROR'
 
 interface ReviewRequestFormState {
@@ -319,26 +349,6 @@ const form = reactive<ReviewRequestFormState>({
 })
 
 // 来自 score-detail 题目级复核入口时，记录来源题号用于弹窗内提示
-const sourceQuestionId = ref<string | undefined>(undefined)
-
-const reasonTypeOptions = GRADE_REVIEW_REASON_TYPE_OPTIONS
-
-const statusOptions: Array<{ value: GradeReviewRequestStatusCode, label: string }> = [
-  { value: 'PENDING', label: '待处理' },
-  { value: 'IN_REVIEW', label: '处理中' },
-  { value: 'APPROVED', label: '通过' },
-  { value: 'REJECTED', label: '驳回' },
-  { value: 'CORRECTED', label: '已更正' },
-]
-
-const appealableExams = computed<StudentExamItemVO[]>(() => exams.value.filter(canSubmitReview))
-
-const examFilterOptions = computed(() =>
-  exams.value.map((e) => ({
-    value: e.examId,
-    label: `${e.examName} (${e.examNo})`,
-  })),
-)
 
 const selectedAppealableExam = computed<StudentExamItemVO | null>(() => {
   if (!selectedExamId.value) return null
@@ -354,7 +364,7 @@ const questionOptions = computed(() =>
 
 const filteredRequests = computed<StudentGradeReviewRequestItemVO[]>(() => {
   return requests.value.filter((item) => {
-    return !(filterExamId.value && item.examId !== filterExamId.value)
+    return !(requestFilterForm.examId && item.examId !== requestFilterForm.examId)
   })
 })
 
@@ -363,6 +373,37 @@ const pendingRequestCount = computed(
     requests.value.filter((r) => r.requestStatus === 'PENDING' || r.requestStatus === 'IN_REVIEW')
       .length,
 )
+
+/** 每秒刷新复核窗口倒计时展示 */
+const countdownTick = ref(0)
+let countdownTimer: ReturnType<typeof setInterval> | null = null
+
+const selectedExamCountdown = computed<string>(() => {
+  void countdownTick.value
+  if (!selectedAppealableExam.value?.reviewWindowCloseTime) {
+    return ''
+  }
+  return reviewCountdownText(selectedAppealableExam.value)
+})
+
+/** 将复核截止时间转为剩余时间文案，已过期返回「已截止」 */
+function reviewCountdownText(exam: StudentExamItemVO): string {
+  if (!exam.reviewWindowCloseTime) {
+    return ''
+  }
+  const remainMs = new Date(exam.reviewWindowCloseTime).getTime() - Date.now()
+  if (remainMs <= 0) {
+    return '已截止'
+  }
+  const days = Math.floor(remainMs / 86400000)
+  const hours = Math.floor((remainMs % 86400000) / 3600000)
+  const minutes = Math.floor((remainMs % 3600000) / 60000)
+  const seconds = Math.floor((remainMs % 60000) / 1000)
+  if (days > 0) {
+    return `剩余 ${days} 天 ${hours} 小时`
+  }
+  return `剩余 ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
 
 const columns = [
   { title: '考试', key: 'examName', dataIndex: 'examName', width: 240 },
@@ -417,7 +458,7 @@ async function loadRequests() {
   requestsLoadError.value = null
   try {
     requests.value = await listMyReviewRequests({
-      requestStatus: filterStatus.value,
+      requestStatus: requestFilterForm.status,
     })
   } catch (error) {
     requestsLoadError.value = toUserError(error, '复核申请列表加载失败')
@@ -432,10 +473,12 @@ async function reloadAll() {
   await loadRequests()
 }
 
+function handleRequestFilterSearch() {
+  void loadRequests()
+}
+
 function handleRequestFilterReset() {
-  filterStatus.value = undefined
-  filterExamId.value = undefined
-  loadRequests()
+  void loadRequests()
 }
 
 function formatPublishedScore(exam: StudentExamItemVO): string {
@@ -531,9 +574,19 @@ watch(
 )
 
 onMounted(async () => {
+  countdownTimer = setInterval(() => {
+    countdownTick.value += 1
+  }, 1000)
   await loadExams()
   await loadRequests()
   autoOpenFromQuestionQuery()
+})
+
+onBeforeUnmount(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
 })
 
 /**
@@ -597,13 +650,14 @@ async function loadSelectedExamQuestions(): Promise<void> {
     box-shadow 0.2s ease;
 
   &:hover {
-    border-color: rgba(22, 119, 255, 0.3);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    border-color: var(--ant-color-primary-border);
+    box-shadow: var(--dp-shadow-sm);
   }
 
   &--active {
     border-color: var(--ant-color-primary);
-    background: linear-gradient(135deg, rgba(22, 119, 255, 0.05) 0%, rgba(22, 119, 255, 0.02) 100%);
+    border-left: 3px solid var(--ant-color-primary);
+    background: var(--dp-blue-50);
   }
 
   &__radio {
@@ -670,7 +724,12 @@ async function loadSelectedExamQuestions(): Promise<void> {
 
     .score-text {
       color: var(--ant-color-success);
-      font-weight: 700;
+      font-weight: 600;
+    }
+
+    .meta-item--countdown {
+      color: var(--ant-color-warning);
+      font-weight: 600;
     }
   }
 }

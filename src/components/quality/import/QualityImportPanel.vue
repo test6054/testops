@@ -43,12 +43,16 @@
 
           <template v-if="failedRows.length > 0">
             <a-divider>失败行详情</a-divider>
-            <a-table
+            <UiDataTable
               :columns="errorColumns"
-              :data-source="failedRows"
-              :pagination="{ pageSize: 10 }"
+              :data-source="pagedFailedRows"
+              v-model:current="importErrorPage"
+              v-model:page-size="importErrorPageSize"
+              :total="failedRows.length"
+              :show-size-changer="false"
               row-key="rowIndex"
               size="small"
+              flat
             />
           </template>
 
@@ -68,7 +72,7 @@ import type { BlobDownloadResponse } from '@/config/axios/types'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import { UiButton } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 
 /**
@@ -143,6 +147,14 @@ const failedRows = computed<ImportDiagnostic[]>(() =>
       ),
     })),
 )
+
+const importErrorPage = ref(1)
+const importErrorPageSize = ref(10)
+
+const pagedFailedRows = computed(() => {
+  const start = (importErrorPage.value - 1) * importErrorPageSize.value
+  return failedRows.value.slice(start, start + importErrorPageSize.value)
+})
 
 watch(
   () => props.open,

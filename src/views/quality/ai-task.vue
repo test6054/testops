@@ -26,6 +26,7 @@ import type {
   AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -58,7 +59,7 @@ import {
   TeacherSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
   SignalBand,
@@ -238,6 +239,91 @@ const manualHandlingOptions: { value: AiManualHandlingStatus, label: string }[] 
   { value: 'RESOLVED', label: AI_MANUAL_HANDLING_STATUS_LABEL.RESOLVED },
   { value: 'IGNORED', label: AI_MANUAL_HANDLING_STATUS_LABEL.IGNORED },
 ]
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => query as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(query, value)
+  },
+})
+
+const filterFields = computed<FilterField[]>(() => {
+  const fields: FilterField[] = [
+    {
+      key: 'taskType',
+      type: 'select',
+      label: '能力',
+      placeholder: '能力',
+      allowClear: true,
+      width: 180,
+      options: taskTypeOptions,
+    },
+    {
+      key: 'status',
+      type: 'select',
+      label: '状态',
+      placeholder: '状态',
+      allowClear: true,
+      width: 130,
+      options: statusOptions,
+    },
+    {
+      key: 'businessType',
+      type: 'custom',
+      label: '业务类型',
+      width: 140,
+    },
+  ]
+  if (query.businessType) {
+    fields.push({
+      key: 'businessId',
+      type: 'custom',
+      label: '业务对象',
+      width: 180,
+    })
+  }
+  fields.push(
+    {
+      key: 'operatorUserId',
+      type: 'custom',
+      label: '操作人',
+      width: 180,
+    },
+    {
+      key: 'trainingPlanId',
+      type: 'custom',
+      label: '培养方案',
+      width: 180,
+    },
+    {
+      key: 'qualityCourseId',
+      type: 'custom',
+      label: '关联课程',
+      width: 180,
+    },
+    {
+      key: 'achievementResultId',
+      type: 'custom',
+      label: '达成结果',
+      width: 180,
+    },
+    {
+      key: 'reportId',
+      type: 'custom',
+      label: '质量报告',
+      width: 180,
+    },
+  )
+  return fields
+})
+
+function handleSearch() {
+  loadList()
+}
+
+function handleReset() {
+  resetQuery()
+}
 
 const submitDisabled = computed(() => {
   return !submitForm.taskType || !submitForm.businessType || !submitForm.businessId?.trim()
@@ -814,133 +900,114 @@ onMounted(async () => {
       @action="handleTaskResultAction"
     />
 
-    <a-card :bordered="false" class="detail-table-card ai-task__table-card">
+    <UiCard class="detail-table-card ai-task__table-card">
       <template #title>任务列表</template>
+      <template #extra>
+        <UiButton size="sm" @click="openSubmit">提交任务</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
-          <a-form-item label="能力">
-            <a-select
-              v-model:value="query.taskType"
-              placeholder="能力"
-              class="ai-task__filter ai-task__filter--md"
-              allow-clear
-              :options="taskTypeOptions"
-            />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="query.status"
-              placeholder="状态"
-              class="ai-task__filter"
-              allow-clear
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item label="业务类型">
-            <a-select
-              :value="query.businessType || undefined"
-              placeholder="业务类型"
-              class="ai-task__filter"
-              allow-clear
-              :options="businessTypeOptions"
-              @change="handleQueryBusinessTypeChange"
-            />
-          </a-form-item>
-          <a-form-item v-if="query.businessType" label="业务对象">
-            <AchievementResultSelector
-              v-if="query.businessType === 'ACHIEVEMENT_RESULT'"
-              :value="query.businessId || null"
-              placeholder="业务对象"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryBusinessObjectChange"
-            />
-            <CourseSelector
-              v-else-if="query.businessType === 'QUALITY_COURSE'"
-              :value="query.businessId || null"
-              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-              placeholder="业务对象"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryBusinessObjectChange"
-            />
-            <TrainingPlanSelector
-              v-else-if="query.businessType === 'TRAINING_PLAN'"
-              :value="query.businessId || null"
-              placeholder="业务对象"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryBusinessObjectChange"
-            />
-            <ReportSelector
-              v-else-if="query.businessType === 'REPORT'"
-              :value="query.businessId || null"
-              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-              placeholder="业务对象"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryBusinessObjectChange"
-            />
-            <IndirectFormSelector
-              v-else-if="query.businessType === 'INDIRECT_FORM'"
-              :value="query.businessId || null"
-              placeholder="业务对象"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryBusinessObjectChange"
-            />
-          </a-form-item>
-          <a-form-item label="操作人">
-            <TeacherSelector
-              :value="query.operatorUserId || null"
-              placeholder="操作人"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryOperatorChange"
-            />
-          </a-form-item>
-          <a-form-item label="培养方案">
-            <TrainingPlanSelector
-              :value="query.trainingPlanId || null"
-              :placeholder="qualityStore.currentTrainingPlanId ? '当前培养方案' : '培养方案'"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryTrainingPlanChange"
-            />
-          </a-form-item>
-          <a-form-item label="关联课程">
-            <CourseSelector
-              :value="query.qualityCourseId || null"
-              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-              placeholder="关联课程"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryQualityCourseChange"
-            />
-          </a-form-item>
-          <a-form-item label="达成结果">
-            <AchievementResultSelector
-              :value="query.achievementResultId || null"
-              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-              :quality-course-id="query.qualityCourseId || null"
-              placeholder="达成结果"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryAchievementResultChange"
-            />
-          </a-form-item>
-          <a-form-item label="质量报告">
-            <ReportSelector
-              :value="query.reportId || null"
-              :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
-              :quality-course-id="query.qualityCourseId || null"
-              placeholder="质量报告"
-              class="ai-task__filter ai-task__filter--md"
-              @change="handleQueryReportChange"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="loadList">查询</UiButton>
-              <span class="op-link" role="button" @click="resetQuery">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
-              <UiButton size="sm" @click="openSubmit">提交任务</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        show-labels
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #field-businessType>
+          <a-select
+            :value="query.businessType || undefined"
+            placeholder="业务类型"
+            style="width: 100%"
+            allow-clear
+            :options="businessTypeOptions"
+            @change="handleQueryBusinessTypeChange"
+          />
+        </template>
+        <template #field-businessId>
+          <AchievementResultSelector
+            v-if="query.businessType === 'ACHIEVEMENT_RESULT'"
+            :value="query.businessId || null"
+            placeholder="业务对象"
+            :width="180"
+            @change="handleQueryBusinessObjectChange"
+          />
+          <CourseSelector
+            v-else-if="query.businessType === 'QUALITY_COURSE'"
+            :value="query.businessId || null"
+            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+            placeholder="业务对象"
+            :width="180"
+            @change="handleQueryBusinessObjectChange"
+          />
+          <TrainingPlanSelector
+            v-else-if="query.businessType === 'TRAINING_PLAN'"
+            :value="query.businessId || null"
+            placeholder="业务对象"
+            :width="180"
+            @change="handleQueryBusinessObjectChange"
+          />
+          <ReportSelector
+            v-else-if="query.businessType === 'REPORT'"
+            :value="query.businessId || null"
+            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+            placeholder="业务对象"
+            :width="180"
+            @change="handleQueryBusinessObjectChange"
+          />
+          <IndirectFormSelector
+            v-else-if="query.businessType === 'INDIRECT_FORM'"
+            :value="query.businessId || null"
+            placeholder="业务对象"
+            :width="180"
+            @change="handleQueryBusinessObjectChange"
+          />
+        </template>
+        <template #field-operatorUserId>
+          <TeacherSelector
+            :value="query.operatorUserId || null"
+            placeholder="操作人"
+            :width="180"
+            @change="handleQueryOperatorChange"
+          />
+        </template>
+        <template #field-trainingPlanId>
+          <TrainingPlanSelector
+            :value="query.trainingPlanId || null"
+            :placeholder="qualityStore.currentTrainingPlanId ? '当前培养方案' : '培养方案'"
+            :width="180"
+            @change="handleQueryTrainingPlanChange"
+          />
+        </template>
+        <template #field-qualityCourseId>
+          <CourseSelector
+            :value="query.qualityCourseId || null"
+            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+            placeholder="关联课程"
+            :width="180"
+            @change="handleQueryQualityCourseChange"
+          />
+        </template>
+        <template #field-achievementResultId>
+          <AchievementResultSelector
+            :value="query.achievementResultId || null"
+            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+            :quality-course-id="query.qualityCourseId || null"
+            placeholder="达成结果"
+            :width="180"
+            @change="handleQueryAchievementResultChange"
+          />
+        </template>
+        <template #field-reportId>
+          <ReportSelector
+            :value="query.reportId || null"
+            :training-plan-id="query.trainingPlanId || qualityStore.currentTrainingPlanId || null"
+            :quality-course-id="query.qualityCourseId || null"
+            placeholder="质量报告"
+            :width="180"
+            @change="handleQueryReportChange"
+          />
+        </template>
+      </UiFilterBar>
 
       <UiDataTable
         class="student-detail-table__data-table"
@@ -999,25 +1066,30 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span class="op-link" role="button" @click="openDetail(record)">详情</span>
-              <span
+              <UiTextAction @click="openDetail(record)">详情</UiTextAction>
+              <UiTextAction
                 v-if="record.status === 'PENDING'"
-                class="op-link primary"
-                role="button"
+                tone="primary"
                 @click="runNow(record)"
               >
                 立即执行
-              </span>
-              <span class="op-link danger" role="button" v-if="record.status === 'PENDING' || record.status === 'PROCESSING'" @click="cancelTask(record)">取消</span>
-              <span class="op-link primary" role="button" @click="openManualHandle(record)">
+              </UiTextAction>
+              <UiTextAction
+                v-if="record.status === 'PENDING' || record.status === 'PROCESSING'"
+                tone="danger"
+                @click="cancelTask(record)"
+              >
+                取消
+              </UiTextAction>
+              <UiTextAction tone="primary" @click="openManualHandle(record)">
                 人工处置
-              </span>
-              <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
+              </UiTextAction>
+              <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
             </div>
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <UiDrawer
       v-model:open="submitVisible"
@@ -1086,7 +1158,7 @@ onMounted(async () => {
             placeholder="选择间接评价问卷"
             @change="handleSubmitBusinessObjectChange"
           />
-          <a-empty v-else image="simple" description="请先选择业务类型" />
+          <UiEmpty v-else description="请先选择业务类型" size="sm" />
         </a-form-item>
         <a-form-item label="培养方案">
           <TrainingPlanSelector
@@ -1269,7 +1341,9 @@ onMounted(async () => {
         <a-descriptions-item label="脱敏映射">
           <a-space>
             <span>{{ detailRecord.maskMappingId ? '已生成脱敏映射' : '未生成脱敏映射' }}</span>
-            <span class="op-link" role="button" v-if="detailRecord.maskMappingId" @click="gotoMaskAudit(detailRecord.id)">查看脱敏审计</span>
+            <UiTextAction v-if="detailRecord.maskMappingId" @click="gotoMaskAudit(detailRecord.id)">
+              查看脱敏审计
+            </UiTextAction>
           </a-space>
         </a-descriptions-item>
         <a-descriptions-item label="AI 结果">

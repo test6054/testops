@@ -17,22 +17,30 @@
         <span>考核评价依据合理性审核</span>
       </template>
 
-      <div class="filter-card">
-        <a-form layout="inline">
-          <a-form-item label="培养方案">
-            <TrainingPlanSelector v-model:value="trainingPlanId" :program-id="programId || null" />
-          </a-form-item>
-          <a-form-item label="学年">
-            <a-input v-model:value="schoolYear" placeholder="2025-2026" style="width:140px" />
-          </a-form-item>
-          <a-form-item label="学期">
-            <a-select v-model:value="semester" :options="SemesterOptions" style="width:140px" />
-          </a-form-item>
-          <a-form-item>
-            <UiButton size="sm" @click="loadList">查询</UiButton>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #field-trainingPlanId>
+          <TrainingPlanSelector
+            :value="filterForm.trainingPlanId"
+            :program-id="programId || null"
+            :width="220"
+            @update:value="(value: string | null) => { filterForm.trainingPlanId = value }"
+          />
+        </template>
+        <template #field-semester>
+          <a-select
+            v-model:value="filterForm.semester"
+            :options="SemesterOptions"
+            placeholder="学期"
+            allow-clear
+            style="width: 100%"
+          />
+        </template>
+      </UiFilterBar>
 
       <a-spin :spinning="loading">
         <UiDataTable
@@ -66,7 +74,9 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <span class="op-link" @click="openEdit(record)">{{ record.hasAuditRecord ? '编辑审核' : '新建审核' }}</span>
+              <UiTextAction @click="openEdit(record)">
+                {{ record.hasAuditRecord ? '编辑审核' : '新建审核' }}
+              </UiTextAction>
             </template>
           </template>
         </UiDataTable>
@@ -114,16 +124,17 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import {
   createRationalityAudit,
   getRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
 import { TrainingPlanSelector } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
@@ -140,11 +151,38 @@ interface RationalityAuditEditForm {
   methodReasonable?: boolean
 }
 
+interface RationalityAuditFilterModel {
+  trainingPlanId: string | null
+  schoolYear: string
+  semester: string
+}
+
 const loading = ref(false)
-const trainingPlanId = ref<string | null>(null)
 const programId = ref<string | null>(null)
-const schoolYear = ref('')
-const semester = ref('')
+const filterForm = reactive<RationalityAuditFilterModel>({
+  trainingPlanId: null,
+  schoolYear: '',
+  semester: '',
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
+const filterFields: FilterField[] = [
+  { key: 'trainingPlanId', type: 'custom', width: 220 },
+  {
+    key: 'schoolYear',
+    type: 'input',
+    placeholder: '2025-2026',
+    allowClear: true,
+    width: 140,
+  },
+  { key: 'semester', type: 'custom', width: 140 },
+]
 const list = ref<RationalityAuditCourseLedgerItemVO[]>([])
 const overview = ref<RationalityAuditCourseLedgerOverviewVO>({
   totalCourseCount: 0,
@@ -183,16 +221,17 @@ function booleanTagTone(v?: boolean) {
 }
 
 async function loadList() {
-  if (!trainingPlanId.value || !schoolYear.value || !semester.value) {
+  const { trainingPlanId, schoolYear, semester } = filterForm
+  if (!trainingPlanId || !schoolYear || !semester) {
     message.warning('请选择培养方案、学年和学期')
     return
   }
   loading.value = true
   try {
     const response = await getRationalityAuditCourseLedger({
-      trainingPlanId: trainingPlanId.value,
-      schoolYear: schoolYear.value,
-      semester: semester.value,
+      trainingPlanId,
+      schoolYear,
+      semester,
     })
     overview.value = response.overview
     list.value = response.items
@@ -200,6 +239,26 @@ async function loadList() {
     showUserError(e, '加载审核列表失败')
   } finally {
     loading.value = false
+  }
+}
+
+function handleSearch() {
+  void loadList()
+}
+
+function handleReset() {
+  Object.assign(filterForm, {
+    trainingPlanId: null,
+    schoolYear: '',
+    semester: '',
+  })
+  list.value = []
+  overview.value = {
+    totalCourseCount: 0,
+    auditedCourseCount: 0,
+    approvedCourseCount: 0,
+    pendingCourseCount: 0,
+    coverageRate: 0,
   }
 }
 
@@ -230,8 +289,8 @@ async function submitAudit(status: 'APPROVED' | 'REJECTED') {
       contentAligned: editForm.value.contentAligned ?? false,
       rubricMeasurable: editForm.value.rubricMeasurable ?? false,
       methodReasonable: editForm.value.methodReasonable ?? false,
-      schoolYear: schoolYear.value,
-      semester: semester.value,
+      schoolYear: filterForm.schoolYear,
+      semester: filterForm.semester,
     }
     if (editForm.value.id) {
       request.id = editForm.value.id
@@ -258,13 +317,13 @@ async function submitAudit(status: 'APPROVED' | 'REJECTED') {
 }
 
 .course-name {
-  color: var(--text-color, #1f2329);
+  color: var(--ant-color-text);
   font-weight: 500;
   line-height: 22px;
 }
 
 .course-code {
-  color: var(--text-secondary-color, #86909c);
+  color: var(--ant-color-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }

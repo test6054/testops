@@ -61,39 +61,13 @@
         <CloudDownloadOutlined />
         <span>当前考试导出任务</span>
       </template>
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="statusFilter"
-              placeholder="全部状态"
-              style="width: 160px"
-              allow-clear
-            >
-              <a-select-option v-for="(label, code) in EXPORT_STATUS_LABEL" :key="code" :value="code">
-                {{ label }}
-              </a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item label="类型">
-            <a-select
-              v-model:value="typeFilter"
-              placeholder="全部类型"
-              style="width: 160px"
-              allow-clear
-            >
-              <a-select-option v-for="(label, code) in EXPORT_TYPE_LABEL" :key="code" :value="code">
-                {{ label }}
-              </a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <span class="op-link" role="button" @click="handleTaskFilterReset">重置</span>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="exportFilterForm"
+        :fields="exportFilterFields"
+        search-text="查询"
+        @search="handleTaskFilterSearch"
+        @reset="handleTaskFilterReset"
+      />
 
       <UiDataTable
         class="student-detail-table__data-table"
@@ -141,25 +115,15 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span
+              <UiTextAction
                 v-if="canDownloadExportTask(filteredTasks[index])"
-                class="op-link primary"
-                :class="{ 'is-disabled': downloadingId === filteredTasks[index].taskId }"
-                role="button"
-                @click="
-                  downloadingId !== filteredTasks[index].taskId
-                    && handleDownload(filteredTasks[index])
-                "
+                tone="primary"
+                :disabled="downloadingId === filteredTasks[index].taskId"
+                @click="handleDownload(filteredTasks[index])"
               >
                 下载
-              </span>
-              <span
-                class="op-link"
-                role="button"
-                @click="openDetailDrawer(filteredTasks[index])"
-              >
-                详情
-              </span>
+              </UiTextAction>
+              <UiTextAction @click="openDetailDrawer(filteredTasks[index])">详情</UiTextAction>
             </div>
           </template>
         </template>
@@ -311,7 +275,7 @@ import type {
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
-import type { BadgeTone } from '@/components/ui-guide/ui'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -333,7 +297,9 @@ import {
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
@@ -373,20 +339,47 @@ const taskPagination = reactive({
   total: 0,
 })
 
-const statusFilter = ref<ExportTaskStatusCode | undefined>(undefined)
-const typeFilter = ref<ExportTypeCode | undefined>(undefined)
+const exportFilterForm = reactive<{
+  statusFilter?: ExportTaskStatusCode
+  typeFilter?: ExportTypeCode
+}>({
+  statusFilter: undefined,
+  typeFilter: undefined,
+})
+
+const exportFilterFields: FilterField[] = [
+  {
+    key: 'statusFilter',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: Object.entries(EXPORT_STATUS_LABEL).map(([value, label]) => ({ label, value })),
+  },
+  {
+    key: 'typeFilter',
+    type: 'select',
+    placeholder: '全部类型',
+    allowClear: true,
+    width: 160,
+    options: Object.entries(EXPORT_TYPE_LABEL).map(([value, label]) => ({ label, value })),
+  },
+]
 
 const filteredTasks = computed(() =>
   tasks.value.filter(
     (t) =>
-      (!statusFilter.value || t.taskStatus === statusFilter.value)
-      && (!typeFilter.value || t.exportType === typeFilter.value),
+      (!exportFilterForm.statusFilter || t.taskStatus === exportFilterForm.statusFilter)
+      && (!exportFilterForm.typeFilter || t.exportType === exportFilterForm.typeFilter),
   ),
 )
 
-function handleTaskFilterReset() {
-  statusFilter.value = undefined
-  typeFilter.value = undefined
+function handleTaskFilterSearch(): void {
+  taskPagination.pageNum = 1
+}
+
+function handleTaskFilterReset(): void {
+  taskPagination.pageNum = 1
 }
 
 const counts = computed(() => ({

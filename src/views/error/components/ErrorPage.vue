@@ -8,19 +8,22 @@
       <div class="error__tip">
         <div class="error__tip--a">抱歉!</div>
         <div class="error__tip--b">当前页面不存在...</div>
-        <div class="error__tip--c">请检查您输入的网址是否正确，或点击下面的按钮返回首页</div>
-        <a-button shape="round" size="large" type="primary" @click="back">返回首页</a-button>
+        <div class="error__tip--c">请检查网址是否正确，或点击下方按钮返回工作台</div>
+        <a-button shape="round" size="large" type="primary" @click="back">{{ backLabel }}</a-button>
       </div>
     </section>
   </div>
 </template>
 
 <script lang="ts" setup>
-import type {Component} from 'vue'
+import type { Component } from 'vue'
+import { computed } from 'vue'
 import Icon403 from '@/components/icons/Icon403.vue'
 import Icon404 from '@/components/icons/Icon404.vue'
+import { useAuthStore } from '@/stores'
+import { RoleEnum } from '@/utils/permission'
 
-defineOptions({name: 'ErrorPage'})
+defineOptions({ name: 'ErrorPage' })
 
 const props = withDefaults(defineProps<Props>(), {
   code: 403,
@@ -36,9 +39,47 @@ const IconMap: Record<number, Component> = {
 }
 
 const router = useRouter()
-// 返回首页
-const back = () => {
-  router.replace({path: '/'})
+const authStore = useAuthStore()
+
+/** 按登录角色回到阅卷端默认工作台，避免未登录用户落到根路径 */
+function resolveHomePath(): string {
+  const role = authStore.userRole
+  if (role === RoleEnum.SCH_STU) {
+    return '/student/score'
+  }
+  if (role === RoleEnum.SUPER_ADMIN) {
+    return '/admin/dashboard'
+  }
+  if (
+    role === RoleEnum.SCH_TECH
+    || role === RoleEnum.CROP_ADMIN
+    || role === RoleEnum.CROP_USER
+  ) {
+    return '/teacher/exam-list'
+  }
+  return '/login'
+}
+
+const backLabel = computed(() => {
+  const role = authStore.userRole
+  if (role === RoleEnum.SCH_STU) {
+    return '返回我的成绩'
+  }
+  if (role === RoleEnum.SUPER_ADMIN) {
+    return '返回阅卷管理中心'
+  }
+  if (
+    role === RoleEnum.SCH_TECH
+    || role === RoleEnum.CROP_ADMIN
+    || role === RoleEnum.CROP_USER
+  ) {
+    return '返回考试工作台'
+  }
+  return '返回登录'
+})
+
+function back() {
+  router.replace({ path: resolveHomePath() })
 }
 </script>
 
@@ -79,54 +120,24 @@ const back = () => {
     align-items: center;
 
     &--a {
-      margin-bottom: 20px;
-      font-size: 32px;
-      font-weight: bold;
-      line-height: 40px;
-      color: var(--ant-color-primary);
-      opacity: 0;
-      animation-name: slideUp;
-      animation-duration: 0.5s;
-      animation-fill-mode: forwards;
+      margin-top: var(--dp-space-6);
+      font-size: var(--dp-font-size-3xl);
+      font-weight: var(--dp-font-weight-title);
+      color: var(--ant-color-text);
     }
 
     &--b {
-      margin-bottom: 10px;
-      font-size: 20px;
-      font-weight: bold;
-      line-height: 24px;
-      color: var(--ant-color-text);
-      opacity: 0;
-      animation-name: slideUp;
-      animation-duration: 0.5s;
-      animation-delay: 0.1s;
-      animation-fill-mode: forwards;
+      margin-top: var(--dp-space-4);
+      font-size: var(--dp-font-size-xl);
+      color: var(--ant-color-text-secondary);
     }
 
     &--c {
-      padding: 0 30px;
-      margin-bottom: 20px;
-      font-size: 13px;
-      text-align: center;
-      line-height: 20px;
-      color: var(--ant-color-text-secondary);
-      opacity: 0;
-      animation-name: slideUp;
-      animation-duration: 0.5s;
-      animation-delay: 0.2s;
-      animation-fill-mode: forwards;
+      margin-top: var(--dp-space-2);
+      margin-bottom: var(--dp-space-6);
+      font-size: var(--dp-font-size-md);
+      color: var(--ant-color-text-tertiary);
     }
-  }
-}
-
-@keyframes slideUp {
-  0% {
-    opacity: 0;
-    transform: translateY(60px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 </style>

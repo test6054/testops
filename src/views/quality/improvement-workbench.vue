@@ -47,9 +47,10 @@ import type {
   ImprovementTaskVO,
   QualityAuditEvidenceItem,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   aiTaskApi,
   AUDIT_ISSUE_STATUS_COLOR,
@@ -64,6 +65,8 @@ import {
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
 } from '@/apis/quality'
+import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import {
   AchievementResultSelector,
   ArchiveSelector,
@@ -77,7 +80,7 @@ import {
   TeacherSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
@@ -205,7 +208,7 @@ function handleImprovementOwnerChange(value: string | string[] | null) {
 }
 
 function handleImprovementQueryOwnerChange(value: string | string[] | null) {
-  improvementQuery.ownerUserId = typeof value === 'string' ? value : ''
+  improvementFilterForm.ownerUserId = typeof value === 'string' ? value : ''
 }
 
 function handleImprovementProgramChange(value: string | null | undefined) {
@@ -219,7 +222,7 @@ function handleImprovementCourseChange(value: string | null | undefined) {
 }
 
 function handleImprovementQueryCourseChange(value: string | null | undefined) {
-  improvementQuery.qualityCourseId = selectedId(value)
+  improvementFilterForm.qualityCourseId = selectedId(value)
 }
 
 function handleImprovementAchievementResultChange(value: string | null | undefined) {
@@ -261,8 +264,7 @@ function handleIssueRaisedByChange(value: string | string[] | null | undefined) 
 }
 
 function handleRectQueryAuditIssueChange(value: string | null | undefined) {
-  rectQuery.auditIssueId = value ?? undefined
-  loadRectList()
+  rectFilterForm.auditIssueId = value ?? undefined
 }
 
 function handleRectEditorAuditIssueChange(value: string | null | undefined) {
@@ -367,6 +369,62 @@ const improvementStatusOptions: Array<{ value: ImprovementTaskStatus, label: str
   { value: 'RETURNED', label: IMPROVEMENT_TASK_STATUS_LABEL.RETURNED },
 ]
 
+const improvementFilterForm = reactive({
+  qualityCourseId: '',
+  ownerUserId: '',
+  status: undefined as ImprovementTaskStatus | undefined,
+  keyword: '',
+})
+
+const improvementFilterFields: FilterField[] = [
+  {
+    key: 'qualityCourseId',
+    type: 'custom',
+    label: '关联课程',
+    width: 160,
+    minWidth: 160,
+    maxWidth: 220,
+  },
+  {
+    key: 'ownerUserId',
+    type: 'custom',
+    label: '负责人',
+    width: 140,
+    minWidth: 140,
+    maxWidth: 180,
+  },
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '状态',
+    allowClear: true,
+    width: 120,
+    options: improvementStatusOptions,
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '关键字',
+    width: 160,
+    triggerSearchOnChange: false,
+  },
+]
+
+function syncImprovementFilterToQuery() {
+  improvementQuery.qualityCourseId = improvementFilterForm.qualityCourseId
+  improvementQuery.ownerUserId = improvementFilterForm.ownerUserId
+  improvementQuery.status = improvementFilterForm.status
+  improvementQuery.keyword = improvementFilterForm.keyword
+}
+
+function handleImprovementFilterSearch() {
+  improvementQuery.pageNum = 1
+  syncImprovementFilterToQuery()
+  loadImprovementList()
+}
+
 const improvementEditorVisible = ref(false)
 const improvementEditorMode = ref<'create' | 'edit'>('create')
 const improvementEditor = reactive<ImprovementTaskSaveRequest>({
@@ -428,10 +486,7 @@ function handleImprovementPageChange(page: { current: number, pageSize: number }
 
 function resetImprovementQuery() {
   improvementQuery.pageNum = 1
-  improvementQuery.qualityCourseId = ''
-  improvementQuery.ownerUserId = ''
-  improvementQuery.status = undefined
-  improvementQuery.keyword = ''
+  syncImprovementFilterToQuery()
   loadImprovementList()
 }
 
@@ -680,6 +735,77 @@ const issueStatusOptions: AuditIssueStatus[] = [
   'CLOSED',
 ]
 
+const issueFilterForm = reactive({
+  issueSource: undefined as AuditIssueSource | undefined,
+  severity: undefined as AuditIssueSeverity | undefined,
+  status: undefined as AuditIssueStatus | undefined,
+  auditYear: '',
+  keyword: '',
+})
+
+const issueFilterFields: FilterField[] = [
+  {
+    key: 'issueSource',
+    type: 'select',
+    label: '来源',
+    placeholder: '来源',
+    allowClear: true,
+    width: 120,
+    options: issueSourceOptions,
+  },
+  {
+    key: 'severity',
+    type: 'select',
+    label: '严重度',
+    placeholder: '严重度',
+    allowClear: true,
+    width: 120,
+    options: severityOptions,
+  },
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '状态',
+    allowClear: true,
+    width: 120,
+    options: issueStatusOptions.map((status) => ({
+      value: status,
+      label: issueStatusLabel(status),
+    })),
+  },
+  {
+    key: 'auditYear',
+    type: 'input',
+    label: '年度',
+    placeholder: '年度',
+    width: 100,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '编码/标题',
+    width: 160,
+    triggerSearchOnChange: false,
+  },
+]
+
+function syncIssueFilterToQuery() {
+  issueQuery.issueSource = issueFilterForm.issueSource
+  issueQuery.severity = issueFilterForm.severity
+  issueQuery.status = issueFilterForm.status
+  issueQuery.auditYear = issueFilterForm.auditYear || undefined
+  issueQuery.keyword = issueFilterForm.keyword
+}
+
+function handleIssueFilterSearch() {
+  issueQuery.pageNum = 1
+  syncIssueFilterToQuery()
+  loadIssueList()
+}
+
 const issueTransitMap: Record<AuditIssueStatus, AuditIssueStatus[]> = {
   OPEN: ['IN_RECTIFICATION'],
   IN_RECTIFICATION: ['RECTIFIED'],
@@ -736,11 +862,7 @@ function resetIssueQuery() {
   issueQuery.programId = undefined
   issueQuery.trainingPlanId = undefined
   issueQuery.qualityCourseId = undefined
-  issueQuery.issueSource = undefined
-  issueQuery.severity = undefined
-  issueQuery.status = undefined
-  issueQuery.auditYear = undefined
-  issueQuery.keyword = ''
+  syncIssueFilterToQuery()
   loadIssueList()
 }
 
@@ -893,6 +1015,55 @@ const rectStatusOptions: AuditRectificationStatus[] = [
   'CLOSED',
 ]
 
+const rectFilterForm = reactive({
+  status: undefined as AuditRectificationStatus | undefined,
+  auditIssueId: undefined as string | undefined,
+  keyword: '',
+})
+
+const rectFilterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '状态',
+    allowClear: true,
+    width: 120,
+    options: rectStatusOptions.map((status) => ({
+      value: status,
+      label: rectificationStatusLabel(status),
+    })),
+  },
+  {
+    key: 'auditIssueId',
+    type: 'custom',
+    label: '关联问题',
+    width: 220,
+    minWidth: 200,
+    maxWidth: 280,
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '编码/标题',
+    width: 160,
+    triggerSearchOnChange: false,
+  },
+]
+
+function syncRectFilterToQuery() {
+  rectQuery.status = rectFilterForm.status
+  rectQuery.auditIssueId = rectFilterForm.auditIssueId
+  rectQuery.keyword = rectFilterForm.keyword
+}
+
+function handleRectFilterSearch() {
+  rectQuery.pageNum = 1
+  syncRectFilterToQuery()
+  loadRectList()
+}
+
 const rectEditorVisible = ref(false)
 const rectEditorMode = ref<'create' | 'edit'>('create')
 const rectEditor = reactive<AuditRectificationSaveRequest>({
@@ -958,10 +1129,8 @@ function handleRectPageChange(page: { current: number, pageSize: number }) {
 
 function resetRectQuery() {
   rectQuery.pageNum = 1
-  rectQuery.auditIssueId = undefined
   rectQuery.ownerUserId = undefined
-  rectQuery.status = undefined
-  rectQuery.keyword = ''
+  syncRectFilterToQuery()
   loadRectList()
 }
 
@@ -1208,6 +1377,53 @@ const supConclusionOptions: Array<{
   { value: 'NEEDS_IMPROVEMENT', label: '需改进', color: 'orange' },
   { value: 'FAIL', label: '不通过', color: 'red' },
 ]
+
+const supFilterForm = reactive({
+  supervisionType: undefined as AuditSupervisionType | undefined,
+  conclusion: undefined as AuditSupervisionConclusion | undefined,
+  keyword: '',
+})
+
+const supFilterFields: FilterField[] = [
+  {
+    key: 'supervisionType',
+    type: 'select',
+    label: '类型',
+    placeholder: '类型',
+    allowClear: true,
+    width: 120,
+    options: supervisionTypeOptions,
+  },
+  {
+    key: 'conclusion',
+    type: 'select',
+    label: '结论',
+    placeholder: '结论',
+    allowClear: true,
+    width: 120,
+    options: supConclusionOptions.map((item) => ({ value: item.value, label: item.label })),
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '编码/标题',
+    width: 160,
+    triggerSearchOnChange: false,
+  },
+]
+
+function syncSupFilterToQuery() {
+  supQuery.supervisionType = supFilterForm.supervisionType
+  supQuery.conclusion = supFilterForm.conclusion
+  supQuery.keyword = supFilterForm.keyword
+}
+
+function handleSupFilterSearch() {
+  supQuery.pageNum = 1
+  syncSupFilterToQuery()
+  loadSupList()
+}
 const supConclusionLabelMap: Record<AuditSupervisionConclusion, string> = {
   PASS: '通过',
   NEEDS_IMPROVEMENT: '需改进',
@@ -1313,9 +1529,7 @@ function handleSupPageChange(page: { current: number, pageSize: number }) {
 function resetSupQuery() {
   supQuery.pageNum = 1
   supQuery.programId = undefined
-  supQuery.supervisionType = undefined
-  supQuery.conclusion = undefined
-  supQuery.keyword = ''
+  syncSupFilterToQuery()
   loadSupList()
 }
 
@@ -1558,15 +1772,9 @@ watch(activeTab, async (tab) => {
   else if (tab === 'supervision') await loadSupList()
 })
 
-onMounted(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-    }
-  }
+async function handleScopeChange(): Promise<void> {
   await Promise.all([loadImprovementList(), loadIssueList(), loadRectList(), loadSupList()])
-})
+}
 </script>
 
 <template>
@@ -1574,14 +1782,7 @@ onMounted(async () => {
     <template #context>
       <ContextBar>
         <template #status>
-          <span class="iwb__context-meta">
-            培养方案：
-            <span v-if="qualityStore.currentPlan" class="iwb__context-strong">
-              {{ qualityStore.currentPlan.planCode }} ·
-              {{ qualityStore.currentPlan.planName }}
-            </span>
-            <span v-else class="iwb__context-muted">未选择</span>
-          </span>
+          <QualityScopeHeader @change="handleScopeChange" />
         </template>
       </ContextBar>
     </template>
@@ -1591,66 +1792,48 @@ onMounted(async () => {
     <a-tabs v-model:active-key="activeTab" class="iwb__tabs">
       <!-- Tab 1: 改进任务 -->
       <a-tab-pane key="improvement" tab="改进任务">
-        <UiEmpty
-          v-if="!qualityStore.currentTrainingPlanId"
-          description="尚未选择培养方案，请在工作台顶部选择后再回来"
-          class="iwb__empty"
-        />
-        <a-card v-else :bordered="false" class="detail-table-card iwb__table-card">
-          <template #title>改进任务台账</template>
+        <ImprovementWorkbenchPanel
+          title="改进任务台账"
+          :empty="!qualityStore.currentTrainingPlanId"
+          empty-description="尚未选择培养方案，请在工作台顶部选择后再回来"
+        >
+          <template #extra>
+            <UiButton
+              variant="primary"
+              size="sm"
+              :disabled="!qualityStore.currentTrainingPlanId"
+              @click="openImprovementCreate"
+            >
+              新建改进任务
+            </UiButton>
+          </template>
 
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadImprovementList">
-              <a-form-item label="关联课程">
-                <CourseSelector
-                  :value="improvementQuery.qualityCourseId || null"
-                  :training-plan-id="qualityStore.currentTrainingPlanId || null"
-                  placeholder="关联课程"
-                  :width="160"
-                  @change="handleImprovementQueryCourseChange"
-                />
-              </a-form-item>
-              <a-form-item label="负责人">
-                <TeacherSelector
-                  :value="improvementQuery.ownerUserId || null"
-                  placeholder="负责人"
-                  :width="140"
-                  @change="handleImprovementQueryOwnerChange"
-                />
-              </a-form-item>
-              <a-form-item label="状态">
-                <a-select
-                  v-model:value="improvementQuery.status"
-                  placeholder="状态"
-                  style="width: 120px"
-                  allow-clear
-                  :options="improvementStatusOptions"
-                />
-              </a-form-item>
-              <a-form-item label="关键字">
-                <a-input
-                  v-model:value="improvementQuery.keyword"
-                  placeholder="关键字"
-                  style="width: 160px"
-                  @press-enter="loadImprovementList"
-                />
-              </a-form-item>
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton size="sm" :loading="improvementLoading" @click="loadImprovementList">查询</UiButton>
-                  <span class="op-link" role="button" @click="resetImprovementQuery">重置</span>
-                  <UiButton
-                    variant="primary"
-                    size="sm"
-                    :disabled="!qualityStore.currentTrainingPlanId"
-                    @click="openImprovementCreate"
-                  >
-                    新建改进任务
-                  </UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <UiFilterBar
+            v-model="improvementFilterForm"
+            :fields="improvementFilterFields"
+            show-labels
+            search-text="查询"
+            @search="handleImprovementFilterSearch"
+            @reset="resetImprovementQuery"
+          >
+            <template #field-qualityCourseId>
+              <CourseSelector
+                :value="improvementFilterForm.qualityCourseId || null"
+                :training-plan-id="qualityStore.currentTrainingPlanId || null"
+                placeholder="关联课程"
+                :width="160"
+                @change="handleImprovementQueryCourseChange"
+              />
+            </template>
+            <template #field-ownerUserId>
+              <TeacherSelector
+                :value="improvementFilterForm.ownerUserId || null"
+                placeholder="负责人"
+                :width="140"
+                @change="handleImprovementQueryOwnerChange"
+              />
+            </template>
+          </UiFilterBar>
 
           <UiDataTable
             class="student-detail-table__data-table"
@@ -1687,84 +1870,56 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" @click="openImprovementDetail(record)">详情</span>
-                  <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditImprovementTask(record.status)) }" @click="!canEditImprovementTask(record.status) && (openImprovementEdit(record))">编辑</span>
-                  <span
+                  <UiTextAction @click="openImprovementDetail(record)">详情</UiTextAction>
+                  <UiTextAction
+                    :disabled="canEditImprovementTask(record.status)"
+                    @click="openImprovementEdit(record)"
+                  >
+                    编辑
+                  </UiTextAction>
+                  <UiTextAction
                     v-for="to in nextImprovementStatuses(record.status)"
                     :key="to"
-                    class="op-link"
-                    :class="to === 'RETURNED' ? 'danger' : 'primary'"
-                    role="button"
+                    :tone="to === 'RETURNED' ? 'danger' : 'primary'"
                     @click="handleImprovementTransit(record, to)"
                   >
                     → {{ improvementStatusLabel(to) }}
-                  </span>
-                  <span class="op-link" role="button" :class="{ 'is-disabled': !(!record.achievementResultId) }" @click="!record.achievementResultId && (handleImprovementAiSuggestion(record))">AI 改进</span>
-                  <span class="op-link danger" role="button" v-if="record.status === 'OPEN'" @click="handleImprovementDelete(record)">删除</span>
+                  </UiTextAction>
+                  <UiTextAction
+                    :disabled="!record.achievementResultId"
+                    @click="handleImprovementAiSuggestion(record)"
+                  >
+                    AI 改进
+                  </UiTextAction>
+                  <UiTextAction
+                    v-if="record.status === 'OPEN'"
+                    tone="danger"
+                    @click="handleImprovementDelete(record)"
+                  >
+                    删除
+                  </UiTextAction>
                 </div>
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </ImprovementWorkbenchPanel>
       </a-tab-pane>
 
       <!-- Tab 2: 审核评估问题 -->
       <a-tab-pane key="issue" tab="审核评估问题">
-        <a-card :bordered="false" class="detail-table-card iwb__table-card">
-          <template #title>审核评估问题清单</template>
+        <ImprovementWorkbenchPanel title="审核评估问题清单">
+          <template #extra>
+            <UiButton variant="primary" size="sm" @click="openIssueCreate">登记问题</UiButton>
+          </template>
 
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadIssueList">
-              <a-form-item label="来源">
-                <a-select
-                  v-model:value="issueQuery.issueSource"
-                  placeholder="来源"
-                  style="width: 120px"
-                  allow-clear
-                  :options="issueSourceOptions"
-                />
-              </a-form-item>
-              <a-form-item label="严重度">
-                <a-select
-                  v-model:value="issueQuery.severity"
-                  placeholder="严重度"
-                  style="width: 120px"
-                  allow-clear
-                  :options="severityOptions"
-                />
-              </a-form-item>
-              <a-form-item label="状态">
-                <a-select
-                  v-model:value="issueQuery.status"
-                  placeholder="状态"
-                  style="width: 120px"
-                  allow-clear
-                >
-                  <a-select-option v-for="s in issueStatusOptions" :key="s" :value="s">
-                    {{ issueStatusLabel(s) }}
-                  </a-select-option>
-                </a-select>
-              </a-form-item>
-              <a-form-item label="年度">
-                <a-input v-model:value="issueQuery.auditYear" placeholder="年度" style="width: 100px" />
-              </a-form-item>
-              <a-form-item label="关键字">
-                <a-input
-                  v-model:value="issueQuery.keyword"
-                  placeholder="编码/标题"
-                  style="width: 160px"
-                  @press-enter="loadIssueList"
-                />
-              </a-form-item>
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton size="sm" :loading="issueLoading" @click="loadIssueList">查询</UiButton>
-                  <span class="op-link" role="button" @click="resetIssueQuery">重置</span>
-                  <UiButton variant="primary" size="sm" @click="openIssueCreate">登记问题</UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <UiFilterBar
+            v-model="issueFilterForm"
+            :fields="issueFilterFields"
+            show-labels
+            search-text="查询"
+            @search="handleIssueFilterSearch"
+            @reset="resetIssueQuery"
+          />
 
           <UiDataTable
             class="student-detail-table__data-table"
@@ -1802,9 +1957,14 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditAuditIssue(record.status)) }" @click="!canEditAuditIssue(record.status) && (openIssueEdit(record))">编辑</span>
+                  <UiTextAction
+                    :disabled="canEditAuditIssue(record.status)"
+                    @click="openIssueEdit(record)"
+                  >
+                    编辑
+                  </UiTextAction>
                   <a-dropdown v-if="nextAuditIssueStatuses(record.status).length">
-                    <span class="op-link primary" role="button" @click.prevent>状态</span>
+                    <UiTextAction tone="primary" @click.prevent>状态</UiTextAction>
                     <template #overlay>
                       <a-menu @click="handleIssueStatusMenuClick(record, $event)">
                         <a-menu-item v-for="s in nextAuditIssueStatuses(record.status)" :key="s">
@@ -1813,58 +1973,44 @@ onMounted(async () => {
                       </a-menu>
                     </template>
                   </a-dropdown>
-                  <span class="op-link danger" role="button" v-if="record.status === 'OPEN'" @click="handleIssueDelete(record)">删除</span>
+                  <UiTextAction
+                    v-if="record.status === 'OPEN'"
+                    tone="danger"
+                    @click="handleIssueDelete(record)"
+                  >
+                    删除
+                  </UiTextAction>
                 </div>
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </ImprovementWorkbenchPanel>
       </a-tab-pane>
 
       <!-- Tab 3: 整改任务台账 -->
       <a-tab-pane key="rectification" tab="整改任务台账">
-        <a-card :bordered="false" class="detail-table-card iwb__table-card">
-          <template #title>整改任务台账</template>
+        <ImprovementWorkbenchPanel title="整改任务台账">
+          <template #extra>
+            <UiButton variant="primary" size="sm" @click="openRectCreate">新建整改任务</UiButton>
+          </template>
 
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadRectList">
-              <a-form-item label="状态">
-                <a-select
-                  v-model:value="rectQuery.status"
-                  placeholder="状态"
-                  style="width: 120px"
-                  allow-clear
-                >
-                  <a-select-option v-for="s in rectStatusOptions" :key="s" :value="s">
-                    {{ rectificationStatusLabel(s) }}
-                  </a-select-option>
-                </a-select>
-              </a-form-item>
-              <a-form-item label="关联问题">
-                <AuditIssueSelector
-                  :value="rectQuery.auditIssueId || null"
-                  placeholder="关联问题"
-                  :width="220"
-                  @change="handleRectQueryAuditIssueChange"
-                />
-              </a-form-item>
-              <a-form-item label="关键字">
-                <a-input
-                  v-model:value="rectQuery.keyword"
-                  placeholder="编码/标题"
-                  style="width: 160px"
-                  @press-enter="loadRectList"
-                />
-              </a-form-item>
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton size="sm" :loading="rectLoading" @click="loadRectList">查询</UiButton>
-                  <span class="op-link" role="button" @click="resetRectQuery">重置</span>
-                  <UiButton variant="primary" size="sm" @click="openRectCreate">新建整改任务</UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <UiFilterBar
+            v-model="rectFilterForm"
+            :fields="rectFilterFields"
+            show-labels
+            search-text="查询"
+            @search="handleRectFilterSearch"
+            @reset="resetRectQuery"
+          >
+            <template #field-auditIssueId>
+              <AuditIssueSelector
+                :value="rectFilterForm.auditIssueId || null"
+                placeholder="关联问题"
+                :width="220"
+                @change="handleRectQueryAuditIssueChange"
+              />
+            </template>
+          </UiFilterBar>
 
           <UiDataTable
             class="student-detail-table__data-table"
@@ -1896,101 +2042,83 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" :class="{ 'is-disabled': !(!canEditAuditRectification(record.status)) }" @click="!canEditAuditRectification(record.status) && (openRectEdit(record))">编辑</span>
-                  <span
+                  <UiTextAction
+                    :disabled="canEditAuditRectification(record.status)"
+                    @click="openRectEdit(record)"
+                  >
+                    编辑
+                  </UiTextAction>
+                  <UiTextAction
                     v-if="record.status === 'PLANNED'"
-                    class="op-link primary"
-                    role="button"
+                    tone="primary"
                     @click="advanceRectProgress(record, 'IN_PROGRESS')"
                   >
                     开始
-                  </span>
-                  <span
+                  </UiTextAction>
+                  <UiTextAction
                     v-if="record.status === 'IN_PROGRESS'"
-                    class="op-link primary"
-                    role="button"
+                    tone="primary"
                     @click="advanceRectProgress(record, 'SUBMITTED')"
                   >
                     提交复核
-                  </span>
-                  <span
+                  </UiTextAction>
+                  <UiTextAction
                     v-if="record.status === 'RETURNED'"
-                    class="op-link primary"
-                    role="button"
+                    tone="primary"
                     @click="advanceRectProgress(record, 'IN_PROGRESS')"
                   >
                     重新整改
-                  </span>
-                  <span
+                  </UiTextAction>
+                  <UiTextAction
                     v-if="record.status === 'SUBMITTED'"
-                    class="op-link primary"
-                    role="button"
+                    tone="primary"
                     @click="verifyRect(record, 'APPROVED')"
                   >
                     通过
-                  </span>
-                  <span class="op-link danger" role="button" v-if="record.status === 'SUBMITTED'" @click="verifyRect(record, 'REJECTED')">退回</span>
-                  <span
+                  </UiTextAction>
+                  <UiTextAction
+                    v-if="record.status === 'SUBMITTED'"
+                    tone="danger"
+                    @click="verifyRect(record, 'REJECTED')"
+                  >
+                    退回
+                  </UiTextAction>
+                  <UiTextAction
                     v-if="record.status === 'VERIFIED'"
-                    class="op-link primary"
-                    role="button"
+                    tone="primary"
                     @click="closeRect(record)"
                   >
                     闭环
-                  </span>
-                  <span class="op-link danger" role="button" v-if="record.status === 'PLANNED'" @click="handleRectDelete(record)">删除</span>
+                  </UiTextAction>
+                  <UiTextAction
+                    v-if="record.status === 'PLANNED'"
+                    tone="danger"
+                    @click="handleRectDelete(record)"
+                  >
+                    删除
+                  </UiTextAction>
                 </div>
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </ImprovementWorkbenchPanel>
       </a-tab-pane>
 
       <!-- Tab 4: 督导复查 -->
       <a-tab-pane key="supervision" tab="督导复查">
-        <a-card :bordered="false" class="detail-table-card iwb__table-card">
-          <template #title>督导复查 / 现场检查</template>
+        <ImprovementWorkbenchPanel title="督导复查 / 现场检查">
+          <template #extra>
+            <UiButton variant="primary" size="sm" @click="openSupCreate">新建督导记录</UiButton>
+          </template>
 
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadSupList">
-              <a-form-item label="类型">
-                <a-select
-                  v-model:value="supQuery.supervisionType"
-                  placeholder="类型"
-                  style="width: 120px"
-                  allow-clear
-                  :options="supervisionTypeOptions"
-                />
-              </a-form-item>
-              <a-form-item label="结论">
-                <a-select
-                  v-model:value="supQuery.conclusion"
-                  placeholder="结论"
-                  style="width: 120px"
-                  allow-clear
-                >
-                  <a-select-option v-for="c in supConclusionOptions" :key="c.value" :value="c.value">
-                    {{ c.label }}
-                  </a-select-option>
-                </a-select>
-              </a-form-item>
-              <a-form-item label="关键字">
-                <a-input
-                  v-model:value="supQuery.keyword"
-                  placeholder="编码/标题"
-                  style="width: 160px"
-                  @press-enter="loadSupList"
-                />
-              </a-form-item>
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton size="sm" :loading="supLoading" @click="loadSupList">查询</UiButton>
-                  <span class="op-link" role="button" @click="resetSupQuery">重置</span>
-                  <UiButton variant="primary" size="sm" @click="openSupCreate">新建督导记录</UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <UiFilterBar
+            v-model="supFilterForm"
+            :fields="supFilterFields"
+            show-labels
+            search-text="查询"
+            @search="handleSupFilterSearch"
+            @reset="resetSupQuery"
+          />
 
           <UiDataTable
             class="student-detail-table__data-table"
@@ -2029,13 +2157,13 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" @click="openSupEdit(record)">编辑</span>
-                  <span class="op-link danger" role="button" @click="handleSupDelete(record)">删除</span>
+                  <UiTextAction @click="openSupEdit(record)">编辑</UiTextAction>
+                  <UiTextAction tone="danger" @click="handleSupDelete(record)">删除</UiTextAction>
                 </div>
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </ImprovementWorkbenchPanel>
       </a-tab-pane>
     </a-tabs>
 

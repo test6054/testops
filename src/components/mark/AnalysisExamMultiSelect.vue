@@ -3,6 +3,7 @@ import type { ExamSummaryVO } from '@/apis/mark/exam'
 import { ReloadOutlined } from '@ant-design/icons-vue'
 import { onMounted, ref } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
+import { pickExamIdsFromRecentSemesters } from '@/composables/useCrossExamDefaultScope'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
@@ -11,12 +12,15 @@ defineOptions({ name: 'AnalysisExamMultiSelect' })
 
 const selectedExamIds = defineModel<string[]>({ required: true })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     placeholder?: string
+    /** 首次加载后默认勾选最近 N 个学年学期内的考试 */
+    defaultRecentSemesterCount?: number
   }>(),
   {
     placeholder: '请选择参与分析的考试',
+    defaultRecentSemesterCount: 0,
   },
 )
 
@@ -29,6 +33,7 @@ const ANALYSIS_EXAM_MULTI_OPTION_PAGE_SIZE = 50
 const loading = ref(false)
 const exams = ref<ExamSummaryVO[]>([])
 const examOptions = ref<{ label: string, value: string }[]>([])
+const defaultScopeApplied = ref(false)
 
 /** 加载当前租户考试范围，供 AI 分析卡片选择参与分析的考试实体。 */
 async function loadExamOptions(keyword?: string): Promise<void> {
@@ -47,6 +52,18 @@ async function loadExamOptions(keyword?: string): Promise<void> {
       label: [formatExamOptionLabel(exam), formatAcademicTerm(exam)].filter(Boolean).join(' · '),
       value: exam.examId,
     }))
+    if (
+      !defaultScopeApplied.value
+      && !keyword?.trim()
+      && props.defaultRecentSemesterCount > 0
+      && selectedExamIds.value.length === 0
+    ) {
+      const defaults = pickExamIdsFromRecentSemesters(exams.value, props.defaultRecentSemesterCount)
+      if (defaults.length > 0) {
+        selectedExamIds.value = defaults
+        defaultScopeApplied.value = true
+      }
+    }
     emitSelectedExamsChange()
   } catch (error) {
     showUserError(error, '考试列表加载失败')

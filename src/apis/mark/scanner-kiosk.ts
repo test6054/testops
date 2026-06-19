@@ -155,6 +155,10 @@ export interface ExamScannerKioskContextVO {
   scanConfigOptions?: ExamScannerScanConfigOptionsVO
   kioskLockEnabled?: boolean
   latestBatch?: ExamScannerKioskBatchVO
+  activeBatch?: ExamScannerKioskBatchVO
+  hasActiveScanSession: boolean
+  mustResumeScanning: boolean
+  activeScanSessionReason?: string
   scannedPages: number
   paperInstances: number
   boundPaperInstances: number

@@ -60,6 +60,7 @@ import {
   UiBadge,
   UiButton,
   UiCard,
+  UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
@@ -879,13 +880,15 @@ onMounted(async () => {
               <span>题组与阅卷教师</span>
             </template>
             <UiEmpty v-if="organization.groups.length === 0" description="尚未建立题组" />
-            <a-table
+            <UiDataTable
               v-else
               :columns="readOnlyGroupColumns"
               :data-source="organization.groups"
-              :pagination="false"
+              :show-pagination="false"
+              :total="organization.groups.length"
               row-key="id"
               size="middle"
+              flat
             >
               <template #bodyCell="{ column, record: group }">
                 <template v-if="column.key === 'questions'">
@@ -918,7 +921,7 @@ onMounted(async () => {
                   </UiTag>
                 </template>
               </template>
-            </a-table>
+            </UiDataTable>
           </UiCard>
           <UiCard
             v-if="formalSessions.length > 0"
@@ -928,12 +931,14 @@ onMounted(async () => {
               <DeploymentUnitOutlined />
               <span>正评会话</span>
             </template>
-            <a-table
+            <UiDataTable
               :columns="readOnlySessionColumns"
               :data-source="formalSessions"
-              :pagination="false"
+              :show-pagination="false"
+              :total="formalSessions.length"
               row-key="id"
               size="middle"
+              flat
             >
               <template #bodyCell="{ column, record: session }">
                 <template v-if="column.key === 'allocationUnit'">
@@ -972,7 +977,7 @@ onMounted(async () => {
                   {{ formatDateTime(session.startTime) }}
                 </template>
               </template>
-            </a-table>
+            </UiDataTable>
           </UiCard>
         </template>
       </a-spin>

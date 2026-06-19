@@ -15,6 +15,7 @@ import type {
   ProfessionAlgorithmTemplateSaveRequest,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -24,7 +25,7 @@ import {
   AGGREGATION_FUNCTION_LABEL,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
-import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -62,6 +63,41 @@ const query = reactive<ProfessionAlgorithmTemplateQueryRequest>({
   enabled: undefined,
   keyword: '',
 })
+
+interface ProfessionAlgorithmTemplateFilterModel {
+  accreditationType?: AccreditationType
+  keyword: string
+}
+
+const filterForm = reactive<ProfessionAlgorithmTemplateFilterModel>({
+  accreditationType: undefined,
+  keyword: '',
+})
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => filterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(filterForm, value)
+  },
+})
+
+const filterFields = computed<FilterField[]>(() => [
+  {
+    key: 'accreditationType',
+    type: 'select',
+    placeholder: '认证类型',
+    allowClear: true,
+    width: 180,
+    options: accreditationOptions,
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    placeholder: '编码/名称',
+    allowClear: true,
+    width: 160,
+  },
+])
 
 const editorVisible = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -202,12 +238,22 @@ function handlePageChange(page: { current: number, pageSize: number }) {
   loadList()
 }
 
-function resetQuery() {
+function syncFilterToQuery() {
+  query.accreditationType = filterForm.accreditationType
+  query.keyword = filterForm.keyword
+}
+
+function handleSearch() {
   query.pageNum = 1
-  query.accreditationType = undefined
-  query.enabled = undefined
-  query.keyword = ''
-  loadList()
+  syncFilterToQuery()
+  void loadList()
+}
+
+function handleReset() {
+  Object.assign(filterForm, { accreditationType: undefined, keyword: '' })
+  query.pageNum = 1
+  syncFilterToQuery()
+  void loadList()
 }
 
 function openCreate() {
@@ -341,40 +387,21 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <SignalBand :metrics="signals" compact class="pat__signals" />
 
-    <a-card :bordered="false" class="detail-table-card pat__table-card">
+    <UiCard class="detail-table-card pat__table-card">
       <template #title>模板台账</template>
+      <template #extra>
+        <UiButton variant="primary" size="sm" @click="openCreate">新建模板</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadList">
-          <a-form-item label="认证类型">
-            <a-select
-              v-model:value="query.accreditationType"
-              placeholder="认证类型"
-              allow-clear
-              style="width: 180px"
-              :options="accreditationOptions"
-            />
-          </a-form-item>
-          <a-form-item label="关键字">
-            <a-input
-              v-model:value="query.keyword"
-              placeholder="编码/名称"
-              style="width: 160px"
-              @press-enter="loadList"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="loadList">查询</UiButton>
-              <span class="op-link" role="button" @click="resetQuery">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">刷新</UiButton>
-              <UiButton variant="primary" size="sm" @click="openCreate">新建模板</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterModel"
+        :fields="filterFields"
+        @search="handleSearch"
+        @reset="handleReset"
+      />
 
-      <UiDataTable class="student-detail-table__data-table"
+      <UiDataTable
+        class="student-detail-table__data-table"
         v-model:current="query.pageNum"
         v-model:page-size="query.pageSize"
         :columns="columns"
@@ -405,37 +432,26 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span class="op-link" role="button" @click="openDetail(record)">详情</span>
-              <span
+              <UiTextAction @click="openDetail(record)">详情</UiTextAction>
+              <UiTextAction
                 v-if="isSharedTemplate(record)"
-                class="op-link primary"
-                :class="{ 'is-disabled': copyingTemplateId === record.id }"
-                role="button"
-                @click="copyingTemplateId !== record.id && copyAsTenantTemplate(record)"
+                tone="primary"
+                :disabled="copyingTemplateId === record.id"
+                @click="copyAsTenantTemplate(record)"
               >
                 复制为租户模板
-              </span>
-              <span
-                v-if="!isSharedTemplate(record)"
-                class="op-link"
-                role="button"
-                @click="openEdit(record)"
-              >
+              </UiTextAction>
+              <UiTextAction v-if="!isSharedTemplate(record)" @click="openEdit(record)">
                 编辑
-              </span>
-              <span
-                v-if="!isSharedTemplate(record)"
-                class="op-link danger"
-                role="button"
-                @click="handleDelete(record)"
-              >
+              </UiTextAction>
+              <UiTextAction v-if="!isSharedTemplate(record)" tone="danger" @click="handleDelete(record)">
                 删除
-              </span>
+              </UiTextAction>
             </div>
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <a-modal
       v-model:open="editorVisible"
@@ -739,18 +755,6 @@ onMounted(async () => {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
-  }
-
-  &__filter {
-    width: 140px;
-
-    &--md {
-      width: 200px;
-    }
-
-    &--lg {
-      width: 220px;
-    }
   }
 }
 </style>

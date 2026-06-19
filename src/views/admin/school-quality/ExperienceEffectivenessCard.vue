@@ -1,5 +1,5 @@
 <template>
-  <a-card title="AI 经验案例有效性评估" :bordered="false" size="small">
+  <UiCard title="AI 经验案例有效性评估" compact>
     <div class="ai-form">
       <a-form layout="inline" :model="form" size="small">
         <a-form-item label="来源考试">
@@ -43,7 +43,7 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!record" description="暂无评估记录，请选择考试和经验案例后评估。" />
+      <UiEmpty v-else-if="!record" description="暂无评估记录，请选择考试和经验案例后评估。" />
       <div v-else class="ai-record">
         <a-row v-if="record.analysisStatus === 'SUCCESS'" :gutter="12" class="metric-row">
           <a-col :span="8">
@@ -67,7 +67,7 @@
           </a-col>
         </a-row>
 
-        <a-descriptions :column="3" size="small" bordered>
+        <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
             <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
@@ -114,7 +114,7 @@
         </a-typography-paragraph>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -131,10 +131,11 @@ import {
 import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { runContractGuard } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { rateTone, toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExperienceEffectivenessCard' })
@@ -304,10 +305,7 @@ async function handleGenerate(): Promise<void> {
 
 function rateStyle(rate?: number): Record<string, string> {
   if (rate == null) return { color: 'inherit' }
-  if (rate >= 0.8) return { color: '#52c41a' }
-  if (rate >= 0.6) return { color: '#1677ff' }
-  if (rate >= 0.4) return { color: '#faad14' }
-  return { color: '#f5222d' }
+  return { color: toneToColor(rateTone(rate)) }
 }
 
 async function handleSourceExamChange(): Promise<void> {

@@ -49,7 +49,7 @@
           <UiTag v-for="tag in set.tags ?? []" :key="tag" tone="purple" size="sm" class="tag-chip">
             {{ tag }}
           </UiTag>
-          <span class="op-link" role="button" @click="openSetTagModal">{{ set.tags?.length ? '编辑标签' : '添加标签' }}</span>
+          <UiTextAction @click="openSetTagModal">{{ set.tags?.length ? '编辑标签' : '添加标签' }}</UiTextAction>
         </a-descriptions-item>
       </a-descriptions>
     </UiCard>
@@ -60,56 +60,23 @@
         <span>纸质试卷档案项检索</span>
       </template>
 
-      <a-form layout="inline" :model="searchForm" class="paper-archive-detail-page__filter">
-        <a-form-item label="OCR 文本">
-          <a-input
-            v-model:value="searchForm.ocrTextKeyword"
-            placeholder="按识别文本关键词过滤"
-            allow-clear
-            style="width: 220px"
-            @press-enter="handleSearch"
-          />
-        </a-form-item>
-        <a-form-item label="学号">
-          <a-input
-            v-model:value="searchForm.studentNo"
-            placeholder="精确学号"
-            allow-clear
-            style="width: 160px"
-          />
-        </a-form-item>
-        <a-form-item label="姓名">
-          <a-input
-            v-model:value="searchForm.studentNameKeyword"
-            placeholder="姓名关键词"
-            allow-clear
-            style="width: 160px"
-          />
-        </a-form-item>
-        <a-form-item label="OCR 状态">
-          <a-select
-            v-model:value="searchForm.ocrStatus"
-            placeholder="全部状态"
-            allow-clear
-            style="width: 140px"
-            :options="ocrStatusOptions"
-          />
-        </a-form-item>
-        <a-form-item label="标签">
+      <UiFilterBar
+        v-model="searchForm"
+        :fields="archiveItemFilterFields"
+        show-labels
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleReset"
+      >
+        <template #field-tagAny>
           <a-select
             v-model:value="searchForm.tagAny"
             mode="tags"
             placeholder="任一匹配"
-            style="width: 220px"
+            style="width: 100%"
           />
-        </a-form-item>
-        <a-form-item>
-          <a-space>
-            <UiButton size="sm" @click="handleSearch">查询</UiButton>
-            <UiButton size="sm" variant="outline" @click="handleReset">重置</UiButton>
-          </a-space>
-        </a-form-item>
-      </a-form>
+        </template>
+      </UiFilterBar>
 
       <UiEmpty v-if="!loading && items.length === 0" description="尚未上传任何试卷" />
 
@@ -175,24 +142,21 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span
-                class="op-link"
-                role="button"
-                :class="{ 'is-disabled': !record.fileId }"
-                @click="record.fileId && handleDownloadItem(record)"
+              <UiTextAction
+                :disabled="!record.fileId"
+                @click="handleDownloadItem(record)"
               >
-                <DownloadOutlined />
+                <template #icon><DownloadOutlined /></template>
                 原图
-              </span>
-              <span class="op-link" role="button" @click="openItemTagModal(record)">标签</span>
-              <span
+              </UiTextAction>
+              <UiTextAction @click="openItemTagModal(record)">标签</UiTextAction>
+              <UiTextAction
                 v-if="canTriggerOcr(record)"
-                class="op-link primary"
-                role="button"
+                tone="primary"
                 @click="confirmTriggerOcr(record)"
               >
                 {{ record.ocrStatus === 'FAILED' ? '重试 OCR' : '识别' }}
-              </span>
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -339,7 +303,7 @@ import type {
   PaperArchiveSetStatusCode,
   PaperArchiveSetVO,
 } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import {
   ArrowLeftOutlined,
   DownloadOutlined,
@@ -364,7 +328,7 @@ import {
   updatePaperArchiveItemTags,
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
@@ -470,6 +434,46 @@ const tagModal = reactive<{
 })
 
 const ocrStatusOptions = PAPER_ARCHIVE_OCR_STATUS_OPTIONS
+
+const archiveItemFilterFields: FilterField[] = [
+  {
+    key: 'ocrTextKeyword',
+    type: 'input',
+    label: 'OCR 文本',
+    placeholder: '按识别文本关键词过滤',
+    allowClear: true,
+    width: 220,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'studentNo',
+    type: 'input',
+    label: '学号',
+    placeholder: '精确学号',
+    allowClear: true,
+    width: 160,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'studentNameKeyword',
+    type: 'input',
+    label: '姓名',
+    placeholder: '姓名关键词',
+    allowClear: true,
+    width: 160,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'ocrStatus',
+    type: 'select',
+    label: 'OCR 状态',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 140,
+    options: ocrStatusOptions,
+  },
+  { key: 'tagAny', label: '标签', width: 220 },
+]
 
 const itemColumns: ColumnsType<PaperArchiveItemVO> = [
   { title: '序号 / 文件', key: 'sequenceNo', dataIndex: 'sequenceNo', width: 200 },
@@ -802,10 +806,6 @@ onMounted(() => {
 .paper-archive-detail-page__overview,
 .paper-archive-detail-page__items {
   width: 100%;
-}
-
-.paper-archive-detail-page__filter {
-  margin-bottom: 12px;
 }
 
 .paper-archive-detail-page__pagination {

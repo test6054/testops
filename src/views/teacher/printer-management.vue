@@ -2,42 +2,23 @@
   <StageWorkbenchShell>
     <a-card :bordered="false" class="detail-table-card printer-management">
       <template #title>扫描设备</template>
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="handleSearch">
-          <a-form-item>
-            <a-tag color="blue">共 {{ devices.length }} 台设备</a-tag>
-          </a-form-item>
-          <a-form-item label="设备编号">
-            <a-input
-              v-model:value="searchForm.scannerDeviceIdKeyword"
-              placeholder="按扫描设备编号搜索"
-              allow-clear
-              style="width: 240px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="searchForm.status"
-              placeholder="设备状态"
-              allow-clear
-              style="width: 160px"
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <UiButton size="sm" variant="outline" @click="handleResetSearch">重置</UiButton>
-              <UiButton size="sm" variant="outline" @click="loadDevices">刷新</UiButton>
-              <UiButton size="sm" @click="handleCreate">
-                <template #icon><PlusOutlined /></template>
-                新增设备
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <template #extra>
+        <a-space>
+          <a-tag color="blue">共 {{ devices.length }} 台设备</a-tag>
+          <UiButton size="sm" @click="handleCreate">
+            <template #icon><PlusOutlined /></template>
+            新增设备
+          </UiButton>
+        </a-space>
+      </template>
+
+      <UiFilterBar
+        v-model="searchForm"
+        :fields="deviceFilterFields"
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleResetSearch"
+      />
 
       <!-- D-9 错误态：设备列表加载失败时提供重试 + 上报入口 -->
       <UiErrorRetryPanel
@@ -105,18 +86,18 @@
           </template>
           <template v-else-if="column.key === 'action'">
             <div class="operations-cell">
-              <a class="op-link" @click="handleViewDetail(devices[index])">详情</a>
-              <a class="op-link" @click="handleEdit(devices[index])">编辑</a>
-              <a class="op-link" @click="handleResetToken(devices[index])"> 重置设备接入密钥 </a>
-              <a class="op-link" @click="handleCreateActivationCode(devices[index])"> 激活码 </a>
-              <a
+              <UiTextAction @click="handleViewDetail(devices[index])">详情</UiTextAction>
+              <UiTextAction @click="handleEdit(devices[index])">编辑</UiTextAction>
+              <UiTextAction @click="handleResetToken(devices[index])">重置设备接入密钥</UiTextAction>
+              <UiTextAction @click="handleCreateActivationCode(devices[index])">激活码</UiTextAction>
+              <UiTextAction
                 v-if="devices[index].endpointMachineCode"
-                class="op-link danger"
+                tone="danger"
                 @click="handleUnbindAgent(devices[index])"
               >
                 解绑扫描组件
-              </a>
-              <a class="op-link danger" @click="handleDelete(devices[index])">删除</a>
+              </UiTextAction>
+              <UiTextAction tone="danger" @click="handleDelete(devices[index])">删除</UiTextAction>
             </div>
           </template>
         </template>
@@ -443,6 +424,7 @@ import type {
   ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
@@ -461,7 +443,7 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import { UiButton, UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable, UiErrorRetryPanel, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -474,7 +456,7 @@ defineOptions({ name: 'PrinterManagement' })
 const loading = ref(false)
 const devicesLoadError = ref<Error | null>(null)
 const devices = ref<ExamScannerDeviceVO[]>([])
-const searchForm = ref<ExamScannerDeviceQueryRequest>({})
+const searchForm = reactive<ExamScannerDeviceQueryRequest>({})
 const showActivationCodeModal = ref(false)
 const activationCodeInfo = ref<ExamScannerActivationCodeVO | null>(null)
 const activationCodeDeviceName = ref('')
@@ -484,6 +466,25 @@ const statusOptions = [
   { value: 'ACTIVE', label: SCANNER_DEVICE_STATUS_LABEL.ACTIVE },
   { value: 'INACTIVE', label: SCANNER_DEVICE_STATUS_LABEL.INACTIVE },
   { value: 'DISABLED', label: SCANNER_DEVICE_STATUS_LABEL.DISABLED },
+]
+
+const deviceFilterFields: FilterField[] = [
+  {
+    key: 'scannerDeviceIdKeyword',
+    type: 'input',
+    placeholder: '按扫描设备编号搜索',
+    allowClear: true,
+    width: 240,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'status',
+    type: 'select',
+    placeholder: '设备状态',
+    allowClear: true,
+    width: 160,
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
 ]
 
 const columns = [
@@ -530,7 +531,7 @@ async function loadDevices(): Promise<void> {
   agentUnbindError.value = null
   deviceDeleteError.value = null
   try {
-    const result = await listScannerDevices(searchForm.value)
+    const result = await listScannerDevices(searchForm)
     devices.value = readArrayResponse(result, '扫描设备列表加载失败')
   } catch (error) {
     devicesLoadError.value = toUserError(error, '扫描设备列表加载失败')
@@ -545,8 +546,7 @@ function handleSearch(): void {
 }
 
 function handleResetSearch(): void {
-  searchForm.value = {}
-  loadDevices()
+  void loadDevices()
 }
 
 // ─── 新建/编辑弹窗 ────────────────────────────────────
@@ -878,7 +878,7 @@ onMounted(() => {
     background: #f8fafc;
     color: #0f172a;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.08em;
     word-break: break-all;
   }

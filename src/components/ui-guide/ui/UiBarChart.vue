@@ -173,7 +173,7 @@ function handleSelect(key: string) {
 .ui-bar-chart__label,
 .ui-bar-chart__column-label {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: var(--dp-font-weight-title, 600);
   color: var(--dp-text-primary, #0f172a);
 }
 
@@ -206,7 +206,7 @@ function handleSelect(key: string) {
 .ui-bar-chart__value,
 .ui-bar-chart__column-value {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: var(--dp-font-weight-metric, 700);
   color: var(--dp-text-secondary, #475569);
 }
 

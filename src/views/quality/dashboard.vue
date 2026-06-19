@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 /**
  * 质量评价 - 年度工作台
@@ -19,7 +18,7 @@ import type {
 } from '@/apis/quality'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
@@ -32,17 +31,17 @@ import {
   AI_TASK_STATUS_LABEL,
   AI_TASK_TYPE_LABEL,
   aiTaskApi,
-  CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
   IMPROVEMENT_TASK_STATUS_COLOR,
   IMPROVEMENT_TASK_STATUS_LABEL,
   improvementTaskApi,
 } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
-import { showUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -74,11 +73,12 @@ const router = useRouter()
 const qualityStore = useQualityStore()
 
 const loading = reactive({
-  plan: false,
   achievement: false,
   improvement: false,
   ai: false,
 })
+
+const dashboardLoadError = ref<Error | null>(null)
 
 const recentAchievements = ref<AchievementResultVO[]>([])
 const recentImprovements = ref<ImprovementTaskVO[]>([])
@@ -110,7 +110,6 @@ const aiCounts = reactive({
 })
 
 const trainingPlanId = computed(() => qualityStore.currentTrainingPlanId)
-const trainingPlanLabel = computed(() => qualityStore.currentPlan?.planName || '未选择')
 
 const planConfirmationStatus = computed(() => {
   if (!qualityStore.currentPlan) return undefined
@@ -120,11 +119,6 @@ const planConfirmationStatus = computed(() => {
 const planConfirmationLabel = computed(() => {
   const status = planConfirmationStatus.value
   return status ? strictEnumLabel(CONFIRMATION_STATUS_LABEL, status, '培养方案确认状态') : '未提交'
-})
-
-const planConfirmationColor = computed(() => {
-  const status = planConfirmationStatus.value
-  return status ? strictEnumTone(CONFIRMATION_STATUS_COLOR, status, '培养方案确认状态') : 'default'
 })
 
 // 年度评价阶段推断：依据培养方案确认状态与各能力块计数
@@ -254,18 +248,6 @@ function aiTypeLabel(value: AiTaskType): string {
   return strictEnumLabel(AI_TASK_TYPE_LABEL, value, 'AI 任务类型')
 }
 
-async function loadTrainingPlan() {
-  loading.plan = true
-  try {
-    const list = await qualityStore.loadTrainingPlanOptions()
-    if (!qualityStore.currentTrainingPlanId && list.length) {
-      qualityStore.setTrainingPlan(list[0].id)
-    }
-  } finally {
-    loading.plan = false
-  }
-}
-
 async function loadAchievement() {
   if (!trainingPlanId.value) return
   loading.achievement = true
@@ -315,6 +297,9 @@ async function loadAchievement() {
     achievementCounts.confirmed = readPageTotal(confirmed, '达成度状态统计加载失败，请稍后重试')
     achievementCounts.archived = readPageTotal(archived, '达成度状态统计加载失败，请稍后重试')
     achievementCounts.notAchieved = readPageTotal(notAchieved, '达成度状态统计加载失败，请稍后重试')
+  } catch (error) {
+    dashboardLoadError.value = toUserError(error, '达成度数据加载失败')
+    showUserError(error, '达成度数据加载失败')
   } finally {
     loading.achievement = false
   }
@@ -362,6 +347,9 @@ async function loadImprovement() {
     improvementCounts.inProgress = readPageTotal(inProgress, '改进任务状态统计加载失败，请稍后重试')
     improvementCounts.submitted = readPageTotal(submitted, '改进任务状态统计加载失败，请稍后重试')
     improvementCounts.closed = readPageTotal(closed, '改进任务状态统计加载失败，请稍后重试')
+  } catch (error) {
+    dashboardLoadError.value = toUserError(error, '改进任务数据加载失败')
+    showUserError(error, '改进任务数据加载失败')
   } finally {
     loading.improvement = false
   }
@@ -390,12 +378,16 @@ async function loadAiTasks() {
     aiCounts.processing = readPageTotal(processing, 'AI 任务状态统计加载失败，请稍后重试')
     aiCounts.succeeded = readPageTotal(succeeded, 'AI 任务状态统计加载失败，请稍后重试')
     aiCounts.failed = readPageTotal(failed, 'AI 任务状态统计加载失败，请稍后重试')
+  } catch (error) {
+    dashboardLoadError.value = toUserError(error, 'AI 任务数据加载失败')
+    showUserError(error, 'AI 任务数据加载失败')
   } finally {
     loading.ai = false
   }
 }
 
 async function reload() {
+  dashboardLoadError.value = null
   await Promise.all([
     loadAchievement(),
     loadImprovement(),
@@ -408,24 +400,9 @@ async function reload() {
   ])
 }
 
-function handlePlanChange(value: SelectValue) {
-  if (value === null || value === undefined) {
-    qualityStore.setTrainingPlan('')
-    reload()
-    return
-  }
-  if (typeof value !== 'string') {
-    showUserError(null, '培养方案选择无效，请重新选择')
-    return
-  }
-  qualityStore.setTrainingPlan(value)
-  reload()
+function handleScopeChange() {
+  void reload()
 }
-
-onMounted(async () => {
-  await loadTrainingPlan()
-  await reload()
-})
 
 function goAchievement() {
   router.push({ name: 'QualityAchievement' })
@@ -453,25 +430,7 @@ function goScoreBatch() {
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="trainingPlanId || undefined"
-            placeholder="选择培养方案"
-            class="quality-dashboard__plan-select"
-            :loading="loading.plan"
-            :options="
-              qualityStore.trainingPlanOptions.map((item) => ({
-                value: item.id,
-                label: `${item.planCode} · ${item.planName}`,
-              }))
-            "
-            @change="handlePlanChange"
-          />
-          <UiTag v-if="trainingPlanLabel !== '未选择'" tone="blue" size="sm">
-            {{ trainingPlanLabel }}
-          </UiTag>
-          <a-tag :color="planConfirmationColor" class="quality-dashboard__plan-status">
-            {{ planConfirmationLabel }}
-          </a-tag>
+          <QualityScopeHeader show-plan-confirmation @change="handleScopeChange" />
         </template>
         <template #actions>
           <UiButton
@@ -489,6 +448,14 @@ function goScoreBatch() {
       </ContextBar>
     </template>
 
+    <UiErrorRetryPanel
+      v-if="dashboardLoadError"
+      :error="dashboardLoadError"
+      title="工作台数据加载失败"
+      compact
+      @retry="reload"
+    />
+
     <UiEmpty
       v-if="!trainingPlanId"
       description="请先选择培养方案，工作台将基于其生成阶段化指标"
@@ -504,8 +471,9 @@ function goScoreBatch() {
           <template #extra>
             <UiButton variant="ghost" size="sm" @click="goAchievement"> 查看全部 </UiButton>
           </template>
-          <UiDataTable class="student-detail-table__data-table"
-                       :columns="recentAchievementColumns"
+          <UiDataTable
+            class="student-detail-table__data-table"
+            :columns="recentAchievementColumns"
             :data-source="recentAchievements"
             :show-pagination="false"
             row-key="id"
@@ -554,7 +522,8 @@ function goScoreBatch() {
           <template #extra>
             <UiButton variant="ghost" size="sm" @click="goImprovement"> 查看全部 </UiButton>
           </template>
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             :columns="recentImprovementColumns"
             :data-source="recentImprovements"
             :show-pagination="false"
@@ -584,7 +553,8 @@ function goScoreBatch() {
           <template #extra>
             <UiButton variant="ghost" size="sm" @click="goAiTask"> 查看全部 </UiButton>
           </template>
-          <UiDataTable class="student-detail-table__data-table"
+          <UiDataTable
+            class="student-detail-table__data-table"
             :columns="recentAiTaskColumns"
             :data-source="recentAiTasks"
             :show-pagination="false"

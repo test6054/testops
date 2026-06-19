@@ -136,8 +136,8 @@ function onHint(item: { action?: string, tab?: string }) {
   gap: 12px;
   padding: 8px 12px;
   font-size: 13px;
-  background: #fafafa;
+  background: var(--dp-surface-subtle);
   border-radius: 4px;
-  border: 1px solid #eee;
+  border: 1px solid var(--dp-border);
 }
 </style>

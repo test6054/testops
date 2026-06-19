@@ -512,7 +512,7 @@ onMounted(loadExams)
 
       strong {
         font-size: 36px;
-        font-weight: 700;
+        font-weight: 600;
         color: var(--ant-color-success);
         line-height: 1.2;
       }
@@ -576,8 +576,8 @@ onMounted(loadExams)
     box-shadow 0.2s ease;
 
   &:hover {
-    border-color: rgba(22, 119, 255, 0.3);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    border-color: var(--ant-color-primary-border);
+    box-shadow: var(--dp-shadow-sm);
   }
 
   &--published {
@@ -647,7 +647,7 @@ onMounted(loadExams)
   &__value {
     margin: 0;
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--ant-color-text);
 
     &.is-empty {

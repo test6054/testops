@@ -24,6 +24,7 @@ import type {
   RespondentType,
   ScaleConversionRuleVO,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -48,7 +49,7 @@ import {
   TrainingObjectiveSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -193,6 +194,42 @@ const formQuery = reactive<IndirectEvaluationFormQueryRequest>({
   targetType: undefined,
   enabled: undefined,
 })
+
+interface IndirectFormFilterModel {
+  formType?: IndirectFormType
+  targetType?: AchievementTargetType
+}
+
+const formFilterForm = reactive<IndirectFormFilterModel>({
+  formType: undefined,
+  targetType: undefined,
+})
+
+const formFilterModel = computed<Record<string, unknown>>({
+  get: () => formFilterForm as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(formFilterForm, value)
+  },
+})
+
+const formFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'formType',
+    type: 'select',
+    placeholder: '问卷类型',
+    allowClear: true,
+    width: 140,
+    options: formTypeOptions,
+  },
+  {
+    key: 'targetType',
+    type: 'select',
+    placeholder: '目标类型',
+    allowClear: true,
+    width: 160,
+    options: targetTypeOptions,
+  },
+])
 const selectedForm = ref<IndirectEvaluationFormVO | null>(null)
 const formEditorQualityCourseId = ref('')
 const formEditorTrainingPlanId = ref('')
@@ -341,6 +378,24 @@ async function loadForms() {
   } finally {
     formsLoading.value = false
   }
+}
+
+function syncFormFilterToQuery() {
+  formQuery.formType = formFilterForm.formType
+  formQuery.targetType = formFilterForm.targetType
+}
+
+function handleFormSearch() {
+  formQuery.pageNum = 1
+  syncFormFilterToQuery()
+  void loadForms()
+}
+
+function handleFormReset() {
+  Object.assign(formFilterForm, { formType: undefined, targetType: undefined })
+  formQuery.pageNum = 1
+  syncFormFilterToQuery()
+  void loadForms()
 }
 
 const formEditorVisible = ref(false)
@@ -1026,38 +1081,18 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <SignalBand :metrics="signals" compact class="ie__signals" />
 
-    <a-card :bordered="false" class="detail-table-card ie__form-card">
+    <UiCard class="detail-table-card ie__form-card">
       <template #title>间接评价问卷台账</template>
+      <template #extra>
+        <UiButton size="sm" @click="openFormCreate">新建问卷</UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadForms">
-          <a-form-item label="问卷类型">
-            <a-select
-              v-model:value="formQuery.formType"
-              placeholder="问卷类型"
-              allow-clear
-              style="width: 140px"
-              :options="formTypeOptions"
-            />
-          </a-form-item>
-          <a-form-item label="目标类型">
-            <a-select
-              v-model:value="formQuery.targetType"
-              placeholder="目标类型"
-              allow-clear
-              style="width: 160px"
-              :options="targetTypeOptions"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" :loading="formsLoading" @click="loadForms">查询</UiButton>
-              <UiButton variant="outline" size="sm" :loading="formsLoading" @click="loadForms">刷新</UiButton>
-              <UiButton size="sm" @click="openFormCreate">新建问卷</UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="formFilterModel"
+        :fields="formFilterFields"
+        @search="handleFormSearch"
+        @reset="handleFormReset"
+      />
 
       <UiDataTable
         class="student-detail-table__data-table"
@@ -1090,28 +1125,21 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span class="op-link" role="button" @click.stop="openFormEdit(record)">编辑</span>
-              <span class="op-link danger" role="button" @click.stop="handleFormDelete(record)">
-                删除
-              </span>
+              <UiTextAction @click.stop="openFormEdit(record)">编辑</UiTextAction>
+              <UiTextAction tone="danger" @click.stop="handleFormDelete(record)">删除</UiTextAction>
             </div>
           </template>
         </template>
       </UiDataTable>
-    </a-card>
+    </UiCard>
 
     <a-row v-if="selectedForm" :gutter="12" class="ie__split">
       <a-col :span="12">
-        <a-card :bordered="false" class="detail-table-card ie__item-card">
+        <UiCard class="detail-table-card ie__item-card">
           <template #title>题项</template>
-
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar">
-              <a-form-item class="filter-form__actions">
-                <UiButton variant="primary" size="sm" @click="openItemCreate">新建题项</UiButton>
-              </a-form-item>
-            </a-form>
-          </div>
+          <template #extra>
+            <UiButton variant="primary" size="sm" @click="openItemCreate">新建题项</UiButton>
+          </template>
 
           <UiDataTable
             class="student-detail-table__data-table"
@@ -1150,38 +1178,31 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" @click.stop="openItemEdit(record)">编辑</span>
-                  <span class="op-link danger" role="button" @click.stop="deleteItem(record)">
-                    删除
-                  </span>
+                  <UiTextAction @click.stop="openItemEdit(record)">编辑</UiTextAction>
+                  <UiTextAction tone="danger" @click.stop="deleteItem(record)">删除</UiTextAction>
                 </div>
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </UiCard>
       </a-col>
 
       <a-col :span="12">
         <UiEmpty v-if="!selectedItem" description="请在左侧选择题项查看答卷" class="ie__empty" />
 
-        <a-card v-else :bordered="false" class="detail-table-card ie__response-card">
+        <UiCard v-else class="detail-table-card ie__response-card">
           <template #title>
             「{{ selectedItem.itemCode }} · {{ selectedItem.itemText.substring(0, 24) }}…」答卷
           </template>
-
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar">
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton variant="outline" size="sm" @click="openImportExcel">Excel 导入</UiButton>
-                  <UiButton variant="outline" size="sm" @click="openImportDocument">
-                    PDF / Word / 图片
-                  </UiButton>
-                  <UiButton variant="primary" size="sm" @click="openResponseCreate">新增答卷</UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <template #extra>
+            <a-space>
+              <UiButton variant="outline" size="sm" @click="openImportExcel">Excel 导入</UiButton>
+              <UiButton variant="outline" size="sm" @click="openImportDocument">
+                PDF / Word / 图片
+              </UiButton>
+              <UiButton variant="primary" size="sm" @click="openResponseCreate">新增答卷</UiButton>
+            </a-space>
+          </template>
 
           <UiDataTable
             class="student-detail-table__data-table"
@@ -1225,13 +1246,13 @@ onMounted(async () => {
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span class="op-link" role="button" @click="openResponseEdit(record)">编辑</span>
-                  <span class="op-link danger" role="button" @click="deleteResponse(record)">删除</span>
+                  <UiTextAction @click="openResponseEdit(record)">编辑</UiTextAction>
+                  <UiTextAction tone="danger" @click="deleteResponse(record)">删除</UiTextAction>
                 </div>
               </template>
             </template>
           </UiDataTable>
-        </a-card>
+        </UiCard>
       </a-col>
     </a-row>
 
@@ -1585,7 +1606,7 @@ onMounted(async () => {
             >
               <a-input v-model:value="option.optionValue" placeholder="选项值" />
               <a-input v-model:value="option.optionLabel" placeholder="选项文案" />
-              <span class="op-link danger" role="button" @click="removeChoiceOption(optionIndex)">删除</span>
+              <UiTextAction tone="danger" @click="removeChoiceOption(optionIndex)">删除</UiTextAction>
             </div>
             <UiButton variant="outline" size="sm" @click="addChoiceOption">新增选项</UiButton>
           </div>
@@ -1769,44 +1790,12 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .ie {
-  &__filter {
-    width: 140px;
-
-    &--md {
-      width: 180px;
-    }
-  }
-
   &__signals {
     margin-bottom: 16px;
     padding: 16px 20px;
     background: var(--dp-surface-elevated, #f8fafc);
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
-  }
-
-  &__panel {
-    background: var(--dp-surface, #fff);
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 12px;
-  }
-
-  &__panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-  }
-
-  &__panel-title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
   }
 
   &__panel-actions {

@@ -1,20 +1,21 @@
 <template>
-  <a-card title="成绩分数分布" :bordered="false" size="small">
+  <UiCard class="stats-card" compact>
+    <template #title>成绩分数分布</template>
     <template #extra>
       <a-space>
         <a-select
           :value="props.classId"
           placeholder="全场考生"
           allow-clear
-          style="width: 200px"
+          class="stats-card__select stats-card__select--class"
           :options="props.classOptions"
           :loading="props.rosterLoading"
           @change="handleClassChange"
         />
-        <a-button :loading="loading" @click="reload">
+        <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>
           刷新
-        </a-button>
+        </UiButton>
       </a-space>
     </template>
 
@@ -25,7 +26,7 @@
       compact
       @retry="reload"
     />
-    <a-empty
+    <UiEmpty
       v-else-if="!distribution"
       description="暂无已确认完整的考试成绩，完成阅卷确认后可查看分数分布"
     />
@@ -39,7 +40,7 @@
             title="及格人数"
             :value="distribution.passCount"
             suffix="人"
-            :value-style="{ color: '#16a34a' }"
+            :value-style="{ color: toneToColor('green') }"
           />
         </a-col>
         <a-col :span="6">
@@ -55,7 +56,7 @@
         </a-col>
       </a-row>
 
-      <div v-if="histogramOption" class="score-dist__chart-wrap">
+      <div v-if="histogramBarItems.length" class="score-dist__chart-wrap">
         <div class="score-dist__chart-meta">
           <strong>五级分数分布</strong>
           <span class="score-dist__chart-hint">
@@ -63,10 +64,14 @@
             {{ distribution.passScore }}）
           </span>
         </div>
-        <VChart class="score-dist__chart" :option="histogramOption" autoresize />
+        <UiBarChart
+          :items="histogramBarItems"
+          orientation="vertical"
+          class="score-dist__chart"
+        />
       </div>
     </div>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -75,11 +80,11 @@ import type { ExamScoreDistributionVO } from '@/apis/mark/exam'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import { getExamScoreDistribution } from '@/apis/mark/exam'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiBarChart, UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { buildScoreHistogramOption } from '@/utils/mark-statistics-chart'
+import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
+import { toneToColor } from '@/utils/score-tone'
 
 defineOptions({ name: 'ScoreDistributionCard' })
 
@@ -97,9 +102,9 @@ const distribution = ref<ExamScoreDistributionVO | null>(null)
 const loading = ref(false)
 const loadError = ref<Error | null>(null)
 
-const histogramOption = computed(() => {
-  if (!distribution.value) return null
-  return buildScoreHistogramOption({
+const histogramBarItems = computed(() => {
+  if (!distribution.value) return []
+  return scoreHistogramToBarItems({
     ranges: distribution.value.ranges,
     counts: distribution.value.counts,
   })
@@ -141,35 +146,7 @@ watch(
 </script>
 
 <style lang="scss" scoped>
-.score-dist {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.score-dist__metrics {
-  padding: 12px 8px;
-  background: var(--gi-color-bg-2, #f5f5f5);
-  border-radius: 4px;
-}
-.score-dist__chart-wrap {
-  padding: 12px 16px;
-  border: 1px solid var(--dp-border, #e2e8f0);
-  border-radius: var(--dp-radius-md, 6px);
-  background: var(--dp-surface, #fff);
-}
-.score-dist__chart-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.score-dist__chart-hint {
-  font-size: 12px;
-  color: var(--dp-text-secondary, #475569);
-}
 .score-dist__chart {
   width: 100%;
-  height: 300px;
 }
 </style>

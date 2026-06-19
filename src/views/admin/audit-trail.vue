@@ -28,45 +28,33 @@
       class="audit-trail__empty"
     />
 
-    <a-card v-else :bordered="false" class="detail-table-card audit-trail-page__main-card">
+    <UiCard v-else class="detail-table-card audit-trail-page__main-card">
       <template #title>
         <FileSearchOutlined />
         <span>审计内容</span>
+      </template>
+      <template #extra>
+        <UiButton
+          variant="outline"
+          size="sm"
+          :disabled="!selectedExamId"
+          :loading="loading"
+          @click="reloadAll"
+        >
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
       </template>
 
       <a-tabs v-model:active-key="activeTab" class="audit-tabs" @change="onTabChange">
         <!-- 审计日志 -->
         <a-tab-pane key="logs" tab="审计日志">
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="searchLogs">
-              <a-form-item label="操作类型">
-                <a-select
-                  v-model:value="logFilter.operationType"
-                  placeholder="全部类型"
-                  allow-clear
-                  style="width: 200px"
-                  :options="operationTypeOptions"
-                  option-filter-prop="label"
-                  show-search
-                />
-              </a-form-item>
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton size="sm" :loading="logLoading" @click="searchLogs">查询</UiButton>
-                  <UiButton
-                    variant="outline"
-                    size="sm"
-                    :disabled="!selectedExamId"
-                    :loading="loading"
-                    @click="reloadAll"
-                  >
-                    <template #icon><ReloadOutlined /></template>
-                    刷新
-                  </UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <UiFilterBar
+            v-model="logFilter"
+            :fields="logFilterFields"
+            search-text="查询"
+            @search="searchLogs"
+          />
 
           <!-- D-9 错误态：审计日志加载失败时提供重试 + 上报入口 -->
           <UiErrorRetryPanel
@@ -124,18 +112,21 @@
 
         <!-- 重大事件 -->
         <a-tab-pane key="incidents" tab="重大事件">
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadIncidents">
-              <a-form-item>
-                <a-checkbox v-model:checked="incidentFilter.unresolvedOnly">仅未解决</a-checkbox>
-              </a-form-item>
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton size="sm" :loading="incidentLoading" @click="loadIncidents">查询</UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <UiFilterBar
+            v-model="incidentFilter"
+            :fields="incidentFilterFields"
+            search-text="查询"
+            @search="loadIncidents"
+          >
+            <template #field-unresolvedOnly="{ update }">
+              <a-checkbox
+                :checked="Boolean(incidentFilter.unresolvedOnly)"
+                @update:checked="(checked: boolean) => update(checked)"
+              >
+                仅未解决
+              </a-checkbox>
+            </template>
+          </UiFilterBar>
 
           <!-- D-9 错误态：重大事件加载失败时提供重试 + 上报入口 -->
           <UiErrorRetryPanel
@@ -194,14 +185,13 @@
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
-                  <span
+                  <UiTextAction
                     v-if="!incidents[index].resolved"
-                    class="op-link primary"
-                    role="button"
+                    tone="primary"
                     @click="openResolveModal(incidents[index])"
                   >
                     解决事件
-                  </span>
+                  </UiTextAction>
                   <span v-else class="muted">-</span>
                 </div>
               </template>
@@ -211,26 +201,12 @@
 
         <!-- 异常留痕样本 -->
         <a-tab-pane key="diagnostic-samples" tab="异常留痕样本">
-          <div class="filter-card">
-            <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="searchDiagnosticSamples">
-              <a-form-item label="样本类型">
-                <a-select
-                  v-model:value="sampleFilter.sampleType"
-                  placeholder="全部类型"
-                  allow-clear
-                  style="width: 200px"
-                  :options="diagnosticSampleTypeOptions"
-                  option-filter-prop="label"
-                  show-search
-                />
-              </a-form-item>
-              <a-form-item class="filter-form__actions">
-                <a-space class="filter-form__action-group">
-                  <UiButton size="sm" :loading="sampleLoading" @click="searchDiagnosticSamples">查询</UiButton>
-                </a-space>
-              </a-form-item>
-            </a-form>
-          </div>
+          <UiFilterBar
+            v-model="sampleFilter"
+            :fields="sampleFilterFields"
+            search-text="查询"
+            @search="searchDiagnosticSamples"
+          />
 
           <!-- D-9 错误态：异常留痕样本加载失败时提供重试 + 上报入口 -->
           <UiErrorRetryPanel
@@ -286,7 +262,7 @@
           </UiDataTable>
         </a-tab-pane>
       </a-tabs>
-    </a-card>
+    </UiCard>
 
     <!-- 解决事件弹窗 -->
     <a-modal
@@ -317,8 +293,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
+import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
   AuditTargetTypeCode,
   DiagnosticSampleTypeCode,
@@ -327,11 +303,12 @@ import type {
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
 import type { IncidentLevelCode, IncidentRecordVO } from '@/apis/mark/admin-dashboard'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   AUDIT_TARGET_TYPE_LABEL,
   DIAGNOSTIC_SAMPLE_TYPE_LABEL,
@@ -346,10 +323,13 @@ import {
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
 import {
   UiButton,
+  UiCard,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
+  UiFilterBar,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
@@ -359,6 +339,8 @@ import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminAuditTrail' })
+
+const route = useRoute()
 
 const {
   examOptions,
@@ -385,6 +367,22 @@ const logPagination = reactive<TablePaginationConfig>({
 const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(
   () => OPERATION_TYPE_OPTIONS,
 )
+
+const logFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'operationType',
+    type: 'select',
+    placeholder: '全部类型',
+    allowClear: true,
+    allowSearch: true,
+    width: 200,
+    options: operationTypeOptions.value.map((item) => ({
+      label: item.label,
+      value: item.value,
+    })),
+  },
+])
+
 const logColumns = [
   { title: '操作类型', key: 'operationType', dataIndex: 'operationType', width: 160 },
   { title: '目标类型', key: 'targetType', dataIndex: 'targetType', width: 130 },
@@ -431,6 +429,19 @@ const incidentLoading = ref(false)
 const incidentsLoadError = ref<Error | null>(null)
 const incidents = ref<IncidentRecordVO[]>([])
 const incidentFilter = reactive({ unresolvedOnly: false })
+
+const incidentFilterFields: FilterField[] = [
+  {
+    key: 'unresolvedOnly',
+    type: 'custom',
+    width: 140,
+    minWidth: 140,
+    maxWidth: 180,
+    defaultValue: false,
+    triggerSearchOnChange: false,
+  },
+]
+
 const incidentColumns = [
   { title: '级别', key: 'incidentLevel', dataIndex: 'incidentLevel', width: 90 },
   { title: '类型', key: 'incidentType', dataIndex: 'incidentType', width: 140 },
@@ -509,6 +520,22 @@ const samplePagination = reactive<TablePaginationConfig>({
 const diagnosticSampleTypeOptions = computed<
   Array<{ value: DiagnosticSampleTypeCode, label: string }>
 >(() => DIAGNOSTIC_SAMPLE_TYPE_OPTIONS)
+
+const sampleFilterFields = computed<FilterField[]>(() => [
+  {
+    key: 'sampleType',
+    type: 'select',
+    placeholder: '全部类型',
+    allowClear: true,
+    allowSearch: true,
+    width: 200,
+    options: diagnosticSampleTypeOptions.value.map((item) => ({
+      label: item.label,
+      value: item.value,
+    })),
+  },
+])
+
 const sampleColumns = [
   { title: '样本类型', key: 'sampleType', dataIndex: 'sampleType', width: 160 },
   { title: '来源类型', key: 'sourceType', dataIndex: 'sourceType', width: 140 },
@@ -602,6 +629,13 @@ function incidentLevelLabel(level: IncidentLevelCode): string {
 
 onMounted(async () => {
   await initExams()
+  const tabQuery = route.query.tab
+  if (tabQuery === 'incidents' || tabQuery === 'logs' || tabQuery === 'diagnostic-samples') {
+    activeTab.value = tabQuery
+  }
+  if (route.query.unresolvedOnly === '1') {
+    incidentFilter.unresolvedOnly = true
+  }
   if (selectedExamId.value) {
     reloadAll()
   }

@@ -1,11 +1,12 @@
 <template>
-  <a-card title="AI 学生个体学情分析" :bordered="false" size="small">
+  <UiCard class="stats-card" compact>
+    <template #title>AI 学生个体学情分析</template>
     <template #extra>
       <a-space>
         <a-select
           v-model:value="selectedStudentUserId"
           placeholder="选择学生"
-          style="width: 280px"
+          class="stats-card__select stats-card__select--student"
           show-search
           option-filter-prop="label"
           allow-clear
@@ -14,17 +15,18 @@
           :disabled="!props.examId"
           :not-found-content="props.rosterLoading ? '加载中…' : '该考试未关联考生'"
         />
-        <a-button :loading="loading" :disabled="!selectedStudentUserId" @click="reload">
+        <UiButton variant="outline" size="sm" :loading="loading" :disabled="!selectedStudentUserId" @click="reload">
           <template #icon><ReloadOutlined /></template>查看最新
-        </a-button>
-        <a-button
-          type="primary"
+        </UiButton>
+        <UiButton
+          variant="outline"
+          size="sm"
           :loading="generating"
           :disabled="!selectedStudentUserId"
           @click="handleGenerate"
         >
           重新生成
-        </a-button>
+        </UiButton>
       </a-space>
     </template>
 
@@ -42,8 +44,8 @@
         compact
         @retry="reload"
       />
-      <a-empty v-else-if="!hasQueried" description="请选择学生后查看或生成学情画像。" />
-      <a-empty v-else-if="!record" description="该学生暂无 AI 学情分析。" />
+      <UiEmpty v-else-if="!hasQueried" description="请选择学生后查看或生成学情画像。" />
+      <UiEmpty v-else-if="!record" description="该学生暂无 AI 学情分析。" />
       <div v-else class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
@@ -159,7 +161,7 @@
         </div>
       </div>
     </a-spin>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -176,7 +178,7 @@ import {
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -413,9 +415,6 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.diagnosis-type {
-  font-weight: 600;
 }
 .diagnosis-rate {
   margin-left: auto;

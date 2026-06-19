@@ -74,6 +74,7 @@ export function useStageMachine(workflow: KioskWorkflow) {
     const ctx = workflow.kioskContext.value
 
     if (!workflow.examId.value || !ctx) return 'setup'
+    if (ctx.mustResumeScanning || ctx.hasActiveScanSession || ctx.activeBatch) return 'scanning'
     if (!job) return 'setup'
 
     if (SCANNING_JOB_STATUS.has(job.status)) return 'scanning'
@@ -100,6 +101,21 @@ export function useStageMachine(workflow: KioskWorkflow) {
 
   function gotoStage(stageId: KioskStageId) {
     if (stageId === currentStage.value) return
+    const ctx = workflow.kioskContext.value
+    const job = workflow.currentJob.value
+    const activeSession = Boolean(
+      ctx?.mustResumeScanning
+      || ctx?.hasActiveScanSession
+      || ctx?.activeBatch
+      || (job && SCANNING_JOB_STATUS.has(job.status)),
+    )
+    if (activeSession && stageId !== 'scanning') {
+      const stage = ALL_KIOSK_STAGES.find((s) => s.id === 'scanning')
+      if (stage && currentStage.value !== 'scanning') {
+        router.replace({ name: stage.routeName, query: route.query })
+      }
+      return
+    }
     const stage = ALL_KIOSK_STAGES.find((s) => s.id === stageId)
     if (!stage) return
     router.push({ name: stage.routeName, query: route.query })
@@ -107,7 +123,7 @@ export function useStageMachine(workflow: KioskWorkflow) {
 
   function syncToAutoStage() {
     if (autoStage.value === currentStage.value) return
-    if (currentStage.value === 'history') return
+    if (currentStage.value === 'history' && autoStage.value !== 'scanning') return
     const stage = KIOSK_STAGES.find((s) => s.id === autoStage.value)
     if (!stage) return
     router.replace({ name: stage.routeName, query: route.query })
@@ -120,7 +136,7 @@ export function useStageMachine(workflow: KioskWorkflow) {
   watch(autoStage, (next, prev) => {
     if (next === prev) return
     if (next === currentStage.value) return
-    if (currentStage.value === 'history') return
+    if (currentStage.value === 'history' && next !== 'scanning') return
 
     const enterScanning = prev === 'setup' && next === 'scanning'
     const exitScanning = prev === 'scanning' && (next === 'review' || next === 'setup')

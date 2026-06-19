@@ -141,7 +141,7 @@
             </a-tree>
 
             <!-- 空状态 -->
-            <a-empty v-else description="暂无班级和学生数据" />
+            <UiEmpty v-else description="暂无班级和学生数据" />
           </a-spin>
         </div>
 
@@ -176,6 +176,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import { listExamStudentTree } from '@/apis/mark/exam'
+import { UiEmpty } from '@/components/ui-guide/ui'
 import { showUserError } from '@/utils/error-handler'
 
 // Props

@@ -22,6 +22,7 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -40,7 +41,7 @@ import {
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
 } from '@/apis/quality'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
   SignalBand,
@@ -134,6 +135,64 @@ const statusOptions = SCORE_BATCH_STATUSES.map((value) => ({
   value,
   label: strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态'),
 }))
+
+const filterModel = computed<Record<string, unknown>>({
+  get: () => query as Record<string, unknown>,
+  set: (value) => {
+    Object.assign(query, value)
+  },
+})
+
+const filterFields = computed<FilterField[]>(() => [
+  {
+    key: 'qualityCourseId',
+    type: 'select',
+    label: '课程',
+    placeholder: '按课程筛选',
+    allowClear: true,
+    width: 220,
+    options: courseSelectOptions.value,
+  },
+  {
+    key: 'assessmentItemId',
+    type: 'custom',
+    label: '考核环节',
+    width: 220,
+  },
+  {
+    key: 'status',
+    type: 'select',
+    label: '状态',
+    placeholder: '状态',
+    allowClear: true,
+    width: 160,
+    options: statusOptions,
+  },
+  {
+    key: 'sourceMode',
+    type: 'select',
+    label: '接入模式',
+    placeholder: '接入模式',
+    allowClear: true,
+    width: 220,
+    options: SOURCE_MODE_OPTIONS,
+  },
+  {
+    key: 'keyword',
+    type: 'input',
+    label: '关键字',
+    placeholder: '关键字',
+    width: 160,
+  },
+])
+
+function handleSearch() {
+  loadBatches()
+}
+
+function handleReset() {
+  resetQuery()
+}
 
 function statusLabel(value: ScoreBatchStatus): string {
   return strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态')
@@ -785,70 +844,28 @@ onMounted(async () => {
         </a-form>
       </div>
 
-      <a-card :bordered="false" class="detail-table-card score-batch__table-card">
+      <UiCard class="detail-table-card score-batch__table-card">
         <template #title>成绩批次</template>
 
-        <div class="filter-card">
-          <a-form
-            layout="inline"
-            class="filter-form filter-form--toolbar score-batch__query-form"
-            @submit.prevent="loadBatches"
-          >
-            <a-form-item label="课程">
-              <a-select
-                v-model:value="query.qualityCourseId"
-                placeholder="按课程筛选"
-                class="score-batch__filter score-batch__filter--lg"
-                allow-clear
-                :options="courseSelectOptions"
-              />
-            </a-form-item>
-            <a-form-item label="考核环节">
-              <a-select
-                v-model:value="query.assessmentItemId"
-                placeholder="考核环节"
-                class="score-batch__filter score-batch__filter--lg"
-                :options="queryAssessmentItemOptions"
-                :loading="queryAssessmentLoading"
-                :disabled="!query.qualityCourseId"
-                allow-clear
-              />
-            </a-form-item>
-            <a-form-item label="状态">
-              <a-select
-                v-model:value="query.status"
-                placeholder="状态"
-                class="score-batch__filter"
-                allow-clear
-                :options="statusOptions"
-              />
-            </a-form-item>
-            <a-form-item label="接入模式">
-              <a-select
-                v-model:value="query.sourceMode"
-                placeholder="接入模式"
-                class="score-batch__filter score-batch__filter--lg"
-                allow-clear
-                :options="SOURCE_MODE_OPTIONS"
-              />
-            </a-form-item>
-            <a-form-item label="关键字">
-              <a-input
-                v-model:value="query.keyword"
-                placeholder="关键字"
-                class="score-batch__filter"
-                @press-enter="loadBatches"
-              />
-            </a-form-item>
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <UiButton size="sm" @click="loadBatches">查询</UiButton>
-                <span class="op-link" role="button" @click="resetQuery">重置</span>
-                <UiButton variant="outline" size="sm" :loading="loading" @click="loadBatches">刷新</UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <UiFilterBar
+          v-model="filterModel"
+          :fields="filterFields"
+          show-labels
+          @search="handleSearch"
+          @reset="handleReset"
+        >
+          <template #field-assessmentItemId>
+            <a-select
+              v-model:value="query.assessmentItemId"
+              placeholder="考核环节"
+              style="width: 100%"
+              :options="queryAssessmentItemOptions"
+              :loading="queryAssessmentLoading"
+              :disabled="!query.qualityCourseId"
+              allow-clear
+            />
+          </template>
+        </UiFilterBar>
 
         <UiDataTable
           v-model:current="query.pageNum"
@@ -915,33 +932,27 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span class="op-link" role="button" v-if="canPreview(record.status)" @click="openPreview(record)">预览</span>
-                <span class="op-link" role="button" v-if="canValidate(record.status)" @click="handleValidate(record)">校验</span>
-                <span
-                  v-if="canConfirm(record.status)"
-                  class="op-link primary"
-                  role="button"
-                  @click="handleConfirm(record)"
-                >
+                <UiTextAction v-if="canPreview(record.status)" @click="openPreview(record)">预览</UiTextAction>
+                <UiTextAction v-if="canValidate(record.status)" @click="handleValidate(record)">校验</UiTextAction>
+                <UiTextAction v-if="canConfirm(record.status)" tone="primary" @click="handleConfirm(record)">
                   确认
-                </span>
-                <span
-                  v-if="canReParse(record.status)"
-                  class="op-link primary"
-                  role="button"
-                  @click="handleReParse(record)"
-                >
+                </UiTextAction>
+                <UiTextAction v-if="canReParse(record.status)" tone="primary" @click="handleReParse(record)">
                   重新解析
-                </span>
-                <span class="op-link" role="button" v-if="canEdit(record.status)" @click="openEdit(record)">编辑</span>
-                <span class="op-link danger" role="button" v-if="canCancel(record.status)" @click="handleCancel(record)">取消</span>
-                <span class="op-link danger" role="button" v-if="canDelete(record.status)" @click="handleDelete(record)">删除</span>
-                <span class="op-link" role="button" @click="openAuditDrawer(record)">审计</span>
+                </UiTextAction>
+                <UiTextAction v-if="canEdit(record.status)" @click="openEdit(record)">编辑</UiTextAction>
+                <UiTextAction v-if="canCancel(record.status)" tone="danger" @click="handleCancel(record)">
+                  取消
+                </UiTextAction>
+                <UiTextAction v-if="canDelete(record.status)" tone="danger" @click="handleDelete(record)">
+                  删除
+                </UiTextAction>
+                <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
               </div>
             </template>
           </template>
         </UiDataTable>
-      </a-card>
+      </UiCard>
     </template>
 
     <UiDrawer v-model:open="previewVisible" title="批次明细预览" :width="960" :hide-footer="true">

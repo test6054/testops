@@ -88,6 +88,8 @@ declare module 'vue-router' {
     menuGroupIcon?: string
     /** 菜单分组排序 */
     menuGroupOrder?: number
+    /** 批阅页宽布局：Main 容器放宽至全宽（上限 1680px） */
+    layoutWide?: boolean
   }
 }
 

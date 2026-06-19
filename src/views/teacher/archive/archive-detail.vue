@@ -155,8 +155,9 @@
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="items" :tab="`清单项 (${items.length})`">
           <UiEmpty v-if="items.length === 0" description="暂无清单项" />
-          <UiDataTable class="student-detail-table__data-table"
-                       v-else
+          <UiDataTable
+            class="student-detail-table__data-table"
+            v-else
             :columns="itemColumns"
             :data-source="items"
             :page-size="20"

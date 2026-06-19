@@ -277,7 +277,7 @@ async function submitDelete(sessionId: string): Promise<void> {
   margin: 0 0 12px;
   font-size: 14px;
   font-weight: 500;
-  color: #262626;
+  color: var(--ant-color-text);
 }
 
 .session-history {

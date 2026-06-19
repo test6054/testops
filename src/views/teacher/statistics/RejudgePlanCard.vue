@@ -1,21 +1,17 @@
 <template>
-  <a-card title="重判计划" :bordered="false" size="small">
+  <UiCard class="stats-card" compact>
+    <template #title>重判计划</template>
     <template #extra>
-      <a-space>
-        <a-tag color="blue">全考试治理</a-tag>
-        <a-select
-          v-model:value="statusFilter"
-          style="width: 160px"
-          placeholder="全部状态"
-          allow-clear
-          :options="statusOptions"
-          @change="reload"
-        />
-        <a-button :loading="loading" @click="reload">
-          <template #icon><ReloadOutlined /></template>刷新
-        </a-button>
-      </a-space>
+      <UiTag tone="blue" size="sm">全考试治理</UiTag>
     </template>
+
+    <UiFilterBar
+      v-model="filterForm"
+      :fields="filterFields"
+      search-text="查询"
+      @search="reload"
+      @reset="handleFilterReset"
+    />
 
     <!-- D-9 错误态：重判计划加载失败时提供重试 + 上报入口 -->
     <UiErrorRetryPanel
@@ -74,8 +70,8 @@
                 通过
               </a-button>
             </a-popconfirm>
-            <span class="op-link danger" role="button" @click="openRejectModal(rows[index].id)">驳回</span>
-            <span class="op-link" role="button" @click="openExecuteModal(rows[index].id)">执行</span>
+            <UiTextAction tone="danger" @click="openRejectModal(rows[index].id)">驳回</UiTextAction>
+            <UiTextAction @click="openExecuteModal(rows[index].id)">执行</UiTextAction>
           </div>
         </template>
       </template>
@@ -118,7 +114,7 @@
         placeholder="请输入执行原因（不少于 5 字，将写入重判计划审计记录）"
       />
     </a-modal>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -128,10 +124,9 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import { ref, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -141,7 +136,7 @@ import {
   REJUDGE_PLAN_STATUS_OPTIONS,
   REJUDGE_TRIGGER_TYPE_LABEL,
 } from '@/apis/mark/question-analysis'
-import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiCard, UiDataTable, UiErrorRetryPanel, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -154,7 +149,23 @@ const rows = ref<ExamRejudgePlanVO[]>([])
 const loading = ref(false)
 // D-9 错误态：重判计划加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
-const statusFilter = ref<RejudgePlanStatusCode | undefined>(undefined)
+
+const filterForm = reactive<{ status?: RejudgePlanStatusCode }>({})
+
+const filterFields: FilterField[] = [
+  {
+    key: 'status',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: REJUDGE_PLAN_STATUS_OPTIONS.map((item) => ({
+      value: item.value,
+      label: item.label,
+    })),
+  },
+]
+
 const operatingId = ref<string>('')
 const operatingAction = ref<'approve' | 'reject' | 'execute' | ''>('')
 const rejectModalOpen = ref(false)
@@ -164,8 +175,6 @@ const rejectReason = ref('')
 const executeModalOpen = ref(false)
 const executePlanId = ref<string>('')
 const executeReason = ref('')
-
-const statusOptions = REJUDGE_PLAN_STATUS_OPTIONS
 
 const columns: ColumnType<ExamRejudgePlanVO>[] = [
   { title: '触发类型', key: 'triggerType', width: 110 },
@@ -191,7 +200,7 @@ async function reload(): Promise<void> {
   try {
     rows.value = await listRejudgePlans({
       examId: props.examId,
-      planStatus: statusFilter.value,
+      planStatus: filterForm.status,
     })
   } catch (e) {
     rows.value = []
@@ -200,6 +209,11 @@ async function reload(): Promise<void> {
   } finally {
     loading.value = false
   }
+}
+
+function handleFilterReset(): void {
+  filterForm.status = undefined
+  void reload()
 }
 
 async function handleApprove(planId: string): Promise<void> {

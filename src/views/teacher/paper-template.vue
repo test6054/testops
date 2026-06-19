@@ -156,8 +156,17 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span class="op-link" role="button" @click="openQuestionEdit(index)">编辑</span>
-                <span class="op-link danger" role="button" @click="removeQuestion(index)">删除</span>
+                <UiTextAction @click="openQuestionEdit(index)">编辑</UiTextAction>
+                <UiConfirmPopover
+                  v-if="record.questionTemplateId"
+                  title="确认删除该题目？"
+                  description="删除后需重新配置区域坐标与标准答案。"
+                  danger
+                  @confirm="removeQuestion(index)"
+                >
+                  <UiTextAction tone="danger">删除</UiTextAction>
+                </UiConfirmPopover>
+                <UiTextAction v-else tone="danger" @click="removeQuestion(index)">删除</UiTextAction>
               </div>
             </template>
           </template>
@@ -186,7 +195,12 @@
                 <section class="question-expand__panel question-expand__panel--answer">
                   <header class="question-expand__head">
                     <span class="question-expand__title">标准答案</span>
-                    <span class="op-link" role="button" v-if="record.questionTemplateId" @click="openAnswerModal(record)">编辑</span>
+                    <UiTextAction
+                      v-if="record.questionTemplateId"
+                      @click="openAnswerModal(record)"
+                    >
+                      编辑
+                    </UiTextAction>
                   </header>
                   <a-spin v-if="isAnswerPreviewLoading(record)" size="small" />
                   <span v-else-if="!record.questionTemplateId" class="question-cell__muted">
@@ -490,10 +504,12 @@ import {
   UiBadge,
   UiButton,
   UiCard,
+  UiConfirmPopover,
   UiDataTable,
   UiEmpty,
   UiErrorRetryPanel,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'

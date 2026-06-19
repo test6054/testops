@@ -118,7 +118,7 @@ function handleOpenHints() {
   width: 40px;
   height: 40px;
   border-radius: var(--kiosk-radius-md);
-  background: linear-gradient(135deg, var(--kiosk-primary), #6b8eff);
+  background: var(--kiosk-primary);
   position: relative;
 }
 .brand-mark::after {
@@ -195,8 +195,8 @@ function handleOpenHints() {
 }
 
 .sse-led {
-  width: 10px;
-  height: 10px;
+  width: var(--kiosk-led-size);
+  height: var(--kiosk-led-size);
   border-radius: 50%;
   background: var(--kiosk-neutral);
   margin-right: var(--kiosk-space-2);
@@ -204,17 +204,7 @@ function handleOpenHints() {
 }
 .sse-led.active {
   background: var(--kiosk-success);
-  box-shadow: 0 0 0 3px var(--kiosk-success-soft);
-  animation: sse-led-pulse 1.6s var(--kiosk-easing) infinite;
-}
-@keyframes sse-led-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 3px var(--kiosk-success-soft);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(31, 157, 85, 0.16);
-  }
+  box-shadow: 0 0 0 var(--kiosk-led-ring) var(--kiosk-success-soft);
 }
 
 .icon-button {

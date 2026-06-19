@@ -1,11 +1,12 @@
 <template>
-  <a-card title="题目质量分析" :bordered="false" size="small">
+  <UiCard class="stats-card" compact>
+    <template #title>题目质量分析</template>
     <template #extra>
       <a-space>
         <a-select
           v-model:value="selectedQuestionTemplateId"
           placeholder="选择题目"
-          style="width: 280px"
+          class="stats-card__select stats-card__select--question"
           :options="questionOptions"
           :loading="questionLoading"
           show-search
@@ -13,113 +14,117 @@
           allow-clear
           @change="reload"
         />
-        <a-button type="primary" :loading="generatingAll" @click="handleGenerateAll">
+        <UiButton variant="outline" size="sm" :loading="generatingAll" @click="handleGenerateAll">
           全量生成
-        </a-button>
-        <a-button :loading="loading" @click="reload">
+        </UiButton>
+        <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新
-        </a-button>
+        </UiButton>
       </a-space>
     </template>
 
-    <!-- D-5 难度-区分度散点图：仅在有分析数据时显示 -->
-    <div v-if="scatterSeriesGroups.length > 0" class="question-analysis-card__chart-wrap">
-      <div class="question-analysis-card__chart-meta">
-        <strong>难度-区分度分布</strong>
-        <span class="question-analysis-card__chart-hint">
-          理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；点击图例可隐藏对应区段。
-        </span>
+    <div class="question-analysis-card">
+      <!-- D-5 难度-区分度散点图：仅在有分析数据时显示 -->
+      <div v-if="questionQualityScatterSeries.length > 0" class="question-analysis-card__chart-wrap">
+        <div class="question-analysis-card__chart-meta">
+          <strong>难度-区分度分布</strong>
+          <span class="question-analysis-card__chart-hint">
+            理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；点击图例可隐藏对应区段。
+          </span>
+        </div>
+        <UiScatterChart
+          class="question-analysis-card__chart"
+          :series="questionQualityScatterSeries"
+          x-label="难度系数"
+          y-label="区分度"
+          show-ideal-zone
+          aria-label="题目难度区分度散点图"
+        />
       </div>
-      <VChart
-        class="question-analysis-card__chart"
-        :option="chartOption"
-        autoresize
-        :init-options="{ renderer: 'canvas' }"
-      />
-    </div>
 
-    <div v-if="correctRatioBarOption" class="question-analysis-card__chart-wrap">
-      <div class="question-analysis-card__chart-meta">
-        <strong>各题正确率</strong>
-        <span class="question-analysis-card__chart-hint">按题号展示已批阅学生的正确率</span>
+      <div v-if="correctRatioBarItems.length" class="question-analysis-card__chart-wrap">
+        <div class="question-analysis-card__chart-meta">
+          <strong>各题正确率</strong>
+          <span class="question-analysis-card__chart-hint">按题号展示已批阅学生的正确率</span>
+        </div>
+        <UiBarChart
+          class="question-analysis-card__chart"
+          :items="correctRatioBarItems"
+          orientation="vertical"
+          :max-value="100"
+        />
       </div>
-      <VChart
-        class="question-analysis-card__chart"
-        :option="correctRatioBarOption"
-        autoresize
-        :init-options="{ renderer: 'canvas' }"
+
+      <AiGenerationProgressPanel
+        v-if="generatingAll || generatingId"
+        title="题目质量分析生成中"
+        :waiting-text="generatingAll ? '正在等待后端返回全部题目的真实质量分析。' : '正在等待后端返回当前题目的真实质量分析。'"
       />
+
+      <a-typography-paragraph v-if="generationSummary" class="question-analysis-card__generation-summary">
+        {{ generationSummary }}
+      </a-typography-paragraph>
+
+      <!-- D-9 错误态：题目质量分析加载失败时提供重试 + 上报入口 -->
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        title="题目质量分析加载失败"
+        compact
+        @retry="reload"
+      />
+      <UiDataTable
+        class="student-detail-table__data-table"
+        v-else
+        :columns="columns"
+        :data-source="rows"
+        :loading="loading"
+        row-key="id"
+        size="small"
+        :page-size="20"
+        :total="rows.length"
+        flat
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'question'">
+            <div class="question-analysis-card__question-cell">
+              <div class="question-analysis-card__question-title">
+                题{{ rows[index].questionNo }} · {{ questionTypeLabel(rows[index].questionType) }} ·
+                {{ fmtNum(rows[index].fullScore) }} 分
+              </div>
+              <div v-if="rows[index].questionStem" class="question-analysis-card__question-stem">
+                {{
+                  rows[index].questionStem.length > 36
+                    ? `${rows[index].questionStem.slice(0, 36)}...`
+                    : rows[index].questionStem
+                }}
+              </div>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'difficultyIndex'">
+            {{ fmtNum(rows[index].difficultyIndex) }}
+          </template>
+          <template v-else-if="column.key === 'discriminationIndex'">
+            {{ fmtNum(rows[index].discriminationIndex) }}
+          </template>
+          <template v-else-if="column.key === 'avgScore'">
+            {{ fmtNum(rows[index].avgScore) }} / {{ fmtNum(rows[index].fullScore) }}
+          </template>
+          <template v-else-if="column.key === 'correctRatio'">
+            <a-typography-text :type="getCorrectRatioType(rows[index])">
+              {{ correctRatio(rows[index]) }}
+            </a-typography-text>
+          </template>
+          <template v-else-if="column.key === 'snapshotTime'">
+            {{ formatDateTime(rows[index].snapshotTime) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiTextAction @click="handleGenerateOne(rows[index].questionTemplateId)">重新生成</UiTextAction>
+          </template>
+        </template>
+      </UiDataTable>
     </div>
-
-    <AiGenerationProgressPanel
-      v-if="generatingAll || generatingId"
-      title="题目质量分析生成中"
-      :waiting-text="generatingAll ? '正在等待后端返回全部题目的真实质量分析。' : '正在等待后端返回当前题目的真实质量分析。'"
-    />
-
-    <a-typography-paragraph v-if="generationSummary" class="question-analysis-card__generation-summary">
-      {{ generationSummary }}
-    </a-typography-paragraph>
-
-    <!-- D-9 错误态：题目质量分析加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      title="题目质量分析加载失败"
-      compact
-      @retry="reload"
-    />
-    <UiDataTable
-      class="student-detail-table__data-table"
-      v-else
-      :columns="columns"
-      :data-source="rows"
-      :loading="loading"
-      row-key="id"
-      size="small"
-      :page-size="20"
-      :total="rows.length"
-      flat
-    >
-      <template #bodyCell="{ column, index }">
-        <template v-if="column.key === 'question'">
-          <div class="question-analysis-card__question-cell">
-            <div class="question-analysis-card__question-title">
-              题{{ rows[index].questionNo }} · {{ questionTypeLabel(rows[index].questionType) }} ·
-              {{ fmtNum(rows[index].fullScore) }} 分
-            </div>
-            <div v-if="rows[index].questionStem" class="question-analysis-card__question-stem">
-              {{
-                rows[index].questionStem.length > 36
-                  ? `${rows[index].questionStem.slice(0, 36)}...`
-                  : rows[index].questionStem
-              }}
-            </div>
-          </div>
-        </template>
-        <template v-else-if="column.key === 'difficultyIndex'">
-          {{ fmtNum(rows[index].difficultyIndex) }}
-        </template>
-        <template v-else-if="column.key === 'discriminationIndex'">
-          {{ fmtNum(rows[index].discriminationIndex) }}
-        </template>
-        <template v-else-if="column.key === 'avgScore'">
-          {{ fmtNum(rows[index].avgScore) }} / {{ fmtNum(rows[index].fullScore) }}
-        </template>
-        <template v-else-if="column.key === 'correctRatio'">
-          <a-typography-text :type="getCorrectRatioType(rows[index])">
-            {{ correctRatio(rows[index]) }}
-          </a-typography-text>
-        </template>
-        <template v-else-if="column.key === 'snapshotTime'">
-          {{ formatDateTime(rows[index].snapshotTime) }}
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <span class="op-link" role="button" @click="handleGenerateOne(rows[index].questionTemplateId)">重新生成</span>
-        </template>
-      </template>
-    </UiDataTable>
-  </a-card>
+  </UiCard>
 </template>
 
 <script lang="ts" setup>
@@ -128,17 +133,7 @@ import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import { BarChart, ScatterChart } from 'echarts/charts'
-import {
-  GridComponent,
-  LegendComponent,
-  TitleComponent,
-  TooltipComponent,
-} from 'echarts/components'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
 import { computed, ref, watch } from 'vue'
-import VChart from 'vue-echarts'
 import { getExamTemplate } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import {
@@ -146,10 +141,13 @@ import {
   generateQuestionAnalysis,
   listQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
-import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiBarChart, UiButton, UiCard, UiDataTable, UiErrorRetryPanel, UiScatterChart, UiTextAction } from '@/components/ui-guide/ui'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildCorrectRatioBarOption } from '@/utils/mark-statistics-chart'
+import {
+  buildQuestionQualityScatterSeries,
+  correctRatioToBarItems,
+} from '@/utils/mark-statistics-chart'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
@@ -158,17 +156,6 @@ defineOptions({ name: 'QuestionAnalysisCard' })
 const props = defineProps<{ examId: string, reloadToken: number, classId?: string }>()
 
 const emit = defineEmits<{ (e: 'generated'): void }>()
-
-// 按需注册 ECharts 模块（散点图 + tooltip + grid + legend + title）
-use([
-  CanvasRenderer,
-  ScatterChart,
-  BarChart,
-  GridComponent,
-  LegendComponent,
-  TitleComponent,
-  TooltipComponent,
-])
 
 const rows = ref<ExamQuestionAnalysisRecordVO[]>([])
 const loading = ref(false)
@@ -320,106 +307,8 @@ function questionTypeLabel(questionType: ExamQuestionAnalysisRecordVO['questionT
   return strictEnumLabel(QUESTION_TYPE_LABEL, questionType, '题型')
 }
 
-const correctRatioBarOption = computed(() => buildCorrectRatioBarOption(rows.value))
-
-// ─── D-5 难度-区分度散点图派生 ──────────────────────────────
-/** 单个散点：[难度系数, 区分度, 已批人数, 题号, 题型] */
-interface ScatterPointValue {
-  value: [number, number, number, string, string]
-}
-
-/** 散点图按 4 个质量区段分组（理想 / 偏难 / 偏易 / 区分度不足） */
-interface ScatterSeriesGroup {
-  name: string
-  color: string
-  data: ScatterPointValue[]
-}
-
-/**
- * 该计算属性返回的是「以质量区段为单位的散点序列分组」，不是单个点；
- * 原名 scatterPoints 与类型 ScatterSeriesGroup[] 不一致，重命名以避免维护者误读。
- */
-const scatterSeriesGroups = computed<ScatterSeriesGroup[]>(() => {
-  const ideal: ScatterPointValue[] = []
-  const tooHard: ScatterPointValue[] = []
-  const tooEasy: ScatterPointValue[] = []
-  const lowDiscrim: ScatterPointValue[] = []
-  for (const r of rows.value) {
-    if (r.difficultyIndex == null || r.discriminationIndex == null) continue
-    const d = Number(r.difficultyIndex)
-    const dis = Number(r.discriminationIndex)
-    const total = r.totalCount
-    const point: ScatterPointValue = { value: [d, dis, total, r.questionNo, r.questionType] }
-    if (d < 0.3) {
-      tooHard.push(point)
-    } else if (d > 0.8) {
-      tooEasy.push(point)
-    } else if (dis < 0.4) {
-      lowDiscrim.push(point)
-    } else {
-      ideal.push(point)
-    }
-  }
-  return (
-    [
-      { name: '理想（难度 0.3-0.8 且 区分度 ≥ 0.4）', color: '#16a34a', data: ideal },
-      { name: '偏难（难度 < 0.3）', color: '#dc2626', data: tooHard },
-      { name: '偏易（难度 > 0.8）', color: '#ea580c', data: tooEasy },
-      { name: '区分度不足（< 0.4）', color: '#a855f7', data: lowDiscrim },
-    ] as ScatterSeriesGroup[]
-  ).filter((g) => g.data.length > 0)
-})
-
-/** ECharts 配置：4 分组 scatter，symbolSize 反映已批人数；hover 显示完整指标 */
-const chartOption = computed(() => ({
-  tooltip: {
-    trigger: 'item',
-    formatter: (params: { value: [number, number, number, string, string] }) => {
-      const [d, dis, total, questionNo, questionType] = params.value
-      return [
-        `题${questionNo} · ${questionType}`,
-        `难度系数 ${d.toFixed(2)} · 区分度 ${dis.toFixed(2)}`,
-        `已批 ${total} 人`,
-      ].join('<br/>')
-    },
-  },
-  legend: {
-    top: 0,
-    type: 'scroll',
-    textStyle: { fontSize: 12 },
-  },
-  grid: { left: 56, right: 16, top: 40, bottom: 44 },
-  xAxis: {
-    name: '难度系数',
-    nameLocation: 'middle',
-    nameGap: 28,
-    min: 0,
-    max: 1,
-    splitNumber: 5,
-    axisLine: { lineStyle: { color: '#94a3b8' } },
-    splitLine: { lineStyle: { color: '#e2e8f0' } },
-  },
-  yAxis: {
-    name: '区分度',
-    nameLocation: 'middle',
-    nameGap: 40,
-    min: -0.2,
-    max: 1,
-    axisLine: { lineStyle: { color: '#94a3b8' } },
-    splitLine: { lineStyle: { color: '#e2e8f0' } },
-  },
-  series: scatterSeriesGroups.value.map((g) => ({
-    type: 'scatter',
-    name: g.name,
-    // 点大小随已批人数线性放大但不超过 40px，避免大题挤占小题视觉
-    symbolSize: (val: [number, number, number, string, string]) => {
-      const total = val[2]
-      return Math.min(40, 10 + Math.sqrt(total) * 1.5)
-    },
-    itemStyle: { color: g.color, opacity: 0.85, borderColor: '#fff', borderWidth: 1 },
-    data: g.data,
-  })),
-}))
+const questionQualityScatterSeries = computed(() => buildQuestionQualityScatterSeries(rows.value))
+const correctRatioBarItems = computed(() => correctRatioToBarItems(rows.value))
 
 watch(
   () => [props.examId, props.reloadToken, props.classId],
@@ -435,34 +324,24 @@ watch(
 
 <style lang="scss" scoped>
 .question-analysis-card {
-  &__chart-wrap {
-    margin-bottom: 12px;
-    padding: 12px 16px;
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: var(--dp-radius-md, 6px);
-    background: var(--dp-surface, #fff);
-  }
-
-  &__chart-meta {
+  &__question-cell {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
   }
 
-  &__chart-hint {
+  &__question-title {
+    font-weight: var(--dp-font-weight-emphasis, 500);
+  }
+
+  &__question-stem {
     font-size: 12px;
-    color: var(--dp-text-secondary, #475569);
-  }
-
-  &__chart {
-    width: 100%;
-    height: 320px;
+    color: var(--dp-text-secondary, rgba(0, 0, 0, 0.65));
   }
 
   &__generation-summary {
-    margin: 0 0 var(--dp-space-3, 12px);
+    margin: 0;
     color: var(--dp-text-secondary, rgba(0, 0, 0, 0.75));
   }
 }

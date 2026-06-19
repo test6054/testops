@@ -7,9 +7,9 @@
 - Vue 3.5、Vite 7、TypeScript 5.8、pnpm
 - Ant Design Vue 4.2、SCSS
 - Pinia 3 + `pinia-plugin-persistedstate`
-- Vue Router 4
+- Vue Router 5
 - Axios（统一 HTTP 拦截器、`Authorization` / `X-Tenant-Id` / `X-Device-Id` / `X-Trace-Id` 自动注入、`refresh token` 自动续期）
-- ECharts 6 + `vue-echarts`
+- Ui* 图表组件（`UiBarChart` / `UiTrendChart` / `UiScatterChart`）+ `mark-statistics-chart.ts` 数据转换
 
 ## 与公共服务的对接
 

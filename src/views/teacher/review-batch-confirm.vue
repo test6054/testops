@@ -39,53 +39,37 @@
 
       <a-card :bordered="false" class="detail-table-card review-batch-confirm__list-card">
         <template #title>待批量确认题目</template>
+        <template #extra>
+          <UiButton
+            size="sm"
+            :disabled="selectedTaskIds.length === 0"
+            :loading="submitting"
+            @click="submitBatch"
+          >
+            一键确认所选 {{ selectedTaskIds.length }} 项
+          </UiButton>
+        </template>
 
-        <div class="filter-card">
-          <a-form layout="inline" class="filter-form filter-form--toolbar" @submit.prevent="loadTasks">
-            <a-form-item label="复核来源">
-              <a-select
-                v-model:value="channelFilter"
-                class="review-batch-confirm__channel-filter"
-                placeholder="复核来源筛选"
-                :options="channelOptions"
-                allow-clear
-                style="width: 200px"
-                @change="loadTasks"
-              />
-            </a-form-item>
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <UiButton size="sm" :loading="loading" @click="loadTasks">查询</UiButton>
-                <UiButton
-                  variant="outline"
-                  size="sm"
-                  :disabled="!selectedExamId"
-                  :loading="loading"
-                  @click="loadTasks"
-                >
-                  刷新
-                </UiButton>
-                <UiButton
-                  size="sm"
-                  :disabled="selectedTaskIds.length === 0"
-                  :loading="submitting"
-                  @click="submitBatch"
-                >
-                  一键确认所选 {{ selectedTaskIds.length }} 项
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <UiFilterBar
+          v-model="batchFilterForm"
+          :fields="batchFilterFields"
+          show-labels
+          search-text="查询"
+          @search="handleBatchFilterSearch"
+          @reset="handleBatchFilterReset"
+        />
 
-        <a-table
+        <UiDataTable
           :columns="columns"
           :data-source="tasks"
-          :row-key="(record: ReviewTaskItemVO) => record.reviewTaskId"
-          :row-selection="rowSelection"
-          :pagination="false"
+          :row-key="(record: unknown) => String((record as ReviewTaskItemVO).reviewTaskId)"
+          :enable-selection="true"
+          :selected-row-keys="selectedTaskIds"
+          :show-pagination="false"
+          :total="tasks.length"
           size="middle"
-          bordered
+          flat
+          @selection-change="selectedTaskIds = $event.map(String)"
         >
           <template #bodyCell="{ column, index }">
             <template v-if="column.key === 'paperDisplay'">
@@ -106,7 +90,7 @@
               >
                 {{ REVIEW_TASK_TYPE_META[tasks[index].reviewType].label }}
               </a-tag>
-              <span v-else style="color: #94a3b8">未派生</span>
+              <UiTag v-else tone="gray" size="sm">未派生</UiTag>
             </template>
             <template v-else-if="column.key === 'teacherReviewScore'">
               <a-input-number
@@ -127,13 +111,11 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span class="op-link" role="button" @click="openSingleReview(tasks[index])">
-                  进入单题处理
-                </span>
+                <UiTextAction @click="openSingleReview(tasks[index])">进入单题处理</UiTextAction>
               </div>
             </template>
           </template>
-        </a-table>
+        </UiDataTable>
       </a-card>
     </a-spin>
   </StageWorkbenchShell>
@@ -147,8 +129,9 @@ import type {
   ReviewTaskItemVO,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam'
+import type { FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   batchConfirmQuestionGrades,
@@ -156,7 +139,7 @@ import {
   pageExams,
   REVIEW_TASK_TYPE_META,
 } from '@/apis/mark/exam'
-import { UiAlertStrip, UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiAlertStrip, UiButton, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
@@ -173,7 +156,6 @@ const loading = ref(false)
 const submitting = ref(false)
 const tasks = ref<ReviewTaskItemVO[]>([])
 const selectedTaskIds = ref<string[]>([])
-const channelFilter = ref<ReviewTaskTypeCode | undefined>(undefined)
 
 interface BatchSummary {
   totalCount: number
@@ -209,15 +191,29 @@ const channelOptions = [
   { value: 'SUBJECTIVE_AI_REVIEW', label: REVIEW_TASK_TYPE_META.SUBJECTIVE_AI_REVIEW.label },
 ]
 
-const rowSelection = computed(() => ({
-  selectedRowKeys: selectedTaskIds.value,
-  onChange: (keys: (string | number)[]) => {
-    selectedTaskIds.value = keys.map(String)
+const batchFilterForm = reactive<{ channel?: ReviewTaskTypeCode }>({
+  channel: undefined,
+})
+
+const batchFilterFields: FilterField[] = [
+  {
+    key: 'channel',
+    type: 'select',
+    label: '复核来源',
+    placeholder: '复核来源筛选',
+    allowClear: true,
+    width: 200,
+    options: channelOptions.map((item) => ({ label: item.label, value: item.value })),
   },
-  getCheckboxProps: (record: ReviewTaskItemVO) => ({
-    disabled: !record.gradeResultId,
-  }),
-}))
+]
+
+function handleBatchFilterSearch() {
+  void loadTasks()
+}
+
+function handleBatchFilterReset() {
+  void loadTasks()
+}
 
 async function loadExamOptions() {
   examLoading.value = true
@@ -264,7 +260,7 @@ async function loadTasks() {
       }),
       '待批量确认题目加载失败，请稍后重试',
     )
-    const channelCode = channelFilter.value
+    const channelCode = batchFilterForm.channel
     tasks.value = items.filter((task) => {
       if (!channelCode) return true
       return task.reviewType === channelCode

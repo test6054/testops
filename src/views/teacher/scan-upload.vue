@@ -3,17 +3,7 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="scan-batch-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
+          <MarkExamContextPicker select-class="scan-batch-page__exam-select" />
           <UiTag v-if="selectedExamId" :tone="livePendingEventTotal > 0 ? 'orange' : 'green'" size="sm">
             待聚合 {{ livePendingEventTotal }}
           </UiTag>
@@ -42,18 +32,16 @@
             </span>
           </UiButton>
           <div v-if="selectedExamId" class="operations-cell scan-batch-page__advanced-links">
-            <span class="op-link" role="button" @click="goScanAdvanced('TeacherImageLedger')">
-              影像账本
-            </span>
-            <span class="op-link" role="button" @click="goScanAdvanced('TeacherPrinterManagement')">
-              设备管理
-            </span>
-            <span class="op-link" role="button" @click="goScanAdvanced('TeacherOcrSettings')">
-              OCR 配置
-            </span>
+            <UiTextAction @click="goScanAdvanced('TeacherImageLedger')">影像账本</UiTextAction>
+            <UiTextAction @click="goScanAdvanced('TeacherPrinterManagement')">设备管理</UiTextAction>
+            <UiTextAction @click="goScanAdvanced('TeacherOcrSettings')">OCR 配置</UiTextAction>
           </div>
         </template>
       </ContextBar>
+    </template>
+
+    <template #rail>
+      <MarkExamStageRail />
     </template>
 
     <UiEmpty
@@ -311,18 +299,11 @@
           <UnorderedListOutlined />
           <span>已创建批次</span>
         </template>
-
-        <div class="filter-card">
-          <a-form layout="inline" class="filter-form filter-form--toolbar">
-            <a-form-item class="filter-form__actions">
-              <a-space class="filter-form__action-group">
-                <UiButton variant="outline" size="sm" :loading="globalLoading" @click="loadAllForExam">
-                  刷新
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </div>
+        <template #extra>
+          <UiButton variant="outline" size="sm" :loading="globalLoading" @click="loadAllForExam">
+            刷新
+          </UiButton>
+        </template>
 
         <UiDataTable
           v-model:current="batchQuery.pageNum"
@@ -374,40 +355,26 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
-                <span
-                  class="op-link"
-                  :class="{ 'is-disabled': !record.sourceFileCount }"
-                  role="button"
-                  @click="record.sourceFileCount && openBatchSourceFiles(record)"
+                <UiTextAction
+                  :disabled="!record.sourceFileCount"
+                  @click="openBatchSourceFiles(record)"
                 >
                   查看扫描原件
-                </span>
-                <span
-                  class="op-link"
-                  :class="{
-                    'is-disabled':
-                      batchSealing === record.scanBatchId
-                      || !canSealBatch(record),
-                  }"
-                  role="button"
+                </UiTextAction>
+                <UiTextAction
+                  :disabled="batchSealing === record.scanBatchId || !canSealBatch(record)"
                   :title="batchSealBlockedReason(record) || '封存批次'"
-                  @click="
-                    batchSealing !== record.scanBatchId
-                      && canSealBatch(record)
-                      && onSealBatch(record)
-                  "
+                  @click="onSealBatch(record)"
                 >
                   {{ record.sealedAt ? '已封存' : '封存' }}
-                </span>
-                <span
-                  class="op-link danger"
-                  :class="{
-                    'is-disabled':
-                      batchDiscarding === record.scanBatchId
+                </UiTextAction>
+                <UiTextAction
+                  tone="danger"
+                  :disabled="
+                    batchDiscarding === record.scanBatchId
                       || record.status === 'DISCARDED'
-                      || Boolean(record.sealedAt),
-                  }"
-                  role="button"
+                      || Boolean(record.sealedAt)
+                  "
                   :title="
                     record.sealedAt
                       ? '批次已封存，禁止废弃；请联系扫描终审角色'
@@ -415,15 +382,10 @@
                         ? '批次已废弃'
                         : '废弃整批'
                   "
-                  @click="
-                    batchDiscarding !== record.scanBatchId
-                      && record.status !== 'DISCARDED'
-                      && !record.sealedAt
-                      && onDiscardBatch(record)
-                  "
+                  @click="onDiscardBatch(record)"
                 >
                   {{ record.status === 'DISCARDED' ? '已废弃' : '废弃' }}
-                </span>
+                </UiTextAction>
               </div>
             </template>
             <template v-else>{{ text }}</template>
@@ -526,7 +488,7 @@
         />
         <p v-if="(batchSealTarget.attentionItemCount ?? 0) > 0" class="scan-batch-page__seal-hint">
           请先前往
-          <span class="op-link" role="button" @click="openSealAttentionMonitor">扫描监控</span>
+          <UiTextAction @click="openSealAttentionMonitor">扫描监控</UiTextAction>
           处置异常后再封存。
         </p>
       </template>
@@ -579,6 +541,8 @@ import {
 import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
+import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
+import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import {
   UiAlertStrip,
   UiButton,
@@ -590,9 +554,10 @@ import {
   UiRingProgress,
   UiStatPanel,
   UiTag,
+  UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { provideMarkExamContext } from '@/composables/useMarkExamContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -603,6 +568,7 @@ import {
   buildBatchSealChecklist,
   canSealBatch,
 } from '@/utils/scan-batch-seal'
+import { progressTone, toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanUpload' })
@@ -636,13 +602,10 @@ function openSealAttentionMonitor(): void {
 }
 
 const {
-  examOptions,
-  loading: examLoading,
   selectedExamId,
   selectedExamLabel,
-  onExamChange,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = provideMarkExamContext()
 
 // ─── 概览统计 ─────────────────────────────
 const progress = ref<MarkingProgressVO | null>(null)
@@ -756,13 +719,7 @@ const paperBindingPercent = computed<number | null>(() => {
 })
 
 /** ≥95% 绿 / ≥80% 橙 / 其余红，提示教师哪些卷面尚未识别绑定 */
-const paperBindingColor = computed<string>(() => {
-  const p = paperBindingPercent.value
-  if (p == null) return '#94a3b8'
-  if (p >= 95) return '#16a34a'
-  if (p >= 80) return '#ea580c'
-  return '#dc2626'
-})
+const paperBindingColor = computed<string>(() => toneToColor(progressTone(paperBindingPercent.value)))
 
 const paperBindingHint = computed<string>(() => {
   const p = paperBindingPercent.value
@@ -1419,7 +1376,7 @@ onBeforeUnmount(() => {
     background: var(--dp-surface, #fff);
     color: var(--ant-color-error, #ff4d4f);
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
   }
 
   &__seal-intro {
@@ -1447,13 +1404,13 @@ onBeforeUnmount(() => {
   }
 
   &__seal-checklist > li.is-pass {
-    background: #f0fdf4;
-    border-color: #bbf7d0;
+    background: var(--ant-color-success-bg);
+    border-color: var(--ant-color-success-border);
   }
 
   &__seal-checklist > li.is-fail {
-    background: #fffbeb;
-    border-color: #fde68a;
+    background: var(--ant-color-warning-bg);
+    border-color: var(--dp-yellow-200);
   }
 
   &__seal-check-label {

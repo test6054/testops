@@ -21,73 +21,20 @@
         <FileOutlined />
         <span>纸质试卷档案集</span>
       </template>
+      <template #extra>
+        <UiButton size="sm" @click="openCreateModal">
+          <template #icon><PlusOutlined /></template>
+          新建纸质试卷档案集
+        </UiButton>
+      </template>
 
-      <div class="filter-card">
-        <a-form
-          layout="inline"
-          :model="filterForm"
-          class="filter-form filter-form--toolbar"
-          @submit.prevent="handleSearch"
-        >
-          <a-form-item label="纸质试卷档案编号">
-            <a-input
-              v-model:value="filterForm.archiveNoKeyword"
-              placeholder="按编号关键词过滤"
-              allow-clear
-              style="width: 200px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item label="纸质试卷档案集标题">
-            <a-input
-              v-model:value="filterForm.titleKeyword"
-              placeholder="按标题关键词过滤"
-              allow-clear
-              style="width: 200px"
-              @press-enter="handleSearch"
-            />
-          </a-form-item>
-          <a-form-item label="学年">
-            <a-input
-              v-model:value="filterForm.examYear"
-              placeholder="如 2018-2019"
-              allow-clear
-              style="width: 140px"
-            />
-          </a-form-item>
-          <a-form-item label="学期">
-            <a-input
-              v-model:value="filterForm.examTerm"
-              placeholder="如 秋季学期"
-              allow-clear
-              style="width: 140px"
-            />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="filterForm.archiveStatus"
-              placeholder="全部状态"
-              allow-clear
-              style="width: 160px"
-              :options="statusOptions"
-            />
-          </a-form-item>
-          <a-form-item class="filter-form__actions">
-            <a-space class="filter-form__action-group">
-              <UiButton size="sm" @click="handleSearch">查询</UiButton>
-              <span class="op-link" role="button" @click="handleReset">重置</span>
-              <UiButton variant="outline" size="sm" :loading="loading" @click="loadSets">
-                <template #icon><ReloadOutlined /></template>
-                刷新
-              </UiButton>
-              <UiButton size="sm" @click="openCreateModal">
-                <template #icon><PlusOutlined /></template>
-                新建纸质试卷档案集
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </div>
+      <UiFilterBar
+        v-model="filterForm"
+        :fields="paperArchiveFilterFields"
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleReset"
+      />
 
       <UiEmpty v-if="!loading && sets.length === 0" description="尚未创建任何纸质试卷档案集" />
 
@@ -148,17 +95,16 @@
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
-              <span class="op-link" role="button" @click="goDetail(record.archiveSetId)">
+              <UiTextAction @click="goDetail(record.archiveSetId)">
                 详情
-              </span>
-              <span
+              </UiTextAction>
+              <UiTextAction
                 v-if="record.archiveStatus === 'DRAFT'"
-                class="op-link primary"
-                role="button"
+                tone="primary"
                 @click="confirmActivate(record)"
               >
                 激活
-              </span>
+              </UiTextAction>
             </div>
           </template>
         </template>
@@ -249,8 +195,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PaperArchiveSetStatusCode, PaperArchiveSetVO } from '@/apis/mark/paper-archive'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { FileOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons-vue'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import { FileOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -261,7 +207,7 @@ import {
   PAPER_ARCHIVE_SET_STATUS_OPTIONS,
   PAPER_ARCHIVE_SET_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
-import { UiAlertStrip, UiButton, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { UiAlertStrip, UiButton, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
@@ -326,6 +272,49 @@ const createForm = reactive<PaperArchiveSetCreateForm>({
 })
 
 const statusOptions = PAPER_ARCHIVE_SET_STATUS_OPTIONS
+
+const paperArchiveFilterFields: FilterField[] = [
+  {
+    key: 'archiveNoKeyword',
+    type: 'input',
+    placeholder: '按编号关键词过滤',
+    allowClear: true,
+    width: 200,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'titleKeyword',
+    type: 'input',
+    placeholder: '按标题关键词过滤',
+    allowClear: true,
+    width: 200,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'examYear',
+    type: 'input',
+    placeholder: '如 2018-2019',
+    allowClear: true,
+    width: 140,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'examTerm',
+    type: 'input',
+    placeholder: '如 秋季学期',
+    allowClear: true,
+    width: 140,
+    triggerSearchOnChange: false,
+  },
+  {
+    key: 'archiveStatus',
+    type: 'select',
+    placeholder: '全部状态',
+    allowClear: true,
+    width: 160,
+    options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
+  },
+]
 
 const columns: ColumnsType<PaperArchiveSetVO> = [
   { title: '纸质试卷档案编号', key: 'archiveNo', dataIndex: 'archiveNo', width: 240 },
@@ -411,11 +400,6 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
-  filterForm.archiveNoKeyword = undefined
-  filterForm.titleKeyword = undefined
-  filterForm.examYear = undefined
-  filterForm.examTerm = undefined
-  filterForm.archiveStatus = undefined
   pagination.pageNum = 1
   void loadSets()
 }
