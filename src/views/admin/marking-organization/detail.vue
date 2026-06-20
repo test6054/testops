@@ -56,17 +56,14 @@
       </ContextBar>
     </template>
 
-    <!-- D-9 错误态：阅卷组织详情加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="organizationLoadError"
-      :error="organizationLoadError"
-      title="阅卷组织加载失败"
-      :helper="organizationExamLabel"
-      @retry="loadOrganization"
+    <UiEmpty
+      v-if="!loading && organizationLoadError"
+      description="暂无数据"
+      class="org-detail__empty"
     />
     <UiEmpty
       v-else-if="!organization && !loading"
-      description="未找到阅卷组织"
+      description="暂无数据"
       class="org-detail__empty"
     />
 
@@ -75,7 +72,6 @@
         v-if="organization && !canManageOrganization"
         tone="info"
         title="协作查看模式"
-        description="当前考试由其他教师创建。题组与策略为只读，修改需联系考试创建人。"
         dense
         class="org-detail__collab-alert"
       />
@@ -144,8 +140,9 @@
               </UiButton>
             </div>
 
-            <UiEmpty v-if="!groups.length" description="尚未建立题组" />
+            <UiEmpty v-if="!groups.length" description="暂无数据" />
             <UiDataTable
+              pagination-mode="none"
               v-else
               :columns="groupColumns"
               :data-source="groups"
@@ -596,7 +593,6 @@ import {
   UiDataTable,
   UiDrawer,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'

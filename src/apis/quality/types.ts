@@ -6,6 +6,7 @@
  * - 租户与操作人由 UserHold 注入，前端只传业务字段
  * - 后端 Long ID 全部以 string 表达到前端，避免 JS Number 精度丢失
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 /** 达成度计算目标类型 - 对应 AchievementTargetTypeEnum */
 export type AchievementTargetType
@@ -45,13 +46,13 @@ export const ACHIEVEMENT_AUDIT_STATUS_LABEL: Record<AchievementAuditStatus, stri
   ARCHIVED: '已归档',
 }
 
-export const ACHIEVEMENT_AUDIT_STATUS_COLOR: Record<AchievementAuditStatus, string> = {
-  DRAFT: 'default',
-  CALCULATED: 'cyan',
+export const ACHIEVEMENT_AUDIT_STATUS_COLOR: Record<AchievementAuditStatus, BadgeTone> = {
+  DRAFT: 'gray',
+  CALCULATED: 'blue',
   SUBMITTED: 'blue',
   CONFIRMED: 'green',
   RETURNED: 'orange',
-  ARCHIVED: 'gold',
+  ARCHIVED: 'yellow',
 }
 
 /** 达成度结论 - AchievementStatusEnum */
@@ -91,17 +92,17 @@ export const MANUAL_REVIEW_DECISION_LABEL: Record<ManualReviewDecision, string> 
   ARCHIVED: '归档保留',
 }
 
-export const MANUAL_REVIEW_DECISION_COLOR: Record<ManualReviewDecision, string> = {
+export const MANUAL_REVIEW_DECISION_COLOR: Record<ManualReviewDecision, BadgeTone> = {
   CONFIRMED: 'green',
   RETURNED: 'orange',
-  ARCHIVED: 'gold',
+  ARCHIVED: 'yellow',
 }
 
-export const ACHIEVEMENT_STATUS_COLOR: Record<AchievementStatus, string> = {
+export const ACHIEVEMENT_STATUS_COLOR: Record<AchievementStatus, BadgeTone> = {
   ACHIEVED: 'green',
   PARTIALLY_ACHIEVED: 'orange',
   NOT_ACHIEVED: 'red',
-  INSUFFICIENT_EVIDENCE: 'default',
+  INSUFFICIENT_EVIDENCE: 'gray',
 }
 
 /** AI 任务状态 - AiTaskStatusEnum */
@@ -120,8 +121,8 @@ export const AI_TASK_STATUS_LABEL: Record<AiTaskStatus, string> = {
   CANCELLED: '已取消',
 }
 
-export const AI_TASK_STATUS_COLOR: Record<AiTaskStatus, string> = {
-  PENDING: 'default',
+export const AI_TASK_STATUS_COLOR: Record<AiTaskStatus, BadgeTone> = {
+  PENDING: 'gray',
   PROCESSING: 'blue',
   SUCCEEDED: 'green',
   FAILED: 'red',
@@ -175,7 +176,7 @@ export const AI_OUTPUT_VALIDATION_LABEL: Record<AiOutputValidation, string> = {
   WARN: '警告',
 }
 
-export const AI_OUTPUT_VALIDATION_COLOR: Record<AiOutputValidation, string> = {
+export const AI_OUTPUT_VALIDATION_COLOR: Record<AiOutputValidation, BadgeTone> = {
   PASSED: 'green',
   REJECTED: 'red',
   WARN: 'orange',
@@ -206,8 +207,8 @@ export const AI_HEALTH_STATUS_LABEL: Record<AiHealthStatus, string> = {
   FAILED: '失败',
 }
 
-export const AI_HEALTH_STATUS_COLOR: Record<AiHealthStatus, string> = {
-  UNKNOWN: 'default',
+export const AI_HEALTH_STATUS_COLOR: Record<AiHealthStatus, BadgeTone> = {
+  UNKNOWN: 'gray',
   HEALTHY: 'green',
   FAILED: 'red',
 }
@@ -232,14 +233,14 @@ export const SCORE_BATCH_STATUS_LABEL: Record<ScoreBatchStatus, string> = {
   CANCELLED: '已取消',
 }
 
-export const SCORE_BATCH_STATUS_COLOR: Record<ScoreBatchStatus, string> = {
-  PENDING: 'default',
+export const SCORE_BATCH_STATUS_COLOR: Record<ScoreBatchStatus, BadgeTone> = {
+  PENDING: 'gray',
   PARSING: 'blue',
   PREVIEW_READY: 'orange',
-  VALIDATED: 'cyan',
+  VALIDATED: 'blue',
   CONFIRMED: 'green',
   FAILED: 'red',
-  CANCELLED: 'default',
+  CANCELLED: 'gray',
 }
 
 /** 持续改进任务状态 - ImprovementTaskStatusEnum */
@@ -260,10 +261,10 @@ export const IMPROVEMENT_TASK_STATUS_LABEL: Record<ImprovementTaskStatus, string
   RETURNED: '已退回',
 }
 
-export const IMPROVEMENT_TASK_STATUS_COLOR: Record<ImprovementTaskStatus, string> = {
+export const IMPROVEMENT_TASK_STATUS_COLOR: Record<ImprovementTaskStatus, BadgeTone> = {
   OPEN: 'orange',
   IN_PROGRESS: 'blue',
-  SUBMITTED: 'cyan',
+  SUBMITTED: 'blue',
   REVIEWED: 'purple',
   CLOSED: 'green',
   RETURNED: 'red',
@@ -280,12 +281,12 @@ export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
   ARCHIVED: '已归档',
 }
 
-export const REPORT_STATUS_COLOR: Record<ReportStatus, string> = {
-  DRAFT: 'default',
+export const REPORT_STATUS_COLOR: Record<ReportStatus, BadgeTone> = {
+  DRAFT: 'gray',
   SUBMITTED: 'blue',
   RETURNED: 'orange',
   CONFIRMED: 'green',
-  ARCHIVED: 'gold',
+  ARCHIVED: 'yellow',
 }
 
 /** 报告三格式导出状态 - ReportExportStatusEnum */
@@ -299,10 +300,10 @@ export const REPORT_EXPORT_STATUS_LABEL: Record<ReportExportStatus, string> = {
   FAILED: '导出失败',
 }
 
-export const REPORT_EXPORT_STATUS_COLOR: Record<ReportExportStatus, string> = {
-  IDLE: 'default',
-  PENDING: 'processing',
-  PROCESSING: 'processing',
+export const REPORT_EXPORT_STATUS_COLOR: Record<ReportExportStatus, BadgeTone> = {
+  IDLE: 'gray',
+  PENDING: 'blue',
+  PROCESSING: 'blue',
   COMPLETED: 'green',
   FAILED: 'red',
 }
@@ -364,7 +365,7 @@ export const SUPPORT_LEVEL_LABEL: Record<SupportLevel, string> = {
   LOW: '弱支撑 L',
 }
 
-export const SUPPORT_LEVEL_COLOR: Record<SupportLevel, string> = {
+export const SUPPORT_LEVEL_COLOR: Record<SupportLevel, BadgeTone> = {
   HIGH: 'red',
   MEDIUM: 'orange',
   LOW: 'blue',
@@ -475,10 +476,10 @@ export const AUDIT_ISSUE_STATUS_LABEL: Record<AuditIssueStatus, string> = {
   CLOSED: '已闭环',
 }
 
-export const AUDIT_ISSUE_STATUS_COLOR: Record<AuditIssueStatus, string> = {
+export const AUDIT_ISSUE_STATUS_COLOR: Record<AuditIssueStatus, BadgeTone> = {
   OPEN: 'orange',
   IN_RECTIFICATION: 'blue',
-  RECTIFIED: 'cyan',
+  RECTIFIED: 'blue',
   VERIFIED: 'purple',
   CLOSED: 'green',
 }
@@ -501,10 +502,10 @@ export const AUDIT_RECTIFICATION_STATUS_LABEL: Record<AuditRectificationStatus, 
   CLOSED: '已闭环',
 }
 
-export const AUDIT_RECTIFICATION_STATUS_COLOR: Record<AuditRectificationStatus, string> = {
-  PLANNED: 'default',
+export const AUDIT_RECTIFICATION_STATUS_COLOR: Record<AuditRectificationStatus, BadgeTone> = {
+  PLANNED: 'gray',
   IN_PROGRESS: 'blue',
-  SUBMITTED: 'cyan',
+  SUBMITTED: 'blue',
   VERIFIED: 'purple',
   RETURNED: 'orange',
   CLOSED: 'green',
@@ -638,8 +639,8 @@ export const EXTERNAL_PULL_TASK_STATUS_LABEL: Record<ExternalPullTaskStatus, str
   CANCELLED: '已取消',
 }
 
-export const EXTERNAL_PULL_TASK_STATUS_COLOR: Record<ExternalPullTaskStatus, string> = {
-  PENDING: 'default',
+export const EXTERNAL_PULL_TASK_STATUS_COLOR: Record<ExternalPullTaskStatus, BadgeTone> = {
+  PENDING: 'gray',
   RUNNING: 'blue',
   SUCCEEDED: 'green',
   FAILED: 'red',
@@ -702,7 +703,7 @@ export const EXTERNAL_PULL_CONFIRMATION_STATUS_LABEL: Record<ExternalPullConfirm
   REJECTED: '已驳回',
 }
 
-export const EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR: Record<ExternalPullConfirmationStatus, string> = {
+export const EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR: Record<ExternalPullConfirmationStatus, BadgeTone> = {
   PREVIEW: 'orange',
   CONFIRMED: 'green',
   REJECTED: 'red',
@@ -717,7 +718,7 @@ export const SQL_SAFETY_STATUS_LABEL: Record<SqlSafetyStatus, string> = {
   ERROR: '检测异常',
 }
 
-export const SQL_SAFETY_STATUS_COLOR: Record<SqlSafetyStatus, string> = {
+export const SQL_SAFETY_STATUS_COLOR: Record<SqlSafetyStatus, BadgeTone> = {
   PASSED: 'green',
   REJECTED: 'red',
   ERROR: 'orange',
@@ -736,8 +737,8 @@ export const CONFIRMATION_STATUS_LABEL: Record<ConfirmationStatus, string> = {
   RETURNED: '已退回',
 }
 
-export const CONFIRMATION_STATUS_COLOR: Record<ConfirmationStatus, string> = {
-  DRAFT: 'default',
+export const CONFIRMATION_STATUS_COLOR: Record<ConfirmationStatus, BadgeTone> = {
+  DRAFT: 'gray',
   SUBMITTED: 'blue',
   CONFIRMED: 'green',
   RETURNED: 'orange',

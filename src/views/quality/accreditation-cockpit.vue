@@ -9,6 +9,7 @@ import AccreditationCyclePanel from '@/components/quality/accreditation/Accredit
 import AccreditationEvidencePanel from '@/components/quality/accreditation/AccreditationEvidencePanel.vue'
 import AccreditationOnsitePanel from '@/components/quality/accreditation/AccreditationOnsitePanel.vue'
 import AccreditationSupportPanel from '@/components/quality/accreditation/AccreditationSupportPanel.vue'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import { ProgramSelector, TrainingPlanSelector } from '@/components/quality/selectors'
 import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
@@ -135,6 +136,7 @@ const signalMetrics = computed(() => {
   return [...base, { key: 'evidence', label: '专家材料证据', value: String(evidenceCount.value) }]
 })
 
+
 const annualCourseCoverages = computed(() => cockpit.value?.annualCourseCoverages || [])
 
 async function refreshAll() {
@@ -190,17 +192,7 @@ onMounted(refreshAll)
         subtitle="校内自评 → 审阅 → 现场考查 → 结论 → 保持改进（不含 eqem 对接）"
       >
         <template #status>
-          <ProgramSelector
-            :value="programId || null"
-            class="acc-scope__select"
-            @update:value="handleProgramChange"
-          />
-          <TrainingPlanSelector
-            :value="trainingPlanId || null"
-            :program-id="programId || null"
-            class="acc-scope__select"
-            @update:value="handleTrainingPlanChange"
-          />
+          <QualityScopeHeader @change="refreshAll" />
         </template>
         <template #actions>
           <UiButton
@@ -235,7 +227,7 @@ onMounted(refreshAll)
       <SignalBand :metrics="signalMetrics" compact />
     </template>
 
-    <UiEmpty v-if="!hasScope" description="请先选择专业与培养方案" class="acc-empty" />
+    <UiEmpty v-if="!hasScope" description="请选择专业与培养方案" class="acc-empty" />
 
     <template v-else>
       <a-alert

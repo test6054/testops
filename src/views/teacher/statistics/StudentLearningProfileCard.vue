@@ -36,22 +36,16 @@
         title="AI 学生学情分析生成中"
         waiting-text="正在等待后端返回该学生的真实学情画像。"
       />
-      <!-- D-9 错误态：AI 学生个体学情加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 学生学情加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!hasQueried" description="请选择学生后查看或生成学情画像。" />
-      <UiEmpty v-else-if="!record" description="该学生暂无 AI 学情分析。" />
-      <div v-else class="ai-record">
+      <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="学生编号">
             {{ analysisScopeText(record) }}
@@ -102,9 +96,9 @@
             <a-descriptions-item label="总成绩">
               <template v-if="scoreComposition.totalScore != null">
                 {{ formatScore(scoreComposition.totalScore) }} 分
-                <a-tag v-if="scoreComposition.finalScoreStatus" size="small" :color="finalScoreTone(scoreComposition.finalScoreStatus)">
+                <UiTag v-if="scoreComposition.finalScoreStatus" size="sm" :tone="finalScoreTone(scoreComposition.finalScoreStatus)">
                   {{ finalScoreLabel(scoreComposition.finalScoreStatus) }}
-                </a-tag>
+                </UiTag>
               </template>
               <span v-else class="text-muted">未录入</span>
             </a-descriptions-item>
@@ -136,9 +130,9 @@
               <a-list-item>
                 <div class="diagnosis-item">
                   <div class="diagnosis-header">
-                    <a-tag :color="masteryColor(item.masteryLevel)">
+                    <UiTag :tone="masteryColor(item.masteryLevel)">
                       {{ masteryLabel(item.masteryLevel) }}
-                    </a-tag>
+                    </UiTag>
                     <span class="diagnosis-type">{{ item.questionType }}</span>
                     <span class="diagnosis-rate">得分率 {{ formatRate(item.scoreRate) }}</span>
                   </div>
@@ -167,6 +161,7 @@
 <script lang="ts" setup>
 import type { FinalScoreStatusCode, MasteryLevelCode } from '@/apis/mark/student-exam'
 import type { ExamTeachingAnalysisRecordVO } from '@/apis/mark/teaching-analysis'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -178,7 +173,7 @@ import {
   generateStudentLearningProfile,
   getLatestStudentLearningProfile,
 } from '@/apis/mark/teaching-analysis'
-import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -203,7 +198,6 @@ const emit = defineEmits<{ (e: 'student-change', studentUserId: string): void }>
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：AI 学生学情加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 const generating = ref(false)
 // 选中的学生用户 ID（来自下拉选择器，避免教师手输）
@@ -335,7 +329,7 @@ function finalScoreLabel(status: FinalScoreStatusCode): string {
   return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, status, '最终成绩状态')
 }
 
-function finalScoreTone(status: FinalScoreStatusCode): string {
+function finalScoreTone(status: FinalScoreStatusCode): BadgeTone {
   return strictEnumTone(FINAL_SCORE_STATUS_TONE, status, '最终成绩状态')
 }
 
@@ -343,7 +337,7 @@ function masteryLabel(level: MasteryLevelCode): string {
   return strictEnumLabel(MASTERY_LEVEL_LABEL, level, '掌握水平')
 }
 
-function masteryColor(level: MasteryLevelCode): string {
+function masteryColor(level: MasteryLevelCode): BadgeTone {
   return strictEnumTone(MASTERY_LEVEL_TONE, level, '掌握水平')
 }
 

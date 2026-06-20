@@ -25,7 +25,7 @@ import {
   AGGREGATION_FUNCTION_LABEL,
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -175,6 +175,7 @@ const signals = computed<SignalMetric[]>(() => {
     { key: 'civic', label: '支持五育维度', value: civic, tone: 'blue' },
   ]
 })
+
 
 function assignEditor(
   record: ProfessionAlgorithmTemplateVO,
@@ -415,9 +416,9 @@ onMounted(async () => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'source'">
-            <a-tag :color="isSharedTemplate(record) ? 'blue' : 'green'">
+            <UiTag :tone="isSharedTemplate(record) ? 'blue' : 'green'">
               {{ isSharedTemplate(record) ? '平台共享' : '租户自定义' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'accreditationType'">
             {{ accreditationTypeLabel(record.accreditationType) }}
@@ -426,9 +427,9 @@ onMounted(async () => {
             {{ record.directWeightDefault }} / {{ record.indirectWeightDefault }}
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="record.enabled ? 'green' : 'default'">
+            <UiTag :tone="record.enabled ? 'green' : 'gray'">
               {{ record.enabled ? '启用' : '停用' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
@@ -641,14 +642,14 @@ onMounted(async () => {
             {{ detailRecord.templateName }}
           </a-descriptions-item>
           <a-descriptions-item label="来源">
-            <a-tag :color="isSharedTemplate(detailRecord) ? 'blue' : 'green'">
+            <UiTag :tone="isSharedTemplate(detailRecord) ? 'blue' : 'green'">
               {{ isSharedTemplate(detailRecord) ? '平台共享' : '租户自定义' }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="状态">
-            <a-tag :color="detailRecord.enabled ? 'green' : 'default'">
+            <UiTag :tone="detailRecord.enabled ? 'green' : 'gray'">
               {{ detailRecord.enabled ? '启用' : '停用' }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="认证类型">
             {{ accreditationTypeLabel(detailRecord.accreditationType) }}
@@ -688,12 +689,12 @@ onMounted(async () => {
           </a-descriptions-item>
           <a-descriptions-item label="能力维度" :span="2">
             <a-space>
-              <a-tag :color="detailRecord.aiLiteracySupported ? 'blue' : 'default'">
+              <UiTag :tone="detailRecord.aiLiteracySupported ? 'blue' : 'gray'">
                 {{ detailRecord.aiLiteracySupported ? '支持 AI 素养' : '不支持 AI 素养' }}
-              </a-tag>
-              <a-tag :color="detailRecord.civicDimensionsSupported ? 'purple' : 'default'">
+              </UiTag>
+              <UiTag :tone="detailRecord.civicDimensionsSupported ? 'purple' : 'gray'">
                 {{ detailRecord.civicDimensionsSupported ? '支持五育维度' : '不支持五育维度' }}
-              </a-tag>
+              </UiTag>
             </a-space>
           </a-descriptions-item>
           <a-descriptions-item label="描述" :span="2">

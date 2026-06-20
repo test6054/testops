@@ -1,0 +1,55 @@
+// 全局字体契约：tabular-nums、代码字体、角色字阶应用
+
+// Phase 1：数据区 tabular-nums
+.ui-data-table__table,
+.signal-band,
+.ui-stat-panel,
+.ui-metric-card,
+.mark-chart-host {
+  font-variant-numeric: tabular-nums;
+}
+
+// Phase 1：代码 / 批次号 / 学号
+.dp-font-code,
+.ui-data-table__col--code,
+.batch-code,
+.student-number,
+.exam-code {
+  font-family: var(--font-family-code);
+  font-variant-numeric: tabular-nums;
+}
+
+// Phase 2：面包屑 / ContextBar 辅助导航
+.header-breadcrumb :deep(.ant-breadcrumb),
+.ant-breadcrumb {
+  font-size: var(--dp-type-context-size);
+  line-height: var(--dp-type-context-line-height);
+  font-weight: var(--dp-type-context-weight);
+}
+
+.context-bar__title {
+  font-size: var(--dp-type-h1-size);
+  line-height: var(--dp-type-h1-line-height);
+  font-weight: var(--dp-type-h1-weight);
+}
+
+.context-bar__subtitle {
+  font-size: var(--dp-type-context-size);
+  line-height: var(--dp-type-context-line-height);
+}
+
+// Phase 2：侧栏菜单字阶（与 _overrides 40px 行盒对齐）
+.app-side-menu.ant-menu-inline {
+  font-size: var(--dp-type-sidebar-size);
+  line-height: var(--dp-type-sidebar-line-height);
+}
+
+// Phase 3：质量评价域正文可读性
+.main-scroll-wrapper.mark-domain--quality {
+  :deep(.ui-description-grid),
+  :deep(.ui-detail-section),
+  :deep(.quality-scope-header),
+  :deep(.ant-typography) {
+    line-height: var(--dp-type-quality-body-line-height);
+  }
+}

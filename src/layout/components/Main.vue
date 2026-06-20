@@ -2,7 +2,10 @@
   <a-layout class="main" role="main">
     <div
       class="main-scroll-wrapper"
-      :class="{ 'main-scroll-wrapper--wide': route.meta.layoutWide }"
+      :class="{
+        'main-scroll-wrapper--wide': route.meta.layoutWide,
+        'mark-domain--quality': route.path.startsWith('/quality'),
+      }"
     >
       <router-view v-slot="{ Component, route: childRoute }">
         <component v-if="Component" :is="Component" :key="getRouteKey(childRoute)" />

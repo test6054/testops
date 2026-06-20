@@ -9,7 +9,7 @@
 - Pinia 3 + `pinia-plugin-persistedstate`
 - Vue Router 5
 - Axios（统一 HTTP 拦截器、`Authorization` / `X-Tenant-Id` / `X-Device-Id` / `X-Trace-Id` 自动注入、`refresh token` 自动续期）
-- Ui* 图表组件（`UiBarChart` / `UiTrendChart` / `UiScatterChart`）+ `mark-statistics-chart.ts` 数据转换
+- ECharts 6 + `vue-echarts` 8（应用插件 `installVueECharts` → `MarkChart` 唯一渲染层 → Section 语义组件 → `mark-echarts-options.ts`）
 
 ## 与公共服务的对接
 

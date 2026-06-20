@@ -116,8 +116,8 @@ const props = withDefaults(
     cancelText: '取消',
     searchText: '搜索',
     resetText: '重置',
-    emptyTitle: '暂无可选数据',
-    emptyDescription: '当前条件下没有匹配结果。',
+    emptyTitle: '',
+    emptyDescription: '暂无数据',
   },
 )
 

@@ -1,12 +1,13 @@
 import Antd from 'ant-design-vue'
-import message from 'ant-design-vue/es/message'
 import { createApp } from 'vue'
 // 错误处理
 import { DEV_ERROR_CONFIG, initGlobalErrorHandler, PROD_ERROR_CONFIG } from '@/config/error-config'
 // 状态管理
 import pinia, { useAuthStore } from '@/stores'
-import { getToken } from '@/utils/auth'
+import { hasPersistedSessionHint } from '@/utils/auth'
+import { configureAppFeedback, message } from '@/utils/feedback'
 
+import { installVueECharts } from '@/plugins/vue-echarts'
 import App from './App.vue'
 import router from './router'
 
@@ -14,6 +15,9 @@ import 'ant-design-vue/dist/reset.css'
 
 // 关键 CSS 优先加载，提升 LCP 性能
 import '@/styles/index.scss'
+
+// 反馈层样式必须晚于 Ant Design reset，覆盖 message 内联居中
+import '@/styles/global/_feedback-placement.scss'
 
 // Polyfill: Array.prototype.at (ES2022) — 解决旧版浏览器兼容性问题
 /* eslint-disable no-extend-native */
@@ -61,17 +65,21 @@ if (typeof window !== 'undefined') {
 const isDevelopment = import.meta.env.DEV
 initGlobalErrorHandler(isDevelopment ? DEV_ERROR_CONFIG : PROD_ERROR_CONFIG)
 
+// 全局反馈：统一右上角（message + notification）
+configureAppFeedback()
+
 const app = createApp(App)
+
+installVueECharts(app)
 
 app.use(pinia)
 
 // 在路由初始化之前，先初始化用户状态
 const authStore = useAuthStore()
-const token = getToken()
 
 // 异步初始化用户认证状态
 const initializeApp = async () => {
-  if (token) {
+  if (hasPersistedSessionHint()) {
     try {
       await authStore.initializeAuth()
     } catch {

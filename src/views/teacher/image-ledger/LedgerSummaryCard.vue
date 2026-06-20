@@ -1,35 +1,36 @@
 <template>
   <a-spin :spinning="loading">
-    <UiEmpty v-if="!ledger" description="暂未生成账本" />
+    <UiEmpty v-if="!ledger" description="暂无数据" />
     <div v-else class="ledger-summary">
       <!-- 顶栏：状态 + 进度环 + 操作 -->
       <div class="ledger-summary__hero">
         <div class="ledger-summary__hero-left">
-          <UiRingProgress
-            :percent="scanPercent"
-            size="lg"
-            :color="scanRingColor"
-            label="扫描进度"
-          />
-          <div class="ledger-summary__hero-meta">
-            <div class="ledger-summary__hero-status">
-              <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
-              <span class="ledger-summary__hero-time">
-                最近对账：{{ formatDateTime(ledger.balancedTime) }}
-              </span>
+          <MarkGaugeBlock
+            :option="scanGaugeOption"
+            :ariaLabel="scanGaugeAriaLabel"
+            layout="inline"
+          >
+            <div class="ledger-summary__hero-meta">
+              <div class="ledger-summary__hero-status">
+                <UiTag :tone="statusTone" size="sm">{{ statusLabel }}</UiTag>
+                <span class="ledger-summary__hero-time">
+                  最近对账：{{ formatDateTime(ledger.balancedTime) }}
+                </span>
+              </div>
+              <UiProgressBarNew
+                :percent="scanPercent"
+                size="sm"
+                :color="scanRingColor"
+                :label="scanProgressLabel"
+                class="ledger-summary__scan-bar"
+                aria-label="页级扫描进度"
+              />
+              <div v-if="ledger.diagnostic" class="ledger-summary__diagnostic">
+                <ExclamationCircleOutlined style="color: var(--ant-color-warning)" />
+                <span>{{ ledgerDiagnosticText(ledger.diagnostic) }}</span>
+              </div>
             </div>
-            <UiProgressBarNew
-              :percent="scanPercent"
-              size="sm"
-              :color="scanRingColor"
-              :label="`已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`"
-              class="ledger-summary__scan-bar"
-            />
-            <div v-if="ledger.diagnostic" class="ledger-summary__diagnostic">
-              <ExclamationCircleOutlined style="color: var(--ant-color-warning)" />
-              <span>{{ ledgerDiagnosticText(ledger.diagnostic) }}</span>
-            </div>
-          </div>
+          </MarkGaugeBlock>
         </div>
         <div class="ledger-summary__hero-right">
           <UiButton
@@ -73,17 +74,20 @@ import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
-import { LEDGER_STATUS_COLOR, LEDGER_STATUS_LABEL } from '@/apis/mark/image-ledger'
+import { MarkGaugeBlock } from '@/components/chart'
+import { hasImageLedgerPageStats, LEDGER_STATUS_COLOR, LEDGER_STATUS_LABEL } from '@/apis/mark/image-ledger'
 import {
   UiButton,
   UiEmpty,
   UiProgressBarNew,
-  UiRingProgress,
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
+import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -105,17 +109,47 @@ const statusTone = computed(() => {
 
 const scanPercent = computed(() => {
   const ledger = props.ledger
-  if (!ledger) return 0
+  if (!ledger || !hasImageLedgerPageStats(ledger)) return 0
   const expected = ledger.expectedPageCount
   const scanned = ledger.scannedPageCount
   if (expected <= 0) return 0
   return Math.min(Math.round((scanned / expected) * 100), 100)
 })
 
+const scanProgressLabel = computed(() => {
+  const ledger = props.ledger
+  if (!ledger) return ''
+  if (!hasImageLedgerPageStats(ledger)) {
+    return '页数统计待对账生成'
+  }
+  return `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
+})
+
+function formatLedgerMetric(value: number | null | undefined): string | number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  return '—'
+}
+
 /** 扫描完成率环色：100% 完成绿 / ≥60% 推进蓝 / 其余推进橙 */
 const scanRingColor = computed(() => {
   const tone: BadgeTone = scanPercent.value >= 100 ? 'green' : scanPercent.value >= 60 ? 'blue' : 'orange'
   return toneToColor(tone)
+})
+
+const { chartOption: scanGaugeOption } = useChartOption(() =>
+  buildGaugeChartOption(scanPercent.value, {
+    label: '扫描进度',
+    color: scanRingColor.value,
+    size: 'md',
+  }),
+)
+
+const scanGaugeAriaLabel = computed(() => {
+  const ledger = props.ledger
+  const detail = ledger && hasImageLedgerPageStats(ledger)
+    ? `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
+    : scanProgressLabel.value
+  return formatGaugeAriaLabel('扫描进度', scanPercent.value, detail)
 })
 
 /** 将影像账本诊断转为扫描交付处置提示，避免展示底层对账细节。 */
@@ -132,19 +166,19 @@ const scanMetrics = computed(() => {
   return [
     {
       label: '应考人数',
-      value: ledger.expectedCandidateCount,
+      value: formatLedgerMetric(ledger.expectedCandidateCount),
       unit: '人',
       tone: 'blue' as const,
     },
     {
       label: '应有页数',
-      value: ledger.expectedPageCount,
+      value: formatLedgerMetric(ledger.expectedPageCount),
       unit: '页',
       tone: 'blue' as const,
     },
     {
       label: '已扫描页',
-      value: ledger.scannedPageCount,
+      value: formatLedgerMetric(ledger.scannedPageCount),
       unit: '页',
       tone: scanPercent.value >= 100 ? ('green' as const) : ('orange' as const),
     },
@@ -163,21 +197,23 @@ const bindMetrics = computed(() => {
   return [
     {
       label: '已重构试卷',
-      value: ledger.reconstructedPaperCount,
+      value: formatLedgerMetric(ledger.reconstructedPaperCount),
       unit: '份',
       tone: 'blue' as const,
     },
     {
       label: '已绑定试卷',
-      value: ledger.boundPaperCount,
+      value: formatLedgerMetric(ledger.boundPaperCount),
       unit: '份',
       tone: 'green' as const,
     },
     {
       label: '未匹配考生',
-      value: ledger.missingCandidateCount,
+      value: formatLedgerMetric(ledger.missingCandidateCount),
       unit: '人',
-      tone: ledger.missingCandidateCount > 0 ? ('red' as const) : ('green' as const),
+      tone: typeof ledger.missingCandidateCount === 'number' && ledger.missingCandidateCount > 0
+        ? ('red' as const)
+        : ('green' as const),
     },
   ]
 })
@@ -188,15 +224,19 @@ const deviationMetrics = computed(() => {
   return [
     {
       label: '重复影像页',
-      value: ledger.duplicatePageCount,
+      value: formatLedgerMetric(ledger.duplicatePageCount),
       unit: '页',
-      tone: ledger.duplicatePageCount > 0 ? ('orange' as const) : ('green' as const),
+      tone: typeof ledger.duplicatePageCount === 'number' && ledger.duplicatePageCount > 0
+        ? ('orange' as const)
+        : ('green' as const),
     },
     {
       label: '待处置重复',
-      value: ledger.pendingDuplicateCount,
+      value: formatLedgerMetric(ledger.pendingDuplicateCount),
       unit: '条',
-      tone: ledger.pendingDuplicateCount > 0 ? ('red' as const) : ('green' as const),
+      tone: typeof ledger.pendingDuplicateCount === 'number' && ledger.pendingDuplicateCount > 0
+        ? ('red' as const)
+        : ('green' as const),
     },
     { label: '账本编号', value: ledger.ledgerId, tone: 'gray' as const },
   ]

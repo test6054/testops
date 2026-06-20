@@ -216,13 +216,20 @@ const normalizeOptionValue = (value: unknown): UiOptionValue => {
 
 const getFieldStyle = (field: FilterField) => {
   const style: Record<string, string> = {}
-  if (field.width !== undefined) {
-    style.width = typeof field.width === 'number' ? `${field.width}px` : String(field.width)
+  const widthPx
+    = field.width !== undefined
+      ? (typeof field.width === 'number' ? field.width : Number.parseFloat(String(field.width)))
+      : undefined
+  const resolvedWidth = widthPx !== undefined && !Number.isNaN(widthPx) ? widthPx : undefined
+
+  if (resolvedWidth !== undefined) {
+    style.width = `${resolvedWidth}px`
     style.flex = '0 0 auto'
   } else if (field.flex !== undefined) {
     style.flex = typeof field.flex === 'number' ? `${field.flex}` : String(field.flex)
   }
-  const minWidth = field.minWidth ?? 220
+
+  const minWidth = field.minWidth ?? (resolvedWidth !== undefined ? resolvedWidth : 220)
   const maxWidth = field.maxWidth ?? 360
   style.minWidth = typeof minWidth === 'number' ? `${minWidth}px` : String(minWidth)
   style.maxWidth = typeof maxWidth === 'number' ? `${maxWidth}px` : String(maxWidth)
@@ -346,7 +353,8 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   gap: 8px;
   flex-wrap: nowrap;
   flex: 0 0 auto;
-  margin-left: 24px;
+  margin-left: auto;
+  align-self: flex-end;
 }
 
 .dp-filter-bar__actions--end {
@@ -354,7 +362,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 }
 
 .dp-filter-bar__actions--start {
-  margin-left: 24px;
+  margin-left: auto;
 }
 
 :deep(.ant-input-affix-wrapper),

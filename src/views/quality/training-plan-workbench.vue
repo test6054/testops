@@ -64,10 +64,10 @@ import {
   trainingObjectiveRequirementApi,
   trainingPlanApi,
 } from '@/apis/quality'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
-import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -356,6 +356,7 @@ const signals = computed<SignalMetric[]>(() => [
     tone: 'gray',
   },
 ])
+
 
 const objectiveMatrixRows = computed<MatrixRow[]>(() =>
   objectives.value.map((o) => {
@@ -1007,10 +1008,6 @@ watch(
 
 watch(selectedRequirement, () => loadStandardMappings())
 
-function handlePlanChange(planId: string | null) {
-  qualityStore.setTrainingPlan(planId || '')
-}
-
 onMounted(async () => {
   await loadStandardOptions()
   if (!qualityStore.currentTrainingPlanId) {
@@ -1057,37 +1054,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
     <template #context>
       <ContextBar>
         <template #status>
-          <span class="tpw__context-label">培养方案</span>
-          <TrainingPlanSelector
-            :value="qualityStore.currentTrainingPlanId || null"
-            :program-id="qualityStore.currentProgramId || null"
-            :only-confirmed="false"
-            :only-enabled="false"
-            :width="320"
-            @change="handlePlanChange"
-          />
-          <a-tag
-            v-if="currentPlan"
-            :color="
-              planConfirmationStatus
-                ? strictEnumTone(
-                  CONFIRMATION_STATUS_COLOR,
-                  planConfirmationStatus,
-                  '培养方案确认状态',
-                )
-                : 'default'
-            "
-          >
-            {{
-              planConfirmationStatus
-                ? strictEnumLabel(
-                  CONFIRMATION_STATUS_LABEL,
-                  planConfirmationStatus,
-                  '培养方案确认状态',
-                )
-                : '未提交'
-            }}
-          </a-tag>
+          <QualityScopeHeader show-plan-confirmation />
           <span v-if="currentPlan" class="tpw__context-meta">
             学年 {{ currentPlan.schoolYear || '未配置学年' }} · 年级
             {{ currentPlan.gradeLevel || '未配置年级' }}
@@ -1109,7 +1076,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
     <UiEmpty
       v-if="!qualityStore.currentTrainingPlanId"
-      description="请在顶部选择培养方案，或新建一份培养方案后开始维护体系数据"
+      description="请选择培养方案"
       class="tpw__empty"
     />
 
@@ -1173,15 +1140,15 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     {{ record.objectiveName }}
                   </template>
                   <template v-else-if="column.key === 'weightSum'">
-                    <a-tag
-                      :color="
+                    <UiTag
+                      :tone="
                         Math.abs(objectiveMappingSum(record.id) - 1) < WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "
                     >
                       Σ={{ objectiveMappingSum(record.id).toFixed(3) }}
-                    </a-tag>
+                    </UiTag>
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <div class="operations-cell" @click.stop>
@@ -1196,7 +1163,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
           <a-col :span="15">
             <UiCard v-if="!selectedObjective" class="tpw__card">
-              <UiEmpty description="请在左侧选择培养目标查看其支撑毕业要求映射" />
+              <UiEmpty description="请选择" />
             </UiCard>
             <UiCard v-else class="tpw__card">
               <template #title>
@@ -1204,16 +1171,17 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
               </template>
               <template #extra>
                 <a-space>
-                  <a-tag :color="objectiveWeightHealthy ? 'green' : 'red'">
+                  <UiTag :tone="objectiveWeightHealthy ? 'green' : 'red'">
                     权重和：{{ objectiveWeightSum.toFixed(3) }}
                     {{ objectiveWeightHealthy ? '合规' : '需=1' }}
-                  </a-tag>
+                  </UiTag>
                   <UiButton variant="primary" size="sm" @click="openObjMappingCreate">
                     新增映射
                   </UiButton>
                 </a-space>
               </template>
               <UiDataTable
+                pagination-mode="none"
                 class="student-detail-table__data-table"
                 :columns="objMappingColumns"
                 :data-source="mappingsOfSelectedObjective"
@@ -1311,15 +1279,15 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     {{ record.requirementName }}
                   </template>
                   <template v-else-if="column.key === 'indicatorWeightSum'">
-                    <a-tag
-                      :color="
+                    <UiTag
+                      :tone="
                         Math.abs(indicatorWeightSumByReq(record.id) - 1) < WEIGHT_EPSILON
                           ? 'green'
                           : 'red'
                       "
                     >
                       Σ={{ indicatorWeightSumByReq(record.id).toFixed(3) }}
-                    </a-tag>
+                    </UiTag>
                   </template>
                   <template v-else-if="column.key === 'actions'">
                     <div class="operations-cell" @click.stop>
@@ -1335,7 +1303,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
           <a-col :span="15">
             <UiCard v-if="!selectedRequirement" class="tpw__card">
-              <UiEmpty description="请在左侧选择毕业要求查看观测点和标准条款映射" />
+              <UiEmpty description="请选择" />
             </UiCard>
             <template v-else>
               <UiCard class="tpw__card" style="margin-bottom: 12px">
@@ -1344,8 +1312,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 </template>
                 <template #extra>
                   <a-space>
-                    <a-tag
-                      :color="
+                    <UiTag
+                      :tone="
                         Math.abs(indicatorWeightSumByReq(selectedRequirement.id) - 1)
                           < WEIGHT_EPSILON
                           ? 'green'
@@ -1353,13 +1321,14 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                       "
                     >
                       权重和：{{ indicatorWeightSumByReq(selectedRequirement.id).toFixed(3) }}
-                    </a-tag>
+                    </UiTag>
                     <UiButton variant="primary" size="sm" @click="openIndicatorCreate">
                       新增观测点
                     </UiButton>
                   </a-space>
                 </template>
                 <UiDataTable
+                  pagination-mode="none"
                   class="student-detail-table__data-table"
                   :columns="indicatorColumns"
                   :data-source="indicatorsOfSelected"
@@ -1379,9 +1348,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     </template>
                     <template v-else-if="column.key === 'civicDimensions'">
                       <a-space size="small" wrap>
-                        <a-tag v-for="d in record.civicDimensions ?? []" :key="d" color="purple">
+                        <UiTag v-for="d in record.civicDimensions ?? []" :key="d" tone="purple">
                           {{ strictEnumLabel(CIVIC_DIMENSION_LABEL, d, '课程思政维度') }}
-                        </a-tag>
+                        </UiTag>
                         <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted">-</span>
                       </a-space>
                     </template>
@@ -1405,6 +1374,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   </UiButton>
                 </template>
                 <UiDataTable
+                  pagination-mode="none"
                   class="student-detail-table__data-table"
                   :columns="stdMappingColumns"
                   :data-source="standardMappings"

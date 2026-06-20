@@ -37,6 +37,7 @@ import {
   RESPONDENT_TYPE_LABEL,
   scaleConversionRuleApi,
 } from '@/apis/quality'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import {
   ClassSelector,
   CourseGoalSelector,
@@ -49,11 +50,12 @@ import {
   TrainingObjectiveSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
-import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { throwUserFacing } from '@/utils/contract-guard'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ImportResponseDocumentModal from './components/ImportResponseDocumentModal.vue'
@@ -64,6 +66,7 @@ const RESPONSE_DATA_ERROR = '答卷数据异常，请刷新后重试'
 const SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE = 100
 
 const qualityStore = useQualityStore()
+const listLoadError = ref<Error | null>(null)
 
 const formColumns: ColumnsType = [
   { title: '编码', dataIndex: 'formCode', key: 'formCode', width: 120 },
@@ -371,13 +374,22 @@ function handleResponseRespondentTypeChange() {
 
 async function loadForms() {
   formsLoading.value = true
+  listLoadError.value = null
   try {
     const page = await indirectFormApi.page({ ...formQuery })
     forms.value = readPageList(page, '间接评价问卷加载失败，请稍后重试')
     formsTotal.value = readPageTotal(page, '间接评价问卷加载失败，请稍后重试')
+  } catch (error) {
+    listLoadError.value = toUserError(error, '间接评价问卷加载失败')
+    showUserError(error, '间接评价问卷加载失败')
   } finally {
     formsLoading.value = false
   }
+}
+
+async function handleScopeChange(): Promise<void> {
+  listLoadError.value = null
+  await loadForms()
 }
 
 function syncFormFilterToQuery() {
@@ -1061,6 +1073,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 /* ========== 联动 ========== */
 
 watch(selectedForm, async () => {
@@ -1079,6 +1092,19 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
+    <template #context>
+      <ContextBar>
+        <template #status>
+          <QualityScopeHeader @change="handleScopeChange" />
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" :loading="formsLoading" @click="handleScopeChange">
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+
     <SignalBand :metrics="signals" compact class="ie__signals" />
 
     <UiCard class="detail-table-card ie__form-card">
@@ -1142,6 +1168,7 @@ onMounted(async () => {
           </template>
 
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
             :columns="itemColumns"
             :data-source="items"
@@ -1188,7 +1215,7 @@ onMounted(async () => {
       </a-col>
 
       <a-col :span="12">
-        <UiEmpty v-if="!selectedItem" description="请在左侧选择题项查看答卷" class="ie__empty" />
+        <UiEmpty v-if="!selectedItem" description="请选择" class="ie__empty" />
 
         <UiCard v-else class="detail-table-card ie__response-card">
           <template #title>
@@ -1205,6 +1232,7 @@ onMounted(async () => {
           </template>
 
           <UiDataTable
+            pagination-mode="client"
             class="student-detail-table__data-table"
             :columns="responseColumns"
             :data-source="responses"
@@ -1240,9 +1268,9 @@ onMounted(async () => {
                 <span class="ie__sub-desc">{{ responseOpenText(record) }}</span>
               </template>
               <template v-else-if="column.key === 'validFlag'">
-                <a-tag :color="record.validFlag ? 'green' : 'red'">
+                <UiTag :tone="record.validFlag ? 'green' : 'red'">
                   {{ record.validFlag ? '有效' : '无效' }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>

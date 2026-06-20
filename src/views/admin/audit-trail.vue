@@ -3,15 +3,16 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            v-model:value="selectedExamId"
-            placeholder="选择考试"
-            class="audit-trail__exam-select"
-            :options="examOptions"
+          <MarkExamSelect
+            :selected-exam-id="selectedExamId"
+            :exam-options="examOptions"
             :loading="examLoading"
-            show-search
-            option-filter-prop="label"
+            :searching="searching"
+            :resolving-pinned="resolvingPinned"
+            select-class="audit-trail__exam-select"
+            placeholder="选择考试"
             @change="onExamChange"
+            @search="onExamSearch"
           />
           <UiTag tone="blue" size="sm">考试维度</UiTag>
           <UiTag v-if="selectedExamId" tone="green" size="sm">
@@ -24,7 +25,7 @@
     <!-- 主工作面 -->
     <UiEmpty
       v-if="!selectedExamId"
-      description="请先选择考试后查看审计数据"
+      description="请选择考试"
       class="audit-trail__empty"
     />
 
@@ -56,20 +57,7 @@
             @search="searchLogs"
           />
 
-          <!-- D-9 错误态：审计日志加载失败时提供重试 + 上报入口 -->
-          <UiErrorRetryPanel
-            v-if="logsLoadError"
-            :error="logsLoadError"
-            title="审计日志加载失败"
-            compact
-            @retry="loadLogs"
-          />
-          <UiEmpty
-            v-else-if="!logLoading && operationLogs.length === 0"
-            description="暂无审计日志"
-          />
           <UiDataTable
-            v-else
             :columns="logColumns"
             :data-source="operationLogs"
             :loading="logLoading"
@@ -128,20 +116,8 @@
             </template>
           </UiFilterBar>
 
-          <!-- D-9 错误态：重大事件加载失败时提供重试 + 上报入口 -->
-          <UiErrorRetryPanel
-            v-if="incidentsLoadError"
-            :error="incidentsLoadError"
-            title="重大事件加载失败"
-            compact
-            @retry="loadIncidents"
-          />
-          <UiEmpty
-            v-else-if="!incidentLoading && incidents.length === 0"
-            description="暂无重大事件"
-          />
           <UiDataTable
-            v-else
+            pagination-mode="client"
             :columns="incidentColumns"
             :data-source="incidents"
             :loading="incidentLoading"
@@ -208,20 +184,7 @@
             @search="searchDiagnosticSamples"
           />
 
-          <!-- D-9 错误态：异常留痕样本加载失败时提供重试 + 上报入口 -->
-          <UiErrorRetryPanel
-            v-if="samplesLoadError"
-            :error="samplesLoadError"
-            title="异常留痕样本加载失败"
-            compact
-            @retry="loadDiagnosticSamples"
-          />
-          <UiEmpty
-            v-else-if="!sampleLoading && diagnosticSamples.length === 0"
-            description="暂无异常留痕样本"
-          />
           <UiDataTable
-            v-else
             :columns="sampleColumns"
             :data-source="diagnosticSamples"
             :loading="sampleLoading"
@@ -321,12 +284,12 @@ import {
   resolveIncident,
 } from '@/apis/mark/admin-audit'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
+import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import {
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
   UiTextAction,
@@ -348,6 +311,9 @@ const {
   selectedExamId,
   init: initExams,
   onExamChange: onSelectorChange,
+  onExamSearch,
+  searching,
+  resolvingPinned,
 } = useMarkExamSelector()
 
 const activeTab = ref<'logs' | 'incidents' | 'diagnostic-samples'>('logs')
@@ -595,8 +561,8 @@ function onTabChange(_key: string | number) {
   }
 }
 
-function onExamChange(value: SelectValue, option: DefaultOptionType | DefaultOptionType[]) {
-  onSelectorChange(value, option)
+function onExamChange(value: SelectValue) {
+  onSelectorChange(value)
   operationLogs.value = []
   logPagination.current = 1
   logPagination.total = 0

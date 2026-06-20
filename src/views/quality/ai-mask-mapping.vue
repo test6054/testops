@@ -17,7 +17,7 @@ import type {
   AiTaskType,
   AiTaskVO,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -29,7 +29,7 @@ import {
   aiMaskMappingApi,
   aiTaskApi,
 } from '@/apis/quality'
-import { UiCard, UiEmpty, UiFilterBar } from '@/components/ui-guide/ui'
+import { UiCard, UiEmpty, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -42,7 +42,7 @@ function aiTaskStatusLabel(value: AiTaskStatus): string {
   return strictEnumLabel(AI_TASK_STATUS_LABEL, value, 'AI 任务状态')
 }
 
-function aiTaskStatusColor(value: AiTaskStatus): string {
+function aiTaskStatusColor(value: AiTaskStatus): BadgeTone {
   return strictEnumTone(AI_TASK_STATUS_COLOR, value, 'AI 任务状态')
 }
 
@@ -207,9 +207,9 @@ onMounted(async () => {
             {{ aiTaskTypeLabel(taskVO.taskType) }}
           </a-descriptions-item>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiTaskStatusColor(taskVO.status)">
+            <UiTag :tone="aiTaskStatusColor(taskVO.status)">
               {{ aiTaskStatusLabel(taskVO.status) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="操作人">
             {{ taskVO.operatorUserName }}
@@ -225,7 +225,7 @@ onMounted(async () => {
 
       <UiEmpty
         v-if="!loading && selectedAiTaskId && !mappingVO"
-        description="尚未查询到脱敏映射记录，请确认该任务已完成脱敏处理"
+        description="暂无数据"
         size="sm"
         class="ai-mask__empty"
       />

@@ -6,8 +6,10 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditIssueStatus, AuditIssueVO } from '@/apis/quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { onMounted, ref, watch } from 'vue'
 import { AUDIT_ISSUE_STATUS_COLOR, AUDIT_ISSUE_STATUS_LABEL, auditIssueApi } from '@/apis/quality'
+import { UiTag } from '@/components/ui-guide/ui'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
@@ -86,7 +88,7 @@ function auditIssueStatusLabel(value: AuditIssueStatus): string {
   return strictEnumLabel(AUDIT_ISSUE_STATUS_LABEL, value, '审核评估问题状态')
 }
 
-function auditIssueStatusColor(value: AuditIssueStatus): string {
+function auditIssueStatusColor(value: AuditIssueStatus): BadgeTone {
   return strictEnumTone(AUDIT_ISSUE_STATUS_COLOR, value, '审核评估问题状态')
 }
 
@@ -125,9 +127,9 @@ defineExpose({ reload: loadOptions })
     >
       <span class="text-xs text-gray-500 mr-1">{{ opt.issueCode }}</span>
       {{ opt.issueTitle }}
-      <a-tag :color="auditIssueStatusColor(opt.status)" class="ml-1">
+      <UiTag :tone="auditIssueStatusColor(opt.status)" class="ml-1">
         {{ auditIssueStatusLabel(opt.status) }}
-      </a-tag>
+      </UiTag>
     </a-select-option>
   </a-select>
 </template>

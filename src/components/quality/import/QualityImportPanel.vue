@@ -44,6 +44,7 @@
           <template v-if="failedRows.length > 0">
             <a-divider>失败行详情</a-divider>
             <UiDataTable
+              pagination-mode="client"
               :columns="errorColumns"
               :data-source="pagedFailedRows"
               v-model:current="importErrorPage"

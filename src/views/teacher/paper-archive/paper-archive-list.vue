@@ -8,14 +8,6 @@
       </ContextBar>
     </template>
 
-    <UiAlertStrip
-      tone="info"
-      title="纸质试卷档案集"
-      description="这里管理历史纸质试卷的保管对象，不与考试电子归档包混用。"
-      dense
-      class="paper-archive-list-page__alert"
-    />
-
     <a-card :bordered="false" class="detail-table-card paper-archive-list-page__table-card">
       <template #title>
         <FileOutlined />
@@ -36,11 +28,9 @@
         @reset="handleReset"
       />
 
-      <UiEmpty v-if="!loading && sets.length === 0" description="尚未创建任何纸质试卷档案集" />
-
       <UiDataTable
+        pagination-mode="none"
         class="student-detail-table__data-table"
-        v-else
         :columns="columns"
         :data-source="sets"
         :loading="loading"
@@ -207,11 +197,10 @@ import {
   PAPER_ARCHIVE_SET_STATUS_OPTIONS,
   PAPER_ARCHIVE_SET_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
-import { UiAlertStrip, UiButton, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
-import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -219,7 +208,6 @@ import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperArchiveList' })
 
-const markStageStore = useMarkStageStore()
 const examContextStore = useMarkExamContextStore()
 
 const router = useRouter()
@@ -324,51 +312,6 @@ const columns: ColumnsType<PaperArchiveSetVO> = [
   { title: '操作', key: 'actions', width: 180, align: 'right' },
 ]
 
-/**
- * 当用户当前已经选定考试上下文（来自 archive-list / score-publish 等页面跳转）时，
- * 将本页纸质试卷档案集列表的状态汇总写入该考试的 ARCHIVE 阶段。
- *
- * 注意：PaperArchiveSet 不持有 examId，只能基于 examContextStore.currentExamId 反映"用户视角"。
- * 无上下文时不写入，避免污染 markStageStore。
- *
- * 状态汇总规则：
- * - 任一 DESTROYED → completed（生命周期完结）
- * - 任一 ACTIVE / APPRAISAL_DECIDED / APPRAISAL_PENDING → active（保管 / 鉴定流程中）
- * - 任一 DRAFT → blocked（待激活）
- * - 列表为空 → 不写入（无可参考数据）
- */
-function syncPaperArchiveStageToStore(): void {
-  const examId = examContextStore.currentExamId
-  if (!examId) return
-  if (sets.value.length === 0) return
-  const statuses = sets.value.map((s) => s.archiveStatus)
-  const hasDestroyed = statuses.some(
-    (s) => s === 'DESTROYED' || s === 'DESTRUCTION_APPROVED' || s === 'DESTRUCTION_PENDING',
-  )
-  const hasActive = statuses.some(
-    (s) => s === 'ACTIVE' || s === 'APPRAISAL_PENDING' || s === 'APPRAISAL_DECIDED',
-  )
-  const hasDraft = statuses.includes('DRAFT')
-  let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
-  let hint = ''
-  if (hasDestroyed) {
-    status = 'completed'
-    hint = `共 ${sets.value.length} 个纸质试卷档案集 · 含已销毁`
-  } else if (hasActive) {
-    status = 'active'
-    const active = statuses.filter(
-      (s) => s === 'ACTIVE' || s === 'APPRAISAL_PENDING' || s === 'APPRAISAL_DECIDED',
-    ).length
-    hint = `${active} 个纸质试卷档案集保管 / 鉴定中`
-  } else if (hasDraft) {
-    status = 'blocked'
-    hint = `${statuses.filter((s) => s === 'DRAFT').length} 个纸质试卷档案集草稿待激活`
-  }
-  if (hint) {
-    markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
-  }
-}
-
 async function loadSets(): Promise<void> {
   loading.value = true
   try {
@@ -383,7 +326,6 @@ async function loadSets(): Promise<void> {
     })
     sets.value = readPageList(result, '纸质试卷档案集加载失败，请稍后重试')
     pagination.total = readPageTotal(result, '纸质试卷档案集加载失败，请稍后重试')
-    syncPaperArchiveStageToStore()
   } catch (error) {
     showUserError(error, '纸质试卷档案集列表加载失败')
   } finally {

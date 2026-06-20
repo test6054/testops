@@ -154,8 +154,9 @@
     <UiCard class="archive-detail-page__tabs-card">
       <a-tabs v-model:active-key="activeTab">
         <a-tab-pane key="items" :tab="`清单项 (${items.length})`">
-          <UiEmpty v-if="items.length === 0" description="暂无清单项" />
+          <UiEmpty v-if="items.length === 0" description="暂无数据" />
           <UiDataTable
+            pagination-mode="client"
             class="student-detail-table__data-table"
             v-else
             :columns="itemColumns"
@@ -188,7 +189,7 @@
           </UiDataTable>
         </a-tab-pane>
         <a-tab-pane key="events" :tab="`事件流水 (${events.length})`">
-          <UiEmpty v-if="events.length === 0" description="暂无事件" />
+          <UiEmpty v-if="events.length === 0" description="暂无数据" />
           <a-timeline v-else mode="left">
             <a-timeline-item
               v-for="event in events"
@@ -207,15 +208,10 @@
     </UiCard>
   </StageWorkbenchShell>
 
-  <UiErrorRetryPanel
-    v-else-if="detailLoadError"
-    :error="detailLoadError"
-    title="电子归档包详情加载失败"
-    :show-report="false"
-    @retry="loadDetail"
+  <UiEmpty
+    v-else-if="!loading && !archive"
+    description="暂无数据"
   />
-
-  <UiEmpty v-else-if="!loading" description="电子归档包不存在或已被删除" />
 
   <a-modal
     v-model:open="appraiseModalOpen"
@@ -345,20 +341,17 @@ import {
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
-import { useMarkStageStore } from '@/stores/modules/markStage'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveDetail' })
 
-const markStageStore = useMarkStageStore()
 const examContextStore = useMarkExamContextStore()
 
 const route = useRoute()
@@ -479,66 +472,6 @@ const hasAnyAction = computed(() => {
   )
 })
 
-/**
- * 将归档包状态映射为 ARCHIVE 阶段状态。与 archive-list 采用同一语义。
- * 该页面仅针对单个归档包，其状态索引着其 examId 的 ARCHIVE 阶段。
- */
-function syncArchiveDetailStageToStore(pkg: ArchivePackageVO): void {
-  const examId = pkg.examId
-  if (!examId) return
-  examContextStore.currentExamId = examId
-  markStageStore.observeExam(examId)
-  let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
-  let hint = ''
-  switch (pkg.archiveStatus) {
-    case 'DRAFT':
-      status = 'blocked'
-      hint = '草稿待打包'
-      break
-    case 'PACKAGING_FAILED':
-    case 'DESTRUCTION_FAILED':
-      status = 'blocked'
-      hint
-        = pkg.archiveStatus === 'PACKAGING_FAILED'
-          ? archivePackagingDiagnosticText(pkg.packagingDiagnostic)
-          : archiveStatusLabel(pkg.archiveStatus)
-      break
-    case 'PACKAGING':
-      status = 'active'
-      hint = pkg.packagingProgressMessage
-        ? `打包中 · ${pkg.packagingProgressPercent}% · ${pkg.packagingProgressMessage}`
-        : `打包中 · ${pkg.packagingProgressPercent}%`
-      break
-    case 'ACTIVE':
-      status = 'active'
-      hint = '保管中，可申请鉴定'
-      break
-    case 'APPRAISAL_PENDING':
-      status = 'active'
-      hint = '鉴定待办'
-      break
-    case 'APPRAISAL_DECIDED':
-    case 'DESTROYED':
-      status = 'completed'
-      hint = archiveStatusLabel(pkg.archiveStatus)
-      break
-    case 'DESTRUCTION_PENDING':
-      status = 'active'
-      hint = archiveStatusLabel(pkg.archiveStatus)
-      break
-    case 'DESTRUCTION_APPROVED':
-      status = 'active'
-      hint = archiveStatusLabel(pkg.archiveStatus)
-      break
-    case 'DESTRUCTION_EXECUTING':
-      status = 'active'
-      hint = archiveStatusLabel(pkg.archiveStatus)
-      break
-  }
-  markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
-  markStageStore.setCurrentStage(examId, 'ARCHIVE')
-}
-
 async function loadDetail(): Promise<void> {
   if (!archiveId) {
     message.error('未找到要查看的电子归档包')
@@ -551,7 +484,9 @@ async function loadDetail(): Promise<void> {
     archive.value = detail.archive
     items.value = detail.items
     events.value = detail.events
-    syncArchiveDetailStageToStore(detail.archive)
+    if (detail.archive.examId) {
+      examContextStore.currentExamId = detail.archive.examId
+    }
     syncPolling()
   } catch (error) {
     detailLoadError.value = toUserError(error, '考试电子归档包详情加载失败')

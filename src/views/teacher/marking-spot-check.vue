@@ -1,31 +1,14 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="spot-check-page__exam-select"
-            placeholder="按考试过滤（不选则查全部）"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
-          <UiTag :tone="pendingItems.length > 0 ? 'orange' : 'green'" size="sm">
-            待处理 {{ pendingItems.length }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="spot-check-page">
+    <div class="spot-check-page__toolbar">
+      <UiTag :tone="pendingItems.length > 0 ? 'orange' : 'green'" size="sm">
+        待处理 {{ pendingItems.length }}
+      </UiTag>
+      <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
+        <template #icon><ReloadOutlined /></template>
+        刷新
+      </UiButton>
+    </div>
 
     <UiCard class="info-card">
       <template #title>
@@ -36,22 +19,9 @@
         </UiBadge>
       </template>
 
-      <!-- D-9 错误态：待处理抽检加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="listLoadError"
-        :error="listLoadError"
-        title="待处理抽检加载失败"
-        compact
-        @retry="loadList"
-      />
-      <UiEmpty
-        v-else-if="!loading && pendingItems.length === 0"
-        description="当前没有待处理的抽检任务"
-      />
-
       <UiDataTable
+        pagination-mode="client"
         class="student-detail-table__data-table"
-        v-else
         :columns="columns"
         :data-source="pendingItems"
         :loading="loading"
@@ -175,7 +145,7 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -201,31 +171,22 @@ import {
   UiButton,
   UiCard,
   UiDataTable,
-  UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingSpotCheck' })
 
-// ─── 考试选择器（可选过滤；不选 = 跨考试聚合） ──────────────
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  onExamChange,
-  init: initExams,
-} = useMarkExamSelector()
+const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 // ─── 待处理抽检列表 ──────────────────────────────────────
 const pendingItems = ref<MyPendingSpotCheckItemResponse[]>([])
 const loading = ref(false)
-// D-9 错误态：待处理抽检加载失败时 UiErrorRetryPanel 重试 + 上报
 const listLoadError = ref<Error | null>(null)
 
 async function loadList(): Promise<void> {
@@ -304,10 +265,14 @@ async function submitConclusion(): Promise<void> {
       handleNote: form.handleNote.trim() || undefined,
     })
     message.success('已提交抽检处理结论')
-    // 从本地列表移除已处理项，避免重复显示直至下次 loadList
     pendingItems.value = pendingItems.value.filter((item) => item.id !== targetItem.value?.id)
     modalOpen.value = false
     targetItem.value = null
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '阅卷抽检结论提交失败')
   } finally {
@@ -316,15 +281,22 @@ async function submitConclusion(): Promise<void> {
 }
 
 onMounted(async () => {
-  await initExams()
   await loadList()
 })
 </script>
 
 <style lang="scss" scoped>
 .spot-check-page {
-  &__exam-select {
-    width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
 
   &__alert {

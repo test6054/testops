@@ -19,57 +19,28 @@
       </a-space>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      title="分数分布加载失败"
-      compact
-      @retry="reload"
-    />
     <UiEmpty
-      v-else-if="!distribution"
-      description="暂无已确认完整的考试成绩，完成阅卷确认后可查看分数分布"
+      v-if="!loading && !distribution"
+      description="暂无数据"
     />
-    <div v-else class="score-dist">
-      <a-row :gutter="12" class="score-dist__metrics">
-        <a-col :span="6">
-          <a-statistic title="统计人数" :value="distribution.participantCount" suffix="人" />
-        </a-col>
-        <a-col :span="6">
-          <a-statistic
-            title="及格人数"
-            :value="distribution.passCount"
-            suffix="人"
-            :value-style="{ color: toneToColor('green') }"
-          />
-        </a-col>
-        <a-col :span="6">
-          <a-statistic
-            title="平均分"
-            :value="distribution.avgScore"
-            :precision="1"
-            :suffix="`/ ${distribution.fullScore}`"
-          />
-        </a-col>
-        <a-col :span="6">
-          <a-statistic title="标准差" :value="distribution.stdDev" :precision="2" />
-        </a-col>
-      </a-row>
+    <div v-else-if="distribution" class="score-dist">
+      <UiStatPanel
+        :items="distributionMetrics"
+        :columns="4"
+        variant="strip"
+        compact
+        class="score-dist__metrics"
+      />
 
-      <div v-if="histogramBarItems.length" class="score-dist__chart-wrap">
-        <div class="score-dist__chart-meta">
-          <strong>五级分数分布</strong>
-          <span class="score-dist__chart-hint">
-            按百分制换算分段（满分 {{ distribution.fullScore }}，及格线
-            {{ distribution.passScore }}）
-          </span>
-        </div>
-        <UiBarChart
-          :items="histogramBarItems"
-          orientation="vertical"
-          class="score-dist__chart"
-        />
-      </div>
+      <MarkBarSection
+        title="五级分数分布"
+        :hint="`按百分制换算分段（满分 ${distribution.fullScore}，及格线 ${distribution.passScore}）`"
+        :item-count="histogramBarItems.length"
+        :option="histogramChartOption"
+        height="300px"
+        :aria-label="histogramChartAriaLabel"
+        class="score-dist__chart"
+      />
     </div>
   </UiCard>
 </template>
@@ -78,13 +49,16 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamScoreDistributionVO } from '@/apis/mark/exam'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
 import { getExamScoreDistribution } from '@/apis/mark/exam'
-import { UiBarChart, UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { MarkBarSection } from '@/components/chart'
+import { UiButton, UiCard, UiEmpty, UiStatPanel } from '@/components/ui-guide/ui'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { scoreHistogramToBarItems } from '@/utils/mark-statistics-chart'
-import { toneToColor } from '@/utils/score-tone'
 
 defineOptions({ name: 'ScoreDistributionCard' })
 
@@ -108,6 +82,53 @@ const histogramBarItems = computed(() => {
     ranges: distribution.value.ranges,
     counts: distribution.value.counts,
   })
+})
+
+const { chartOption: histogramChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(histogramBarItems.value, {
+    orientation: 'vertical',
+    yAxisName: '人数',
+    emptyText: '暂无分数段数据',
+  }),
+)
+
+const histogramChartAriaLabel = computed(() => {
+  const count = histogramBarItems.value.length
+  if (count <= 0) {
+    return '五级分数分布，暂无数据'
+  }
+  return `五级分数分布，共 ${count} 个分数段`
+})
+
+const distributionMetrics = computed((): UiStatPanelItem[] => {
+  if (!distribution.value) return []
+  const data = distribution.value
+  return [
+    {
+      key: 'participantCount',
+      label: '统计人数',
+      value: data.participantCount,
+      unit: '人',
+    },
+    {
+      key: 'passCount',
+      label: '及格人数',
+      value: data.passCount,
+      unit: '人',
+      tone: 'green',
+    },
+    {
+      key: 'avgScore',
+      label: '平均分',
+      value: data.avgScore.toFixed(1),
+      unit: `/ ${data.fullScore}`,
+    },
+    {
+      key: 'stdDev',
+      label: '标准差',
+      value: data.stdDev.toFixed(2),
+    },
+  ]
 })
 
 async function reload(): Promise<void> {

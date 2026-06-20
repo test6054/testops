@@ -33,27 +33,32 @@
       </ContextBar>
     </template>
 
-    <!-- D-9 错误态：阅卷概览加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="overviewLoadError"
-      :error="overviewLoadError"
-      title="阅卷概览加载失败"
-      @retry="loadOverview"
-    />
+    <a-spin v-if="loading && !overview" :spinning="true" class="admin-dashboard__loading" />
 
     <!-- 考试规模 + 批改进度 + 异常告警 -->
-    <a-row v-if="gradingMetrics && incidentMetrics && !overviewLoadError" :gutter="16">
+    <a-row v-else-if="gradingMetrics && incidentMetrics" :gutter="16">
       <a-col v-if="examMetrics && examScaleBarItems.length" :xs="24" :lg="6">
         <UiCard class="metric-card">
           <template #title>
             <PieChartOutlined />
             <span>考试规模</span>
           </template>
-          <div class="exam-scale-metrics">
-            <a-statistic title="考试总数" :value="examMetrics.totalExamCount" suffix="场" />
-            <a-statistic title="考生总数" :value="examMetrics.totalCandidateCount" suffix="人" />
-          </div>
-          <UiBarChart :items="examScaleBarItems" class="exam-scale-chart" />
+          <UiStatPanel
+            :items="examScaleMetrics"
+            :columns="2"
+            variant="strip"
+            compact
+            class="exam-scale-metrics"
+          />
+          <MarkBarSection
+            title="考试规模对比"
+            hint="按考试生命周期统计"
+            :item-count="examScaleBarItems.length"
+            :option="examScaleChartOption"
+            height="220px"
+            :aria-label="examScaleChartAriaLabel"
+            class="exam-scale-chart"
+          />
         </UiCard>
       </a-col>
       <a-col :xs="24" :lg="examMetrics && examScaleBarItems.length ? 10 : 14">
@@ -63,34 +68,21 @@
             <span>批改进度</span>
             <UiBadge tone="blue">活跃任务</UiBadge>
           </template>
-          <div class="metric-grid metric-grid--cols-3">
-            <div class="metric-cell">
-              <p class="metric-cell__label">待计算 / 计算中</p>
-              <p class="metric-cell__value warning">{{ gradingMetrics.pendingScoreCount }}</p>
-            </div>
-            <div class="metric-cell">
-              <p class="metric-cell__label">已确认题目</p>
-              <p class="metric-cell__value">{{ gradingMetrics.confirmedQuestionResultCount }}</p>
-            </div>
-            <div class="metric-cell">
-              <p class="metric-cell__label">已发布成绩</p>
-              <p class="metric-cell__value success">{{ gradingMetrics.publishedScoreCount }}</p>
-            </div>
-            <div class="metric-cell">
-              <p class="metric-cell__label">已确认未发布</p>
-              <p class="metric-cell__value info">{{ gradingMetrics.confirmedScoreCount }}</p>
-            </div>
-            <div class="metric-cell">
-              <p class="metric-cell__label">待复核任务</p>
-              <p class="metric-cell__value warning">{{ gradingMetrics.openReviewTaskCount }}</p>
-            </div>
-            <div class="metric-cell">
-              <p class="metric-cell__label">未闭合处理任务</p>
-              <p class="metric-cell__value warning">
-                {{ gradingMetrics.openProcessingTaskCount }}
-              </p>
-            </div>
-          </div>
+          <UiStatPanel
+            :items="gradingStatMetrics"
+            :columns="3"
+            variant="grid"
+            compact
+          />
+          <MarkBarSection
+            title="批改进度分布"
+            hint="租户内成绩与任务处理量"
+            :item-count="gradingBarItems.length"
+            :option="gradingChartOption"
+            height="220px"
+            :aria-label="gradingChartAriaLabel"
+            class="grading-progress-chart"
+          />
         </UiCard>
       </a-col>
 
@@ -103,32 +95,18 @@
               {{ incidentMetrics.unresolvedIncidentCount > 0 ? '待处理' : '正常' }}
             </UiBadge>
           </template>
-          <div class="metric-grid metric-grid--cols-2">
-            <div class="metric-cell">
-              <p class="metric-cell__label">未解决重大事件</p>
-              <p
-                class="metric-cell__value"
-                :class="incidentMetrics.unresolvedIncidentCount > 0 ? 'danger' : ''"
-              >
-                {{ incidentMetrics.unresolvedIncidentCount }}
-              </p>
-            </div>
-            <div class="metric-cell">
-              <p class="metric-cell__label">待处置重复</p>
-              <p
-                class="metric-cell__value"
-                :class="incidentMetrics.pendingDuplicateCount > 0 ? 'warning' : ''"
-              >
-                {{ incidentMetrics.pendingDuplicateCount }}
-              </p>
-            </div>
-          </div>
+          <UiStatPanel
+            :items="incidentStatMetrics"
+            :columns="2"
+            variant="grid"
+            compact
+          />
         </UiCard>
       </a-col>
     </a-row>
 
     <!-- 最近考试 + 最近事件 -->
-    <a-row v-if="overview && !overviewLoadError" :gutter="16" class="admin-dashboard__recent-row">
+    <a-row v-if="overview" :gutter="16" class="admin-dashboard__recent-row">
       <a-col :xs="24" :lg="14">
         <UiCard class="recent-exams-card">
           <template #title>
@@ -139,7 +117,7 @@
             <UiButton size="sm" variant="ghost" @click="goAuditTrail"> 进入批改审计 </UiButton>
           </template>
 
-          <UiEmpty v-if="recentExams.length === 0" description="暂无考试" />
+          <UiEmpty v-if="recentExams.length === 0" description="暂无数据" />
 
           <div v-else class="recent-exam-list">
             <article v-for="exam in recentExams" :key="exam.examId" class="recent-exam-item">
@@ -237,6 +215,7 @@ import type {
 } from '@/apis/mark/admin-dashboard'
 import type { ExamStatusCode } from '@/apis/mark/exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
@@ -253,19 +232,21 @@ import {
   loadDashboardOverview,
 } from '@/apis/mark/admin-dashboard'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
+import { MarkBarSection } from '@/components/chart'
 import {
   UiBadge,
-  UiBarChart,
   UiButton,
   UiCard,
   UiEmpty,
-  UiErrorRetryPanel,
+  UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { examScaleMetricsToBarItems } from '@/utils/mark-statistics-chart'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
+import { examScaleMetricsToBarItems, gradingMetricsToBarItems } from '@/utils/mark-statistics-chart'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminDashboard' })
@@ -297,6 +278,125 @@ const examScaleBarItems = computed(() => {
   if (!examMetrics.value) return []
   return examScaleMetricsToBarItems(examMetrics.value)
 })
+
+const { chartOption: examScaleChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(examScaleBarItems.value, {
+    orientation: 'horizontal',
+    xAxisName: '数量',
+    emptyText: '暂无考试规模数据',
+  }),
+)
+
+const gradingBarItems = computed(() => {
+  if (!gradingMetrics.value) return []
+  return gradingMetricsToBarItems(gradingMetrics.value)
+})
+
+const { chartOption: gradingChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(gradingBarItems.value, {
+    orientation: 'horizontal',
+    xAxisName: '数量',
+    emptyText: '暂无批改进度数据',
+  }),
+)
+
+const gradingChartAriaLabel = computed(() => {
+  const count = gradingBarItems.value.length
+  if (count <= 0) {
+    return '批改进度分布，暂无数据'
+  }
+  return `批改进度分布，共 ${count} 项指标`
+})
+
+const examScaleChartAriaLabel = computed(() => {
+  const count = examScaleBarItems.value.length
+  if (count <= 0) {
+    return '考试规模对比，暂无数据'
+  }
+  return `考试规模对比，共 ${count} 项指标`
+})
+
+const examScaleMetrics = computed((): UiStatPanelItem[] => {
+  if (!examMetrics.value) return []
+  return [
+    {
+      key: 'totalExamCount',
+      label: '考试总数',
+      value: examMetrics.value.totalExamCount,
+      unit: '场',
+      tone: 'blue',
+    },
+    {
+      key: 'totalCandidateCount',
+      label: '考生总数',
+      value: examMetrics.value.totalCandidateCount,
+      unit: '人',
+      tone: 'blue',
+    },
+  ]
+})
+
+const gradingStatMetrics = computed((): UiStatPanelItem[] => {
+  if (!gradingMetrics.value) return []
+  const metrics = gradingMetrics.value
+  return [
+    {
+      key: 'pendingScoreCount',
+      label: '待计算 / 计算中',
+      value: metrics.pendingScoreCount,
+      tone: metrics.pendingScoreCount > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'confirmedQuestionResultCount',
+      label: '已确认题目',
+      value: metrics.confirmedQuestionResultCount,
+    },
+    {
+      key: 'publishedScoreCount',
+      label: '已发布成绩',
+      value: metrics.publishedScoreCount,
+      tone: 'green',
+    },
+    {
+      key: 'confirmedScoreCount',
+      label: '已确认未发布',
+      value: metrics.confirmedScoreCount,
+      tone: 'blue',
+    },
+    {
+      key: 'openReviewTaskCount',
+      label: '待复核任务',
+      value: metrics.openReviewTaskCount,
+      tone: metrics.openReviewTaskCount > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'openProcessingTaskCount',
+      label: '未闭合处理任务',
+      value: metrics.openProcessingTaskCount,
+      tone: metrics.openProcessingTaskCount > 0 ? 'orange' : 'gray',
+    },
+  ]
+})
+
+const incidentStatMetrics = computed((): UiStatPanelItem[] => {
+  if (!incidentMetrics.value) return []
+  const metrics = incidentMetrics.value
+  return [
+    {
+      key: 'unresolvedIncidentCount',
+      label: '未解决重大事件',
+      value: metrics.unresolvedIncidentCount,
+      tone: metrics.unresolvedIncidentCount > 0 ? 'red' : 'gray',
+    },
+    {
+      key: 'pendingDuplicateCount',
+      label: '待处置重复',
+      value: metrics.pendingDuplicateCount,
+      tone: metrics.pendingDuplicateCount > 0 ? 'orange' : 'gray',
+    },
+  ]
+})
+
 const incidentMetrics = computed<DashboardIncidentMetricsVO | null>(
   () => overview.value?.incidentMetrics ?? null,
 )
@@ -369,67 +469,12 @@ onMounted(loadOverview)
 }
 
 .exam-scale-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
   margin-bottom: 12px;
 }
 
 .exam-scale-chart {
   width: 100%;
   height: 220px;
-}
-
-.metric-grid {
-  display: grid;
-  gap: 12px;
-
-  &--cols-2 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  &--cols-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.metric-cell {
-  padding: 14px 16px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 6px);
-  text-align: center;
-
-  &__label {
-    margin: 0 0 6px;
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    margin: 0;
-    font-size: 24px;
-    font-weight: 600;
-    color: var(--ant-color-text);
-    font-variant-numeric: tabular-nums;
-
-    /* 数字大字状态色：使用深色版 dp-*-700 而非高饱和原色，多卡同屏不刺眼 */
-    &.success {
-      color: var(--dp-green-700, #15803d);
-    }
-
-    &.warning {
-      color: var(--dp-orange-700, #c2410c);
-    }
-
-    &.info {
-      color: var(--dp-blue-700, #1d4ed8);
-    }
-
-    &.danger {
-      color: var(--dp-red-700, #b91c1c);
-    }
-  }
 }
 
 .recent-exam-list {

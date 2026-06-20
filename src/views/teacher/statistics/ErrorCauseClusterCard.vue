@@ -18,21 +18,16 @@
         title="AI 错因聚类分析生成中"
         :waiting-text="props.classId ? '正在等待后端返回当前班级的真实错因聚类结果。' : '正在等待后端返回本场考试的真实错因聚类结果。'"
       />
-      <!-- D-9 错误态：AI 错因聚类加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 错因聚类加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!record" description="暂无 AI 错因聚类，可点击重新生成。" />
-      <div v-else class="ai-record">
+      <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="聚类数">{{ clusterCountText(record) }}</a-descriptions-item>
           <a-descriptions-item label="生成时间">
@@ -60,16 +55,14 @@
           <strong>总体摘要：</strong>{{ record.overallSummary }}
         </a-typography-paragraph>
 
-        <div v-if="clusterBarItems.length" class="ai-chart">
-          <div class="ai-chart__meta">
-            <strong>错因占比分布</strong>
-          </div>
-          <UiBarChart
-            :items="clusterBarItems"
-            :max-value="100"
-            class="ai-chart__canvas"
-          />
-        </div>
+        <MarkBarSection
+          v-if="record"
+          title="错因占比分布"
+          hint="悬停查看各错因占比与说明"
+          :item-count="clusterBarItems.length"
+          :option="clusterChartOption"
+          height="300px"
+        />
 
         <div v-if="clusterItems.length > 0" class="ai-items">
           <strong>错因聚类：</strong>
@@ -124,10 +117,13 @@ import {
   getLatestErrorCauseCluster,
 } from '@/apis/mark/error-cause-cluster'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
-import { UiBarChart, UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { MarkBarSection } from '@/components/chart'
+import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import { errorCauseToBarItems } from '@/utils/mark-statistics-chart'
 import AiGenerationProgressPanel from './AiGenerationProgressPanel.vue'
 
@@ -138,11 +134,20 @@ const props = defineProps<{ examId: string, reloadToken: number, classId?: strin
 const record = ref<ExamErrorCauseClusterVO | null>(null)
 const loading = ref(false)
 const generating = ref(false)
-// D-9 错误态：AI 错因聚类加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 
 const clusterItems = computed(() => record.value?.clusterItems ?? [])
 const clusterBarItems = computed(() => errorCauseToBarItems(record.value?.clusterItems ?? []))
+
+const { chartOption: clusterChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(clusterBarItems.value, {
+    orientation: 'horizontal',
+    maxValue: 100,
+    xAxisName: '占比 %',
+    unit: '%',
+    emptyText: '暂无错因占比数据',
+  }),
+)
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 错因聚类分析未完成，请稍后重新生成')

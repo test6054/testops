@@ -18,7 +18,7 @@ import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ACCREDITATION_TYPE_LABEL, accreditationStandardApi } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -272,6 +272,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 onMounted(() => loadPageData())
 </script>
 
@@ -312,10 +313,10 @@ onMounted(() => loadPageData())
             {{ accreditationTypeLabel(record.accreditationType) }}
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="record.enabled ? 'green' : 'default'">
+            <UiTag :tone="record.enabled ? 'green' : 'gray'" size="sm">
               {{ record.enabled ? '启用' : '停用' }}
-            </a-tag>
-            <a-tag v-if="record.isPilotOnly" color="orange">试点</a-tag>
+            </UiTag>
+            <UiTag v-if="record.isPilotOnly" tone="orange" size="sm">试点</UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>

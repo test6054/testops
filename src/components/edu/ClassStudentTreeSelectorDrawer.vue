@@ -86,13 +86,13 @@
                     <span class="node-stats">
                       ({{ nodeData.classCount }}个班级, {{ nodeData.studentCount }}名学生)
                     </span>
-                    <a-tag
+                    <UiTag
                       v-if="disabledKeys.includes(nodeData.id)"
-                      color="orange"
+                      tone="orange"
                       style="margin-left: 8px"
                     >
                       所有班级已被选中
-                    </a-tag>
+                    </UiTag>
                   </template>
 
                   <!-- 班级节点 -->
@@ -107,13 +107,13 @@
                     <span class="node-stats" v-if="nodeData.major">
                       ({{ nodeData.major }}, {{ nodeData.studentCount }}名学生)
                     </span>
-                    <a-tag
+                    <UiTag
                       v-if="disabledKeys.includes(nodeData.id)"
-                      color="orange"
+                      tone="orange"
                       style="margin-left: 8px"
                     >
                       所有学生已被选中
-                    </a-tag>
+                    </UiTag>
                   </template>
 
                   <!-- 学生节点 -->
@@ -128,13 +128,13 @@
                     <span class="node-stats" v-if="nodeData.studentNumber">
                       (学号: {{ nodeData.studentNumber }})
                     </span>
-                    <a-tag
+                    <UiTag
                       v-if="disabledKeys.includes(nodeData.id)"
-                      color="orange"
+                      tone="orange"
                       style="margin-left: 8px"
                     >
                       已被其他规则选中
-                    </a-tag>
+                    </UiTag>
                   </template>
                 </div>
               </template>
@@ -176,7 +176,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import { listExamStudentTree } from '@/apis/mark/exam'
-import { UiEmpty } from '@/components/ui-guide/ui'
+import { UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { showUserError } from '@/utils/error-handler'
 
 // Props

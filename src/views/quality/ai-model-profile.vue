@@ -18,7 +18,7 @@ import type {
   AiModelProfileVO,
   AiProviderType,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -28,7 +28,7 @@ import {
   AI_PROVIDER_TYPE_LABEL,
   aiModelProfileApi,
 } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -54,8 +54,8 @@ function healthLabel(value: AiHealthStatus | null | undefined): string {
   return strictEnumLabel(AI_HEALTH_STATUS_LABEL, value, 'AI 模型健康状态')
 }
 
-function healthColor(value: AiHealthStatus | null | undefined): string {
-  if (value === null || value === undefined) return 'default'
+function healthColor(value: AiHealthStatus | null | undefined): BadgeTone {
+  if (value === null || value === undefined) return 'gray'
   return strictEnumTone(AI_HEALTH_STATUS_COLOR, value, 'AI 模型健康状态')
 }
 
@@ -363,6 +363,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 onMounted(() => {
   void loadList()
 })
@@ -384,7 +385,7 @@ onMounted(() => {
 
       <UiEmpty
         v-if="activeProfiles.length === 0"
-        description="平台尚未启用任何 AI 模型，请从候选仓库中为 QWEN / DEEPSEEK 分别选择启用配置"
+        description="暂无数据"
         size="sm"
       />
       <a-space v-else direction="vertical" :size="12" class="ai-model__active-list">
@@ -398,9 +399,9 @@ onMounted(() => {
           <template #title>
             <a-space>
               <span>{{ providerTypeLabel(profile.providerType) }}</span>
-              <a-tag :color="healthColor(profile.healthStatus)">
+              <UiTag :tone="healthColor(profile.healthStatus)" size="sm">
                 {{ healthLabel(profile.healthStatus) }}
-              </a-tag>
+              </UiTag>
             </a-space>
           </template>
           <template #extra>
@@ -453,6 +454,7 @@ onMounted(() => {
       </UiFilterBar>
 
       <UiDataTable
+        pagination-mode="none"
         class="student-detail-table__data-table"
         :columns="columns"
         :data-source="list"
@@ -467,7 +469,7 @@ onMounted(() => {
           <template v-if="column.key === 'profileName'">
             <a-space>
               <span>{{ record.profileName }}</span>
-              <a-tag v-if="record.enabled" color="green"> 启用 </a-tag>
+              <UiTag v-if="record.enabled" tone="green" size="sm"> 启用 </UiTag>
             </a-space>
           </template>
           <template v-else-if="column.key === 'providerType'">
@@ -479,15 +481,15 @@ onMounted(() => {
                 {{ apiKeyDisplayText(record) }}
               </span>
               <template v-if="record.apiKeyConfigured">
-                <a-tag color="green"> 已配置 </a-tag>
+                <UiTag tone="green" size="sm"> 已配置 </UiTag>
               </template>
-              <a-tag v-else color="red"> 未配置 </a-tag>
+              <UiTag v-else tone="red" size="sm"> 未配置 </UiTag>
             </div>
           </template>
           <template v-else-if="column.key === 'healthStatus'">
-            <a-tag :color="healthColor(record.healthStatus)">
+            <UiTag :tone="healthColor(record.healthStatus)" size="sm">
               {{ healthLabel(record.healthStatus) }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>

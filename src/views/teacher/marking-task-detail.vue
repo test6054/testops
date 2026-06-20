@@ -73,23 +73,14 @@
 
     <UiEmpty
       v-if="!taskId"
-      description="未找到本次阅卷任务，请从阅卷任务池重新进入"
+      description="暂无数据"
       class="marking-task-detail-page__empty"
-    />
-
-    <!-- D-9 错误态：阅卷任务详情加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-else-if="taskLoadError"
-      :error="taskLoadError"
-      title="阅卷任务详情加载失败"
-      :helper="`批改任务编号：${taskId}`"
-      @retry="loadTask"
     />
 
     <a-spin v-else :spinning="loading">
       <UiEmpty
         v-if="!loading && !task"
-        description="未找到匹配的阅卷任务"
+        description="暂无数据"
         class="marking-task-detail-page__empty"
       />
 
@@ -102,14 +93,11 @@
             </template>
             <UiEmpty
               v-if="usesWholePaperWorkspace"
-              description="当前任务在下方原始扫描页区域查看与给分"
+              description="暂无数据"
             />
-            <UiErrorRetryPanel
+            <UiEmpty
               v-else-if="questionViewError"
-              :error="questionViewError"
-              title="题目级批阅视图加载失败"
-              compact
-              @retry="reloadQuestionView"
+              description="暂无数据"
             />
             <a-spin v-else :spinning="questionViewLoading" tip="加载题目信息中...">
               <UiEmpty
@@ -201,17 +189,14 @@
               v-if="!wholePagesLoaded && !wholePagesLoading"
               description="正在加载扫描页…"
             />
-            <UiErrorRetryPanel
+            <UiEmpty
               v-else-if="wholePagesError"
-              :error="wholePagesError"
-              title="影像工作区加载失败"
-              compact
-              @retry="reloadWholePaperView"
+              description="暂无数据"
             />
             <a-spin v-else :spinning="wholePagesLoading" tip="加载扫描页中...">
               <UiEmpty
                 v-if="wholePagesLoaded && wholePages.length === 0"
-                description="该试卷暂无 ACTIVE 扫描页"
+                description="暂无数据"
               />
               <div
                 v-else
@@ -241,7 +226,7 @@
                     v-if="item.page.qualityStatus === 'BLOCKED'"
                     tone="warning"
                     title="扫描页质量阻断"
-                    description="该页扫描质量未通过自动检测，请结合原始影像谨慎批阅。"
+                    description="暂无数据"
                     dense
                   />
                   <a-image
@@ -252,12 +237,9 @@
                   >
                     <template #previewMask>点击查看原始扫描页</template>
                   </a-image>
-                  <UiErrorRetryPanel
+                  <UiEmpty
                     v-else-if="wholePageImageErrors[item.page.pageId]"
-                    :error="wholePageImageErrors[item.page.pageId]"
-                    title="扫描页图片加载失败"
-                    compact
-                    @retry="loadWholePageImageByPage(item.page)"
+                    description="暂无数据"
                   />
                   <div v-else class="whole-paper-gallery__image-placeholder">
                     <a-spin :spinning="Boolean(wholePageImageLoading[item.page.pageId])" />
@@ -367,7 +349,7 @@
               <template v-if="usesWholePaperWorkspace">
                 <UiEmpty
                   v-if="wholeQuestions.length === 0"
-                  description="请先加载扫描页和当前任务负责题目后再提交"
+                  description="暂无数据"
                 />
                 <div
                   v-for="(question, questionIndex) in wholeQuestions"
@@ -551,7 +533,6 @@ import {
   UiButton,
   UiCard,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
@@ -564,7 +545,7 @@ import { isGradingEnterInputTarget, isGradingKeyboardInputTarget } from '@/utils
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-defineOptions({ name: 'TeacherMarkingTaskDetail' })
+defineOptions({ name: 'TeacherExamWorkspaceMarkingTaskDetail' })
 
 const SUBMITTED_PAGE_ANNOTATION_PAGE_SIZE = 100
 const route = useRoute()
@@ -711,19 +692,20 @@ const nextTaskId = computed<string>(() => {
 
 function goToTask(targetTaskId: string): void {
   if (!targetTaskId) return
+  const examId = String(route.params.examId || task.value?.examId || '')
+  if (!examId) return
   void router.push({
-    name: 'TeacherMarkingTaskDetail',
-    params: { taskId: targetTaskId },
-    query: route.query,
+    name: 'TeacherExamWorkspaceMarkingTaskDetail',
+    params: { examId, taskId: targetTaskId },
   })
 }
 
 /** P2-4: 返回阅卷任务池 */
 function goBackToTaskPool(): void {
   if (task.value?.examId) {
-    void router.push({ name: 'TeacherMarkingTaskPool', query: { examId: task.value.examId } })
+    void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId: task.value.examId } })
   } else {
-    void router.push({ name: 'TeacherMarkingTaskPool' })
+    void router.push({ name: 'TeacherExamList' })
   }
 }
 

@@ -55,49 +55,42 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   StudentAppeal: () => import('@/views/student/appeal.vue'),
   StudentScoreDetail: () => import('@/views/student/score-detail.vue'),
 
-  // ── 教师 ① 考试管理（考试工作台为默认首页） ────────
-  TeacherExamPrepWorkbench: () => import('@/views/teacher/exam-prep-workbench.vue'),
+  // ── 教师 ① 考试列表 + 工作台 ────────────────────────
   TeacherExamList: () => import('@/views/teacher/exam-list.vue'),
-  TeacherPaperTemplate: () => import('@/views/teacher/paper-template.vue'),
-  TeacherAnswerSheetTemplate: () => import('@/views/teacher/answer-sheet-template.vue'),
-  TeacherCandidateRoster: () => import('@/views/teacher/candidate-roster.vue'),
+  TeacherExamWorkspace: () => import('@/views/teacher/exam-workspace-layout.vue'),
+  TeacherExamWorkspacePrep: () => import('@/views/teacher/exam-prep-workbench.vue'),
+  TeacherExamWorkspacePaperTemplate: () => import('@/views/teacher/paper-template.vue'),
+  TeacherExamWorkspaceAnswerSheet: () => import('@/views/teacher/answer-sheet-template.vue'),
+  TeacherExamWorkspacePaperMaster: () => import('@/views/teacher/paper-master.vue'),
+  TeacherExamWorkspaceCandidateRoster: () => import('@/views/teacher/candidate-roster.vue'),
+  TeacherExamWorkspacePrintPackage: () => import('@/views/teacher/print-package.vue'),
+  TeacherExamWorkspaceScanBatches: () => import('@/views/teacher/scan-upload.vue'),
+  TeacherExamWorkspaceScanMonitor: () => import('@/views/teacher/scan-live-monitor.vue'),
+  TeacherExamWorkspaceScanLedger: () => import('@/views/teacher/image-ledger.vue'),
+  TeacherExamWorkspaceScanDevices: () => import('@/views/teacher/printer-management.vue'),
+  TeacherExamWorkspaceScanOcr: () => import('@/views/teacher/ocr-settings.vue'),
+  TeacherExamWorkspaceMarkingOrg: () => import('@/views/admin/marking-organization/index.vue'),
+  TeacherExamWorkspaceReviewAssignment: () => import('@/views/teacher/review-assignment.vue'),
+  TeacherExamWorkspaceTrialTaskPool: () => import('@/views/teacher/marking-task-pool.vue'),
+  TeacherExamWorkspaceTrialProgress: () => import('@/views/teacher/review-progress.vue'),
+  TeacherExamWorkspaceMarkingTaskPool: () => import('@/views/teacher/marking-task-pool.vue'),
+  TeacherExamWorkspaceMarkingProgress: () => import('@/views/teacher/review-progress.vue'),
+  TeacherExamWorkspaceMarkingArbitration: () => import('@/views/teacher/review-arbitration.vue'),
+  TeacherExamWorkspaceMarkingQuality: () => import('@/views/teacher/marking-spot-check.vue'),
+  TeacherExamWorkspaceMarkingReview: () => import('@/views/teacher/review-workspace.vue'),
+  TeacherExamWorkspaceReviewWorkspace: () => import('@/views/teacher/review-workspace.vue'),
+  TeacherExamWorkspaceReviewTaskDetail: () => import('@/views/teacher/review-task-detail.vue'),
+  TeacherExamWorkspaceMarkingTaskDetail: () => import('@/views/teacher/marking-task-detail.vue'),
+  TeacherExamWorkspaceScoreSummary: () => import('@/views/teacher/score-finalize.vue'),
+  TeacherExamWorkspaceScoreRelease: () => import('@/views/teacher/score-publish.vue'),
+  TeacherExamWorkspaceScoreAbsence: () => import('@/views/teacher/absence-confirm.vue'),
+  TeacherExamWorkspaceScoreAppeal: () => import('@/views/teacher/appeal-handle.vue'),
+  TeacherExamWorkspaceArchivePackage: () => import('@/views/teacher/archive/archive-list.vue'),
+  TeacherExamWorkspaceArchiveStatistics: () => import('@/views/teacher/statistics.vue'),
+  TeacherExamWorkspaceArchiveExports: () => import('@/views/common/exam-export-tasks.vue'),
   TeacherExamDetail: () => import('@/views/teacher/exam-detail.vue'),
 
-  // ── 教师 ② 制卷管理 ──────────────────────────────
-  TeacherPaperMaster: () => import('@/views/teacher/paper-master.vue'),
-  TeacherPrintPackage: () => import('@/views/teacher/print-package.vue'),
-
-  // ── 教师 ③ 扫描与识别 ────────────────────────────
-  TeacherScanUpload: () => import('@/views/teacher/scan-upload.vue'),
-  TeacherScanLiveMonitor: () => import('@/views/teacher/scan-live-monitor.vue'),
-  TeacherImageLedger: () => import('@/views/teacher/image-ledger.vue'),
-  TeacherPrinterManagement: () => import('@/views/teacher/printer-management.vue'),
-  TeacherOcrSettings: () => import('@/views/teacher/ocr-settings.vue'),
-
-  // ── 教师 ④ 批阅流程 ──────────────────────────────
-  TeacherReviewAssignment: () => import('@/views/teacher/review-assignment.vue'),
-  TeacherReviewWorkspace: () => import('@/views/teacher/review-workspace.vue'),
-  TeacherReviewProgress: () => import('@/views/teacher/review-progress.vue'),
-  TeacherReviewBatchConfirm: () => import('@/views/teacher/review-batch-confirm.vue'),
-  TeacherReviewArbitration: () => import('@/views/teacher/review-arbitration.vue'),
-  TeacherReviewTaskDetail: () => import('@/views/teacher/review-task-detail.vue'),
-
-  // ── 教师 ⑤ 阅卷任务（MarkingOrganization 主链） ───
-  TeacherMarkingTaskPool: () => import('@/views/teacher/marking-task-pool.vue'),
-  TeacherMarkingSpotCheck: () => import('@/views/teacher/marking-spot-check.vue'),
-  TeacherGradingExperience: () => import('@/views/teacher/grading-experience-hub.vue'),
-  TeacherMarkingTaskDetail: () => import('@/views/teacher/marking-task-detail.vue'),
-
-  // ── 教师 ⑥ 成绩与发布 ────────────────────────────
-  TeacherAbsenceConfirm: () => import('@/views/teacher/absence-confirm.vue'),
-  TeacherScoreFinalize: () => import('@/views/teacher/score-finalize.vue'),
-  TeacherScorePublish: () => import('@/views/teacher/score-publish.vue'),
-  TeacherAppealHandle: () => import('@/views/teacher/appeal-handle.vue'),
-  TeacherStatistics: () => import('@/views/teacher/statistics.vue'),
-  TeacherExamExports: () => import('@/views/common/exam-export-tasks.vue'),
-
-  // ── 教师 ⑦ 考后归档 ──────────────────────────────
-  TeacherArchiveList: () => import('@/views/teacher/archive/archive-list.vue'),
+  // ── 教师 ④ 历史归档详情 ───────────────────────────
   TeacherArchiveDetail: () => import('@/views/teacher/archive/archive-detail.vue'),
   TeacherPaperArchiveList: () => import('@/views/teacher/paper-archive/paper-archive-list.vue'),
   TeacherPaperArchiveDetail: () => import('@/views/teacher/paper-archive/paper-archive-detail.vue'),
@@ -148,22 +141,22 @@ const ROLE_INITIAL_PRELOAD: Record<string, string[]> = {
   [RoleEnum.SCH_STU]: ['StudentScore', 'StudentExamHistory', 'UserMessage', 'UserProfile'],
   [RoleEnum.SCH_TECH]: [
     'TeacherExamList',
-    'TeacherScanLiveMonitor',
-    'TeacherReviewProgress',
+    'TeacherExamWorkspaceScanMonitor',
+    'TeacherExamWorkspaceMarkingProgress',
     'UserMessage',
     'UserProfile',
   ],
   [RoleEnum.CROP_ADMIN]: [
     'TeacherExamList',
-    'TeacherScanLiveMonitor',
-    'TeacherReviewProgress',
+    'TeacherExamWorkspaceScanMonitor',
+    'TeacherExamWorkspaceMarkingProgress',
     'UserMessage',
     'UserProfile',
   ],
   [RoleEnum.CROP_USER]: [
     'TeacherExamList',
-    'TeacherScanLiveMonitor',
-    'TeacherReviewProgress',
+    'TeacherExamWorkspaceScanMonitor',
+    'TeacherExamWorkspaceMarkingProgress',
     'UserMessage',
     'UserProfile',
   ],
@@ -195,77 +188,46 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
   StudentScoreDetail: ['StudentScore', 'StudentAppeal', 'StudentExamHistory'],
   StudentAppeal: ['StudentScoreDetail', 'StudentScore'],
 
-  // ── ① 考试管理（考试工作台为默认首页与跨流程枢纽） ─
-  TeacherExamPrepWorkbench: [
-    'TeacherExamList',
-    'TeacherPaperTemplate',
-    'TeacherAnswerSheetTemplate',
-    'TeacherCandidateRoster',
-  ],
+  // ── ① 考试列表 + 工作台 ───────────────────────────
   TeacherExamList: [
     'TeacherExamDetail',
-    'TeacherExamPrepWorkbench',
-    'TeacherPaperTemplate',
-    'TeacherAnswerSheetTemplate',
-    'TeacherCandidateRoster',
-    'TeacherScanLiveMonitor',
-    'TeacherReviewProgress',
-    'TeacherMarkingTaskPool',
-    'TeacherScoreFinalize',
-    'TeacherAppealHandle',
+    'TeacherExamWorkspacePrep',
+    'TeacherExamWorkspaceScanMonitor',
+    'TeacherExamWorkspaceMarkingTaskPool',
+    'TeacherExamWorkspaceScoreSummary',
   ],
-  TeacherPaperTemplate: ['TeacherAnswerSheetTemplate', 'TeacherExamList', 'TeacherPaperMaster'],
-  TeacherAnswerSheetTemplate: ['TeacherPaperTemplate', 'TeacherExamList', 'TeacherCandidateRoster'],
-  TeacherCandidateRoster: ['TeacherExamList', 'TeacherAnswerSheetTemplate'],
-  TeacherExamDetail: ['TeacherExamList', 'TeacherScanLiveMonitor', 'TeacherReviewProgress'],
-
-  // ── ② 制卷管理 ──────────────────────────────────
-  TeacherPaperMaster: ['TeacherPrintPackage', 'TeacherPaperTemplate'],
-  TeacherPrintPackage: ['TeacherPaperMaster', 'TeacherPrinterManagement'],
-
-  // ── ③ 扫描与识别 ────────────────────────────────
-  TeacherScanUpload: [
-    'TeacherScanLiveMonitor',
-    'TeacherImageLedger',
-    'TeacherPrinterManagement',
+  TeacherExamWorkspacePrep: [
+    'TeacherExamWorkspacePaperTemplate',
+    'TeacherExamWorkspaceCandidateRoster',
+    'TeacherExamWorkspaceScanBatches',
   ],
-  TeacherScanLiveMonitor: ['TeacherScanUpload', 'TeacherImageLedger'],
-  TeacherImageLedger: ['TeacherScanLiveMonitor'],
-  TeacherPrinterManagement: ['TeacherOcrSettings', 'TeacherScanUpload'],
-  TeacherOcrSettings: ['TeacherPrinterManagement', 'TeacherScanLiveMonitor'],
-
-  // ── ④ 批阅流程 ──────────────────────────────────
-  TeacherReviewAssignment: ['TeacherReviewWorkspace', 'TeacherReviewProgress'],
-  TeacherReviewWorkspace: ['TeacherReviewTaskDetail', 'TeacherReviewProgress', 'TeacherReviewAssignment'],
-  TeacherReviewProgress: [
-    'TeacherReviewBatchConfirm',
-    'TeacherReviewArbitration',
-    'TeacherReviewWorkspace',
-    'TeacherReviewAssignment',
+  TeacherExamWorkspaceScanBatches: [
+    'TeacherExamWorkspaceScanMonitor',
+    'TeacherExamWorkspaceScanLedger',
+    'TeacherExamWorkspaceScanDevices',
+    'TeacherExamWorkspaceScanOcr',
   ],
-  TeacherReviewBatchConfirm: ['TeacherReviewArbitration', 'TeacherReviewProgress'],
-  TeacherReviewArbitration: ['TeacherReviewProgress', 'TeacherReviewBatchConfirm'],
-  TeacherReviewTaskDetail: ['TeacherReviewWorkspace', 'TeacherReviewProgress'],
-
-  // ── ⑤ 阅卷任务（MarkingOrganization） ───────────
-  TeacherMarkingTaskPool: ['TeacherMarkingTaskDetail', 'TeacherMarkingSpotCheck', 'TeacherGradingExperience'],
-  TeacherMarkingSpotCheck: ['TeacherMarkingTaskDetail', 'TeacherMarkingTaskPool'],
-  TeacherGradingExperience: ['TeacherMarkingTaskPool', 'TeacherMarkingSpotCheck'],
-  TeacherMarkingTaskDetail: ['TeacherMarkingTaskPool', 'TeacherGradingExperience'],
-
-  // ── ⑥ 成绩与发布 ────────────────────────────────
-  TeacherAbsenceConfirm: ['TeacherScoreFinalize', 'TeacherStatistics'],
-  TeacherScoreFinalize: ['TeacherScorePublish', 'TeacherStatistics', 'TeacherAbsenceConfirm'],
-  TeacherScorePublish: ['TeacherAppealHandle', 'TeacherStatistics', 'TeacherScoreFinalize'],
-  TeacherAppealHandle: ['TeacherScorePublish', 'TeacherStatistics'],
-  TeacherStatistics: ['TeacherScoreFinalize', 'TeacherScorePublish', 'TeacherExamExports'],
-  TeacherExamExports: ['TeacherStatistics', 'TeacherScorePublish'],
-
-  // ── ⑦ 考后归档 ──────────────────────────────────
-  TeacherArchiveList: ['TeacherArchiveDetail', 'TeacherPaperArchiveList'],
-  TeacherArchiveDetail: ['TeacherArchiveList', 'TeacherPaperArchiveList'],
-  TeacherPaperArchiveList: ['TeacherPaperArchiveDetail', 'TeacherArchiveList'],
-  TeacherPaperArchiveDetail: ['TeacherPaperArchiveList', 'TeacherArchiveList'],
+  TeacherExamWorkspaceScanMonitor: ['TeacherExamWorkspaceScanBatches', 'TeacherExamWorkspaceScanLedger'],
+  TeacherExamWorkspaceMarkingTaskPool: ['TeacherExamWorkspaceMarkingTaskDetail', 'TeacherExamWorkspaceMarkingQuality'],
+  TeacherExamWorkspaceMarkingProgress: [
+    'TeacherExamWorkspaceMarkingArbitration',
+    'TeacherExamWorkspaceMarkingReview',
+    'TeacherExamWorkspaceMarkingTaskPool',
+  ],
+  TeacherExamWorkspaceScoreSummary: [
+    'TeacherExamWorkspaceScoreRelease',
+    'TeacherExamWorkspaceArchiveStatistics',
+  ],
+  TeacherExamWorkspaceScoreRelease: [
+    'TeacherExamWorkspaceScoreAppeal',
+    'TeacherExamWorkspaceArchiveStatistics',
+  ],
+  TeacherExamDetail: ['TeacherExamList', 'TeacherExamWorkspacePrep'],
+  TeacherExamWorkspaceMarkingTaskDetail: ['TeacherExamWorkspaceMarkingTaskPool'],
+  TeacherExamWorkspaceReviewWorkspace: ['TeacherExamWorkspaceMarkingReview', 'TeacherExamWorkspaceReviewTaskDetail'],
+  TeacherExamWorkspaceArchivePackage: ['TeacherArchiveDetail', 'TeacherPaperArchiveList'],
+  TeacherPaperArchiveList: ['TeacherPaperArchiveDetail', 'TeacherExamWorkspaceArchivePackage'],
+  TeacherPaperArchiveDetail: ['TeacherPaperArchiveList', 'TeacherExamWorkspaceArchivePackage'],
 
   // ── 管理员 ───────────────────────────────────────
   AdminDashboard: ['AdminAuditTrail', 'AdminMarkingQuality', 'AdminCrossExamDashboard', 'AdminMarkingOrganizationIndex'],

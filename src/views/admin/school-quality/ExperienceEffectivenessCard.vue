@@ -36,42 +36,45 @@
 
     <a-spin :spinning="loading || generating">
       <!-- D-9 错误态：AI 经验有效性评估加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 经验有效性评估加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!record" description="暂无评估记录，请选择考试和经验案例后评估。" />
-      <div v-else class="ai-record">
-        <a-row v-if="record.analysisStatus === 'SUCCESS'" :gutter="12" class="metric-row">
-          <a-col :span="8">
-            <a-statistic
-              title="一致性比率"
-              :value="record.consistencyRate"
-              :precision="2"
-              :value-style="rateStyle(record.consistencyRate)"
-            />
-          </a-col>
-          <a-col :span="8">
-            <a-statistic title="复用次数" :value="record.reuseCount" />
-          </a-col>
-          <a-col :span="8">
-            <div class="drift-block">
-              <div class="drift-label">模型漂移</div>
-              <a-tag :color="record.driftDetected ? 'red' : 'green'">
-                {{ record.driftDetected ? '已检测到漂移' : '未检测到漂移' }}
-              </a-tag>
-            </div>
-          </a-col>
-        </a-row>
+      <div v-else-if="record" class="ai-record">
+        <UiStatPanel
+          v-if="record.analysisStatus === 'SUCCESS'"
+          :items="effectivenessMetrics"
+          :columns="3"
+          variant="strip"
+          compact
+        />
+
+        <div v-if="record.analysisStatus === 'SUCCESS'" class="ai-record__charts">
+          <MarkBarSection
+            title="当前评估指标"
+            hint="一致性率与复用次数"
+            :item-count="effectivenessBarItems.length"
+            :option="effectivenessBarOption"
+            height="220px"
+            :aria-label="effectivenessBarAriaLabel"
+          />
+          <MarkTrendSection
+            title="一致性率历史走势"
+            hint="同一经验案例历次评估记录"
+            :point-count="effectivenessTrendPoints.length"
+            :option="effectivenessTrendOption"
+            height="220px"
+            value-unit="%"
+            :last-value="effectivenessTrendLastValue"
+            :aria-label="effectivenessTrendAriaLabel"
+          />
+        </div>
 
         <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="来源考试">
             {{ formatExamName(record.sourceExamName, record.sourceExamNo) }}
@@ -120,6 +123,7 @@
 <script lang="ts" setup>
 import type { GradingExperienceCaseVO, QuestionTypeCode } from '@/apis/mark/grading-experience'
 import type { ExperienceEffectivenessEvalVO } from '@/apis/mark/school-quality'
+import type { UiStatPanelItem, UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -131,11 +135,14 @@ import {
 import { evaluateExperienceEffectiveness, listExperienceEvals } from '@/apis/mark/school-quality'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
-import { UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { MarkBarSection, MarkTrendSection } from '@/components/chart'
+import { UiCard, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { runContractGuard } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { rateTone, toneToColor } from '@/utils/score-tone'
+import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExperienceEffectivenessCard' })
@@ -147,6 +154,7 @@ const form = reactive({
 })
 
 const record = ref<ExperienceEffectivenessEvalVO | null>(null)
+const evalHistory = ref<ExperienceEffectivenessEvalVO[]>([])
 const experiences = ref<GradingExperienceCaseVO[]>([])
 const loading = ref(false)
 const experienceLoading = ref(false)
@@ -168,6 +176,116 @@ const experienceOptions = computed(() =>
       value: item.id,
     })),
 )
+
+const effectivenessMetrics = computed((): UiStatPanelItem[] => {
+  if (!record.value || record.value.analysisStatus !== 'SUCCESS') return []
+  const data = record.value
+  return [
+    {
+      key: 'consistencyRate',
+      label: '一致性比率',
+      value: (() => {
+        const percent = toConsistencyPercent(data.consistencyRate)
+        return percent == null ? '—' : `${percent.toFixed(1)}%`
+      })(),
+      tone: rateTone(data.consistencyRate),
+    },
+    {
+      key: 'reuseCount',
+      label: '复用次数',
+      value: data.reuseCount ?? 0,
+      unit: '次',
+    },
+    {
+      key: 'driftDetected',
+      label: '模型漂移',
+      value: data.driftDetected ? '已检测到' : '未检测到',
+      tone: data.driftDetected ? 'red' : 'green',
+    },
+  ]
+})
+
+function toConsistencyPercent(value?: number): number | null {
+  if (value == null || Number.isNaN(Number(value))) return null
+  const num = Number(value)
+  return num <= 1 ? num * 100 : num
+}
+
+const effectivenessBarItems = computed((): UiBarChartItem[] => {
+  if (!record.value || record.value.analysisStatus !== 'SUCCESS') return []
+  const data = record.value
+  const items: UiBarChartItem[] = []
+  const consistency = toConsistencyPercent(data.consistencyRate)
+  if (consistency != null) {
+    items.push({
+      key: 'consistency',
+      label: '一致性率',
+      value: Number(consistency.toFixed(1)),
+      tone: rateTone(data.consistencyRate),
+      helper: `${consistency.toFixed(1)}%`,
+    })
+  }
+  if (data.reuseCount != null && data.reuseCount > 0) {
+    items.push({
+      key: 'reuse',
+      label: '复用次数',
+      value: data.reuseCount,
+      tone: 'blue',
+      helper: `${data.reuseCount} 次`,
+    })
+  }
+  return items
+})
+
+const { chartOption: effectivenessBarOption } = useChartOption(() =>
+  buildCategoryBarChartOption(effectivenessBarItems.value, {
+    orientation: 'vertical',
+    yAxisName: '数值',
+    emptyText: '暂无评估指标',
+  }),
+)
+
+const effectivenessBarAriaLabel = computed(() => {
+  const count = effectivenessBarItems.value.length
+  if (count <= 0) return '当前评估指标，暂无数据'
+  return `当前评估指标，共 ${count} 项`
+})
+
+const effectivenessTrendPoints = computed((): UiTrendPoint[] => {
+  const successRecords = [...evalHistory.value]
+    .filter((item) => item.analysisStatus === 'SUCCESS' && toConsistencyPercent(item.consistencyRate) != null)
+    .reverse()
+  return successRecords.map((item, index) => {
+    const percent = toConsistencyPercent(item.consistencyRate) ?? 0
+    const timeLabel = item.createTime ? formatDateTime(item.createTime).slice(5, 16) : `记录 ${index + 1}`
+    return {
+      key: item.id || `eval-${index}`,
+      label: timeLabel,
+      value: Number(percent.toFixed(1)),
+    }
+  })
+})
+
+const effectivenessTrendLastValue = computed(() => {
+  const points = effectivenessTrendPoints.value
+  if (points.length === 0) return null
+  return points[points.length - 1]?.value ?? null
+})
+
+const { chartOption: effectivenessTrendOption } = useChartOption(() =>
+  buildTrendLineChartOption(effectivenessTrendPoints.value, {
+    yAxisName: '一致性率 %',
+    yMax: 100,
+    area: true,
+    emptyText: '暂无历史评估记录',
+  }),
+)
+
+const effectivenessTrendAriaLabel = computed(() => {
+  const count = effectivenessTrendPoints.value.length
+  if (count < 2) return '一致性率历史走势，至少需要两次成功评估'
+  return `一致性率历史走势，共 ${count} 次评估`
+})
 
 function analysisFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, 'AI 经验案例有效性评估未完成，请稍后重新评估')
@@ -271,7 +389,8 @@ async function reload(): Promise<void> {
   loading.value = true
   try {
     const list = await listExperienceEvals(experienceCaseId)
-    record.value = list[0] ? acceptExperienceEffectivenessRecord(list[0]) : null
+    evalHistory.value = list.map((item) => acceptExperienceEffectivenessRecord(item))
+    record.value = evalHistory.value[0] ?? null
     if (list.length === 0) message.info('暂无历史记录')
   } catch (e) {
     loadError.value = toUserError(e, '经验案例效果评估加载失败')
@@ -294,6 +413,8 @@ async function handleGenerate(): Promise<void> {
     record.value = acceptExperienceEffectivenessRecord(
       await evaluateExperienceEffectiveness({ experienceCaseId, evalExamId }),
     )
+    const list = await listExperienceEvals(experienceCaseId)
+    evalHistory.value = list.map((item) => acceptExperienceEffectivenessRecord(item))
     message.success('已完成有效性评估')
   } catch (e) {
     loadError.value = toUserError(e, '经验案例效果评估生成失败')
@@ -301,11 +422,6 @@ async function handleGenerate(): Promise<void> {
   } finally {
     generating.value = false
   }
-}
-
-function rateStyle(rate?: number): Record<string, string> {
-  if (rate == null) return { color: 'inherit' }
-  return { color: toneToColor(rateTone(rate)) }
 }
 
 async function handleSourceExamChange(): Promise<void> {
@@ -340,22 +456,13 @@ watch(() => form.sourceExamId, handleSourceExamChange)
   flex-direction: column;
   gap: 12px;
 }
+.ai-record__charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
 .ai-summary {
   margin: 0;
-}
-.metric-row {
-  background: var(--gi-color-bg-2, #f5f5f5);
-  padding: 12px 8px;
-  border-radius: 4px;
-}
-.drift-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.drift-label {
-  font-size: 12px;
-  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

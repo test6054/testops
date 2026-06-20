@@ -55,7 +55,7 @@ export function progressTone(percent: number | null | undefined): BadgeTone {
 
 /**
  * BadgeTone → 主题 CSS 变量色字符串。
- * 取值与 UiBarChart/UiDonutChart 内置 toneColorMap 完全一致，
+ * 取值与 mark-echarts toneToChartColor 色板完全一致，
  * 仅用于内联 style / SVG / a-progress stroke-color 这类必须传 color 字符串的边界。
  */
 const TONE_COLOR_MAP: Record<BadgeTone, string> = {

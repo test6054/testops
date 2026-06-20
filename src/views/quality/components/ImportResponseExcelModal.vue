@@ -42,6 +42,7 @@
           <template v-if="importResult.errors.length > 0">
             <a-divider>错误详情</a-divider>
             <UiDataTable
+              pagination-mode="client"
               :columns="errorColumns"
               :data-source="pagedImportErrors"
               v-model:current="importErrorPage"

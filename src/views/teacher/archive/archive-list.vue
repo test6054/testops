@@ -1,31 +1,9 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="archive-list-page__exam-select"
-            placeholder="选择考试"
-            allow-clear
-            show-search
-            :loading="examLoading"
-            :options="examOptions"
-            option-filter-prop="label"
-            style="width: 260px"
-            @change="onExamChange"
-          />
-          <UiTag tone="blue" size="sm">{{ archivePagination.total }} 个电子归档包</UiTag>
-          <UiTag v-if="selectedExam" tone="purple" size="sm">
-            {{
-              selectedExam.examNo
-                ? `${selectedExam.examName} (${selectedExam.examNo})`
-                : selectedExam.examName
-            }}
-          </UiTag>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="archive-list-page">
+    <div class="archive-list-page__toolbar">
+      <UiTag tone="blue" size="sm">{{ archivePagination.total }} 个电子归档包</UiTag>
+      <UiTag v-if="selectedExamLabel" tone="purple" size="sm">{{ selectedExamLabel }}</UiTag>
+    </div>
 
     <UiAlertStrip
       v-if="archiveAlert"
@@ -34,7 +12,6 @@
       dense
       class="archive-list-page__alert"
     >
-      {{ archiveAlert.description }}
       <template #actions>
         <UiButton size="sm" variant="outline" @click="archiveAlert!.action.handler">
           {{ archiveAlert.action.label }}
@@ -62,17 +39,7 @@
         @reset="handleReset"
       />
 
-      <UiErrorRetryPanel
-        v-if="archiveLoadError"
-        :error="archiveLoadError"
-        title="电子归档包加载失败"
-        compact
-        @retry="loadArchives"
-      />
-      <UiEmpty v-else-if="!loading && archives.length === 0" description="尚未创建任何电子归档包" />
-
       <UiDataTable
-        v-else
         :columns="columns"
         :data-source="archives"
         :loading="loading"
@@ -148,7 +115,6 @@
         </template>
       </UiDataTable>
     </a-card>
-  </StageWorkbenchShell>
 
   <a-modal
     v-model:open="createModalOpen"
@@ -168,13 +134,9 @@
       />
       <a-form-item label="当前考试">
         <a-input
-          :value="
-            selectedExam?.examNo
-              ? `${selectedExam.examName} (${selectedExam.examNo})`
-              : selectedExam?.examName
-          "
+          :value="selectedExamLabel"
           disabled
-          placeholder="从筛选区当前考试带入"
+          placeholder="从考试工作台带入"
         />
       </a-form-item>
       <a-form-item label="电子归档包名称">
@@ -211,6 +173,7 @@
       </a-form-item>
     </a-form>
   </a-modal>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -224,7 +187,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ARCHIVE_PACKAGE_STATUS_CODES,
@@ -240,16 +203,13 @@ import {
   UiButton,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
   UiTextAction,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
-import { useMarkStageStore } from '@/stores/modules/markStage'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -258,16 +218,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherArchiveList' })
 
 const router = useRouter()
-const markStageStore = useMarkStageStore()
-const examContextStore = useMarkExamContextStore()
-const {
-  selectedExamId,
-  selectedExam,
-  examOptions,
-  loading: examLoading,
-  onExamChange,
-  init,
-} = useMarkExamSelector()
+const { selectedExamId, selectedExamLabel } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 const archives = ref<ArchivePackageVO[]>([])
 const loading = ref(false)
@@ -330,7 +282,6 @@ const canCreate = computed(() => Boolean(selectedExamId.value))
 interface ArchiveAlert {
   tone: 'error' | 'warning'
   title: string
-  description: string
   action: { label: string, handler: () => void }
 }
 
@@ -339,17 +290,13 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
   if (!examId) return null
   if (loading.value) return null
   if (archiveLoadError.value) return null
-  // 1) 已选考试但归档列表为空：可能是「成绩已发布但归档未启动」
   if (archives.value.length === 0) {
     return {
       tone: 'error',
       title: '该考试尚未创建电子归档包',
-      description:
-        '按档案合规要求，成绩发布后应及时归档扫描影像、批改流水与评分细则。点击立即创建电子归档包草稿，再触发打包。',
       action: { label: '立即创建电子归档包', handler: openCreateModal },
     }
   }
-  // 2) 已有归档但仍处于 DRAFT 或 PACKAGING_FAILED：未入队/失败
   const pendingArchives = archives.value.filter(
     (a) => a.archiveStatus === 'DRAFT' || a.archiveStatus === 'PACKAGING_FAILED',
   )
@@ -358,7 +305,6 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
     return {
       tone: 'warning',
       title: `${pendingArchives.length} 个电子归档包草稿待打包入队`,
-      description: '草稿状态的考试电子归档包尚未生成最终 ZIP，请尽快入队打包以完成档案保管。',
       action: {
         label: '打包首个电子归档包草稿',
         handler: () => confirmPackage(first),
@@ -367,72 +313,6 @@ const archiveAlert = computed<ArchiveAlert | null>(() => {
   }
   return null
 })
-
-/**
- * 归档阶段状态映射：将归档包状态转换为 ARCHIVE 阶段状态。
- *
- * 设计原则：归档阶段是阅卷主链的末端，存在即推进，状态仅表达当前推进中/阅迫度。
- * - DRAFT / PACKAGING_FAILED / DESTRUCTION_FAILED → blocked（需人工推进）
- * - PACKAGING / ACTIVE / APPRAISAL_PENDING / DESTRUCTION_* 进行态 → active
- * - APPRAISAL_DECIDED / DESTROYED → completed（鉴定留存或销毁完成）
- * - 列表为空且有 examId → blocked（尚未创建归档）
- */
-function syncArchiveStageToStore(): void {
-  const examId = selectedExamId.value
-  if (!examId) return
-  if (archives.value.length === 0) {
-    markStageStore.setStageStatus(examId, 'ARCHIVE', 'blocked', '尚未创建电子归档包')
-    markStageStore.setCurrentStage(examId, 'ARCHIVE')
-    return
-  }
-  const statuses = archives.value.map((a) => a.archiveStatus)
-  const hasBlocked = statuses.some(
-    (s) => s === 'DRAFT' || s === 'PACKAGING_FAILED' || s === 'DESTRUCTION_FAILED',
-  )
-  const hasActive = statuses.some(
-    (s) =>
-      s === 'PACKAGING'
-      || s === 'ACTIVE'
-      || s === 'APPRAISAL_PENDING'
-      || s === 'DESTRUCTION_PENDING'
-      || s === 'DESTRUCTION_APPROVED'
-      || s === 'DESTRUCTION_EXECUTING',
-  )
-  const hasCompleted = statuses.some((s) => s === 'APPRAISAL_DECIDED' || s === 'DESTROYED')
-  let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
-  let hint = ''
-  if (hasBlocked) {
-    status = 'blocked'
-    const draftOrFailed = statuses.filter((s) => s === 'DRAFT' || s === 'PACKAGING_FAILED').length
-    const destructionFailed = statuses.filter((s) => s === 'DESTRUCTION_FAILED').length
-    hint
-      = destructionFailed > 0
-        ? `${destructionFailed} 个销毁失败需人工处理`
-        : `${draftOrFailed} 个草稿 / 打包失败待人工处理`
-  } else if (hasActive) {
-    status = 'active'
-    const packaging = statuses.filter((s) => s === 'PACKAGING').length
-    const archived = statuses.filter(
-      (s) =>
-        s === 'ACTIVE'
-        || s === 'APPRAISAL_PENDING'
-        || s === 'DESTRUCTION_PENDING'
-        || s === 'DESTRUCTION_APPROVED'
-        || s === 'DESTRUCTION_EXECUTING',
-    ).length
-    hint
-      = packaging > 0
-        ? `${packaging} 个打包中 / ${archived} 个归档处理中`
-        : `${archived} 个归档处理中`
-  } else if (hasCompleted) {
-    status = 'completed'
-    hint = `已完成 ${
-      statuses.filter((s) => s === 'APPRAISAL_DECIDED' || s === 'DESTROYED').length
-    } / ${archives.value.length}`
-  }
-  markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
-  markStageStore.observeExam(examId)
-}
 
 async function loadArchives(): Promise<void> {
   loading.value = true
@@ -448,8 +328,6 @@ async function loadArchives(): Promise<void> {
     archivePagination.pageNum = page.pageNum
     archivePagination.pageSize = page.pageSize
     archivePagination.total = readPageTotal(page, '电子归档包列表加载失败，请稍后重试')
-    syncArchiveStageToStore()
-    if (selectedExamId.value) examContextStore.currentExamId = selectedExamId.value
   } catch (error) {
     archiveLoadError.value = toUserError(error, '电子归档包列表加载失败')
     showUserError(error, '考试电子归档包加载失败')
@@ -464,7 +342,7 @@ function handleSearch(): void {
 }
 
 function handleReset(): void {
-  onExamChange(undefined)
+  filterForm.archiveStatus = undefined
   archivePagination.pageNum = 1
   void loadArchives()
 }
@@ -516,6 +394,11 @@ async function submitCreate(): Promise<void> {
     message.success('考试电子归档包草稿已创建')
     createModalOpen.value = false
     await loadArchives()
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '考试电子归档包草稿创建失败')
   } finally {
@@ -535,6 +418,11 @@ function confirmPackage(record: ArchivePackageVO): void {
         await packageArchive(record.archiveId)
         message.success('考试电子归档包已入队，正在异步打包')
         await loadArchives()
+        try {
+          await refreshSnapshot()
+        } catch {
+          // 非工作台上下文时忽略
+        }
       } catch (error) {
         showUserError(error, '考试电子归档包打包提交失败')
       }
@@ -572,8 +460,17 @@ function formatBytes(bytes: number): string {
   return `${size.toFixed(size >= 100 || i === 0 ? 0 : 1)} ${units[i]}`
 }
 
+watch(selectedExamId, (value) => {
+  archivePagination.pageNum = 1
+  if (value) {
+    void loadArchives()
+  } else {
+    archives.value = []
+    archivePagination.total = 0
+  }
+})
+
 onMounted(async () => {
-  await init()
   await loadArchives()
 })
 </script>
@@ -583,6 +480,14 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
 .archive-list-page__alert {

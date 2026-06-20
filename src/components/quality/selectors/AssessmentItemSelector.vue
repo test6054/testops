@@ -8,6 +8,7 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AssessmentItemVO } from '@/apis/quality'
 import { computed, onMounted, ref, watch } from 'vue'
 import { assessmentItemApi } from '@/apis/quality'
+import { UiTag } from '@/components/ui-guide/ui'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
@@ -119,7 +120,7 @@ defineExpose({ reload: loadOptions })
     >
       <span class="text-xs text-gray-500 mr-1">{{ opt.itemCode }}</span>
       {{ opt.itemName }}
-      <a-tag v-if="opt.isProcessOriented" color="green" class="ml-1">过程</a-tag>
+      <UiTag v-if="opt.isProcessOriented" tone="green" class="ml-1">过程</UiTag>
       <span class="text-gray-400 ml-1">满分 {{ opt.fullScore }}</span>
     </a-select-option>
   </a-select>

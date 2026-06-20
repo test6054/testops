@@ -3,16 +3,17 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="org-index__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
+          <MarkExamSelect
+            v-if="!isExamWorkspaceRoute"
+            :selected-exam-id="selectedExamId"
+            :exam-options="examOptions"
             :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
+            :searching="searching"
+            :resolving-pinned="resolvingPinned"
+            select-class="org-index__exam-select"
+            placeholder="选择考试"
             @change="onExamChange"
+            @search="onExamSearch"
           />
           <UiTag
             v-if="organization"
@@ -43,49 +44,19 @@
           <UiButton v-if="organization" variant="primary" size="sm" @click="goDetail">
             进入详情
           </UiButton>
-          <UiButton
-            v-if="organization && canManageSelectedExam && isTeacherMarkingRoute"
-            variant="outline"
-            size="sm"
-            @click="goAssignmentScheme"
-          >
-            分派方案
-          </UiButton>
-          <UiButton
-            v-if="organization && canManageSelectedExam"
-            variant="outline"
-            size="sm"
-            @click="openEditDrawer"
-          >
-            编辑组织
-          </UiButton>
-          <a-popconfirm
-            v-if="organization && canManageSelectedExam"
-            title="确认删除该阅卷组织？"
-            ok-text="删除"
-            cancel-text="取消"
-            :ok-button-props="{ danger: true, loading: deleting }"
-            @confirm="submitDelete"
-          >
-            <UiButton variant="outline" size="sm" status="danger" :loading="deleting">
-              删除组织
-            </UiButton>
-          </a-popconfirm>
         </template>
       </ContextBar>
     </template>
 
     <!-- D-9 错误态：阅卷组织加载遇到非“未创建”错误时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="selectedExamId && organizationLoadError"
-      :error="organizationLoadError"
-      title="阅卷组织加载失败"
-      :helper="`当前考试：${organizationExamLabel}`"
-      @retry="loadOrganization"
+    <UiEmpty
+      v-if="!selectedExamId"
+      description="请选择考试"
+      class="org-index__empty"
     />
     <UiEmpty
-      v-else-if="!selectedExamId"
-      description="请先选择考试以查看 / 创建阅卷组织"
+      v-else-if="!loading && organizationLoadError"
+      description="暂无数据"
       class="org-index__empty"
     />
 
@@ -94,7 +65,6 @@
         v-if="!canManageSelectedExam"
         tone="info"
         title="协作查看模式"
-        description="当前考试由其他教师创建。你可查看阅卷安排与题组进度，创建组织、分派与启动正评仅创建人可操作。"
         dense
         class="org-index__collab-alert"
       />
@@ -104,7 +74,6 @@
         <template #title>
           <ProfileOutlined />
           <span>组织全貌</span>
-          <UiBadge tone="blue" class="org-index__title-badge">{{ organizationExamLabel }}</UiBadge>
         </template>
 
         <a-descriptions
@@ -318,17 +287,16 @@ import {
   updateOrganization,
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
+import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import {
   UiAlertStrip,
-  UiBadge,
   UiButton,
   UiDrawer,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -350,8 +318,11 @@ const {
   selectedExam,
   selectedExamLabel,
   onExamChange,
+  onExamSearch,
+  searching,
+  resolvingPinned,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = useMarkExamContext()
 
 const canManageSelectedExam = computed(
   () =>
@@ -359,6 +330,7 @@ const canManageSelectedExam = computed(
 )
 
 const isTeacherMarkingRoute = computed(() => route.path.startsWith('/teacher'))
+const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
 function guardExamOwnerAction(): boolean {
   if (canManageSelectedExam.value) return true
@@ -615,8 +587,8 @@ function goAssignmentScheme(): void {
   if (!selectedExamId.value) return
   if (!guardExamOwnerAction()) return
   void router.push({
-    name: 'TeacherReviewAssignment',
-    query: { examId: selectedExamId.value },
+    name: 'TeacherExamWorkspaceReviewAssignment',
+    params: { examId: selectedExamId.value },
   })
 }
 

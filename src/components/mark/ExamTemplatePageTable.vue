@@ -1,5 +1,6 @@
 <template>
   <UiDataTable
+    pagination-mode="none"
     :columns="columns"
     :data-source="pages"
     :show-pagination="false"

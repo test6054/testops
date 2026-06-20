@@ -17,7 +17,7 @@ import type {
   ExternalSourceFieldScope,
   ExternalSourceType,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, TaskResultItem } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -45,7 +45,7 @@ import {
   ReportSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
@@ -334,6 +334,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 const taskRuleSummaryLines = computed(() => {
   const lines: string[] = []
   if (taskForm.sourceObjectName) {
@@ -392,7 +393,7 @@ function taskStatusLabel(value: ExternalPullTaskVO['status']): string {
   return strictEnumLabel(EXTERNAL_PULL_TASK_STATUS_LABEL, value, '外部拔取任务状态')
 }
 
-function taskStatusColor(value: ExternalPullTaskVO['status']): string {
+function taskStatusColor(value: ExternalPullTaskVO['status']): BadgeTone {
   return strictEnumTone(EXTERNAL_PULL_TASK_STATUS_COLOR, value, '外部拔取任务状态')
 }
 
@@ -404,7 +405,7 @@ function confirmationStatusLabel(value: ExternalPullConfirmationStatus): string 
   return strictEnumLabel(EXTERNAL_PULL_CONFIRMATION_STATUS_LABEL, value, '结果批次确认状态')
 }
 
-function confirmationStatusColor(value: ExternalPullConfirmationStatus): string {
+function confirmationStatusColor(value: ExternalPullConfirmationStatus): BadgeTone {
   return strictEnumTone(EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR, value, '结果批次确认状态')
 }
 
@@ -917,10 +918,11 @@ onMounted(async () => {
 
       <UiEmpty
         v-if="!sources.length && !sourceLoading"
-        description="尚未配置任何外部只读数据源；请先新建数据源以便创建拔取任务"
+        description="暂无数据"
         size="sm"
       />
       <UiDataTable
+        pagination-mode="none"
         class="student-detail-table__data-table"
         v-else
         :columns="sourceColumns"
@@ -942,9 +944,9 @@ onMounted(async () => {
             {{ column.key === 'maxRowCount' ? record.maxRowCount : record.queryTimeoutSeconds }}
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="record.enabled ? 'green' : 'default'">
+            <UiTag :tone="record.enabled ? 'green' : 'gray'" size="sm">
               {{ record.enabled ? '启用' : '停用' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
@@ -978,7 +980,7 @@ onMounted(async () => {
 
       <UiEmpty
         v-if="!tasks.length && !taskLoading"
-        description="当前筛选条件下无拔取任务；请新建拔取任务或调整筛选"
+        description="暂无数据"
         size="sm"
       />
       <UiDataTable
@@ -1030,9 +1032,9 @@ onMounted(async () => {
             </template>
           </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="taskStatusColor(record.status)">
+            <UiTag :tone="taskStatusColor(record.status)" size="sm">
               {{ taskStatusLabel(record.status) }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
@@ -1390,7 +1392,7 @@ onMounted(async () => {
           </div>
           <UiEmpty
             v-else
-            description="选择来源对象和返回字段后展示提取规则预览"
+            description="暂无数据"
             class="external-pull__empty"
           />
         </a-form-item>
@@ -1426,9 +1428,9 @@ onMounted(async () => {
             {{ detailRecord.taskCode }}
           </a-descriptions-item>
           <a-descriptions-item label="状态">
-            <a-tag :color="taskStatusColor(detailRecord.status)">
+            <UiTag :tone="taskStatusColor(detailRecord.status)" size="sm">
               {{ taskStatusLabel(detailRecord.status) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="数据源">
             {{ detailRecord.sourceName }}
@@ -1529,10 +1531,11 @@ onMounted(async () => {
         <h4 class="external-pull__section-title">结果批次（可逐批确认 / 驳回）</h4>
         <UiEmpty
           v-if="!detailResults.length && !detailLoading"
-          description="任务暂未生成结果批次；任务执行成功后会出现预览状态的批次"
+          description="暂无数据"
           size="sm"
         />
         <UiDataTable
+          pagination-mode="none"
           class="student-detail-table__data-table"
           v-else
           :columns="detailResultColumns"
@@ -1565,9 +1568,9 @@ onMounted(async () => {
               </template>
             </template>
             <template v-else-if="column.key === 'confirmationStatus'">
-              <a-tag :color="confirmationStatusColor(record.confirmationStatus)">
+              <UiTag :tone="confirmationStatusColor(record.confirmationStatus)" size="sm">
                 {{ confirmationStatusLabel(record.confirmationStatus) }}
-              </a-tag>
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
@@ -1593,7 +1596,7 @@ onMounted(async () => {
         <h4 class="external-pull__section-title">审计流水</h4>
         <UiEmpty
           v-if="!detailAudits.length && !detailLoading"
-          description="任务暂无审计流水"
+          description="暂无数据"
           size="sm"
         />
         <a-timeline v-else>

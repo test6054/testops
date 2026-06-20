@@ -10,6 +10,7 @@ import type { AiAnalysisStatusCode } from './teaching-analysis'
  * - 写操作（生成/评估）为 POST + @RequestParam（List 用重复 key），查询为 GET
  * - 后端 Long ID 统一用 string 表达到前端
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 /** 校级质量分析维度 */
@@ -34,7 +35,7 @@ export const SCHOOL_QUALITY_RATING_LABEL: Record<SchoolQualityRatingCode, string
 }
 
 /** 校级质量评价颜色 */
-export const SCHOOL_QUALITY_RATING_COLOR: Record<SchoolQualityRatingCode, string> = {
+export const SCHOOL_QUALITY_RATING_COLOR: Record<SchoolQualityRatingCode, BadgeTone> = {
   EXCELLENT: 'green',
   GOOD: 'blue',
   ACCEPTABLE: 'orange',

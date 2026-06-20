@@ -39,17 +39,14 @@
       </ContextBar>
     </template>
 
-    <!-- D-9 错误态：阅卷组织 / 会话列表加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="sessionsLoadError"
-      :error="sessionsLoadError"
-      title="阅卷会话加载失败"
-      :helper="organizationExamLabel"
-      @retry="reloadAll"
+    <UiEmpty
+      v-if="!loading && sessionsLoadError"
+      description="暂无数据"
+      class="org-sessions__empty"
     />
     <UiEmpty
       v-else-if="!organization && !loading"
-      description="未找到阅卷组织"
+      description="暂无数据"
       class="org-sessions__empty"
     />
 
@@ -113,7 +110,7 @@ import {
   validateMarkingOrganizationContract,
   validateTrialSessionContract,
 } from '@/apis/mark/marking-organization'
-import { UiButton, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'

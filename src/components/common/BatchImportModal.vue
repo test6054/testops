@@ -62,10 +62,10 @@
               <span class="file-name">{{ fileList[0].name }}</span>
               <span class="file-size">{{ formatFileSize(getFileSize(fileList[0])) }}</span>
             </div>
-            <a-tag color="green" class="file-status">
+            <UiTag tone="green" class="file-status">
               <CheckOutlined />
               已选择
-            </a-tag>
+            </UiTag>
             <a-button type="text" size="small" @click="handleFileRemove" class="file-remove">
               <CloseOutlined />
             </a-button>
@@ -120,6 +120,7 @@
           异常明细
         </h4>
         <UiDataTable
+          pagination-mode="client"
           :columns="errorColumns"
           :data-source="pagedErrorRows"
           v-model:current="errorTablePage"
@@ -173,7 +174,7 @@ import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import { computed, ref, watch } from 'vue'
-import { UiDataTable } from '@/components/ui-guide/ui'
+import { UiDataTable, UiTag } from '@/components/ui-guide/ui'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 
 type ResultStatus = 'success' | 'warning' | 'error'

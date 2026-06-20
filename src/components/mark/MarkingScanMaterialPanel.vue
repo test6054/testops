@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { getImageBlobUrl } from '@/apis/edu/file-management'
 import { QUALITY_DECISION_LABEL, QUALITY_DECISION_TONE } from '@/apis/mark/exam'
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
-import { UiAlertStrip, UiEmpty, UiErrorRetryPanel, UiTag } from '@/components/ui-guide/ui'
+import { UiAlertStrip, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -153,13 +153,6 @@ onBeforeUnmount(releaseImages)
 <template>
   <div class="marking-scan-material">
     <UiEmpty v-if="!hasSlice && !hasSource && !hasMaster" description="暂无阅卷影像材料" />
-    <UiErrorRetryPanel
-      v-else-if="loadError"
-      :error="loadError"
-      title="阅卷影像加载失败"
-      compact
-      @retry="loadImages"
-    />
     <template v-else>
       <a-segmented
         v-if="showTabs"

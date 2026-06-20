@@ -44,20 +44,16 @@
 
     <a-spin :spinning="loading || generating">
       <!-- D-9 错误态：AI 跨考试趋势加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 跨考试趋势加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!record" description="暂无趋势分析记录，请填写参数后生成。" />
-      <div v-else class="ai-record">
+      <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="维度">
             {{ scopeTypeLabel(record.scopeType) }}
@@ -76,9 +72,9 @@
           </a-descriptions-item>
           <a-descriptions-item label="考试范围" :span="3">
             <a-space v-if="record.exams.length" wrap>
-              <a-tag v-for="exam in record.exams" :key="exam.examId">
+              <UiTag v-for="exam in record.exams" :key="exam.examId">
                 {{ exam.examName }}{{ exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : '' }}
-              </a-tag>
+              </UiTag>
             </a-space>
             <span v-else class="text-muted">无考试范围</span>
           </a-descriptions-item>
@@ -89,18 +85,16 @@
           </a-descriptions-item>
         </a-descriptions>
 
-        <div v-if="examStatTrendPoints.length >= 2" class="ai-chart">
-          <div class="ai-chart__meta">
-            <strong>考试得分趋势</strong>
-            <span class="ai-chart__hint">多考试得分率走势</span>
-          </div>
-          <UiTrendChart
-            :items="examStatTrendPoints"
-            area
-            show-bubble
-            class="ai-chart__canvas"
-          />
-        </div>
+        <MarkTrendSection
+          v-if="record"
+          title="考试得分趋势"
+          hint="多考试得分率走势"
+          :point-count="examStatTrendPoints.length"
+          :option="examTrendChartOption"
+          height="320px"
+          :last-value="examTrendLastValue"
+          value-unit="%"
+        />
 
         <a-typography-paragraph v-if="record.trendSummary" class="ai-summary">
           <strong>趋势摘要：</strong>{{ record.trendSummary }}
@@ -117,7 +111,7 @@
                     <span class="analysis-item__title">
                       {{ item.dimension || '趋势条目' }}
                     </span>
-                    <a-tag v-if="item.direction">{{ item.direction }}</a-tag>
+                    <UiTag v-if="item.direction">{{ item.direction }}</UiTag>
                     <span v-if="item.changeRate != null" class="analysis-item__metric">
                       变化 {{ formatPercent(item.changeRate) }}
                     </span>
@@ -159,7 +153,10 @@ import {
 import { getExamDetail } from '@/apis/mark/exam'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
-import { UiCard, UiEmpty, UiErrorRetryPanel, UiTrendChart } from '@/components/ui-guide/ui'
+import { MarkTrendSection } from '@/components/chart'
+import { UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { useChartOption } from '@/hooks/modules/useChartOption'
+import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -201,6 +198,24 @@ const trendItems = computed(() => record.value?.trendItems ?? [])
 const examStatTrendPoints = computed(() =>
   examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
+
+const examTrendLastValue = computed(() => {
+  const points = examStatTrendPoints.value
+  if (points.length === 0) {
+    return null
+  }
+  return Number(points[points.length - 1]?.value)
+})
+
+const { chartOption: examTrendChartOption } = useChartOption(() =>
+  buildTrendLineChartOption(examStatTrendPoints.value, {
+    yAxisName: '得分率 %',
+    yMax: 100,
+    area: true,
+    emptyText: '至少需要 2 场考试才能展示走势',
+  }),
+)
+
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
 )

@@ -3,7 +3,7 @@
     <template #title>
       <a-space>
         <span>待处置重复影像</span>
-        <a-tag color="orange">待处置 {{ pendingCount }}</a-tag>
+        <UiTag tone="orange">待处置 {{ pendingCount }}</UiTag>
       </a-space>
     </template>
     <template #extra>
@@ -11,15 +11,8 @@
         <template #icon><ReloadOutlined /></template>刷新
       </a-button>
     </template>
-    <!-- D-9 错误态：重复列表加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      title="重复列表加载失败"
-      compact
-      @retry="reload"
-    />
     <UiDataTable
+      pagination-mode="client"
       class="student-detail-table__data-table"
       :columns="columns"
       :data-source="rows"
@@ -32,9 +25,9 @@
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.key === 'resolutionStatus'">
-          <a-tag :color="duplicateStatusColor(rows[index])">
+          <UiTag :tone="duplicateStatusColor(rows[index])">
             {{ duplicateStatusLabel(rows[index]) }}
-          </a-tag>
+          </UiTag>
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTextAction @click="$emit('resolve', rows[index])">处置</UiTextAction>
@@ -55,7 +48,7 @@ import {
   DUPLICATE_RESOLUTION_STATUS_LABEL,
   listPendingDuplicates,
 } from '@/apis/mark/image-ledger'
-import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -67,7 +60,6 @@ defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()
 
 const rows = ref<ExamPaperDuplicateResolutionVO[]>([])
 const loading = ref(false)
-// D-9 错误态：重复列表加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 
 const columns: ColumnType<ExamPaperDuplicateResolutionVO>[] = [

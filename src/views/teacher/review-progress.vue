@@ -1,43 +1,23 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <MarkExamContextPicker select-class="progress-page__exam-select" />
-          <UiTag v-if="selectedExamId" :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
-            已确认 {{ confirmedPercent }}%
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="loading"
-            @click="loadAll"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="progress-page">
+    <div class="progress-page__toolbar">
+      <UiTag :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
+        已确认 {{ confirmedPercent }}%
+      </UiTag>
+      <UiButton
+        variant="outline"
+        size="sm"
+        :loading="loading"
+        @click="loadAll"
+      >
+        <template #icon><ReloadOutlined /></template>
+        刷新
+      </UiButton>
+    </div>
 
-    <template #rail>
-      <MarkExamStageRail />
-    </template>
-
-    <!-- D-9 错误态：复核进度加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="selectedExamId && progressLoadError"
-      :error="progressLoadError"
-      title="复核进度加载失败"
-      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      @retry="loadAll"
-    />
     <UiEmpty
-      v-else-if="!selectedExamId"
-      description="请选择一场考试以查看复核进度"
+      v-if="!loading && !progress"
+      description="暂无数据"
       class="progress-page__empty"
     />
 
@@ -49,31 +29,30 @@
               <DashboardOutlined />
               <span>教师复核进度</span>
             </template>
-            <div class="overview-progress">
-              <a-progress
-                type="circle"
-                :percent="confirmedPercent"
-                :stroke-color="confirmedPercent >= 100 ? successColor : primaryColor"
-                :width="160"
-              />
-              <div class="overview-meta">
-                <div>
-                  <span class="meta-label">已确认 / 应复核：</span>
-                  <a-typography-text strong>
-                    {{ progress.confirmedQuestionGradeCount }} /
-                    {{ progress.totalQuestionGradeCount }}
-                  </a-typography-text>
+            <div class="overview-card__body">
+              <div class="overview-card__ring-block">
+              <MarkGaugeBlock
+                :option="confirmedGaugeOption"
+                :ariaLabel="confirmedGaugeAriaLabel"
+                layout="stacked"
+              >
+                <div class="mark-gauge-block__formula">
+                  <strong>{{ progress.confirmedQuestionGradeCount }}</strong>
+                  <span class="muted">
+                    / {{ progress.totalQuestionGradeCount }} 题次
+                  </span>
                 </div>
-                <div><span class="meta-label">题目：</span>{{ progress.questionCount }} 道</div>
-                <div><span class="meta-label">已扫描试卷：</span>{{ progress.paperCount }} 份</div>
-                <div>
-                  <span class="meta-label">可进入复核试卷：</span>
-                  <a-typography-text strong>
-                    {{ progress.gradablePaperCount }}
-                  </a-typography-text>
-                  <span class="meta-hint">（已完成身份绑定，可进入教师复核）</span>
-                </div>
+                <p v-if="progress.totalQuestionGradeCount <= 0" class="mark-gauge-block__hint">
+                  暂无应复核题次
+                </p>
+              </MarkGaugeBlock>
               </div>
+              <UiStatPanel
+                :items="overviewStatItems"
+                :columns="2"
+                variant="grid"
+                compact
+              />
             </div>
           </UiCard>
         </a-col>
@@ -83,43 +62,27 @@
               <PieChartOutlined />
               <span>复核任务状态分布</span>
             </template>
-            <a-row :gutter="16">
-              <a-col v-for="item in statusBreakdown" :key="item.code" :xs="12" :md="6">
-                <div class="status-item">
-                  <div class="status-label">
-                    <UiTag :tone="item.tone" size="sm">{{ item.label }}</UiTag>
-                  </div>
-                  <div class="status-value">{{ item.count }}</div>
-                  <div class="status-percent">
-                    {{
-                      totalTaskCount === 0 ? 0 : Math.round((item.count * 100) / totalTaskCount)
-                    }}%
-                  </div>
-                </div>
-              </a-col>
-            </a-row>
-            <a-row :gutter="16" class="aux-row">
-              <a-col :xs="12" :md="8">
-                <a-statistic
-                  title="扫描异常待办"
-                  :value="progress.scanAttentionCount"
-                  suffix="条"
-                  :value-style="{
-                    color: progress.scanAttentionCount > 0 ? errorColor : undefined,
-                  }"
-                />
-              </a-col>
-              <a-col :xs="12" :md="8">
-                <a-statistic
-                  title="复核中未完成任务"
-                  :value="progress.openProcessingTaskCount"
-                  suffix="项"
-                  :value-style="{
-                    color: progress.openProcessingTaskCount > 0 ? warningColor : undefined,
-                  }"
-                />
-              </a-col>
-            </a-row>
+            <div class="status-card__body">
+              <MarkDistributionSection
+                title="复核任务状态分布"
+                :total="totalTaskCount"
+                :option="statusDistributionOption"
+                :aria-label="statusDistributionAriaLabel"
+              />
+              <UiStatPanel
+                :items="statusStatItems"
+                :columns="4"
+                variant="grid"
+                compact
+              />
+              <UiStatPanel
+                :items="auxStatItems"
+                :columns="2"
+                variant="strip"
+                compact
+                class="status-card__aux"
+              />
+            </div>
           </UiCard>
         </a-col>
       </a-row>
@@ -130,32 +93,30 @@
           <span>按题目维度的复核进度</span>
         </template>
 
-        <div v-if="questionMatrixCells.length" class="question-matrix" aria-label="按题号复核进度矩阵">
-          <button
-            v-for="cell in questionMatrixCells"
-            :key="cell.questionTemplateId"
-            type="button"
-            class="question-matrix__cell"
-            :class="`question-matrix__cell--${cell.tone}`"
-            :title="`题${cell.questionNo}：${cell.percent}% 已确认`"
-          >
-            <span class="question-matrix__no">{{ cell.questionNo }}</span>
-            <span class="question-matrix__pct">{{ cell.percent }}%</span>
-          </button>
-        </div>
+        <MarkHeatmapSection
+          v-if="questionHeatmapCells.length"
+          title="题号确认率热力图"
+          hint="颜色越深表示该题复核确认率越高，点击题格可定位表格行"
+          :cell-count="questionHeatmapCells.length"
+          :option="questionHeatmapOption"
+          :height="questionHeatmapHeight"
+          :aria-label="questionHeatmapAriaLabel"
+          class="progress-page__heatmap"
+          @cell-click="handleHeatmapCellClick"
+        />
 
-        <div v-if="reviewProgressBarItems.length" class="progress-page__chart">
-          <UiBarChart
-            :items="reviewProgressBarItems"
-            orientation="vertical"
-            class="progress-page__chart-canvas"
-          />
-        </div>
-
-        <UiEmpty v-if="!loading && questionRows.length === 0" description="暂无题目复核数据" />
+        <MarkBarSection
+          title="按题号已通过任务数"
+          hint="柱高表示已通过复核任务数"
+          :item-count="reviewProgressBarItems.length"
+          :option="reviewProgressChartOption"
+          height="300px"
+          :aria-label="reviewProgressChartAriaLabel"
+          class="progress-page__chart"
+        />
 
         <UiDataTable
-          v-else
+          pagination-mode="none"
           :columns="questionColumns"
           :data-source="questionRows"
           :loading="loading"
@@ -168,7 +129,10 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'questionNo'">
-              <div class="question-cell">
+              <div
+                class="question-cell"
+                :class="{ 'question-cell--highlight': highlightedQuestionId === record.questionTemplateId }"
+              >
                 <UiTag tone="blue" size="sm">题{{ record.questionNo }}</UiTag>
                 <span class="question-type">{{ questionTypeLabel(record.questionType) }}</span>
               </div>
@@ -214,9 +178,9 @@
       </UiCard>
     </template>
     <a-spin v-else :spinning="loading" tip="正在加载复核进度...">
-      <UiEmpty description="正在加载复核进度" class="progress-page__empty" />
+      <UiEmpty description="暂无数据" class="progress-page__empty" />
     </a-spin>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -226,6 +190,7 @@ import type {
   ReviewQuestionProgressItemVO,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import PieChartOutlined from '@ant-design/icons-vue/PieChartOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -237,40 +202,47 @@ import {
   REVIEW_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
-import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import {
-  UiBarChart,
+  MarkBarSection,
+  MarkDistributionSection,
+  MarkGaugeBlock,
+  MarkHeatmapSection,
+} from '@/components/chart'
+import {
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
+  UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { provideMarkExamContext } from '@/composables/useMarkExamContext'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
-import { reviewProgressToBarItems } from '@/utils/mark-statistics-chart'
+import {
+  buildCategoryBarChartOption,
+  buildDistributionBarChartOption,
+  buildGaugeChartOption,
+  buildHeatmapChartOption,
+} from '@/utils/mark-echarts-options'
+import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
+import { reviewProgressToBarItems, reviewProgressToHeatmapCells } from '@/utils/mark-statistics-chart'
 import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import {
+  toDistributionSegments,
+  toShareStatPanelItems,
+} from '@/utils/stat-metric-helpers'
 
 defineOptions({ name: 'TeacherReviewProgress' })
 
-const {
-  selectedExamId,
-  selectedExamLabel,
-  init: initExamSelector,
-} = provideMarkExamContext()
+const { selectedExamId } = useMarkExamContext()
 
 const successColor = toneToColor('green')
 const primaryColor = toneToColor('blue')
-const errorColor = toneToColor('red')
-const warningColor = toneToColor('orange')
 
 const progress = ref<MarkingProgressVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：复核进度加载失败时 UiErrorRetryPanel 重试 + 上报
 const progressLoadError = ref<Error | null>(null)
 
 const confirmedPercent = computed(() => {
@@ -279,6 +251,37 @@ const confirmedPercent = computed(() => {
   const confirmed = progress.value.confirmedQuestionGradeCount
   if (total <= 0) return 0
   return Math.min(100, Math.round((confirmed * 100) / total))
+})
+
+const confirmedRingColor = computed(() =>
+  toneToColor(confirmedPercent.value >= 100 ? 'green' : 'blue'),
+)
+
+const overviewStatItems = computed((): UiStatPanelItem[] => {
+  if (!progress.value) return []
+  const data = progress.value
+  return [
+    {
+      key: 'questionCount',
+      label: '题目',
+      value: data.questionCount,
+      unit: '道',
+    },
+    {
+      key: 'paperCount',
+      label: '已扫描试卷',
+      value: data.paperCount,
+      unit: '份',
+    },
+    {
+      key: 'gradablePaperCount',
+      label: '可进入复核',
+      value: data.gradablePaperCount,
+      unit: '份',
+      helper: '已完成身份绑定',
+      tone: data.gradablePaperCount > 0 ? 'blue' : 'gray',
+    },
+  ]
 })
 
 const totalTaskCount = computed(
@@ -301,35 +304,114 @@ const statusBreakdown = computed(() => {
   }))
 })
 
+const statusDistributionSegments = computed(() => toDistributionSegments(statusBreakdown.value))
+
+const { chartOption: confirmedGaugeOption } = useChartOption(() =>
+  buildGaugeChartOption(confirmedPercent.value, {
+    label: '已确认率',
+    color: confirmedRingColor.value,
+    size: 'md',
+  }),
+)
+
+const confirmedGaugeAriaLabel = computed(() => {
+  const data = progress.value
+  const detail = data
+    ? `已确认 ${data.confirmedQuestionGradeCount} / ${data.totalQuestionGradeCount} 题次`
+    : undefined
+  return formatGaugeAriaLabel('已确认率', confirmedPercent.value, detail)
+})
+
+const { chartOption: statusDistributionOption } = useChartOption(() =>
+  buildDistributionBarChartOption(statusDistributionSegments.value, {
+    emptyText: '暂无复核任务',
+  }),
+)
+
+const statusDistributionAriaLabel = computed(() => {
+  if (totalTaskCount.value <= 0) {
+    return '复核任务状态分布，暂无复核任务'
+  }
+  const parts = statusBreakdown.value
+    .filter((item) => item.count > 0)
+    .map((item) => `${item.label} ${item.count} 项`)
+  return `复核任务状态分布，共 ${totalTaskCount.value} 项，${parts.join('，')}`
+})
+
+const statusStatItems = computed(() =>
+  toShareStatPanelItems(statusBreakdown.value, totalTaskCount.value, '暂无复核任务'),
+)
+
+const auxStatItems = computed((): UiStatPanelItem[] => {
+  if (!progress.value) return []
+  return [
+    {
+      key: 'scanAttention',
+      label: '扫描异常待办',
+      value: progress.value.scanAttentionCount,
+      unit: '条',
+      tone: progress.value.scanAttentionCount > 0 ? 'red' : 'gray',
+    },
+    {
+      key: 'openProcessing',
+      label: '复核中未完成任务',
+      value: progress.value.openProcessingTaskCount,
+      unit: '项',
+      tone: progress.value.openProcessingTaskCount > 0 ? 'orange' : 'gray',
+    },
+  ]
+})
+
 const questionRows = computed<ReviewQuestionProgressItemVO[]>(
   () => progress.value?.reviewQuestionProgressList ?? [],
 )
 const reviewProgressBarItems = computed(() => reviewProgressToBarItems(questionRows.value))
+const questionHeatmapCells = computed(() => reviewProgressToHeatmapCells(questionRows.value))
 
-interface QuestionMatrixCell {
-  questionTemplateId: string
-  questionNo: string
-  percent: number
-  tone: 'done' | 'progress' | 'pending'
-}
+const questionHeatmapHeight = computed(() => {
+  const count = questionHeatmapCells.value.length
+  if (count <= 0) return '120px'
+  return count > 20 ? '160px' : '120px'
+})
 
-/** 题号进度矩阵：按题号展示确认率色块，便于快速扫视整卷复核完成度。 */
-const questionMatrixCells = computed<QuestionMatrixCell[]>(() =>
-  questionRows.value.map((row) => {
-    const percent = row.totalTaskCount === 0
-      ? 0
-      : Math.round((row.approvedTaskCount * 100) / row.totalTaskCount)
-    let tone: QuestionMatrixCell['tone'] = 'pending'
-    if (percent >= 100) tone = 'done'
-    else if (percent > 0) tone = 'progress'
-    return {
-      questionTemplateId: row.questionTemplateId,
-      questionNo: row.questionNo,
-      percent,
-      tone,
-    }
+const { chartOption: questionHeatmapOption } = useChartOption(() =>
+  buildHeatmapChartOption(questionHeatmapCells.value, {
+    rowLabel: '确认率',
+    emptyText: '暂无题号进度数据',
   }),
 )
+
+const questionHeatmapAriaLabel = computed(() => {
+  const count = questionHeatmapCells.value.length
+  if (count <= 0) {
+    return '题号确认率热力图，暂无数据'
+  }
+  return `题号确认率热力图，共 ${count} 道题`
+})
+
+const highlightedQuestionId = ref<string | null>(null)
+
+function handleHeatmapCellClick(index: number): void {
+  const row = questionRows.value[index]
+  highlightedQuestionId.value = row?.questionTemplateId ?? null
+}
+
+const { chartOption: reviewProgressChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(reviewProgressBarItems.value, {
+    orientation: 'vertical',
+    yAxisName: '已通过',
+    dataZoom: true,
+    emptyText: '暂无题目复核进度',
+  }),
+)
+
+const reviewProgressChartAriaLabel = computed(() => {
+  const count = reviewProgressBarItems.value.length
+  if (count <= 0) {
+    return '按题目维度的复核进度，暂无数据'
+  }
+  return `按题目维度的复核进度，共 ${count} 道题`
+})
 
 function questionTypeLabel(questionType: ReviewQuestionProgressItemVO['questionType']): string {
   return strictEnumLabel(QUESTION_TYPE_LABEL, questionType, '题型')
@@ -366,7 +448,6 @@ watch(selectedExamId, (value) => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
     await loadAll()
   }
@@ -375,86 +456,80 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .progress-page {
-  &__exam-select {
-    width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 8px 10px;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
 
   &__empty {
     padding: 60px 0;
   }
-
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
 }
 
 .overview-row {
   row-gap: 16px;
 }
 
-.overview-card,
-.status-card,
+.status-card {
+  height: 100%;
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__aux {
+    padding-top: 16px;
+    border-top: 1px solid var(--ant-color-border-secondary);
+  }
+}
+
+.overview-card {
+  height: 100%;
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__ring-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0 8px;
+  }
+
+  &__gauge {
+    margin: 0 auto;
+  }
+
+  &__formula {
+    font-size: 16px;
+    color: var(--ant-color-text);
+    text-align: center;
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: 12px;
+    color: var(--ant-color-text-tertiary);
+    text-align: center;
+  }
+}
+
 .question-card {
   height: 100%;
-}
-
-.overview-progress {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 8px 0;
-}
-
-.overview-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--ant-color-text);
-}
-
-.meta-label {
-  color: var(--ant-color-text-secondary);
-  margin-right: 4px;
-}
-
-.meta-hint {
-  color: var(--ant-color-text-secondary);
-  font-size: 12px;
-  margin-left: 6px;
-}
-
-.status-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 16px;
-  border-radius: var(--dp-radius-md, 6px);
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-}
-
-.status-label {
-  font-size: 12px;
-}
-
-.status-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--ant-color-text);
-}
-
-.status-percent {
-  font-size: 12px;
-  color: var(--ant-color-text-tertiary);
-}
-
-.aux-row {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
 }
 
 .question-table {
@@ -464,56 +539,15 @@ onMounted(async () => {
   }
 }
 
-.progress-page__chart {
+.progress-page__chart,
+.progress-page__heatmap {
   margin-bottom: 16px;
-  padding: 12px 16px;
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 6px);
-  background: var(--ant-color-bg-container);
 }
 
-.question-matrix {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 8px;
-  margin-bottom: 16px;
-
-  &__cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    padding: 8px 4px;
-    border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-sm, 4px);
-    background: var(--ant-color-bg-container);
-    cursor: default;
-
-    &--done {
-      border-color: var(--ant-color-success-border);
-      background: var(--ant-color-success-bg);
-    }
-
-    &--progress {
-      border-color: var(--ant-color-primary-border);
-      background: var(--ant-color-primary-bg);
-    }
-
-    &--pending {
-      background: var(--ant-color-fill-quaternary);
-    }
-  }
-
-  &__no {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--ant-color-text);
-  }
-
-  &__pct {
-    font-size: 11px;
-    color: var(--ant-color-text-secondary);
-  }
+.question-cell--highlight {
+  outline: 2px solid var(--ant-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--dp-radius-sm, 4px);
 }
 
 .progress-page__chart-canvas {

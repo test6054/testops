@@ -3,6 +3,7 @@
     <template #context>
       <ContextBar subtitle="CEEAA 2025强制要求：每门课程须经考核评价依据合理性审核">
         <template #status>
+          <QualityScopeHeader @change="handleScopeChange" />
           <UiTag tone="blue" size="sm">覆盖率 {{ coverageRate }}%</UiTag>
           <UiTag :tone="coverageRate >= 100 ? 'green' : 'orange'" size="sm">
             {{ coverageRate >= 100 ? '已全部覆盖' : `${pendingCount} 门未通过/未审核` }}
@@ -23,14 +24,6 @@
         @search="handleSearch"
         @reset="handleReset"
       >
-        <template #field-trainingPlanId>
-          <TrainingPlanSelector
-            :value="filterForm.trainingPlanId"
-            :program-id="programId || null"
-            :width="220"
-            @update:value="(value: string | null) => { filterForm.trainingPlanId = value }"
-          />
-        </template>
         <template #field-semester>
           <a-select
             v-model:value="filterForm.semester"
@@ -44,8 +37,10 @@
 
       <a-spin :spinning="loading">
         <UiDataTable
+          pagination-mode="none"
           :columns="columns"
           :data-source="list"
+          :loading="loading"
           row-key="qualityCourseId"
           :show-pagination="false"
           flat
@@ -133,11 +128,12 @@ import {
   getRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
-import { TrainingPlanSelector } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { useQualityStore } from '@/stores/modules/quality'
 import { SemesterOptions } from '@/types/enums/semester-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'QualityRationalityAudit' })
 
@@ -152,15 +148,14 @@ interface RationalityAuditEditForm {
 }
 
 interface RationalityAuditFilterModel {
-  trainingPlanId: string | null
   schoolYear: string
   semester: string
 }
 
 const loading = ref(false)
-const programId = ref<string | null>(null)
+const listLoadError = ref<Error | null>(null)
+const qualityStore = useQualityStore()
 const filterForm = reactive<RationalityAuditFilterModel>({
-  trainingPlanId: null,
   schoolYear: '',
   semester: '',
 })
@@ -173,7 +168,6 @@ const filterModel = computed<Record<string, unknown>>({
 })
 
 const filterFields: FilterField[] = [
-  { key: 'trainingPlanId', type: 'custom', width: 220 },
   {
     key: 'schoolYear',
     type: 'input',
@@ -221,12 +215,14 @@ function booleanTagTone(v?: boolean) {
 }
 
 async function loadList() {
-  const { trainingPlanId, schoolYear, semester } = filterForm
+  const trainingPlanId = qualityStore.currentTrainingPlanId
+  const { schoolYear, semester } = filterForm
   if (!trainingPlanId || !schoolYear || !semester) {
     message.warning('请选择培养方案、学年和学期')
     return
   }
   loading.value = true
+  listLoadError.value = null
   try {
     const response = await getRationalityAuditCourseLedger({
       trainingPlanId,
@@ -236,6 +232,7 @@ async function loadList() {
     overview.value = response.overview
     list.value = response.items
   } catch (e: unknown) {
+    listLoadError.value = toUserError(e, '加载审核列表失败')
     showUserError(e, '加载审核列表失败')
   } finally {
     loading.value = false
@@ -248,10 +245,10 @@ function handleSearch() {
 
 function handleReset() {
   Object.assign(filterForm, {
-    trainingPlanId: null,
     schoolYear: '',
     semester: '',
   })
+  listLoadError.value = null
   list.value = []
   overview.value = {
     totalCourseCount: 0,
@@ -259,6 +256,13 @@ function handleReset() {
     approvedCourseCount: 0,
     pendingCourseCount: 0,
     coverageRate: 0,
+  }
+}
+
+function handleScopeChange(): void {
+  listLoadError.value = null
+  if (filterForm.schoolYear && filterForm.semester && qualityStore.currentTrainingPlanId) {
+    void loadList()
   }
 }
 

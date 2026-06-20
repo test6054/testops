@@ -32,18 +32,11 @@
 
     <UiEmpty
       v-if="!hasParams"
-      description="未找到本次复核任务，请从教师复核列表重新进入"
+      description="暂无数据"
       class="task-detail-page__empty"
     />
 
-    <!-- D-9 错误态：任务详情加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-else-if="taskLoadError"
-      :error="taskLoadError"
-      title="复核任务详情加载失败"
-      helper="请从教师复核列表重新进入后重试"
-      @retry="loadTask"
-    />
+    <UiEmpty v-else-if="taskLoadError" description="暂无数据" />
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
       <UiCard v-if="detail" class="info-card">
@@ -81,7 +74,7 @@
               <PictureOutlined />
               <span>阅卷影像</span>
             </template>
-            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage" description="该题目暂无阅卷影像" />
+            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage" description="暂无数据" />
             <MarkingScanMaterialPanel
               v-else
               :slice-file-id="detail?.sliceFileId"
@@ -94,7 +87,7 @@
               <FileTextOutlined />
               <span>识别答案</span>
             </template>
-            <UiEmpty v-if="!detail?.recognizedAnswer" description="尚未产生识别答案" />
+            <UiEmpty v-if="!detail?.recognizedAnswer" description="暂无数据" />
             <div v-else class="text-block">{{ detail.recognizedAnswer }}</div>
           </UiCard>
 
@@ -103,7 +96,7 @@
               <RobotOutlined />
               <span>AI 评分说明</span>
             </template>
-            <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 评分说明" />
+            <UiEmpty v-if="!detail?.aiDiagnostic" description="暂无数据" />
             <div v-else class="text-block">{{ aiReviewDiagnosticText(detail.aiDiagnostic) }}</div>
           </UiCard>
         </a-col>
@@ -114,7 +107,7 @@
               <CommentOutlined />
               <span>批注历史</span>
             </template>
-            <UiEmpty v-if="annotations.length === 0" description="尚无批注记录" />
+            <UiEmpty v-if="annotations.length === 0" description="暂无数据" />
             <a-list v-else :data-source="annotations" size="small">
               <template #renderItem="{ item }">
                 <a-list-item>
@@ -160,7 +153,6 @@ import {
   UiButton,
   UiCard,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
@@ -169,7 +161,7 @@ import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-defineOptions({ name: 'TeacherReviewTaskDetail' })
+defineOptions({ name: 'TeacherExamWorkspaceReviewTaskDetail' })
 
 const REVIEW_TASK_DETAIL_PAGE_SIZE = 100
 
@@ -192,13 +184,12 @@ function aiReviewDiagnosticText(diagnostic?: string): string {
 const route = useRoute()
 const router = useRouter()
 
-const examId = computed(() => (route.query.examId ? String(route.query.examId) : ''))
+const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
 const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 const hasParams = computed(() => !!examId.value && !!taskId.value)
 
 const detail = ref<ReviewTaskDetailVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：任务详情加载失败时 UiErrorRetryPanel 重试 + 上报
 const taskLoadError = ref<Error | null>(null)
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '100px' }
@@ -254,8 +245,8 @@ async function loadTask(): Promise<void> {
 function goWorkspace(): void {
   if (!hasParams.value) return
   void router.push({
-    name: 'TeacherReviewWorkspace',
-    query: { examId: examId.value, taskId: taskId.value },
+    name: 'TeacherExamWorkspaceReviewWorkspace',
+    params: { examId: examId.value, taskId: taskId.value },
   })
 }
 

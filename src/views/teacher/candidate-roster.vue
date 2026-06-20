@@ -1,35 +1,7 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="roster-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="handleExamChange"
-          />
-          <UiTag v-if="selectedExamId" tone="blue" size="sm">{{ candidateTotal }} 名考生</UiTag>
-        </template>
-      </ContextBar>
-    </template>
+  <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
 
-    <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
-
-    <UiErrorRetryPanel
-      v-else-if="rosterLoadError"
-      :error="rosterLoadError"
-      title="考生名册加载失败"
-      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      @retry="reloadExamContext"
-    />
-
-    <a-spin v-else :spinning="contextLoading">
+  <a-spin v-else :spinning="contextLoading">
       <UiCard class="info-card">
         <template #title>
           <TeamOutlined />
@@ -41,7 +13,7 @@
           v-if="classScopeReadOnly && !rosterLocked"
           tone="warning"
           title="当前账号无权维护该考试名册"
-          description="班级范围与考生名册仅可查看，不可修改。"
+          description="暂无数据"
           dense
           class="info-card__alert"
         />
@@ -109,15 +81,7 @@
           @reset="handleRosterReset"
         />
 
-        <UiErrorRetryPanel
-          v-if="tableLoadError"
-          :error="tableLoadError"
-          title="考生列表加载失败"
-          compact
-          @retry="loadCandidatePage"
-        />
         <UiDataTable
-          v-else
           v-model:current="pagination.current"
           v-model:page-size="pagination.pageSize"
           :columns="columns"
@@ -264,6 +228,7 @@
           </div>
         </div>
         <UiDataTable
+          pagination-mode="client"
           v-if="importPreview"
           :columns="importColumns"
           :data-source="importPreviewPagedRows"
@@ -341,7 +306,6 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -389,13 +353,11 @@ import {
   UiConfirmPopover,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
   UiTextAction,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { ErrorType, handleError, showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { buildScopedClassTags, mergeClassSelectOptions } from './candidate-roster/class-scope'
@@ -432,14 +394,7 @@ interface ImportPreviewSampleRow {
   }>
 }
 
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  onExamChange,
-  init: initExamSelector,
-} = useMarkExamSelector()
+const { selectedExamId } = useMarkExamContext()
 
 const classIds = ref<string[]>([])
 const examClassRefs = ref<ExamClassRefVO[]>([])
@@ -787,13 +742,6 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidatePage()
-}
-
-function handleExamChange(
-  value: SelectValue,
-  option: DefaultOptionType | DefaultOptionType[],
-): void {
-  onExamChange(value, option)
 }
 
 function openSelectDrawer(): void {
@@ -1275,7 +1223,6 @@ watch(selectedExamId, (value) => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
     await loadExamContext()
     await loadCandidatePage()

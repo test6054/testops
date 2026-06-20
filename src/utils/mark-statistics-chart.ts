@@ -1,8 +1,11 @@
 import type { CourseAchievementItemVO, ExamStatSnapshotVO, SemesterGrowthItemVO } from '@/apis/mark/cross-exam-analysis'
 import type { ErrorCauseClusterItemVO } from '@/apis/mark/error-cause-cluster'
 import type { ReviewQuestionProgressItemVO } from '@/apis/mark/exam'
+import type { ProgressMonitorRecordVO } from '@/apis/mark/marking-quality'
+import type { DashboardGradingMetricsVO } from '@/apis/mark/admin-dashboard'
 import type { ExamQuestionAnalysisRecordVO } from '@/apis/mark/question-analysis'
 import type { BadgeTone, UiBarChartItem, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
+import type { MarkHeatmapCell } from '@/utils/mark-echarts-options'
 import { COURSE_OBJECTIVE_DIMENSION_LABEL } from '@/apis/mark/cross-exam-analysis'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import { rateTone } from '@/utils/score-tone'
@@ -224,4 +227,103 @@ export function buildQuestionQualityScatterSeries(
       points: lowDiscrim,
     },
   ].filter((series) => series.points.length > 0)
+}
+
+/** 租户批改进度指标 → 柱状图条目 */
+export function gradingMetricsToBarItems(metrics: DashboardGradingMetricsVO): UiBarChartItem[] {
+  const items: UiBarChartItem[] = [
+    {
+      key: 'published',
+      label: '已发布',
+      value: metrics.publishedScoreCount,
+      tone: 'green',
+    },
+    {
+      key: 'confirmed',
+      label: '已确认未发布',
+      value: metrics.confirmedScoreCount,
+      tone: 'blue',
+    },
+    {
+      key: 'pending',
+      label: '待计算',
+      value: metrics.pendingScoreCount,
+      tone: metrics.pendingScoreCount > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'openReview',
+      label: '待复核',
+      value: metrics.openReviewTaskCount,
+      tone: metrics.openReviewTaskCount > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'openProcessing',
+      label: '未闭合任务',
+      value: metrics.openProcessingTaskCount,
+      tone: metrics.openProcessingTaskCount > 0 ? 'orange' : 'gray',
+    },
+    {
+      key: 'confirmedQuestion',
+      label: '已确认题目',
+      value: metrics.confirmedQuestionResultCount,
+      tone: 'blue',
+    },
+  ]
+  return items.filter((item) => item.value > 0)
+}
+
+/** 阅卷进度快照序列 → 完成率趋势点 */
+export function progressSnapshotsToTrendPoints(records: ProgressMonitorRecordVO[]): UiTrendPoint[] {
+  if (records.length === 0) return []
+  return records.map((record, index) => ({
+    key: record.id || `snapshot-${index}`,
+    label: formatSnapshotLabel(record.snapshotTime, index),
+    value: Number(record.completionRate.toFixed(2)),
+  }))
+}
+
+function formatSnapshotLabel(snapshotTime: string, index: number): string {
+  const text = snapshotTime.trim()
+  if (!text) return `快照 ${index + 1}`
+  const normalized = text.replace('T', ' ')
+  return normalized.length > 16 ? normalized.slice(5, 16) : normalized
+}
+
+/** 题目复核进度 → 热力图单元格 */
+export function reviewProgressToHeatmapCells(
+  rows: ReviewQuestionProgressItemVO[],
+): MarkHeatmapCell[] {
+  if (rows.length === 0) return []
+  return rows.map((row) => {
+    const percent = row.totalTaskCount === 0
+      ? 0
+      : Math.round((row.approvedTaskCount * 100) / row.totalTaskCount)
+    return {
+      key: row.questionTemplateId,
+      label: String(row.questionNo),
+      value: percent,
+    }
+  })
+}
+
+/** 学生答题卡 → 热力图单元格（按得分率着色） */
+export function scoreSheetToHeatmapCells(
+  questions: Array<{
+    questionTemplateId: string
+    questionNo: string | number
+    finalScore?: number | null
+    fullScore?: number | null
+  }>,
+): MarkHeatmapCell[] {
+  if (questions.length === 0) return []
+  return questions.map((question) => {
+    const full = question.fullScore ?? 0
+    const finalScore = question.finalScore ?? 0
+    const percent = full > 0 ? Math.round((finalScore * 100) / full) : 0
+    return {
+      key: question.questionTemplateId,
+      label: String(question.questionNo),
+      value: percent,
+    }
+  })
 }

@@ -3,16 +3,16 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="quality-dashboard__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
+          <MarkExamSelect
+            :selected-exam-id="selectedExamId"
+            :exam-options="examOptions"
             :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
+            :searching="searching"
+            :resolving-pinned="resolvingPinned"
+            select-class="quality-dashboard__exam-select"
+            placeholder="选择考试"
             @change="handleExamChange"
+            @search="onExamSearch"
           />
           <a-select
             :value="selectedOrganizationId"
@@ -44,7 +44,7 @@
 
     <UiEmpty
       v-if="!selectedExamId"
-      description="请先选择一场考试"
+      description="请选择考试"
       class="quality-dashboard__empty"
     />
 
@@ -89,26 +89,19 @@
               </a-space>
             </template>
 
-            <UiEmpty
-              v-if="!scopeValid"
-              description="请选择阅卷组织"
-              class="quality-dashboard__alert"
-            />
-            <!-- D-9 错误态：进度快照加载失败时给出可恢复 + 可上报路径 -->
             <UiErrorRetryPanel
-              v-else-if="progressLoadError"
+              v-if="progressLoadError"
               :error="progressLoadError"
-              title="进度快照加载失败"
-              :helper="selectedScopeLabel"
-              compact
+              helper="阅卷进度快照"
               @retry="loadProgress"
             />
             <UiEmpty
-              v-else-if="!progress"
-              description="尚无进度快照"
+              v-else-if="!scopeValid"
+              description="请选择"
               class="quality-dashboard__alert"
             />
-            <a-descriptions v-else :column="3" bordered size="small">
+            <a-skeleton v-else-if="progressLoading" active :paragraph="{ rows: 3 }" />
+            <a-descriptions v-else-if="progress" :column="3" bordered size="small">
               <a-descriptions-item label="总任务数">
                 <b>{{ progress.totalTasks }}</b>
               </a-descriptions-item>
@@ -157,6 +150,41 @@
                 </ul>
               </a-descriptions-item>
             </a-descriptions>
+
+            <UiEmpty
+              v-else
+              description="暂无进度快照，请点击「立即快照」生成"
+              class="quality-dashboard__alert"
+            />
+
+            <div v-if="progress" class="quality-dashboard__charts">
+              <UiAlertStrip
+                v-if="progressHistoryLoadError"
+                tone="error"
+                title="历史快照加载失败"
+                :description="progressHistoryLoadError.message"
+                dense
+                class="quality-dashboard__alert"
+              />
+              <MarkTrendSection
+                title="完成率走势"
+                hint="基于历史进度快照，悬停查看各时点完成率"
+                :point-count="progressTrendPoints.length"
+                :option="progressTrendOption"
+                height="260px"
+                value-unit="%"
+                :last-value="progressTrendLastValue"
+                :aria-label="progressTrendAriaLabel"
+              />
+              <MarkBarSection
+                title="当前任务状态分布"
+                hint="最新快照各状态任务量"
+                :item-count="progressTaskBarItems.length"
+                :option="progressTaskBarOption"
+                height="260px"
+                :aria-label="progressTaskBarAriaLabel"
+              />
+            </div>
           </UiCard>
         </a-tab-pane>
 
@@ -190,18 +218,17 @@
               @reset="handleReviewerFilterReset"
             />
 
-            <!-- D-9 错误态：教师质量指标加载失败时给出可恢复 + 可上报路径 -->
             <UiErrorRetryPanel
               v-if="reviewerMetricsLoadError"
               :error="reviewerMetricsLoadError"
-              title="教师质量指标加载失败"
-              :helper="selectedScopeLabel"
-              compact
+              helper="教师质量指标"
               @retry="loadReviewerMetrics"
             />
+
             <UiDataTable
-              class="student-detail-table__data-table"
+              pagination-mode="client"
               v-else
+              class="student-detail-table__data-table"
               :columns="reviewerColumns"
               :data-source="reviewerMetrics"
               :loading="reviewerLoading"
@@ -318,7 +345,6 @@
             <UiAlertStrip
               tone="warning"
               title="重处理影响范围"
-              description="全部重处理会清空批次内所有页的识别和评分结果并重新走识别流；仅失败页重处理只重做识别失败页。重处理过程中阅卷工作不可用。请确认与教师协调时间窗口后再触发。"
               dense
               class="quality-dashboard__alert"
             />
@@ -410,6 +436,7 @@ import {
 import {
   createSpotCheckTasks,
   getLatestProgress,
+  listProgressSnapshots,
   listReviewerMetrics,
   PROGRESS_RISK_LEVEL_COLOR,
   PROGRESS_RISK_LEVEL_LABEL,
@@ -419,6 +446,8 @@ import {
   REVIEWER_METRIC_STATUS_LABEL,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
+import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
+import { MarkBarSection, MarkTrendSection } from '@/components/chart'
 import {
   UiAlertStrip,
   UiBadge,
@@ -432,7 +461,11 @@ import {
 } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
+import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
+import type { UiBarChartItem } from '@/components/ui-guide/ui/types'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -450,6 +483,9 @@ const {
   loading: examLoading,
   selectedExamId,
   onExamChange,
+  onExamSearch,
+  searching,
+  resolvingPinned,
   init: initExamSelector,
 } = useMarkExamSelector()
 
@@ -536,11 +572,88 @@ const selectedScopeLabel = computed(() => {
 // ─── 进度监控 ─────────────────────────────────
 
 const progress = ref<ProgressMonitorRecordVO | null>(null)
+const progressHistory = ref<ProgressMonitorRecordVO[]>([])
 const progressLoading = ref(false)
 const snapshotting = ref(false)
 // D-9 错误态：进度快照加载失败时，UiErrorRetryPanel 上报 + 重试
 const progressLoadError = ref<Error | null>(null)
+const progressHistoryLoadError = ref<Error | null>(null)
 const progressRiskItems = computed<ProgressRiskItemVO[]>(() => progress.value?.riskItems ?? [])
+
+const progressTrendPoints = computed(() => progressSnapshotsToTrendPoints(progressHistory.value))
+
+const progressTrendLastValue = computed(() => {
+  const points = progressTrendPoints.value
+  if (points.length === 0) return null
+  return points[points.length - 1]?.value ?? null
+})
+
+const { chartOption: progressTrendOption } = useChartOption(() =>
+  buildTrendLineChartOption(progressTrendPoints.value, {
+    yAxisName: '完成率 %',
+    yMax: 100,
+    area: true,
+    emptyText: '暂无历史快照，请先立即快照',
+  }),
+)
+
+const progressTrendAriaLabel = computed(() => {
+  const count = progressTrendPoints.value.length
+  if (count < 2) {
+    return '完成率走势，至少需要两次快照'
+  }
+  return `完成率走势，共 ${count} 个快照点`
+})
+
+const progressTaskBarItems = computed((): UiBarChartItem[] => {
+  if (!progress.value) return []
+  const snapshot = progress.value
+  const items: UiBarChartItem[] = [
+    { key: 'allocated', label: '已分配', value: snapshot.allocatedTasks, tone: 'blue' },
+    { key: 'inProgress', label: '进行中', value: snapshot.inProgressTasks, tone: 'orange' },
+    { key: 'submitted', label: '已提交', value: snapshot.submittedTasks, tone: 'blue' },
+    { key: 'finalized', label: '已定稿', value: snapshot.finalizedTasks, tone: 'green' },
+    { key: 'recycled', label: '已回收', value: snapshot.recycledTasks, tone: 'red' },
+  ]
+  return items.filter((item) => item.value > 0)
+})
+
+const { chartOption: progressTaskBarOption } = useChartOption(() =>
+  buildCategoryBarChartOption(progressTaskBarItems.value, {
+    orientation: 'vertical',
+    yAxisName: '任务数',
+    emptyText: '暂无任务状态数据',
+  }),
+)
+
+const progressTaskBarAriaLabel = computed(() => {
+  const count = progressTaskBarItems.value.length
+  if (count <= 0) {
+    return '当前任务状态分布，暂无数据'
+  }
+  return `当前任务状态分布，共 ${count} 种状态`
+})
+
+async function loadProgressHistory(): Promise<void> {
+  if (!scopeValid.value) {
+    progressHistory.value = []
+    progressHistoryLoadError.value = null
+    return
+  }
+  progressHistoryLoadError.value = null
+  try {
+    progressHistory.value = await listProgressSnapshots({
+      examId: selectedExamId.value!,
+      organizationId: selectedOrganizationId.value!,
+      groupId: selectedGroupId.value,
+      limit: 30,
+    })
+  } catch (error) {
+    progressHistory.value = []
+    progressHistoryLoadError.value = toUserError(error, '阅卷进度历史加载失败')
+    showUserError(error, '阅卷进度历史加载失败')
+  }
+}
 
 async function loadProgress(): Promise<void> {
   if (!scopeValid.value) return
@@ -552,6 +665,7 @@ async function loadProgress(): Promise<void> {
       organizationId: selectedOrganizationId.value!,
       groupId: selectedGroupId.value,
     })
+    await loadProgressHistory()
   } catch (error) {
     progressLoadError.value = toUserError(error, '阅卷进度快照加载失败')
     showUserError(error, '阅卷进度快照加载失败')
@@ -569,6 +683,7 @@ async function handleSnapshot(): Promise<void> {
       organizationId: selectedOrganizationId.value!,
       groupId: selectedGroupId.value,
     })
+    await loadProgressHistory()
     message.success('已生成进度快照')
   } catch (error) {
     showUserError(error, '阅卷进度快照生成失败')
@@ -934,6 +1049,13 @@ onMounted(async () => {
     border: 1px solid var(--dp-border, #e2e8f0);
     border-radius: 8px;
     padding: 0 16px;
+  }
+
+  &__charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
   }
 
   &__exam-select {

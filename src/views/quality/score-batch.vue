@@ -22,7 +22,7 @@ import type {
   ScoreBatchVO,
   ScoreImportRowDiagnostic,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -41,9 +41,11 @@ import {
   SCORE_BATCH_STATUS_LABEL,
   scoreBatchApi,
 } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
+  ContextBar,
   SignalBand,
   StageRail,
   StageWorkbenchShell,
@@ -51,11 +53,12 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
+const listLoadError = ref<Error | null>(null)
 
 const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
@@ -154,12 +157,6 @@ const filterFields = computed<FilterField[]>(() => [
     options: courseSelectOptions.value,
   },
   {
-    key: 'assessmentItemId',
-    type: 'custom',
-    label: '考核环节',
-    width: 220,
-  },
-  {
     key: 'status',
     type: 'select',
     label: '状态',
@@ -169,20 +166,11 @@ const filterFields = computed<FilterField[]>(() => [
     options: statusOptions,
   },
   {
-    key: 'sourceMode',
-    type: 'select',
-    label: '接入模式',
-    placeholder: '接入模式',
-    allowClear: true,
-    width: 220,
-    options: SOURCE_MODE_OPTIONS,
-  },
-  {
     key: 'keyword',
     type: 'input',
     label: '关键字',
-    placeholder: '关键字',
-    width: 160,
+    placeholder: '编码 / 名称',
+    width: 180,
   },
 ])
 
@@ -198,7 +186,7 @@ function statusLabel(value: ScoreBatchStatus): string {
   return strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态')
 }
 
-function statusColor(value: ScoreBatchStatus): string {
+function statusColor(value: ScoreBatchStatus): BadgeTone {
   return strictEnumTone(SCORE_BATCH_STATUS_COLOR, value, '成绩批次状态')
 }
 
@@ -281,6 +269,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 const courseSelectOptions = computed(() =>
   courseOptions.value.map((item) => ({
     value: item.id,
@@ -345,7 +334,13 @@ async function loadQueryAssessmentItems(qualityCourseId: string | undefined) {
 }
 
 async function loadBatches() {
+  if (!qualityStore.currentTrainingPlanId) {
+    batches.value = []
+    total.value = 0
+    return
+  }
   loading.value = true
+  listLoadError.value = null
   try {
     const page = await scoreBatchApi.page({
       ...query,
@@ -357,9 +352,18 @@ async function loadBatches() {
     })
     batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
     total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
+  } catch (error) {
+    listLoadError.value = toUserError(error, '成绩批次加载失败')
+    showUserError(error, '成绩批次加载失败')
   } finally {
     loading.value = false
   }
+}
+
+async function handleScopeChange(): Promise<void> {
+  listLoadError.value = null
+  await loadCourses()
+  await loadBatches()
 }
 
 function handlePageChange(page: { current: number, pageSize: number }) {
@@ -734,22 +738,37 @@ watch(
 )
 
 onMounted(async () => {
-  if (!qualityStore.currentTrainingPlanId) {
-    await qualityStore.loadTrainingPlanOptions()
-    if (qualityStore.trainingPlanOptions.length) {
-      qualityStore.setTrainingPlan(qualityStore.trainingPlanOptions[0].id)
-    }
+  if (qualityStore.currentTrainingPlanId) {
+    await loadCourses()
+    await loadBatches()
   }
-  await loadCourses()
-  await loadBatches()
 })
 </script>
 
 <template>
   <StageWorkbenchShell>
+    <template #context>
+      <ContextBar>
+        <template #status>
+          <QualityScopeHeader @change="handleScopeChange" />
+        </template>
+        <template #actions>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="!qualityStore.currentTrainingPlanId"
+            :loading="loading"
+            @click="handleScopeChange"
+          >
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+
     <UiEmpty
       v-if="!qualityStore.currentTrainingPlanId"
-      description="请先选择培养方案，再进行成绩批次的接入与计算"
+      description="请选择培养方案"
       class="score-batch__empty"
     />
 
@@ -853,19 +872,7 @@ onMounted(async () => {
           show-labels
           @search="handleSearch"
           @reset="handleReset"
-        >
-          <template #field-assessmentItemId>
-            <a-select
-              v-model:value="query.assessmentItemId"
-              placeholder="考核环节"
-              style="width: 100%"
-              :options="queryAssessmentItemOptions"
-              :loading="queryAssessmentLoading"
-              :disabled="!query.qualityCourseId"
-              allow-clear
-            />
-          </template>
-        </UiFilterBar>
+        />
 
         <UiDataTable
           v-model:current="query.pageNum"
@@ -926,9 +933,9 @@ onMounted(async () => {
               </span>
             </template>
             <template v-else-if="column.key === 'status'">
-              <a-tag :color="statusColor(record.status)">
+              <UiTag :tone="statusColor(record.status)">
                 {{ statusLabel(record.status) }}
-              </a-tag>
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>
@@ -967,9 +974,9 @@ onMounted(async () => {
           {{ previewBatch.batchCode }} · {{ previewBatch.batchName }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">
-          <a-tag :color="statusColor(previewBatch.status)">
+          <UiTag :tone="statusColor(previewBatch.status)">
             {{ statusLabel(previewBatch.status) }}
-          </a-tag>
+          </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="行数（成功/错误/总）">
           <template v-if="hasGeneratedRowStatistics(previewSummary)">
@@ -992,6 +999,7 @@ onMounted(async () => {
         class="score-batch__preview-alert"
       />
       <UiDataTable
+        pagination-mode="none"
         class="student-detail-table__data-table"
         :columns="diagnosticsColumns"
         :data-source="diagnostics"
@@ -1012,9 +1020,9 @@ onMounted(async () => {
             }}
           </template>
           <template v-else-if="column.key === 'valid'">
-            <a-tag :color="record.valid ? 'green' : 'red'">
+            <UiTag :tone="record.valid ? 'green' : 'red'">
               {{ record.valid ? '通过' : '失败' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'errorInfo'">
             <a-space direction="vertical" size="small" style="width: 100%">

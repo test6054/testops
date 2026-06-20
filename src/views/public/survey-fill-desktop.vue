@@ -367,8 +367,24 @@ async function handleSubmit() {
    PC 端问卷 — 全页展示模式
    ============================================================ */
 .d-survey {
+  --survey-page-bg: var(--ant-color-bg-layout, #f5f5f5);
+  --survey-border: var(--ant-color-border-secondary, #e8e8e8);
+  --survey-border-light: var(--ant-color-border-secondary, #f0f0f0);
+  --survey-surface: var(--ant-color-bg-container, #fff);
+  --survey-surface-muted: var(--ant-color-fill-quaternary, #fafafa);
+  --survey-text: var(--dp-text-primary, #1a1a2e);
+  --survey-text-secondary: var(--dp-text-secondary, #666);
+  --survey-text-muted: var(--dp-text-tertiary, #999);
+  --survey-text-placeholder: var(--ant-color-text-quaternary, #bbb);
+  --survey-warning-bg: var(--ant-color-warning-bg, #fff3e0);
+  --survey-warning-text: var(--ant-color-warning, #f57c00);
+  --survey-success-bg: var(--ant-color-success-bg, #e8f5e9);
+  --survey-success-text: var(--ant-color-success, #43a047);
+  --survey-danger: var(--ant-color-error, #ff4d4f);
+  --survey-on-primary: var(--ant-color-text-light-solid, #fff);
+
   min-height: 100vh;
-  background: #f0f2f5;
+  background: var(--survey-page-bg);
   font-family:
     -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei',
     sans-serif;
@@ -388,8 +404,8 @@ async function handleSubmit() {
 .d-survey__spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #e8e8e8;
-  border-top-color: #4f6ef7;
+  border: 3px solid var(--survey-border);
+  border-top-color: var(--ant-color-primary, #1677ff);
   border-radius: 50%;
   animation: d-spin 0.8s linear infinite;
 }
@@ -413,13 +429,13 @@ async function handleSubmit() {
 }
 
 .d-survey__icon--warn {
-  background: #fff3e0;
-  color: #f57c00;
+  background: var(--survey-warning-bg);
+  color: var(--survey-warning-text);
 }
 
 .d-survey__icon--success {
-  background: #e8f5e9;
-  color: #43a047;
+  background: var(--survey-success-bg);
+  color: var(--survey-success-text);
 
   svg {
     width: 36px;
@@ -430,27 +446,28 @@ async function handleSubmit() {
 .d-survey__status-title {
   font-size: 22px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--survey-text);
   margin: 0 0 8px;
 }
 
 .d-survey__status-text {
   font-size: 15px;
-  color: #666;
+  color: var(--survey-text-secondary);
   margin: 8px 0 0;
 }
 
 .d-survey__status-hint {
   font-size: 13px;
-  color: #999;
+  color: var(--survey-text-muted);
   margin-top: 12px;
 }
 
 /* --- 横幅 --- */
 .d-survey__banner {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--ant-color-bg-container, #fff);
   padding: 48px 24px 40px;
   text-align: center;
+  border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
 }
 
 .d-survey__banner-inner {
@@ -461,10 +478,9 @@ async function handleSubmit() {
 .d-survey__banner-badge {
   display: inline-block;
   padding: 4px 16px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(4px);
+  background: var(--ant-color-primary-bg, #e6f4ff);
   border-radius: 20px;
-  color: #fff;
+  color: var(--ant-color-primary, #1677ff);
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 2px;
@@ -474,18 +490,17 @@ async function handleSubmit() {
 .d-survey__banner-title {
   font-size: 28px;
   font-weight: 700;
-  color: #fff;
+  color: var(--dp-text-primary, #1a1a2e);
   margin: 0 0 12px;
   line-height: 1.3;
 }
 
 .d-survey__banner-desc {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--dp-text-secondary, #666);
   line-height: 1.6;
-  margin: 0;
-  max-width: 560px;
   margin: 0 auto;
+  max-width: 560px;
 }
 
 /* --- 进度条 --- */
@@ -493,9 +508,9 @@ async function handleSubmit() {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #fff;
+  background: var(--survey-surface);
   padding: 10px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--survey-border-light);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -505,21 +520,21 @@ async function handleSubmit() {
 .d-survey__progress {
   flex: 1;
   height: 6px;
-  background: #e8e8e8;
+  background: var(--survey-border);
   border-radius: 3px;
   overflow: hidden;
 }
 
 .d-survey__progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #667eea, #764ba2);
+  background: var(--ant-color-primary, #1677ff);
   border-radius: 3px;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .d-survey__progress-label {
   font-size: 13px;
-  color: #888;
+  color: var(--survey-text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -535,13 +550,13 @@ async function handleSubmit() {
 }
 
 .d-survey__welcome {
-  background: #fff;
+  background: var(--survey-surface);
   padding: 20px 24px;
   border-radius: 12px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid var(--ant-color-primary, #1677ff);
   margin-bottom: 20px;
   font-size: 15px;
-  color: #555;
+  color: var(--survey-text);
   line-height: 1.6;
   font-style: italic;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
@@ -552,14 +567,14 @@ async function handleSubmit() {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #999;
+  color: var(--survey-text-muted);
   margin-bottom: 20px;
   padding: 0 4px;
 }
 
 /* --- 身份信息 --- */
 .d-survey__identity {
-  background: #fff;
+  background: var(--survey-surface);
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
@@ -572,10 +587,10 @@ async function handleSubmit() {
   gap: 8px;
   font-size: 15px;
   font-weight: 600;
-  color: #333;
+  color: var(--survey-text);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--survey-border-light);
 }
 
 .d-survey__identity-fields {
@@ -592,33 +607,33 @@ async function handleSubmit() {
 .d-survey__field-label {
   font-size: 14px;
   font-weight: 500;
-  color: #333;
+  color: var(--survey-text);
   margin-bottom: 8px;
 }
 
 .d-survey__required-dot {
-  color: #ff4d4f;
+  color: var(--survey-danger);
 }
 
 .d-survey__input {
   height: 44px;
   padding: 0 14px;
-  border: 1.5px solid #e0e0e0;
+  border: 1.5px solid var(--survey-border);
   border-radius: 10px;
   font-size: 14px;
-  color: #333;
-  background: #fafafa;
+  color: var(--survey-text);
+  background: var(--survey-surface-muted);
   outline: none;
   transition: all 0.2s;
 
   &:focus {
-    border-color: #667eea;
-    background: #fff;
+    border-color: var(--ant-color-primary, #1677ff);
+    background: var(--survey-surface);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
   }
 
   &::placeholder {
-    color: #bbb;
+    color: var(--survey-text-placeholder);
   }
 }
 
@@ -626,7 +641,7 @@ async function handleSubmit() {
 .d-survey__item {
   display: flex;
   gap: 16px;
-  background: #fff;
+  background: var(--survey-surface);
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 16px;
@@ -681,21 +696,21 @@ async function handleSubmit() {
   justify-content: center;
   font-size: 13px;
   font-weight: 600;
-  border: 2px solid #e0e0e0;
-  color: #999;
+  border: 2px solid var(--survey-border);
+  color: var(--survey-text-muted);
   transition: all 0.2s;
 }
 
 .d-survey__item-dot--done {
-  border-color: #52c41a;
-  background: #52c41a;
-  color: #fff;
+  border-color: var(--ant-color-success, #52c41a);
+  background: var(--ant-color-success, #52c41a);
+  color: var(--survey-on-primary);
   font-size: 14px;
 }
 
 .d-survey__item-dot--req {
-  border-color: #ff7875;
-  color: #ff4d4f;
+  border-color: var(--ant-color-error-border, #ff7875);
+  color: var(--survey-danger);
 }
 
 .d-survey__item-main {
@@ -714,14 +729,14 @@ async function handleSubmit() {
   flex: 1;
   font-size: 16px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--survey-text);
   line-height: 1.6;
 }
 
 .d-survey__required-tag {
   font-size: 11px;
-  color: #fff;
-  background: #ff4d4f;
+  color: var(--survey-on-primary);
+  background: var(--survey-danger);
   padding: 2px 8px;
   border-radius: 8px;
   font-weight: 500;
@@ -731,7 +746,7 @@ async function handleSubmit() {
 
 .d-survey__item-type {
   font-size: 12px;
-  color: #bbb;
+  color: var(--survey-text-placeholder);
   flex-shrink: 0;
   margin-top: 4px;
 }
@@ -741,7 +756,7 @@ async function handleSubmit() {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #999;
+  color: var(--survey-text-muted);
   margin-bottom: 10px;
 }
 
@@ -753,12 +768,12 @@ async function handleSubmit() {
 .d-survey__scale-btn {
   width: 48px;
   height: 48px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid var(--survey-border);
   border-radius: 12px;
-  background: #fafafa;
+  background: var(--survey-surface-muted);
   font-size: 16px;
   font-weight: 600;
-  color: #555;
+  color: var(--survey-text);
   cursor: pointer;
   transition: all 0.15s;
 
@@ -769,9 +784,9 @@ async function handleSubmit() {
 }
 
 .d-survey__scale-btn--active {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
+  border-color: var(--ant-color-primary, #1677ff);
+  background: var(--ant-color-primary, #1677ff);
+  color: var(--survey-on-primary);
   box-shadow: 0 3px 10px rgba(102, 126, 234, 0.25);
   transform: scale(1.08);
 }
@@ -790,9 +805,9 @@ async function handleSubmit() {
   padding: 12px 16px;
   border: 1.5px solid #e8e8e8;
   border-radius: 10px;
-  background: #fafafa;
+  background: var(--survey-surface-muted);
   font-size: 14px;
-  color: #333;
+  color: var(--survey-text);
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
@@ -805,12 +820,12 @@ async function handleSubmit() {
 }
 
 .d-survey__choice--active {
-  border-color: #667eea;
+  border-color: var(--ant-color-primary, #1677ff);
   background: #f0f3ff;
 
   .d-survey__choice-letter {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: #fff;
+    background: var(--ant-color-primary, #1677ff);
+    color: var(--survey-on-primary);
     border-color: transparent;
   }
 }
@@ -825,7 +840,7 @@ async function handleSubmit() {
   justify-content: center;
   font-size: 12px;
   font-weight: 600;
-  color: #888;
+  color: var(--survey-text-secondary);
   flex-shrink: 0;
   transition: all 0.15s;
 }
@@ -837,13 +852,13 @@ async function handleSubmit() {
 
 .d-survey__choice-check {
   font-size: 15px;
-  color: #667eea;
+  color: var(--ant-color-primary, #1677ff);
   font-weight: 700;
 }
 
 .d-survey__hint {
   font-size: 12px;
-  color: #999;
+  color: var(--survey-text-muted);
   margin: 4px 0 0 4px;
 }
 
@@ -851,11 +866,11 @@ async function handleSubmit() {
 .d-survey__textarea {
   width: 100%;
   padding: 14px 16px;
-  border: 1.5px solid #e0e0e0;
+  border: 1.5px solid var(--survey-border);
   border-radius: 10px;
   font-size: 14px;
-  color: #333;
-  background: #fafafa;
+  color: var(--survey-text);
+  background: var(--survey-surface-muted);
   outline: none;
   resize: vertical;
   min-height: 100px;
@@ -863,20 +878,20 @@ async function handleSubmit() {
   font-family: inherit;
 
   &:focus {
-    border-color: #667eea;
-    background: #fff;
+    border-color: var(--ant-color-primary, #1677ff);
+    background: var(--survey-surface);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
   }
 
   &::placeholder {
-    color: #bbb;
+    color: var(--survey-text-placeholder);
   }
 }
 
 .d-survey__char-count {
   text-align: right;
   font-size: 12px;
-  color: #ccc;
+  color: var(--survey-text-placeholder);
   margin-top: 4px;
 }
 
@@ -897,8 +912,8 @@ async function handleSubmit() {
   border-radius: 24px;
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: var(--survey-on-primary);
+  background: var(--ant-color-primary, #1677ff);
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
   cursor: pointer;
   transition: all 0.2s;

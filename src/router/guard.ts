@@ -4,7 +4,8 @@ import type { SeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import { getDefaultRoute, hasRoutePermission, requiresAuth } from '@/router/permission'
 import { useAuthStore, useRouteStore, useUserStore } from '@/stores'
-import { getToken } from '@/utils/auth'
+import { getValidToken } from '@/utils/auth'
+import { isAuthRequestFailure, isTransientRequestError } from '@/utils/error-handler'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
 import { isValidRole } from '@/utils/permission'
 import { applySeoMeta } from '@/utils/seo'
@@ -35,17 +36,17 @@ export const setupRouterGuard = (router: Router) => {
 
     const getAuthenticatedDefaultRoute = async () => {
       await authStore.initializeAuth().catch(() => {})
-      const token = getToken()
-
-      if (!token) {
+      if (!getValidToken()) {
         return ''
       }
 
       if (!userStore.userInfo.userId) {
         try {
           await userStore.getInfo()
-        } catch {
-          await authStore.logoutCallBack()
+        } catch (error) {
+          if (isAuthRequestFailure(error) && !userStore.userInfo.userId) {
+            await authStore.logoutCallBack()
+          }
           return ''
         }
       }
@@ -85,8 +86,7 @@ export const setupRouterGuard = (router: Router) => {
     }
 
     // 检查用户是否已登录
-    const token = getToken()
-    if (!token) {
+    if (!getValidToken()) {
       return `/login?redirect=${encodeURIComponent(to.fullPath)}`
     }
 
@@ -97,8 +97,10 @@ export const setupRouterGuard = (router: Router) => {
     let userInfoLoadFailed = false
     if (!userStore.userInfo.userId) {
       promises.push(
-        userStore.getInfo().catch(() => {
-          userInfoLoadFailed = true
+        userStore.getInfo().catch((error) => {
+          if (isAuthRequestFailure(error)) {
+            userInfoLoadFailed = true
+          }
         }),
       )
     } else {
@@ -117,8 +119,7 @@ export const setupRouterGuard = (router: Router) => {
     // 等待用户信息和权限加载完成
     if (promises.length > 0) {
       await Promise.all(promises)
-      if (userInfoLoadFailed) {
-        // 用户信息获取失败，重新登录
+      if (userInfoLoadFailed && !userStore.userInfo.userId) {
         await authStore.logoutCallBack()
         return `/login?redirect=${encodeURIComponent(to.fullPath)}`
       }
@@ -153,24 +154,9 @@ export const setupRouterGuard = (router: Router) => {
       try {
         await userStore.refreshSecurityState()
       } catch (error: unknown) {
-        // 真正的认证失败（401 / refresh token 失效）才登出；
-        // 网络层 / 5xx 时使用本地缓存的安全状态继续放行，避免抖动登出。
-        const err = error as {
-          response?: { status?: number }
-          code?: string
-          _handledByInterceptor?: boolean
-        }
-        const status = err?.response?.status
-        const code = err?.code
-        const isNetworkLevel
-          = !err?.response
-            || code === 'ERR_NETWORK'
-            || code === 'ECONNABORTED'
-            || (typeof status === 'number' && status >= 500)
-
-        if (isNetworkLevel) {
-          // 本次导航继续放行
-        } else {
+        if (isTransientRequestError(error)) {
+          // 503 / 网络抖动：保留本地会话继续导航
+        } else if (isAuthRequestFailure(error)) {
           await authStore.logoutCallBack()
           return `/login?redirect=${encodeURIComponent(to.fullPath)}`
         }

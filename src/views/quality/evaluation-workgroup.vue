@@ -27,7 +27,7 @@ import {
 } from '@/apis/quality'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
 import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
@@ -367,6 +367,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 onMounted(async () => {
   await loadList()
 })
@@ -417,20 +418,20 @@ onMounted(async () => {
             {{ record.programName }}
           </template>
           <template v-else-if="column.key === 'levelCode'">
-            <a-tag>{{ workgroupLevelLabel(record.levelCode) }}</a-tag>
+            <UiTag tone="gray" size="sm">{{ workgroupLevelLabel(record.levelCode) }}</UiTag>
           </template>
           <template v-else-if="column.key === 'convenerUserName'">
             {{ record.convenerUserName }}
           </template>
           <template v-else-if="column.key === 'memberCount'">
-            <a-tag :color="memberCountOf(record) > 0 ? 'blue' : 'default'">
+            <UiTag :tone="memberCountOf(record) > 0 ? 'blue' : 'gray'" size="sm">
               {{ memberCountOf(record) }} 人
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="record.enabled ? 'green' : 'default'">
+            <UiTag :tone="record.enabled ? 'green' : 'gray'" size="sm">
               {{ record.enabled ? '启用' : '停用' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>
@@ -552,6 +553,7 @@ onMounted(async () => {
     >
       <UiEmpty v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
       <UiDataTable
+        pagination-mode="client"
         class="student-detail-table__data-table"
         v-else
         :columns="memberColumns"
@@ -564,9 +566,9 @@ onMounted(async () => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'role'">
-            <a-tag :color="record.role === 'CONVENER' ? 'blue' : 'default'">
+            <UiTag :tone="record.role === 'CONVENER' ? 'blue' : 'gray'" size="sm">
               {{ memberRoleLabel(record.role) }}
-            </a-tag>
+            </UiTag>
           </template>
         </template>
       </UiDataTable>

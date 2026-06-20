@@ -41,7 +41,7 @@
           <h4>AI 正在解析文档…</h4>
           <p class="ird__processing-hint">解析任务已提交，系统正在处理。</p>
           <p class="ird__processing-hint">
-            状态：<a-tag :color="statusColor">{{ statusLabel }}</a-tag>
+            状态：<UiTag :tone="statusColor">{{ statusLabel }}</UiTag>
             <span v-if="pollCount > 0" class="ird__poll-count">（已轮询 {{ pollCount }} 次）</span>
           </p>
           <p class="ird__processing-hint">解析通常需要 30 秒 ~ 2 分钟，请耐心等待。</p>
@@ -89,7 +89,7 @@ import {
   aiTaskApi,
   indirectResponseApi,
 } from '@/apis/quality'
-import { UiButton } from '@/components/ui-guide/ui'
+import { UiButton, UiTag } from '@/components/ui-guide/ui'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

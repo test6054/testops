@@ -40,6 +40,7 @@ import {
   achievementApi,
   achievementAuditApi,
 } from '@/apis/quality'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import {
   ClassSelector,
   CourseGoalSelector,
@@ -47,15 +48,17 @@ import {
   ProgramSelector,
   TrainingObjectiveSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
+  ContextBar,
   SignalBand,
   StageRail,
   StageWorkbenchShell,
   TaskResultPanel,
 } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
@@ -68,7 +71,7 @@ function auditStatusLabel(value: AchievementAuditStatus): string {
   return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
 }
 
-function auditStatusColor(value: AchievementAuditStatus): string {
+function auditStatusColor(value: AchievementAuditStatus): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
 }
 
@@ -76,7 +79,7 @@ function achievementStatusLabel(value: AchievementStatus): string {
   return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
 }
 
-function achievementStatusColor(value: AchievementStatus): string {
+function achievementStatusColor(value: AchievementStatus): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
@@ -88,12 +91,13 @@ function resultValidityLabel(record: AchievementResultVO): string {
   return isResultStale(record) ? '已过期' : '有效'
 }
 
-function resultValidityColor(record: AchievementResultVO): string {
+function resultValidityColor(record: AchievementResultVO): BadgeTone {
   return isResultStale(record) ? 'red' : 'green'
 }
 
 const router = useRouter()
 const qualityStore = useQualityStore()
+const listLoadError = ref<Error | null>(null)
 
 const list = ref<AchievementResultVO[]>([])
 const total = ref(0)
@@ -254,6 +258,7 @@ const programRequired = computed(
 async function loadList() {
   if (!qualityStore.currentTrainingPlanId) return
   loading.value = true
+  listLoadError.value = null
   try {
     const page = await achievementApi.page({
       ...query,
@@ -268,9 +273,17 @@ async function loadList() {
     })
     list.value = readPageList(page, '达成度结果加载失败，请稍后重试')
     total.value = readPageTotal(page, '达成度结果加载失败，请稍后重试')
+  } catch (error) {
+    listLoadError.value = toUserError(error, '达成度结果加载失败')
+    showUserError(error, '达成度结果加载失败')
   } finally {
     loading.value = false
   }
+}
+
+async function handleScopeChange(): Promise<void> {
+  listLoadError.value = null
+  await loadList()
 }
 
 function handlePageChange(page: { current: number, pageSize: number }) {
@@ -544,6 +557,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 /* ========== 触发计算抽屉 ========== */
 
 const triggerVisible = ref(false)
@@ -650,9 +664,28 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
+    <template #context>
+      <ContextBar>
+        <template #status>
+          <QualityScopeHeader @change="handleScopeChange" />
+        </template>
+        <template #actions>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="trainingPlanRequired"
+            :loading="loading"
+            @click="handleScopeChange"
+          >
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
+
     <UiEmpty
       v-if="trainingPlanRequired"
-      description="尚未选择培养方案，请前往工作台首页选择培养方案后再回来"
+      description="请选择培养方案"
       class="achievement__empty"
     />
 
@@ -753,24 +786,24 @@ onMounted(async () => {
               {{ record.sampleValid }} / {{ record.sampleTotal }}
             </template>
             <template v-else-if="column.key === 'achievementStatus'">
-              <a-tag :color="achievementStatusColor(record.achievementStatus)">
+              <UiTag :tone="achievementStatusColor(record.achievementStatus)" size="sm">
                 {{ achievementStatusLabel(record.achievementStatus) }}
-              </a-tag>
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'validity'">
               <div class="achievement__validity">
-                <a-tag :color="resultValidityColor(record)">
+                <UiTag :tone="resultValidityColor(record)" size="sm">
                   {{ resultValidityLabel(record) }}
-                </a-tag>
+                </UiTag>
                 <span v-if="record.staleAt" class="achievement__validity-time">
                   {{ record.staleAt }}
                 </span>
               </div>
             </template>
             <template v-else-if="column.key === 'auditStatus'">
-              <a-tag :color="auditStatusColor(record.auditStatus)">
+              <UiTag :tone="auditStatusColor(record.auditStatus)" size="sm">
                 {{ auditStatusLabel(record.auditStatus) }}
-              </a-tag>
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
               <div class="operations-cell" @click.stop>

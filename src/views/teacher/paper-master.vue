@@ -1,57 +1,36 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="paper-master-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="handleExamChange"
-          />
-          <UiTag
-            v-if="masterData"
-            :tone="masterData.status === 'ACTIVE' ? 'green' : 'gray'"
-            size="sm"
-          >
-            {{ masterData.status === 'ACTIVE' ? '已生效' : '草稿' }}
-          </UiTag>
-          <UiTag v-if="masterData" :tone="pageTemplateReady ? 'green' : 'orange'" size="sm">
-            {{ pageTemplateReady ? `${examTotalPages ?? 0} 页已同步` : '拆页待同步' }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton size="sm" variant="primary" :disabled="!selectedExamId" :loading="generating" @click="openGenerateModal">
-            <template #icon><ThunderboltOutlined /></template>
-            生成标准试卷
-          </UiButton>
-          <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
-            <template #icon><SaveOutlined /></template>
-            保存母版
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div v-if="selectedExamId" class="paper-master-page__toolbar">
+    <div class="paper-master-page__toolbar-status">
+      <UiTag
+        v-if="masterData"
+        :tone="masterData.status === 'ACTIVE' ? 'green' : 'gray'"
+        size="sm"
+      >
+        {{ masterData.status === 'ACTIVE' ? '已生效' : '草稿' }}
+      </UiTag>
+      <UiTag v-if="masterData" :tone="pageTemplateReady ? 'green' : 'orange'" size="sm">
+        {{ pageTemplateReady ? `${examTotalPages ?? 0} 页已同步` : '拆页待同步' }}
+      </UiTag>
+    </div>
+    <a-space>
+      <UiButton size="sm" variant="primary" :loading="generating" @click="openGenerateModal">
+        <template #icon><ThunderboltOutlined /></template>
+        生成标准试卷
+      </UiButton>
+      <UiButton size="sm" :loading="saving" @click="handleSave">
+        <template #icon><SaveOutlined /></template>
+        保存母版
+      </UiButton>
+    </a-space>
+  </div>
 
-    <UiEmpty
+  <UiEmpty
       v-if="!selectedExamId"
-      description="请选择需要维护母版的考试"
+      description="请选择考试"
       class="paper-master-page__empty"
     />
 
-    <!-- D-9 错误态：试卷母版加载遇到非“未配置”错误时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-else-if="masterLoadError"
-      :error="masterLoadError"
-      title="试卷母版加载失败"
-      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      @retry="loadMasterData"
-    />
+    <UiEmpty v-else-if="!loading && masterLoadError" description="暂无数据" />
 
     <a-spin v-else :spinning="loading">
       <!-- PDF 预览/编辑区 -->
@@ -144,6 +123,7 @@
           <UiButton size="sm" variant="outline" @click="goPaperTemplate">去题目页编辑</UiButton>
         </template>
         <UiDataTable
+          pagination-mode="none"
           class="student-detail-table__data-table"
           :columns="subjectiveColumns"
           :data-source="subjectiveQuestions"
@@ -180,6 +160,7 @@
           </UiButton>
         </template>
         <UiDataTable
+          pagination-mode="none"
           class="student-detail-table__data-table"
           :columns="identityColumns"
           :data-source="identityAreas"
@@ -224,6 +205,7 @@
           </UiButton>
         </template>
         <UiDataTable
+          pagination-mode="none"
           class="student-detail-table__data-table"
           :columns="objectiveColumns"
           :data-source="objectiveAreas"
@@ -396,7 +378,6 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -417,7 +398,7 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getFileArrayBuffer, uploadFile } from '@/apis/edu/file-management'
 import { getExamDetail, getExamTemplate } from '@/apis/mark/exam'
@@ -429,24 +410,15 @@ import {
   savePaperMaster
 } from '@/apis/mark/paper-master'
 import PdfAnnotationEditor from '@/components/mark/PdfAnnotationEditor.vue'
-import { UiButton, UiCard, UiConfirmPopover, UiDataTable, UiEmpty, UiErrorRetryPanel, UiTag, UiTextAction } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { UiButton, UiCard, UiConfirmPopover, UiDataTable, UiEmpty, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'TeacherPaperMaster' })
 
 const router = useRouter()
 
-// ─── B-8 统一考试选择器：复用 useMarkExamSelector，支持 URL/全局上下文同步 ─────
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  onExamChange,
-  init: initExamSelector,
-} = useMarkExamSelector()
+const { selectedExamId } = useMarkExamContext()
 
 // ─── 母版表单 ────────────────────────────────────────────────────────
 
@@ -637,8 +609,10 @@ function handleObjectiveEditOk() {
 
 function goPaperTemplate() {
   if (!selectedExamId.value) return
-  void router.push({ name: 'TeacherPaperTemplate', query: { examId: selectedExamId.value } })
+  void router.push({ name: 'TeacherExamWorkspacePaperTemplate', params: { examId: selectedExamId.value } })
 }
+
+// ─── 文件上传 ────────────────────────────────────────────────────────
 
 function formatIdentityType(type: PaperMasterIdentityAreaTypeCode): string {
   return PAPER_MASTER_IDENTITY_AREA_TYPE_LABEL[type]
@@ -784,18 +758,6 @@ function clearForm() {
   objectiveSeq = 0
   masterData.value = null
 }
-
-function handleExamChange(value: SelectValue): void {
-  // 委托给 useMarkExamSelector 完成 URL/Store 同步，再驱动业务侧加载/清空
-  onExamChange(value)
-  if (selectedExamId.value) {
-    void loadMasterData()
-  } else {
-    clearForm()
-  }
-}
-
-// ─── 文件上传 ────────────────────────────────────────────────────────
 
 async function handleBeforeUpload(file: File) {
   if (file.type !== 'application/pdf') {
@@ -1002,26 +964,34 @@ onBeforeUnmount(() => {
 
 // ─── 初始化 ──────────────────────────────────────────────────────────
 
-onMounted(async () => {
-  await initExamSelector()
-  // URL → 组件初次加载时若有 examId，watch(selectedExamId) 会自动触发 loadMasterData
-})
-
 watch(
   selectedExamId,
   (val) => {
     if (val) {
       loadMasterData()
+    } else {
+      clearForm()
     }
   },
-  { immediate: false },
+  { immediate: true },
 )
 </script>
 
 <style lang="scss" scoped>
 .paper-master-page {
-  &__exam-select {
-    width: 280px;
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  &__toolbar-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   &__empty {

@@ -12,7 +12,10 @@
   >
     <!-- 教师阅卷 + 质量评价合并侧栏：按域分区展示 -->
     <template v-if="useMergedTeacherQualitySidebar">
-      <a-menu-item-group title="阅卷中心">
+      <a-menu-item-group class="app-side-menu__partition app-side-menu__partition--marking">
+        <template #title>
+          <span class="app-side-menu__partition-label">阅卷中心</span>
+        </template>
         <MenuItem
           v-for="item in mergedMenuPartitions.marking.ungrouped"
           :key="item.path || item.name"
@@ -26,7 +29,10 @@
           <MenuItem v-for="item in group.items" :key="item.path || item.name" :item="item" />
         </a-sub-menu>
       </a-menu-item-group>
-      <a-menu-item-group title="质量评价">
+      <a-menu-item-group class="app-side-menu__partition app-side-menu__partition--quality">
+        <template #title>
+          <span class="app-side-menu__partition-label">质量评价</span>
+        </template>
         <MenuItem
           v-for="item in mergedMenuPartitions.quality.ungrouped"
           :key="item.path || item.name"
@@ -71,6 +77,7 @@ import { useDevice } from '@/hooks'
 import { useAppStore, useAuthStore, useRouteStore } from '@/stores'
 import { RoleEnum } from '@/types/enums'
 import { isExternal } from '@/utils/validate'
+import { isSidebarMenuRoute } from '@/utils/menu-route'
 import MenuIcon from './MenuIcon.vue'
 import MenuItem from './MenuItem.vue'
 
@@ -152,9 +159,9 @@ function normalizeQualitySidebarItem(child: RouteRecordRaw): RouteRecordRaw {
 function buildMergedTeacherQualityRoutes(menuRoutes: RouteRecordRaw[]): RouteRecordRaw[] {
   const teacherRoute = menuRoutes.find((r) => r.path === '/teacher')
   const qualityRoute = menuRoutes.find((r) => r.path === '/quality')
-  const teacherItems = (teacherRoute?.children ?? []).filter((child) => !child.meta?.hideInMenu)
+  const teacherItems = (teacherRoute?.children ?? []).filter(isSidebarMenuRoute)
   const qualityItems = (qualityRoute?.children ?? [])
-    .filter((child) => !child.meta?.hideInMenu)
+    .filter(isSidebarMenuRoute)
     .map((child) => normalizeQualitySidebarItem(child))
   return [...teacherItems, ...qualityItems]
 }
@@ -374,6 +381,27 @@ const onOpenChange = (keys: Key[]) => {
 </script>
 
 <style lang="scss" scoped>
+:deep(.app-side-menu) {
+  padding-top: var(--dp-space-1, 4px);
+
+  .app-side-menu__partition > .ant-menu-item-group-title {
+    padding: var(--dp-space-2, 8px) 16px var(--dp-space-1, 4px);
+    line-height: 1.4;
+  }
+
+  .app-side-menu__partition--quality > .ant-menu-item-group-title {
+    margin-top: var(--dp-space-2, 8px);
+    border-top: 1px solid var(--ant-color-border-secondary);
+  }
+
+  .app-side-menu__partition-label {
+    font-size: var(--dp-font-size-xs, 12px);
+    font-weight: var(--dp-font-weight-title, 600);
+    color: var(--dp-text-muted, #94a3b8);
+    letter-spacing: 0.02em;
+  }
+}
+
 :deep(.app-side-menu.ant-menu-inline-collapsed) {
   > .ant-menu-item,
   > .ant-menu-submenu > .ant-menu-submenu-title {
@@ -398,6 +426,14 @@ const onOpenChange = (keys: Key[]) => {
 
   > .ant-menu-item .ant-menu-title-content,
   > .ant-menu-submenu > .ant-menu-submenu-title .ant-menu-title-content {
+    display: none !important;
+  }
+
+  .app-side-menu__partition--quality > .ant-menu-item-group-title {
+    display: none !important;
+  }
+
+  .app-side-menu__partition--marking > .ant-menu-item-group-title {
     display: none !important;
   }
 }

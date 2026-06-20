@@ -24,12 +24,10 @@
             </template>
             刷新
           </a-button>
-          <a-tag v-if="exportTaskStore.runningCount > 0" color="blue">
-            <template #icon>
-              <LoadingOutlined spin />
-            </template>
+          <UiTag v-if="exportTaskStore.runningCount > 0" tone="blue">
+            <LoadingOutlined spin style="margin-right: 4px" />
             进行中：{{ exportTaskStore.runningCount }}
-          </a-tag>
+          </UiTag>
         </a-space>
         <template #field-dateRange>
           <a-range-picker
@@ -74,7 +72,7 @@
 
           <!-- 格式 -->
           <template v-else-if="column.key === 'format'">
-            <a-tag
+            <UiTag
               :style="{
                 backgroundColor: getFormatColor(record.exportFormat),
                 color: 'var(--ant-color-text-light-solid)',
@@ -82,22 +80,27 @@
               }"
             >
               {{ formatLabel(record.exportFormat) }}
-            </a-tag>
+            </UiTag>
           </template>
 
           <!-- 状态 -->
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="statusColor(record.status)">
-              <template #icon>
-                <LoadingOutlined
-                  v-if="record.status === 'PROCESSING' || record.status === 'PENDING'"
-                  spin
-                />
-                <CheckCircleOutlined v-else-if="record.status === 'COMPLETED'" />
-                <CloseCircleOutlined v-else-if="record.status === 'FAILED'" />
-              </template>
+            <UiTag :tone="statusColor(record.status)">
+              <LoadingOutlined
+                v-if="record.status === 'PROCESSING' || record.status === 'PENDING'"
+                spin
+                style="margin-right: 4px"
+              />
+              <CheckCircleOutlined
+                v-else-if="record.status === 'COMPLETED'"
+                style="margin-right: 4px"
+              />
+              <CloseCircleOutlined
+                v-else-if="record.status === 'FAILED'"
+                style="margin-right: 4px"
+              />
               {{ statusLabel(record.status) }}
-            </a-tag>
+            </UiTag>
           </template>
 
           <!-- 进度 -->
@@ -193,7 +196,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExportJobQueryRequest, ExportJobStatusVO } from '@/apis/edu/export'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleFilled from '@ant-design/icons-vue/CheckCircleFilled'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -208,7 +211,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
-import { UiDataTable, UiEmpty, UiFilterBar } from '@/components/ui-guide/ui'
+import { UiDataTable, UiEmpty, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { AsyncTaskStatusEnum, ExportFormatEnum } from '@/types/enums'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
@@ -385,7 +388,7 @@ onMounted(() => {
   }
 })
 
-const statusMap = {
+const statusMap: Record<AsyncTaskStatusEnum, { label: string, color: BadgeTone }> = {
   [AsyncTaskStatusEnum.PENDING]: { label: '排队中', color: 'blue' },
   [AsyncTaskStatusEnum.PROCESSING]: { label: '处理中', color: 'orange' },
   [AsyncTaskStatusEnum.COMPLETED]: { label: '已完成', color: 'green' },
@@ -393,7 +396,7 @@ const statusMap = {
 }
 
 const statusLabel = (status: AsyncTaskStatusEnum) => statusMap[status].label
-const statusColor = (status: AsyncTaskStatusEnum) => statusMap[status].color
+const statusColor = (status: AsyncTaskStatusEnum): BadgeTone => statusMap[status].color
 
 // 格式映射
 const formatMap: Record<ExportFormatEnum, string> = {

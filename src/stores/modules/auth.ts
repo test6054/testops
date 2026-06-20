@@ -21,7 +21,7 @@ import {
 import { resetRouter } from '@/router'
 import { resetHasMenuFlag } from '@/router/guard'
 import { RoleEnum } from '@/types/enums'
-import { clearToken, getToken, setToken } from '@/utils/auth'
+import { clearToken, getToken, getValidToken, healTokenExpiresAt, setToken } from '@/utils/auth'
 import { throwUserFacing } from '@/utils/contract-guard'
 import { getDeviceId } from '@/utils/device'
 import mittBus from '@/utils/mitt'
@@ -78,6 +78,10 @@ export const useAuthStore = defineStore(
     const refreshTimer = ref<ReturnType<typeof setTimeout> | null>(null)
     const refreshPromise = ref<Promise<RefreshTokenResponse> | null>(null)
     const refreshingToken = ref(false)
+    /** 刷新操作单飞 Promise：定时器 / 路由守卫 / axios / SSE 共用，避免 refresh token 轮换竞态 */
+    let refreshOperationPromise: Promise<boolean> | null = null
+    /** initializeAuth 单飞，避免路由守卫并发触发多次刷新 */
+    let initializeAuthPromise: Promise<void> | null = null
     /** 后台预刷新取消信号；destroyAuth / 登出时 abort，避免登出后还有残留 retry 跑 */
     let scheduledRefreshAbort: AbortController | null = null
 
@@ -87,11 +91,13 @@ export const useAuthStore = defineStore(
 
     // 认证和权限相关计算属性
     const isAuthenticated = computed(() => {
-      if (!token.value) return false
+      const currentToken = getToken() || token.value
+      if (!currentToken) {
+        return false
+      }
       try {
-        const tokenClaims = decodeToken(token.value)
-        const now = Date.now() / 1000
-        return tokenClaims.exp > now
+        const claims = jwtDecode<{ exp: number }>(currentToken)
+        return claims.exp > Date.now() / 1000
       } catch {
         return false
       }
@@ -186,7 +192,7 @@ export const useAuthStore = defineStore(
 
         const expireTime = tokenClaims.exp * 1000
         tokenExpiresAt.value = tokenClaims.exp
-        localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, tokenClaims.exp.toString())
+        healTokenExpiresAt(newToken, tokenClaims.exp)
 
         scheduleTokenRefresh(expireTime)
       } catch {
@@ -211,9 +217,31 @@ export const useAuthStore = defineStore(
     }
 
     const syncTokenStateFromStorage = (): boolean => {
-      const storedToken = localStorage.getItem(STORAGE_TOKEN) || ''
+      let storedToken = localStorage.getItem(STORAGE_TOKEN) || ''
+      let storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
       const storedRefreshToken = localStorage.getItem(STORAGE_REFRESH_TOKEN)
-      const storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
+
+      // 修复 pinia 与 localStorage 双写漂移：内存/pinia 有有效 token 但 'token' key 被清空时回写
+      if (!storedToken && token.value && !isTokenExpiredCheck(token.value)) {
+        setToken(token.value)
+        storedToken = token.value
+        if (!storedTokenExpiresAt) {
+          if (tokenExpiresAt.value) {
+            storedTokenExpiresAt = tokenExpiresAt.value.toString()
+            localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, storedTokenExpiresAt)
+          } else {
+            try {
+              const claims = decodeToken(token.value)
+              tokenExpiresAt.value = claims.exp
+              storedTokenExpiresAt = claims.exp.toString()
+              localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, storedTokenExpiresAt)
+            } catch {
+              /* 无效 token 不在此修复 */
+            }
+          }
+        }
+      }
+
       const parsedExpiresAt = storedTokenExpiresAt ? Number.parseInt(storedTokenExpiresAt) : null
       const normalizedExpiresAt
         = parsedExpiresAt !== null && !Number.isNaN(parsedExpiresAt) ? parsedExpiresAt : null
@@ -232,6 +260,15 @@ export const useAuthStore = defineStore(
 
       if (storedToken && normalizedExpiresAt) {
         scheduleTokenRefresh(normalizedExpiresAt * 1000)
+      } else if (storedToken) {
+        try {
+          const claims = decodeToken(storedToken)
+          tokenExpiresAt.value = claims.exp
+          localStorage.setItem(STORAGE_TOKEN_EXPIRES_AT, claims.exp.toString())
+          scheduleTokenRefresh(claims.exp * 1000)
+        } catch {
+          clearRefreshTimer()
+        }
       } else {
         clearRefreshTimer()
       }
@@ -282,6 +319,11 @@ export const useAuthStore = defineStore(
       }
     }
 
+    const hasValidAccessToken = (): boolean => {
+      syncTokenStateFromStorage()
+      return !!getValidToken()
+    }
+
     const isRetryableError = (error: RefreshTokenError): boolean => {
       if (!error.response && error.code !== 'ECONNABORTED') return true
       if (error.code === 'ECONNABORTED' && error.message?.includes('timeout')) return true
@@ -290,45 +332,35 @@ export const useAuthStore = defineStore(
       return !!(error.response?.status && retryableStatus.includes(error.response.status))
     }
 
-    const refreshTokenAutomatically = async (): Promise<boolean> => {
+    const isNonFatalRefreshError = (error: RefreshTokenError | null): boolean => {
+      if (!error) {
+        return false
+      }
+      if (isRetryableError(error)) {
+        return true
+      }
+      return error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED'
+    }
+
+    const executeRefreshTokenAutomatically = async (): Promise<boolean> => {
       try {
-        // 已有进行中的刷新 Promise：直接 await，不要 busy-wait 自旋
-        if (refreshPromise.value) {
-          try {
-            await refreshPromise.value
-            return token.value !== '' && !isTokenExpiredCheck(token.value)
-          } catch {
-            return false
-          }
-        }
-
-        // refreshingToken=true 但 refreshPromise 为空 是极短的状态切换窗口
-        // 给一次微任务让出 + 再次同步 storage，避免 100ms × 30 自旋
-        if (refreshingToken.value) {
-          await Promise.resolve()
-          const synced = syncTokenStateFromStorage()
-          if (synced && token.value && !isTokenExpiredCheck(token.value)) {
-            return true
-          }
-        }
-
-        const syncedFromStorage = syncTokenStateFromStorage()
-        if (syncedFromStorage && token.value && !isTokenExpiredCheck(token.value)) {
+        if (hasValidAccessToken()) {
           return true
         }
 
-        if (!refreshToken.value) return false
+        if (!refreshToken.value) {
+          return false
+        }
 
         const maxRetries = 3
         let lastError: RefreshTokenError | null = null
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
-          const latestTokenSynced = syncTokenStateFromStorage()
-          if (latestTokenSynced && token.value && !isTokenExpiredCheck(token.value)) {
+          if (hasValidAccessToken()) {
             return true
           }
 
-          const attemptedRefreshToken = refreshToken.value as string | null
+          const attemptedRefreshToken: string | null = refreshToken.value
           if (!attemptedRefreshToken) {
             return false
           }
@@ -338,15 +370,14 @@ export const useAuthStore = defineStore(
             refreshPromise.value = authApi.refreshToken({ refreshToken: attemptedRefreshToken })
             const refreshData = await refreshPromise.value
 
-            if (!refreshData || !refreshData.accessToken) continue
+            if (!refreshData?.accessToken) {
+              continue
+            }
 
             setTokenWithExpiry(refreshData.accessToken, refreshData.expiresIn)
             if (refreshData.refreshToken) {
               setRefreshToken(refreshData.refreshToken)
             }
-            // 通知长连接订阅方（如 SSE 看板）：access token 已续期，立即用新 token 重新订阅，
-            // 避免在 token 过期-续期间隔触发 401。setTokenWithExpiry 内部 decode 失败时 token.value
-            // 会被清空，因此 emit 前判断 token.value 非空。
             if (token.value) {
               mittBus.emit('auth:token-refreshed', {
                 tokenExpiresAt: tokenExpiresAt.value ?? undefined,
@@ -359,8 +390,7 @@ export const useAuthStore = defineStore(
             ) as RefreshTokenError
             lastError = refreshError
 
-            const syncedFromOtherContext = syncTokenStateFromStorage()
-            if (syncedFromOtherContext && token.value && !isTokenExpiredCheck(token.value)) {
+            if (hasValidAccessToken()) {
               return true
             }
 
@@ -377,22 +407,32 @@ export const useAuthStore = defineStore(
           }
         }
 
-        // 网络层错误 / 5xx：不强制登出，让上层下次再试
-        // axios 的网络错误 code 是 'ERR_NETWORK' / 'ECONNABORTED'，而非 'NETWORK_ERROR'
-        const isNetworkLevel
-          = lastError?.code === 'ERR_NETWORK'
-            || lastError?.code === 'ECONNABORTED'
-            || (lastError?.response !== undefined && lastError.response.status >= 500)
-        if (isNetworkLevel) {
+        if (hasValidAccessToken()) {
+          return true
+        }
+
+        if (isNonFatalRefreshError(lastError)) {
           return false
         }
 
-        // 真实的 401 / refresh_token 失效场景才登出
         await logoutCallBack()
         return false
       } finally {
         refreshingToken.value = false
         refreshPromise.value = null
+      }
+    }
+
+    const refreshTokenAutomatically = async (): Promise<boolean> => {
+      if (refreshOperationPromise) {
+        return refreshOperationPromise
+      }
+
+      refreshOperationPromise = executeRefreshTokenAutomatically()
+      try {
+        return await refreshOperationPromise
+      } finally {
+        refreshOperationPromise = null
       }
     }
 
@@ -717,7 +757,7 @@ export const useAuthStore = defineStore(
       syncTokenStateFromStorage()
     }
 
-    const initializeAuth = async () => {
+    const runInitializeAuth = async () => {
       syncTokenStateFromStorage()
       const storedTokenExpiresAt = localStorage.getItem(STORAGE_TOKEN_EXPIRES_AT)
       const storedRememberMe = localStorage.getItem(STORAGE_REMEMBER_ME)
@@ -734,7 +774,6 @@ export const useAuthStore = defineStore(
         rememberMe.value = storedRememberMe === 'true'
       }
 
-      // 注册 visibilitychange 监听（仅一次）
       if (!visibilityListenerRegistered && typeof document !== 'undefined') {
         document.addEventListener('visibilitychange', handleVisibilityChange)
         visibilityListenerRegistered = true
@@ -747,7 +786,9 @@ export const useAuthStore = defineStore(
 
       if (token.value && !isTokenExpiredCheck(token.value)) {
         try {
-          const tokenClaims = decodeToken(token.value)
+          const tokenClaims = jwtDecode<{ exp: number }>(token.value)
+          tokenExpiresAt.value = tokenClaims.exp
+          healTokenExpiresAt(token.value, tokenClaims.exp)
           scheduleTokenRefresh(tokenClaims.exp * 1000)
         } catch {
           resetToken()
@@ -762,17 +803,26 @@ export const useAuthStore = defineStore(
         return
       }
 
-      // access token 不存在或已过期，尝试用 refresh token 续期
       if (refreshToken.value) {
         const refreshed = await refreshTokenAutomatically()
-        if (!refreshed) {
+        if (!refreshed && !hasValidAccessToken()) {
           resetToken()
         }
-      } else {
-        // 无 refresh token，彻底清除
-        if (token.value) {
-          resetToken()
-        }
+      } else if (token.value && isTokenExpiredCheck(token.value)) {
+        resetToken()
+      }
+    }
+
+    const initializeAuth = async () => {
+      if (initializeAuthPromise) {
+        return initializeAuthPromise
+      }
+
+      initializeAuthPromise = runInitializeAuth()
+      try {
+        await initializeAuthPromise
+      } finally {
+        initializeAuthPromise = null
       }
     }
 
@@ -791,6 +841,8 @@ export const useAuthStore = defineStore(
     const destroyAuth = () => {
       clearRefreshTimer()
       refreshPromise.value = null
+      refreshOperationPromise = null
+      initializeAuthPromise = null
       if (visibilityListenerRegistered && typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', handleVisibilityChange)
         visibilityListenerRegistered = false
@@ -858,7 +910,8 @@ export const useAuthStore = defineStore(
   },
   {
     persist: {
-      pick: ['token', 'role', 'permissions', 'pwdExpiredShow'],
+      // token 只存 localStorage(STORAGE_TOKEN)，避免与 pinia 双写漂移
+      pick: ['role', 'permissions', 'pwdExpiredShow'],
       storage: localStorage,
     },
   },

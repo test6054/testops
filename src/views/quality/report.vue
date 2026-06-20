@@ -17,7 +17,7 @@ import type {
   ReportType,
   ReportVO,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -38,15 +38,17 @@ import {
   REPORT_TYPE_LABEL,
   reportApi,
 } from '@/apis/quality'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import {
   AchievementResultSelector,
   CourseSelector,
   ProgramSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
+  ContextBar,
   SignalBand,
   StageRail,
   StageWorkbenchShell,
@@ -54,7 +56,7 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getUserProcessFailureMessage } from '@/utils/error-handler'
+import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
@@ -66,7 +68,7 @@ function reportStatusLabel(value: ReportStatus): string {
   return strictEnumLabel(REPORT_STATUS_LABEL, value, '报告状态')
 }
 
-function reportStatusColor(value: ReportStatus): string {
+function reportStatusColor(value: ReportStatus): BadgeTone {
   return strictEnumTone(REPORT_STATUS_COLOR, value, '报告状态')
 }
 
@@ -74,7 +76,7 @@ function exportStatusLabel(value: ReportExportStatus): string {
   return strictEnumLabel(REPORT_EXPORT_STATUS_LABEL, value, '报告导出状态')
 }
 
-function exportStatusColor(value: ReportExportStatus): string {
+function exportStatusColor(value: ReportExportStatus): BadgeTone {
   return strictEnumTone(REPORT_EXPORT_STATUS_COLOR, value, '报告导出状态')
 }
 
@@ -86,6 +88,7 @@ function reportExportFailureMessage(errorMessage?: string): string {
 }
 
 const qualityStore = useQualityStore()
+const listLoadError = ref<Error | null>(null)
 
 const list = ref<ReportVO[]>([])
 const total = ref(0)
@@ -231,6 +234,7 @@ const transitMap: Record<ReportStatus, ReportStatus[]> = {
 
 async function loadList() {
   loading.value = true
+  listLoadError.value = null
   try {
     const page = await reportApi.page({
       ...query,
@@ -244,9 +248,17 @@ async function loadList() {
     })
     list.value = readPageList(page, '质量报告加载失败，请稍后重试')
     total.value = readPageTotal(page, '质量报告加载失败，请稍后重试')
+  } catch (error) {
+    listLoadError.value = toUserError(error, '质量报告加载失败')
+    showUserError(error, '质量报告加载失败')
   } finally {
     loading.value = false
   }
+}
+
+async function handleScopeChange(): Promise<void> {
+  listLoadError.value = null
+  await loadList()
 }
 
 function handlePageChange(page: { current: number, pageSize: number }) {
@@ -566,6 +578,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 const auditDrawerOpen = ref(false)
 const auditEvents = ref<AuditTimelineEvent[]>([])
 const auditLoading = ref(false)
@@ -626,296 +639,316 @@ onMounted(loadList)
 
 <template>
   <StageWorkbenchShell>
-    <StageRail :stages="stages" compact class="report__stages" />
-    <SignalBand :metrics="signals" compact class="report__signals" />
+    <template #context>
+      <ContextBar>
+        <template #status>
+          <QualityScopeHeader @change="handleScopeChange" />
+        </template>
+        <template #actions>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="handleScopeChange">
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
-    <TaskResultPanel
-      v-if="reportResultItems.length > 0"
-      title="待关注报告"
-      :items="reportResultItems"
-      class="report__result-panel"
-      @action="handleReportResultAction"
+    <UiEmpty
+      v-if="!qualityStore.currentTrainingPlanId"
+      description="请选择培养方案"
+      class="report__empty"
     />
 
-    <UiCard class="detail-table-card report__table-card">
-      <template #title>报告列表</template>
-      <template #extra>
-        <UiButton size="sm" @click="openCreate">新建报告</UiButton>
-      </template>
+    <template v-else>
+      <StageRail :stages="stages" compact class="report__stages" />
+      <SignalBand :metrics="signals" compact class="report__signals" />
 
-      <UiFilterBar
-        v-model="filterModel"
-        :fields="filterFields"
-        show-labels
-        @search="handleSearch"
-        @reset="handleReset"
-      >
-        <template #field-qualityCourseId>
-          <CourseSelector
-            :value="query.qualityCourseId || null"
-            :training-plan-id="qualityStore.currentTrainingPlanId || null"
-            placeholder="关联课程"
-            :width="160"
-            @change="handleQueryQualityCourseChange"
-          />
+      <TaskResultPanel
+        v-if="reportResultItems.length > 0"
+        title="待关注报告"
+        :items="reportResultItems"
+        class="report__result-panel"
+        @action="handleReportResultAction"
+      />
+
+      <UiCard class="detail-table-card report__table-card">
+        <template #title>报告列表</template>
+        <template #extra>
+          <UiButton size="sm" @click="openCreate">新建报告</UiButton>
         </template>
-      </UiFilterBar>
 
-      <UiDataTable
-        class="student-detail-table__data-table"
-        v-model:current="query.pageNum"
-        v-model:page-size="query.pageSize"
-        :columns="columns"
-        :data-source="list"
-        :loading="loading"
-        row-key="id"
-        size="middle"
-        :total="total"
-        flat
-        @page-change="handlePageChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'reportType'">
-            {{ reportTypeLabel(record.reportType) }}
+        <UiFilterBar
+          v-model="filterModel"
+          :fields="filterFields"
+          show-labels
+          @search="handleSearch"
+          @reset="handleReset"
+        >
+          <template #field-qualityCourseId>
+            <CourseSelector
+              :value="query.qualityCourseId || null"
+              :training-plan-id="qualityStore.currentTrainingPlanId || null"
+              placeholder="关联课程"
+              :width="160"
+              @change="handleQueryQualityCourseChange"
+            />
           </template>
-          <template v-else-if="column.key === 'qualityCourseRef'">
-            <span v-if="record.qualityCourseId">
-              {{ record.qualityCourseCode }} {{ record.qualityCourseName }}
+        </UiFilterBar>
+
+        <UiDataTable
+          class="student-detail-table__data-table"
+          v-model:current="query.pageNum"
+          v-model:page-size="query.pageSize"
+          :columns="columns"
+          :data-source="list"
+          :loading="loading"
+          row-key="id"
+          size="middle"
+          :total="total"
+          flat
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'reportType'">
+              {{ reportTypeLabel(record.reportType) }}
+            </template>
+            <template v-else-if="column.key === 'qualityCourseRef'">
+              <span v-if="record.qualityCourseId">
+                {{ record.qualityCourseCode }} {{ record.qualityCourseName }}
+              </span>
+            </template>
+            <template v-else-if="column.key === 'achievementResultRef'">
+              {{ record.achievementResultLabel }}
+            </template>
+            <template v-else-if="column.key === 'period'">
+              {{ record.schoolYear }} / {{ record.semester }}
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="reportStatusColor(record.status)" size="sm">
+                {{ reportStatusLabel(record.status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'exports'">
+              <a-space size="small" wrap>
+                <UiTag v-if="record.wordFileId" tone="blue" size="sm"> Word </UiTag>
+                <UiTag v-if="record.pdfFileId" tone="orange" size="sm"> PDF </UiTag>
+                <UiTag v-if="record.excelFileId" tone="green" size="sm"> Excel </UiTag>
+                <UiTag
+                  v-if="record.exportStatus && record.exportStatus !== 'COMPLETED'"
+                  :tone="exportStatusColor(record.exportStatus)"
+                  size="sm"
+                >
+                  <LoadingOutlined v-if="isExportInFlight(record.exportStatus)" />
+                  {{ exportStatusLabel(record.exportStatus) }}
+                </UiTag>
+                <a-tooltip
+                  v-if="record.exportStatus === 'FAILED'"
+                  :title="reportExportFailureMessage(record.exportErrorMessage)"
+                >
+                  <UiTag tone="red" size="sm"> 错误详情 </UiTag>
+                </a-tooltip>
+              </a-space>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="operations-cell" @click.stop>
+                <UiTextAction @click="openDetail(record)">详情</UiTextAction>
+                <UiTextAction
+                  :disabled="canEditReport(record.status)"
+                  @click="openEdit(record)"
+                >
+                  编辑
+                </UiTextAction>
+                <UiTextAction
+                  v-for="to in nextStatuses(record.status)"
+                  :key="to"
+                  :tone="to === 'RETURNED' ? 'danger' : 'primary'"
+                  @click="handleTransit(record, to)"
+                >
+                  -> {{ reportStatusLabel(to) }}
+                </UiTextAction>
+                <UiTextAction
+                  v-if="record.status === 'SUBMITTED' || record.status === 'CONFIRMED' || record.status === 'ARCHIVED'"
+                  @click="handleExport(record)"
+                >
+                  导出三格式
+                </UiTextAction>
+                <UiTextAction v-if="record.status === 'DRAFT'" tone="danger" @click="handleDelete(record)">
+                  删除
+                </UiTextAction>
+                <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+
+      <UiDrawer
+        v-model:open="editorVisible"
+        :title="editorMode === 'create' ? '新建质量评价报告' : '编辑质量评价报告'"
+        :width="800"
+        :confirm-loading="submitting"
+        :hide-footer="false"
+        ok-text="保存"
+        @ok="submitEditor"
+      >
+        <a-form layout="vertical" :model="editor">
+          <a-row :gutter="12">
+            <a-col :span="16">
+              <a-form-item label="标题" required>
+                <a-input
+                  v-model:value="editor.title"
+                  placeholder="例：2024-2025 学年春季学期《程序设计基础》课程评价报告"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="类型" required>
+                <a-select v-model:value="editor.reportType" :options="reportTypeOptions" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="12">
+            <a-col :span="8">
+              <a-form-item label="专业" required>
+                <ProgramSelector
+                  :value="editor.programId || null"
+                  placeholder="选择专业"
+                  @change="handleEditorProgramChange"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="培养方案">
+                <TrainingPlanSelector
+                  :value="editor.trainingPlanId || null"
+                  placeholder="选择培养方案（可选）"
+                  @change="handleEditorTrainingPlanChange"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="质量评价课程">
+                <CourseSelector
+                  :value="editor.qualityCourseId || null"
+                  :training-plan-id="editor.trainingPlanId || null"
+                  placeholder="选择质量评价课程（可选）"
+                  @change="handleEditorQualityCourseChange"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="12">
+            <a-col :span="24">
+              <a-form-item label="达成度结果">
+                <AchievementResultSelector
+                  :value="editor.achievementResultId || null"
+                  :program-id="editor.programId || null"
+                  :training-plan-id="editor.trainingPlanId || null"
+                  :quality-course-id="editor.qualityCourseId || null"
+                  :school-year="editor.schoolYear || null"
+                  :semester="editor.semester || null"
+                  placeholder="可选，用于关联已有达成度结果"
+                  @change="handleEditorAchievementResultChange"
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row :gutter="12">
+            <a-col :span="6">
+              <a-form-item label="学年" required>
+                <a-input v-model:value="editor.schoolYear" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="6">
+              <a-form-item label="学期" required>
+                <a-input v-model:value="editor.semester" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <a-form-item label="报告正文">
+            <a-textarea
+              v-model:value="editor.bodyContent"
+              :rows="12"
+              placeholder="填写报告正文；AI 任务生成后会自动回填"
+              class="report__body-editor"
+            />
+          </a-form-item>
+        </a-form>
+      </UiDrawer>
+
+      <UiDrawer v-model:open="detailVisible" title="报告详情" :width="760" :hide-footer="true">
+        <UiEmpty v-if="!detailRecord && !detailLoading" description="暂无数据" size="sm" />
+        <a-descriptions v-if="detailRecord" :column="2" size="small" bordered>
+          <a-descriptions-item label="类型">
+            {{ reportTypeLabel(detailRecord.reportType) }}
+          </a-descriptions-item>
+          <a-descriptions-item label="状态">
+            <UiTag :tone="reportStatusColor(detailRecord.status)" size="sm">
+              {{ reportStatusLabel(detailRecord.status) }}
+            </UiTag>
+          </a-descriptions-item>
+          <a-descriptions-item label="达成度结果">
+            {{ detailRecord.achievementResultLabel }}
+          </a-descriptions-item>
+          <a-descriptions-item label="所属专业">
+            {{ detailRecord.programName }}
+          </a-descriptions-item>
+          <a-descriptions-item label="培养方案">
+            <span v-if="detailRecord.trainingPlanId">
+              {{ detailRecord.trainingPlanCode }} {{ detailRecord.trainingPlanName }}
             </span>
-          </template>
-          <template v-else-if="column.key === 'achievementResultRef'">
-            {{ record.achievementResultLabel }}
-          </template>
-          <template v-else-if="column.key === 'period'">
-            {{ record.schoolYear }} / {{ record.semester }}
-          </template>
-          <template v-else-if="column.key === 'status'">
-            <a-tag :color="reportStatusColor(record.status)">
-              {{ reportStatusLabel(record.status) }}
-            </a-tag>
-          </template>
-          <template v-else-if="column.key === 'exports'">
-            <a-space size="small" wrap>
-              <a-tag v-if="record.wordFileId" color="blue"> Word </a-tag>
-              <a-tag v-if="record.pdfFileId" color="orange"> PDF </a-tag>
-              <a-tag v-if="record.excelFileId" color="green"> Excel </a-tag>
-              <a-tag
-                v-if="record.exportStatus && record.exportStatus !== 'COMPLETED'"
-                :color="exportStatusColor(record.exportStatus)"
-              >
-                <template v-if="isExportInFlight(record.exportStatus)" #icon>
-                  <LoadingOutlined />
-                </template>
-                {{ exportStatusLabel(record.exportStatus) }}
-              </a-tag>
-              <a-tooltip
-                v-if="record.exportStatus === 'FAILED'"
-                :title="reportExportFailureMessage(record.exportErrorMessage)"
-              >
-                <a-tag color="red"> 错误详情 </a-tag>
-              </a-tooltip>
-            </a-space>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="openDetail(record)">详情</UiTextAction>
-              <UiTextAction
-                :disabled="canEditReport(record.status)"
-                @click="openEdit(record)"
-              >
-                编辑
-              </UiTextAction>
-              <UiTextAction
-                v-for="to in nextStatuses(record.status)"
-                :key="to"
-                :tone="to === 'RETURNED' ? 'danger' : 'primary'"
-                @click="handleTransit(record, to)"
-              >
-                -> {{ reportStatusLabel(to) }}
-              </UiTextAction>
-              <UiTextAction
-                v-if="record.status === 'SUBMITTED' || record.status === 'CONFIRMED' || record.status === 'ARCHIVED'"
-                @click="handleExport(record)"
-              >
-                导出三格式
-              </UiTextAction>
-              <UiTextAction v-if="record.status === 'DRAFT'" tone="danger" @click="handleDelete(record)">
-                删除
-              </UiTextAction>
-              <UiTextAction @click="openAuditDrawer(record)">审计</UiTextAction>
-            </div>
-          </template>
-        </template>
-      </UiDataTable>
-    </UiCard>
-
-    <UiDrawer
-      v-model:open="editorVisible"
-      :title="editorMode === 'create' ? '新建质量评价报告' : '编辑质量评价报告'"
-      :width="800"
-      :confirm-loading="submitting"
-      :hide-footer="false"
-      ok-text="保存"
-      @ok="submitEditor"
-    >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="16">
-            <a-form-item label="标题" required>
-              <a-input
-                v-model:value="editor.title"
-                placeholder="例：2024-2025 学年春季学期《程序设计基础》课程评价报告"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="类型" required>
-              <a-select v-model:value="editor.reportType" :options="reportTypeOptions" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="专业" required>
-              <ProgramSelector
-                :value="editor.programId || null"
-                placeholder="选择专业"
-                @change="handleEditorProgramChange"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="培养方案">
-              <TrainingPlanSelector
-                :value="editor.trainingPlanId || null"
-                placeholder="选择培养方案（可选）"
-                @change="handleEditorTrainingPlanChange"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="质量评价课程">
-              <CourseSelector
-                :value="editor.qualityCourseId || null"
-                :training-plan-id="editor.trainingPlanId || null"
-                placeholder="选择质量评价课程（可选）"
-                @change="handleEditorQualityCourseChange"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="24">
-            <a-form-item label="达成度结果">
-              <AchievementResultSelector
-                :value="editor.achievementResultId || null"
-                :program-id="editor.programId || null"
-                :training-plan-id="editor.trainingPlanId || null"
-                :quality-course-id="editor.qualityCourseId || null"
-                :school-year="editor.schoolYear || null"
-                :semester="editor.semester || null"
-                placeholder="可选，用于关联已有达成度结果"
-                @change="handleEditorAchievementResultChange"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="学年" required>
-              <a-input v-model:value="editor.schoolYear" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="学期" required>
-              <a-input v-model:value="editor.semester" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="报告正文">
-          <a-textarea
-            v-model:value="editor.bodyContent"
-            :rows="12"
-            placeholder="填写报告正文；AI 任务生成后会自动回填"
-            class="report__body-editor"
-          />
-        </a-form-item>
-      </a-form>
-    </UiDrawer>
-
-    <UiDrawer v-model:open="detailVisible" title="报告详情" :width="760" :hide-footer="true">
-      <UiEmpty v-if="!detailRecord && !detailLoading" description="详情数据未加载" size="sm" />
-      <a-descriptions v-if="detailRecord" :column="2" size="small" bordered>
-        <a-descriptions-item label="类型">
-          {{ reportTypeLabel(detailRecord.reportType) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="状态">
-          <a-tag :color="reportStatusColor(detailRecord.status)">
-            {{ reportStatusLabel(detailRecord.status) }}
-          </a-tag>
-        </a-descriptions-item>
-        <a-descriptions-item label="达成度结果">
-          {{ detailRecord.achievementResultLabel }}
-        </a-descriptions-item>
-        <a-descriptions-item label="所属专业">
-          {{ detailRecord.programName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="培养方案">
-          <span v-if="detailRecord.trainingPlanId">
-            {{ detailRecord.trainingPlanCode }} {{ detailRecord.trainingPlanName }}
-          </span>
-        </a-descriptions-item>
-        <a-descriptions-item label="关联课程">
-          <span v-if="detailRecord.qualityCourseId">
-            {{ detailRecord.qualityCourseCode }} {{ detailRecord.qualityCourseName }}
-          </span>
-        </a-descriptions-item>
-        <a-descriptions-item label="学年 / 学期">
-          {{ detailRecord.schoolYear }} / {{ detailRecord.semester }}
-        </a-descriptions-item>
-        <a-descriptions-item label="Word 文件">
-          {{ detailRecord.wordFileId ? '已生成 Word 文件' : '未生成 Word 文件' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="PDF 文件">
-          {{ detailRecord.pdfFileId ? '已生成 PDF 文件' : '未生成 PDF 文件' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="Excel 文件">
-          {{ detailRecord.excelFileId ? '已生成 Excel 文件' : '未生成 Excel 文件' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="导出状态">
-          <a-tag :color="exportStatusColor(detailRecord.exportStatus)">
-            {{ exportStatusLabel(detailRecord.exportStatus) }}
-          </a-tag>
-        </a-descriptions-item>
-        <a-descriptions-item v-if="detailRecord.exportStartedAt" label="导出开始">
-          {{ detailRecord.exportStartedAt }}
-        </a-descriptions-item>
-        <a-descriptions-item v-if="detailRecord.exportFinishedAt" label="导出结束">
-          {{ detailRecord.exportFinishedAt }}
-        </a-descriptions-item>
-        <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出处理说明" :span="2">
-          <a-alert
-            type="error"
-            show-icon
-            :message="reportExportFailureMessage(detailRecord.exportErrorMessage)"
-          />
-        </a-descriptions-item>
-        <a-descriptions-item v-if="detailRecord.confirmedAt" label="确认时间">
-          {{ detailRecord.confirmedAt }}
-        </a-descriptions-item>
-        <a-descriptions-item v-if="detailRecord.archivedAt" label="归档时间">
-          {{ detailRecord.archivedAt }}
-        </a-descriptions-item>
-        <a-descriptions-item label="标题" :span="2">
-          {{ detailRecord.title }}
-        </a-descriptions-item>
-      </a-descriptions>
-      <h4 class="report__section-title">正文预览</h4>
-      <div v-if="detailRecord?.bodyContent" class="report__body-preview">
-        {{ detailRecord.bodyContent }}
-      </div>
-      <UiEmpty v-else description="尚无正文" size="sm" />
-    </UiDrawer>
+          </a-descriptions-item>
+          <a-descriptions-item label="关联课程">
+            <span v-if="detailRecord.qualityCourseId">
+              {{ detailRecord.qualityCourseCode }} {{ detailRecord.qualityCourseName }}
+            </span>
+          </a-descriptions-item>
+          <a-descriptions-item label="学年 / 学期">
+            {{ detailRecord.schoolYear }} / {{ detailRecord.semester }}
+          </a-descriptions-item>
+          <a-descriptions-item label="Word 文件">
+            {{ detailRecord.wordFileId ? '已生成 Word 文件' : '未生成 Word 文件' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="PDF 文件">
+            {{ detailRecord.pdfFileId ? '已生成 PDF 文件' : '未生成 PDF 文件' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="Excel 文件">
+            {{ detailRecord.excelFileId ? '已生成 Excel 文件' : '未生成 Excel 文件' }}
+          </a-descriptions-item>
+          <a-descriptions-item label="导出状态">
+            <UiTag :tone="exportStatusColor(detailRecord.exportStatus)" size="sm">
+              {{ exportStatusLabel(detailRecord.exportStatus) }}
+            </UiTag>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="detailRecord.exportStartedAt" label="导出开始">
+            {{ detailRecord.exportStartedAt }}
+          </a-descriptions-item>
+          <a-descriptions-item v-if="detailRecord.exportFinishedAt" label="导出结束">
+            {{ detailRecord.exportFinishedAt }}
+          </a-descriptions-item>
+          <a-descriptions-item v-if="detailRecord.exportErrorMessage" label="导出处理说明" :span="2">
+            <a-alert
+              type="error"
+              show-icon
+              :message="reportExportFailureMessage(detailRecord.exportErrorMessage)"
+            />
+          </a-descriptions-item>
+          <a-descriptions-item v-if="detailRecord.confirmedAt" label="确认时间">
+            {{ detailRecord.confirmedAt }}
+          </a-descriptions-item>
+          <a-descriptions-item v-if="detailRecord.archivedAt" label="归档时间">
+            {{ detailRecord.archivedAt }}
+          </a-descriptions-item>
+          <a-descriptions-item label="标题" :span="2">
+            {{ detailRecord.title }}
+          </a-descriptions-item>
+        </a-descriptions>
+        <h4 class="report__section-title">正文预览</h4>
+        <div v-if="detailRecord?.bodyContent" class="report__body-preview">
+          {{ detailRecord.bodyContent }}
+        </div>
+        <UiEmpty v-else description="暂无数据" size="sm" />
+      </UiDrawer>
+    </template>
 
     <AuditTimelineDrawer
       v-model:open="auditDrawerOpen"

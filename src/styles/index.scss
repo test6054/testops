@@ -4,6 +4,9 @@
 // Design System Tokens
 @use './ui-tokens.scss';
 
+// 字体角色契约
+@use './typography.scss';
+
 // 全局类名样式
 @use './global.scss';
 
@@ -33,3 +36,6 @@
 
 // 工作台列表页：筛选工具栏、去卡片副文案
 @use './workbench-list.scss';
+
+// ECharts 图表区块（趋势 / 柱状 / 环形进度）
+@use './mark-chart.scss';

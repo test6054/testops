@@ -40,7 +40,6 @@
       show-icon
       class="completion-semantics-alert"
       message="完成正评仅表示本场派发的阅卷任务已全部提交"
-      description="不等于整张试卷全部题目成绩已确认。随机题目 / 指定题目模式下，以本会话题目范围与派发任务为准。"
     />
     <a-form v-if="canManage" layout="vertical" class="session-form">
       <a-form-item label="正评会话" required>
@@ -83,7 +82,7 @@
     <a-divider class="section-divider" />
 
     <h4 class="subsection-title">正评会话列表</h4>
-    <UiEmpty v-if="!sessions.length" description="尚未创建正评会话" />
+    <UiEmpty v-if="!sessions.length" description="暂无数据" />
     <a-list v-else size="small" class="session-history">
       <a-list-item v-for="item in sessions" :key="item.id">
         <a-list-item-meta>

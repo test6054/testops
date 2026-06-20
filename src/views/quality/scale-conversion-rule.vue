@@ -13,7 +13,7 @@ import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { SCALE_TYPE_LABEL, scaleConversionRuleApi } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -356,6 +356,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 onMounted(() => loadList())
 </script>
 
@@ -403,9 +404,9 @@ onMounted(() => loadList())
             </div>
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="record.enabled ? 'green' : 'default'">
+            <UiTag :tone="record.enabled ? 'green' : 'gray'">
               {{ record.enabled ? '启用' : '停用' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>

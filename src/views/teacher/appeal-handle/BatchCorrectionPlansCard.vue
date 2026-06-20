@@ -14,16 +14,8 @@
       @reset="handleFilterReset"
     />
 
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      title="批量更正计划加载失败"
-      compact
-      @retry="reload"
-    />
     <UiDataTable
       class="student-detail-table__data-table"
-      v-else
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
       :columns="columns"
@@ -43,9 +35,9 @@
           {{ affectedQuestionSummary(record) }}
         </template>
         <template v-else-if="column.key === 'approvalStatus'">
-          <a-tag :color="approvalStatusColor(record)">
+          <UiTag :tone="approvalStatusColor(record)">
             {{ approvalStatusLabel(record) }}
-          </a-tag>
+          </UiTag>
         </template>
         <template v-else-if="column.key === 'approvedTime'">
           {{ formatDateTime(record.approvedTime) }}
@@ -247,7 +239,7 @@ import type {
   GradeReviewQuestionRefVO,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -263,7 +255,7 @@ import {
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
-import { UiDataTable, UiErrorRetryPanel, UiFilterBar } from '@/components/ui-guide/ui'
+import { UiDataTable, UiEmpty, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -739,7 +731,7 @@ function approvalStatusLabel(row: ExamBatchGradeCorrectionPlanVO): string {
   return strictEnumLabel(BATCH_CORRECTION_STATUS_LABEL, row.approvalStatus, '批量更正审批状态')
 }
 
-function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): string {
+function approvalStatusColor(row: ExamBatchGradeCorrectionPlanVO): BadgeTone {
   return strictEnumTone(BATCH_CORRECTION_STATUS_COLOR, row.approvalStatus, '批量更正审批状态')
 }
 

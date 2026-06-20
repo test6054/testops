@@ -50,62 +50,23 @@
 
     <a-spin :spinning="loading || generating">
       <!-- D-9 错误态：AI 校级质量加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 校级质量分析加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!record" description="暂无校级质量分析，请填写参数后生成。" />
-      <div v-else class="ai-record">
-        <a-row :gutter="12" class="metric-row">
-          <a-col :span="8">
-            <a-statistic
-              v-if="record.teachingQualityScore != null"
-              title="教学质量"
-              :value="record.teachingQualityScore"
-              :precision="1"
-              :value-style="scoreStyle(record.teachingQualityScore)"
-            />
-            <div v-else class="metric-text">
-              <span class="metric-title">教学质量</span>
-              <span class="metric-value">—</span>
-            </div>
-          </a-col>
-          <a-col :span="8">
-            <a-statistic
-              v-if="record.questionQualityScore != null"
-              title="命题质量"
-              :value="record.questionQualityScore"
-              :precision="1"
-              :value-style="scoreStyle(record.questionQualityScore)"
-            />
-            <div v-else class="metric-text">
-              <span class="metric-title">命题质量</span>
-              <span class="metric-value">—</span>
-            </div>
-          </a-col>
-          <a-col :span="8">
-            <a-statistic
-              v-if="record.markingQualityScore != null"
-              title="阅卷质量"
-              :value="record.markingQualityScore"
-              :precision="1"
-              :value-style="scoreStyle(record.markingQualityScore)"
-            />
-            <div v-else class="metric-text">
-              <span class="metric-title">阅卷质量</span>
-              <span class="metric-value">—</span>
-            </div>
-          </a-col>
-        </a-row>
+      <div v-else-if="record" class="ai-record">
+        <UiStatPanel
+          :items="qualityMetrics"
+          :columns="3"
+          variant="strip"
+          compact
+        />
 
         <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="维度">
             {{ schoolQualityDimensionLabel(record.analysisDimension) }} /
@@ -128,9 +89,9 @@
           </a-descriptions-item>
           <a-descriptions-item label="考试范围" :span="3">
             <a-space v-if="record.exams?.length" wrap>
-              <a-tag v-for="exam in record.exams" :key="exam.examId">
+              <UiTag v-for="exam in record.exams" :key="exam.examId">
                 {{ exam.examName }}{{ exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : '' }}
-              </a-tag>
+              </UiTag>
             </a-space>
             <span v-else class="text-muted">-</span>
           </a-descriptions-item>
@@ -145,18 +106,16 @@
           <strong>质量摘要：</strong>{{ record.qualitySummary }}
         </a-typography-paragraph>
 
-        <div v-if="examStatTrendPoints.length >= 2" class="ai-chart">
-          <div class="ai-chart__meta">
-            <strong>参与考试得分走势</strong>
-            <span class="ai-chart__hint">多考试对比：得分率走势</span>
-          </div>
-          <UiTrendChart
-            :items="examStatTrendPoints"
-            area
-            show-bubble
-            class="ai-chart__canvas"
-          />
-        </div>
+        <MarkTrendSection
+          v-if="record"
+          title="参与考试得分走势"
+          hint="多考试对比：得分率走势"
+          :point-count="examStatTrendPoints.length"
+          :option="examTrendChartOption"
+          height="320px"
+          :last-value="examTrendLastValue"
+          value-unit="%"
+        />
 
         <div v-if="qualityItems.length > 0" class="ai-items">
           <strong>分项评估：</strong>
@@ -169,9 +128,9 @@
                     <span class="analysis-item__title">
                       {{ item.qualityDimension || item.metricName || '质量指标' }}
                     </span>
-                    <a-tag v-if="item.rating" :color="qualityRatingColor(item.rating)">
+                    <UiTag v-if="item.rating" :tone="qualityRatingColor(item.rating)">
                       {{ qualityRatingLabel(item.rating) }}
-                    </a-tag>
+                    </UiTag>
                     <span v-if="item.metricValue != null" class="analysis-item__metric">
                       {{ item.metricValue.toFixed(2) }}
                     </span>
@@ -204,6 +163,8 @@ import type {
   SchoolQualityDimensionCode,
   SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -219,12 +180,15 @@ import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.v
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
-import { UiCard, UiEmpty, UiErrorRetryPanel, UiTrendChart } from '@/components/ui-guide/ui'
+import { MarkTrendSection } from '@/components/chart'
+import { UiCard, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import { useChartOption } from '@/hooks/modules/useChartOption'
+import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { examStatSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
-import { scoreTone, toneToColor } from '@/utils/score-tone'
+import { scoreTone } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'SchoolQualityCard' })
@@ -253,11 +217,53 @@ const examStatTrendPoints = computed(() =>
   examStatSnapshotsToTrendPoints(record.value?.examStatSnapshots ?? []),
 )
 
+const examTrendLastValue = computed(() => {
+  const points = examStatTrendPoints.value
+  if (points.length === 0) {
+    return null
+  }
+  return Number(points[points.length - 1]?.value)
+})
+
+const { chartOption: examTrendChartOption } = useChartOption(() =>
+  buildTrendLineChartOption(examStatTrendPoints.value, {
+    yAxisName: '得分率 %',
+    yMax: 100,
+    area: true,
+    emptyText: '至少需要 2 场考试才能展示走势',
+  }),
+)
+
+const qualityMetrics = computed((): UiStatPanelItem[] => {
+  if (!record.value) return []
+  const data = record.value
+  return [
+    {
+      key: 'teachingQualityScore',
+      label: '教学质量',
+      value: data.teachingQualityScore != null ? data.teachingQualityScore.toFixed(1) : '—',
+      tone: data.teachingQualityScore != null ? scoreTone(data.teachingQualityScore) : 'gray',
+    },
+    {
+      key: 'questionQualityScore',
+      label: '命题质量',
+      value: data.questionQualityScore != null ? data.questionQualityScore.toFixed(1) : '—',
+      tone: data.questionQualityScore != null ? scoreTone(data.questionQualityScore) : 'gray',
+    },
+    {
+      key: 'markingQualityScore',
+      label: '阅卷质量',
+      value: data.markingQualityScore != null ? data.markingQualityScore.toFixed(1) : '—',
+      tone: data.markingQualityScore != null ? scoreTone(data.markingQualityScore) : 'gray',
+    },
+  ]
+})
+
 function qualityRatingLabel(rating: SchoolQualityRatingCode): string {
   return strictEnumLabel(SCHOOL_QUALITY_RATING_LABEL, rating, '校级质量评价等级')
 }
 
-function qualityRatingColor(rating: SchoolQualityRatingCode): string {
+function qualityRatingColor(rating: SchoolQualityRatingCode): BadgeTone {
   return strictEnumTone(SCHOOL_QUALITY_RATING_COLOR, rating, '校级质量评价等级')
 }
 
@@ -330,11 +336,6 @@ async function handleGenerate(): Promise<void> {
     generating.value = false
   }
 }
-
-function scoreStyle(score?: number): Record<string, string> {
-  if (score == null) return { color: 'inherit' }
-  return { color: toneToColor(scoreTone(score)) }
-}
 </script>
 
 <style lang="scss" scoped>
@@ -375,20 +376,6 @@ function scoreStyle(score?: number): Record<string, string> {
   width: 100%;
   height: 320px;
 }
-.metric-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.metric-title {
-  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
-  font-size: 14px;
-}
-.metric-value {
-  color: var(--gi-color-text-1, rgba(0, 0, 0, 0.88));
-  font-size: 24px;
-  line-height: 1.2;
-}
 .analysis-item {
   display: flex;
   flex-direction: column;
@@ -411,11 +398,6 @@ function scoreStyle(score?: number): Record<string, string> {
   margin: 0;
   color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
   line-height: 1.6;
-}
-.metric-row {
-  background: var(--gi-color-bg-2, #f5f5f5);
-  padding: 12px 8px;
-  border-radius: 4px;
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

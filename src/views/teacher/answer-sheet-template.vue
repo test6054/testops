@@ -1,55 +1,35 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="sheet-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="handleExamChange"
-          />
-          <UiTag v-if="selectedExamId && hasQuestions" tone="blue" size="sm">
-            {{ questionCount }} 道题目
-          </UiTag>
-          <UiTag v-if="selectedExamId" tone="gray" size="sm">
-            {{ pages.length }} / {{ totalPagesLabel }} 页
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton size="sm" variant="primary" :disabled="!hasQuestions" :loading="sheetGenerating" @click="openSheetGenerateModal">
-            <template #icon><ThunderboltOutlined /></template>
-            生成标准答题卡
-          </UiButton>
-          <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
-            <template #icon><SaveOutlined /></template>
-            保存
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div v-if="selectedExamId" class="sheet-page__toolbar">
+    <div class="sheet-page__toolbar-status">
+      <UiTag v-if="hasQuestions" tone="blue" size="sm">
+        {{ questionCount }} 道题目
+      </UiTag>
+      <UiTag tone="gray" size="sm">
+        {{ pages.length }} / {{ totalPagesLabel }} 页
+      </UiTag>
+    </div>
+    <a-space>
+      <UiButton size="sm" variant="primary" :disabled="!hasQuestions" :loading="sheetGenerating" @click="openSheetGenerateModal">
+        <template #icon><ThunderboltOutlined /></template>
+        生成标准答题卡
+      </UiButton>
+      <UiButton size="sm" :loading="saving" @click="handleSave">
+        <template #icon><SaveOutlined /></template>
+        保存
+      </UiButton>
+    </a-space>
+  </div>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="sheet-page__empty" />
+  <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="sheet-page__empty" />
 
-    <UiErrorRetryPanel
-      v-else-if="templateLoadError"
-      :error="templateLoadError"
-      title="答卷页模板加载失败"
-      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      @retry="loadTemplate"
-    />
+    <UiEmpty v-else-if="!loading && templateLoadError" description="暂无数据" />
 
     <a-spin v-else :spinning="loading">
       <UiAlertStrip
         v-if="!hasQuestions"
         tone="warning"
         title="题目结构尚未配置"
-        description="保存模板要求题目列表非空。请先前往「试卷模板」页面新增题目，或在那里一次性完成完整配置。"
+        description="暂无数据"
         dense
         class="sheet-page__alert"
       >
@@ -129,7 +109,6 @@
         </a-form-item>
       </a-form>
     </a-modal>
-  </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
@@ -162,11 +141,9 @@ import {
   UiButton,
   UiCard,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 
@@ -175,14 +152,7 @@ defineOptions({ name: 'TeacherAnswerSheetTemplate' })
 const router = useRouter()
 const pageTableRef = ref<InstanceType<typeof ExamTemplatePageTable> | null>(null)
 
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  onExamChange,
-  init: initExamSelector,
-} = useMarkExamSelector()
+const { selectedExamId } = useMarkExamContext()
 
 let rowSeq = 0
 function nextRowKey(): string {
@@ -316,22 +286,11 @@ async function loadTemplate(): Promise<void> {
   }
 }
 
-function handleExamChange(
-  value: SelectValue,
-  option: DefaultOptionType | DefaultOptionType[],
-): void {
-  onExamChange(value, option)
-  if (selectedExamId.value) {
-    void loadTemplate()
-  } else {
-    clearTemplate()
-  }
-}
-
 function goPaperTemplate(): void {
+  if (!selectedExamId.value) return
   void router.push({
-    name: 'TeacherPaperTemplate',
-    query: selectedExamId.value ? { examId: selectedExamId.value } : {},
+    name: 'TeacherExamWorkspacePaperTemplate',
+    params: { examId: selectedExamId.value },
   })
 }
 
@@ -448,7 +407,6 @@ watch(selectedExamId, (value) => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
     await loadTemplate()
   }
@@ -457,8 +415,19 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .sheet-page {
-  &__exam-select {
-    width: 280px;
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  &__toolbar-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   &__empty {

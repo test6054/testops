@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
+import { isSidebarMenuRoute } from '@/utils/menu-route'
 import { cloneDeep, omit } from 'lodash-es'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
@@ -150,8 +151,8 @@ const storeSetup = (): RouteStoreState => {
         return false
       }
 
-      // 过滤掉隐藏的菜单项
-      return !route.meta?.hideInMenu
+      // 过滤掉隐藏的菜单项与纯 redirect 占位
+      return isSidebarMenuRoute(route)
     })
 
     const step2 = step1.map(route => {

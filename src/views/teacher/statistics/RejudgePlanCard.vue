@@ -13,17 +13,8 @@
       @reset="handleFilterReset"
     />
 
-    <!-- D-9 错误态：重判计划加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      title="重判计划加载失败"
-      compact
-      @retry="reload"
-    />
     <UiDataTable
       class="student-detail-table__data-table"
-      v-else
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
       :columns="columns"
@@ -43,9 +34,9 @@
           {{ affectedQuestionSummary(rows[index]) }}
         </template>
         <template v-else-if="column.key === 'planStatus'">
-          <a-tag :color="planStatusColor(rows[index].planStatus)">
+          <UiTag :tone="planStatusColor(rows[index].planStatus)">
             {{ planStatusLabel(rows[index].planStatus) }}
-          </a-tag>
+          </UiTag>
         </template>
         <template v-else-if="column.key === 'approvedTime'">
           {{ formatDateTime(rows[index].approvedTime) }}
@@ -149,7 +140,7 @@ import {
   REJUDGE_PLAN_STATUS_OPTIONS,
   REJUDGE_TRIGGER_TYPE_LABEL,
 } from '@/apis/mark/question-analysis'
-import { UiCard, UiDataTable, UiErrorRetryPanel, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import { UiCard, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -161,7 +152,6 @@ const props = defineProps<{ examId: string, reloadToken: number }>()
 
 const rows = ref<ExamRejudgePlanVO[]>([])
 const loading = ref(false)
-// D-9 错误态：重判计划加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 
 const pagination = reactive({

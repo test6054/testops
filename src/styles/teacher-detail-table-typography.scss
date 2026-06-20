@@ -5,20 +5,17 @@
 .unified-list-table__table-wrap,
 .defense-table-wrap {
   .ant-table-thead > tr > th {
-    height: 48px !important;
+    height: 44px !important;
     padding: 0 14px !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    color: var(--ant-color-text) !important;
-    text-align: center !important;
-    vertical-align: middle !important;
-    line-height: 1.2;
+    font-size: var(--dp-type-table-head-size, 14px) !important;
+    font-weight: var(--dp-type-table-head-weight, 600) !important;
+    line-height: var(--dp-type-table-head-line-height, 20px) !important;
     white-space: nowrap;
   }
 
   .ant-table-thead > tr > th .ant-table-column-title {
-    font-size: 15px !important;
-    font-weight: 600 !important;
+    font-size: var(--dp-type-table-head-size, 14px) !important;
+    font-weight: var(--dp-type-table-head-weight, 600) !important;
     color: var(--ant-color-text) !important;
   }
 
@@ -73,12 +70,12 @@
 
   .ant-table-tbody > tr > td.ant-table-cell {
     padding: 12px 14px !important;
-    font-size: 14px !important;
-    font-weight: 400 !important;
+    font-size: var(--dp-type-table-body-size, 14px) !important;
+    font-weight: var(--dp-type-table-body-weight, 400) !important;
     color: var(--ant-color-text) !important;
     text-align: center !important;
     vertical-align: middle !important;
-    line-height: 1.35;
+    line-height: var(--dp-type-table-body-line-height, 20px) !important;
   }
 
   .ant-table-tbody > tr.ant-table-measure-row > td.ant-table-cell {

@@ -67,13 +67,14 @@ import {
   SUPPORT_LEVEL_DEFAULT_FACTOR,
   SUPPORT_LEVEL_LABEL,
 } from '@/apis/quality'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -362,6 +363,7 @@ const signals = computed<SignalMetric[]>(() => [
         : 'red',
   },
 ])
+
 
 /* ========== 矩阵 1：课程目标 × 毕业要求/观测点 ========== */
 
@@ -1281,6 +1283,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
     <template #context>
       <ContextBar>
         <template #status>
+          <QualityScopeHeader />
           <span class="qcm__context-label">质量评价课程</span>
           <CourseSelector
             :value="qualityStore.currentQualityCourseId || null"
@@ -1290,16 +1293,16 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
             :width="320"
             @change="handleCourseChange"
           />
-          <a-tag v-if="currentCourse?.schoolYear" color="blue">
+          <UiTag v-if="currentCourse?.schoolYear" tone="blue">
             {{ currentCourse.schoolYear
             }}<span v-if="currentCourse.semester">/{{ currentCourse.semester }}</span>
-          </a-tag>
-          <a-tag v-if="currentCourse?.creditValue != null" color="default">
+          </UiTag>
+          <UiTag v-if="currentCourse?.creditValue != null" tone="gray">
             {{ currentCourse.creditValue }} 学分
-          </a-tag>
-          <a-tag v-if="currentCourse?.creditHours != null" color="default">
+          </UiTag>
+          <UiTag v-if="currentCourse?.creditHours != null" tone="gray">
             {{ currentCourse.creditHours }} 学时
-          </a-tag>
+          </UiTag>
         </template>
         <template #actions>
           <UiTextAction @click="openCourseCreate">新建课程</UiTextAction>
@@ -1313,7 +1316,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
 
     <UiEmpty
       v-if="!qualityStore.currentQualityCourseId"
-      description="请先选择质量评价课程，或在「培养方案体系工作台」选定培养方案后再新建课程"
+      description="请选择课程"
       class="qcm__empty"
     />
 
@@ -1392,6 +1395,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
             <span>考核环节列表</span>
           </template>
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
             :columns="itemColumns"
             :data-source="assessmentItems"
@@ -1410,15 +1414,15 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
                 {{ record.fullScore.toFixed(0) }}
               </template>
               <template v-else-if="column.key === 'isProcessOriented'">
-                <a-tag v-if="record.isProcessOriented" color="purple"> 过程 </a-tag>
+                <UiTag v-if="record.isProcessOriented" tone="purple"> 过程 </UiTag>
                 <span v-else class="qcm__muted">-</span>
               </template>
               <template v-else-if="column.key === 'weightSum'">
-                <a-tag
-                  :color="Math.abs(itemWeightSum(record.id) - 1) < WEIGHT_EPSILON ? 'green' : 'red'"
+                <UiTag
+                  :tone="Math.abs(itemWeightSum(record.id) - 1) < WEIGHT_EPSILON ? 'green' : 'red'"
                 >
                   Σ={{ itemWeightSum(record.id).toFixed(3) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'rubricCount'">
                 {{ rubricsOfItem(record.id).length }}
@@ -1447,6 +1451,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
             <UiButton variant="primary" size="sm" @click="openGoalCreate"> 新建课程目标 </UiButton>
           </template>
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
             :columns="goalColumns"
             :data-source="courseGoals"
@@ -1469,9 +1474,9 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
               </template>
               <template v-else-if="column.key === 'flags'">
                 <a-space size="small" wrap>
-                  <a-tag v-if="record.civicObjectiveFlag" color="purple"> 思政 </a-tag>
-                  <a-tag v-if="record.aiLiteracyFlag" color="cyan"> AI 素养 </a-tag>
-                  <a-tag v-if="record.complexEngineeringFlag" color="orange"> 复杂工程 </a-tag>
+                  <UiTag v-if="record.civicObjectiveFlag" tone="purple"> 思政 </UiTag>
+                  <UiTag v-if="record.aiLiteracyFlag" tone="blue"> AI 素养 </UiTag>
+                  <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
                   <span
                     v-if="
                       !record.civicObjectiveFlag
@@ -1911,6 +1916,7 @@ const itemTypeOptions: { value: AssessmentItemType, label: string }[] = [
         </span>
       </div>
       <UiDataTable
+        pagination-mode="none"
         class="student-detail-table__data-table"
         :columns="rubricColumns"
         :data-source="rubricItem ? rubricsOfItem(rubricItem.id) : []"

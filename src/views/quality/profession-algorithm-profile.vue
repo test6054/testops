@@ -17,7 +17,7 @@ import type {
   ProfessionAlgorithmProfileVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -30,7 +30,7 @@ import {
   professionAlgorithmTemplateApi,
 } from '@/apis/quality'
 import { ProgramSelector } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -58,7 +58,7 @@ function confirmationStatusLabel(value: ConfirmationStatus): string {
   return strictEnumLabel(CONFIRMATION_STATUS_LABEL, value, '确认状态')
 }
 
-function confirmationStatusColor(value: ConfirmationStatus): string {
+function confirmationStatusColor(value: ConfirmationStatus): BadgeTone {
   return strictEnumTone(CONFIRMATION_STATUS_COLOR, value, '确认状态')
 }
 
@@ -444,6 +444,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 onMounted(async () => {
   await Promise.all([loadList(), loadDicts()])
 })
@@ -496,14 +497,14 @@ onMounted(async () => {
             {{ accreditationTypeLabel(record.accreditationType) }}
           </template>
           <template v-else-if="column.key === 'confirmationStatus'">
-            <a-tag :color="confirmationStatusColor(record.confirmationStatus)">
+            <UiTag :tone="confirmationStatusColor(record.confirmationStatus)">
               {{ confirmationStatusLabel(record.confirmationStatus) }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="record.enabled ? 'green' : 'default'">
+            <UiTag :tone="record.enabled ? 'green' : 'gray'">
               {{ record.enabled ? '启用' : '停用' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>

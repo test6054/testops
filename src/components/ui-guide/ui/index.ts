@@ -90,6 +90,7 @@ export type {
   UiStateBlockState,
   UiStatisticChartMetric,
   UiStatisticSummaryItem,
+  UiDistributionSegment,
   UiStepItem,
   UiStepStatus,
   UiTabItem,
@@ -107,7 +108,6 @@ export {default as UiAlertStrip} from './UiAlertStrip.vue'
 export {default as UiArrowTimeline} from './UiArrowTimeline.vue'
 export {default as UiAssistantEntryCard} from './UiAssistantEntryCard.vue'
 export {default as UiAttachmentManager} from './UiAttachmentManager.vue'
-export {default as UiBarChart} from './UiBarChart.vue'
 export {default as UiBatchActionBar} from './UiBatchActionBar.vue'
 export {default as UiBreadcrumbs} from './UiBreadcrumbs.vue'
 export {default as UiCardSteps} from './UiCardSteps.vue'
@@ -120,11 +120,24 @@ export {default as UiConfirmDialog} from './UiConfirmDialog.vue'
 export {default as UiConfirmPopover} from './UiConfirmPopover.vue'
 export {default as UiConversationPanel} from './UiConversationPanel.vue'
 export {default as UiDataTable} from './UiDataTable.vue'
+export type {
+  UiDataTableChangeEvent,
+  UiDataTableColumnMeta,
+  UiDataTableEmptyKind,
+  UiDataTableEmptyPreset,
+  UiDataTablePaginationMode,
+} from './data-table'
+export {
+  buildNumericColumn,
+  normalizeDataTableColumn,
+  normalizeDataTableColumns,
+  sliceDataTablePage,
+  UI_DATA_TABLE_EMPTY_PRESETS,
+} from './data-table'
 export {default as UiDeliverableItemEditor} from './UiDeliverableItemEditor.vue'
 export {default as UiDescriptionGrid} from './UiDescriptionGrid.vue'
 export {default as UiDetailSection} from './UiDetailSection.vue'
 export {default as UiDialog} from './UiDialog.vue'
-export {default as UiDonutChart} from './UiDonutChart.vue'
 export {default as UiDrawer} from './UiDrawer.vue'
 export {default as UiDropdownAction} from './UiDropdownAction.vue'
 export {default as UiEditorCard} from './UiEditorCard.vue'
@@ -145,7 +158,6 @@ export type {TableFormColumn} from './UiMatrixForm.vue'
 export {default as UiMessageThread} from './UiMessageThread.vue'
 export {default as UiMetricCard} from './UiMetricCard.vue'
 export {default as UiMilestoneProgress} from './UiMilestoneProgress.vue'
-export {default as UiMiniChart} from './UiMiniChart.vue'
 export {default as UiModeSwitchPanel} from './UiModeSwitchPanel.vue'
 export {default as UiMultiSelect} from './UiMultiSelect.vue'
 export {default as UiNoticeList} from './UiNoticeList.vue'
@@ -166,8 +178,6 @@ export {default as UiRadioGroup} from './UiRadioGroup.vue'
 export {default as UiRankListCard} from './UiRankListCard.vue'
 export {default as UiReferenceFileField} from './UiReferenceFileField.vue'
 export {default as UiResourceCard} from './UiResourceCard.vue'
-export {default as UiRingProgress} from './UiRingProgress.vue'
-export {default as UiScatterChart} from './UiScatterChart.vue'
 export {default as UiSearchForm} from './UiSearchForm.vue'
 export {default as UiSearchTableDialog} from './UiSearchTableDialog.vue'
 export {default as UiSectionTabs} from './UiSectionTabs.vue'
@@ -196,7 +206,6 @@ export {default as UiTextAction} from './UiTextAction.vue'
 export {default as UiTooltip} from './UiTooltip.vue'
 export {default as UiTreeSelectionDialog} from './UiTreeSelectionDialog.vue'
 export {default as UiTreeSelectionDrawer} from './UiTreeSelectionDrawer.vue'
-export {default as UiTrendChart} from './UiTrendChart.vue'
 export {default as UiUploadSingleField} from './UiUploadSingleField.vue'
 export {default as UiWarningList} from './UiWarningList.vue'
 export {default as UiWorkbenchShell} from './UiWorkbenchShell.vue'

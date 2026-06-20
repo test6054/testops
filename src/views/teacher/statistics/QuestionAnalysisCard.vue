@@ -24,36 +24,27 @@
     </template>
 
     <div class="question-analysis-card">
-      <!-- D-5 难度-区分度散点图：仅在有分析数据时显示 -->
-      <div v-if="questionQualityScatterSeries.length > 0" class="question-analysis-card__chart-wrap">
-        <div class="question-analysis-card__chart-meta">
-          <strong>难度-区分度分布</strong>
-          <span class="question-analysis-card__chart-hint">
-            理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；点击图例可隐藏对应区段。
-          </span>
-        </div>
-        <UiScatterChart
-          class="question-analysis-card__chart"
-          :series="questionQualityScatterSeries"
-          x-label="难度系数"
-          y-label="区分度"
-          show-ideal-zone
-          aria-label="题目难度区分度散点图"
-        />
-      </div>
+      <MarkScatterSection
+        title="难度-区分度分布"
+        hint="理想区间：难度 0.3-0.8 且 区分度 ≥ 0.4；点击图例可隐藏对应区段。"
+        :point-count="scatterPointCount"
+        :option="scatterChartOption"
+        height="300px"
+        :aria-label="scatterChartAriaLabel"
+        :visible="!loading && !loadError"
+        class="question-analysis-card__chart"
+      />
 
-      <div v-if="correctRatioBarItems.length" class="question-analysis-card__chart-wrap">
-        <div class="question-analysis-card__chart-meta">
-          <strong>各题正确率</strong>
-          <span class="question-analysis-card__chart-hint">按题号展示已批阅学生的正确率</span>
-        </div>
-        <UiBarChart
-          class="question-analysis-card__chart"
-          :items="correctRatioBarItems"
-          orientation="vertical"
-          :max-value="100"
-        />
-      </div>
+      <MarkBarSection
+        title="各题正确率"
+        hint="按题号展示已批阅学生的正确率"
+        :item-count="correctRatioBarItems.length"
+        :option="correctRatioChartOption"
+        height="300px"
+        :aria-label="correctRatioChartAriaLabel"
+        :visible="!loading && !loadError"
+        class="question-analysis-card__chart"
+      />
 
       <AiGenerationProgressPanel
         v-if="generatingAll || generatingId"
@@ -65,26 +56,38 @@
         {{ generationSummary }}
       </a-typography-paragraph>
 
-      <!-- D-9 错误态：题目质量分析加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="题目质量分析加载失败"
-        compact
-        @retry="reload"
-      />
       <UiDataTable
         class="student-detail-table__data-table"
-        v-else
         :columns="columns"
         :data-source="rows"
         :loading="loading"
         row-key="id"
         size="small"
-        :page-size="20"
-        :total="rows.length"
+        pagination-mode="client"
+        v-model:page-size="tablePageSize"
+        :empty-kind="tableEmptyKind"
+        :empty-description="tableEmptyDescription"
         flat
       >
+        <template #empty-action>
+          <UiButton
+            v-if="tableEmptyKind === 'first-run'"
+            variant="outline"
+            size="sm"
+            :loading="generatingAll"
+            @click="handleGenerateAll"
+          >
+            全量生成
+          </UiButton>
+          <UiButton
+            v-else-if="tableEmptyKind === 'no-result'"
+            variant="outline"
+            size="sm"
+            @click="clearQuestionFilter"
+          >
+            清除题目筛选
+          </UiButton>
+        </template>
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'question'">
             <div class="question-analysis-card__question-cell">
@@ -141,9 +144,13 @@ import {
   generateQuestionAnalysis,
   listQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
-import { UiBarChart, UiButton, UiCard, UiDataTable, UiErrorRetryPanel, UiScatterChart, UiTextAction } from '@/components/ui-guide/ui'
+import { MarkBarSection, MarkScatterSection } from '@/components/chart'
+import { UiButton, UiCard, UiDataTable, UiTextAction } from '@/components/ui-guide/ui'
+import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildCategoryBarChartOption, buildScatterChartOption } from '@/utils/mark-echarts-options'
 import {
   buildQuestionQualityScatterSeries,
   correctRatioToBarItems,
@@ -159,7 +166,6 @@ const emit = defineEmits<{ (e: 'generated'): void }>()
 
 const rows = ref<ExamQuestionAnalysisRecordVO[]>([])
 const loading = ref(false)
-// D-9 错误态：题目质量分析加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 const generatingAll = ref(false)
 const generatingId = ref<string>('')
@@ -167,15 +173,32 @@ const selectedQuestionTemplateId = ref<string>()
 const questionLoading = ref(false)
 const questionOptions = ref<{ value: string, label: string }[]>([])
 const generationSummary = ref('')
+const tablePageSize = ref(20)
+
+const tableEmptyKind = computed(() => {
+  return selectedQuestionTemplateId.value ? 'no-result' : 'first-run'
+})
+
+const tableEmptyDescription = computed(() => {
+  if (selectedQuestionTemplateId.value) {
+    return '当前筛选题目暂无质量分析记录，可清除筛选或重新生成。'
+  }
+  return '尚未生成题目质量分析时，可一键产出全卷难度、区分度与正确率。'
+})
+
+function clearQuestionFilter(): void {
+  selectedQuestionTemplateId.value = undefined
+  void reload()
+}
 
 const columns: ColumnType<ExamQuestionAnalysisRecordVO>[] = [
   { title: '题目', key: 'question', width: 260 },
-  { title: '总人数', dataIndex: 'totalCount', key: 'totalCount', width: 90 },
-  { title: '正确率', key: 'correctRatio', width: 110 },
-  { title: '需复核', dataIndex: 'needReviewCount', key: 'needReviewCount', width: 90 },
-  { title: '难度系数', key: 'difficultyIndex', width: 110 },
-  { title: '区分度', key: 'discriminationIndex', width: 100 },
-  { title: '平均分/满分', key: 'avgScore', width: 140 },
+  buildNumericColumn({ title: '总人数', dataIndex: 'totalCount', key: 'totalCount', width: 90 }),
+  { title: '正确率', key: 'correctRatio', width: 110, align: 'right' },
+  buildNumericColumn({ title: '需复核', dataIndex: 'needReviewCount', key: 'needReviewCount', width: 90 }),
+  buildNumericColumn({ title: '难度系数', key: 'difficultyIndex', width: 110 }),
+  buildNumericColumn({ title: '区分度', key: 'discriminationIndex', width: 100 }),
+  { title: '平均分/满分', key: 'avgScore', width: 140, align: 'right' },
   { title: '快照时间', key: 'snapshotTime', width: 160 },
   { title: '操作', key: 'actions', width: 110, fixed: 'right' },
 ]
@@ -308,7 +331,49 @@ function questionTypeLabel(questionType: ExamQuestionAnalysisRecordVO['questionT
 }
 
 const questionQualityScatterSeries = computed(() => buildQuestionQualityScatterSeries(rows.value))
+const scatterPointCount = computed(() =>
+  questionQualityScatterSeries.value.reduce((sum, series) => sum + series.points.length, 0),
+)
 const correctRatioBarItems = computed(() => correctRatioToBarItems(rows.value))
+
+const { chartOption: scatterChartOption } = useChartOption(() =>
+  buildScatterChartOption(questionQualityScatterSeries.value, {
+    xLabel: '难度系数',
+    yLabel: '区分度',
+    showIdealZone: true,
+    emptyText: '暂无难度-区分度数据',
+  }),
+)
+
+const { chartOption: correctRatioChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(correctRatioBarItems.value, {
+    orientation: 'vertical',
+    maxValue: 100,
+    yAxisName: '正确率 %',
+    unit: '%',
+    dataZoom: true,
+    emptyText: '暂无各题正确率数据',
+  }),
+)
+
+const scatterChartAriaLabel = computed(() => {
+  const totalPoints = questionQualityScatterSeries.value.reduce(
+    (sum, series) => sum + series.points.length,
+    0,
+  )
+  if (totalPoints <= 0) {
+    return '难度区分度分布，暂无数据'
+  }
+  return `难度区分度分布，共 ${totalPoints} 道题目`
+})
+
+const correctRatioChartAriaLabel = computed(() => {
+  const count = correctRatioBarItems.value.length
+  if (count <= 0) {
+    return '各题正确率，暂无数据'
+  }
+  return `各题正确率，共 ${count} 道题`
+})
 
 watch(
   () => [props.examId, props.reloadToken, props.classId],

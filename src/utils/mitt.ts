@@ -65,6 +65,9 @@ export interface SystemEvents {
   'message:read': { messageId: string }
   'message:archived': { messageId: string }
 
+  // 扫描工作台
+  'scan-workbench:refresh': void
+
   // 全局 UI 事件
   'count-refresh': void
   'open-publish-modal': void

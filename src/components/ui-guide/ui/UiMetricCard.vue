@@ -159,9 +159,9 @@ const handleClick = (evt: MouseEvent) => {
 
 .ui-metric-card__label {
   min-width: 0;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
+  font-size: var(--dp-type-hint-size, 12px);
+  font-weight: var(--dp-type-table-head-weight, 600);
+  line-height: var(--dp-type-hint-line-height, 18px);
   color: var(--dp-text-secondary, #6b7280);
 }
 
@@ -183,14 +183,16 @@ const handleClick = (evt: MouseEvent) => {
 .ui-metric-card__value {
   font-size: 24px;
   line-height: 1.25;
-  font-weight: 700;
+  font-weight: var(--dp-font-weight-metric, 600);
   color: var(--dp-text-primary, #0f172a);
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-metric-card__unit {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--dp-type-table-body-size, 14px);
+  font-weight: var(--dp-type-sidebar-weight-active, 600);
   color: var(--dp-text-muted, #6b7280);
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-metric-card__footer {

@@ -3,16 +3,16 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="experience-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
+          <MarkExamSelect
+            :selected-exam-id="selectedExamId"
+            :exam-options="examOptions"
             :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
+            :searching="searching"
+            :resolving-pinned="resolvingPinned"
+            select-class="experience-page__exam-select"
+            placeholder="选择考试"
             @change="handleExamChange"
+            @search="onExamSearch"
           />
           <UiTag v-if="signatures.length > 0" tone="blue" size="sm">
             签名 {{ signatures.length }}
@@ -24,7 +24,7 @@
       </ContextBar>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="experience-page__empty" />
+    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="experience-page__empty" />
 
     <a-tabs v-else v-model:active-key="activeTab">
       <!-- ─── Tab 1: 题目签名与相似题 ─── -->
@@ -55,17 +55,9 @@
             </a-space>
           </template>
 
-          <!-- D-9 错误态：题目签名加载失败时提供重试 + 上报入口 -->
-          <UiErrorRetryPanel
-            v-if="signaturesLoadError"
-            :error="signaturesLoadError"
-            title="题目签名加载失败"
-            compact
-            @retry="loadSignatures"
-          />
           <UiDataTable
+            pagination-mode="client"
             class="student-detail-table__data-table"
-            v-else
             :columns="signatureColumns"
             :data-source="signatures"
             :loading="signaturesLoading"
@@ -126,17 +118,9 @@
             @reset="handleExperienceFilterReset"
           />
 
-          <!-- D-9 错误态：AI 阅卷经验案例加载失败时提供重试 + 上报入口 -->
-          <UiErrorRetryPanel
-            v-if="experiencesLoadError"
-            :error="experiencesLoadError"
-            title="阅卷经验案例加载失败"
-            compact
-            @retry="loadExperiences"
-          />
           <UiDataTable
+            pagination-mode="client"
             class="student-detail-table__data-table"
-            v-else
             :columns="experienceColumns"
             :data-source="experiences"
             :loading="experienceLoading"
@@ -208,20 +192,12 @@
             @reset="handleClusterFilterReset"
           />
 
-          <!-- D-9 错误态：AI 答案聚类加载失败时提供重试 + 上报入口 -->
-          <UiErrorRetryPanel
-            v-if="clusterLoadError"
-            :error="clusterLoadError"
-            title="AI 答案聚类加载失败"
-            compact
-            @retry="loadLatestCluster"
-          />
           <UiEmpty
-            v-else-if="!latestCluster"
-            description="尚无聚类结果，请先选择题目并点击「AI 聚类」"
+            v-if="!clusterLoading && !latestCluster"
+            description="暂无数据"
           />
 
-          <template v-else>
+          <template v-else-if="latestCluster">
             <a-descriptions :column="3" bordered size="small" style="margin-bottom: 12px">
               <a-descriptions-item label="分组数">
                 <b>{{ clusterGroupCountText(latestCluster) }}</b>
@@ -303,7 +279,7 @@
     :destroy-on-close="true"
   >
     <a-spin :spinning="similarLoading">
-      <UiEmpty v-if="!similarLoading && similarResults.length === 0" description="未检索到相似题" />
+      <UiEmpty v-if="!similarLoading && similarResults.length === 0" description="暂无数据" />
       <a-list v-else :data-source="similarResults" item-layout="vertical">
         <template #renderItem="{ item }: { item: QuestionSignatureVO }">
           <a-list-item>
@@ -438,13 +414,13 @@ import {
   QUESTION_TYPE_LABEL,
   searchSimilar
 } from '@/apis/mark/grading-experience'
+import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import {
   UiBadge,
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
   UiTextAction
@@ -462,6 +438,9 @@ const {
   loading: examLoading,
   selectedExamId,
   onExamChange,
+  onExamSearch,
+  searching,
+  resolvingPinned,
   init: initExamSelector,
 } = useMarkExamSelector()
 
@@ -772,11 +751,8 @@ function gradingExperienceFailureMessage(errorMessage?: string): string {
   return getUserProcessFailureMessage(errorMessage, '阅卷经验提取未完成，请稍后重新提取')
 }
 
-function handleExamChange(
-  value: SelectValue,
-  option: DefaultOptionType | DefaultOptionType[],
-): void {
-  onExamChange(value, option)
+function handleExamChange(value: SelectValue): void {
+  onExamChange(value)
   signatures.value = []
   experiences.value = []
   latestCluster.value = null

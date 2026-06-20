@@ -27,7 +27,7 @@ import {
   programEvaluationProfileApi,
 } from '@/apis/quality'
 import { ProgramSelector } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiFilterBar } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
@@ -209,6 +209,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 async function loadDicts() {
   standards.value = await readAllPages(
     (pageNum) => accreditationStandardApi.page({
@@ -367,9 +368,9 @@ onMounted(async () => {
             {{ evaluationCycleLabel(record.evaluationCycle) }}
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <a-tag :color="record.enabled ? 'green' : 'default'">
+            <UiTag :tone="record.enabled ? 'green' : 'gray'">
               {{ record.enabled ? '启用' : '停用' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <div class="operations-cell" @click.stop>

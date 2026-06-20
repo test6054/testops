@@ -1,0 +1,15 @@
+// 全局反馈锚点：Ant Design Message 内联 left:50%，须在 Ant reset 之后加载
+.ant-message {
+  left: auto !important;
+  right: 24px !important;
+  inset-inline-start: auto !important;
+  inset-inline-end: 24px !important;
+  transform: none !important;
+}
+
+.ant-notification {
+  right: 24px !important;
+  left: auto !important;
+  inset-inline-start: auto !important;
+  inset-inline-end: 24px !important;
+}

@@ -8,6 +8,7 @@ import type { AiAnalysisStatusCode, AnalysisScopeTypeCode } from './teaching-ana
  * - 写操作（生成）为 POST + @RequestParam（List 用重复 key），查询为 GET
  * - 后端 Long ID 统一用 string 表达到前端
  */
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import http from '@/config/axios'
 
 /** 考试维度统计快照 - 对应 ExamStatSnapshot */
@@ -54,7 +55,7 @@ export const SEMESTER_GROWTH_TREND_LABEL: Record<SemesterGrowthTrendCode, string
 }
 
 /** 学期成长趋势颜色，保持成长曲线页趋势状态一致。 */
-export const SEMESTER_GROWTH_TREND_COLOR: Record<SemesterGrowthTrendCode, string> = {
+export const SEMESTER_GROWTH_TREND_COLOR: Record<SemesterGrowthTrendCode, BadgeTone> = {
   IMPROVING: 'green',
   STABLE: 'blue',
   DECLINING: 'red',
@@ -96,7 +97,7 @@ export const COURSE_ACHIEVEMENT_STATUS_LABEL: Record<CourseAchievementStatusCode
 }
 
 /** 课程目标达成状态颜色，保持达成结论在分析页中的语义一致。 */
-export const COURSE_ACHIEVEMENT_STATUS_COLOR: Record<CourseAchievementStatusCode, string> = {
+export const COURSE_ACHIEVEMENT_STATUS_COLOR: Record<CourseAchievementStatusCode, BadgeTone> = {
   ACHIEVED: 'green',
   PARTIALLY: 'orange',
   NOT_ACHIEVED: 'red',

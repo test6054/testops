@@ -65,15 +65,16 @@ withDefaults(defineProps<{
 
   &__title {
     margin: 0;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--dp-type-h1-size, 18px);
+    line-height: var(--dp-type-h1-line-height, 26px);
+    font-weight: var(--dp-type-h1-weight, 600);
     color: var(--dp-text-primary, #0f172a);
   }
 
   &__subtitle {
     margin: 0;
-    font-size: 13px;
-    line-height: 1.6;
+    font-size: var(--dp-type-context-size, 13px);
+    line-height: var(--dp-type-context-line-height, 18px);
     color: var(--dp-text-muted, #64748b);
   }
 

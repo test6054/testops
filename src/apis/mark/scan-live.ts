@@ -12,7 +12,9 @@ import type { MarkScannerStationAuthSource } from '@/utils/kiosk-auth'
 import { fetchEventSource } from '@microsoft/fetch-event-source'
 import http from '@/config/axios'
 import {
+  ensureScannerStationTeacherJwt,
   hasMarkScannerStationAuth,
+  isScannerKioskBrowserPage,
   KIOSK_BROWSER_SESSION_LOST_MESSAGE,
   resolveMarkScannerStationAuthHeaders,
 } from '@/utils/kiosk-auth'
@@ -158,6 +160,9 @@ export function subscribeScanLive(
     openWhenHidden: true,
     headers: buildAuthHeaders(),
     fetch: async (input, init) => {
+      if (!isScannerKioskBrowserPage()) {
+        await ensureScannerStationTeacherJwt()
+      }
       if (retryWithFreshToken && currentAuthSource === 'jwt') {
         retryWithFreshToken = false
         await handler.onAuthRefreshRequired?.()

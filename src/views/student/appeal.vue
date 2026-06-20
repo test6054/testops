@@ -36,21 +36,12 @@
         <span>选择待申诉的考试</span>
       </template>
 
-      <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
-      <UiErrorRetryPanel
-        v-if="examsLoadError"
-        :error="examsLoadError"
-        title="考试列表加载失败"
-        :show-report="false"
-        compact
-        @retry="loadExams"
-      />
       <UiEmpty
-        v-else-if="!loadingExams && appealableExams.length === 0"
-        description="当前没有可发起复核的考试（仅成绩已发布且复核窗口处于开放状态的考试可发起复核）"
+        v-if="!loadingExams && (examsLoadError || appealableExams.length === 0)"
+        description="暂无数据"
       />
 
-      <div v-else class="exam-pick-list">
+      <div v-else-if="!loadingExams && appealableExams.length > 0" class="exam-pick-list">
         <article
           v-for="exam in appealableExams"
           :key="exam.examId"
@@ -100,28 +91,14 @@
         @reset="handleRequestFilterReset"
       />
 
-      <!-- D-9 错误态：复核申请加载失败时提供重试入口 -->
-      <UiErrorRetryPanel
-        v-if="requestsLoadError"
-        :error="requestsLoadError"
-        title="复核申请加载失败"
-        :show-report="false"
-        compact
-        @retry="loadRequests"
-      />
-      <UiEmpty
-        v-else-if="!loadingRequests && filteredRequests.length === 0"
-        description="暂无复核申请记录"
-      />
-
       <UiDataTable
-        v-else
+        pagination-mode="client"
+        class="student-detail-table__data-table requests-table"
         :columns="columns"
         :data-source="filteredRequests"
         :loading="loadingRequests"
         row-key="id"
         size="middle"
-        class="requests-table student-detail-table__data-table"
         :page-size="10"
         :total="filteredRequests.length"
         flat
@@ -255,7 +232,6 @@ import {
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
 } from '@/components/ui-guide/ui'

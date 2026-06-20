@@ -50,9 +50,10 @@
             {{ tag }}
           </UiTag>
           <UiTextAction @click="openSetTagModal">
-{{
-            set.tags?.length ? '编辑标签' : '添加标签'
-          }}</UiTextAction>
+            {{
+              set.tags?.length ? '编辑标签' : '添加标签'
+            }}
+          </UiTextAction>
         </a-descriptions-item>
       </a-descriptions>
     </UiCard>
@@ -81,9 +82,10 @@
         </template>
       </UiFilterBar>
 
-      <UiEmpty v-if="!loading && items.length === 0" description="尚未上传任何试卷" />
+      <UiEmpty v-if="!loading && items.length === 0" description="暂无数据" />
 
       <UiDataTable
+        pagination-mode="none"
         class="student-detail-table__data-table"
         v-else
         :columns="itemColumns"
@@ -296,25 +298,12 @@
 
 <script setup lang="ts">
 import type { UploadFile } from 'ant-design-vue'
-import { message } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PaperArchiveItemVO,
   PaperArchiveOcrStatusCode,
   PaperArchiveSetStatusCode,
   PaperArchiveSetVO,
-} from '@/apis/mark/paper-archive'
-import {
-  getPaperArchiveSetDetail,
-  PAPER_ARCHIVE_OCR_STATUS_LABEL,
-  PAPER_ARCHIVE_OCR_STATUS_OPTIONS,
-  PAPER_ARCHIVE_OCR_STATUS_TONE,
-  PAPER_ARCHIVE_SET_STATUS_TONE,
-  registerPaperArchiveItem,
-  searchPaperArchiveItems,
-  triggerPaperArchiveItemOcr,
-  updatePaperArchiveItemTags,
-  updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import {
@@ -325,9 +314,21 @@ import {
   ReloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile, uploadFile } from '@/apis/edu/file-management'
+import {
+  getPaperArchiveSetDetail,
+  PAPER_ARCHIVE_OCR_STATUS_OPTIONS,
+  PAPER_ARCHIVE_OCR_STATUS_TONE,
+  PAPER_ARCHIVE_SET_STATUS_TONE,
+  registerPaperArchiveItem,
+  searchPaperArchiveItems,
+  triggerPaperArchiveItemOcr,
+  updatePaperArchiveItemTags,
+  updatePaperArchiveSetTags,
+} from '@/apis/mark/paper-archive'
 import {
   UiButton,
   UiCard,
@@ -340,15 +341,13 @@ import {
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
-import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperArchiveDetail' })
 
-const markStageStore = useMarkStageStore()
 const examContextStore = useMarkExamContextStore()
 
 const route = useRoute()
@@ -496,48 +495,10 @@ const canUpload = computed(() => {
   return set.value?.archiveStatus === 'DRAFT' || set.value?.archiveStatus === 'ACTIVE'
 })
 
-/**
- * 将单个纸质试卷档案集状态映射为当前考试的 ARCHIVE 阶段状态。
- *
- * 纸质试卷档案集本身不持有 examId，只能基于 examContextStore.currentExamId 反映“用户视角”。
- * 无上下文时不写入。
- */
-function syncArchiveSetStageToStore(set: PaperArchiveSetVO): void {
-  const examId = examContextStore.currentExamId
-  if (!examId) return
-  let status: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
-  let hint = ''
-  switch (set.archiveStatus) {
-    case 'DRAFT':
-      status = 'blocked'
-      hint = `纸质试卷档案集草稿 · ${set.archiveTitle}`
-      break
-    case 'ACTIVE':
-      status = 'active'
-      hint = `保管中 · ${set.paperCount ?? 0} 份试卷`
-      break
-    case 'APPRAISAL_PENDING':
-      status = 'active'
-      hint = `鉴定待办 · ${set.archiveTitle}`
-      break
-    case 'APPRAISAL_DECIDED':
-    case 'DESTRUCTION_PENDING':
-    case 'DESTRUCTION_APPROVED':
-    case 'DESTROYED':
-      status = 'completed'
-      hint = set.archiveStatusMessage
-      break
-  }
-  if (hint) {
-    markStageStore.setStageStatus(examId, 'ARCHIVE', status, hint)
-  }
-}
-
 async function loadSet(): Promise<void> {
   if (!archiveSetId.value) return
   try {
     set.value = await getPaperArchiveSetDetail(archiveSetId.value)
-    if (set.value) syncArchiveSetStageToStore(set.value)
   } catch (error) {
     showUserError(error, '纸质试卷档案集详情加载失败')
   }

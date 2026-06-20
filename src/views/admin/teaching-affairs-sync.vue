@@ -3,16 +3,16 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="sync-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
+          <MarkExamSelect
+            :selected-exam-id="selectedExamId"
+            :exam-options="examOptions"
             :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
+            :searching="searching"
+            :resolving-pinned="resolvingPinned"
+            select-class="sync-page__exam-select"
+            placeholder="选择考试"
             @change="handleExamChange"
+            @search="onExamSearch"
           />
           <UiTag v-if="syncTasks.length > 0" tone="blue" size="sm">
             同步任务 {{ syncTasks.length }}
@@ -42,21 +42,12 @@
 
     <UiEmpty
       v-if="!selectedExamId"
-      description="请先选择一场已发布成绩的考试"
+      description="请选择考试"
       class="sync-page__empty"
     />
 
     <template v-else>
-      <!-- D-9 错误态：同步任务加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="syncTasksLoadError"
-        :error="syncTasksLoadError"
-        title="同步任务加载失败"
-        :helper="`当前考试：${selectedExamLabel}`"
-        compact
-        @retry="loadSyncTasks"
-      />
-      <UiCard v-else class="info-card">
+      <UiCard class="info-card">
         <template #title>
           <SyncOutlined />
           <span>同步任务</span>
@@ -71,6 +62,7 @@
         />
 
         <UiDataTable
+          pagination-mode="client"
           class="student-detail-table__data-table"
           :columns="syncColumns"
           :data-source="syncTasks"
@@ -142,16 +134,7 @@
         </UiDataTable>
       </UiCard>
 
-      <!-- D-9 错误态：回写记录加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="passbackLoadError"
-        :error="passbackLoadError"
-        title="回写记录加载失败"
-        :helper="`当前考试：${selectedExamLabel}`"
-        compact
-        @retry="loadPassbackRecords"
-      />
-      <UiCard v-else class="info-card">
+      <UiCard class="info-card">
         <template #title>
           <FileSyncOutlined />
           <span>回写记录</span>
@@ -270,14 +253,7 @@
           刷新
         </UiButton>
       </template>
-      <UiErrorRetryPanel
-        v-if="progressLoadError"
-        :error="progressLoadError"
-        title="回写进度加载失败"
-        compact
-        @retry="handleRefreshProgress"
-      />
-      <template v-else-if="detailProgress">
+      <template v-if="detailProgress">
         <a-progress
           :percent="detailProgressPercent"
           :status="detailProgressStatus"
@@ -397,12 +373,12 @@ import {
   SYNC_TASK_STATUS_LABEL,
   SYNC_TYPE_LABEL,
 } from '@/apis/mark/teaching-affairs-sync'
+import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import {
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
   UiTextAction,
@@ -422,6 +398,9 @@ const {
   selectedExamId,
   selectedExamLabel,
   onExamChange,
+  onExamSearch,
+  searching,
+  resolvingPinned,
   init: initExamSelector,
 } = useMarkExamSelector()
 const loading = ref(false)

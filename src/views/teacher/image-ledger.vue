@@ -1,57 +1,31 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="ledger-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
-        </template>
-        <template #actions>
-          <UiButton
-            v-if="selectedExamId"
-            variant="outline"
-            size="sm"
-            @click="goBackToScanLiveMonitor"
-          >
-            <template #icon><LeftOutlined /></template>
-            返回扫描监控
-          </UiButton>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="loadingDetail"
-            @click="loadAll"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="ledger-page">
+    <div v-if="selectedExamId" class="ledger-page__toolbar">
+      <UiButton variant="outline" size="sm" @click="goBackToScanLiveMonitor">
+        <template #icon><LeftOutlined /></template>
+        返回扫描监控
+      </UiButton>
+      <UiButton
+        variant="outline"
+        size="sm"
+        :loading="loadingDetail"
+        @click="loadAll"
+      >
+        <template #icon><ReloadOutlined /></template>
+        刷新
+      </UiButton>
+    </div>
 
     <UiEmpty
       v-if="!selectedExamId"
-      description="请选择一场考试以查看影像账本"
+      description="未进入考试工作台"
       class="ledger-page__empty"
     />
 
-    <!-- D-9 错误态：影像账本加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-else-if="ledgerLoadError"
-      :error="ledgerLoadError"
-      title="影像账本加载失败"
-      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      @retry="loadAll"
+    <UiEmpty
+      v-else-if="!loadingDetail && ledgerLoadError"
+      description="暂无数据"
+      class="ledger-page__empty"
     />
 
     <div v-else class="ledger-page__cards">
@@ -73,7 +47,7 @@
       </a-card>
       <DuplicateResolutionCard :exam-id="selectedExamId" @resolve="openResolve" />
     </div>
-  </StageWorkbenchShell>
+  </div>
 
   <DuplicateResolveModal
     v-model:open="resolveOpen"
@@ -88,12 +62,12 @@ import type { ExamPaperDuplicateResolutionVO, ImageLedgerDetailVO } from '@/apis
 import LeftOutlined from '@ant-design/icons-vue/LeftOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import { onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { executeImageLedgerBalance, getImageLedgerDetail } from '@/apis/mark/image-ledger'
-import { UiAlertStrip, UiButton, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { executeImageLedgerBalance, getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
+import { UiAlertStrip, UiButton, UiEmpty } from '@/components/ui-guide/ui'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import mittBus from '@/utils/mitt'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import DuplicateResolutionCard from './image-ledger/DuplicateResolutionCard.vue'
 import DuplicateResolveModal from './image-ledger/DuplicateResolveModal.vue'
@@ -101,27 +75,21 @@ import LedgerSummaryCard from './image-ledger/LedgerSummaryCard.vue'
 
 defineOptions({ name: 'TeacherImageLedger' })
 
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  onExamChange,
-  init: initExamSelector,
-} = useMarkExamSelector()
-
 const router = useRouter()
+const { selectedExamId } = useMarkExamContext()
 
 function goBackToScanLiveMonitor(): void {
   if (selectedExamId.value) {
-    void router.push({ name: 'TeacherScanLiveMonitor', query: { examId: selectedExamId.value } })
+    void router.push({
+      name: 'TeacherExamWorkspaceScanMonitor',
+      params: { examId: selectedExamId.value },
+    })
   }
 }
 
 const ledger = ref<ImageLedgerDetailVO | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)
-// D-9 错误态：影像账本加载失败时 UiErrorRetryPanel 重试 + 上报
 const ledgerLoadError = ref<Error | null>(null)
 const balanceError = ref('')
 
@@ -130,7 +98,9 @@ async function loadDetail(): Promise<void> {
   loadingDetail.value = true
   ledgerLoadError.value = null
   try {
-    ledger.value = await getImageLedgerDetail({ examId: selectedExamId.value })
+    ledger.value = normalizeImageLedgerDetail(
+      await getImageLedgerDetail({ examId: selectedExamId.value }),
+    )
   } catch (e) {
     ledgerLoadError.value = toUserError(e, '影像账本加载失败')
     showUserError(e, '影像账本加载失败')
@@ -148,7 +118,9 @@ async function handleBalance(): Promise<void> {
   balancing.value = true
   balanceError.value = ''
   try {
-    ledger.value = await executeImageLedgerBalance({ examId: selectedExamId.value })
+    ledger.value = normalizeImageLedgerDetail(
+      await executeImageLedgerBalance({ examId: selectedExamId.value }),
+    )
     message.success('已执行考试整体对账')
   } catch (e) {
     balanceError.value = getUserErrorMessage(e, '考试整体对账失败')
@@ -179,15 +151,25 @@ watch(selectedExamId, (v) => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) await loadAll()
+  mittBus.on('scan-workbench:refresh', loadAll)
+})
+
+onBeforeUnmount(() => {
+  mittBus.off('scan-workbench:refresh', loadAll)
 })
 </script>
 
 <style lang="scss" scoped>
 .ledger-page {
-  &__exam-select {
-    width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
   }
 
   &__empty {

@@ -1,5 +1,5 @@
 <template>
-  <template v-if="!item.meta?.hideInMenu">
+  <template v-if="isRenderableMenuNode">
     <a-menu-item v-if="shouldShowAsMenuItem" :key="menuItemKey">
       <template #icon>
         <MenuIcon :icon="menuItemIcon" />
@@ -20,6 +20,7 @@
 <script lang="ts" setup>
 import type { RouteRecordRaw } from 'vue-router'
 import { computed } from 'vue'
+import { isSidebarMenuRoute } from '@/utils/menu-route'
 import MenuIcon from './MenuIcon.vue'
 
 defineOptions({ name: 'MenuItem' })
@@ -36,7 +37,7 @@ interface Props {
 const visibleChildren = computed((): RouteRecordRaw[] => {
   const children = props.item.children as RouteRecordRaw[] | undefined
   if (!children) return []
-  return children.filter((child) => !child.meta?.hideInMenu)
+  return children.filter(isSidebarMenuRoute)
 })
 
 // 计算菜单数据
@@ -73,6 +74,16 @@ const shouldShowAsMenuItem = computed(() => {
       || menuData.value.onlyOneChild?.meta?.noShowingChildren)
     && !props.item?.meta?.alwaysShow
   )
+})
+
+const isRenderableMenuNode = computed(() => {
+  if (props.item.meta?.hideInMenu) {
+    return false
+  }
+  if (shouldShowAsMenuItem.value) {
+    return !!menuItemTitle.value
+  }
+  return !!props.item.meta?.title || visibleChildren.value.length > 0
 })
 
 // 菜单项的key

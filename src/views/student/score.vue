@@ -96,124 +96,83 @@
         <span>全部考试</span>
       </template>
 
-      <a-spin :spinning="loading">
-        <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
-        <UiErrorRetryPanel
-          v-if="examsLoadError"
-          :error="examsLoadError"
-          title="考试列表加载失败"
-          :show-report="false"
-          compact
-          @retry="loadExams"
-        />
-        <UiEmpty v-else-if="!loading && exams.length === 0" description="您当前没有任何考试记录" />
-
-        <div v-else class="exam-card-list">
-          <article
-            v-for="item in exams"
-            :key="item.examId"
-            class="exam-card"
-            :class="{ 'exam-card--published': item.finalScoreStatus === 'PUBLISHED' }"
-          >
-            <div class="exam-card__header">
-              <div class="exam-card__title-row">
-                <h3 class="exam-card__title">{{ item.examName }}</h3>
-                <UiTag :tone="finalScoreStatusTone(item)" size="sm">
-                  {{ finalScoreStatusLabel(item) }}
-                </UiTag>
-                <UiTag v-if="item.reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm">
-                  复核中
-                </UiTag>
-              </div>
-              <p v-if="item.finalScoreStatus !== 'PUBLISHED'" class="exam-card__status-hint">
-                {{ finalScoreStatusHint(item) }}
-              </p>
-              <div class="exam-card__meta">
-                <span class="meta-item">
-                  <CalendarOutlined />
-                  {{ formatDateTime(item.examStartTime) }}
-                </span>
-                <span class="meta-item">编号：{{ item.examNo }}</span>
-              </div>
-            </div>
-
-            <div class="exam-card__score-grid">
-              <div class="score-item">
-                <p class="score-item__label">本次得分</p>
-                <p
-                  class="score-item__value"
-                  :class="{ 'is-empty': item.finalScoreStatus !== 'PUBLISHED' }"
-                >
-                  <template v-if="item.finalScoreStatus === 'PUBLISHED'">
-                    {{ formatPublishedScore(item) }}
-                  </template>
-                  <template v-else>--</template>
-                </p>
-              </div>
-              <div class="score-item">
-                <p class="score-item__label">考务编号</p>
-                <p class="score-item__value">
-                  {{ item.examNo }}
-                </p>
-              </div>
-              <div class="score-item">
-                <p class="score-item__label">发布时间</p>
-                <p class="score-item__value">
-                  <template v-if="item.finalScoreStatus === 'PUBLISHED'">
-                    {{ requirePublishedTime(item) }}
-                  </template>
-                  <template v-else>--</template>
-                </p>
-              </div>
-              <div class="score-item">
-                <p class="score-item__label">复核窗口</p>
-                <p class="score-item__value">
-                  <UiTag :tone="reviewWindowStatusTone(item)" size="sm">
-                    {{ reviewWindowStatusLabel(item) }}
-                  </UiTag>
-                </p>
-              </div>
-            </div>
-
-            <div class="exam-card__actions">
+      <UiDataTable
+        pagination-mode="none"
+        class="student-detail-table__data-table"
+        :columns="examColumns"
+        :data-source="exams"
+        :loading="loading"
+        :show-pagination="false"
+        flat
+        :total="exams.length"
+        row-key="examId"
+        size="middle"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'examName'">
+            <div>{{ record.examName }}</div>
+            <div v-if="record.examNo" class="student-score__exam-no">编号：{{ record.examNo }}</div>
+          </template>
+          <template v-else-if="column.key === 'examStartTime'">
+            {{ formatDateTime(record.examStartTime) }}
+          </template>
+          <template v-else-if="column.key === 'finalScoreStatus'">
+            <UiTag :tone="finalScoreStatusTone(record)" size="sm">
+              {{ finalScoreStatusLabel(record) }}
+            </UiTag>
+            <UiTag v-if="record.reviewWindowStatus === 'ACTIVE'" tone="orange" size="sm">
+              复核中
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'finalScore'">
+            <template v-if="record.finalScoreStatus === 'PUBLISHED'">
+              {{ formatPublishedScore(record) }}
+            </template>
+            <span v-else class="student-score__muted">—</span>
+          </template>
+          <template v-else-if="column.key === 'publishedTime'">
+            <template v-if="record.finalScoreStatus === 'PUBLISHED'">
+              {{ requirePublishedTime(record) }}
+            </template>
+            <span v-else class="student-score__muted">—</span>
+          </template>
+          <template v-else-if="column.key === 'reviewWindowStatus'">
+            <UiTag :tone="reviewWindowStatusTone(record)" size="sm">
+              {{ reviewWindowStatusLabel(record) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
               <UiButton
                 size="sm"
                 variant="outline"
-                :disabled="item.finalScoreStatus !== 'PUBLISHED'"
-                @click="goDetail(item.examId)"
+                :disabled="record.finalScoreStatus !== 'PUBLISHED'"
+                @click="goDetail(record.examId)"
               >
-                <template #icon>
-                  <EyeOutlined />
-                </template>
                 查看详情
               </UiButton>
               <UiButton
                 size="sm"
-                :variant="canSubmitReview(item) ? 'primary' : 'ghost'"
-                :disabled="!canSubmitReview(item)"
-                @click="goAppeal(item.examId)"
+                :variant="canSubmitReview(record) ? 'primary' : 'ghost'"
+                :disabled="!canSubmitReview(record)"
+                @click="goAppeal(record.examId)"
               >
-                <template #icon>
-                  <FormOutlined />
-                </template>
                 提交复核
               </UiButton>
             </div>
-          </article>
-        </div>
-      </a-spin>
+          </template>
+        </template>
+      </UiDataTable>
     </UiCard>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
+import type { ColumnType } from 'ant-design-vue/es/table'
 import type { StudentExamItemVO } from '@/apis/mark/student-exam'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import EyeOutlined from '@ant-design/icons-vue/EyeOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
-import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -228,14 +187,13 @@ import {
   UiBadge,
   UiButton,
   UiCard,
-  UiEmpty,
-  UiErrorRetryPanel,
+  UiDataTable,
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -243,9 +201,17 @@ defineOptions({ name: 'StudentScore' })
 
 const router = useRouter()
 const loading = ref(false)
-// D-9 错误态：学生考试列表加载失败时 UiErrorRetryPanel 重试（学生侧不提供上报入口）
-const examsLoadError = ref<Error | null>(null)
 const exams = ref<StudentExamItemVO[]>([])
+
+const examColumns: ColumnType<StudentExamItemVO>[] = [
+  { title: '考试', key: 'examName', width: 260 },
+  { title: '开始时间', key: 'examStartTime', width: 170 },
+  { title: '成绩状态', key: 'finalScoreStatus', width: 140 },
+  { title: '得分', key: 'finalScore', width: 100, align: 'right' },
+  { title: '发布时间', key: 'publishedTime', width: 170 },
+  { title: '复核窗口', key: 'reviewWindowStatus', width: 120 },
+  { title: '操作', key: 'actions', fixed: 'right', width: 200 },
+]
 
 function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
   return strictEnumTone(FINAL_SCORE_STATUS_TONE, item.finalScoreStatus, '最终成绩状态')
@@ -253,18 +219,6 @@ function finalScoreStatusTone(item: StudentExamItemVO): BadgeTone {
 
 function finalScoreStatusLabel(item: StudentExamItemVO): string {
   return strictEnumLabel(FINAL_SCORE_STATUS_LABEL, item.finalScoreStatus, '最终成绩状态')
-}
-
-/** P1-4: 为每个成绩状态提供学生易懂的说明文案 */
-function finalScoreStatusHint(item: StudentExamItemVO): string {
-  switch (item.finalScoreStatus) {
-    case 'CALCULATED': return '试卷已批改完成，等待教师确认成绩'
-    case 'CONFIRMED': return '成绩已确认，待教师统一发布'
-    case 'PUBLISHED': return '成绩已正式发布'
-    case 'WITHDRAWN': return '成绩已被教师撤回，请等待重新核查'
-    case 'CORRECTED': return '成绩经复核后已更正'
-    default: return '暂无成绩信息'
-  }
 }
 
 function reviewWindowStatusTone(item: StudentExamItemVO): BadgeTone {
@@ -329,7 +283,6 @@ const insightItems = computed(() => {
     label: string
     value: string | number
     unit?: string
-    helper?: string
     tone?: BadgeTone
   }> = []
 
@@ -343,7 +296,6 @@ const insightItems = computed(() => {
         label: '较上次趋势',
         value: `+${absDiff}`,
         unit: '分',
-        helper: `本次 ${scoreTrend.value.latest.toFixed(2)} · 上次 ${scoreTrend.value.previous.toFixed(2)}`,
         tone: 'green',
       })
     } else if (diff < 0) {
@@ -352,7 +304,6 @@ const insightItems = computed(() => {
         label: '较上次趋势',
         value: `-${absDiff}`,
         unit: '分',
-        helper: `本次 ${scoreTrend.value.latest.toFixed(2)} · 上次 ${scoreTrend.value.previous.toFixed(2)}`,
         tone: 'orange',
       })
     } else {
@@ -360,7 +311,6 @@ const insightItems = computed(() => {
         key: 'trend',
         label: '较上次趋势',
         value: '持平',
-        helper: `本次与上次同为 ${scoreTrend.value.latest.toFixed(2)}`,
         tone: 'blue',
       })
     }
@@ -370,7 +320,6 @@ const insightItems = computed(() => {
       label: '首次发布',
       value: formatPublishedScore(publishedExamsSorted.value[0]),
       unit: '分',
-      helper: '后续考试发布后此处会显示趋势对比',
       tone: 'blue',
     })
   }
@@ -382,7 +331,6 @@ const insightItems = computed(() => {
       label: '复核窗口开放',
       value: reviewOpenCount.value,
       unit: '场',
-      helper: '可立即提交复核申请',
       tone: 'orange',
     })
   } else if (publishedCount.value > 0) {
@@ -390,7 +338,6 @@ const insightItems = computed(() => {
       key: 'review-window',
       label: '复核窗口',
       value: '已关闭',
-      helper: '当前无可申诉的考试',
       tone: 'gray',
     })
   }
@@ -402,7 +349,6 @@ const insightItems = computed(() => {
       label: '待发布等待',
       value: unpublishedCount.value,
       unit: '场',
-      helper: '等待教师确认成绩',
       tone: 'purple',
     })
   }
@@ -412,13 +358,12 @@ const insightItems = computed(() => {
 
 async function loadExams() {
   loading.value = true
-  examsLoadError.value = null
   try {
     const loadedExams = await listMyExams()
     validatePublishedExamContracts(loadedExams)
     exams.value = loadedExams
   } catch (error) {
-    examsLoadError.value = toUserError(error, '考试列表加载失败')
+    exams.value = []
     showUserError(error, '考试成绩列表加载失败')
   } finally {
     loading.value = false
@@ -560,100 +505,13 @@ onMounted(loadExams)
   }
 }
 
-.exam-card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.student-score__exam-no {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary);
 }
 
-.exam-card {
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-md, 6px);
-  background: #fff;
-  padding: 16px 20px;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-
-  &:hover {
-    border-color: var(--ant-color-primary-border);
-    box-shadow: var(--dp-shadow-sm);
-  }
-
-  &--published {
-    border-left: 3px solid var(--ant-color-success);
-  }
-
-  &__header {
-    margin-bottom: 12px;
-  }
-
-  &__title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-    flex-wrap: wrap;
-  }
-
-  &__title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--ant-color-text);
-    margin: 0;
-  }
-
-  &__meta {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    font-size: 12px;
-    color: var(--ant-color-text-secondary);
-    flex-wrap: wrap;
-
-    .meta-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-  }
-
-  &__score-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  &__actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-}
-
-.score-item {
-  text-align: center;
-  padding: 10px 12px;
-  background: var(--ant-color-fill-quaternary);
-  border-radius: var(--dp-radius-sm, 6px);
-
-  &__label {
-    margin: 0 0 4px;
-    font-size: 12px;
-    color: var(--ant-color-text-tertiary);
-  }
-
-  &__value {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--ant-color-text);
-
-    &.is-empty {
-      color: var(--ant-color-text-tertiary);
-      font-weight: 400;
-    }
-  }
+.student-score__muted {
+  color: var(--ant-color-text-tertiary);
 }
 </style>

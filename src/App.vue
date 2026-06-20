@@ -2,6 +2,7 @@
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import theme from 'ant-design-vue/es/theme'
 import { onBeforeUnmount, watch } from 'vue'
+import { DP_FONT_FAMILY_SANS } from '@/constants/typography'
 import { GlobalConfirmDialog } from '@/components/workbench'
 import { useAppStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
@@ -19,6 +20,7 @@ const THEME_CONFIG = Object.freeze({
   token: Object.freeze({
     borderRadius: 6,
     fontSize: 14,
+    fontFamily: DP_FONT_FAMILY_SANS,
   }),
   algorithm: theme.defaultAlgorithm,
 })

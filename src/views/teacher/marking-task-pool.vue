@@ -1,28 +1,12 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <MarkExamContextPicker select-class="marking-task-pool-page__exam-select" />
-          <UiTag tone="blue" size="sm">我的任务 {{ tasks.length }}</UiTag>
-          <UiTag v-if="inProgressCount > 0" tone="orange" size="sm">
-            阅卷中 {{ inProgressCount }}
-          </UiTag>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="marking-task-pool-page">
+    <div class="marking-task-pool-page__toolbar">
+      <UiTag tone="blue" size="sm">我的任务 {{ tasks.length }}</UiTag>
+      <UiTag v-if="inProgressCount > 0" tone="orange" size="sm">
+        阅卷中 {{ inProgressCount }}
+      </UiTag>
+    </div>
 
-    <template #rail>
-      <MarkExamStageRail />
-    </template>
-
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择考试以查看 / 领取阅卷任务"
-      class="marking-task-pool-page__empty"
-    />
-
-    <template v-else>
       <UiCard class="claim-card">
         <template #title>
           <ThunderboltOutlined />
@@ -32,7 +16,7 @@
         <a-spin :spinning="claimContextLoading">
           <UiEmpty
             v-if="!claimContextLoading && (claimContext?.groups.length ?? 0) === 0"
-            :description="claimEmptyHint"
+            description="暂无数据"
           />
           <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
             <a-form-item label="题组" required>
@@ -102,18 +86,8 @@
           @reset="resetFilter"
         />
 
-        <!-- D-9 错误态：任务列表加载失败时提供重试 + 上报入口 -->
-        <UiErrorRetryPanel
-          v-if="tasksLoadError"
-          :error="tasksLoadError"
-          title="任务列表加载失败"
-          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-          compact
-          @retry="loadTasks"
-        />
-        <UiEmpty v-else-if="!loading && tasks.length === 0" description="暂无任务" />
         <UiDataTable
-          v-else
+          pagination-mode="client"
           :columns="columns"
           :data-source="tasks"
           :loading="loading"
@@ -207,8 +181,7 @@
           </template>
         </UiDataTable>
       </a-card>
-    </template>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -237,20 +210,16 @@ import {
   MARKING_TASK_STATUS_OPTIONS,
   MARKING_TASK_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
-import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
-import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
 import {
   UiButton,
   UiCard,
   UiDataTable,
-  UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { provideMarkExamContext } from '@/composables/useMarkExamContext'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
@@ -262,11 +231,8 @@ defineOptions({ name: 'TeacherMarkingTaskPool' })
 const router = useRouter()
 const userStore = useUserStore()
 
-const {
-  selectedExamId,
-  selectedExamLabel,
-  init: initExamSelector,
-} = provideMarkExamContext()
+const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 /**
  * 当前登录教师 ID 参与查询条件组装。
@@ -279,7 +245,6 @@ const markTaskStore = useMarkTaskStore()
 // 注意：tasks / tasksLoading 仅用于读取，写入必须经 markTaskStore.loadTasks /
 // clearTasks 等 action，避免组件直接修改 storeToRefs 解开后的 ref。
 const { tasks, tasksLoading: loading, claimContextLoading } = storeToRefs(markTaskStore)
-// D-9 错误态：任务列表加载失败时 UiErrorRetryPanel 重试 + 上报
 const tasksLoadError = ref<Error | null>(null)
 
 const filterForm = reactive<{
@@ -374,14 +339,6 @@ const claimForm = reactive<MarkingTaskClaimRequest>({
 
 const canClaim = computed(() => !!claimForm.sessionId.trim() && !!claimForm.groupId.trim())
 
-/** C-ISSUE-2: 区分无可领任务的不同原因 */
-const claimEmptyHint = computed(() => {
-  if (claimContext.value && (claimContext.value.groups?.length ?? 0) > 0) {
-    return '题组下有配置但无可领取任务：可能正评会话未启动，或任务已被其他教师领完。请联系阅卷组织管理员确认正评状态。'
-  }
-  return '您当前未被分配到任何活跃题组。请确认：1) 阅卷组织已创建 2) 题组已配置阅卷教师 3) 正评会话已启动。如仍有问题请联系管理员。'
-})
-
 const claimContext = computed<TeacherClaimContextVO | null>(() =>
   selectedExamId.value ? markTaskStore.getClaimContext(selectedExamId.value) : null,
 )
@@ -472,6 +429,11 @@ async function submitClaim(): Promise<void> {
     } else {
       message.success(`成功领取 ${claimed.length} 个任务`)
       await loadTasks()
+      try {
+        await refreshSnapshot()
+      } catch {
+        // 非工作台上下文时忽略
+      }
     }
   } catch (error) {
     showUserError(error, '领取阅卷任务失败')
@@ -483,9 +445,8 @@ async function submitClaim(): Promise<void> {
 function goDetail(task: MarkingTaskVO): void {
   if (!selectedExamId.value) return
   void router.push({
-    name: 'TeacherMarkingTaskDetail',
-    params: { taskId: task.id },
-    query: { examId: selectedExamId.value },
+    name: 'TeacherExamWorkspaceMarkingTaskDetail',
+    params: { examId: selectedExamId.value, taskId: task.id },
   })
 }
 
@@ -515,26 +476,25 @@ watch(selectedExamId, () => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
-    await loadTasks()
+    await Promise.all([loadTasks(), loadClaimContext()])
   }
 })
 </script>
 
 <style lang="scss" scoped>
 .marking-task-pool-page {
-  &__exam-select {
-    width: 280px;
-  }
-
-  &__empty {
-    padding: 60px 0;
-  }
-
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
 .empty-block {

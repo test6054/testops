@@ -1,56 +1,33 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="absence-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="handleExamChange"
-          />
-        </template>
-        <template #actions>
-          <UiButton
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="reconciling"
-            @click="handleReconcile(false)"
-          >
-            <template #icon><SyncOutlined /></template>
-            出勤核对
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :disabled="!selectedExamId"
-            :loading="reconciling"
-            @click="handleReconcile(true)"
-          >
-            <template #icon><PlusOutlined /></template>
-            核对并新建待确认记录
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="absence-page">
+    <div class="absence-page__toolbar">
+      <UiButton
+        size="sm"
+        :loading="reconciling"
+        @click="handleReconcile(false)"
+      >
+        <template #icon><SyncOutlined /></template>
+        出勤核对
+      </UiButton>
+      <UiButton
+        size="sm"
+        variant="outline"
+        :loading="reconciling"
+        @click="handleReconcile(true)"
+      >
+        <template #icon><PlusOutlined /></template>
+        核对并新建待确认记录
+      </UiButton>
+    </div>
 
-    <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="absence-page__empty" />
-
-    <template v-else>
       <a-card title="出勤核对摘要" :bordered="false" size="small">
-        <UiEmpty v-if="!reconcileVO" description="尚未执行出勤核对" />
+        <UiEmpty v-if="!reconcileVO" description="暂无数据" />
         <div v-else class="absence-page__summary">
           <div class="absence-page__summary-ring">
-            <UiRingProgress
-              :percent="attendancePercent"
-              size="lg"
-              :color="attendanceRingColor"
-              label="出勤率"
+            <MarkGaugeBlock
+              :option="attendanceGaugeOption"
+              :ariaLabel="attendanceAriaLabel"
+              layout="stacked"
             />
           </div>
           <UiStatPanel
@@ -69,6 +46,7 @@
           <span class="section-title">核对检出的缺考学生</span>
         </template>
         <UiDataTable
+          pagination-mode="none"
           class="student-detail-table__data-table"
           :columns="absentColumns"
           :data-source="absentStudents"
@@ -93,16 +71,7 @@
         </UiDataTable>
       </UiCard>
 
-      <!-- D-9 错误态：缺考记录加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="recordsLoadError"
-        :error="recordsLoadError"
-        title="缺考记录加载失败"
-        :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-        compact
-        @retry="loadRecords"
-      />
-      <a-card v-else :bordered="false" class="detail-table-card info-card absence-page__records-card">
+      <a-card :bordered="false" class="detail-table-card info-card absence-page__records-card">
         <template #title>
           <SolutionOutlined />
           <span>缺考记录</span>
@@ -166,8 +135,7 @@
           </template>
         </UiDataTable>
       </a-card>
-    </template>
-  </StageWorkbenchShell>
+  </div>
 
   <a-modal
     v-model:open="confirmModalOpen"
@@ -228,7 +196,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
+import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AbsenceReasonCode,
@@ -244,7 +212,7 @@ import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
 import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
 import UserDeleteOutlined from '@ant-design/icons-vue/UserDeleteOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ABSENCE_REASON_LABEL,
   ABSENCE_SCORE_POLICY_LABEL,
@@ -255,36 +223,31 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
+import { MarkGaugeBlock } from '@/components/chart'
 import {
   UiButton,
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
-  UiRingProgress,
   UiStatPanel,
   UiTag,
   UiTextAction,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
+import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherAbsenceConfirm' })
 
-// B-8 统一考试选择器
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  onExamChange,
-  init: initExamSelector,
-} = useMarkExamSelector()
+const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
 interface AbsentStudentRow {
   studentUserId: string
@@ -298,7 +261,6 @@ const reconciling = ref(false)
 
 const records = ref<AbsenceRecordVO[]>([])
 const recordLoading = ref(false)
-// D-9 错误态：缺考记录加载失败时 UiErrorRetryPanel 重试 + 上报
 const recordsLoadError = ref<Error | null>(null)
 const recordFilterForm = reactive<{ status?: AbsenceStatusCode }>({
   status: undefined,
@@ -347,6 +309,21 @@ const attendancePercent = computed(() => {
 const attendanceRingColor = computed(() => {
   const tone: BadgeTone = attendancePercent.value >= 90 ? 'green' : attendancePercent.value >= 70 ? 'blue' : 'orange'
   return toneToColor(tone)
+})
+
+const { chartOption: attendanceGaugeOption } = useChartOption(() =>
+  buildGaugeChartOption(attendancePercent.value, {
+    label: '出勤率',
+    color: attendanceRingColor.value,
+    size: 'md',
+  }),
+)
+
+const attendanceAriaLabel = computed(() => {
+  const expected = reconcileVO.value?.expectedCount ?? 0
+  const attended = reconcileVO.value?.attendedCount ?? 0
+  const detail = expected > 0 ? `实到 ${attended} / 应考 ${expected} 人` : '暂无应考人数'
+  return formatGaugeAriaLabel('出勤率', attendancePercent.value, detail)
 })
 
 const reconcileMetrics = computed(() => [
@@ -477,6 +454,11 @@ async function handleReconcile(createPending: boolean): Promise<void> {
       message.success(`已为 ${reconcileVO.value.createdPendingCount} 名缺考学生创建待确认记录`)
     }
     await loadRecords()
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '出勤核对失败')
   } finally {
@@ -527,6 +509,11 @@ async function handleConfirm(): Promise<void> {
     message.success('已确认缺考')
     confirmModalOpen.value = false
     await Promise.all([loadRecords(), handleReconcile(false)])
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '缺考确认失败')
   } finally {
@@ -565,6 +552,11 @@ async function handleRevoke(): Promise<void> {
     message.success('已撤销缺考')
     revokeModalOpen.value = false
     await loadRecords()
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '缺考撤销失败')
   } finally {
@@ -574,19 +566,15 @@ async function handleRevoke(): Promise<void> {
 
 // ─── 事件处理 ─────────────────────────────────
 
-async function handleExamChange(
-  value: SelectValue,
-  option: DefaultOptionType | DefaultOptionType[],
-): Promise<void> {
-  onExamChange(value, option)
+watch(selectedExamId, async (value) => {
   reconcileVO.value = null
   records.value = []
   recordPagination.pageNum = 1
   recordPagination.total = 0
-  if (selectedExamId.value) {
+  if (value) {
     await loadRecords()
   }
-}
+})
 
 function handleRecordFilterSearch() {
   if (!selectedExamId.value) return
@@ -602,7 +590,6 @@ function handleRecordFilterReset() {
 }
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
     await loadRecords()
   }
@@ -624,12 +611,16 @@ onMounted(async () => {
 }
 
 .absence-page {
-  &__exam-select {
-    width: 280px;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 
-  &__empty {
-    margin-top: 80px;
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
 
   &__summary {

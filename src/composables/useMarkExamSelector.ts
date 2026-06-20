@@ -3,37 +3,40 @@ import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
  * 批改主链公共考试选择器 composable
  *
  * - 默认从 URL `query.examId` 初始化
- * - 自动加载当前租户 ACTIVE 状态的考试列表（教师看自己创建或被分配评阅的考试，全租户读视角看租户范围）
- * - 切换考试会同步写回 URL query，便于刷新和链接分享
- *
- * 用法示例：
- *   const { selectedExamId, examOptions, loading, init, onExamChange } = useMarkExamSelector()
- *   onMounted(init)
+ * - 下拉默认展示租户可见 ACTIVE 考试的前 20 条（create_time desc）
+ * - 输入关键词走后端 keyword 模糊搜索（exam_name / exam_no），不客户端全量过滤
+ * - URL / Store 预选考试若不在当前页，通过详情接口补全标签，避免 Select 展示裸 ID
  */
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { pageExams } from '@/apis/mark/exam'
+import { getExamDetail, pageExams } from '@/apis/mark/exam'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
-import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
-import { readAllPages } from '@/utils/page-result'
+import {
+  examSummaryFromDetail,
+  toMarkExamSelectOption,
+} from '@/utils/mark-exam-option'
+import { readPageList } from '@/utils/page-result'
+
+/** 下拉默认展示条数（与后端分页一致，不做全量 readAllPages） */
+export const MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE = 20
+
+const EXAM_SEARCH_DEBOUNCE_MS = 300
 
 export interface MarkExamSelectorOptions {
   /** 是否在切换时自动回写 URL query，默认 true */
   syncUrl?: boolean
-  /** 单页加载数量，默认 100；完整集合由 readAllPages 自动翻页读取 */
+  /** 下拉默认条数，默认 20 */
   pageSize?: number
 }
 
-export interface MarkExamSelectOption {
-  value: string
-  label: string
-}
+export type { MarkExamSelectOption }
 
 export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const route = useRoute()
@@ -44,26 +47,31 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
   const markStageStore = useMarkStageStore()
 
   const syncUrl = options.syncUrl ?? true
-  const pageSize = options.pageSize ?? 100
+  const pageSize = options.pageSize ?? MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE
 
   const exams = ref<ExamSummaryVO[]>([])
+  /** 当前选中考试：不在分页结果内时由详情补全，保证 Select 有 label */
+  const pinnedExam = ref<ExamSummaryVO | null>(null)
   const loading = ref(false)
+  const searching = ref(false)
+  const resolvingPinned = ref(false)
+  const searchKeyword = ref('')
 
-  // 应用优先级：URL > 全局 Store > 空
+  let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined
+
   const initialId
     = (route.query.examId ? String(route.query.examId) : '') || examContext.currentExamId || ''
   const selectedExamId = ref<string | undefined>(initialId || undefined)
 
-  // 页面本地选择变化 → 同步到全局 Store，使跨页面访问保持一致
   watch(selectedExamId, (next) => {
     if (next && next !== examContext.currentExamId) {
       void examContext.setCurrentExam(next, { ensureDetail: true })
     } else if (!next && examContext.currentExamId) {
       void examContext.setCurrentExam('')
     }
+    void syncPinnedExam(next)
   })
 
-  // 全局 Store 变化 → 同步到本页面，保持多 Tab 一致
   watch(
     () => examContext.currentExamId,
     (next) => {
@@ -74,20 +82,42 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     },
   )
 
-  const selectedExam = computed<ExamSummaryVO | null>(
-    () => exams.value.find((item) => item.examId === selectedExamId.value) ?? null,
-  )
+  const selectedExam = computed<ExamSummaryVO | null>(() => {
+    const id = selectedExamId.value
+    if (!id) return null
+    return exams.value.find((item) => item.examId === id)
+      ?? (pinnedExam.value?.examId === id ? pinnedExam.value : null)
+  })
 
-  const examOptions = computed<MarkExamSelectOption[]>(() =>
-    exams.value.map((item) => ({
-      value: item.examId,
-      label: [formatExamOptionLabel(item), formatAcademicTerm(item)].filter(Boolean).join(' · '),
-    })),
-  )
+  const examOptions = computed<MarkExamSelectOption[]>(() => {
+    const merged = new Map<string, MarkExamSelectOption>()
+    if (pinnedExam.value) {
+      merged.set(pinnedExam.value.examId, toMarkExamSelectOption(pinnedExam.value))
+    }
+    for (const item of exams.value) {
+      merged.set(item.examId, toMarkExamSelectOption(item))
+    }
+    return Array.from(merged.values())
+  })
 
-  const selectedExamLabel = computed(() => markStageStore.selectedExamLabel)
+  /** 仅当 options 中已有 label 时才绑定 value，避免展示裸 examId */
+  const selectedExamSelectValue = computed(() => {
+    const id = selectedExamId.value
+    if (!id) return undefined
+    return examOptions.value.some((option) => option.value === id) ? id : undefined
+  })
 
-  /** 是否全租户读视角：与后端 ExamMarkPermissionService.hasFullTenantReadView() 保持一致。 */
+  const selectedExamLabel = computed(() => {
+    if (markStageStore.selectedExamLabel) {
+      return markStageStore.selectedExamLabel
+    }
+    const exam = selectedExam.value
+    if (!exam) {
+      return ''
+    }
+    return exam.examNo ? `${exam.examName}（${exam.examNo}）` : exam.examName
+  })
+
   const isAdminView = computed(() => {
     const role = authStore.userRole
     return (
@@ -95,33 +125,115 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     )
   })
 
-  async function loadExams(): Promise<void> {
+  function buildPageRequest(keyword?: string) {
+    return {
+      pageNum: 1,
+      pageSize,
+      status: 'ACTIVE' as const,
+      keyword: keyword?.trim() || undefined,
+      createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
+    }
+  }
+
+  async function fetchExamPage(keyword?: string): Promise<ExamSummaryVO[]> {
+    const result = await pageExams(buildPageRequest(keyword))
+    return readPageList(result, '考试列表加载失败，请稍后重试')
+  }
+
+  async function loadExams(keyword?: string): Promise<void> {
     loading.value = true
     try {
-      exams.value = await readAllPages(
-        (pageNum) => pageExams({
-          pageNum,
-          pageSize,
-          status: 'ACTIVE',
-          createUserId: isAdminView.value ? null : userStore.userInfo.userId || undefined,
-        }),
-        '考试列表加载失败，请稍后重试',
-      )
-      // 同步考试列表到全局 Store，供跨页面下拉复用
+      exams.value = await fetchExamPage(keyword)
       examContext.exams = exams.value
-      // URL / Store 都未指定时默认选第一个
-      if (!selectedExamId.value && exams.value.length > 0) {
-        selectedExamId.value = exams.value[0].examId
-        if (syncUrl) {
-          writeExamIdToUrl(selectedExamId.value)
-        }
-      } else if (selectedExamId.value) {
-        await examContext.setCurrentExam(selectedExamId.value, { ensureDetail: true })
-      }
+      searchKeyword.value = keyword?.trim() ?? ''
+      await ensureDefaultSelection()
+      await syncPinnedExam(selectedExamId.value)
     } catch (error) {
+      exams.value = []
+      examContext.exams = []
       showUserError(error, '考试列表加载失败')
     } finally {
       loading.value = false
+    }
+  }
+
+  async function searchExams(keyword: string): Promise<void> {
+    searching.value = true
+    try {
+      exams.value = await fetchExamPage(keyword)
+      examContext.exams = exams.value
+      searchKeyword.value = keyword.trim()
+      await syncPinnedExam(selectedExamId.value)
+    } catch (error) {
+      showUserError(error, '考试搜索失败')
+    } finally {
+      searching.value = false
+    }
+  }
+
+  function onExamSearch(keyword: string): void {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer)
+    }
+    searchDebounceTimer = setTimeout(() => {
+      void searchExams(keyword)
+    }, EXAM_SEARCH_DEBOUNCE_MS)
+  }
+
+  async function ensureDefaultSelection(): Promise<void> {
+    if (!selectedExamId.value && exams.value.length > 0) {
+      selectedExamId.value = exams.value[0].examId
+      if (syncUrl) {
+        writeExamIdToUrl(selectedExamId.value)
+      }
+      return
+    }
+    if (selectedExamId.value) {
+      await examContext.setCurrentExam(selectedExamId.value, { ensureDetail: true })
+    }
+  }
+
+  async function syncPinnedExam(examId: string | undefined): Promise<void> {
+    if (!examId) {
+      pinnedExam.value = null
+      return
+    }
+
+    const inPage = exams.value.find((item) => item.examId === examId)
+    if (inPage) {
+      pinnedExam.value = inPage
+      return
+    }
+
+    const cachedDetail = examContext.currentExamDetail
+    if (cachedDetail?.examId === examId) {
+      pinnedExam.value = examSummaryFromDetail(cachedDetail)
+      return
+    }
+
+    const meta = markStageStore.selectedExamMeta
+    if (meta?.examId === examId && markStageStore.selectedExamLabel) {
+      pinnedExam.value = {
+        examId: meta.examId,
+        examName: meta.examName,
+        examNo: meta.examNo,
+        status: 'ACTIVE',
+        statusMessage: '',
+        createUser: '',
+      }
+      return
+    }
+
+    resolvingPinned.value = true
+    try {
+      pinnedExam.value = examSummaryFromDetail(await getExamDetail(examId))
+    } catch (error) {
+      pinnedExam.value = null
+      showUserError(error, '当前考试不存在或无权访问')
+      selectedExamId.value = undefined
+      if (syncUrl) writeExamIdToUrl(undefined)
+    } finally {
+      resolvingPinned.value = false
     }
   }
 
@@ -146,16 +258,6 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     }
   }
 
-  function formatAcademicTerm(exam: ExamSummaryVO): string {
-    return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
-  }
-
-  function formatExamOptionLabel(exam: ExamSummaryVO): string {
-    if (!exam.examNo) return exam.examName
-    return `${exam.examName} (${exam.examNo})`
-  }
-
-  /** 便捷入口：加载考试列表（供 onMounted 调用） */
   async function init(): Promise<void> {
     await loadExams()
   }
@@ -164,12 +266,18 @@ export function useMarkExamSelector(options: MarkExamSelectorOptions = {}) {
     exams,
     examOptions,
     loading,
+    searching,
+    resolvingPinned,
     selectedExamId,
+    selectedExamSelectValue,
     selectedExam,
     selectedExamLabel,
     isAdminView,
     loadExams,
+    searchExams,
+    onExamSearch,
     onExamChange,
+    syncPinnedExam,
     init,
   }
 }

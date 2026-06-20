@@ -90,6 +90,12 @@ declare module 'vue-router' {
     menuGroupOrder?: number
     /** 批阅页宽布局：Main 容器放宽至全宽（上限 1680px） */
     layoutWide?: boolean
+    /** 考试工作台布局标识 */
+    layout?: 'ExamWorkspace'
+    /** StageRail 当前页高亮阶段键 */
+    markStageKey?: string
+    /** 工作台侧栏分组 */
+    workspacePhase?: string
   }
 }
 

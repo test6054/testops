@@ -6,12 +6,14 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditRectificationStatus, AuditRectificationVO } from '@/apis/quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { onMounted, ref, watch } from 'vue'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
   AUDIT_RECTIFICATION_STATUS_LABEL,
   auditRectificationApi,
 } from '@/apis/quality'
+import { UiTag } from '@/components/ui-guide/ui'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
@@ -80,7 +82,7 @@ function auditRectificationStatusLabel(value: AuditRectificationStatus): string 
   return strictEnumLabel(AUDIT_RECTIFICATION_STATUS_LABEL, value, '审核评估整改状态')
 }
 
-function auditRectificationStatusColor(value: AuditRectificationStatus): string {
+function auditRectificationStatusColor(value: AuditRectificationStatus): BadgeTone {
   return strictEnumTone(AUDIT_RECTIFICATION_STATUS_COLOR, value, '审核评估整改状态')
 }
 
@@ -119,9 +121,9 @@ defineExpose({ reload: loadOptions })
     >
       <span class="text-xs text-gray-500 mr-1">{{ opt.rectificationCode }}</span>
       {{ opt.rectificationTitle }}
-      <a-tag :color="auditRectificationStatusColor(opt.status)" class="ml-1">
+      <UiTag :tone="auditRectificationStatusColor(opt.status)" class="ml-1">
         {{ auditRectificationStatusLabel(opt.status) }}
-      </a-tag>
+      </UiTag>
     </a-select-option>
   </a-select>
 </template>

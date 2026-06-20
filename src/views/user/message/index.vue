@@ -69,7 +69,7 @@
             </UiButton>
           </div>
 
-          <UiEmpty v-if="!loadingMessages && messages.length === 0" description="暂无站内信" />
+          <UiEmpty v-if="!loadingMessages && messages.length === 0" description="暂无数据" />
 
           <a-list
             v-else
@@ -154,7 +154,7 @@
 
           <UiEmpty
             v-if="!loadingAnnouncements && announcements.length === 0"
-            description="暂无系统公告"
+            description="暂无数据"
           />
 
           <a-list

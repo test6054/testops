@@ -2,24 +2,16 @@
   <a-card title="复核窗口策略" :bordered="false" size="small">
     <template #extra>
       <a-space>
-        <a-tag v-if="policy?.policyStatus" :color="reviewWindowStatusColor(policy.policyStatus)">
+        <UiTag v-if="policy?.policyStatus" :tone="reviewWindowStatusColor(policy.policyStatus)">
           {{ reviewWindowStatusLabel(policy.policyStatus) }}
-        </a-tag>
+        </UiTag>
         <a-button :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新
         </a-button>
       </a-space>
     </template>
 
-    <!-- D-9 错误态：复核窗口加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      title="复核窗口加载失败"
-      compact
-      @retry="reload"
-    />
-    <a-spin v-else :spinning="loading">
+    <a-spin :spinning="loading">
       <a-form layout="vertical" :model="form">
         <a-row :gutter="16">
           <a-col :span="12">
@@ -116,7 +108,7 @@ import {
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
-import { UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -134,7 +126,6 @@ function reviewWindowStatusLabel(status: ReviewWindowPolicyStatusCode): string {
 
 const policy = ref<ExamReviewWindowPolicyVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：复核窗口加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 const saving = ref(false)
 const activating = ref(false)

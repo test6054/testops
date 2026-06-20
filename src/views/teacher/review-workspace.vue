@@ -1,50 +1,37 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <UiButton variant="outline" size="sm" @click="goBack">返回</UiButton>
-          <UiTag v-if="detail?.paperDisplay" tone="gray" size="sm">
-            {{ detail.paperDisplay.primaryText }}
-          </UiTag>
-          <UiTag v-if="detail?.questionNo" tone="blue" size="sm">
-            题 {{ detail.questionNo }}
-          </UiTag>
-          <UiTag v-if="detail?.status" :tone="reviewStatusTone(detail.status)" size="sm">
-            {{ reviewStatusLabel(detail.status) }}
-          </UiTag>
-          <UiTag v-if="queueTotal > 0" tone="purple" size="sm">
-            同题进度 {{ currentQueueIndex }} / {{ queueTotal }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!canSubmit"
-            :loading="loading"
-            @click="loadTask"
-          >
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="review-workspace">
+    <div class="review-workspace__toolbar">
+      <UiButton variant="outline" size="sm" @click="goBack">返回</UiButton>
+      <UiTag v-if="detail?.paperDisplay" tone="gray" size="sm">
+        {{ detail.paperDisplay.primaryText }}
+      </UiTag>
+      <UiTag v-if="detail?.questionNo" tone="blue" size="sm">
+        题 {{ detail.questionNo }}
+      </UiTag>
+      <UiTag v-if="detail?.status" :tone="reviewStatusTone(detail.status)" size="sm">
+        {{ reviewStatusLabel(detail.status) }}
+      </UiTag>
+      <UiTag v-if="queueTotal > 0" tone="purple" size="sm">
+        同题进度 {{ currentQueueIndex }} / {{ queueTotal }}
+      </UiTag>
+      <UiButton
+        variant="outline"
+        size="sm"
+        :disabled="!canSubmit"
+        :loading="loading"
+        @click="loadTask"
+      >
+        刷新
+      </UiButton>
+    </div>
 
     <UiEmpty
       v-if="!examId || !taskId"
-      description="未找到本次复核任务，请从教师复核列表重新进入"
+      description="暂无数据"
       class="review-workspace__empty"
     />
 
-    <!-- D-9 错误态：任务详情加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-else-if="taskLoadError"
-      :error="taskLoadError"
-      title="复核任务详情加载失败"
-      helper="请从教师复核列表重新进入后重试"
-      @retry="loadTask"
-    />
+    <UiEmpty v-else-if="taskLoadError" description="暂无数据" />
 
     <a-spin v-else :spinning="loading" tip="正在加载任务...">
       <!-- B-7 流水线进度：当前任务在同题复核队列中的位次 -->
@@ -99,7 +86,7 @@
               <FileImageOutlined />
               <span>阅卷影像</span>
             </template>
-            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage && !detail?.masterPaperPage?.fileId" description="该题目暂无阅卷影像" />
+            <UiEmpty v-if="!detail?.sliceFileId && !detail?.sourceScanPage && !detail?.masterPaperPage?.fileId" description="暂无数据" />
             <MarkingScanMaterialPanel
               v-else
               :slice-file-id="detail?.sliceFileId"
@@ -113,7 +100,7 @@
               <FileTextOutlined />
               <span>识别答案</span>
             </template>
-            <UiEmpty v-if="!detail?.recognizedAnswer" description="尚未产生识别答案" />
+            <UiEmpty v-if="!detail?.recognizedAnswer" description="暂无数据" />
             <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
           </UiCard>
 
@@ -174,7 +161,7 @@
                 </UiButton>
               </a-space>
             </template>
-            <UiEmpty v-if="!detail?.aiDiagnostic" description="尚无 AI 复评说明" />
+            <UiEmpty v-if="!detail?.aiDiagnostic" description="暂无数据" />
             <div v-else class="review-workspace__text-block">
               {{ executionDiagnosticText(detail.aiDiagnostic) }}
             </div>
@@ -232,7 +219,7 @@
               />
               <UiEmpty
                 v-else-if="!executionsLoading && aiExecutions.length === 0"
-                description="本题还未产生 AI 执行记录"
+                description="暂无数据"
               />
               <a-timeline v-else>
                 <a-timeline-item
@@ -335,7 +322,7 @@
               <CommentOutlined />
               <span>批注历史</span>
             </template>
-            <UiEmpty v-if="annotations.length === 0" description="尚无批注记录" />
+            <UiEmpty v-if="annotations.length === 0" description="暂无数据" />
             <a-list v-else :data-source="annotations" size="small">
               <template #renderItem="{ item }">
                 <a-list-item>
@@ -406,7 +393,7 @@
         class="review-workspace__alert"
       />
     </a-spin>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -455,11 +442,10 @@ import {
   UiButton,
   UiCard,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -467,7 +453,7 @@ import { isGradingKeyboardInputTarget } from '@/utils/grading-keyboard'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-defineOptions({ name: 'TeacherReviewWorkspace' })
+defineOptions({ name: 'TeacherExamWorkspaceReviewWorkspace' })
 
 const REVIEW_WORKSPACE_PAGE_SIZE = 100
 
@@ -495,9 +481,10 @@ function comparePolicyLabel(code: string): string {
 
 const route = useRoute()
 const router = useRouter()
+const { refreshSnapshot } = useWorkspaceExamId()
 
-const examId = computed(() => (route.query.examId ? String(route.query.examId) : ''))
-const taskId = computed(() => (route.query.taskId ? String(route.query.taskId) : ''))
+const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
+const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
 
 function goBack(): void {
   if (window.history.length > 1) {
@@ -633,10 +620,10 @@ function handleQueueJump(): void {
   const targetTask = reviewQueue.value[idx - 1]
   if (targetTask) {
     resetGradeForm()
-    void router.replace({
-      name: 'TeacherReviewWorkspace',
-      query: { examId: examId.value, taskId: targetTask.reviewTaskId },
-    })
+  void router.replace({
+    name: 'TeacherExamWorkspaceReviewWorkspace',
+    params: { examId: examId.value, taskId: targetTask.reviewTaskId },
+  })
   }
 }
 
@@ -657,7 +644,8 @@ function navigateQueueRelative(offset: -1 | 1): void {
   const targetTask = reviewQueue.value[targetIdx]
   resetGradeForm()
   void router.replace({
-    query: { ...route.query, examId: examId.value, taskId: targetTask.reviewTaskId },
+    name: 'TeacherExamWorkspaceReviewWorkspace',
+    params: { examId: examId.value, taskId: targetTask.reviewTaskId },
   })
 }
 
@@ -1022,6 +1010,11 @@ async function submitGrade(): Promise<boolean> {
       commentText: gradeForm.commentText?.trim() || undefined,
       annotationText: gradeForm.annotationText?.trim() || undefined,
     })
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
     return true
   } catch (error) {
     showUserError(error, '确认复核失败')
@@ -1053,6 +1046,11 @@ async function handleReject(): Promise<void> {
       rejectReason: gradeForm.commentText?.trim() || '教师驳回复核结论',
     })
     message.success('已驳回，任务已进入仲裁队列')
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
     goBack()
   } catch (error) {
     showUserError(error, '驳回复核失败')
@@ -1094,7 +1092,7 @@ async function takeNextTask(): Promise<void> {
     )
     if (!candidate) {
       message.success('同题剩余任务复核完毕，返回考试工作台')
-      void router.push({ name: 'TeacherExamList', query: { examId: examId.value } })
+      void router.push({ name: 'TeacherExamWorkspaceMarkingReview', params: { examId: examId.value } })
       return
     }
     // 领取下一份；后端会把状态推进到处理中并绑定到当前教师
@@ -1105,11 +1103,8 @@ async function takeNextTask(): Promise<void> {
     // 切换路由前清空表单 + 释放上一份切片图，避免视觉残留
     resetGradeForm()
     void router.replace({
-      query: {
-        ...route.query,
-        examId: examId.value,
-        taskId: candidate.reviewTaskId,
-      },
+      name: 'TeacherExamWorkspaceReviewWorkspace',
+      params: { examId: examId.value, taskId: candidate.reviewTaskId },
     })
     // watch(examId, taskId) 会自动触发 loadTask，无需手动调用
   } catch (error) {
@@ -1141,6 +1136,18 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .review-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
   &__signals {
     margin-bottom: 12px;
     padding: 16px 20px;

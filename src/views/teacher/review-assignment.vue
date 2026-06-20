@@ -27,6 +27,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  getExamDetail,
   getExamTemplate,
   getMarkingProgress,
   isPaperTemplateNotConfiguredError,
@@ -62,18 +63,18 @@ import {
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { SignalBand } from '@/components/workbench'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-defineOptions({ name: 'TeacherReviewAssignment' })
+defineOptions({ name: 'TeacherExamWorkspaceReviewAssignment' })
 
 interface AllocationForm {
   leaderUserId: string | null
@@ -98,19 +99,27 @@ type NumberInputValue = string | number
 
 const router = useRouter()
 const userStore = useUserStore()
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  selectedExam,
-  init: initExamSelector,
-  onExamChange,
-} = useMarkExamSelector({ pageSize: 100 })
+const { selectedExamId, selectedExamLabel } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
+
+const examCreateUserId = ref('')
+
+async function loadExamOwnership(): Promise<void> {
+  if (!selectedExamId.value) {
+    examCreateUserId.value = ''
+    return
+  }
+  try {
+    const detail = await getExamDetail(selectedExamId.value)
+    examCreateUserId.value = detail.createUser
+  } catch {
+    examCreateUserId.value = ''
+  }
+}
 
 const canManageExam = computed(
   () =>
-    !!selectedExam.value?.createUser && selectedExam.value.createUser === userStore.userInfo.userId,
+    !!examCreateUserId.value && examCreateUserId.value === userStore.userInfo.userId,
 )
 
 function guardExamOwnerAction(): boolean {
@@ -121,8 +130,8 @@ function guardExamOwnerAction(): boolean {
 
 function goBackToOrganization(): void {
   void router.push({
-    name: 'TeacherMarkingOrganizationIndex',
-    query: selectedExamId.value ? { examId: selectedExamId.value } : {},
+    name: 'TeacherExamWorkspaceMarkingOrg',
+    params: selectedExamId.value ? { examId: selectedExamId.value } : {},
   })
 }
 
@@ -322,8 +331,10 @@ watch(selectedExamId, async () => {
   organization.value = null
   formalSessions.value = []
   if (!selectedExamId.value) {
+    examCreateUserId.value = ''
     return
   }
+  await loadExamOwnership()
   if (canManageExam.value) {
     await Promise.all([loadExamQuestions(), loadScanReadiness()])
     return
@@ -575,6 +586,11 @@ async function submitAllocation(): Promise<void> {
       buildRequest(selectedExamId.value, form.leaderUserId),
     )
     message.success('阅卷配置已保存，可在组织详情调整题组与教师后启动正评')
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '阅卷分配失败')
   } finally {
@@ -599,6 +615,11 @@ async function startFormalMarking(): Promise<void> {
       buildRequest(selectedExamId.value!, form.leaderUserId!),
     )
     message.success(`正评已启动，预计生成 ${planPreview.value.expectedTaskCount ?? 0} 个阅卷任务`)
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '启动正评失败')
   } finally {
@@ -656,7 +677,7 @@ function goTaskPool(): void {
   if (!selectedExamId.value) {
     return
   }
-  void router.push({ name: 'TeacherMarkingTaskPool', query: { examId: selectedExamId.value } })
+  void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId: selectedExamId.value } })
 }
 
 function allocationUnitLabel(value: AllocationUnitCode): string {
@@ -729,10 +750,11 @@ function formatDualReviewRule(): string {
 }
 
 onMounted(async () => {
-  await Promise.all([initExamSelector(), loadTeachers()])
+  await loadTeachers()
   if (!selectedExamId.value) {
     return
   }
+  await loadExamOwnership()
   if (canManageExam.value) {
     await Promise.all([loadExamQuestions(), loadScanReadiness()])
     return
@@ -742,84 +764,55 @@ onMounted(async () => {
 </script>
 
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="review-assignment__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" @click="goBackToOrganization">
-            返回阅卷安排
-          </UiButton>
-          <UiButton
-            v-if="canManageExam"
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="templateLoading"
-            @click="loadExamQuestions"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新题目
-          </UiButton>
-          <UiButton
-            v-else
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="organizationLoading"
-            @click="loadCollaboratorOrganization"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="review-assignment-page">
+    <div class="review-assignment-page__toolbar">
+      <UiButton variant="outline" size="sm" @click="goBackToOrganization">
+        返回阅卷安排
+      </UiButton>
+      <UiButton
+        v-if="canManageExam"
+        variant="outline"
+        size="sm"
+        :loading="templateLoading"
+        @click="loadExamQuestions"
+      >
+        <template #icon><ReloadOutlined /></template>
+        刷新题目
+      </UiButton>
+      <UiButton
+        v-else
+        variant="outline"
+        size="sm"
+        :loading="organizationLoading"
+        @click="loadCollaboratorOrganization"
+      >
+        <template #icon><ReloadOutlined /></template>
+        刷新
+      </UiButton>
+    </div>
 
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择一场考试后配置阅卷分配"
-      class="review-assignment__empty"
-    />
-
-    <template v-else-if="!canManageExam">
+    <template v-if="!canManageExam">
       <UiAlertStrip
         tone="info"
         title="协作查看模式"
-        description="分派方案仅考试创建人可编辑。以下为当前考试已保存的阅卷组织、题组与正评会话，修改请返回阅卷安排联系创建人。"
         dense
         class="review-assignment__alert"
       />
-      <UiErrorRetryPanel
+      <UiEmpty
         v-if="organizationLoadError"
-        :error="organizationLoadError"
-        title="阅卷组织加载失败"
-        :helper="selectedExamLabel || '当前考试'"
-        @retry="loadCollaboratorOrganization"
+        description="暂无数据"
+        class="review-assignment__alert"
       />
       <a-spin v-else :spinning="organizationLoading || scanReadinessLoading">
         <UiAlertStrip
           v-if="scanReadinessSummary"
           :tone="scanReadinessSummary.bound > 0 ? 'success' : 'warning'"
-          title="正评前置条件"
-          :description="`已完成身份绑定 ${scanReadinessSummary.bound} 份答卷，可进入正式阅卷 ${scanReadinessSummary.gradable} 份。`"
+          :title="`身份绑定 ${scanReadinessSummary.bound} 份 · 可阅卷 ${scanReadinessSummary.gradable} 份`"
           class="review-assignment__alert"
         />
         <UiEmpty
           v-if="!organization && !organizationLoading"
-          description="本考试尚未创建阅卷组织，暂无分派配置可查看"
+          description="暂无数据"
           class="review-assignment__empty"
         />
         <template v-else-if="organization">
@@ -879,8 +872,9 @@ onMounted(async () => {
               <TeamOutlined />
               <span>题组与阅卷教师</span>
             </template>
-            <UiEmpty v-if="organization.groups.length === 0" description="尚未建立题组" />
+            <UiEmpty v-if="organization.groups.length === 0" description="暂无数据" />
             <UiDataTable
+              pagination-mode="none"
               v-else
               :columns="readOnlyGroupColumns"
               :data-source="organization.groups"
@@ -932,6 +926,7 @@ onMounted(async () => {
               <span>正评会话</span>
             </template>
             <UiDataTable
+              pagination-mode="none"
               :columns="readOnlySessionColumns"
               :data-source="formalSessions"
               :show-pagination="false"
@@ -987,8 +982,7 @@ onMounted(async () => {
       <UiAlertStrip
         v-if="scanReadinessSummary"
         :tone="scanReadinessSummary.bound > 0 ? 'success' : 'warning'"
-        title="正评前置条件"
-        :description="`已完成身份绑定 ${scanReadinessSummary.bound} 份答卷，可进入正式阅卷 ${scanReadinessSummary.gradable} 份。`"
+        :title="`身份绑定 ${scanReadinessSummary.bound} 份 · 可阅卷 ${scanReadinessSummary.gradable} 份`"
         class="review-assignment__alert"
       />
       <UiAlertStrip
@@ -1325,10 +1319,24 @@ onMounted(async () => {
         </UiCard>
       </section>
     </template>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <style scoped>
+.review-assignment-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.review-assignment-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .review-assignment__context {
   display: flex;
   align-items: center;

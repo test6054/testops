@@ -65,16 +65,17 @@ function trendClass(trend?: number): string {
 }
 
 .signal-band__label {
-  font-size: 12px;
+  font-size: var(--dp-type-hint-size, 12px);
+  line-height: var(--dp-type-hint-line-height, 18px);
   color: var(--dp-text-muted, #64748b);
-  line-height: 1.4;
 }
 
 .signal-band__value {
   font-size: 20px;
-  font-weight: 700;
+  font-weight: var(--dp-font-weight-metric, 600);
   color: var(--dp-text-primary, #0f172a);
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .signal-band--compact .signal-band__value {
@@ -88,8 +89,9 @@ function trendClass(trend?: number): string {
 }
 
 .signal-band__trend {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--dp-type-hint-size, 12px);
+  font-weight: var(--dp-type-sidebar-weight-active, 600);
+  font-variant-numeric: tabular-nums;
 }
 
 .signal-band__trend--up {
@@ -101,7 +103,8 @@ function trendClass(trend?: number): string {
 }
 
 .signal-band__helper {
-  font-size: 11px;
+  font-size: var(--dp-type-hint-size, 12px);
+  line-height: var(--dp-type-hint-line-height, 18px);
   color: var(--dp-text-muted, #94a3b8);
 }
 

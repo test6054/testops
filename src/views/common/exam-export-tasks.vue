@@ -3,16 +3,17 @@
     <template #context>
       <ContextBar>
         <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="export-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
+          <MarkExamSelect
+            v-if="!isExamWorkspaceRoute"
+            :selected-exam-id="selectedExamId"
+            :exam-options="examOptions"
             :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
+            :searching="searching"
+            :resolving-pinned="resolvingPinned"
+            select-class="export-page__exam-select"
+            placeholder="选择考试"
             @change="handleExamChange"
+            @search="onExamSearch"
           />
           <UiTag v-if="counts.total > 0" tone="blue" size="sm">总 {{ counts.total }}</UiTag>
           <UiTag v-if="counts.pending > 0" tone="orange" size="sm">
@@ -45,16 +46,7 @@
       </ContextBar>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请先选择一场考试" class="export-page__empty" />
-
-    <UiErrorRetryPanel
-      v-else-if="tasksLoadError"
-      :error="tasksLoadError"
-      title="导出任务加载失败"
-      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      compact
-      @retry="loadTasks"
-    />
+    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="export-page__empty" />
 
     <a-card v-else :bordered="false" class="detail-table-card info-card export-page__table-card">
       <template #title>
@@ -251,13 +243,7 @@
           <span v-else class="hint-text">{{ exportTaskProcessingText(detailTask) }}</span>
         </a-descriptions-item>
       </a-descriptions>
-      <UiErrorRetryPanel
-        v-if="detailError"
-        :error="detailError"
-        title="任务详情加载失败"
-        compact
-        @retry="retryLoadDetail"
-      />
+      <UiEmpty v-if="detailError" description="暂无数据" />
     </a-spin>
   </a-drawer>
 </template>
@@ -281,6 +267,7 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
 import { getExamTemplate } from '@/apis/mark/exam'
 import {
@@ -292,23 +279,26 @@ import {
   getExportTask,
   listExportTasks,
 } from '@/apis/mark/exam-export'
+import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import {
   UiButton,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
   UiTextAction,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamExportTasks' })
+
+const route = useRoute()
+const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
 const {
   examOptions,
@@ -316,8 +306,11 @@ const {
   selectedExamId,
   selectedExamLabel,
   onExamChange,
+  onExamSearch,
+  searching,
+  resolvingPinned,
   init: initExamSelector,
-} = useMarkExamSelector()
+} = useMarkExamContext()
 
 const {
   classOptions,
@@ -651,20 +644,11 @@ async function openDetailDrawer(record: ExportTaskVO): Promise<void> {
       return
     }
     detailError.value = toUserError(error, '任务详情加载失败')
-    // 后端不可用时回退到列表缓存数据，避免用户完全看不到内容
-    detailTask.value = record
   } finally {
     if (pendingDetailTaskId === record.taskId) {
       detailLoading.value = false
     }
   }
-}
-
-function retryLoadDetail(): void {
-  if (!pendingDetailTaskId) return
-  const record = tasks.value.find((t) => t.taskId === pendingDetailTaskId)
-  if (!record) return
-  void openDetailDrawer(record)
 }
 
 function formatTaskExam(task: ExportTaskVO): string {
@@ -705,7 +689,6 @@ async function handleDownload(record: ExportTaskVO): Promise<void> {
   }
 }
 
-// B-8: selectedExamId 由 useMarkExamSelector 与 URL 双向同步
 watch(selectedExamId, (value) => {
   if (value) {
     taskPagination.pageNum = 1

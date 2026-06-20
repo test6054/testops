@@ -39,6 +39,21 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
           target: 'http://localhost:8081',
           changeOrigin: true,
           secure: false,
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq, req) => {
+              if (req.url?.includes('/sse/')) {
+                proxyReq.setHeader('Accept', 'text/event-stream')
+                proxyReq.setHeader('Cache-Control', 'no-cache')
+                proxyReq.setHeader('Connection', 'keep-alive')
+              }
+            })
+            proxy.on('proxyRes', (proxyRes, req) => {
+              if (req.url?.includes('/sse/')) {
+                proxyRes.headers['cache-control'] = 'no-cache'
+                proxyRes.headers['x-accel-buffering'] = 'no'
+              }
+            })
+          },
         },
       },
     },

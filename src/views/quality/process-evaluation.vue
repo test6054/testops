@@ -22,7 +22,7 @@ import type {
   ProcessEvaluationRecordVO,
   ProcessNodeType,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -37,19 +37,19 @@ import {
   processRecordApi,
 } from '@/apis/quality'
 import QualityImportPanel from '@/components/quality/import/QualityImportPanel.vue'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import {
   AssessmentItemSelector,
   CourseGoalSelector,
   CourseSelector,
   RequirementIndicatorSelector,
   StudentSelector,
-  TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiErrorRetryPanel, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
-import { toUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const nodeColumns: ColumnsType = [
@@ -84,7 +84,7 @@ function confirmationStatusLabel(value: ConfirmationStatus): string {
   return strictEnumLabel(CONFIRMATION_STATUS_LABEL, value, '确认状态')
 }
 
-function confirmationStatusColor(value: ConfirmationStatus): string {
+function confirmationStatusColor(value: ConfirmationStatus): BadgeTone {
   return strictEnumTone(CONFIRMATION_STATUS_COLOR, value, '确认状态')
 }
 
@@ -109,6 +109,7 @@ function isRecordStudentContractValid(items: ProcessEvaluationRecordVO[]): boole
 
 const nodes = ref<ProcessEvaluationNodeVO[]>([])
 const nodesLoading = ref(false)
+const nodesLoadError = ref<Error | null>(null)
 const selectedNode = ref<ProcessEvaluationNodeVO | null>(null)
 
 const nodeTypeOptions = PROCESS_NODE_TYPE_OPTIONS
@@ -119,10 +120,21 @@ async function loadNodes() {
     return
   }
   nodesLoading.value = true
+  nodesLoadError.value = null
   try {
     nodes.value = await processNodeApi.listByCourse(qualityStore.currentQualityCourseId)
+  } catch (error) {
+    nodes.value = []
+    nodesLoadError.value = toUserError(error, '过程性评价节点加载失败')
+    showUserError(error, '过程性评价节点加载失败')
   } finally {
     nodesLoading.value = false
+  }
+}
+
+async function handleScopeChange(): Promise<void> {
+  if (qualityStore.currentQualityCourseId) {
+    await loadNodes()
   }
 }
 
@@ -526,6 +538,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 /* ========== 上下文联动 ========== */
 
 watch(
@@ -559,10 +572,6 @@ onMounted(async () => {
   }
 })
 
-function handlePlanChange(planId: string | null) {
-  qualityStore.setTrainingPlan(planId || '')
-}
-
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
@@ -573,12 +582,7 @@ function handleCourseChange(courseId: string | null) {
     <template #context>
       <ContextBar>
         <template #status>
-          <span class="pe__filter-label">培养方案：</span>
-          <TrainingPlanSelector
-            :value="qualityStore.currentTrainingPlanId || null"
-            :width="260"
-            @change="handlePlanChange"
-          />
+          <QualityScopeHeader @change="handleScopeChange" />
           <span class="pe__filter-label">质量评价课程：</span>
           <CourseSelector
             :value="qualityStore.currentQualityCourseId || null"
@@ -599,7 +603,7 @@ function handleCourseChange(courseId: string | null) {
 
     <UiEmpty
       v-if="!qualityStore.currentQualityCourseId"
-      description="尚未选择质量评价课程，请在工作台顶部选择培养方案与课程"
+      description="请选择课程"
       class="pe__empty"
     />
 
@@ -612,6 +616,7 @@ function handleCourseChange(courseId: string | null) {
           </template>
 
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
             :columns="nodeColumns"
             :data-source="nodes"
@@ -642,9 +647,9 @@ function handleCourseChange(courseId: string | null) {
                 {{ record.weight == null ? '-' : record.weight.toFixed(2) }}
               </template>
               <template v-else-if="column.key === 'confirmationStatus'">
-                <a-tag :color="confirmationStatusColor(record.confirmationStatus)">
+                <UiTag :tone="confirmationStatusColor(record.confirmationStatus)">
                   {{ confirmationStatusLabel(record.confirmationStatus) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
@@ -686,7 +691,7 @@ function handleCourseChange(courseId: string | null) {
       </a-col>
 
       <a-col :span="14">
-        <UiEmpty v-if="!selectedNode" description="请在左侧选择节点查看记录" class="pe__empty" />
+        <UiEmpty v-if="!selectedNode" description="请选择" class="pe__empty" />
 
         <UiCard v-else class="detail-table-card pe__record-card">
           <template #title>「{{ selectedNode.nodeName }}」记录</template>
@@ -731,18 +736,9 @@ function handleCourseChange(courseId: string | null) {
             class="pe__alert"
           />
 
-          <UiErrorRetryPanel
-            v-if="recordsError"
-            :error="recordsError"
-            title="过程性评价记录加载失败"
-            helper="请检查后端过程性评价记录学生展示合同。"
-            compact
-            @retry="loadRecords"
-          />
-
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
-            v-else
             :columns="recordColumns"
             :data-source="records"
             :loading="recordsLoading"
@@ -766,9 +762,9 @@ function handleCourseChange(courseId: string | null) {
                 {{ dataSourceModeLabel(record) }}
               </template>
               <template v-else-if="column.key === 'confirmationStatus'">
-                <a-tag :color="confirmationStatusColor(record.confirmationStatus)">
+                <UiTag :tone="confirmationStatusColor(record.confirmationStatus)">
                   {{ confirmationStatusLabel(record.confirmationStatus) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
@@ -1011,18 +1007,9 @@ function handleCourseChange(courseId: string | null) {
           查询
         </UiButton>
       </a-space>
-      <UiErrorRetryPanel
-        v-if="confirmedByGoalError"
-        :error="confirmedByGoalError"
-        title="课程目标已确认记录加载失败"
-        helper="请检查后端过程性评价记录学生展示合同。"
-        compact
-        @retry="queryConfirmedByGoal"
-      />
-
       <UiDataTable
+        pagination-mode="client"
         class="student-detail-table__data-table"
-        v-else
         :columns="confirmedByGoalColumns"
         :data-source="confirmedByGoalRecords"
         :loading="confirmedByGoalLoading"

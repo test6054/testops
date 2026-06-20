@@ -1,53 +1,53 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <MarkExamContextPicker select-class="scan-monitor__exam-select" />
-          <UiTag
-            :tone="connectionTone"
-            size="sm"
-            :class="{ 'scan-monitor__connection--pulse': connectionPulsing }"
-          >
-            {{ connectionLabel }}
-          </UiTag>
-          <UiTag :tone="abnormalAttentionTotal > 0 ? 'red' : 'green'" size="sm">
-            {{ abnormalAttentionTotal > 0 ? `${abnormalAttentionTotal} 条异常` : '无阻断异常' }}
-          </UiTag>
-          <UiTag :tone="duplicateAttentionTotal > 0 ? 'purple' : 'green'" size="sm">
-            {{ duplicateAttentionTotal > 0 ? `${duplicateAttentionTotal} 条重复` : '无重复影像' }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton
-            v-if="selectedExamId && abnormalAttentionTotal > 0"
-            size="sm"
-            variant="primary"
-            @click="jumpToAbnormalTab"
-          >
-            查看异常 {{ abnormalAttentionTotal }}
-          </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!selectedExamId" @click="openLedger">
-            影像账本
-          </UiButton>
-          <UiButton size="sm" :disabled="!selectedExamId" :loading="loading" @click="handleRefresh">
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
-
-    <template #rail>
-      <MarkExamStageRail />
-    </template>
+  <div class="scan-monitor">
 
     <UiEmpty
       v-if="!selectedExamId"
-      description="请选择一场考试以查看扫描录入状态"
+      description="未进入考试工作台"
       class="scan-monitor__empty"
     />
 
     <template v-else>
+      <div class="scan-monitor__embedded-toolbar">
+        <UiTag
+          :tone="connectionTone"
+          size="sm"
+          :class="{ 'scan-monitor__connection--pulse': connectionPulsing }"
+        >
+          {{ connectionLabel }}
+        </UiTag>
+        <UiTag :tone="abnormalAttentionTotal > 0 ? 'red' : 'green'" size="sm">
+          {{ abnormalAttentionTotal > 0 ? `${abnormalAttentionTotal} 条异常` : '无阻断异常' }}
+        </UiTag>
+        <UiTag :tone="duplicateAttentionTotal > 0 ? 'purple' : 'green'" size="sm">
+          {{ duplicateAttentionTotal > 0 ? `${duplicateAttentionTotal} 条重复` : '无重复影像' }}
+        </UiTag>
+        <UiButton
+          v-if="abnormalAttentionTotal > 0"
+          size="sm"
+          variant="primary"
+          @click="jumpToAbnormalTab"
+        >
+          查看异常
+        </UiButton>
+        <UiButton size="sm" :disabled="!selectedExamId" :loading="loading" @click="handleRefresh">
+          刷新
+        </UiButton>
+      </div>
+      <UiAlertStrip
+        v-if="scanLiveConnectionFailed"
+        tone="warning"
+        title="实时扫描连接中断"
+        :description="scanLiveErrorMessage"
+        dense
+        class="scan-monitor__connection-alert"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="retryScanLive">
+            重新连接
+          </UiButton>
+        </template>
+      </UiAlertStrip>
       <div class="scan-monitor__overview">
         <UiStatPanel
           title="扫描监控中控台"
@@ -58,18 +58,20 @@
           class="scan-monitor__stats"
         />
         <UiCard :show-header="false" compact class="scan-monitor__health-card">
-          <UiRingProgress
-            :percent="healthPercent"
-            :color="healthColor"
-            size="lg"
-            :stroke-width="10"
-            :label="healthRingLabel"
-          />
-          <div class="scan-monitor__health-meta">
-            <span>实时事件 {{ liveEvents.length }} 条</span>
-            <span>异常阻断 {{ abnormalAttentionTotal }} 条</span>
-            <span>重复影像 {{ duplicateAttentionTotal }} 条</span>
-          </div>
+          <MarkGaugeBlock
+            :option="healthGaugeOption"
+            :ariaLabel="healthAriaLabel"
+            layout="stacked"
+            gauge-size="lg"
+            gauge-height="180px"
+            gauge-width="180px"
+          >
+            <ul class="mark-gauge-block__detail-list">
+              <li>实时事件 {{ liveEvents.length }} 条</li>
+              <li>异常阻断 {{ abnormalAttentionTotal }} 条</li>
+              <li>重复影像 {{ duplicateAttentionTotal }} 条</li>
+            </ul>
+          </MarkGaugeBlock>
         </UiCard>
       </div>
 
@@ -80,59 +82,36 @@
         class="scan-monitor__tabs"
       >
         <section v-if="activeTab === 'normal'" class="scan-monitor__normal-panel">
-          <UiErrorRetryPanel
-            v-if="scanLiveError"
-            :error="scanLiveError"
-            title="扫描实时事件连接异常"
-            :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-            compact
-            @retry="refreshScanLive"
-          />
-          <UiEmpty
-            v-else-if="liveEvents.length === 0"
-            description="当前考试还没有扫描事件，上传或一体机扫描后会在这里实时出现"
-            class="scan-monitor__normal-empty"
-          />
-          <div v-else class="scan-monitor__event-groups">
-            <section
-              v-for="group in groupedByStation"
-              :key="group.stationId"
-              class="scan-monitor__event-group"
-            >
-              <div class="scan-monitor__event-group-header">
-                <div>
-                  <h3 class="scan-monitor__event-group-title">{{ group.stationName }}</h3>
-                  <p class="scan-monitor__event-group-meta">
-                    {{ group.events.length }} 条事件 · {{ group.pageCount }} 页
-                  </p>
-                </div>
-                <UiTag tone="blue" size="sm">{{ group.deviceCount }} 台设备</UiTag>
-              </div>
-              <div class="scan-monitor__event-list">
-                <button
-                  v-for="event in group.events"
-                  :key="event.eventId"
-                  type="button"
-                  class="scan-monitor__event-row"
-                  @click="openScanEventDetail(event)"
-                >
-                  <span class="scan-monitor__event-main">
-                    <b>{{ event.batchExternalNo || event.reportId || event.eventId }}</b>
-                    <small>{{ event.sourceFileCount }} 个文件 · {{ event.pageCount }} 页</small>
-                  </span>
-                  <span class="scan-monitor__event-side">
-                    <UiTag :tone="scanEventStatusTone(event.status)" size="sm">
-                      {{ scanEventStatusLabel(event.status) }}
-                    </UiTag>
-                    <small>{{ formatTimeOfDay(event.scanEndTime || event.createTime) }}</small>
-                  </span>
-                </button>
-              </div>
-            </section>
-          </div>
+          <UiDataTable
+            pagination-mode="none"
+            class="student-detail-table__data-table"
+            :columns="normalEventColumns"
+            :data-source="liveEvents"
+            :loading="scanLiveStreaming && !scanLiveReady"
+            :show-pagination="false"
+            flat
+            :total="liveEvents.length"
+            row-key="eventId"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'batchNo'">
+                {{ record.batchExternalNo || record.reportId || record.eventId }}
+              </template>
+              <template v-else-if="column.key === 'status'">
+                <UiTag :tone="scanEventStatusTone(record.status)" size="sm">
+                  {{ scanEventStatusLabel(record.status) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'scanTime'">
+                {{ formatTimeOfDay(record.scanEndTime || record.createTime) }}
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTextAction @click="openScanEventDetail(record)">查看详情</UiTextAction>
+              </template>
+            </template>
+          </UiDataTable>
         </section>
-        <UiCard v-else class="detail-table-card scan-monitor__list-card">
-          <template #title>{{ activeTab === 'duplicate' ? '重复影像' : '异常阻断' }}</template>
+        <section v-else class="scan-monitor__attention-panel">
           <UiFilterBar
             v-model="filterForm"
             :fields="attentionFilterFields"
@@ -198,18 +177,8 @@
             </template>
           </UiFilterBar>
 
-          <!-- D-9 错误态：扫描异常列表加载失败时提供重试 + 上报入口 -->
-          <UiErrorRetryPanel
-            v-if="attentionsLoadError"
-            :error="attentionsLoadError"
-            title="扫描异常列表加载失败"
-            :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-            compact
-            @retry="loadAttentions"
-          />
           <UiDataTable
             class="student-detail-table__data-table"
-            v-else
             v-model:current="attentionPagination.current"
             v-model:page-size="attentionPagination.pageSize"
             :columns="columns"
@@ -220,8 +189,6 @@
             :enable-selection="activeTab === 'abnormal'"
             :selected-row-keys="selectedRowKeys"
             flat
-            :empty-title="activeTab === 'duplicate' ? '当前无重复影像' : '当前无异常阻断'"
-            :empty-description="activeTab === 'duplicate' ? '当前筛选条件下没有重复影像' : '当前筛选条件下没有异常阻断待办'"
             v-bind="activeTab === 'abnormal' ? { rowSelection } : {}"
             @page-change="handleAttentionPageChange"
           >
@@ -303,7 +270,7 @@
               </template>
             </template>
           </UiDataTable>
-        </UiCard>
+        </section>
       </UiSectionTabs>
     </template>
 
@@ -348,13 +315,10 @@
       @confirm="handleBind"
     >
       <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
-        <UiErrorRetryPanel
+        <UiEmpty
           v-if="candidatesLoadError"
-          :error="candidatesLoadError"
-          title="考生名册加载失败"
-          compact
+          description="暂无数据"
           class="scan-monitor__bind-alert"
-          @retry="retryLoadCandidates"
         />
         <UiAlertStrip
           v-if="bindSubmitError"
@@ -393,12 +357,9 @@
                 :paragraph="{ rows: 3 }"
                 class="scan-monitor__identity-skeleton"
               />
-              <UiErrorRetryPanel
+              <UiEmpty
                 v-else-if="bindIdentitySliceError"
-                :error="bindIdentitySliceError"
-                title="手写身份切片加载失败"
-                compact
-                @retry="loadBindIdentitySliceImage"
+                description="暂无数据"
               />
               <div v-else-if="bindIdentitySliceImageUrl" class="scan-monitor__identity-image-wrap">
                 <img
@@ -409,7 +370,7 @@
               </div>
               <UiEmpty
                 v-else
-                description="该异常没有手写身份区切片，请检查 OCR 身份区裁切链路"
+                description="暂无数据"
                 class="scan-monitor__identity-empty"
               />
             </div>
@@ -421,12 +382,9 @@
                 :paragraph="{ rows: 3 }"
                 class="scan-monitor__identity-skeleton"
               />
-              <UiErrorRetryPanel
+              <UiEmpty
                 v-else-if="bindSourcePageError"
-                :error="bindSourcePageError"
-                title="原始扫描页加载失败"
-                compact
-                @retry="loadBindSourcePageImage"
+                description="暂无数据"
               />
               <div v-else-if="bindSourcePageImageUrl" class="scan-monitor__identity-image-wrap">
                 <img
@@ -437,7 +395,7 @@
               </div>
               <UiEmpty
                 v-else
-                description="该异常缺少原始扫描页文件引用，请检查扫描页登记链路"
+                description="暂无数据"
                 class="scan-monitor__identity-empty"
               />
             </div>
@@ -500,13 +458,10 @@
       @close="closeBatchBindDrawer"
       @confirm="submitBatchBind"
     >
-      <UiErrorRetryPanel
+      <UiEmpty
         v-if="candidatesLoadError"
-        :error="candidatesLoadError"
-        title="考生名册加载失败"
-        compact
+        description="暂无数据"
         class="scan-monitor__bind-alert"
-        @retry="retryLoadCandidates"
       />
       <UiAlertStrip
         v-if="batchBindError"
@@ -658,7 +613,7 @@
         dense
       />
     </a-modal>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -707,8 +662,7 @@ import {
 } from '@/apis/mark/exam'
 import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
-import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
-import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
+import { MarkGaugeBlock } from '@/components/chart'
 import {
   UiAlertStrip,
   UiButton,
@@ -716,20 +670,22 @@ import {
   UiDataTable,
   UiDrawer,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
-  UiRingProgress,
   UiSectionTabs,
   UiStatPanel,
   UiTag,
   UiTextAction,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { provideMarkExamContext } from '@/composables/useMarkExamContext'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
+import mittBus from '@/utils/mitt'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
 import { readArrayResponse, readPageList, readPageTotal } from '@/utils/page-result'
+import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
+import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
+import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanLiveMonitor' })
@@ -751,7 +707,7 @@ const {
   selectedExamId,
   selectedExamLabel,
   init: initExamSelector,
-} = provideMarkExamContext()
+} = useMarkExamContext()
 
 // ─── 列表筛选 + 数据 ─────────────────────────────
 const filterForm = reactive<{
@@ -806,7 +762,6 @@ const attentionPagination = reactive({
   pageSize: 20,
   total: 0,
 })
-// D-9 错误态：扫描异常列表加载失败时 UiErrorRetryPanel 重试 + 上报
 const attentionsLoadError = ref<Error | null>(null)
 const scanBatches = ref<ExamScannerBatchVO[]>([])
 const scanBatchesLoading = ref(false)
@@ -848,6 +803,7 @@ const {
   events: liveEvents,
   ready: scanLiveReady,
   isStreaming: scanLiveStreaming,
+  connectionPhase: scanLiveConnectionPhase,
   error: scanLiveError,
   start: startScanLive,
   stop: stopScanLive,
@@ -862,74 +818,53 @@ const liveDrawerOpen = ref(false)
 const currentEvent = ref<ScanLiveEventVO | null>(null)
 
 const connectionTone = computed<BadgeTone>(() => {
-  if (scanLiveError.value) return 'red'
-  if (scanLiveReady.value) return 'green'
-  if (scanLiveStreaming.value) return 'blue'
+  if (scanLiveConnectionPhase.value === 'failed') return 'red'
+  if (scanLiveConnectionPhase.value === 'ready') return 'green'
+  if (scanLiveConnectionPhase.value === 'connecting' || scanLiveConnectionPhase.value === 'reconnecting') {
+    return 'blue'
+  }
   return 'gray'
 })
 
 const connectionLabel = computed(() => {
-  if (scanLiveError.value) return '实时连接异常'
-  if (scanLiveReady.value) return '实时同步中'
-  if (scanLiveStreaming.value) return '连接建立中'
+  if (scanLiveConnectionPhase.value === 'failed') return '连接失败'
+  if (scanLiveConnectionPhase.value === 'ready') return '实时同步中'
+  if (scanLiveConnectionPhase.value === 'reconnecting') return '正在重连'
+  if (scanLiveConnectionPhase.value === 'connecting') return '连接建立中'
   return '未连接'
 })
 
+const scanLiveConnectionFailed = computed(() => scanLiveConnectionPhase.value === 'failed')
+const scanLiveErrorMessage = computed(() => scanLiveError.value?.message ?? '请检查网络或稍后重试')
+
 /** SSE 已连接时顶栏状态标签 pulse，提示实时监控活跃 */
 const connectionPulsing = computed(
-  () => scanLiveReady.value && !scanLiveError.value && !!selectedExamId.value,
+  () => scanLiveConnectionPhase.value === 'ready' && !!selectedExamId.value,
 )
+
+function retryScanLive(): void {
+  void refreshScanLive()
+}
 
 function jumpToAbnormalTab(): void {
   activeTab.value = 'abnormal'
 }
 
-const groupedByStation = computed(() => {
-  const groups = new Map<
-    string,
-    {
-      stationId: string
-      stationName: string
-      events: ScanLiveEventVO[]
-      pageCount: number
-      deviceIds: Set<string>
-    }
-  >()
-  for (const event of liveEvents.value) {
-    const stationId = event.scannerStationId || 'UNKNOWN'
-    const group = groups.get(stationId) ?? {
-      stationId,
-      stationName: event.scannerStationId ? `扫描站点 ${event.scannerStationId}` : '未登记扫描站点',
-      events: [],
-      pageCount: 0,
-      deviceIds: new Set<string>(),
-    }
-    group.events.push(event)
-    group.pageCount += event.pageCount ?? 0
-    if (event.scannerDeviceId) {
-      group.deviceIds.add(event.scannerDeviceId)
-    }
-    groups.set(stationId, group)
-  }
-  return Array.from(groups.values()).map((group) => ({
-    stationId: group.stationId,
-    stationName: group.stationName,
-    events: group.events,
-    pageCount: group.pageCount,
-    deviceCount: group.deviceIds.size,
-  }))
-})
+const normalEventColumns: ColumnType<ScanLiveEventVO>[] = [
+  { title: '批次号', key: 'batchNo', width: 180, ellipsis: true },
+  { title: '扫描站点', dataIndex: 'scannerStationId', key: 'scannerStationId', width: 120 },
+  { title: '扫描设备', dataIndex: 'scannerDeviceId', key: 'scannerDeviceId', width: 140, ellipsis: true },
+  { title: '状态', key: 'status', width: 100 },
+  { title: '页数', dataIndex: 'pageCount', key: 'pageCount', width: 80, align: 'right' },
+  { title: '文件数', dataIndex: 'sourceFileCount', key: 'sourceFileCount', width: 80, align: 'right' },
+  { title: '扫描时间', key: 'scanTime', width: 100 },
+  { title: '操作', key: 'actions', fixed: 'right', width: 100 },
+]
 
 const healthPercent = computed(() => {
   const total = liveEvents.value.length + abnormalAttentionTotal.value + duplicateAttentionTotal.value
   if (total === 0) return scanLiveReady.value ? 100 : 0
   return Math.round((liveEvents.value.length / total) * 100)
-})
-
-const healthColor = computed(() => {
-  if (scanLiveError.value || abnormalAttentionTotal.value > 0) return 'red'
-  if (duplicateAttentionTotal.value > 0) return 'orange'
-  return 'green'
 })
 
 const healthRingLabel = computed(() => {
@@ -940,27 +875,46 @@ const healthRingLabel = computed(() => {
   return '待扫描'
 })
 
+const healthGaugeColor = computed(() => {
+  if (scanLiveError.value || abnormalAttentionTotal.value > 0) return toneToColor('red')
+  if (duplicateAttentionTotal.value > 0) return toneToColor('orange')
+  return toneToColor('green')
+})
+
+const { chartOption: healthGaugeOption } = useChartOption(() =>
+  buildGaugeChartOption(healthPercent.value, {
+    label: healthRingLabel.value,
+    color: healthGaugeColor.value,
+    size: 'lg',
+  }),
+)
+
+const healthAriaLabel = computed(() =>
+  formatGaugeAriaLabel(
+    healthRingLabel.value,
+    healthPercent.value,
+    `实时事件 ${liveEvents.value.length} 条，异常 ${abnormalAttentionTotal.value} 条，重复 ${duplicateAttentionTotal.value} 条`,
+  ),
+)
+
 const monitorTabs = computed<UiSectionTabItem[]>(() => [
   {
     key: 'normal',
     label: '正常',
     count: liveEvents.value.length,
-    badgeTone: connectionTone.value,
-    helper: '实时展示扫描事件入库、聚合和批次流转。',
+    badgeTone: liveEvents.value.length > 0 ? 'blue' : 'gray',
   },
   {
     key: 'abnormal',
     label: '异常',
     count: abnormalAttentionTotal.value,
-    badgeTone: abnormalAttentionTotal.value > 0 ? 'red' : 'green',
-    helper: '处理质量阻断、处理阻断、识别复核和身份绑定冲突。',
+    badgeTone: abnormalAttentionTotal.value > 0 ? 'red' : 'gray',
   },
   {
     key: 'duplicate',
     label: '重复',
     count: duplicateAttentionTotal.value,
-    badgeTone: duplicateAttentionTotal.value > 0 ? 'purple' : 'green',
-    helper: '集中裁决重复扫描影像，避免重复卷面进入阅卷链路。',
+    badgeTone: duplicateAttentionTotal.value > 0 ? 'purple' : 'gray',
   },
 ])
 
@@ -1655,7 +1609,7 @@ function openBindDrawer(record: ScanAttentionItemVO): void {
 function openLedger(): void {
   if (!selectedExamId.value) return
   void router.push({
-    path: '/teacher/image-ledger',
+    name: 'TeacherExamWorkspaceScanLedger',
     query: {
       examId: selectedExamId.value,
     },
@@ -1907,6 +1861,7 @@ async function submitBatchBind(): Promise<void> {
 }
 
 // ─── 初始化 ─────────────────────────────────────
+
 watch(selectedExamId, (value) => {
   // 切换考试需要重置名册缓存
   candidates.value = []
@@ -1968,8 +1923,14 @@ watch(bindDrawerOpen, (open) => {
   }
 })
 
+function onWorkbenchRefresh(): void {
+  if (selectedExamId.value) {
+    void handleRefresh()
+  }
+}
+
 onMounted(async () => {
-  await initExamSelector()
+  mittBus.on('scan-workbench:refresh', onWorkbenchRefresh)
   if (selectedExamId.value) {
     await loadScanBatches()
     await loadPaperCandidates()
@@ -1979,6 +1940,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  mittBus.off('scan-workbench:refresh', onWorkbenchRefresh)
   stopScanLive()
   releaseBindIdentitySliceImage()
   releaseBindSourcePageImage()
@@ -1989,6 +1951,18 @@ onBeforeUnmount(() => {
 .scan-monitor {
   &__exam-select {
     width: 280px;
+  }
+
+  &__embedded-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  &__connection-alert {
+    margin-bottom: 8px;
   }
 
   &__overview {
@@ -2025,103 +1999,15 @@ onBeforeUnmount(() => {
 
   &__tabs {
     margin-top: 16px;
-  }
-
-  &__normal-panel {
-    min-height: 280px;
-  }
-
-  &__normal-empty {
-    padding: 48px 0;
-  }
-
-  &__event-groups {
-    display: grid;
-    gap: 12px;
-  }
-
-  &__event-group {
+    padding: 16px;
     border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-md, 8px);
     background: var(--dp-surface, #fff);
   }
 
-  &__event-group-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--dp-border, #e2e8f0);
-  }
-
-  &__event-group-title {
-    margin: 0;
-    color: var(--dp-text-primary, #0f172a);
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  &__event-group-meta {
-    margin: 4px 0 0;
-    color: var(--dp-text-secondary, #475569);
-    font-size: 12px;
-  }
-
-  &__event-list {
-    display: grid;
-  }
-
-  &__event-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    width: 100%;
-    padding: 12px 16px;
-    border: 0;
-    border-bottom: 1px solid var(--dp-border, #e2e8f0);
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  &__event-row:last-child {
-    border-bottom: 0;
-  }
-
-  &__event-row:hover {
-    background: var(--dp-surface-subtle, #f8fafc);
-  }
-
-  &__event-main,
-  &__event-side {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  &__event-main {
-    min-width: 0;
-  }
-
-  &__event-main b {
-    overflow: hidden;
-    color: var(--dp-text-primary, #0f172a);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &__event-main small,
-  &__event-side small {
-    color: var(--dp-text-secondary, #475569);
-    font-size: 12px;
-  }
-
-  &__event-side {
-    align-items: flex-end;
-    flex-shrink: 0;
+  &__normal-panel,
+  &__attention-panel {
+    min-height: 280px;
   }
 
   @media (max-width: 900px) {

@@ -1,45 +1,20 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="arbitration-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
-          <UiTag :tone="pendingTotal > 0 ? 'red' : 'green'" size="sm">
-            {{ pendingTotal > 0 ? `${pendingTotal} 条待仲裁` : '暂无待办' }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!selectedExamId"
-            :loading="loading"
-            @click="loadTasks"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="arbitration-page">
+    <div class="arbitration-page__toolbar">
+      <UiTag :tone="pendingTotal > 0 ? 'red' : 'green'" size="sm">
+        {{ pendingTotal > 0 ? `${pendingTotal} 条待仲裁` : '暂无待办' }}
+      </UiTag>
+      <UiButton
+        variant="outline"
+        size="sm"
+        :loading="loading"
+        @click="loadTasks"
+      >
+        <template #icon><ReloadOutlined /></template>
+        刷新
+      </UiButton>
+    </div>
 
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择一场考试以查看仲裁任务"
-      class="arbitration-page__empty"
-    />
-
-    <template v-else>
       <UiCard class="arbitration-page__list-card">
         <template #title>
           <ExclamationCircleOutlined />
@@ -48,20 +23,8 @@
             {{ reviewTasks.length }}
           </UiBadge>
         </template>
-        <UiErrorRetryPanel
-          v-if="tasksLoadError"
-          :error="tasksLoadError"
-          title="客观题复核仲裁任务加载失败"
-          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-          compact
-          @retry="loadTasks"
-        />
-        <UiEmpty
-          v-else-if="!loading && reviewTasks.length === 0"
-          description="当前无客观题复核仲裁任务"
-        />
         <UiDataTable
-          v-else
+          pagination-mode="client"
           :columns="reviewColumns"
           :data-source="reviewTasks"
           :loading="loading"
@@ -136,20 +99,8 @@
             {{ arbitrationTasks.length }}
           </UiBadge>
         </template>
-        <UiErrorRetryPanel
-          v-if="markingTasksLoadError"
-          :error="markingTasksLoadError"
-          title="双评仲裁任务加载失败"
-          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-          compact
-          @retry="loadTasks"
-        />
-        <UiEmpty
-          v-else-if="!loading && arbitrationTasks.length === 0"
-          description="当前无双评仲裁任务"
-        />
         <UiDataTable
-          v-else
+          pagination-mode="client"
           :columns="markingColumns"
           :data-source="arbitrationTasks"
           :loading="loading"
@@ -207,8 +158,7 @@
           </template>
         </UiDataTable>
       </UiCard>
-    </template>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -232,12 +182,9 @@ import {
   UiButton,
   UiCard,
   UiDataTable,
-  UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import http from '@/config/axios'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
@@ -252,14 +199,7 @@ const ARBITRATION_MARKING_PAGE_SIZE = 100
 const router = useRouter()
 const userStore = useUserStore()
 
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  onExamChange,
-  init: initExamSelector,
-} = useMarkExamSelector()
+const { selectedExamId } = useMarkExamContext()
 
 const currentUserId = computed(() => userStore.userInfo.userId || '')
 
@@ -351,26 +291,24 @@ async function loadTasks(): Promise<void> {
 function goReviewWorkspace(record: ReviewTaskItemVO): void {
   if (!selectedExamId.value) return
   void router.push({
-    name: 'TeacherReviewWorkspace',
-    query: { examId: selectedExamId.value, taskId: record.reviewTaskId },
+    name: 'TeacherExamWorkspaceReviewWorkspace',
+    params: { examId: selectedExamId.value, taskId: record.reviewTaskId },
   })
 }
 
 function goReviewDetail(record: ReviewTaskItemVO): void {
   if (!selectedExamId.value) return
   void router.push({
-    name: 'TeacherReviewTaskDetail',
-    params: { taskId: record.reviewTaskId },
-    query: { examId: selectedExamId.value },
+    name: 'TeacherExamWorkspaceReviewTaskDetail',
+    params: { examId: selectedExamId.value, taskId: record.reviewTaskId },
   })
 }
 
 function goMarkingWorkspace(record: MarkingTaskVO): void {
   if (!selectedExamId.value) return
   void router.push({
-    name: 'TeacherMarkingTaskDetail',
-    params: { taskId: record.id },
-    query: { examId: selectedExamId.value },
+    name: 'TeacherExamWorkspaceMarkingTaskDetail',
+    params: { examId: selectedExamId.value, taskId: record.id },
   })
 }
 
@@ -384,7 +322,6 @@ watch(selectedExamId, (value) => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
     await loadTasks()
   }
@@ -393,12 +330,16 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .arbitration-page {
-  &__exam-select {
-    width: 280px;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 
-  &__empty {
-    padding: 60px 0;
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
 }
 

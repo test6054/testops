@@ -186,6 +186,8 @@ export interface ExamDetailVO {
   createUser: string
   createTime?: string
   updateTime?: string
+  /** 日常成绩满分；为空表示本场考试不纳入日常成绩 */
+  dailyScoreFull?: number
   /** 班级范围ID集合 */
   classIds: string[]
   /**
@@ -219,8 +221,8 @@ export interface ExamDetailVO {
   subjectiveRegionConfiguredCount?: number
   printPackageReady?: boolean
   printPackageCount?: number
-  /** 准备待完善项（提示能力缺口，不阻断扫描；字段名与后端 prepBlockingReasons 对齐） */
-  prepBlockingReasons?: string[]
+  /** 准备建议项（提示能力缺口，不阻断扫描） */
+  prepAdvisoryReasons?: string[]
 }
 
 /** 制卷形态 - 对应 ExamMaterialLayoutMode */
@@ -1982,6 +1984,69 @@ export interface ReviewQuestionProgressItemVO {
   inProgressTaskCount: number
   approvedTaskCount: number
   rejectedTaskCount: number
+}
+
+/** 考试工作台阶段键 - 对应 ExamWorkbenchStageKey */
+export type ExamWorkbenchStageKeyCode
+  = | 'EXAM_PREP'
+    | 'PAPER_TEMPLATE'
+    | 'CANDIDATE_ROSTER'
+    | 'SCAN'
+    | 'MARKING_ORG'
+    | 'TRIAL_MARKING'
+    | 'FORMAL_MARKING'
+    | 'SCORE_PUBLISH'
+    | 'ARCHIVE'
+
+/** 工作台阶段状态 - 对应 ExamWorkbenchStageStatus */
+export type WorkbenchStageStatusCode
+  = | 'pending'
+    | 'active'
+    | 'completed'
+    | 'warning'
+    | 'error'
+    | 'blocked'
+
+/** 考试工作台阶段项 - 对应 ExamWorkbenchStageItemResponse */
+export interface ExamWorkbenchStageItemVO {
+  key: ExamWorkbenchStageKeyCode
+  title: string
+  status: WorkbenchStageStatusCode
+  hint?: string
+}
+
+/** 考试工作台准备步骤 - 对应 ExamWorkbenchPrepStepResponse */
+export interface ExamWorkbenchPrepStepVO {
+  key: string
+  title: string
+  status: WorkbenchStageStatusCode
+  statusText: string
+  advisoryReason?: string
+}
+
+/** 考试工作台阶段快照 - 对应 ExamWorkbenchStageSnapshotResponse */
+export interface WorkbenchStageSnapshotVO {
+  examId: string
+  examName: string
+  examNo: string
+  examStatus: ExamStatusCode
+  suggestedStageKey: ExamWorkbenchStageKeyCode
+  stages: ExamWorkbenchStageItemVO[]
+  prepSteps: ExamWorkbenchPrepStepVO[]
+  prepAdvisoryReasons: string[]
+  markingProgress: MarkingProgressVO
+  markingOrgConfigured: boolean
+  trialSessionActive: boolean
+  formalSessionActive: boolean
+  archiveClosed: boolean
+}
+
+/**
+ * 查询考试工作台阶段快照
+ * POST /api/mark/exams/workbench-stage-snapshot
+ */
+export function getWorkbenchStageSnapshot(examId: string): Promise<WorkbenchStageSnapshotVO> {
+  return http.post<WorkbenchStageSnapshotVO>('/api/mark/exams/workbench-stage-snapshot', { examId })
 }
 
 /**

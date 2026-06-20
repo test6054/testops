@@ -8,6 +8,7 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { CourseGoalVO } from '@/apis/quality'
 import { computed, onMounted, ref, watch } from 'vue'
 import { courseGoalApi } from '@/apis/quality'
+import { UiTag } from '@/components/ui-guide/ui'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 
@@ -112,8 +113,8 @@ defineExpose({ reload: loadOptions })
     >
       <span class="text-xs text-gray-500 mr-1">{{ opt.goalCode }}</span>
       {{ opt.goalName }}
-      <a-tag v-if="opt.civicObjectiveFlag" color="purple" class="ml-1">思政</a-tag>
-      <a-tag v-if="opt.aiLiteracyFlag" color="blue" class="ml-1">AI 素养</a-tag>
+      <UiTag v-if="opt.civicObjectiveFlag" tone="purple" class="ml-1">思政</UiTag>
+      <UiTag v-if="opt.aiLiteracyFlag" tone="blue" class="ml-1">AI 素养</UiTag>
     </a-select-option>
   </a-select>
 </template>

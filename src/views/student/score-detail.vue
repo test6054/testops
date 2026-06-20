@@ -31,18 +31,9 @@
       </ContextBar>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="detailLoadError"
-      :error="detailLoadError"
-      title="成绩详情加载失败"
-      :helper="detail?.examName ? `当前考试：${detail.examName}` : undefined"
-      :show-report="false"
-      @retry="loadDetail"
-    />
-
     <UiEmpty
-      v-else-if="!loading && !detail"
-      description="未查询到该考试的成绩详情"
+      v-if="!loading && !detail"
+      description="暂无数据"
       class="score-detail__empty"
     />
 
@@ -51,7 +42,6 @@
         v-if="detail.finalScoreStatus !== 'PUBLISHED'"
         tone="info"
         title="成绩尚未公布"
-        :description="`${detail.examName} 的最终成绩仍在处理中，当前状态：${finalScoreStatusLabel(detail)}。公布后可查看答题卡与题目明细。`"
         dense
         class="score-detail__unpublished"
       />
@@ -80,32 +70,22 @@
             <UiTag tone="red" size="sm">零分 {{ zeroCount }} 题</UiTag>
           </div>
 
-          <UiEmpty v-if="detail.questions.length === 0" description="暂无题目得分明细" />
+          <UiEmpty v-if="detail.questions.length === 0" description="暂无数据" />
           <UiEmpty
             v-else-if="filteredQuestions.length === 0"
-            :description="`当前错题聚类筛选下无题目：${selectedClusterLabel}`"
+            description="暂无数据"
           />
-          <div v-else class="score-detail__sheet-grid">
-            <button
-              v-for="question in filteredQuestions"
-              :key="question.questionTemplateId"
-              type="button"
-              class="score-detail__sheet-cell"
-              :class="[
-                getSheetCellToneClass(question),
-                {
-                  'score-detail__sheet-cell--active':
-                    selectedQuestionId === question.questionTemplateId,
-                },
-              ]"
-              @click="selectQuestion(question)"
-            >
-              <span class="score-detail__sheet-no">{{ question.questionNo }}</span>
-              <span class="score-detail__sheet-score">
-                {{ formatQuestionFinalScore(question) }}
-              </span>
-            </button>
-          </div>
+          <MarkHeatmapSection
+            v-else
+            title="得分率热力图"
+            hint="颜色表示得分率，点击题格查看详情"
+            :cell-count="scoreHeatmapCells.length"
+            :option="scoreHeatmapOption"
+            :height="scoreHeatmapHeight"
+            :aria-label="scoreHeatmapAriaLabel"
+            class="score-detail__heatmap"
+            @cell-click="handleScoreHeatmapClick"
+          />
         </UiCard>
 
         <UiCard class="score-detail__panel-card">
@@ -113,7 +93,7 @@
             <ProfileOutlined />
             <span>题目详情</span>
           </template>
-          <UiEmpty v-if="!selectedQuestion" description="请从左侧答题卡选择题目" />
+          <UiEmpty v-if="!selectedQuestion" description="请选择" />
           <a-spin v-else :spinning="panelLoading">
             <UiAlertStrip
               v-if="panelError"
@@ -154,7 +134,7 @@
                 </header>
                 <UiEmpty
                   v-if="!currentDetail.sliceFileId"
-                  description="该题暂无作答切片图（客观题或未生成切片）"
+                  description="暂无数据"
                 />
                 <div v-else class="answer-panel__slice">
                   <a-spin :spinning="sliceLoading" tip="加载切片中...">
@@ -176,7 +156,7 @@
                   <ProfileOutlined />
                   <span>OCR 识别作答</span>
                 </header>
-                <UiEmpty v-if="!currentDetail.recognizedAnswer" description="本题未识别到作答文本" />
+                <UiEmpty v-if="!currentDetail.recognizedAnswer" description="暂无数据" />
                 <div v-else class="answer-panel__text">{{ currentDetail.recognizedAnswer }}</div>
               </section>
 
@@ -240,7 +220,7 @@
             刷新
           </UiButton>
         </template>
-        <UiEmpty v-if="!wrongBookLoading && wrongBookRows.length === 0" description="暂无错题记录" />
+        <UiEmpty v-if="!wrongBookLoading && wrongBookRows.length === 0" description="暂无数据" />
         <UiDataTable
           v-else
           v-model:current="wrongBookPagination.current"
@@ -312,7 +292,7 @@
           />
           <UiEmpty
             v-else-if="!reportLoading && !learningReport"
-            description="尚未生成 AI 学习报告"
+            description="暂无数据"
           />
           <UiAlertStrip
             v-else-if="learningReport && !learningReport.available"
@@ -456,6 +436,7 @@ import {
   OBJECTIVE_RESULT_LABEL,
   OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/student-exam'
+import { MarkHeatmapSection } from '@/components/chart'
 import {
   UiAlertStrip,
   UiBadge,
@@ -463,11 +444,13 @@ import {
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
+import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'
+import { scoreSheetToHeatmapCells } from '@/utils/mark-statistics-chart'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -531,6 +514,45 @@ const filteredQuestions = computed<StudentQuestionScoreVO[]>(() => {
   )
 })
 
+const scoreHeatmapCells = computed(() =>
+  scoreSheetToHeatmapCells(
+    filteredQuestions.value.map((question) => ({
+      questionTemplateId: question.questionTemplateId,
+      questionNo: question.questionNo,
+      finalScore: question.teacherReviewScore,
+      fullScore: question.fullScore,
+    })),
+  ),
+)
+
+const scoreHeatmapHeight = computed(() => {
+  const count = scoreHeatmapCells.value.length
+  if (count <= 0) return '120px'
+  return count > 20 ? '160px' : '120px'
+})
+
+const { chartOption: scoreHeatmapOption } = useChartOption(() =>
+  buildHeatmapChartOption(scoreHeatmapCells.value, {
+    rowLabel: '得分率',
+    valueSuffix: '%',
+    emptyText: '暂无答题卡数据',
+    highlightKey: selectedQuestionId.value ?? undefined,
+  }),
+)
+
+const scoreHeatmapAriaLabel = computed(() => {
+  const count = scoreHeatmapCells.value.length
+  if (count <= 0) return '得分率热力图，暂无数据'
+  return `得分率热力图，共 ${count} 道题`
+})
+
+function handleScoreHeatmapClick(index: number): void {
+  const question = filteredQuestions.value[index]
+  if (question) {
+    void selectQuestion(question)
+  }
+}
+
 const selectedQuestion = computed<StudentQuestionScoreVO | null>(() => {
   if (!selectedQuestionId.value) {
     return null
@@ -562,12 +584,6 @@ function isZero(q: StudentQuestionScoreVO) {
 }
 function isPartial(q: StudentQuestionScoreVO) {
   return q.teacherReviewScore != null
-}
-
-function getSheetCellToneClass(record: StudentQuestionScoreVO): string {
-  if (isFullMark(record)) return 'score-detail__sheet-cell--full'
-  if (isZero(record)) return 'score-detail__sheet-cell--zero'
-  return 'score-detail__sheet-cell--partial'
 }
 
 function finalScoreStatusTone(item: StudentScoreDetailVO): BadgeTone {
@@ -889,62 +905,6 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 12px;
-  }
-
-  &__sheet-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  &__sheet-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    min-height: 56px;
-    padding: 8px 4px;
-    border: 1px solid var(--dp-border, #e2e8f0);
-    border-radius: 8px;
-    background: var(--dp-surface, #fff);
-    cursor: pointer;
-    transition:
-      border-color 0.2s ease,
-      background 0.2s ease,
-      box-shadow 0.2s ease;
-
-    &--full {
-      border-color: var(--ant-color-success-border, #86efac);
-      background: var(--ant-color-success-bg, #f0fdf4);
-    }
-
-    &--partial {
-      border-color: var(--ant-color-warning-border, #fdba74);
-      background: var(--ant-color-warning-bg, #fff7ed);
-    }
-
-    &--zero {
-      border-color: var(--ant-color-error-border, #fca5a5);
-      background: var(--ant-color-error-bg, #fef2f2);
-    }
-
-    &--active {
-      border-color: var(--ant-color-primary);
-      box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
-    }
-  }
-
-  &__sheet-no {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--dp-text-primary, #0f172a);
-  }
-
-  &__sheet-score {
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    color: var(--dp-text-secondary, #475569);
   }
 
   &__empty {

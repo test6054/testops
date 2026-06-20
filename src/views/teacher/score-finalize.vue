@@ -1,32 +1,14 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <MarkExamContextPicker select-class="score-finalize__exam-select" />
-        </template>
-        <template #actions>
-          <a-segmented
-            :value="scoreReleaseStep"
-            :options="scoreReleaseStepOptions"
-            @change="onScoreReleaseStepChange"
-          />
-        </template>
-      </ContextBar>
-    </template>
+  <div class="score-finalize-page">
+    <div class="score-finalize-page__toolbar">
+      <a-segmented
+        :value="scoreReleaseStep"
+        :options="scoreReleaseStepOptions"
+        @change="onScoreReleaseStepChange"
+      />
+    </div>
 
-    <template #rail>
-      <MarkExamStageRail />
-    </template>
-
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择一场考试以查看考生名单"
-      class="score-finalize__empty"
-    />
-
-    <template v-else>
-      <UiStatPanel
+    <UiStatPanel
         :items="statMetrics"
         :columns="3"
         variant="grid"
@@ -87,17 +69,7 @@
           @reset="handleReset"
         />
 
-        <!-- D-9 错误态：考生名单加载失败时提供重试 + 上报入口 -->
-        <UiErrorRetryPanel
-          v-if="candidatesLoadError"
-          :error="candidatesLoadError"
-          title="成绩确认列表加载失败"
-          :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-          compact
-          @retry="refreshScoreFinalizeData"
-        />
         <UiDataTable
-          v-else
           v-model:current="pagination.current"
           v-model:page-size="pagination.pageSize"
           :columns="columns"
@@ -192,7 +164,6 @@
           </template>
         </UiDataTable>
       </a-card>
-    </template>
 
     <!-- 成绩明细 Drawer -->
     <UiDrawer
@@ -204,7 +175,7 @@
       @close="detailOpen = false"
     >
       <a-spin :spinning="detailLoading" tip="加载明细中...">
-        <UiEmpty v-if="!paperScore" description="暂无成绩明细" />
+        <UiEmpty v-if="!paperScore" description="暂无数据" />
         <div v-else>
           <a-descriptions :column="2" size="small" bordered class="score-finalize__detail-summary">
             <a-descriptions-item label="答卷">
@@ -233,6 +204,7 @@
 
           <h4 class="score-finalize__detail-section-title">题目得分明细</h4>
           <UiDataTable
+            pagination-mode="none"
             :columns="paperItemColumns"
             :data-source="paperQuestions"
             :show-pagination="false"
@@ -263,22 +235,17 @@
             </span>
           </h4>
           <a-spin :spinning="historicalLoading" tip="加载历次成绩...">
-            <UiTrendChart
-              v-if="historicalTrendPoints.length >= 2"
-              :items="historicalTrendPoints"
-              :model-value="selectedExamId ?? ''"
-              area
-              show-bubble
-              show-active-halo
-              class="score-finalize__history-chart"
-            />
-            <UiEmpty
-              v-else-if="!historicalLoading"
-              :description="
-                historicalTrendPoints.length === 1
-                  ? '本课程仅有当前 1 场考试，暂无纵向趋势可对照'
-                  : '该学生在本课程暂无可对照的历次成绩'
-              "
+            <MarkTrendSection
+              v-if="!historicalLoading"
+              title=""
+              :point-count="historicalTrendPoints.length"
+              :option="historicalTrendChartOption"
+              height="220px"
+              :last-value="historicalTrendLastValue"
+              value-unit=" 分"
+              :single-point-description="MARK_CHART_EMPTY.trendSingleExam"
+              :empty-description="MARK_CHART_EMPTY.trendNoHistory"
+              :aria-label="historicalTrendAriaLabel"
             />
           </a-spin>
 
@@ -289,10 +256,8 @@
               v-if="auditTimelineGroups.length > 0"
               :groups="auditTimelineGroups"
               compact
-              empty-title="暂无成绩操作记录"
-              empty-description="本试卷尚未在最终成绩状态机上发生变更。"
             />
-            <UiEmpty v-else-if="!auditLoading" description="本试卷尚未发生成绩状态变更" />
+            <UiEmpty v-else-if="!auditLoading" description="暂无数据" />
           </a-spin>
         </div>
       </a-spin>
@@ -360,7 +325,6 @@
           v-if="hasUnreviewedBlockingRisks"
           tone="warning"
           title="异常成绩未完成集中复核"
-          description="可先确认成绩，但未集中复核异常项前不能发布或确认后立即发布。"
           dense
         />
       </a-form>
@@ -377,13 +341,12 @@
       <UiAlertStrip
         tone="warning"
         title="发布前复核闸门"
-        description="请逐项核对异常成绩原因。全部标记为已复核后，本页面才允许发布成绩。"
         dense
         class="score-finalize__alert"
       />
       <UiEmpty
         v-if="blockingRiskReasons.length === 0"
-        description="当前没有阻塞发布的异常成绩"
+        description="暂无数据"
       />
       <div v-else class="score-finalize__risk-review-list">
         <div
@@ -440,7 +403,6 @@
         <UiAlertStrip
           tone="warning"
           title="撤回说明"
-          description="撤回后学生侧不再可见该成绩，撤回原因会落入审计日志。"
           dense
           class="score-finalize__alert"
         />
@@ -496,7 +458,7 @@
         </div>
       </div>
     </a-modal>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -504,6 +466,7 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogVO, OperationTypeCode } from '@/apis/mark/admin-audit'
 import type {
+  ExamDetailVO,
   ExamPaperScoreVO,
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
@@ -523,6 +486,7 @@ import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
+  getExamDetail,
   getFinalScoreRiskOverview,
   getPaperScore,
   pageExams,
@@ -531,25 +495,24 @@ import {
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
-import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
+import { MarkTrendSection } from '@/components/chart'
 import {
   UiActivityTimeline,
   UiAlertStrip,
   UiButton,
   UiDataTable,
   UiDrawer,
-  UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiStatPanel,
   UiTag,
   UiTextAction,
-  UiTrendChart,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { provideMarkExamContext } from '@/composables/useMarkExamContext'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
+import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -605,24 +568,36 @@ const scoreReleaseStepOptions = [
 ]
 
 const scoreReleaseStep = computed(() =>
-  route.name === 'TeacherScorePublish' ? 'publish' : 'confirm',
+  route.name === 'TeacherExamWorkspaceScoreRelease' ? 'publish' : 'confirm',
 )
 
-const {
-  selectedExamId,
-  selectedExamLabel,
-  selectedExam,
-  init: initExamSelector,
-} = provideMarkExamContext()
+const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
+
+const examDetail = ref<ExamDetailVO | null>(null)
+
+async function loadExamDetail(): Promise<void> {
+  if (!selectedExamId.value) {
+    examDetail.value = null
+    return
+  }
+  try {
+    examDetail.value = await getExamDetail(selectedExamId.value)
+  } catch {
+    examDetail.value = null
+  }
+}
 
 function onScoreReleaseStepChange(value: string | number): void {
   const examId = selectedExamId.value
-  const query = examId ? { examId } : {}
-  if (value === 'publish') {
-    void router.push({ name: 'TeacherScorePublish', query })
+  if (!examId) {
     return
   }
-  void router.push({ name: 'TeacherScoreFinalize', query })
+  if (value === 'publish') {
+    void router.push({ name: 'TeacherExamWorkspaceScoreRelease', params: { examId } })
+    return
+  }
+  void router.push({ name: 'TeacherExamWorkspaceScoreSummary', params: { examId } })
 }
 
 // ─── 考生名单（服务端分页） ─────────────────────────────
@@ -667,8 +642,8 @@ const columns = computed<ColumnType<ExamScoreSummaryItemVO>[]>(() => {
   ]
 })
 
-const hasDailyScoreConfig = computed(() => selectedExam.value?.dailyScoreFull != null)
-const dailyScoreFull = computed(() => selectedExam.value?.dailyScoreFull ?? null)
+const hasDailyScoreConfig = computed(() => examDetail.value?.dailyScoreFull != null)
+const dailyScoreFull = computed(() => examDetail.value?.dailyScoreFull ?? null)
 
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
@@ -714,6 +689,15 @@ async function loadRiskOverview(): Promise<void> {
 
 async function refreshScoreFinalizeData(): Promise<void> {
   await Promise.all([loadCandidates(), loadRiskOverview()])
+}
+
+async function refreshAfterScoreWrite(): Promise<void> {
+  await refreshScoreFinalizeData()
+  try {
+    await refreshSnapshot()
+  } catch {
+    // 非工作台上下文时忽略
+  }
 }
 
 function handleSearch(): void {
@@ -803,8 +787,8 @@ function goAbsenceConfirm(): void {
   const examId = selectedExamId.value
   riskReviewDrawerOpen.value = false
   void router.push({
-    name: 'TeacherAbsenceConfirm',
-    query: examId ? { examId } : {},
+    name: 'TeacherExamWorkspaceScoreAbsence',
+    params: examId ? { examId } : {},
   })
 }
 
@@ -928,7 +912,7 @@ async function handleBatchConfirmSafe(): Promise<void> {
     if (result.failureCount > 0) {
       message.warning(`有 ${result.failureCount} 份成绩确认失败，请查看列表后逐份处理`)
     }
-    await refreshScoreFinalizeData()
+    await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '批量确认无风险成绩失败')
   } finally {
@@ -1244,7 +1228,7 @@ const HISTORICAL_EXAMS_MAX = 20
  * 仅纳入 finalScore != null 的考试，按 examEndTime 升序绘制。
  */
 async function loadHistoricalScores(): Promise<void> {
-  const courseId = selectedExam.value?.courseId
+  const courseId = examDetail.value?.courseId
   const candidate = detailCandidate.value
   if (!courseId || !candidate?.studentNo) {
     historicalScores.value = []
@@ -1293,7 +1277,7 @@ async function loadHistoricalScores(): Promise<void> {
   }
 }
 
-/** UiTrendChart 输入：考试名为 label，教师复核评分为 value，当前考试 key 用于 modelValue 高亮 */
+/** 历次成绩趋势图：考试名为 label，教师复核评分为 value，当前考试 key 高亮 */
 const historicalTrendPoints = computed<UiTrendPoint[]>(() => {
   return historicalScores.value.map((p) => ({
     key: p.examId,
@@ -1301,6 +1285,32 @@ const historicalTrendPoints = computed<UiTrendPoint[]>(() => {
     value: p.finalScore,
   }))
 })
+
+const { chartOption: historicalTrendChartOption } = useChartOption(() =>
+  buildTrendLineChartOption(historicalTrendPoints.value, {
+    yAxisName: '教师复核分',
+    area: true,
+    highlightKey: selectedExamId.value ?? '',
+    emptyText: MARK_CHART_EMPTY.trendNoHistory,
+  }),
+)
+
+const historicalTrendLastValue = computed(() => {
+  const points = historicalTrendPoints.value
+  if (points.length === 0) {
+    return null
+  }
+  return Number(points[points.length - 1]?.value)
+})
+
+const historicalTrendAriaLabel = computed(() =>
+  formatTrendAriaLabel(
+    '本课程历次成绩趋势',
+    historicalTrendPoints.value.length,
+    historicalTrendLastValue.value,
+    ' 分',
+  ),
+)
 
 /** 历次成绩派生的统计文本，避免模板里堆三元 */
 const historicalSummary = computed(() => {
@@ -1455,7 +1465,7 @@ function handleNextStepGoPublish(): void {
   const examId = selectedExamId.value
   closeNextStep()
   if (examId) {
-    void router.push({ name: 'TeacherScorePublish', query: { examId } })
+    void router.push({ name: 'TeacherExamWorkspaceScoreRelease', params: { examId } })
   }
 }
 
@@ -1482,7 +1492,7 @@ async function handleConfirm(): Promise<void> {
       message.success('成绩已确认，可在列表点击「发布」推送到学生侧')
     }
     confirmOpen.value = false
-    await refreshScoreFinalizeData()
+    await refreshAfterScoreWrite()
     deriveNextStepSuggestion()
   } catch (error) {
     showUserError(error, '成绩确认失败')
@@ -1501,7 +1511,7 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
       paperInstanceId: record.paperInstanceId,
     })
     message.success('成绩已发布，学生通知已下发')
-    await refreshScoreFinalizeData()
+    await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '成绩发布失败')
   }
@@ -1535,7 +1545,7 @@ async function handleWithdraw(): Promise<void> {
     })
     message.success('成绩已撤回')
     withdrawOpen.value = false
-    await refreshScoreFinalizeData()
+    await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '成绩撤回失败')
   } finally {
@@ -1549,8 +1559,9 @@ watch(selectedExamId, (value) => {
   reviewedRiskReasonCodes.value = new Set()
   riskReviewDrawerOpen.value = false
   if (value) {
-    void refreshScoreFinalizeData()
+    void Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
   } else {
+    examDetail.value = null
     candidates.value = []
     riskOverview.value = null
     pagination.total = 0
@@ -1558,14 +1569,27 @@ watch(selectedExamId, (value) => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
-    await refreshScoreFinalizeData()
+    await Promise.all([loadExamDetail(), refreshScoreFinalizeData()])
   }
 })
 </script>
 
 <style lang="scss" scoped>
+.score-finalize-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
 .score-finalize {
   &__signals {
     margin-bottom: 12px;

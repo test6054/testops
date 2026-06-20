@@ -64,7 +64,36 @@
   --dp-font-weight-body: 400;
   --dp-font-weight-emphasis: 500;
   --dp-font-weight-title: 600;
-  --dp-font-weight-metric: 700;
+  --dp-font-weight-metric: 600;
+
+  /* 角色字阶（Phase 2 契约） */
+  --dp-type-sidebar-size: 14px;
+  --dp-type-sidebar-line-height: 20px;
+  --dp-type-sidebar-weight: 500;
+  --dp-type-sidebar-weight-active: 600;
+
+  --dp-type-context-size: 13px;
+  --dp-type-context-line-height: 18px;
+  --dp-type-context-weight: 400;
+
+  --dp-type-h1-size: 18px;
+  --dp-type-h1-line-height: 26px;
+  --dp-type-h1-weight: 600;
+
+  --dp-type-table-body-size: 14px;
+  --dp-type-table-body-line-height: 20px;
+  --dp-type-table-body-weight: 400;
+
+  --dp-type-table-head-size: 14px;
+  --dp-type-table-head-line-height: 20px;
+  --dp-type-table-head-weight: 600;
+
+  --dp-type-hint-size: 12px;
+  --dp-type-hint-line-height: 18px;
+  --dp-type-hint-weight: 400;
+
+  /* 质量评价域长文正文行高（Phase 3） */
+  --dp-type-quality-body-line-height: 1.6;
 
   --dp-line-height-tight: 1.25;
   --dp-line-height-normal: 1.5;

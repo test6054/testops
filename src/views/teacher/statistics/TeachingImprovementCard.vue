@@ -24,21 +24,16 @@
         title="AI 教学改进方案生成中"
         :waiting-text="props.classId ? '正在等待后端返回当前班级的真实教学改进方案。' : '正在等待后端返回本场考试的真实教学改进方案。'"
       />
-      <!-- D-9 错误态：教学改进方案加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 教学改进方案加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!record" description="暂无 AI 教学改进方案，可点击重新生成。" />
-      <div v-else class="ai-record">
+      <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="生成时间">
             {{ analysisCreateTimeText(record) }}
@@ -78,7 +73,7 @@
                     <span class="analysis-item__title">
                       {{ item.questionType || '教学改进内容' }}
                     </span>
-                    <a-tag v-if="item.severity">{{ item.severity }}</a-tag>
+                    <UiTag v-if="item.severity">{{ item.severity }}</UiTag>
                   </div>
                   <a-typography-paragraph
                     v-if="item.problemDescription"
@@ -116,7 +111,7 @@ import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
 } from '@/apis/mark/teaching-analysis'
-import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -129,7 +124,6 @@ const props = defineProps<{ examId: string, reloadToken: number, classId?: strin
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
 const generating = ref(false)
-// D-9 错误态：教学改进方案加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 
 const improvementItems = computed<TeachingImprovementItemVO[]>(() => {

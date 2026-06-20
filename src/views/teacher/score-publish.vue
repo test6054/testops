@@ -1,42 +1,18 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="score-publish__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="onExamChange"
-          />
-        </template>
-        <template #actions>
-          <a-segmented
-            :value="scoreReleaseStep"
-            :options="scoreReleaseStepOptions"
-            @change="onScoreReleaseStepChange"
-          />
-        </template>
-      </ContextBar>
-    </template>
+  <div class="score-publish-page">
+    <div class="score-publish-page__toolbar">
+      <a-segmented
+        :value="scoreReleaseStep"
+        :options="scoreReleaseStepOptions"
+        @change="onScoreReleaseStepChange"
+      />
+    </div>
 
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择一场考试以查看成绩发布列表"
-      class="score-publish__empty"
-    />
-
-    <template v-else>
+    <template v-if="selectedExamId">
       <UiAlertStrip
         v-if="pendingAbsenceCount > 0"
         tone="warning"
         :title="`当前考试仍有 ${pendingAbsenceCount} 条待确认缺考记录`"
-        description="缺考未核对前禁止发布成绩，请先完成缺考确认，避免将缺考学生误发布为零分成绩。"
         :closable="false"
         class="score-publish__absence-alert"
       >
@@ -52,15 +28,6 @@
         variant="grid"
         compact
         class="score-publish__signals"
-      />
-      <!-- D-9 错误态引导：成绩汇总加载失败时给出可恢复 + 可上报路径，避免空表格让教师无从下手 -->
-      <UiErrorRetryPanel
-        v-if="candidatesLoadError"
-        :error="candidatesLoadError"
-        title="成绩发布名单加载失败"
-        :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-        compact
-        @retry="loadCandidates"
       />
       <a-card :bordered="false" class="detail-table-card score-publish__table-card">
         <template #title>
@@ -177,7 +144,7 @@
       @close="detailOpen = false"
     >
       <a-spin :spinning="detailLoading" tip="加载明细中...">
-        <UiEmpty v-if="!paperScore" description="暂无成绩明细" />
+        <UiEmpty v-if="!paperScore" description="暂无数据" />
         <div v-else>
           <a-descriptions :column="2" size="small" bordered class="score-publish__detail-summary">
             <a-descriptions-item label="答卷">
@@ -206,6 +173,7 @@
 
           <h4 class="score-publish__detail-section-title">题目得分明细</h4>
           <UiDataTable
+            pagination-mode="none"
             :columns="paperItemColumns"
             :data-source="paperQuestions"
             :show-pagination="false"
@@ -244,7 +212,6 @@
         <UiAlertStrip
           tone="warning"
           title="撤回说明"
-          description="撤回后学生侧不再可见该成绩，撤回原因会落入审计日志。"
           dense
           class="score-publish__alert"
         />
@@ -283,7 +250,6 @@
       <UiAlertStrip
         tone="warning"
         title="全场发布确认"
-        description="本操作会发布当前考试全场所有已确认、已撤回或已订正的最终成绩，并逐名向学生发送成绩通知。未完成确认或存在阻塞风险的成绩不会被伪装成已发布。"
         dense
         class="score-publish__alert"
       />
@@ -347,13 +313,14 @@
         </template>
       </a-list>
     </a-modal>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type {
+  ExamDetailVO,
   ExamPaperScoreVO,
   ExamQuestionScoreVO,
   ExamScoreSummaryItemVO,
@@ -373,6 +340,7 @@ import {
   FINAL_SCORE_STATUS_LABEL,
   FINAL_SCORE_STATUS_OPTIONS,
   FINAL_SCORE_STATUS_TONE,
+  getExamDetail,
   getFinalScoreRiskOverview,
   getPaperScore,
   pageExamScoreSummary,
@@ -384,16 +352,13 @@ import {
   UiButton,
   UiDataTable,
   UiDrawer,
-  UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiStatPanel,
   UiTag,
   UiTextAction,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { useMarkStageStore } from '@/stores/modules/markStage'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
@@ -448,20 +413,27 @@ const scoreReleaseStepOptions = [
 ]
 
 const scoreReleaseStep = computed(() =>
-  route.name === 'TeacherScorePublish' ? 'publish' : 'confirm',
+  route.name === 'TeacherExamWorkspaceScoreRelease' ? 'publish' : 'confirm',
 )
 
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExam,
-  selectedExamLabel,
-  onExamChange,
-  init: initExamSelector,
-} = useMarkExamSelector()
+const { selectedExamId } = useMarkExamContext()
+const { refreshSnapshot } = useWorkspaceExamId()
 
-const hasDailyScoreConfig = computed(() => selectedExam.value?.dailyScoreFull != null)
+const examDetail = ref<ExamDetailVO | null>(null)
+
+async function loadExamDetail(): Promise<void> {
+  if (!selectedExamId.value) {
+    examDetail.value = null
+    return
+  }
+  try {
+    examDetail.value = await getExamDetail(selectedExamId.value)
+  } catch {
+    examDetail.value = null
+  }
+}
+
+const hasDailyScoreConfig = computed(() => examDetail.value?.dailyScoreFull != null)
 
 const columns = computed<ColumnType<ExamScoreSummaryItemVO>[]>(() => {
   const scoreColumns: ColumnType<ExamScoreSummaryItemVO>[] = hasDailyScoreConfig.value
@@ -483,20 +455,19 @@ const columns = computed<ColumnType<ExamScoreSummaryItemVO>[]>(() => {
 
 function onScoreReleaseStepChange(value: string | number): void {
   const examId = selectedExamId.value
-  const query = examId ? { examId } : {}
-  if (value === 'publish') {
-    void router.push({ name: 'TeacherScorePublish', query })
+  if (!examId) {
     return
   }
-  void router.push({ name: 'TeacherScoreFinalize', query })
+  if (value === 'publish') {
+    void router.push({ name: 'TeacherExamWorkspaceScoreRelease', params: { examId } })
+    return
+  }
+  void router.push({ name: 'TeacherExamWorkspaceScoreSummary', params: { examId } })
 }
-
-const markStageStore = useMarkStageStore()
 
 // ─── 数据加载（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemVO[]>([])
 const loading = ref(false)
-// D-9 错误态：捕获 loadCandidates 加载失败，给 UiErrorRetryPanel 渲染重试 + 上报入口
 const candidatesLoadError = ref<Error | null>(null)
 const pendingAbsenceCount = ref(0)
 const absenceGuardLoading = ref(false)
@@ -513,7 +484,6 @@ const pagination = reactive<TablePaginationConfig>({
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
-  // D-9：每次重试前清空错误态，让 UiErrorRetryPanel 在新失败时重新渲染
   candidatesLoadError.value = null
   try {
     const result = await pageExamScoreSummary({
@@ -573,8 +543,8 @@ function goToAbsenceConfirm(): void {
     return
   }
   void router.push({
-    name: 'TeacherAbsenceConfirm',
-    query: { examId: selectedExamId.value },
+    name: 'TeacherExamWorkspaceScoreAbsence',
+    params: { examId: selectedExamId.value },
   })
 }
 
@@ -670,7 +640,12 @@ async function runBulkPublish(): Promise<void> {
         `全场发布完成：成功 ${bulkResult.value.successCount} 条，失败 ${bulkResult.value.failureCount} 条，请查看明细`,
       )
     }
-    await Promise.all([loadCandidates(), loadPendingAbsenceCount(), loadFinalScoreOverview()])
+    await Promise.all([loadCandidates(), loadFinalScoreOverview()])
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '全场成绩发布失败')
   } finally {
@@ -680,46 +655,8 @@ async function runBulkPublish(): Promise<void> {
 
 /* ========== 信号指标：发布流程状态分布 ========== */
 
-/**
- * 同步发布阶段状态到阅卷主链 Store。
- * 规则：
- * - 存在 PUBLISHED 且无 PENDING/CALCULATED/CONFIRMED → SCORE_PUBLISH=completed
- * - 全部为 PENDING → SCORE_PUBLISH=pending
- * - 其余过程中 → SCORE_PUBLISH=active
- * - 存在 WITHDRAWN → SCORE_PUBLISH=blocked（需要重新处理）
- */
-function syncPublishStageToStore(overview: FinalScoreRiskOverviewVO | null): void {
-  const examId = selectedExamId.value
-  if (!examId || !overview || overview.totalCandidateCount === 0) return
-  const published = overview.publishedCount
-  const pendingPipeline = overview.pendingCount + overview.calculatedCount + overview.confirmedCount
-  const withdrawn = overview.withdrawnCount
-  let stageStatus: 'pending' | 'active' | 'completed' | 'blocked' = 'pending'
-  let hint = ''
-  if (overview.blockedCount > 0 || withdrawn > 0) {
-    stageStatus = 'blocked'
-    hint = withdrawn > 0 ? `${withdrawn} 人已撤回，需重新发布` : `${overview.blockedCount} 项阻塞需处理`
-  } else if (published > 0 && pendingPipeline === 0) {
-    stageStatus = 'completed'
-    hint = `全部 ${published} 人已发布`
-  } else if (published > 0) {
-    stageStatus = 'active'
-    hint = `已发布 ${published} / 待发布 ${pendingPipeline}`
-  } else if (overview.confirmedCount > 0 || overview.calculatedCount > 0) {
-    stageStatus = 'active'
-    hint = `已确认 ${overview.confirmedCount}，待发布`
-  }
-  markStageStore.setStageStatus(examId, 'SCORE_PUBLISH', stageStatus, hint)
-  if (stageStatus === 'completed') {
-    markStageStore.setCurrentStage(examId, 'GRADE_REVIEW')
-  } else if (stageStatus !== 'pending') {
-    markStageStore.setCurrentStage(examId, 'SCORE_PUBLISH')
-  }
-}
-
 const statMetrics = computed(() => {
   const overview = finalScoreOverview.value
-  syncPublishStageToStore(overview)
   const total = overview?.totalCandidateCount ?? pagination.total ?? 0
   const publishable = publishableOverviewCount.value
   const published = overview?.publishedCount ?? 0
@@ -789,6 +726,11 @@ async function handlePublish(record: ExamScoreSummaryItemVO): Promise<void> {
     })
     message.success('成绩已发布，学生通知已下发')
     await Promise.all([loadCandidates(), loadFinalScoreOverview()])
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '成绩发布失败')
   }
@@ -823,6 +765,11 @@ async function handleWithdraw(): Promise<void> {
     message.success('成绩已撤回')
     withdrawOpen.value = false
     await Promise.all([loadCandidates(), loadFinalScoreOverview()])
+    try {
+      await refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '成绩撤回失败')
   } finally {
@@ -866,8 +813,14 @@ async function openDetailDrawer(record: ExamScoreSummaryItemVO): Promise<void> {
 watch(selectedExamId, (value) => {
   pagination.current = 1
   if (value) {
-    void Promise.all([loadCandidates(), loadPendingAbsenceCount(), loadFinalScoreOverview()])
+    void Promise.all([
+      loadExamDetail(),
+      loadCandidates(),
+      loadPendingAbsenceCount(),
+      loadFinalScoreOverview(),
+    ])
   } else {
+    examDetail.value = null
     candidates.value = []
     pagination.total = 0
     pendingAbsenceCount.value = 0
@@ -876,14 +829,32 @@ watch(selectedExamId, (value) => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
-    await Promise.all([loadCandidates(), loadPendingAbsenceCount(), loadFinalScoreOverview()])
+    await Promise.all([
+      loadExamDetail(),
+      loadCandidates(),
+      loadPendingAbsenceCount(),
+      loadFinalScoreOverview(),
+    ])
   }
 })
 </script>
 
 <style lang="scss" scoped>
+.score-publish-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
 .score-publish {
   &__absence-alert {
     margin-bottom: 12px;

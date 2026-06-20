@@ -2,7 +2,6 @@
 /**
  * 考试准备聚合工作台：按制卷形态驱动前置配置步骤与待完善提示。
  */
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { Component } from 'vue'
 import type {
   ExamDetailVO,
@@ -19,12 +18,10 @@ import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import FilePdfOutlined from '@ant-design/icons-vue/FilePdfOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import message from 'ant-design-vue/es/message'
-import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   EXAM_MATERIAL_LAYOUT_MODE_LABEL,
@@ -40,14 +37,11 @@ import {
   UiButton,
   UiCard,
   UiEmpty,
-  UiErrorRetryPanel,
   UiStatPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageRail, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { applyMarkStageFromExamProgress } from '@/composables/useMarkStageSync'
-import { useMarkStageStore } from '@/stores/modules/markStage'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -114,22 +108,11 @@ function examStatusLabel(status: ExamStatusCode): string {
   return strictEnumLabel(EXAM_STATUS_LABEL, status, '考试状态')
 }
 
-const markStageStore = useMarkStageStore()
-const { orderedStages } = storeToRefs(markStageStore)
 const router = useRouter()
+const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
+const { selectedExamId } = useMarkExamContext()
 
 const markingProgress = ref<MarkingProgressVO | null>(null)
-
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  selectedExam: currentExam,
-  onExamChange,
-  loadExams,
-  init: initExamSelector,
-} = useMarkExamSelector()
 
 const detail = ref<ExamDetailVO | null>(null)
 const detailLoading = ref(false)
@@ -170,14 +153,6 @@ async function loadDetail(examId: string | undefined) {
   }
 }
 
-function handleExamChange(value: SelectValue): void {
-  onExamChange(value)
-  if (selectedExamId.value) {
-    markStageStore.observeExam(selectedExamId.value)
-  }
-  void loadDetail(selectedExamId.value)
-}
-
 const layoutModeLocked = computed(() => detail.value?.layoutModeLocked === true)
 const showPrintSource = computed(() => draftLayoutMode.value === 'FULL_PAPER')
 
@@ -205,7 +180,11 @@ async function handleSaveLayoutMode() {
     })
     message.success('制卷形态已保存')
     await loadDetail(selectedExamId.value)
-    syncStageProgressToStore()
+    try {
+      await workbenchContext?.refreshSnapshot()
+    } catch {
+      // 非工作台上下文时忽略
+    }
   } catch (error) {
     showUserError(error, '保存制卷形态失败')
   } finally {
@@ -243,7 +222,7 @@ function buildQuestionStep(d: ExamDetailVO): PrepStepCard {
     description,
     status,
     statusText,
-    routeName: 'TeacherPaperTemplate',
+    routeName: 'TeacherExamWorkspacePaperTemplate',
     primaryAction,
   }
 }
@@ -266,7 +245,7 @@ const prepSteps = computed<PrepStepCard[]>(() => {
       : '先确定答卷页或整卷作答形态，后续扫描、身份识别与印刷包都按该形态执行',
     status: d.materialLayoutMode ? 'completed' : 'warning',
     statusText: d.materialLayoutMode ? '已选择' : '未选择',
-    routeName: 'TeacherExamPrep',
+    routeName: 'TeacherExamWorkspacePrep',
     primaryAction: d.materialLayoutMode ? '调整形态' : '选择形态',
     advisoryReason: d.materialLayoutMode ? undefined : '制卷形态未选择：扫描识别链路无法确定版面处理方式',
   })
@@ -279,7 +258,7 @@ const prepSteps = computed<PrepStepCard[]>(() => {
       : '导入考生名册，缺失学生用户会在导入提交时创建为租户学生账号',
     status: hasCandidates ? 'completed' : 'warning',
     statusText: hasCandidates ? `${d.candidateCount} 人` : '未配置',
-    routeName: 'TeacherCandidateRoster',
+    routeName: 'TeacherExamWorkspaceCandidateRoster',
     primaryAction: hasCandidates ? '查看 / 调整' : '配置考生名册',
     advisoryReason: hasCandidates
       ? undefined
@@ -299,7 +278,7 @@ const prepSteps = computed<PrepStepCard[]>(() => {
         : '上传答卷页文件，供扫描对齐与坐标缩放',
       status: ready ? 'completed' : 'warning',
       statusText: ready ? '已配置' : '未配置',
-      routeName: 'TeacherAnswerSheetTemplate',
+      routeName: 'TeacherExamWorkspaceAnswerSheet',
       primaryAction: ready ? '查看 / 调整' : '配置答卷页',
       advisoryReason: ready
         ? undefined
@@ -319,7 +298,7 @@ const prepSteps = computed<PrepStepCard[]>(() => {
             : '上传整卷 PDF，配置身份区与客观题填涂区',
       status: masterReady && pageSynced ? 'completed' : masterReady ? 'active' : 'warning',
       statusText: masterReady && pageSynced ? '已就绪' : masterReady ? '待完善' : '未配置',
-      routeName: 'TeacherPaperMaster',
+      routeName: 'TeacherExamWorkspacePaperMaster',
       primaryAction: masterReady ? '查看 / 调整' : '配置母版',
       advisoryReason: masterReady
         ? undefined
@@ -335,7 +314,7 @@ const prepSteps = computed<PrepStepCard[]>(() => {
           : '按考生名册生成个性化印刷 PDF',
         status: pkgReady ? 'completed' : 'warning',
         statusText: pkgReady ? '已生成' : '未生成',
-        routeName: 'TeacherPrintPackage',
+        routeName: 'TeacherExamWorkspacePrintPackage',
         primaryAction: pkgReady ? '查看 / 调整' : '生成印刷包',
         advisoryReason: pkgReady
           ? undefined
@@ -407,23 +386,9 @@ const statMetrics = computed((): UiStatPanelItem[] => {
   return items
 })
 
-function syncStageProgressToStore(): void {
-  if (!selectedExamId.value || !detail.value) return
-  applyMarkStageFromExamProgress(
-    selectedExamId.value,
-    prepSteps.value,
-    blockingReasons.value.length > 0 ? blockingReasons.value : advisoryReasons.value,
-    markingProgress.value,
-    detail.value,
-  )
-}
-
-function goExamList() {
-  void router.push({ name: 'TeacherExamList' })
-}
-
 function goPrepStep(step: PrepStepCard) {
-  void router.push({ name: step.routeName, query: { examId: selectedExamId.value } })
+  if (!selectedExamId.value) return
+  void router.push({ name: step.routeName, params: { examId: selectedExamId.value } })
 }
 
 /** 所有必填准备项是否已完成 */
@@ -435,243 +400,203 @@ const prepReady = computed(() => {
 function goNextStep(target: 'scan' | 'review'): void {
   if (!selectedExamId.value) return
   if (target === 'scan') {
-    void router.push({ name: 'TeacherScanUpload', query: { examId: selectedExamId.value } })
+    void router.push({ name: 'TeacherExamWorkspaceScanBatches', params: { examId: selectedExamId.value } })
   } else {
-    void router.push({ name: 'TeacherReviewWorkspace', query: { examId: selectedExamId.value } })
+    void router.push({ name: 'TeacherExamWorkspaceMarkingReview', params: { examId: selectedExamId.value } })
   }
 }
 
 watch(selectedExamId, (next) => {
   if (next) {
-    markStageStore.observeExam(next)
     void loadDetail(next)
   } else {
     detail.value = null
   }
-})
+}, { immediate: true })
 
-watch([() => selectedExamId.value, () => detail.value, () => markingProgress.value], () => {
-  if (selectedExamId.value && detail.value) {
-    syncStageProgressToStore()
-  }
-})
-
-onMounted(async () => {
-  await initExamSelector()
+onMounted(() => {
   if (selectedExamId.value) {
-    markStageStore.observeExam(selectedExamId.value)
-    await loadDetail(selectedExamId.value)
-    syncStageProgressToStore()
+    void loadDetail(selectedExamId.value)
   }
 })
 </script>
 
 <template>
-  <StageWorkbenchShell>
-    <template #rail>
-      <StageRail v-if="selectedExamId && detail" :stages="orderedStages" compact />
-    </template>
-    <template #context>
-      <ContextBar subtitle="考试准备：制卷形态、导入考生名册、录入题目与答案、生成印刷包">
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            placeholder="选择考试"
-            class="exam-prep__select"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            :options="examOptions"
-            :loading="examLoading"
-            @update:value="handleExamChange"
+  <UiEmpty
+    v-if="!selectedExamId"
+    description="请选择考试"
+    class="exam-prep__empty"
+  />
+
+  <UiEmpty
+    v-else-if="detailLoadError"
+    description="暂无数据"
+    class="exam-prep__empty"
+  />
+
+  <template v-else>
+    <a-spin :spinning="detailLoading">
+      <div v-if="detail?.status" class="exam-prep__status-row">
+        <UiTag :tone="examStatusTone(detail.status)" size="sm">
+          {{ examStatusLabel(detail.status) }}
+        </UiTag>
+      </div>
+
+      <UiCard class="exam-prep__mode-card">
+        <template #title>制卷形态</template>
+        <a-form layout="inline">
+          <a-form-item label="形态">
+            <a-select
+              v-model:value="draftLayoutMode"
+              :disabled="layoutModeLocked"
+              placeholder="选择制卷形态"
+              :options="layoutModeOptions"
+              style="width: 200px"
+            />
+          </a-form-item>
+          <a-form-item v-if="showPrintSource" label="印刷来源">
+            <a-select
+              v-model:value="draftPrintSource"
+              :disabled="layoutModeLocked"
+              placeholder="选择印刷来源"
+              :options="printSourceOptions"
+              style="width: 200px"
+            />
+          </a-form-item>
+          <a-form-item>
+            <UiButton
+              size="sm"
+              :variant="layoutDirty && !layoutModeLocked ? 'primary' : 'outline'"
+              :disabled="!draftLayoutMode || layoutModeLocked || !layoutDirty"
+              :loading="layoutSaving"
+              @click="handleSaveLayoutMode"
+            >
+              保存形态
+            </UiButton>
+          </a-form-item>
+        </a-form>
+        <div class="exam-prep__mode-options">
+          <button
+            type="button"
+            class="exam-prep__mode-option"
+            :class="{ 'exam-prep__mode-option--active': draftLayoutMode === 'ANSWER_SHEET' }"
+            :disabled="layoutModeLocked"
+            @click="draftLayoutMode = 'ANSWER_SHEET'"
+          >
+            <span class="exam-prep__mode-option-title">答卷页模式</span>
+            <span class="exam-prep__mode-option-desc">
+              教师上传答卷页，适合外部试卷或只扫描答题卡；后续重点处理身份绑定、题目区域和成绩确认。
+            </span>
+          </button>
+          <button
+            type="button"
+            class="exam-prep__mode-option"
+            :class="{ 'exam-prep__mode-option--active': draftLayoutMode === 'FULL_PAPER' }"
+            :disabled="layoutModeLocked"
+            @click="draftLayoutMode = 'FULL_PAPER'"
+          >
+            <span class="exam-prep__mode-option-title">整卷模式</span>
+            <span class="exam-prep__mode-option-desc">
+              使用整卷 PDF 母版，配置身份区和客观题填涂区，适合系统拆页识别与按名册生成印刷包。
+            </span>
+          </button>
+        </div>
+        <p v-if="layoutModeLocked" class="exam-prep__mode-hint">
+          已开印或已扫描，制卷形态不可修改
+        </p>
+        <p v-else-if="!detail?.materialLayoutMode" class="exam-prep__mode-hint">
+          建议先完成制卷形态、模板与名册准备；缺项会直接增加扫描识别、身份绑定和后续批改的人工处理风险
+        </p>
+      </UiCard>
+
+      <template v-if="detail?.materialLayoutMode">
+        <UiStatPanel
+          :items="statMetrics"
+          :columns="5"
+          variant="grid"
+          compact
+          class="exam-prep__signals"
+        />
+        <div v-if="blockingReasons.length > 0" class="exam-prep__advisory">
+          <a-alert
+            v-for="reason in blockingReasons"
+            :key="reason"
+            type="error"
+            show-icon
+            :message="reason"
+            class="exam-prep__alert"
           />
-          <UiTag v-if="currentExam" :tone="examStatusTone(currentExam.status)" size="sm">
-            {{ examStatusLabel(currentExam.status) }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :loading="examLoading" @click="loadExams">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-          <UiButton variant="outline" size="sm" @click="goExamList">考试工作台</UiButton>
-        </template>
-      </ContextBar>
-    </template>
-
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择一场考试以查看准备进度"
-      class="exam-prep__empty"
-    />
-
-    <UiErrorRetryPanel
-      v-else-if="detailLoadError"
-      :error="detailLoadError"
-      title="考试详情加载失败"
-      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      @retry="() => loadDetail(selectedExamId)"
-    />
-
-    <template v-else>
-      <a-spin :spinning="detailLoading">
-        <UiCard class="exam-prep__mode-card">
-          <template #title>制卷形态</template>
-          <a-form layout="inline">
-            <a-form-item label="形态">
-              <a-select
-                v-model:value="draftLayoutMode"
-                :disabled="layoutModeLocked"
-                placeholder="选择制卷形态"
-                :options="layoutModeOptions"
-                style="width: 200px"
-              />
-            </a-form-item>
-            <a-form-item v-if="showPrintSource" label="印刷来源">
-              <a-select
-                v-model:value="draftPrintSource"
-                :disabled="layoutModeLocked"
-                placeholder="选择印刷来源"
-                :options="printSourceOptions"
-                style="width: 200px"
-              />
-            </a-form-item>
-            <a-form-item>
+        </div>
+        <div v-if="advisoryReasons.length > 0" class="exam-prep__advisory">
+          <a-alert
+            v-for="reason in advisoryReasons"
+            :key="reason"
+            type="warning"
+            show-icon
+            :message="reason"
+            class="exam-prep__alert"
+          />
+        </div>
+        <section class="exam-prep__cards">
+          <UiCard
+            v-for="step in prepSteps"
+            :key="step.key"
+            class="exam-prep__card"
+            :class="`exam-prep__card--${step.status}`"
+          >
+            <template #title>
+              <component :is="resolveIcon(step.key)" />
+              <span>{{ step.title }}</span>
+              <UiBadge :tone="resolveTone(step.status)">{{ step.statusText }}</UiBadge>
+            </template>
+            <p class="exam-prep__desc">{{ step.description }}</p>
+            <a-space>
               <UiButton
+                :variant="prepStepButtonVariant(step)"
                 size="sm"
-                :variant="layoutDirty && !layoutModeLocked ? 'primary' : 'outline'"
-                :disabled="!draftLayoutMode || layoutModeLocked || !layoutDirty"
-                :loading="layoutSaving"
-                @click="handleSaveLayoutMode"
+                @click="goPrepStep(step)"
               >
-                保存形态
+                {{ step.primaryAction }}
               </UiButton>
-            </a-form-item>
-          </a-form>
-          <div class="exam-prep__mode-options">
-            <button
-              type="button"
-              class="exam-prep__mode-option"
-              :class="{ 'exam-prep__mode-option--active': draftLayoutMode === 'ANSWER_SHEET' }"
-              :disabled="layoutModeLocked"
-              @click="draftLayoutMode = 'ANSWER_SHEET'"
-            >
-              <span class="exam-prep__mode-option-title">答卷页模式</span>
-              <span class="exam-prep__mode-option-desc">
-                教师上传答卷页，适合外部试卷或只扫描答题卡；后续重点处理身份绑定、题目区域和成绩确认。
-              </span>
-            </button>
-            <button
-              type="button"
-              class="exam-prep__mode-option"
-              :class="{ 'exam-prep__mode-option--active': draftLayoutMode === 'FULL_PAPER' }"
-              :disabled="layoutModeLocked"
-              @click="draftLayoutMode = 'FULL_PAPER'"
-            >
-              <span class="exam-prep__mode-option-title">整卷模式</span>
-              <span class="exam-prep__mode-option-desc">
-                使用整卷 PDF 母版，配置身份区和客观题填涂区，适合系统拆页识别与按名册生成印刷包。
-              </span>
-            </button>
-          </div>
-          <p v-if="layoutModeLocked" class="exam-prep__mode-hint">
-            已开印或已扫描，制卷形态不可修改
-          </p>
-          <p v-else-if="!detail?.materialLayoutMode" class="exam-prep__mode-hint">
-            建议先完成制卷形态、模板与名册准备；缺项会直接增加扫描识别、身份绑定和后续批改的人工处理风险
-          </p>
-        </UiCard>
-
-        <template v-if="detail?.materialLayoutMode">
-          <UiStatPanel
-            :items="statMetrics"
-            :columns="5"
-            variant="grid"
-            compact
-            class="exam-prep__signals"
-          />
-          <div v-if="blockingReasons.length > 0" class="exam-prep__advisory">
-            <a-alert
-              v-for="reason in blockingReasons"
-              :key="reason"
-              type="error"
-              show-icon
-              :message="reason"
-              class="exam-prep__alert"
-            />
-          </div>
-          <div v-if="advisoryReasons.length > 0" class="exam-prep__advisory">
-            <a-alert
-              v-for="reason in advisoryReasons"
-              :key="reason"
-              type="warning"
-              show-icon
-              :message="reason"
-              class="exam-prep__alert"
-            />
-          </div>
-          <section class="exam-prep__cards">
-            <UiCard
-              v-for="step in prepSteps"
-              :key="step.key"
-              class="exam-prep__card"
-              :class="`exam-prep__card--${step.status}`"
-            >
-              <template #title>
-                <component :is="resolveIcon(step.key)" />
-                <span>{{ step.title }}</span>
-                <UiBadge :tone="resolveTone(step.status)">{{ step.statusText }}</UiBadge>
-              </template>
-              <p class="exam-prep__desc">{{ step.description }}</p>
-              <a-space>
-                <UiButton
-                  :variant="prepStepButtonVariant(step)"
-                  size="sm"
-                  @click="goPrepStep(step)"
-                >
-                  {{ step.primaryAction }}
-                </UiButton>
-                <UiTag v-if="step.advisoryReason" tone="orange" size="sm">
-                  {{ step.advisoryReason }}
-                </UiTag>
-              </a-space>
-            </UiCard>
-          </section>
-          <!-- P1-1 准备完成下一步操作栏 -->
-          <div v-if="prepReady" class="exam-prep__next-step">
-            <UiCard class="exam-prep__next-step-card">
-              <template #title>
-                <CheckCircleOutlined />
-                <span>关键准备项已完成</span>
-              </template>
-              <p class="exam-prep__next-step-desc">
-                制卷形态、可登录学生名册与必要印刷准备已就绪，可以开始扫描试卷或进入阅卷。
-              </p>
-              <a-space>
-                <UiButton variant="primary" @click="goNextStep('scan')">
-                  <template #icon><ScanOutlined /></template>
-                  开始扫描录入
-                </UiButton>
-                <UiButton variant="outline" @click="goNextStep('review')">
-                  <template #icon><EditOutlined /></template>
-                  进入阅卷复核
-                </UiButton>
-              </a-space>
-            </UiCard>
-          </div>
-        </template>
-      </a-spin>
-    </template>
-  </StageWorkbenchShell>
+              <UiTag v-if="step.advisoryReason" tone="orange" size="sm">
+                {{ step.advisoryReason }}
+              </UiTag>
+            </a-space>
+          </UiCard>
+        </section>
+        <div v-if="prepReady" class="exam-prep__next-step">
+          <UiCard class="exam-prep__next-step-card">
+            <template #title>
+              <CheckCircleOutlined />
+              <span>关键准备项已完成</span>
+            </template>
+            <p class="exam-prep__next-step-desc">
+              制卷形态、可登录学生名册与必要印刷准备已就绪，可以开始扫描试卷或进入阅卷。
+            </p>
+            <a-space>
+              <UiButton variant="primary" @click="goNextStep('scan')">
+                <template #icon><ScanOutlined /></template>
+                开始扫描录入
+              </UiButton>
+              <UiButton variant="outline" @click="goNextStep('review')">
+                <template #icon><EditOutlined /></template>
+                进入阅卷复核
+              </UiButton>
+            </a-space>
+          </UiCard>
+        </div>
+      </template>
+    </a-spin>
+  </template>
 </template>
 
 <style scoped lang="scss">
 .exam-prep {
-  &__select {
-    width: 320px;
-  }
   &__empty {
     margin-top: 32px;
+  }
+  &__status-row {
+    margin-bottom: 12px;
   }
   &__mode-card {
     margin-bottom: 16px;
@@ -781,9 +706,6 @@ onMounted(async () => {
 
 @media (max-width: 640px) {
   .exam-prep {
-    &__select {
-      width: 100%;
-    }
     &__mode-options {
       grid-template-columns: minmax(0, 1fr);
     }

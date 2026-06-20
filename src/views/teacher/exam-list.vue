@@ -5,48 +5,11 @@
         v-if="urgentBanner"
         tone="warning"
         :title="urgentBanner.title"
-        :description="urgentBanner.description"
         dense
         class="exam-list-page__banner"
       />
-      <UiAlertStrip
-        v-if="progressLoadError"
-        tone="error"
-        title="部分考试进度加载失败"
-        :description="progressLoadError"
-        dense
-        class="exam-list-page__banner"
-      />
-      <UiStatPanel
-        title="今日待办"
-        :items="todayStatMetrics"
-        :columns="4"
-        variant="strip"
-        compact
-        class="exam-list-page__today-stats"
-      />
+      <SignalBand :metrics="summarySignals" compact class="exam-list-page__signals" />
     </template>
-
-    <template #rail>
-      <StageRail :stages="workbenchStages" compact />
-    </template>
-
-    <!-- KPI 概览：总场次 / 进行中 / 已关闭 / 超期未完成 -->
-    <UiStatPanel
-      :items="kpiItems"
-      :columns="4"
-      variant="grid"
-      compact
-      class="exam-list-page__kpi"
-    />
-    <UiAlertStrip
-      v-if="statusTotalsError"
-      tone="error"
-      title="考试状态计数加载失败"
-      :description="statusTotalsError"
-      dense
-      class="exam-list-page__alert"
-    />
 
     <!-- 行动提示：当存在超期待推进考试时显示 -->
     <UiAlertStrip
@@ -129,6 +92,7 @@
         v-model="filterForm"
         :fields="filterFields"
         search-text="查询"
+        actions-align="end"
         @search="handleSearch"
         @reset="handleReset"
       >
@@ -144,18 +108,7 @@
         </template>
       </UiFilterBar>
 
-      <!-- D-9 错误态：考试列表加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="examsLoadError"
-        :error="examsLoadError"
-        title="考试列表加载失败"
-        compact
-        @retry="loadExams"
-      />
-      <UiEmpty v-else-if="!loading && dataSource.length === 0" description="暂无考试数据" />
-
       <UiDataTable
-        v-else
         v-model:current="pagination.current"
         v-model:page-size="pagination.pageSize"
         :columns="columns"
@@ -324,7 +277,7 @@ import type {
   MarkingProgressVO,
 } from '@/apis/mark/exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import type { SignalMetric } from '@/types/workbench'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import Modal from 'ant-design-vue/es/modal'
@@ -349,18 +302,16 @@ import {
   UiCard,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
-  UiStatPanel,
   UiTag,
   UiTextAction,
 } from '@/components/ui-guide/ui'
-import { StageRail, StageWorkbenchShell } from '@/components/workbench'
+import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
+import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -416,6 +367,7 @@ const filterFields: FilterField[] = [
     placeholder: '全部状态',
     allowClear: true,
     width: 140,
+    minWidth: 140,
     options: statusOptions.map((item) => ({ label: item.label, value: item.value })),
   },
   {
@@ -424,6 +376,7 @@ const filterFields: FilterField[] = [
     placeholder: '2024-2025',
     allowClear: true,
     width: 150,
+    minWidth: 150,
     triggerSearchOnChange: false,
   },
   {
@@ -432,6 +385,7 @@ const filterFields: FilterField[] = [
     placeholder: '全部学期',
     allowClear: true,
     width: 140,
+    minWidth: 140,
     options: SemesterOptions.map((item) => ({ label: item.label, value: item.value })),
   },
   {
@@ -440,6 +394,7 @@ const filterFields: FilterField[] = [
     placeholder: '考试名称 / 编号',
     allowClear: true,
     width: 220,
+    minWidth: 220,
     inputPrefixIcon: 'search',
     triggerSearchOnChange: false,
   },
@@ -453,8 +408,7 @@ const gradingStrategyOptions = Object.entries(GRADING_STRATEGY_LABEL).map(([valu
 
 const dataSource = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
-// D-9 错误态：考试列表加载失败时 UiErrorRetryPanel 重试 + 上报
-const examsLoadError = ref<Error | null>(null)
+const examsLoadError = ref(false)
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
   pageSize: 10,
@@ -503,64 +457,81 @@ const progressAggregate = computed(() => {
   }
 })
 
-const todayStatMetrics = computed(() => {
+const summarySignals = computed<SignalMetric[]>(() => {
   const a = progressAggregate.value
+  const dash = '—'
   const pendingValue = progressLoadError.value
-    ? '不可用'
+    ? dash
     : progressReady.value
       ? a.pendingReview
       : '…'
   const inProgressValue = progressLoadError.value
-    ? '不可用'
+    ? dash
     : progressReady.value
       ? a.inProgressReview
       : '…'
   const unconfirmedValue = progressLoadError.value
-    ? '不可用'
+    ? dash
     : progressReady.value
       ? a.unconfirmedQuestionGrades
       : '…'
-  const scanValue = progressLoadError.value ? '不可用' : progressReady.value ? a.scanAttention : '…'
+  const scanValue = progressLoadError.value ? dash : progressReady.value ? a.scanAttention : '…'
   return [
     {
       key: 'pending-review',
-      label: '待阅卷任务',
+      label: '待阅卷',
       value: pendingValue,
       unit: '份',
-      helper: '同题剩余待阅卷数量',
       tone: (a.pendingReview > 0 ? 'orange' : 'gray') as BadgeTone,
-      clickable: a.pendingReview > 0,
-      onClick: () => router.push({ name: 'TeacherMarkingTaskPool' }),
     },
     {
       key: 'in-progress',
-      label: '我的进行中阅卷',
+      label: '进行中阅卷',
       value: inProgressValue,
       unit: '份',
-      helper: '已认领尚未提交',
       tone: (a.inProgressReview > 0 ? 'blue' : 'gray') as BadgeTone,
-      clickable: a.inProgressReview > 0,
-      onClick: () => router.push({ name: 'TeacherMarkingTaskPool' }),
     },
     {
       key: 'unconfirmed',
       label: '待确认成绩',
       value: unconfirmedValue,
       unit: '题',
-      helper: '需进入成绩确认推进',
       tone: (a.unconfirmedQuestionGrades > 0 ? 'purple' : 'gray') as BadgeTone,
-      clickable: a.unconfirmedQuestionGrades > 0,
-      onClick: () => router.push({ name: 'TeacherScoreFinalize' }),
     },
     {
       key: 'scan-monitor',
-      label: '扫描监控',
+      label: '扫描异常',
       value: scanValue,
       unit: '条',
-      helper: '扫描入账、异常和重复影像',
       tone: (a.scanAttention > 0 ? 'red' : 'gray') as BadgeTone,
-      clickable: a.scanAttention > 0,
-      onClick: () => router.push({ name: 'TeacherScanLiveMonitor' }),
+    },
+    {
+      key: 'filtered',
+      label: '筛选命中',
+      value: pagination.total ?? 0,
+      unit: '场',
+      tone: 'blue',
+    },
+    {
+      key: 'active',
+      label: '进行中',
+      value: statusTotalsFailed.value ? dash : activeTotal.value,
+      unit: '场',
+      tone: 'green',
+    },
+    {
+      key: 'closed',
+      label: '已关闭',
+      value: statusTotalsFailed.value ? dash : closedTotal.value,
+      unit: '场',
+      tone: 'gray',
+    },
+    {
+      key: 'stale',
+      label: '待推进',
+      value: staleExamCount.value,
+      unit: '场',
+      tone: (staleExamCount.value > 0 ? 'orange' : 'gray') as BadgeTone,
     },
   ]
 })
@@ -614,62 +585,17 @@ function getExamProgressText(examId: string): string {
   return `${confirmed}/${totalGrades} 题`
 }
 
-function inferStageStatus(predicate: () => boolean): WorkbenchStageStatus {
-  return predicate() ? 'active' : 'pending'
-}
-
-const workbenchStages = computed<WorkbenchStage[]>(() => {
-  const a = progressAggregate.value
-  return [
-    { key: 'prep', title: '考试准备', status: 'pending', statusText: '形态 / 答卷 / 题目 / 名册' },
-    {
-      key: 'scan',
-      title: '扫描识别',
-      status: inferStageStatus(() => a.scanAttention > 0),
-      statusText: a.scanAttention > 0 ? `${a.scanAttention} 条异常待处理` : '扫描 / OCR / 异常',
-    },
-    { key: 'organize', title: '阅卷安排', status: 'pending', statusText: '题组 / 教师 / 试阅' },
-    {
-      key: 'review',
-      title: '阅卷执行',
-      status: inferStageStatus(() => a.pendingReview > 0 || a.inProgressReview > 0),
-      statusText:
-        a.pendingReview + a.inProgressReview > 0
-          ? `${a.pendingReview + a.inProgressReview} 份待阅卷 / 进行中`
-          : '阅卷任务池',
-    },
-    {
-      key: 'quality',
-      title: '质量控制',
-      status: inferStageStatus(() => a.openProcessing > 0),
-      statusText: a.openProcessing > 0 ? `${a.openProcessing} 个未闭合处理任务` : '抽检 / 仲裁',
-    },
-    {
-      key: 'publish',
-      title: '成绩发布',
-      status: inferStageStatus(() => a.unconfirmedQuestionGrades > 0),
-      statusText:
-        a.unconfirmedQuestionGrades > 0
-          ? `${a.unconfirmedQuestionGrades} 题待确认`
-          : '确认 / 发布',
-    },
-    { key: 'archive', title: '考后归档', status: 'pending', statusText: '归档 / 质量评价' },
-  ]
-})
-
-const urgentBanner = computed<{ title: string, description: string } | null>(() => {
+const urgentBanner = computed<{ title: string } | null>(() => {
   const a = progressAggregate.value
   if (!progressReady.value || progressLoadError.value) return null
   if (a.scanAttention > 0) {
     return {
-      title: `${a.scanAttention} 条扫描异常待处理，影响后续阅卷推进`,
-      description: '点击下方「扫描监控」卡片可进入中控台处理异常和重复影像。',
+      title: `${a.scanAttention} 条扫描异常待处理`,
     }
   }
   if (a.pendingReview >= URGENT_PENDING_REVIEW_THRESHOLD) {
     return {
-      title: `当前累计 ${a.pendingReview} 份待阅卷任务，可进入阅卷任务池批量推进`,
-      description: '使用阅卷工作区底部「提交并取下一份」可流水线接力阅卷。',
+      title: `${a.pendingReview} 份待阅卷任务待推进`,
     }
   }
   return null
@@ -691,7 +617,7 @@ function formatAcademicTerm(exam: ExamSummaryVO): string {
 
 async function loadExams(): Promise<void> {
   loading.value = true
-  examsLoadError.value = null
+  examsLoadError.value = false
   try {
     const [startTime, endTime] = filterForm.dateRange ?? []
     const result = await pageExams({
@@ -708,7 +634,9 @@ async function loadExams(): Promise<void> {
     dataSource.value = readPageList(result, '考试列表加载失败，请稍后重试')
     pagination.total = readPageTotal(result)
   } catch (error) {
-    examsLoadError.value = toUserError(error, '考试列表加载失败')
+    examsLoadError.value = true
+    dataSource.value = []
+    pagination.total = 0
     showUserError(error, '考试列表加载失败')
   } finally {
     loading.value = false
@@ -762,15 +690,15 @@ function handleUiPageChange(page: { current: number, pageSize: number }): void {
 
 
 function goPrepWorkbenchById(examId: string): void {
-  void router.push({ name: 'TeacherExamPrepWorkbench', query: { examId } })
+  void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId } })
 }
 
 function goScanLiveMonitor(examId: string): void {
-  void router.push({ name: 'TeacherScanLiveMonitor', query: { examId } })
+  void router.push({ name: 'TeacherExamWorkspaceScanMonitor', params: { examId } })
 }
 
 function goMarkingTaskPool(examId: string): void {
-  void router.push({ name: 'TeacherMarkingTaskPool', query: { examId } })
+  void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId } })
 }
 
 /**
@@ -782,38 +710,37 @@ function goMarkingTaskPool(examId: string): void {
 function goSmartExamEntry(examId: string): void {
   const p = examProgressMap.value.get(examId)
   if (!p) {
-    // 无进度数据时默认回到准备工作台
-    void router.push({ name: 'TeacherExamPrepWorkbench', query: { examId } })
+    void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId } })
     return
   }
   if (p.scanAttentionCount > 0) {
-    void router.push({ name: 'TeacherScanLiveMonitor', query: { examId } })
+    void router.push({ name: 'TeacherExamWorkspaceScanMonitor', params: { examId } })
     return
   }
   if (p.totalQuestionGradeCount <= 0) {
-    void router.push({ name: 'TeacherExamPrepWorkbench', query: { examId } })
+    void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId } })
     return
   }
   if (Math.max(0, p.totalQuestionGradeCount - p.confirmedQuestionGradeCount) > 0) {
-    void router.push({ name: 'TeacherReviewWorkspace', query: { examId } })
+    void router.push({ name: 'TeacherExamWorkspaceMarkingReview', params: { examId } })
     return
   }
   if (p.pendingReviewTaskCount > 0 || p.inProgressReviewTaskCount > 0) {
-    void router.push({ name: 'TeacherMarkingTaskPool', query: { examId } })
+    void router.push({ name: 'TeacherExamWorkspaceMarkingTaskPool', params: { examId } })
     return
   }
-  void router.push({ name: 'TeacherScoreFinalize', query: { examId } })
+  void router.push({ name: 'TeacherExamWorkspaceScoreSummary', params: { examId } })
 }
 
 // ─── KPI 概览：单独维护进行中 / 已关闭的全量计数 ─────────────────
 // 复用 pageExams 的 status 维度查询，pageSize=1 仅取 total，避免额外列表传输。
 const activeTotal = ref<number>(0)
 const closedTotal = ref<number>(0)
-const statusTotalsError = ref('')
+const statusTotalsFailed = ref(false)
 
 async function loadStatusTotals(): Promise<void> {
   const createUserId = isAdminView.value ? null : userStore.userInfo.userId || undefined
-  statusTotalsError.value = ''
+  statusTotalsFailed.value = false
   try {
     const [activeRes, closedRes] = await Promise.all([
       pageExams({ pageNum: 1, pageSize: 1, status: 'ACTIVE', createUserId }),
@@ -821,8 +748,10 @@ async function loadStatusTotals(): Promise<void> {
     ])
     activeTotal.value = readPageTotal(activeRes, '考试状态计数加载失败')
     closedTotal.value = readPageTotal(closedRes, '考试状态计数加载失败')
-  } catch (error) {
-    statusTotalsError.value = getUserErrorMessage(error, '考试状态计数加载失败')
+  } catch {
+    statusTotalsFailed.value = true
+    activeTotal.value = 0
+    closedTotal.value = 0
   }
 }
 
@@ -834,37 +763,6 @@ const staleExamCount = computed<number>(() => {
     return dayjs(item.createTime).isBefore(threshold)
   }).length
 })
-
-const kpiItems = computed(() => [
-  {
-    key: 'filtered',
-    label: '当前筛选命中',
-    value: pagination.total ?? 0,
-    helper: '受顶部筛选条件影响',
-    tone: 'blue' as BadgeTone,
-  },
-  {
-    key: 'active',
-    label: '进行中考试',
-    value: statusTotalsError.value ? '不可用' : activeTotal.value,
-    helper: isAdminView.value ? '租户全部 ACTIVE' : '我创建或被分配 ACTIVE',
-    tone: 'green' as BadgeTone,
-  },
-  {
-    key: 'closed',
-    label: '已关闭',
-    value: statusTotalsError.value ? '不可用' : closedTotal.value,
-    helper: isAdminView.value ? '租户全部 CLOSED' : '我创建或被分配 CLOSED',
-    tone: 'gray' as BadgeTone,
-  },
-  {
-    key: 'stale',
-    label: '本页待推进',
-    value: staleExamCount.value,
-    helper: '创建超 7 天且未关闭',
-    tone: (staleExamCount.value > 0 ? 'orange' : 'gray') as BadgeTone,
-  },
-])
 
 const formModalOpen = ref(false)
 const saving = ref(false)
@@ -1024,8 +922,9 @@ async function handleSave(): Promise<void> {
         cancelText: '稍后再说',
         onOk() {
           void router.push({
-            name: 'TeacherCandidateRoster',
-            query: { examId, setup: '1' },
+            name: 'TeacherExamWorkspaceCandidateRoster',
+            params: { examId },
+            query: { setup: '1' },
           })
         },
       })
@@ -1093,20 +992,16 @@ onMounted(() => {
   gap: 16px;
 }
 
-.exam-list-page__kpi {
-  margin-bottom: 4px;
-}
-
-.exam-list-page__alert {
-  margin-bottom: 4px;
-}
-
 .exam-list-page__banner {
   margin-bottom: 8px;
 }
 
-.exam-list-page__today-stats {
+.exam-list-page__signals {
   margin-bottom: 0;
+}
+
+.exam-list-page__alert {
+  margin-bottom: 4px;
 }
 
 .exam-list-page__recommend-card {

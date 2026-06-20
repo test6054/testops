@@ -32,46 +32,23 @@
 
     <a-spin :spinning="loading || generating">
       <!-- D-9 错误态：AI 课程达成度加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 课程达成度加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!record" description="暂无达成度分析，请填写参数后生成。" />
-      <div v-else class="ai-record">
-        <a-row :gutter="12" class="metric-row">
-          <a-col :span="8">
-            <a-statistic
-              v-if="record.overallAchievementRate != null"
-              title="整体达成率"
-              :value="record.overallAchievementRate * 100"
-              :precision="1"
-              suffix="%"
-              :value-style="achievementStyle(record.overallAchievementRate)"
-            />
-            <div v-else class="metric-text">
-              <span class="metric-title">整体达成率</span>
-              <span class="metric-value">—</span>
-            </div>
-          </a-col>
-          <a-col :span="8">
-            <a-statistic title="考试数" :value="record.examCount ?? 0" />
-          </a-col>
-          <a-col :span="8">
-            <div class="metric-text">
-              <span class="metric-title">生成耗时</span>
-              <span class="metric-value">{{ latencyText(record) }}</span>
-            </div>
-          </a-col>
-        </a-row>
+      <div v-else-if="record" class="ai-record">
+        <UiStatPanel
+          :items="achievementMetrics"
+          :columns="3"
+          variant="strip"
+          compact
+        />
 
         <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="课程">
             {{ record.courseName?.trim() || '—' }}
@@ -89,9 +66,9 @@
           </a-descriptions-item>
           <a-descriptions-item label="考试范围" :span="3">
             <a-space v-if="record.exams.length" wrap>
-              <a-tag v-for="exam in record.exams" :key="exam.examId">
+              <UiTag v-for="exam in record.exams" :key="exam.examId">
                 {{ exam.examName }}{{ exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : '' }}
-              </a-tag>
+              </UiTag>
             </a-space>
             <span v-else class="text-muted">无考试范围</span>
           </a-descriptions-item>
@@ -106,29 +83,24 @@
           <strong>达成度摘要：</strong>{{ record.achievementSummary }}
         </a-typography-paragraph>
 
-        <div v-if="examStatTrendPoints.length >= 2" class="ai-chart">
-          <div class="ai-chart__meta">
-            <strong>参与考试得分走势</strong>
-          </div>
-          <UiTrendChart
-            :items="examStatTrendPoints"
-            area
-            show-bubble
-            class="ai-chart__canvas"
-          />
-        </div>
+        <MarkTrendSection
+          v-if="record"
+          title="参与考试得分走势"
+          :point-count="examStatTrendPoints.length"
+          :option="examTrendChartOption"
+          height="280px"
+          :last-value="examTrendLastValue"
+          value-unit="%"
+        />
 
-        <div v-if="achievementBarItems.length > 0" class="ai-chart">
-          <div class="ai-chart__meta">
-            <strong>分目标达成率</strong>
-          </div>
-          <UiBarChart
-            :items="achievementBarItems"
-            :max-value="100"
-            orientation="vertical"
-            class="ai-chart__canvas"
-          />
-        </div>
+        <MarkBarSection
+          v-if="record"
+          title="分目标达成率"
+          hint="悬停查看各目标达成率与说明"
+          :item-count="achievementBarItems.length"
+          :option="achievementBarChartOption"
+          height="280px"
+        />
 
         <div v-if="achievementItems.length > 0" class="ai-items">
           <strong>分目标达成情况：</strong>
@@ -141,9 +113,9 @@
                     <span class="analysis-item__title">
                       {{ objectiveDimensionLabel(item) }}
                     </span>
-                    <a-tag v-if="item.status" :color="achievementStatusColor(item.status)">
+                    <UiTag v-if="item.status" :tone="achievementStatusColor(item.status)">
                       {{ achievementStatusLabel(item.status) }}
-                    </a-tag>
+                    </UiTag>
                     <span v-if="item.achievementRate != null" class="analysis-item__metric">
                       达成率 {{ formatPercent(item.achievementRate) }}
                     </span>
@@ -177,6 +149,8 @@ import type {
   CourseObjectiveAchievementVO,
 } from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
@@ -190,7 +164,10 @@ import {
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import { UiBarChart, UiCard, UiEmpty, UiErrorRetryPanel, UiTrendChart } from '@/components/ui-guide/ui'
+import { MarkBarSection, MarkTrendSection } from '@/components/chart'
+import { UiCard, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import { useChartOption } from '@/hooks/modules/useChartOption'
+import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -199,7 +176,7 @@ import {
   achievementItemsToBarItems,
   examStatSnapshotsToTrendPoints,
 } from '@/utils/mark-statistics-chart'
-import { rateTone, toneToColor } from '@/utils/score-tone'
+import { rateTone } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'CourseAchievementCard' })
@@ -232,6 +209,60 @@ const examStatTrendPoints = computed(() =>
 const achievementBarItems = computed(() =>
   achievementItemsToBarItems(record.value?.achievementItems ?? []),
 )
+
+const examTrendLastValue = computed(() => {
+  const points = examStatTrendPoints.value
+  if (points.length === 0) {
+    return null
+  }
+  return Number(points[points.length - 1]?.value)
+})
+
+const { chartOption: examTrendChartOption } = useChartOption(() =>
+  buildTrendLineChartOption(examStatTrendPoints.value, {
+    yAxisName: '得分率 %',
+    yMax: 100,
+    area: true,
+    emptyText: '至少需要 2 场考试才能展示走势',
+  }),
+)
+
+const { chartOption: achievementBarChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(achievementBarItems.value, {
+    orientation: 'vertical',
+    maxValue: 100,
+    yAxisName: '达成率 %',
+    unit: '%',
+    emptyText: '暂无分目标达成率数据',
+  }),
+)
+
+const achievementMetrics = computed((): UiStatPanelItem[] => {
+  if (!record.value) return []
+  const data = record.value
+  const rate = data.overallAchievementRate
+  return [
+    {
+      key: 'overallAchievementRate',
+      label: '整体达成率',
+      value: rate != null ? `${(rate * 100).toFixed(1)}` : '—',
+      unit: rate != null ? '%' : '',
+      tone: rate != null ? rateTone(rate) : 'gray',
+    },
+    {
+      key: 'examCount',
+      label: '考试数',
+      value: data.examCount ?? 0,
+      unit: '场',
+    },
+    {
+      key: 'latency',
+      label: '生成耗时',
+      value: latencyText(data),
+    },
+  ]
+})
+
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
 )
@@ -298,11 +329,6 @@ async function handleGenerate(): Promise<void> {
   }
 }
 
-function achievementStyle(rate?: number): Record<string, string> {
-  if (rate == null) return { color: 'inherit' }
-  return { color: toneToColor(rateTone(rate)) }
-}
-
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
 }
@@ -334,7 +360,7 @@ function achievementStatusLabel(status: CourseAchievementStatusCode): string {
   return strictEnumLabel(COURSE_ACHIEVEMENT_STATUS_LABEL, status, '课程目标达成状态')
 }
 
-function achievementStatusColor(status: CourseAchievementStatusCode): string {
+function achievementStatusColor(status: CourseAchievementStatusCode): BadgeTone {
   return strictEnumTone(COURSE_ACHIEVEMENT_STATUS_COLOR, status, '课程目标达成状态')
 }
 
@@ -402,25 +428,6 @@ function objectiveDimensionLabel(item: CourseAchievementItemVO): string {
   margin: 0;
   color: var(--gi-color-text-2, rgba(0, 0, 0, 0.75));
   line-height: 1.6;
-}
-.metric-row {
-  background: var(--gi-color-bg-2, #f5f5f5);
-  padding: 12px 8px;
-  border-radius: 4px;
-}
-.metric-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.metric-title {
-  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
-  font-size: 14px;
-}
-.metric-value {
-  color: var(--gi-color-text-1, rgba(0, 0, 0, 0.88));
-  font-size: 24px;
-  line-height: 1.2;
 }
 .text-muted {
   color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));

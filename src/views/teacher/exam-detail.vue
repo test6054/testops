@@ -31,17 +31,9 @@
     </template>
 
     <a-spin :spinning="loading">
-      <!-- D-9 错误态：考试详情加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="detailLoadError"
-        :error="detailLoadError"
-        title="考试详情加载失败"
-        :helper="detail?.examName ? `当前考试：${detail.examName}` : undefined"
-        @retry="loadDetail"
-      />
       <UiEmpty
-        v-else-if="!loading && !detail"
-        description="未查询到考试数据"
+        v-if="!loading && !detail"
+        description="暂无数据"
         class="exam-detail-page__empty"
       />
 
@@ -97,7 +89,7 @@
             </template>
             <UiEmpty
               v-if="!detail.templateId"
-              description="尚未配置试卷模板，请先在「试卷模板」页面录入题目和页面配置。"
+              description="暂无数据"
             >
               <UiButton size="sm" @click="goPaperTemplate">前往配置</UiButton>
             </UiEmpty>
@@ -189,7 +181,6 @@ import {
   UiButton,
   UiCard,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
@@ -206,7 +197,6 @@ const router = useRouter()
 const examId = computed<string>(() => String(route.params.examId ?? ''))
 const detail = ref<ExamDetailVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：考试详情加载失败时 UiErrorRetryPanel 重试 + 上报
 const detailLoadError = ref<Error | null>(null)
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '88px' }
@@ -250,15 +240,15 @@ function goBack(): void {
 }
 
 function goPaperTemplate(): void {
-  void router.push({ name: 'TeacherPaperTemplate', query: { examId: examId.value } })
+  void router.push({ name: 'TeacherExamWorkspacePaperTemplate', params: { examId: examId.value } })
 }
 
 function goAnswerSheetTemplate(): void {
-  void router.push({ name: 'TeacherAnswerSheetTemplate', query: { examId: examId.value } })
+  void router.push({ name: 'TeacherExamWorkspaceAnswerSheet', params: { examId: examId.value } })
 }
 
 function goRoster(): void {
-  void router.push({ name: 'TeacherCandidateRoster', query: { examId: examId.value } })
+  void router.push({ name: 'TeacherExamWorkspaceCandidateRoster', params: { examId: examId.value } })
 }
 
 watch(examId, () => {

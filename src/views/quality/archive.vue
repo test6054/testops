@@ -18,13 +18,14 @@ import type {
   ArchiveVO,
   ExpertPackageExportRequest,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { uploadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { ARCHIVE_BUSINESS_TYPE_LABEL, archiveApi, EXPERT_PACKAGE_TYPE_LABEL } from '@/apis/quality'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import {
   AchievementResultSelector,
   AuditRectificationSelector,
@@ -35,7 +36,7 @@ import {
   TeacherSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import {
   AuditTimelineDrawer,
   ContextBar,
@@ -44,6 +45,7 @@ import {
 } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -51,9 +53,9 @@ function archiveBusinessTypeLabel(value: ArchiveBusinessType): string {
   return strictEnumLabel(ARCHIVE_BUSINESS_TYPE_LABEL, value, '归档业务类型')
 }
 
-function archiveBusinessTypeColor(value: ArchiveBusinessType): string {
-  if (value === 'EXPERT_PACKAGE') return 'gold'
-  if (value === 'REPORT') return 'cyan'
+function archiveBusinessTypeColor(value: ArchiveBusinessType): BadgeTone {
+  if (value === 'EXPERT_PACKAGE') return 'yellow'
+  if (value === 'REPORT') return 'blue'
   if (value === 'GRADUATION_REQUIREMENT') return 'purple'
   return 'blue'
 }
@@ -66,6 +68,7 @@ const list = ref<ArchiveVO[]>([])
 const total = ref(0)
 const loading = ref(false)
 const qualityStore = useQualityStore()
+const listLoadError = ref<Error | null>(null)
 
 interface ArchiveFilterModel {
   businessType?: ArchiveBusinessType
@@ -163,6 +166,7 @@ const archiveFileUploading = ref(false)
 
 async function loadList() {
   loading.value = true
+  listLoadError.value = null
   try {
     const page = await archiveApi.page({
       ...query,
@@ -172,9 +176,17 @@ async function loadList() {
     })
     list.value = readPageList(page, '质量归档材料加载失败，请稍后重试')
     total.value = readPageTotal(page, '质量归档材料加载失败，请稍后重试')
+  } catch (error) {
+    listLoadError.value = toUserError(error, '质量归档材料加载失败')
+    showUserError(error, '质量归档材料加载失败')
   } finally {
     loading.value = false
   }
+}
+
+async function handleScopeChange(): Promise<void> {
+  listLoadError.value = null
+  await loadList()
 }
 
 function handlePageChange(page: { current: number, pageSize: number }) {
@@ -411,6 +423,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 const columns: ColumnsType = [
   { title: '归档编码', dataIndex: 'archiveCode', key: 'archiveCode' },
   { title: '业务类型', dataIndex: 'businessType', key: 'businessType', width: 160 },
@@ -488,6 +501,9 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <template #context>
       <ContextBar show-title title="质量评价 - 材料归档">
+        <template #status>
+          <QualityScopeHeader @change="handleScopeChange" />
+        </template>
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
             刷新
@@ -527,9 +543,9 @@ onMounted(async () => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'businessType'">
-            <a-tag :color="archiveBusinessTypeColor(record.businessType)">
+            <UiTag :tone="archiveBusinessTypeColor(record.businessType)" size="sm">
               {{ archiveBusinessTypeLabel(record.businessType) }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'archiveCategory'">
             {{ record.archiveCategory || '未设置分类' }}
@@ -538,9 +554,9 @@ onMounted(async () => {
             {{ record.businessLabel }}
           </template>
           <template v-else-if="column.key === 'fileRef'">
-            <a-tag color="green">
+            <UiTag tone="green" size="sm">
               {{ record.fileName }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'retentionYears'">
             {{
@@ -550,9 +566,9 @@ onMounted(async () => {
             }}
           </template>
           <template v-else-if="column.key === 'archiveOfficeConfirmed'">
-            <a-tag :color="record.archiveOfficeConfirmed ? 'green' : 'default'">
+            <UiTag :tone="record.archiveOfficeConfirmed ? 'green' : 'gray'" size="sm">
               {{ record.archiveOfficeConfirmed ? '已确认' : '未确认' }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'archivedAt'">
             {{ record.archivedAt || '尚未归档确认' }}
@@ -782,23 +798,23 @@ onMounted(async () => {
     </UiDrawer>
 
     <UiDrawer v-model:open="detailVisible" title="归档详情" :width="560" :hide-footer="true">
-      <UiEmpty v-if="!detailRecord && !detailLoading" description="详情数据未加载" size="sm" />
+      <UiEmpty v-if="!detailRecord && !detailLoading" description="暂无数据" size="sm" />
       <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
         <a-descriptions-item label="归档编码">
           {{ detailRecord.archiveCode }}
         </a-descriptions-item>
         <a-descriptions-item label="业务类型">
-          <a-tag :color="archiveBusinessTypeColor(detailRecord.businessType)">
+          <UiTag :tone="archiveBusinessTypeColor(detailRecord.businessType)" size="sm">
             {{ archiveBusinessTypeLabel(detailRecord.businessType) }}
-          </a-tag>
+          </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="关联业务对象">
           {{ detailRecord.businessLabel }}
         </a-descriptions-item>
         <a-descriptions-item label="归档文件">
-          <a-tag color="green">
+          <UiTag tone="green" size="sm">
             {{ detailRecord.fileName }}
-          </a-tag>
+          </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="分类">
           {{ detailRecord.archiveCategory || '未设置分类' }}
@@ -814,9 +830,9 @@ onMounted(async () => {
           {{ detailRecord.retentionPolicyCode || '未设置保管期编码' }}
         </a-descriptions-item>
         <a-descriptions-item label="档案室确认">
-          <a-tag :color="detailRecord.archiveOfficeConfirmed ? 'green' : 'default'">
+          <UiTag :tone="detailRecord.archiveOfficeConfirmed ? 'green' : 'gray'" size="sm">
             {{ detailRecord.archiveOfficeConfirmed ? '已确认' : '未确认' }}
-          </a-tag>
+          </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="归档时间">
           {{ detailRecord.archivedAt || '尚未归档确认' }}

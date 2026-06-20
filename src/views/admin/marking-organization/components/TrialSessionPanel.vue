@@ -65,7 +65,7 @@
     <a-divider class="section-divider" />
 
     <h4 class="subsection-title">试评会话列表</h4>
-    <UiEmpty v-if="!sessions.length" description="尚未创建试评会话" />
+    <UiEmpty v-if="!sessions.length" description="暂无数据" />
     <a-list v-else size="small" class="session-history">
       <a-list-item v-for="item in sessions" :key="item.id">
         <a-list-item-meta>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO, ExamScoreSummaryItemVO } from '@/apis/mark/exam'
 import type {
   MarkOcrConfigVO,
@@ -31,15 +32,15 @@ import {
   recognizeMarkOcr,
 } from '@/apis/mark/ocr'
 import {
+  UiAlertStrip,
   UiBadge,
   UiButton,
   UiCard,
+  UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
@@ -57,25 +58,16 @@ interface DebugFormState {
 
 const debugFormRef = ref<FormInstance | null>(null)
 const loading = ref(false)
-// D-9 错误态：OCR 配置加载失败时 UiErrorRetryPanel 重试 + 上报
-const configLoadError = ref<Error | null>(null)
 const recognizing = ref(false)
 const currentConfig = ref<MarkOcrConfigVO | null>(null)
 const recognizeResult = ref<MarkOcrRecognizeVO | null>(null)
 const debugForm = ref<DebugFormState>({})
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  init: initExamSelector,
-  onExamChange,
-} = useMarkExamSelector()
+const { selectedExamId, selectedExamLabel } = useMarkExamContext()
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
 const paddleInstances = ref<PaddleOcrInstanceVO[]>([])
 const paddleInstancesLoading = ref(false)
-const paddleInstancesError = ref<Error | null>(null)
 const questions = ref<ExamQuestionTemplateVO[]>([])
 const questionsLoading = ref(false)
 const questionsError = ref<Error | null>(null)
@@ -85,7 +77,6 @@ const paperCandidatesError = ref<Error | null>(null)
 const paperCandidateKeyword = ref('')
 
 const debugRules: Record<string, Rule[]> = {
-  examId: [{ required: true, message: '请选择当前考试', trigger: 'change' }],
   paperInstanceId: [{ required: true, message: '请选择答题卡', trigger: 'change' }],
   questionTemplateId: [{ required: true, message: '请选择题目', trigger: 'change' }],
 }
@@ -111,7 +102,7 @@ const paperCutCapabilityText = computed(() =>
     ? strictEnumLabel(MARK_OCR_PAPER_CUT_CAPABILITY, currentConfig.value.providerType, 'OCR 切题能力')
     : '未配置 OCR 渠道，不能执行直接扫描整页切题。',
 )
-const paperCutCapabilityAlertType = computed<'success' | 'warning' | 'error'>(() => {
+const paperCutCapabilityTone = computed<'success' | 'warning' | 'error'>(() => {
   if (!currentConfig.value?.enabled || !currentConfig.value.providerType) {
     return 'warning'
   }
@@ -179,11 +170,10 @@ function applyConfig(config: MarkOcrConfigVO): void {
 
 async function loadConfig(): Promise<void> {
   loading.value = true
-  configLoadError.value = null
   try {
     applyConfig(await getCurrentMarkOcrConfig())
   } catch (error) {
-    configLoadError.value = toUserError(error, 'OCR 配置加载失败')
+    currentConfig.value = null
     showUserError(error, 'OCR 识别配置加载失败')
   } finally {
     loading.value = false
@@ -277,14 +267,22 @@ const paddleHealthyCount = computed(
   () => paddleInstances.value.filter((it) => it.healthStatus === 'HEALTHY').length,
 )
 
+const paddleInstanceColumns: ColumnType<PaddleOcrInstanceVO>[] = [
+  { title: '实例', key: 'instanceName', width: 180, ellipsis: true },
+  { title: '健康', key: 'healthStatus', width: 100 },
+  { title: '设备类型', dataIndex: 'deviceType', key: 'deviceType', width: 100 },
+  { title: '服务地址', key: 'serviceUrl', width: 140 },
+  { title: '最近探活', key: 'lastHealthCheckAt', width: 170 },
+  { title: '诊断', key: 'lastHealthMessage', ellipsis: true },
+]
+
 async function loadPaddleInstances(): Promise<void> {
   paddleInstancesLoading.value = true
-  paddleInstancesError.value = null
   try {
     paddleInstances.value = await listPaddleOcrInstances()
   } catch (error) {
-    paddleInstancesError.value = toUserError(error, 'PaddleOCR 实例加载失败')
     paddleInstances.value = []
+    showUserError(error, 'PaddleOCR 实例加载失败')
   } finally {
     paddleInstancesLoading.value = false
   }
@@ -297,7 +295,6 @@ watch(
       void loadPaddleInstances()
     } else {
       paddleInstances.value = []
-      paddleInstancesError.value = null
     }
   },
   { immediate: false },
@@ -332,55 +329,44 @@ function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {
 }
 
 onMounted(async () => {
-  await Promise.all([loadConfig(), initExamSelector()])
+  await loadConfig()
 })
 </script>
 
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <UiTag :tone="currentConfig?.enabled ? 'green' : 'gray'" size="sm">
-            {{ currentConfig?.enabled ? '已启用' : '未启用' }}
+  <div class="ocr-settings">
+    <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" />
+
+    <template v-else-if="currentConfig">
+      <div class="ocr-settings__toolbar">
+        <div class="ocr-settings__status">
+          <UiTag :tone="currentConfig.enabled ? 'green' : 'gray'" size="sm">
+            {{ currentConfig.enabled ? '已启用' : '未启用' }}
           </UiTag>
-          <a-tag v-if="currentConfig" :color="healthColor">
+          <UiTag :tone="healthColor">
             {{ healthLabel }}
-          </a-tag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadConfig">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+          </UiTag>
+        </div>
+        <UiButton variant="outline" size="sm" :loading="loading" @click="loadConfig">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
+      </div>
 
-    <!-- D-9 错误态：OCR 配置加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="configLoadError"
-      :error="configLoadError"
-      title="OCR 配置加载失败"
-      @retry="loadConfig"
-    />
-
-    <div v-else-if="currentConfig" class="ocr-grid">
+      <div class="ocr-grid">
       <UiCard class="info-card">
         <template #title>
           <ApiOutlined />
           <span>当前 OCR 渠道</span>
         </template>
-        <a-alert
-          type="info"
-          show-icon
-          message="OCR 渠道由平台超级管理员统一配置，租户侧仅可查看运行状态与执行调试。"
+        <UiAlertStrip
+          tone="info"
+          title="OCR 渠道由平台超级管理员统一配置，租户侧仅可查看运行状态与执行调试。"
         />
-        <a-alert
+        <UiAlertStrip
           class="state-message"
-          :type="paperCutCapabilityAlertType"
-          show-icon
-          :message="paperCutCapabilityText"
+          :tone="paperCutCapabilityTone"
+          :title="paperCutCapabilityText"
         />
       </UiCard>
 
@@ -395,24 +381,23 @@ onMounted(async () => {
             {{ currentConfig?.enabled ? '启用' : '关闭' }}
           </a-descriptions-item>
           <a-descriptions-item label="健康状态">
-            <a-tag :color="healthColor">{{ healthLabel }}</a-tag>
+            <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="最近检查">
             {{ currentConfig?.lastHealthCheckAt || '未检查' }}
           </a-descriptions-item>
         </a-descriptions>
-        <a-alert
+        <UiAlertStrip
           v-if="currentConfig?.lastHealthMessage"
           class="state-message"
-          :type="healthStatus === 'FAILED' ? 'error' : 'success'"
-          show-icon
-          :message="ocrHealthMessageText(currentConfig.lastHealthMessage)"
+          :tone="healthStatus === 'FAILED' ? 'error' : 'success'"
+          :title="ocrHealthMessageText(currentConfig.lastHealthMessage)"
         />
       </UiCard>
-    </div>
+      </div>
 
-    <!-- PaddleOCR 实例列表：仅当当前渠道为 PADDLE 时展示，按健康状态排序 -->
-    <UiCard v-if="currentConfig && isPaddleProvider" class="info-card paddle-card">
+      <!-- PaddleOCR 实例列表：仅当当前渠道为 PADDLE 时展示，按健康状态排序 -->
+      <UiCard v-if="isPaddleProvider" class="info-card paddle-card">
       <template #title>
         <ClusterOutlined />
         <span>PaddleOCR 服务实例</span>
@@ -432,70 +417,64 @@ onMounted(async () => {
         </UiButton>
       </template>
 
-      <UiErrorRetryPanel
-        v-if="paddleInstancesError"
-        :error="paddleInstancesError"
-        title="PaddleOCR 实例加载失败"
-        compact
-        @retry="loadPaddleInstances"
+      <UiAlertStrip
+        class="state-message"
+        tone="info"
+        title="承担直接扫描批改的 PaddleOCR 实例必须暴露 /paper-cut；该接口需返回真实题块 ROI，不能仅返回普通 OCR 文本。"
       />
-      <template v-else>
-        <a-alert
-          class="state-message"
-          type="info"
-          show-icon
-          message="承担直接扫描批改的 PaddleOCR 实例必须暴露 /paper-cut；该接口需返回真实题块 ROI，不能仅返回普通 OCR 文本。"
-        />
-        <a-skeleton v-if="paddleInstancesLoading && paddleInstances.length === 0" active />
-        <UiEmpty
-          v-else-if="paddleInstances.length === 0"
-          description="当前没有可用的 OCR 识别服务，请联系管理员检查识别服务状态。"
-        />
-        <a-list v-else :data-source="paddleInstances" item-layout="horizontal">
-          <template #renderItem="{ item }: { item: PaddleOcrInstanceVO }">
-            <a-list-item>
-              <a-list-item-meta>
-                <template #title>
-                  <span class="paddle-instance__name">{{ item.instanceName }}</span>
-                  <UiTag :tone="paddleInstanceHealthTone(item.healthStatus)" size="sm">
-                    {{ paddleInstanceHealthLabel(item.healthStatus) }}
-                  </UiTag>
-                  <UiTag v-if="item.localAutoDeploy" tone="blue" size="sm">本地自动部署</UiTag>
-                  <UiTag tone="gray" size="sm">{{ item.deviceType }}</UiTag>
-                </template>
-                <template #description>
-                  <div class="paddle-instance__meta">
-                    <span class="paddle-instance__url">
-                      {{ item.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
-                    </span>
-                    <span class="paddle-instance__sep">·</span>
-                    <span>最近探活：{{ item.lastHealthCheckAt || '未探活' }}</span>
-                    <template v-if="item.consecutiveFailures > 0">
-                      <span class="paddle-instance__sep">·</span>
-                      <span class="paddle-instance__failed">连续失败 {{ item.consecutiveFailures }} 次</span>
-                    </template>
-                  </div>
-                  <div v-if="item.lastHealthMessage" class="paddle-instance__msg">
-                    {{ ocrHealthMessageText(item.lastHealthMessage) }}
-                  </div>
-                </template>
-              </a-list-item-meta>
-            </a-list-item>
+      <UiDataTable
+        pagination-mode="none"
+        class="student-detail-table__data-table"
+        :columns="paddleInstanceColumns"
+        :data-source="paddleInstances"
+        :loading="paddleInstancesLoading"
+        :show-pagination="false"
+        flat
+        :total="paddleInstances.length"
+        row-key="id"
+        size="middle"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'instanceName'">
+            <span class="paddle-instance__name">{{ record.instanceName }}</span>
+            <UiTag v-if="record.localAutoDeploy" tone="blue" size="sm">本地自动部署</UiTag>
           </template>
-        </a-list>
-      </template>
-    </UiCard>
+          <template v-else-if="column.key === 'healthStatus'">
+            <UiTag :tone="paddleInstanceHealthTone(record.healthStatus)" size="sm">
+              {{ paddleInstanceHealthLabel(record.healthStatus) }}
+            </UiTag>
+            <span v-if="record.consecutiveFailures > 0" class="paddle-instance__failed">
+              连续失败 {{ record.consecutiveFailures }} 次
+            </span>
+          </template>
+          <template v-else-if="column.key === 'serviceUrl'">
+            {{ record.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
+          </template>
+          <template v-else-if="column.key === 'lastHealthCheckAt'">
+            {{ record.lastHealthCheckAt || '未探活' }}
+          </template>
+          <template v-else-if="column.key === 'lastHealthMessage'">
+            <span v-if="record.lastHealthMessage">{{ ocrHealthMessageText(record.lastHealthMessage) }}</span>
+            <span v-else class="text-muted">—</span>
+          </template>
+        </template>
+      </UiDataTable>
+      </UiCard>
 
-    <UiCard v-if="currentConfig" class="info-card">
+      <UiCard class="info-card">
       <template #title>
         <ExperimentOutlined />
         <span>同步调试</span>
       </template>
-      <a-alert
-        type="warning"
-        show-icon
-        message="同步调试使用当前租户已保存渠道，不支持临时指定供应商。"
+      <UiAlertStrip
+        tone="warning"
+        title="同步调试使用当前租户已保存渠道，不支持临时指定供应商。"
       />
+      <a-descriptions :column="1" size="small" bordered class="debug-form__exam">
+        <a-descriptions-item label="当前考试">
+          {{ selectedExamLabel || debugForm.examId }}
+        </a-descriptions-item>
+      </a-descriptions>
       <a-form
         ref="debugFormRef"
         :model="debugForm"
@@ -504,20 +483,7 @@ onMounted(async () => {
         class="debug-form"
       >
         <a-row :gutter="16">
-          <a-col :xs="24" :md="8">
-            <a-form-item label="当前考试" name="examId" required>
-              <a-select
-                :value="selectedExamId"
-                :options="examOptions"
-                :loading="examLoading"
-                show-search
-                option-filter-prop="label"
-                placeholder="请选择当前考试"
-                @change="onExamChange"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="8">
+          <a-col :xs="24" :md="12">
             <a-form-item label="答题卡" name="paperInstanceId" required>
               <a-select
                 v-model:value="debugForm.paperInstanceId"
@@ -537,7 +503,7 @@ onMounted(async () => {
               </div>
             </a-form-item>
           </a-col>
-          <a-col :xs="24" :md="8">
+          <a-col :xs="24" :md="12">
             <a-form-item label="题目" name="questionTemplateId" required>
               <a-select
                 v-model:value="debugForm.questionTemplateId"
@@ -575,13 +541,31 @@ onMounted(async () => {
           <div class="result-text-content">{{ recognizeResult.recognizedText }}</div>
         </div>
       </template>
-      <UiEmpty v-else-if="!recognizing" description="暂无识别结果" />
-    </UiCard>
-  </StageWorkbenchShell>
+      <UiEmpty v-else-if="!recognizing" description="暂无数据" />
+      </UiCard>
+    </template>
+  </div>
 </template>
 
 <style scoped lang="scss">
 .ocr-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__status {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 
 .ocr-grid {
@@ -612,6 +596,10 @@ onMounted(async () => {
 
 .debug-form {
   margin-top: 12px;
+
+  &__exam {
+    margin-top: 12px;
+  }
 
   &__hint {
     margin-top: 4px;

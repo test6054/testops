@@ -519,6 +519,14 @@ export interface UiStepItem {
   status?: UiStepStatus
 }
 
+/** 分布条分段（UiDistributionBar） */
+export interface UiDistributionSegment {
+  key?: string | number
+  label: string
+  value: number
+  tone?: BadgeTone
+}
+
 /** 统计面板项（UiStatPanel） */
 export interface UiStatPanelItem {
   key?: string | number

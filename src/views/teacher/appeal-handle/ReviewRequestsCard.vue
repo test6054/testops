@@ -3,7 +3,7 @@
     <template #title>
       <a-space>
         <span>复核申请</span>
-        <a-tag color="orange">待处理 {{ pendingCount }}</a-tag>
+        <UiTag tone="orange">待处理 {{ pendingCount }}</UiTag>
       </a-space>
     </template>
 
@@ -15,17 +15,8 @@
       @reset="handleFilterReset"
     />
 
-    <!-- D-9 错误态：复核申请加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      title="复核申请加载失败"
-      compact
-      @retry="reload"
-    />
     <UiDataTable
       class="student-detail-table__data-table"
-      v-else
       v-model:current="pagination.current"
       v-model:page-size="pagination.pageSize"
       :columns="columns"
@@ -45,9 +36,9 @@
           <span>{{ formatStudent(rows[index]) }}</span>
         </template>
         <template v-else-if="column.key === 'requestStatus'">
-          <a-tag :color="requestStatusColor(rows[index].requestStatus)">
+          <UiTag :tone="requestStatusColor(rows[index].requestStatus)">
             {{ requestStatusLabel(rows[index].requestStatus) }}
-          </a-tag>
+          </UiTag>
         </template>
         <template v-else-if="column.key === 'questionRefs'">
           <span class="ellipsis">{{ formatQuestionRefs(rows[index]) }}</span>
@@ -139,7 +130,7 @@ import {
   REVIEW_REQUEST_STATUS_LABEL,
   REVIEW_REQUEST_STATUS_OPTIONS,
 } from '@/apis/mark/grade-review'
-import { UiDataTable, UiErrorRetryPanel, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiDataTable, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'

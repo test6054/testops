@@ -109,6 +109,27 @@ export function clearKioskAuthSession(): void {
   localStorage.removeItem(KIOSK_BINDING_PROFILE_KEY)
 }
 
+/**
+ * 教师端扫描工位 API 发起前尝试刷新 JWT，避免 access token 过期后误用残留 push_token。
+ */
+export async function ensureScannerStationTeacherJwt(): Promise<string | null> {
+  if (isScannerKioskBrowserPage()) {
+    return getValidToken()
+  }
+  let token = getValidToken()
+  if (token) {
+    return token
+  }
+  try {
+    const { useAuthStore } = await import('@/stores/modules/auth')
+    const authStore = useAuthStore()
+    await authStore.refreshTokenAutomatically()
+  } catch {
+    // 刷新失败由后续鉴权分支显式失败
+  }
+  return getValidToken()
+}
+
 export function hasMarkScannerJwtAuth(): boolean {
   return Boolean(getValidToken())
 }
@@ -160,14 +181,7 @@ export function resolveMarkScannerStationAuthHeaders(
     return { headers, source: 'jwt' }
   }
 
-  if (kioskAuth) {
-    headers.Authorization = kioskAuth.authorizationHeader
-    if (kioskAuth.tenantId) {
-      headers['X-Tenant-Id'] = kioskAuth.tenantId
-    }
-    return { headers, source: 'kiosk' }
-  }
-
+  // 教师端禁止回退到一体机 push_token，避免浏览器残留 token 触发无效鉴权与重复弹窗。
   return { headers, source: null }
 }
 

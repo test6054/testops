@@ -16,6 +16,7 @@ import type {
   ImprovementTaskStatus,
   ImprovementTaskVO,
 } from '@/apis/quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { storeToRefs } from 'pinia'
 import { computed, reactive, ref } from 'vue'
@@ -37,10 +38,12 @@ import {
   improvementTaskApi,
 } from '@/apis/quality'
 import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
+import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
+import { buildStatusChartGroup, type QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -208,6 +211,33 @@ const signals = computed<SignalMetric[]>(() => [
   { key: 'ai-fail', label: 'AI 失败', value: aiCounts.failed, tone: 'red' },
 ])
 
+const qualityChartGroups = computed<QualityChartGroup[]>(() => {
+  const groups: QualityChartGroup[] = []
+  const achievement = buildStatusChartGroup('achievement', '达成度审核状态', [
+    { label: '已计算', value: achievementCounts.calculated, tone: 'blue' },
+    { label: '已提交', value: achievementCounts.submitted, tone: 'orange' },
+    { label: '已确认', value: achievementCounts.confirmed, tone: 'green' },
+    { label: '已归档', value: achievementCounts.archived, tone: 'gray' },
+    { label: '未达成', value: achievementCounts.notAchieved, tone: 'red' },
+  ])
+  const improvement = buildStatusChartGroup('improvement', '改进任务状态', [
+    { label: '待处理', value: improvementCounts.open, tone: 'orange' },
+    { label: '整改中', value: improvementCounts.inProgress, tone: 'blue' },
+    { label: '已提交', value: improvementCounts.submitted, tone: 'purple' },
+    { label: '已闭环', value: improvementCounts.closed, tone: 'green' },
+  ])
+  const ai = buildStatusChartGroup('ai', 'AI 任务状态', [
+    { label: '排队中', value: aiCounts.pending, tone: 'gray' },
+    { label: '运行中', value: aiCounts.processing, tone: 'blue' },
+    { label: '已成功', value: aiCounts.succeeded, tone: 'green' },
+    { label: '已失败', value: aiCounts.failed, tone: 'red' },
+  ])
+  if (achievement) groups.push(achievement)
+  if (improvement) groups.push(improvement)
+  if (ai) groups.push(ai)
+  return groups
+})
+
 function targetTypeLabel(value: AchievementTargetType): string {
   return strictEnumLabel(ACHIEVEMENT_TARGET_TYPE_LABEL, value, '达成目标类型')
 }
@@ -216,7 +246,7 @@ function achievementStatusLabel(value: AchievementStatus): string {
   return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
 }
 
-function achievementStatusColor(value: AchievementStatus): string {
+function achievementStatusColor(value: AchievementStatus): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
@@ -224,7 +254,7 @@ function auditStatusLabel(value: AchievementAuditStatus): string {
   return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
 }
 
-function auditStatusColor(value: AchievementAuditStatus): string {
+function auditStatusColor(value: AchievementAuditStatus): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
 }
 
@@ -232,7 +262,7 @@ function improvementStatusLabelOf(value: ImprovementTaskStatus): string {
   return strictEnumLabel(IMPROVEMENT_TASK_STATUS_LABEL, value, '持续改进任务状态')
 }
 
-function improvementStatusColorOf(value: ImprovementTaskStatus): string {
+function improvementStatusColorOf(value: ImprovementTaskStatus): BadgeTone {
   return strictEnumTone(IMPROVEMENT_TASK_STATUS_COLOR, value, '持续改进任务状态')
 }
 
@@ -240,7 +270,7 @@ function aiStatusLabel(value: AiTaskStatus): string {
   return strictEnumLabel(AI_TASK_STATUS_LABEL, value, 'AI 任务状态')
 }
 
-function aiStatusColor(value: AiTaskStatus): string {
+function aiStatusColor(value: AiTaskStatus): BadgeTone {
   return strictEnumTone(AI_TASK_STATUS_COLOR, value, 'AI 任务状态')
 }
 
@@ -415,14 +445,6 @@ function goImprovement() {
 function goAiTask() {
   router.push({ name: 'QualityAiTask' })
 }
-
-function goExternalPull() {
-  router.push({ name: 'QualityExternalPull' })
-}
-
-function goScoreBatch() {
-  router.push({ name: 'QualityScoreBatch' })
-}
 </script>
 
 <template>
@@ -441,30 +463,28 @@ function goScoreBatch() {
           >
             刷新
           </UiButton>
-          <UiButton size="sm" :disabled="!trainingPlanId" @click="goAchievement">
+          <UiButton
+            variant="ghost"
+            size="sm"
+            :disabled="!trainingPlanId"
+            @click="goAchievement"
+          >
             进入达成度
           </UiButton>
         </template>
       </ContextBar>
     </template>
 
-    <UiErrorRetryPanel
-      v-if="dashboardLoadError"
-      :error="dashboardLoadError"
-      title="工作台数据加载失败"
-      compact
-      @retry="reload"
-    />
-
     <UiEmpty
       v-if="!trainingPlanId"
-      description="请先选择培养方案，工作台将基于其生成阶段化指标"
+      description="请选择培养方案"
       class="quality-dashboard__empty"
     />
 
     <template v-else>
       <StageRail :stages="stages" class="quality-dashboard__stages" />
       <SignalBand :metrics="signals" compact class="quality-dashboard__signals" />
+      <QualityWorkbenchCharts :groups="qualityChartGroups" />
 
       <div class="quality-dashboard__lists">
         <UiCard class="quality-dashboard__list-card" title="最近达成度结果">
@@ -472,13 +492,14 @@ function goScoreBatch() {
             <UiButton variant="ghost" size="sm" @click="goAchievement"> 查看全部 </UiButton>
           </template>
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
             :columns="recentAchievementColumns"
             :data-source="recentAchievements"
+            :loading="loading.achievement"
             :show-pagination="false"
             row-key="id"
             size="small"
-            :loading="loading.achievement"
             flat
             :total="recentAchievements.length"
           >
@@ -505,14 +526,14 @@ function goScoreBatch() {
                 </span>
               </template>
               <template v-else-if="column.key === 'achievementStatus'">
-                <a-tag :color="achievementStatusColor(record.achievementStatus)">
+                <UiTag :tone="achievementStatusColor(record.achievementStatus)">
                   {{ achievementStatusLabel(record.achievementStatus) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'auditStatus'">
-                <a-tag :color="auditStatusColor(record.auditStatus)">
+                <UiTag :tone="auditStatusColor(record.auditStatus)">
                   {{ auditStatusLabel(record.auditStatus) }}
-                </a-tag>
+                </UiTag>
               </template>
             </template>
           </UiDataTable>
@@ -523,13 +544,14 @@ function goScoreBatch() {
             <UiButton variant="ghost" size="sm" @click="goImprovement"> 查看全部 </UiButton>
           </template>
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
             :columns="recentImprovementColumns"
             :data-source="recentImprovements"
+            :loading="loading.improvement"
             :show-pagination="false"
             row-key="id"
             size="small"
-            :loading="loading.improvement"
             flat
             :total="recentImprovements.length"
           >
@@ -541,9 +563,9 @@ function goScoreBatch() {
                 {{ record.dueDate }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="improvementStatusColorOf(record.status)">
+                <UiTag :tone="improvementStatusColorOf(record.status)">
                   {{ improvementStatusLabelOf(record.status) }}
-                </a-tag>
+                </UiTag>
               </template>
             </template>
           </UiDataTable>
@@ -554,13 +576,14 @@ function goScoreBatch() {
             <UiButton variant="ghost" size="sm" @click="goAiTask"> 查看全部 </UiButton>
           </template>
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
             :columns="recentAiTaskColumns"
             :data-source="recentAiTasks"
+            :loading="loading.ai"
             :show-pagination="false"
             row-key="id"
             size="small"
-            :loading="loading.ai"
             flat
             :total="recentAiTasks.length"
           >
@@ -569,9 +592,9 @@ function goScoreBatch() {
                 {{ aiTypeLabel(record.taskType) }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="aiStatusColor(record.status)">
+                <UiTag :tone="aiStatusColor(record.status)">
                   {{ aiStatusLabel(record.status) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'startedAt'">
                 {{ record.startedAt }}
@@ -591,11 +614,6 @@ function goScoreBatch() {
             </template>
           </UiDataTable>
         </UiCard>
-      </div>
-
-      <div class="quality-dashboard__shortcuts">
-        <UiButton variant="outline" size="sm" @click="goScoreBatch"> 成绩批次 </UiButton>
-        <UiButton variant="outline" size="sm" @click="goExternalPull"> 外部数据拔取 </UiButton>
       </div>
     </template>
   </StageWorkbenchShell>
@@ -621,10 +639,6 @@ function goScoreBatch() {
 
   &__signals {
     margin-bottom: 24px;
-    padding: 16px 20px;
-    background: var(--dp-surface-elevated, #f8fafc);
-    border-radius: 8px;
-    border: 1px solid var(--dp-border, #e2e8f0);
   }
 
   &__lists {
@@ -642,15 +656,12 @@ function goScoreBatch() {
     }
   }
 
-  &__shortcuts {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    padding-top: 4px;
+  &__value--ok {
+    color: var(--ant-color-success, #16a34a);
   }
 
-  &__value--success {
-    color: var(--ant-color-success, #16a34a);
+  &__value--bad {
+    color: var(--ant-color-error, #dc2626);
   }
 
   &__value--error {

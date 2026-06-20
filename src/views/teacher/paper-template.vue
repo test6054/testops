@@ -1,48 +1,29 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <a-select
-            :value="selectedExamId"
-            class="paper-template-page__exam-select"
-            placeholder="选择考试"
-            :options="examOptions"
-            :loading="examLoading"
-            show-search
-            option-filter-prop="label"
-            allow-clear
-            @change="handleExamChange"
-          />
-          <UiTag v-if="selectedExamId" :tone="pageCountMatched ? 'green' : 'orange'" size="sm">
-            {{ pages.length }} / {{ totalPagesLabel }} 页
-          </UiTag>
-          <UiTag v-if="selectedExamId" tone="blue" size="sm">
-            {{ questions.length }} 题 · 总分 {{ totalScore }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton size="sm" :disabled="!selectedExamId" :loading="saving" @click="handleSave">
-            <template #icon><SaveOutlined /></template>
-            保存
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div v-if="selectedExamId" class="paper-template-page__toolbar">
+    <div class="paper-template-page__toolbar-status">
+      <UiTag :tone="pageCountMatched ? 'green' : 'orange'" size="sm">
+        {{ pages.length }} / {{ totalPagesLabel }} 页
+      </UiTag>
+      <UiTag tone="blue" size="sm">
+        {{ questions.length }} 题 · 总分 {{ totalScore }}
+      </UiTag>
+    </div>
+    <UiButton size="sm" :loading="saving" @click="handleSave">
+      <template #icon><SaveOutlined /></template>
+      保存
+    </UiButton>
+  </div>
 
-    <UiEmpty
+  <UiEmpty
       v-if="!selectedExamId"
       description="请选择需要维护的考试"
       class="paper-template-page__empty"
     />
 
-    <!-- D-9 错误态：题目模板加载遇到非“未配置”错误时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
+    <UiEmpty
       v-else-if="templateLoadError"
-      :error="templateLoadError"
-      title="题目模板加载失败"
-      :helper="selectedExamLabel ? `当前考试：${selectedExamLabel}` : undefined"
-      @retry="loadTemplate"
+      description="暂无数据"
+      class="paper-template-page__empty"
     />
 
     <a-spin v-else :spinning="loading">
@@ -115,6 +96,7 @@
         </template>
 
         <UiDataTable
+          pagination-mode="none"
           class="student-detail-table__data-table"
           :columns="questionColumns"
           :data-source="questions"
@@ -241,7 +223,6 @@
         </UiDataTable>
       </UiCard>
     </a-spin>
-  </StageWorkbenchShell>
 
   <a-modal
     v-model:open="answerModalOpen"
@@ -507,27 +488,17 @@ import {
   UiConfirmPopover,
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiTag,
   UiTextAction,
 } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherPaperTemplate' })
 
-// B-8 统一考试选择器
-const {
-  examOptions,
-  loading: examLoading,
-  selectedExamId,
-  selectedExamLabel,
-  onExamChange,
-  init: initExamSelector,
-} = useMarkExamSelector()
+const { selectedExamId } = useMarkExamContext()
 
 const pageTableRef = ref<InstanceType<typeof ExamTemplatePageTable> | null>(null)
 
@@ -793,15 +764,6 @@ async function loadTemplate(): Promise<void> {
     }
   } finally {
     loading.value = false
-  }
-}
-
-function handleExamChange(value: SelectValue): void {
-  onExamChange(value)
-  if (selectedExamId.value) {
-    void loadTemplate()
-  } else {
-    clearTemplate()
   }
 }
 
@@ -1403,7 +1365,6 @@ watch(selectedExamId, (value) => {
 })
 
 onMounted(async () => {
-  await initExamSelector()
   if (selectedExamId.value) {
     await loadTemplate()
   }
@@ -1412,8 +1373,19 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .paper-template-page {
-  &__exam-select {
-    width: 280px;
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  &__toolbar-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   &__empty {

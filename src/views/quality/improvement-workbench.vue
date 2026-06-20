@@ -47,7 +47,7 @@ import type {
   ImprovementTaskVO,
   QualityAuditEvidenceItem,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
@@ -80,12 +80,12 @@ import {
   TeacherSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
-import { showUserError } from '@/utils/error-handler'
+import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
@@ -131,6 +131,7 @@ const supColumns: ColumnsType = [
 ]
 
 const qualityStore = useQualityStore()
+const workbenchLoadError = ref<Error | null>(null)
 const aiTaskStore = useAiTaskStore()
 
 const activeTab = ref<'improvement' | 'issue' | 'rectification' | 'supervision'>('improvement')
@@ -139,7 +140,7 @@ function improvementStatusLabel(value: ImprovementTaskStatus): string {
   return strictEnumLabel(IMPROVEMENT_TASK_STATUS_LABEL, value, '持续改进任务状态')
 }
 
-function improvementStatusColor(value: ImprovementTaskStatus): string {
+function improvementStatusColor(value: ImprovementTaskStatus): BadgeTone {
   return strictEnumTone(IMPROVEMENT_TASK_STATUS_COLOR, value, '持续改进任务状态')
 }
 
@@ -147,7 +148,7 @@ function issueStatusLabel(value: AuditIssueStatus): string {
   return strictEnumLabel(AUDIT_ISSUE_STATUS_LABEL, value, '审核问题状态')
 }
 
-function issueStatusColor(value: AuditIssueStatus): string {
+function issueStatusColor(value: AuditIssueStatus): BadgeTone {
   return strictEnumTone(AUDIT_ISSUE_STATUS_COLOR, value, '审核问题状态')
 }
 
@@ -155,7 +156,7 @@ function rectificationStatusLabel(value: AuditRectificationStatus): string {
   return strictEnumLabel(AUDIT_RECTIFICATION_STATUS_LABEL, value, '整改任务状态')
 }
 
-function rectificationStatusColor(value: AuditRectificationStatus): string {
+function rectificationStatusColor(value: AuditRectificationStatus): BadgeTone {
   return strictEnumTone(AUDIT_RECTIFICATION_STATUS_COLOR, value, '整改任务状态')
 }
 
@@ -171,7 +172,7 @@ function severityLabel(value: AuditIssueSeverity): string {
   return strictEnumLabel(severityLabelMap, value, '审核问题严重度')
 }
 
-function severityColor(value: AuditIssueSeverity): string {
+function severityColor(value: AuditIssueSeverity): BadgeTone {
   return strictEnumTone(severityColorMap, value, '审核问题严重度')
 }
 
@@ -183,7 +184,7 @@ function supervisionConclusionLabel(value: AuditSupervisionConclusion): string {
   return strictEnumLabel(supConclusionLabelMap, value, '督导结论')
 }
 
-function supervisionConclusionColor(value: AuditSupervisionConclusion): string {
+function supervisionConclusionColor(value: AuditSupervisionConclusion): BadgeTone {
   return strictEnumTone(supConclusionColorMap, value, '督导结论')
 }
 
@@ -386,14 +387,6 @@ const improvementFilterFields: FilterField[] = [
     maxWidth: 220,
   },
   {
-    key: 'ownerUserId',
-    type: 'custom',
-    label: '负责人',
-    width: 140,
-    minWidth: 140,
-    maxWidth: 180,
-  },
-  {
     key: 'status',
     type: 'select',
     label: '状态',
@@ -406,8 +399,8 @@ const improvementFilterFields: FilterField[] = [
     key: 'keyword',
     type: 'input',
     label: '关键字',
-    placeholder: '关键字',
-    width: 160,
+    placeholder: '编号 / 标题',
+    width: 180,
     triggerSearchOnChange: false,
   },
 ]
@@ -462,6 +455,7 @@ async function loadImprovementList() {
     return
   }
   improvementLoading.value = true
+  workbenchLoadError.value = null
   try {
     const page = await improvementTaskApi.page({
       ...improvementQuery,
@@ -473,6 +467,9 @@ async function loadImprovementList() {
     })
     improvementList.value = readPageList(page, '持续改进任务加载失败，请稍后重试')
     improvementTotal.value = readPageTotal(page, '持续改进任务加载失败，请稍后重试')
+  } catch (error) {
+    workbenchLoadError.value = toUserError(error, '持续改进任务加载失败')
+    showUserError(error, '持续改进任务加载失败')
   } finally {
     improvementLoading.value = false
   }
@@ -722,8 +719,8 @@ const severityLabelMap: Record<AuditIssueSeverity, string> = {
   MAJOR: '严重',
   CRITICAL: '重大',
 }
-const severityColorMap: Record<AuditIssueSeverity, string> = {
-  MINOR: 'default',
+const severityColorMap: Record<AuditIssueSeverity, BadgeTone> = {
+  MINOR: 'gray',
   MAJOR: 'orange',
   CRITICAL: 'red',
 }
@@ -744,15 +741,6 @@ const issueFilterForm = reactive({
 })
 
 const issueFilterFields: FilterField[] = [
-  {
-    key: 'issueSource',
-    type: 'select',
-    label: '来源',
-    placeholder: '来源',
-    allowClear: true,
-    width: 120,
-    options: issueSourceOptions,
-  },
   {
     key: 'severity',
     type: 'select',
@@ -775,19 +763,11 @@ const issueFilterFields: FilterField[] = [
     })),
   },
   {
-    key: 'auditYear',
-    type: 'input',
-    label: '年度',
-    placeholder: '年度',
-    width: 100,
-    triggerSearchOnChange: false,
-  },
-  {
     key: 'keyword',
     type: 'input',
     label: '关键字',
-    placeholder: '编码/标题',
-    width: 160,
+    placeholder: '编码 / 标题',
+    width: 180,
     triggerSearchOnChange: false,
   },
 ]
@@ -1429,7 +1409,7 @@ const supConclusionLabelMap: Record<AuditSupervisionConclusion, string> = {
   NEEDS_IMPROVEMENT: '需改进',
   FAIL: '不通过',
 }
-const supConclusionColorMap: Record<AuditSupervisionConclusion, string> = {
+const supConclusionColorMap: Record<AuditSupervisionConclusion, BadgeTone> = {
   PASS: 'green',
   NEEDS_IMPROVEMENT: 'orange',
   FAIL: 'red',
@@ -1748,6 +1728,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 /* ========== 监听 + 初始化 ========== */
 
 watch(
@@ -1773,6 +1754,7 @@ watch(activeTab, async (tab) => {
 })
 
 async function handleScopeChange(): Promise<void> {
+  workbenchLoadError.value = null
   await Promise.all([loadImprovementList(), loadIssueList(), loadRectList(), loadSupList()])
 }
 </script>
@@ -1795,7 +1777,6 @@ async function handleScopeChange(): Promise<void> {
         <ImprovementWorkbenchPanel
           title="改进任务台账"
           :empty="!qualityStore.currentTrainingPlanId"
-          empty-description="尚未选择培养方案，请在工作台顶部选择后再回来"
         >
           <template #extra>
             <UiButton
@@ -1823,14 +1804,6 @@ async function handleScopeChange(): Promise<void> {
                 placeholder="关联课程"
                 :width="160"
                 @change="handleImprovementQueryCourseChange"
-              />
-            </template>
-            <template #field-ownerUserId>
-              <TeacherSelector
-                :value="improvementFilterForm.ownerUserId || null"
-                placeholder="负责人"
-                :width="140"
-                @change="handleImprovementQueryOwnerChange"
               />
             </template>
           </UiFilterBar>
@@ -1864,9 +1837,9 @@ async function handleScopeChange(): Promise<void> {
                 {{ record.dueDate }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="improvementStatusColor(record.status)">
+                <UiTag :tone="improvementStatusColor(record.status)" size="sm">
                   {{ improvementStatusLabel(record.status) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
@@ -1946,14 +1919,14 @@ async function handleScopeChange(): Promise<void> {
                 {{ issueSourceLabel(record.issueSource) }}
               </template>
               <template v-else-if="column.key === 'severity'">
-                <a-tag :color="severityColor(record.severity)">
+                <UiTag :tone="severityColor(record.severity)" size="sm">
                   {{ severityLabel(record.severity) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="issueStatusColor(record.status)">
+                <UiTag :tone="issueStatusColor(record.status)" size="sm">
                   {{ issueStatusLabel(record.status) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
@@ -2036,9 +2009,9 @@ async function handleScopeChange(): Promise<void> {
                 {{ record.ownerUserName }}
               </template>
               <template v-else-if="column.key === 'status'">
-                <a-tag :color="rectificationStatusColor(record.status)">
+                <UiTag :tone="rectificationStatusColor(record.status)" size="sm">
                   {{ rectificationStatusLabel(record.status) }}
-                </a-tag>
+                </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <div class="operations-cell" @click.stop>
@@ -2141,18 +2114,19 @@ async function handleScopeChange(): Promise<void> {
                 </div>
               </template>
               <template v-else-if="column.key === 'supervisionType'">
-                <a-tag>{{ supervisionTypeLabel(record.supervisionType) }}</a-tag>
+                <UiTag tone="gray" size="sm">{{ supervisionTypeLabel(record.supervisionType) }}</UiTag>
               </template>
               <template v-else-if="column.key === 'supervisionScope'">
                 {{ supervisionScopeLabel(record.supervisionScope) }}
               </template>
               <template v-else-if="column.key === 'conclusion'">
-                <a-tag
+                <UiTag
                   v-if="record.conclusion"
-                  :color="supervisionConclusionColor(record.conclusion)"
+                  :tone="supervisionConclusionColor(record.conclusion)"
+                  size="sm"
                 >
                   {{ supervisionConclusionLabel(record.conclusion) }}
-                </a-tag>
+                </UiTag>
                 <span v-else class="iwb__muted">未形成结论</span>
               </template>
               <template v-else-if="column.key === 'actions'">
@@ -2282,7 +2256,7 @@ async function handleScopeChange(): Promise<void> {
     >
       <UiEmpty
         v-if="!improvementDetailRecord && !improvementDetailLoading"
-        description="详情数据未加载"
+        description="暂无数据"
         size="sm"
       />
       <a-descriptions v-if="improvementDetailRecord" :column="1" size="small" bordered>
@@ -2293,9 +2267,9 @@ async function handleScopeChange(): Promise<void> {
           {{ improvementDetailRecord.taskTitle }}
         </a-descriptions-item>
         <a-descriptions-item label="状态">
-          <a-tag :color="improvementStatusColor(improvementDetailRecord.status)">
+          <UiTag :tone="improvementStatusColor(improvementDetailRecord.status)" size="sm">
             {{ improvementStatusLabel(improvementDetailRecord.status) }}
-          </a-tag>
+          </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="负责人">
           {{ improvementDetailRecord.ownerUserName }}

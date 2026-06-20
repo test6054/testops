@@ -117,6 +117,7 @@
           </div>
         </template>
         <UiDataTable
+          pagination-mode="none"
           class="student-detail-table__data-table"
           :columns="historyColumns"
           :data-source="passwordHistory"
@@ -128,9 +129,9 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
-              <a-tag :color="record.success ? 'green' : 'red'">
+              <UiTag :tone="record.success ? 'green' : 'red'">
                 {{ record.success ? '成功' : '失败' }}
-              </a-tag>
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'ipAddress'">
               <span class="ip-address">{{ record.ipAddress }}</span>
@@ -157,7 +158,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { changePassword } from '@/apis/auth'
 import { getPasswordHistory } from '@/apis/edu/user-management'
-import { UiCard, UiDataTable, UiFormSection, UiPageHeader } from '@/components/ui-guide/ui'
+import { UiCard, UiDataTable, UiFormSection, UiPageHeader, UiTag } from '@/components/ui-guide/ui'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore, useUserStore } from '@/stores'
 import { showUserError } from '@/utils/error-handler'

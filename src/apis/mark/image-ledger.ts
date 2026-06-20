@@ -37,6 +37,26 @@ export interface ImageLedgerDetailVO {
   pendingDuplicateCount: number
 }
 
+/**
+ * 归一化影像账本详情：后端在未初始化账本时仅返回 examId 占位，不得当作有效账本渲染。
+ */
+export function normalizeImageLedgerDetail(
+  detail: ImageLedgerDetailVO | null | undefined,
+): ImageLedgerDetailVO | null {
+  if (!detail?.ledgerId) return null
+  return detail
+}
+
+/** 账本页数是否已形成可对账统计 */
+export function hasImageLedgerPageStats(
+  ledger: Pick<ImageLedgerDetailVO, 'scannedPageCount' | 'expectedPageCount'>,
+): boolean {
+  return typeof ledger.scannedPageCount === 'number'
+    && Number.isFinite(ledger.scannedPageCount)
+    && typeof ledger.expectedPageCount === 'number'
+    && Number.isFinite(ledger.expectedPageCount)
+}
+
 /** 影像账本状态 - 对应后端 LedgerStatus 枚举 */
 export type LedgerStatusCode = 'BALANCING' | 'BALANCED' | 'INCIDENT_OPEN'
 

@@ -17,7 +17,7 @@ import type {
   ScoreRecordSaveRequest,
   ScoreRecordVO,
 } from '@/apis/quality'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
@@ -30,13 +30,13 @@ import {
   scoreBatchApi,
   scoreRecordApi,
 } from '@/apis/quality'
+import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import {
   ClassSelector,
   CourseSelector,
   StudentSelector,
-  TrainingPlanSelector,
 } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -73,7 +73,7 @@ function batchStatusLabel(value: ScoreBatchStatus): string {
   return strictEnumLabel(SCORE_BATCH_STATUS_LABEL, value, '成绩批次状态')
 }
 
-function batchStatusColor(value: ScoreBatchStatus): string {
+function batchStatusColor(value: ScoreBatchStatus): BadgeTone {
   return strictEnumTone(SCORE_BATCH_STATUS_COLOR, value, '成绩批次状态')
 }
 
@@ -218,6 +218,7 @@ const signals = computed<SignalMetric[]>(() => {
     { key: 'batches', label: '批次总数', value: batches.value.length, tone: 'gray' },
   ]
 })
+
 
 /* ========== 明细编辑 ========== */
 
@@ -456,10 +457,6 @@ onMounted(async () => {
   }
 })
 
-function handlePlanChange(planId: string | null) {
-  qualityStore.setTrainingPlan(planId || '')
-}
-
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
@@ -470,12 +467,7 @@ function handleCourseChange(courseId: string | null) {
     <template #context>
       <ContextBar>
         <template #status>
-          <span class="score-record__context-label">培养方案</span>
-          <TrainingPlanSelector
-            :value="qualityStore.currentTrainingPlanId || null"
-            :width="280"
-            @change="handlePlanChange"
-          />
+          <QualityScopeHeader />
           <span class="score-record__context-label">质量评价课程</span>
           <CourseSelector
             :value="qualityStore.currentQualityCourseId || null"
@@ -489,13 +481,13 @@ function handleCourseChange(courseId: string | null) {
 
     <UiEmpty
       v-if="!qualityStore.currentTrainingPlanId"
-      description="请先选择培养方案，再维护其下的成绩明细"
+      description="请选择培养方案"
       class="score-record__empty"
     />
 
     <UiEmpty
       v-else-if="!qualityStore.currentQualityCourseId"
-      description="请先选择质量评价课程，再查看 / 维护其下成绩批次的明细"
+      description="请选择课程"
       class="score-record__empty"
     />
 
@@ -510,6 +502,7 @@ function handleCourseChange(courseId: string | null) {
           </template>
 
           <UiDataTable
+            pagination-mode="none"
             class="score-record__batches-table student-detail-table__data-table"
             :columns="batchColumns"
             :data-source="batches"
@@ -528,9 +521,9 @@ function handleCourseChange(courseId: string | null) {
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
-                <a-tag :color="batchStatusColor(record.status)">
+                <UiTag :tone="batchStatusColor(record.status)">
                   {{ batchStatusLabel(record.status) }}
-                </a-tag>
+                </UiTag>
               </template>
             </template>
           </UiDataTable>
@@ -540,9 +533,9 @@ function handleCourseChange(courseId: string | null) {
           <template v-if="selectedBatch" #title>
             「{{ selectedBatch.batchName }}」明细
             <span class="score-record__detail-meta">
-              <a-tag :color="batchStatusColor(selectedBatch.status)">
+              <UiTag :tone="batchStatusColor(selectedBatch.status)">
                 {{ batchStatusLabel(selectedBatch.status) }}
-              </a-tag>
+              </UiTag>
               · {{ selectedBatch.batchCode }}
             </span>
           </template>
@@ -559,7 +552,7 @@ function handleCourseChange(courseId: string | null) {
 
           <UiEmpty
             v-if="!selectedBatch"
-            description="请在左侧选择成绩批次后查看其明细数据"
+            description="请选择"
             class="score-record__empty"
           />
           <template v-else>
@@ -571,6 +564,7 @@ function handleCourseChange(courseId: string | null) {
             />
 
             <UiDataTable
+              pagination-mode="client"
               class="score-record__records-table student-detail-table__data-table"
               :columns="recordColumns"
               :data-source="filteredRecords"
@@ -600,11 +594,11 @@ function handleCourseChange(courseId: string | null) {
                 </template>
                 <template v-else-if="column.key === 'recordStatus'">
                   <a-space size="small">
-                    <a-tag :color="record.validFlag ? 'green' : 'red'">
+                    <UiTag :tone="record.validFlag ? 'green' : 'red'">
                       {{ record.validFlag ? '有效' : '无效' }}
-                    </a-tag>
+                    </UiTag>
                     <a-tooltip v-if="record.errorCodes" :title="scoreRecordInvalidReason(record)">
-                      <a-tag color="orange"> 异常 </a-tag>
+                      <UiTag tone="orange"> 异常 </UiTag>
                     </a-tooltip>
                   </a-space>
                 </template>
@@ -716,7 +710,7 @@ function handleCourseChange(courseId: string | null) {
             </div>
             <UiEmpty
               v-else
-              description="当前考核环节尚未配置评分项，可直接维护总分"
+              description="暂无数据"
               class="score-record__rubric-empty"
             />
           </a-spin>
@@ -771,6 +765,7 @@ function handleCourseChange(courseId: string | null) {
         </UiButton>
       </div>
       <UiDataTable
+        pagination-mode="client"
         class="student-detail-table__data-table"
         :columns="validByItemColumns"
         :data-source="validByItemRecords"

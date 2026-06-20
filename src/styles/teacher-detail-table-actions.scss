@@ -10,11 +10,15 @@
 
 .operations-cell {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  gap: 16px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.ui-data-table__table :deep(.ant-table-cell-fix-right) .operations-cell {
+  justify-content: flex-end;
 }
 
 .ai-review-btn {

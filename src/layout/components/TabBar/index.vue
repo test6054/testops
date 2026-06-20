@@ -18,10 +18,7 @@
 import type { Component } from 'vue'
 import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
-import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import MailOutlined from '@ant-design/icons-vue/MailOutlined'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -66,29 +63,11 @@ const allTabBarItems: TabBarItem[] = [
     roles: [RoleEnum.SCH_STU],
   },
 
-  // 教师端菜单
+  // 教师端菜单（移动端 TabBar：考试列表为入口，工作台内由 layout 侧栏导航）
   {
     path: '/teacher/exam-list',
     label: '考试工作台',
     icon: DashboardOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
-  },
-  {
-    path: '/teacher/marking-task-pool',
-    label: '阅卷任务',
-    icon: HighlightOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
-  },
-  {
-    path: '/teacher/marking-organization',
-    label: '阅卷安排',
-    icon: EditOutlined,
-    roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
-  },
-  {
-    path: '/teacher/review-progress',
-    label: '复核进度',
-    icon: LineChartOutlined,
     roles: [RoleEnum.SCH_TECH, RoleEnum.CROP_ADMIN, RoleEnum.CROP_USER],
   },
 
@@ -127,21 +106,9 @@ function isActive(path: string): boolean {
   if (path === '/teacher/exam-list') {
     return (
       route.path.startsWith('/teacher/exam-list')
-      || route.path.startsWith('/teacher/exam-prep-workbench')
-    )
-  }
-  if (path === '/teacher/marking-task-pool') {
-    return (
-      route.path.startsWith('/teacher/marking-task-pool')
+      || route.path.startsWith('/teacher/exam-workspace/')
       || route.path.startsWith('/teacher/marking-task/')
-    )
-  }
-  if (path === '/teacher/review-progress') {
-    return (
-      route.path.startsWith('/teacher/review-progress')
-      || route.path.startsWith('/teacher/review-workspace')
       || route.path.startsWith('/teacher/review/task/')
-      || route.path.startsWith('/teacher/review-batch-confirm')
     )
   }
   return route.path.startsWith(path)

@@ -22,6 +22,7 @@ import type {
   AchievementTargetType,
   ManualReviewDecision,
 } from '@/apis/quality'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -39,7 +40,7 @@ import {
   achievementManualReviewApi,
   MANUAL_REVIEW_DECISION_LABEL,
 } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
@@ -77,7 +78,7 @@ function achievementStatusLabel(value: AchievementStatus): string {
   return strictEnumLabel(ACHIEVEMENT_STATUS_LABEL, value, '达成状态')
 }
 
-function achievementStatusColor(value: AchievementStatus): string {
+function achievementStatusColor(value: AchievementStatus): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_STATUS_COLOR, value, '达成状态')
 }
 
@@ -85,7 +86,7 @@ function auditStatusLabel(value: AchievementAuditStatus): string {
   return strictEnumLabel(ACHIEVEMENT_AUDIT_STATUS_LABEL, value, '达成审核状态')
 }
 
-function auditStatusColor(value: AchievementAuditStatus): string {
+function auditStatusColor(value: AchievementAuditStatus): BadgeTone {
   return strictEnumTone(ACHIEVEMENT_AUDIT_STATUS_COLOR, value, '达成审核状态')
 }
 
@@ -97,7 +98,7 @@ function resultValidityLabel(value: AchievementResultVO | null): string {
   return isResultStale(value) ? '已过期' : '有效'
 }
 
-function resultValidityColor(value: AchievementResultVO | null): string {
+function resultValidityColor(value: AchievementResultVO | null): BadgeTone {
   return isResultStale(value) ? 'red' : 'green'
 }
 
@@ -234,6 +235,7 @@ const signals = computed<SignalMetric[]>(() => {
   ]
 })
 
+
 const reviewVisible = ref(false)
 
 function openReviewDrawer() {
@@ -255,9 +257,9 @@ onMounted(loadAll)
       <ContextBar>
         <template #status>
           <UiButton variant="outline" size="sm" @click="router.back()">返回</UiButton>
-          <a-tag v-if="result" :color="auditStatusColor(result.auditStatus)">
+          <UiTag v-if="result" :tone="auditStatusColor(result.auditStatus)" size="sm">
             {{ auditStatusLabel(result.auditStatus) }}
-          </a-tag>
+          </UiTag>
         </template>
         <template #actions>
           <UiButton
@@ -285,7 +287,7 @@ onMounted(loadAll)
 
     <UiEmpty
       v-if="!result && !loading"
-      description="未找到该达成度结果记录，请检查链接是否有效。"
+      description="暂无数据"
       class="achievement-detail__empty"
     />
 
@@ -314,17 +316,17 @@ onMounted(loadAll)
             {{ result.schoolYear }} / {{ result.semester }}
           </a-descriptions-item>
           <a-descriptions-item label="达成结论">
-            <a-tag :color="achievementStatusColor(result.achievementStatus)">
+            <UiTag :tone="achievementStatusColor(result.achievementStatus)" size="sm">
               {{ achievementStatusLabel(result.achievementStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="计算时间">
             {{ result.calculatedAt }}
           </a-descriptions-item>
           <a-descriptions-item label="审核状态">
-            <a-tag :color="auditStatusColor(result.auditStatus)">
+            <UiTag :tone="auditStatusColor(result.auditStatus)" size="sm">
               {{ auditStatusLabel(result.auditStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
         </a-descriptions>
       </UiCard>
@@ -333,9 +335,9 @@ onMounted(loadAll)
         <template #title>结果有效性</template>
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="有效性状态">
-            <a-tag :color="resultValidityColor(result)">
+            <UiTag :tone="resultValidityColor(result)" size="sm">
               {{ resultValidityLabel(result) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="过期时间">
             {{ result.staleAt || '-' }}
@@ -364,10 +366,11 @@ onMounted(loadAll)
           <template #title>计算明细</template>
           <UiEmpty
             v-if="!details.length && !loading"
-            description="未生成明细记录。仅草稿或已计算状态后才会产出主要明细。"
+            description="暂无数据"
             size="sm"
           />
           <UiDataTable
+            pagination-mode="none"
             class="student-detail-table__data-table"
             v-else
             :columns="detailColumns"
@@ -416,7 +419,7 @@ onMounted(loadAll)
           <template #title>审核责任链流水</template>
           <UiEmpty
             v-if="!audits.length && !loading"
-            description="未产生审核流水。审核动作会记录状态跳转与意见。"
+            description="暂无数据"
             size="sm"
           />
           <a-timeline v-else class="achievement-detail__timeline">
@@ -426,7 +429,7 @@ onMounted(loadAll)
               :color="auditStatusColor(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
             >
               <p class="achievement-detail__audit-line">
-                <a-tag>{{ auditStatusLabel(audit.auditEvent) }}</a-tag>
+                <UiTag tone="gray" size="sm">{{ auditStatusLabel(audit.auditEvent) }}</UiTag>
                 <strong v-if="audit.auditStatusFrom">
                   {{ auditStatusLabel(audit.auditStatusFrom) }}
                 </strong>
@@ -453,7 +456,7 @@ onMounted(loadAll)
         <template #title>人工复核记录</template>
         <UiEmpty
           v-if="!reviews.length"
-          description="尚无人工复核记录。可点击顶部「人工复核」补充复核意见。"
+          description="暂无数据"
           size="sm"
         />
         <a-list v-else :data-source="reviews" item-layout="horizontal">

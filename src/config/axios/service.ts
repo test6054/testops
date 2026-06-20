@@ -8,14 +8,17 @@ import type { ExtendedAxiosRequestConfig, InterceptorError } from './types'
 import message from 'ant-design-vue/es/message'
 import axios from 'axios'
 import { shouldShowError, shouldUseNotification } from '@/config/error-config'
-import { AUTH_STORAGE_KEYS, STORAGE_TENANT_ID } from '@/constants/storage-keys'
+import { AUTH_STORAGE_KEYS, STORAGE_REFRESH_TOKEN, STORAGE_TENANT_ID } from '@/constants/storage-keys'
 import { useAuthStore } from '@/stores/modules/auth'
+import { useTenantStore } from '@/stores/modules/tenant'
+import { useUserStore } from '@/stores/modules/user'
 import { isLoginPath, resolveAppPath } from '@/utils/app-path'
-import { getValidToken } from '@/utils/auth'
+import { getToken, getValidToken } from '@/utils/auth'
 import { getDeviceHeaders } from '@/utils/device'
 import { handleAxiosError } from '@/utils/error-handler'
 import {
   clearKioskAuthSession,
+  ensureScannerStationTeacherJwt,
   hasMarkScannerKioskAuth,
   isMarkScannerStationApiUrl,
   isScannerKioskBrowserPage,
@@ -51,10 +54,31 @@ function shouldSuppressKioskPreActivationAxiosError(
 }
 
 /**
- * 获取租户ID
+ * 获取租户ID：优先 localStorage，回退 pinia 缓存并回写
  */
 function getTenantId(): string | null {
-  return localStorage.getItem(STORAGE_TENANT_ID)
+  const storedTenantId = localStorage.getItem(STORAGE_TENANT_ID)
+  if (storedTenantId) {
+    return storedTenantId
+  }
+
+  try {
+    const tenantStore = useTenantStore()
+    if (tenantStore.tenantId) {
+      localStorage.setItem(STORAGE_TENANT_ID, tenantStore.tenantId)
+      return tenantStore.tenantId
+    }
+
+    const userStore = useUserStore()
+    if (userStore.userInfo.tenantId) {
+      localStorage.setItem(STORAGE_TENANT_ID, userStore.userInfo.tenantId)
+      return userStore.userInfo.tenantId
+    }
+  } catch {
+    return null
+  }
+
+  return null
 }
 
 /**
@@ -148,40 +172,42 @@ service.interceptors.request.use(
 
       let token = getValidToken()
 
-      // token 过期但可能有 refresh token，尝试自动刷新
+      // token 过期但可能有 refresh token，尝试自动刷新（与响应拦截器共用 auth store 单飞刷新）
       if (!token && !isAuthRequest && !isPublicApi) {
         try {
           const authStore = useAuthStore()
-          if (authStore.refreshToken) {
-            const refreshed = await authStore.refreshTokenAutomatically()
-            if (refreshed) {
-              token = getValidToken()
-            }
-          }
+          await authStore.refreshTokenAutomatically()
+          token = getValidToken()
         } catch {
           // 刷新失败，继续后续逻辑
         }
       }
 
+      if (!token) {
+        token = getValidToken()
+      }
+
       if (token) {
         requestConfig.headers.Authorization = `Bearer ${token}`
-      } else {
-        // 对于登录请求和公开API，允许无token通过
-        if (!isAuthRequest && !isPublicApi) {
-          if (!authRuntimeState.isRedirecting) {
-            authRuntimeState.isRedirecting = true
-            authRuntimeState.authFailed = true
-            cancelAllPendingRequests()
-            AUTH_STORAGE_KEYS.forEach(key => localStorage.removeItem(key))
-            window.location.href = resolveAppPath('login')
-          }
+      } else if (!isAuthRequest && !isPublicApi) {
+        const authStore = useAuthStore()
+        if (authStore.refreshingToken) {
+          return Promise.reject(new Error('认证刷新中，请稍后重试'))
+        }
+        const hasSessionRecoveryHint = !!getToken() || !!localStorage.getItem(STORAGE_REFRESH_TOKEN)
+        if (!hasSessionRecoveryHint && !authRuntimeState.isRedirecting) {
+          clearAuthAndRedirect()
           return Promise.reject(new Error('无有效认证信息，正在跳转登录页'))
         }
+        return Promise.reject(new Error('登录状态恢复中，请稍后重试'))
       }
     }
 
     // 扫描工位链路（kiosk + scan-live）使用 JWT 或 Agent push_token，不走教师登录跳转。
     if (isScannerStationApi) {
+      if (!isScannerKioskBrowserPage()) {
+        await ensureScannerStationTeacherJwt()
+      }
       const scannerStationAuth = resolveMarkScannerStationAuthHeaders()
       extendedConfig.markScannerStationAuthSource = scannerStationAuth.source || undefined
       if (!scannerStationAuth.headers.Authorization) {
@@ -202,15 +228,7 @@ service.interceptors.request.use(
     if (!isAuthRequest && !isPublicApi) {
       const tenantId = getExplicitTenantId(requestConfig) || getTenantId()
       if (!tenantId) {
-        // 缺少租户信息，清除认证状态并重定向到登录页
-        if (!authRuntimeState.isRedirecting) {
-          authRuntimeState.isRedirecting = true
-          authRuntimeState.authFailed = true
-          cancelAllPendingRequests()
-          AUTH_STORAGE_KEYS.forEach(key => localStorage.removeItem(key))
-          window.location.href = resolveAppPath('login')
-        }
-        return Promise.reject(new Error('缺少租户信息，正在跳转登录页'))
+        return Promise.reject(new Error('缺少租户信息，请重新登录后重试'))
       }
       requestConfig.headers['X-Tenant-Id'] = tenantId
     } else if (!isScannerStationApi && requestConfig.headers['X-Tenant-Id']) {
@@ -328,6 +346,7 @@ service.interceptors.response.use(
         const authError: InterceptorError = new Error(response.data.msg || '认证失败')
         authError.code = response.data.code
         authError.response = response
+        authError._handledByInterceptor = true
         return Promise.reject(authError)
       }
 
@@ -401,7 +420,7 @@ service.interceptors.response.use(
 
       // 尝试用 refresh token 自动续期
       const authStore = useAuthStore()
-      if (authStore.refreshToken) {
+      if (authStore.refreshToken || authStore.refreshingToken) {
         // 如果已经在刷新，把请求加入队列等待
         if (isRefreshingByInterceptor) {
           return new Promise((resolve, reject) => {
@@ -427,6 +446,14 @@ service.interceptors.response.use(
         } finally {
           isRefreshingByInterceptor = false
         }
+      }
+
+      const recoveredToken = getValidToken()
+      if (recoveredToken) {
+        if (originalConfig.headers) {
+          originalConfig.headers.Authorization = `Bearer ${recoveredToken}`
+        }
+        return service(originalConfig)
       }
 
       // refresh token 不存在或刷新失败，清除认证并跳转
@@ -462,6 +489,12 @@ service.interceptors.response.use(
  * 清除认证信息并跳转登录页
  */
 function clearAuthAndRedirect(): void {
+  if (getValidToken()) {
+    authRuntimeState.authFailed = false
+    authRuntimeState.isRedirecting = false
+    return
+  }
+
   // 防止重复重定向
   if (authRuntimeState.isRedirecting) {
     return

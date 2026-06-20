@@ -37,22 +37,16 @@
         title="AI 班级薄弱题型分析生成中"
         waiting-text="正在等待后端返回该班级的真实薄弱题型分析。"
       />
-      <!-- D-9 错误态：AI 班级薄弱题型加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 班级薄弱题型加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!hasQueried" description="请选择班级后查看或生成。" />
-      <UiEmpty v-else-if="!record" description="该班级暂无 AI 薄弱题型分析。" />
-      <div v-else class="ai-record">
+      <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" size="small" bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="班级编号">
             {{ analysisScopeText(record) }}
@@ -93,7 +87,7 @@
                     <span v-if="item.questionType" class="analysis-item__title">
                       {{ item.questionType }}
                     </span>
-                    <a-tag v-if="item.rank != null">排名 {{ item.rank }}</a-tag>
+                    <UiTag v-if="item.rank != null">排名 {{ item.rank }}</UiTag>
                     <span v-if="item.avgScoreRate != null" class="analysis-item__metric">
                       平均得分率 {{ formatRate(item.avgScoreRate) }}
                     </span>
@@ -139,7 +133,7 @@ import {
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
-import { UiButton, UiCard, UiEmpty, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -162,7 +156,6 @@ const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 
 const record = ref<ExamTeachingAnalysisRecordVO | null>(null)
 const loading = ref(false)
-// D-9 错误态：AI 班级薄弱题型加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 const generating = ref(false)
 const hasQueried = ref(false)

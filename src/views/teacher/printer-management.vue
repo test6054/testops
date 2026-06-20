@@ -1,10 +1,10 @@
 <template>
-  <StageWorkbenchShell>
+  <div class="printer-management-page">
     <a-card :bordered="false" class="detail-table-card printer-management">
       <template #title>扫描设备</template>
       <template #extra>
         <a-space>
-          <a-tag color="blue">共 {{ devices.length }} 台设备</a-tag>
+          <UiTag tone="blue">共 {{ devices.length }} 台设备</UiTag>
           <UiButton size="sm" @click="handleCreate">
             <template #icon><PlusOutlined /></template>
             新增设备
@@ -20,35 +20,10 @@
         @reset="handleResetSearch"
       />
 
-      <!-- D-9 错误态：设备列表加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="devicesLoadError"
-        :error="devicesLoadError"
-        title="扫描设备列表加载失败"
-        compact
-        @retry="loadDevices"
-      />
-      <UiErrorRetryPanel
-        v-if="agentUnbindError"
-        :error="agentUnbindError"
-        title="扫描组件解绑失败"
-        compact
-        :show-retry="false"
-        style="margin-bottom: 16px"
-      />
-      <UiErrorRetryPanel
-        v-if="deviceDeleteError"
-        :error="deviceDeleteError"
-        title="扫描设备删除失败"
-        compact
-        :show-retry="false"
-        style="margin-bottom: 16px"
-      />
-
-      <!-- 设备表格 -->
+      <!-- 设备列表 -->
       <UiDataTable
+        pagination-mode="none"
         class="student-detail-table__data-table"
-        v-if="!devicesLoadError"
         :columns="columns"
         :data-source="devices"
         :loading="loading"
@@ -61,14 +36,14 @@
       >
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'status'">
-            <a-tag :color="statusColorOf(devices[index].status)">
+            <UiTag :tone="statusColorOf(devices[index].status)">
               {{ statusLabelOf(devices[index].status) }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'endpointOnlineStatus'">
-            <a-tag :color="endpointOnlineStatusDisplayColorOf(devices[index])">
+            <UiTag :tone="endpointOnlineStatusDisplayColorOf(devices[index])">
               {{ endpointOnlineStatusDisplayLabelOf(devices[index]) }}
-            </a-tag>
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'agentVersion'">
             <span v-if="devices[index].agentVersion">{{ devices[index].agentVersion }}</span>
@@ -121,14 +96,6 @@
         :label-col="{ span: 7 }"
         :wrapper-col="{ span: 16 }"
       >
-        <UiErrorRetryPanel
-          v-if="formSubmitError"
-          :error="formSubmitError"
-          title="扫描设备保存失败"
-          compact
-          :show-retry="false"
-          style="margin-bottom: 16px"
-        />
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item name="scannerDeviceId" label="扫描设备编号">
@@ -220,19 +187,10 @@
       :footer="null"
       destroy-on-close
     >
-      <a-alert
-        type="warning"
-        show-icon
-        message="请妥善保管设备接入密钥，关闭对话框后将仅展示脱敏内容。"
-        style="margin-bottom: 16px"
-      />
-      <UiErrorRetryPanel
-        v-if="tokenActionError"
-        :error="tokenActionError"
-        title="HTTP 推送配置操作失败"
-        compact
-        :show-retry="false"
-        style="margin-bottom: 16px"
+      <UiAlertStrip
+        tone="warning"
+        title="请妥善保管设备接入密钥，关闭对话框后将仅展示脱敏内容。"
+        class="token-modal-alert"
       />
       <a-descriptions v-if="tokenInfo" bordered :column="1" size="small">
         <a-descriptions-item label="设备记录编号">
@@ -273,14 +231,6 @@
       :footer="null"
       destroy-on-close
     >
-      <UiErrorRetryPanel
-        v-if="detailLoadError"
-        :error="detailLoadError"
-        title="扫描设备详情加载失败"
-        compact
-        :show-retry="false"
-        style="margin-bottom: 16px"
-      />
       <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
         <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
         <a-descriptions-item label="扫描设备编号">
@@ -290,22 +240,22 @@
           {{ detailInfo.scannerStationId }}
         </a-descriptions-item>
         <a-descriptions-item label="设备状态">
-          <a-tag :color="statusColorOf(detailInfo.status)">
+          <UiTag :tone="statusColorOf(detailInfo.status)">
             {{ statusLabelOf(detailInfo.status) }}
-          </a-tag>
+          </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="设备地址">
           {{ detailInfo.scannerIp || '—' }}
         </a-descriptions-item>
         <a-descriptions-item label="Kiosk 防误触锁">
-          <a-tag :color="detailInfo.kioskLockEnabled === false ? 'warning' : 'success'">
+          <UiTag :tone="detailInfo.kioskLockEnabled === false ? 'orange' : 'green'">
             {{ detailInfo.kioskLockEnabled === false ? '已关闭' : '已启用' }}
-          </a-tag>
+          </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="扫描组件在线状态">
-          <a-tag :color="endpointOnlineStatusDisplayColorOf(detailInfo)">
+          <UiTag :tone="endpointOnlineStatusDisplayColorOf(detailInfo)">
             {{ endpointOnlineStatusDisplayLabelOf(detailInfo) }}
-          </a-tag>
+          </UiTag>
         </a-descriptions-item>
         <a-descriptions-item label="扫描组件版本">
           {{ detailInfo.agentVersion || '未激活' }}
@@ -373,14 +323,6 @@
       :footer="null"
       destroy-on-close
     >
-      <UiErrorRetryPanel
-        v-if="activationCodeError"
-        :error="activationCodeError"
-        title="扫描组件激活码生成失败"
-        compact
-        :show-retry="false"
-        style="margin-bottom: 16px"
-      />
       <div v-if="activationCodeInfo" class="activation-code-modal">
         <div class="activation-code-modal__device">
           {{ activationCodeDeviceName }}
@@ -407,7 +349,7 @@
         </a-space>
       </div>
     </a-modal>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -424,7 +366,7 @@ import type {
   ScannerDeviceStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
-import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
@@ -443,8 +385,7 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import { UiButton, UiDataTable, UiErrorRetryPanel, UiFilterBar, UiTextAction } from '@/components/ui-guide/ui'
-import { StageWorkbenchShell } from '@/components/workbench'
+import { UiButton, UiDataTable, UiFilterBar, UiTag, UiTextAction, UiAlertStrip } from '@/components/ui-guide/ui'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readArrayResponse } from '@/utils/page-result'
@@ -498,20 +439,20 @@ const columns = [
   { title: '设备接入密钥', dataIndex: 'pushTokenMasked', key: 'pushTokenMasked', width: 130 },
   { title: '最近通讯', dataIndex: 'lastSeenAt', key: 'lastSeenAt', width: 170 },
   { title: '位置', dataIndex: 'location', key: 'location', width: 160, ellipsis: true },
-  { title: '操作', dataIndex: 'action', key: 'action', width: 260, fixed: 'right' as const },
+  { title: '操作', dataIndex: 'action', key: 'action', width: 340, fixed: 'right' as const },
 ]
 
 // helper 严格只接受后端枚举类型，零 as 断言。
 function statusLabelOf(status: ScannerDeviceStatusCode): string {
   return strictEnumLabel(SCANNER_DEVICE_STATUS_LABEL, status, '扫描设备状态')
 }
-function statusColorOf(status: ScannerDeviceStatusCode): string {
+function statusColorOf(status: ScannerDeviceStatusCode): BadgeTone {
   return strictEnumTone(SCANNER_DEVICE_STATUS_COLOR, status, '扫描设备状态')
 }
 function endpointOnlineStatusLabelOf(status: ScannerEndpointOnlineStatusCode): string {
   return strictEnumLabel(SCANNER_ENDPOINT_ONLINE_STATUS_LABEL, status, '扫描端点在线状态')
 }
-function endpointOnlineStatusColorOf(status: ScannerEndpointOnlineStatusCode): string {
+function endpointOnlineStatusColorOf(status: ScannerEndpointOnlineStatusCode): BadgeTone {
   return strictEnumTone(SCANNER_ENDPOINT_ONLINE_STATUS_COLOR, status, '扫描端点在线状态')
 }
 function endpointOnlineStatusDisplayLabelOf(device: ExamScannerDeviceVO): string {
@@ -519,10 +460,10 @@ function endpointOnlineStatusDisplayLabelOf(device: ExamScannerDeviceVO): string
     ? endpointOnlineStatusLabelOf(device.endpointOnlineStatus)
     : '未激活'
 }
-function endpointOnlineStatusDisplayColorOf(device: ExamScannerDeviceVO): string {
+function endpointOnlineStatusDisplayColorOf(device: ExamScannerDeviceVO): BadgeTone {
   return device.endpointOnlineStatus
     ? endpointOnlineStatusColorOf(device.endpointOnlineStatus)
-    : 'default'
+    : 'gray'
 }
 
 async function loadDevices(): Promise<void> {

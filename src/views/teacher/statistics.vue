@@ -1,31 +1,12 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <MarkExamContextPicker select-class="stats-page__exam-select" />
-          <UiTag v-if="selectedExamId" tone="blue" size="sm">已选考试</UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :disabled="!selectedExamId" @click="reloadAll">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="stats-page">
+    <div class="stats-page__toolbar">
+      <UiButton variant="outline" size="sm" @click="reloadAll">
+        <template #icon><ReloadOutlined /></template>
+        刷新
+      </UiButton>
+    </div>
 
-    <template #rail>
-      <MarkExamStageRail />
-    </template>
-
-    <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择一场考试以查看考试统计与教学改进"
-      class="stats-page__empty"
-    />
-
-    <template v-else>
       <div class="stats-page__linkage">
         <div class="stats-page__linkage-main">
           <span class="stats-page__linkage-label">联动范围</span>
@@ -53,7 +34,7 @@
         </UiButton>
       </div>
 
-      <div v-if="selectedExamId" class="stats-page__export-bar">
+      <div v-if="currentExamId" class="stats-page__export-bar">
         <span class="stats-page__export-label">考后讲评</span>
         <UiButton variant="primary" size="sm" @click="exportTeachingLecture">
           导出讲评讲义
@@ -76,7 +57,7 @@
           </header>
           <div class="stats-page__cards">
             <ScoreDistributionCard
-              :exam-id="selectedExamId"
+              :exam-id="currentExamId"
               :reload-token="scoreDistToken"
               :class-id="activeClassId"
               :class-options="classOptions"
@@ -84,14 +65,14 @@
               @class-change="handleClassChange"
             />
             <QuestionAnalysisCard
-              :exam-id="selectedExamId"
+              :exam-id="currentExamId"
               :reload-token="qaToken"
               :class-id="activeClassId"
               @generated="reloadRejudge"
             />
-            <RejudgePlanCard :exam-id="selectedExamId" :reload-token="rejudgeToken" />
+            <RejudgePlanCard :exam-id="currentExamId" :reload-token="rejudgeToken" />
             <ErrorCauseClusterCard
-              :exam-id="selectedExamId"
+              :exam-id="currentExamId"
               :reload-token="errorCauseToken"
               :class-id="activeClassId"
             />
@@ -111,12 +92,12 @@
           <div class="stats-page__cards">
             <TeachingImprovementCard
               ref="teachingImprovementRef"
-              :exam-id="selectedExamId"
+              :exam-id="currentExamId"
               :reload-token="improvementToken"
               :class-id="activeClassId"
             />
             <ClassWeaknessCard
-              :exam-id="selectedExamId"
+              :exam-id="currentExamId"
               :reload-token="weaknessToken"
               :class-id="activeClassId"
               :class-options="classOptions"
@@ -124,7 +105,7 @@
               @class-change="handleClassChange"
             />
             <StudentLearningProfileCard
-              :exam-id="selectedExamId"
+              :exam-id="currentExamId"
               :reload-token="profileToken"
               :class-id-hint="activeClassId"
               :student-options="studentOptions"
@@ -134,19 +115,15 @@
           </div>
         </section>
       </div>
-    </template>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
 import type { SelectValue } from 'ant-design-vue/es/select'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
-import MarkExamContextPicker from '@/components/mark/MarkExamContextPicker.vue'
-import MarkExamStageRail from '@/components/mark/MarkExamStageRail.vue'
-import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
-import { provideMarkExamContext } from '@/composables/useMarkExamContext'
+import { UiButton, UiTag } from '@/components/ui-guide/ui'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'
 import ErrorCauseClusterCard from './statistics/ErrorCauseClusterCard.vue'
@@ -158,10 +135,8 @@ import TeachingImprovementCard from './statistics/TeachingImprovementCard.vue'
 
 defineOptions({ name: 'TeacherStatistics' })
 
-const {
-  selectedExamId,
-  init: initExamSelector,
-} = provideMarkExamContext()
+const { selectedExamId } = useMarkExamContext()
+const currentExamId = computed(() => selectedExamId.value || '')
 
 // B-12 联动：考试切换后统一加载考生名册，派生班级 / 学生选项交给子卡片，避免教师手输 ID
 const {
@@ -266,8 +241,7 @@ watch(selectedExamId, (v) => {
   }
 })
 
-onMounted(async () => {
-  await initExamSelector()
+onMounted(() => {
   if (selectedExamId.value) {
     void loadRoster(selectedExamId.value)
     reloadAll()
@@ -277,8 +251,16 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .stats-page {
-  &__exam-select {
-    width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
   }
 
   &__empty {

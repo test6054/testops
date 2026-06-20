@@ -163,7 +163,7 @@ export interface ReviewerQualityMetricResponse {
   snapshotTime: string
 }
 
-/** 进度监控记录 VO - 对应 ExamProgressMonitorRecord */
+/** 进度监控记录 VO - 对应 ProgressMonitorRecordResponse */
 export interface ProgressRiskItemVO {
   riskCode: string
   riskLabel: string
@@ -186,7 +186,8 @@ export interface ProgressMonitorRecordVO {
   completionRate: number
   estimatedRemainingMinutes?: number
   riskLevel: ProgressRiskLevelCode
-  riskItems: ProgressRiskItemVO[]
+  /** latest / snapshot 返回；历史 list 接口不返回明细 */
+  riskItems?: ProgressRiskItemVO[]
   snapshotTime: string
 }
 
@@ -231,6 +232,22 @@ export function takeProgressSnapshot(
   request: ProgressSnapshotRequest,
 ): Promise<ProgressMonitorRecordVO> {
   return http.post<ProgressMonitorRecordVO>('/api/mark/quality/progress/snapshot', request)
+}
+
+/** 历史进度快照查询请求 */
+export interface ProgressSnapshotListRequest extends ProgressSnapshotRequest {
+  /** 返回最近快照条数，默认 30，最大 100 */
+  limit?: number
+}
+
+/**
+ * 查询阅卷进度历史快照列表（按快照时间升序）
+ * POST /api/mark/quality/progress/list
+ */
+export function listProgressSnapshots(
+  request: ProgressSnapshotListRequest,
+): Promise<ProgressMonitorRecordVO[]> {
+  return http.post<ProgressMonitorRecordVO[]>('/api/mark/quality/progress/list', request)
 }
 
 /**

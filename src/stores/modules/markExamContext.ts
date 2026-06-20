@@ -105,15 +105,6 @@ export const useMarkExamContextStore = defineStore(
       stageStore.observeExam(examId)
       if (opts.ensureDetail && !detailCache.value.has(examId)) {
         await loadDetail(examId)
-      } else if (detailCache.value.has(examId)) {
-        const detail = detailCache.value.get(examId)
-        if (detail) {
-          stageStore.setSelectedExamMeta({
-            examId: detail.examId,
-            examName: detail.examName,
-            examNo: detail.examNo,
-          })
-        }
       }
     }
 
@@ -127,11 +118,6 @@ export const useMarkExamContextStore = defineStore(
         const next = new Map(detailCache.value)
         next.set(examId, detail)
         detailCache.value = next
-        useMarkStageStore().setSelectedExamMeta({
-          examId: detail.examId,
-          examName: detail.examName,
-          examNo: detail.examNo,
-        })
         return detail
       } finally {
         detailLoading.value = false

@@ -45,20 +45,16 @@
 
     <a-spin :spinning="loading || generating">
       <!-- D-9 错误态：AI 学期成长加载失败时提供重试 + 上报入口 -->
-      <UiErrorRetryPanel
-        v-if="loadError"
-        :error="loadError"
-        title="AI 学期成长加载失败"
-        compact
-        @retry="reload"
+      <UiEmpty
+        v-if="!loading && !generating && !record"
+        description="暂无数据"
       />
-      <UiEmpty v-else-if="!record" description="暂无成长曲线，请填写参数后生成。" />
-      <div v-else class="ai-record">
+      <div v-else-if="record" class="ai-record">
         <a-descriptions :column="3" compact bordered>
           <a-descriptions-item label="状态">
-            <a-tag :color="aiAnalysisStatusColor(record.analysisStatus)">
+            <UiTag :tone="aiAnalysisStatusColor(record.analysisStatus)">
               {{ aiAnalysisStatusLabel(record.analysisStatus) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="学年学期">
             {{ formatAcademicTermCode(record.semesterCode) }}
@@ -69,9 +65,9 @@
           </a-descriptions-item>
           <a-descriptions-item label="考试数">{{ record.examCount }}</a-descriptions-item>
           <a-descriptions-item label="趋势">
-            <a-tag :color="trendColor(record.growthTrend)">
+            <UiTag :tone="trendColor(record.growthTrend)">
               {{ trendLabel(record.growthTrend) }}
-            </a-tag>
+            </UiTag>
           </a-descriptions-item>
           <a-descriptions-item label="生成耗时">{{ latencyText(record) }}</a-descriptions-item>
           <a-descriptions-item label="生成时间" :span="2">
@@ -82,9 +78,9 @@
           </a-descriptions-item>
           <a-descriptions-item label="考试范围" :span="3">
             <a-space v-if="record.exams.length" wrap>
-              <a-tag v-for="exam in record.exams" :key="exam.examId">
+              <UiTag v-for="exam in record.exams" :key="exam.examId">
                 {{ exam.examName }}{{ exam.examTime ? ` · ${formatDateTime(exam.examTime)}` : '' }}
-              </a-tag>
+              </UiTag>
             </a-space>
             <span v-else class="text-muted">无考试范围</span>
           </a-descriptions-item>
@@ -95,30 +91,25 @@
           </a-descriptions-item>
         </a-descriptions>
 
-        <div v-if="examStatTrendPoints.length >= 2" class="ai-chart">
-          <div class="ai-chart__meta">
-            <strong>学期考试得分走势</strong>
-            <span class="ai-chart__hint">按考试时间序列展示得分率</span>
-          </div>
-          <UiTrendChart
-            :items="examStatTrendPoints"
-            area
-            show-bubble
-            class="ai-chart__canvas"
-          />
-        </div>
+        <MarkTrendSection
+          v-if="record"
+          title="学期考试得分走势"
+          hint="按考试时间序列展示得分率"
+          :point-count="examStatTrendPoints.length"
+          :option="examTrendChartOption"
+          height="280px"
+          :last-value="examTrendLastValue"
+          value-unit="%"
+        />
 
-        <div v-if="growthBarItems.length > 0" class="ai-chart">
-          <div class="ai-chart__meta">
-            <strong>能力点起止对比</strong>
-            <span class="ai-chart__hint">各能力维度结束值，选中查看起止对照</span>
-          </div>
-          <UiBarChart
-            :items="growthBarItems"
-            orientation="vertical"
-            class="ai-chart__canvas"
-          />
-        </div>
+        <MarkBarSection
+          v-if="record"
+          title="能力点起止对比"
+          hint="各能力维度结束值，悬停查看起止对照"
+          :item-count="growthBarItems.length"
+          :option="growthBarChartOption"
+          height="280px"
+        />
 
         <a-typography-paragraph v-if="record.growthSummary" class="ai-summary">
           <strong>成长摘要：</strong>{{ record.growthSummary }}
@@ -171,6 +162,7 @@ import type {
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -185,7 +177,10 @@ import { getExamDetail } from '@/apis/mark/exam'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import { UiBarChart, UiCard, UiEmpty, UiErrorRetryPanel, UiTrendChart } from '@/components/ui-guide/ui'
+import { MarkBarSection, MarkTrendSection } from '@/components/chart'
+import { UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import { useChartOption } from '@/hooks/modules/useChartOption'
+import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -233,6 +228,32 @@ const examStatTrendPoints = computed(() =>
 const growthBarItems = computed(() =>
   growthItemsToBarItems(record.value?.growthItems ?? []),
 )
+
+const examTrendLastValue = computed(() => {
+  const points = examStatTrendPoints.value
+  if (points.length === 0) {
+    return null
+  }
+  return Number(points[points.length - 1]?.value)
+})
+
+const { chartOption: examTrendChartOption } = useChartOption(() =>
+  buildTrendLineChartOption(examStatTrendPoints.value, {
+    yAxisName: '得分率 %',
+    yMax: 100,
+    area: true,
+    emptyText: '至少需要 2 场考试才能展示走势',
+  }),
+)
+
+const { chartOption: growthBarChartOption } = useChartOption(() =>
+  buildCategoryBarChartOption(growthBarItems.value, {
+    orientation: 'vertical',
+    yAxisName: '成长值',
+    emptyText: '暂无学期成长数据',
+  }),
+)
+
 const selectedCourseIds = computed(() =>
   Array.from(new Set(selectedExams.value.map((exam) => exam.courseId).filter(Boolean))),
 )
@@ -379,7 +400,7 @@ function trendLabel(trend: SemesterGrowthTrendCode | undefined): string {
   return strictEnumLabel(SEMESTER_GROWTH_TREND_LABEL, trend, '学期能力成长趋势')
 }
 
-function trendColor(trend: SemesterGrowthTrendCode | undefined): string {
+function trendColor(trend: SemesterGrowthTrendCode | undefined): BadgeTone {
   return strictEnumTone(SEMESTER_GROWTH_TREND_COLOR, trend, '学期能力成长趋势')
 }
 

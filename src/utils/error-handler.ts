@@ -11,8 +11,6 @@ import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
 import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
 import StopOutlined from '@ant-design/icons-vue/StopOutlined'
 import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
-import message from 'ant-design-vue/es/message'
-import notification from 'ant-design-vue/es/notification'
 import { h } from 'vue'
 import {
   getCustomErrorMessage,
@@ -20,6 +18,7 @@ import {
   shouldSilenceErrorMessage,
   shouldUseNotification
 } from '@/config/error-config'
+import { message, notification } from '@/utils/feedback'
 
 /**
  * 可处理的错误类型
@@ -351,6 +350,7 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
       description: notificationContent,
       icon: () => iconVNode,
       duration: 5,
+      placement: 'topRight',
     })
   } else {
     const content = standardError.detail
@@ -475,4 +475,28 @@ export class ErrorHandler {
   static isHandled(error: unknown): boolean {
     return isErrorHandled(error)
   }
+}
+
+/** 503 / 网络抖动等临时失败，不应触发登出 */
+export function isTransientRequestError(error: unknown): boolean {
+  const err = error as HandledError
+  const status = err?.response?.status
+  if (status === 401) {
+    return false
+  }
+  return !err?.response
+    || err.code === 'ERR_NETWORK'
+    || err.code === 'ECONNABORTED'
+    || (typeof status === 'number' && (status >= 500 || status === 429))
+}
+
+/** 用户信息拉取失败且会话不可恢复时才应登出 */
+export function isAuthRequestFailure(error: unknown): boolean {
+  const err = error as HandledError
+  const status = err?.response?.status
+  const businessCode = err?.response?.data?.code ?? err?.code
+  if (status === 401 || businessCode === 401) {
+    return true
+  }
+  return false
 }

@@ -11,17 +11,9 @@
       </a-space>
     </template>
 
-    <!-- D-9 错误态：更正记录加载失败时提供重试 + 上报入口 -->
-    <UiErrorRetryPanel
-      v-if="loadError"
-      :error="loadError"
-      title="更正记录加载失败"
-      compact
-      @retry="reload"
-    />
     <UiDataTable
+      pagination-mode="client"
       class="student-detail-table__data-table"
-      v-else
       :columns="columns"
       :data-source="rows"
       :loading="loading"
@@ -45,9 +37,9 @@
           {{ correctionTypeLabel(rows[index]) }}
         </template>
         <template v-else-if="column.key === 'correctionStatus'">
-          <a-tag :color="correctionStatusColor(rows[index])">
+          <UiTag :tone="correctionStatusColor(rows[index])">
             {{ correctionStatusLabel(rows[index]) }}
-          </a-tag>
+          </UiTag>
         </template>
         <template v-else-if="column.key === 'effectiveTime'">
           {{ formatDateTime(rows[index].effectiveTime) }}
@@ -128,6 +120,7 @@ import type {
   GradeCorrectionTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
@@ -140,7 +133,7 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
-import { UiDataTable, UiErrorRetryPanel } from '@/components/ui-guide/ui'
+import { UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -156,7 +149,6 @@ const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 100
 
 const rows = ref<ExamGradeCorrectionRecordVO[]>([])
 const loading = ref(false)
-// D-9 错误态：更正记录加载失败时 UiErrorRetryPanel 重试 + 上报
 const loadError = ref<Error | null>(null)
 const approvedReviewRequests = ref<GradeReviewRequestItemResponse[]>([])
 const reviewRequestLoading = ref(false)
@@ -371,7 +363,7 @@ function correctionStatusLabel(row: ExamGradeCorrectionRecordVO): string {
   return strictEnumLabel(GRADE_CORRECTION_STATUS_LABEL, row.correctionStatus, '成绩更正状态')
 }
 
-function correctionStatusColor(row: ExamGradeCorrectionRecordVO): string {
+function correctionStatusColor(row: ExamGradeCorrectionRecordVO): BadgeTone {
   return strictEnumTone(GRADE_CORRECTION_STATUS_COLOR, row.correctionStatus, '成绩更正状态')
 }
 

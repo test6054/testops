@@ -23,22 +23,8 @@
         search-text="查询"
       />
 
-      <!-- D-9 错误态：考试列表加载失败时提供重试入口（学生侧无上报入口） -->
-      <UiErrorRetryPanel
-        v-if="examsLoadError"
-        :error="examsLoadError"
-        title="考试列表加载失败"
-        :show-report="false"
-        compact
-        @retry="loadExams"
-      />
-      <UiEmpty
-        v-else-if="!loading && filteredExams.length === 0"
-        description="没有符合条件的考试"
-      />
-
       <UiDataTable
-        v-else
+        pagination-mode="client"
         :columns="columns"
         :data-source="filteredExams"
         :loading="loading"
@@ -140,7 +126,6 @@ import {
 import {
   UiDataTable,
   UiEmpty,
-  UiErrorRetryPanel,
   UiFilterBar,
   UiTag,
   UiTextAction,
