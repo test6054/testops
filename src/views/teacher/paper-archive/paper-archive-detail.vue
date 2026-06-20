@@ -517,6 +517,8 @@ async function loadItems(): Promise<void> {
       tagAny: searchForm.tagAny && searchForm.tagAny.length > 0 ? searchForm.tagAny : undefined,
     })
     items.value = readPageList(result, '纸质试卷档案集明细加载失败，请稍后重试')
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
     pagination.total = readPageTotal(result, '纸质试卷档案集明细加载失败，请稍后重试')
   } catch (error) {
     showUserError(error, '纸质试卷档案集明细加载失败')

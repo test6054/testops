@@ -8,6 +8,7 @@ import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -179,7 +180,13 @@ onBeforeUnmount(releaseImages)
         dense
         class="marking-scan-material__alert"
       />
-      <a-spin :spinning="loading" tip="加载影像中...">
+      <UiErrorRetryPanel
+        v-if="loadError"
+        :error="loadError"
+        title="阅卷影像加载失败"
+        @retry="loadImages"
+      />
+      <a-spin v-else :spinning="loading" tip="加载影像中...">
         <div v-if="activeTab === 'slice'" class="marking-scan-material__viewer">
           <ScanImageStage
             v-if="sliceImageUrl"

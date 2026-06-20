@@ -47,7 +47,7 @@
             </div>
           </div>
           <div class="operations-cell exam-list-page__recommend-actions">
-            <UiTextAction tone="primary" @click="goPrepWorkbenchById(item.examId)">
+            <UiTextAction tone="primary" @click="goSmartExamEntry(item.examId)">
               进入考试
             </UiTextAction>
             <UiTextAction
@@ -253,6 +253,29 @@
           :options="gradingStrategyOptions"
         />
       </a-form-item>
+      <a-form-item label="成绩构成" name="scoreCompositionMode">
+        <a-radio-group v-model:value="examForm.scoreCompositionMode">
+          <a-radio value="EXAM_ONLY">仅计入考试成绩（期末笔试）</a-radio>
+          <a-radio value="EXAM_WITH_DAILY">期末考试 + 平时成绩合成</a-radio>
+        </a-radio-group>
+        <div class="exam-list-form__composition-hint">
+          平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分，总成绩=考试分+平时分。
+        </div>
+      </a-form-item>
+      <a-form-item
+        v-if="examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'"
+        label="平时成绩满分"
+        name="dailyScoreFull"
+      >
+        <a-input-number
+          v-model:value="examForm.dailyScoreFull"
+          :min="0.01"
+          :max="1000"
+          :precision="2"
+          style="width: 100%"
+          placeholder="例如 30（与培养方案中平时分满分一致）"
+        />
+      </a-form-item>
       <a-form-item label="备注" name="remark">
         <a-textarea
           v-model:value="examForm.remark"
@@ -402,6 +425,8 @@ const gradingStrategyOptions = Object.entries(GRADING_STRATEGY_LABEL).map(([valu
   value,
   label,
 }))
+
+type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
 const dataSource = ref<ExamSummaryVO[]>([])
 const loading = ref(false)
@@ -686,9 +711,6 @@ function handleUiPageChange(page: { current: number, pageSize: number }): void {
 }
 
 
-function goPrepWorkbenchById(examId: string): void {
-  void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId } })
-}
 
 function goScanLiveMonitor(examId: string): void {
   void router.push({ name: 'TeacherExamWorkspaceScanMonitor', params: { examId } })
@@ -707,7 +729,7 @@ function goMarkingTaskPool(examId: string): void {
 function goSmartExamEntry(examId: string): void {
   const p = examProgressMap.value.get(examId)
   if (!p) {
-    void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId } })
+    void router.push({ name: 'TeacherExamWorkspaceOverview', params: { examId } })
     return
   }
   if (p.scanAttentionCount > 0) {
@@ -715,7 +737,7 @@ function goSmartExamEntry(examId: string): void {
     return
   }
   if (p.totalQuestionGradeCount <= 0) {
-    void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId } })
+    void router.push({ name: 'TeacherExamWorkspaceOverview', params: { examId } })
     return
   }
   if (Math.max(0, p.totalQuestionGradeCount - p.confirmedQuestionGradeCount) > 0) {
@@ -774,6 +796,8 @@ const examForm = reactive<{
   semester?: string
   examWindow?: [string, string]
   gradingStrategy?: GradingStrategyCode
+  scoreCompositionMode: ExamScoreCompositionMode
+  dailyScoreFull: number | null
   remark?: string
 }>({
   courseId: null,
@@ -783,6 +807,8 @@ const examForm = reactive<{
   semester: undefined,
   examWindow: undefined,
   gradingStrategy: undefined,
+  scoreCompositionMode: 'EXAM_ONLY',
+  dailyScoreFull: null,
   remark: '',
 })
 
@@ -835,6 +861,21 @@ const examFormRules: Record<string, Rule[]> = {
       trigger: 'change',
     },
   ],
+  dailyScoreFull: [
+    {
+      validator: async (): Promise<void> => {
+        if (examForm.scoreCompositionMode !== 'EXAM_WITH_DAILY') return
+        const value = examForm.dailyScoreFull
+        if (value == null || value <= 0) {
+          throw new Error('请填写平时成绩满分（须大于 0）')
+        }
+        if (value > 1000) {
+          throw new Error('平时成绩满分不能超过 1000')
+        }
+      },
+      trigger: 'change',
+    },
+  ],
   remark: [{ max: 500, message: '备注最多 500 个字符', trigger: 'blur' }],
 }
 
@@ -847,6 +888,8 @@ function resetExamForm(): void {
   examForm.semester = undefined
   examForm.examWindow = undefined
   examForm.gradingStrategy = undefined
+  examForm.scoreCompositionMode = 'EXAM_ONLY'
+  examForm.dailyScoreFull = null
   examForm.remark = ''
   formRef.value?.clearValidate()
 }
@@ -867,6 +910,8 @@ function openEditModal(exam: ExamSummaryVO): void {
   examForm.examWindow
     = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
   examForm.gradingStrategy = exam.gradingStrategy
+  examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
+  examForm.dailyScoreFull = exam.dailyScoreFull ?? null
   examForm.remark = exam.remark ?? ''
   formModalOpen.value = true
 }
@@ -886,6 +931,9 @@ function buildExamRequest(): ExamCreateRequest | null {
     examStartTime: startTime,
     examEndTime: endTime,
     gradingStrategy: examForm.gradingStrategy,
+    dailyScoreFull: examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'
+      ? examForm.dailyScoreFull
+      : null,
     remark: examForm.remark?.trim() || undefined,
   }
 }
@@ -1085,6 +1133,13 @@ onMounted(() => {
 }
 
 .muted {
+  color: var(--ant-color-text-tertiary);
+}
+
+.exam-list-form__composition-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--ant-color-text-tertiary);
 }
 </style>

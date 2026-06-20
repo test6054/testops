@@ -1076,6 +1076,8 @@ export function useKioskWorkflow() {
       if (examOptionFilter.classId) request.classId = examOptionFilter.classId
       const result = await pageScannerKioskExamOptions(request)
       examOptions.value = readPageList(result, '考试列表加载失败，请稍后重试')
+      examOptionFilter.pageNum = result.pageNum
+      examOptionFilter.pageSize = result.pageSize
       examOptionTotal.value = readPageTotal(result)
     } catch (error) {
       handleError(error)
@@ -1171,6 +1173,8 @@ export function useKioskWorkflow() {
       if (toIso) request.scanStartTimeTo = toIso
       const result = await pageScannerKioskBatchHistory(request)
       batchHistoryList.value = readPageList(result, '扫描批次历史加载失败，请稍后重试')
+      batchHistoryFilter.pageNum = result.pageNum
+      batchHistoryFilter.pageSize = result.pageSize
       batchHistoryTotal.value = readPageTotal(result, '扫描批次历史加载失败，请稍后重试')
     } catch (error) {
       handleError(error)

@@ -57,7 +57,9 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
 
   // ── 教师 ① 考试列表 + 工作台 ────────────────────────
   TeacherExamList: () => import('@/views/teacher/exam-list.vue'),
+  TeacherScanDeviceManagement: () => import('@/views/teacher/printer-management.vue'),
   TeacherExamWorkspace: () => import('@/views/teacher/exam-workspace-layout.vue'),
+  TeacherExamWorkspaceOverview: () => import('@/views/teacher/exam-detail.vue'),
   TeacherExamWorkspacePrep: () => import('@/views/teacher/exam-prep-workbench.vue'),
   TeacherExamWorkspacePaperTemplate: () => import('@/views/teacher/paper-template.vue'),
   TeacherExamWorkspaceAnswerSheet: () => import('@/views/teacher/answer-sheet-template.vue'),
@@ -88,7 +90,6 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceArchivePackage: () => import('@/views/teacher/archive/archive-list.vue'),
   TeacherExamWorkspaceArchiveStatistics: () => import('@/views/teacher/statistics.vue'),
   TeacherExamWorkspaceArchiveExports: () => import('@/views/common/exam-export-tasks.vue'),
-  TeacherExamDetail: () => import('@/views/teacher/exam-detail.vue'),
 
   // ── 教师 ④ 历史归档详情 ───────────────────────────
   TeacherArchiveDetail: () => import('@/views/teacher/archive/archive-detail.vue'),
@@ -190,7 +191,8 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
 
   // ── ① 考试列表 + 工作台 ───────────────────────────
   TeacherExamList: [
-    'TeacherExamDetail',
+    'TeacherExamWorkspaceOverview',
+    'TeacherScanDeviceManagement',
     'TeacherExamWorkspacePrep',
     'TeacherExamWorkspaceScanMonitor',
     'TeacherExamWorkspaceMarkingTaskPool',
@@ -222,7 +224,12 @@ const ROUTE_NEIGHBORS: Record<string, string[]> = {
     'TeacherExamWorkspaceScoreAppeal',
     'TeacherExamWorkspaceArchiveStatistics',
   ],
-  TeacherExamDetail: ['TeacherExamList', 'TeacherExamWorkspacePrep'],
+  TeacherExamWorkspaceOverview: [
+    'TeacherExamList',
+    'TeacherExamWorkspacePrep',
+    'TeacherExamWorkspacePaperTemplate',
+    'TeacherExamWorkspaceCandidateRoster',
+  ],
   TeacherExamWorkspaceMarkingTaskDetail: ['TeacherExamWorkspaceMarkingTaskPool'],
   TeacherExamWorkspaceReviewWorkspace: ['TeacherExamWorkspaceMarkingReview', 'TeacherExamWorkspaceReviewTaskDetail'],
   TeacherExamWorkspaceArchivePackage: ['TeacherArchiveDetail', 'TeacherPaperArchiveList'],

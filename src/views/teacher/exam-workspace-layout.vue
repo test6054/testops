@@ -1,91 +1,177 @@
 <template>
-  <StageWorkbenchShell class="exam-workspace-layout">
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <UiTextAction tone="primary" @click="goExamList">返回考试列表</UiTextAction>
-          <MarkExamSelect
-            v-if="examOptions.length > 0"
-            :selected-exam-id="examId"
-            :exam-options="examOptions"
-            :loading="selectorLoading"
-            select-class="exam-workspace-layout__exam-select"
-            :allow-clear="false"
-            @change="onExamSwitch"
-            @search="onExamSearch"
-          />
-          <UiTag v-if="snapshot" :tone="examStatusTone" size="sm">
-            {{ examStatusLabel }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :loading="refreshing"
-            :disabled="!examId"
-            @click="handleRefresh"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
-
-    <template #rail>
-      <StageRail
-        v-if="examId && orderedStages.length > 0"
-        :stages="orderedStages"
-        :active-key="activeStageKey"
-        compact
-        @select="onStageSelect"
-      />
-    </template>
-
-    <UiAlertStrip
-      v-if="suggestionBanner"
-      tone="warning"
-      :title="suggestionBanner"
-      dense
-      class="exam-workspace-layout__banner"
-    />
-
-    <UiEmpty
-      v-if="!examId"
-      description="缺少考试上下文，请从考试列表进入"
-      class="exam-workspace-layout__empty"
-    >
-      <UiButton variant="primary" @click="goExamList">返回考试列表</UiButton>
-    </UiEmpty>
-
-    <div v-else class="exam-workspace-layout__body">
-      <nav v-if="phaseNavItems.length > 0" class="exam-workspace-layout__nav">
-        <a-menu
-          mode="inline"
-          :selected-keys="[activeMenuKey]"
-          @click="onNavClick"
+  <div class="exam-detail-layout">
+    <header class="exam-detail-layout__header" :class="{ 'exam-detail-layout__header--collapsed': sidebarCollapsed }">
+      <div class="exam-detail-layout__logo" @click="goExamList">
+        <img alt="logo" class="exam-detail-layout__logo-img" src="/logo.svg" />
+        <span class="exam-detail-layout__logo-title">{{ appTitle }}</span>
+      </div>
+      <UiButton
+        class="exam-detail-layout__menu-toggle"
+        variant="outline"
+        size="sm"
+        @click="mobileNavOpen = true"
+      >
+        <template #icon><MenuOutlined /></template>
+        功能菜单
+      </UiButton>
+      <div class="exam-detail-layout__toolbar">
+        <MarkExamSelect
+          v-if="examOptions.length > 0"
+          :selected-exam-id="examId"
+          :exam-options="examOptions"
+          :loading="selectorLoading"
+          select-class="exam-detail-layout__exam-select"
+          :allow-clear="false"
+          @change="onExamSwitch"
+          @search="onExamSearch"
+        />
+        <UiButton
+          variant="outline"
+          size="sm"
+          :loading="refreshing"
+          :disabled="!examId"
+          @click="handleRefresh"
         >
-          <a-menu-item v-for="item in phaseNavItems" :key="item.routeName">
-            {{ item.title }}
-          </a-menu-item>
-        </a-menu>
-      </nav>
-      <main class="exam-workspace-layout__content">
-        <a-spin :spinning="loading && !snapshot">
-          <router-view />
-        </a-spin>
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
+      </div>
+      <div class="exam-detail-layout__header-gap" />
+      <HeaderRightBar class="exam-detail-layout__header-right" />
+    </header>
+
+    <div class="exam-detail-layout__body">
+      <div
+        v-if="mobileNavOpen"
+        class="exam-detail-layout__backdrop"
+        @click="mobileNavOpen = false"
+      />
+      <aside
+        class="exam-detail-layout__sidebar"
+        :class="{
+          'exam-detail-layout__sidebar--collapsed': sidebarCollapsed && !mobileNavOpen,
+          'exam-detail-layout__sidebar--mobile-open': mobileNavOpen,
+        }"
+      >
+        <div v-if="snapshot && !sidebarCollapsed" class="exam-detail-layout__exam-info">
+          <h3 class="exam-detail-layout__exam-title">{{ snapshot.examName }}</h3>
+          <div class="exam-detail-layout__exam-meta">
+            <span v-if="snapshot.examNo" class="exam-detail-layout__exam-no">编号 {{ snapshot.examNo }}</span>
+            <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">{{ examStatusLabel }}</UiTag>
+          </div>
+        </div>
+
+        <a-divider v-if="!sidebarCollapsed" class="exam-detail-layout__divider" />
+
+        <nav class="exam-detail-layout__nav">
+          <a-menu
+            :selected-keys="[activeMenuKey]"
+            :inline-collapsed="sidebarCollapsed"
+            mode="inline"
+            @click="onMenuClick"
+          >
+            <template v-for="section in EXAM_WORKSPACE_MENU_SECTIONS" :key="section.key">
+              <a-menu-item-group v-if="!sidebarCollapsed" :title="sectionMenuTitle(section)">
+                <a-menu-item v-for="item in section.items" :key="item.key">
+                  <template #icon>
+                    <component :is="menuIconMap[item.key]" />
+                  </template>
+                  {{ item.label }}
+                </a-menu-item>
+              </a-menu-item-group>
+              <template v-else>
+                <a-menu-item v-for="item in section.items" :key="item.key">
+                  <template #icon>
+                    <component :is="menuIconMap[item.key]" />
+                  </template>
+                </a-menu-item>
+              </template>
+            </template>
+          </a-menu>
+        </nav>
+
+        <div class="exam-detail-layout__sidebar-footer">
+          <button type="button" class="exam-detail-layout__collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed">
+            <MenuFoldOutlined v-if="!sidebarCollapsed" />
+            <MenuUnfoldOutlined v-else />
+          </button>
+        </div>
+      </aside>
+
+      <main class="exam-detail-layout__main">
+        <div
+          class="exam-detail-layout__content"
+          :class="{ 'exam-detail-layout__content--wide': isLayoutWide }"
+        >
+          <UiAlertStrip
+            v-if="suggestionBanner"
+            tone="warning"
+            :title="suggestionBanner"
+            dense
+            class="exam-detail-layout__banner"
+          >
+            <template #actions>
+              <UiButton size="sm" variant="primary" @click="goSuggestedStage">前往建议阶段</UiButton>
+            </template>
+          </UiAlertStrip>
+
+          <UiAlertStrip
+            v-if="prepAdvisoryBanner"
+            tone="info"
+            :title="prepAdvisoryBanner"
+            dense
+            class="exam-detail-layout__banner"
+          >
+            <template #actions>
+              <UiButton size="sm" variant="outline" @click="goPrepWorkbench">去完善准备</UiButton>
+            </template>
+          </UiAlertStrip>
+
+          <UiEmpty
+            v-if="!examId"
+            description="缺少考试上下文，请从考试列表进入"
+            class="exam-detail-layout__empty"
+          >
+            <UiButton variant="primary" @click="goExamList">返回考试列表</UiButton>
+          </UiEmpty>
+
+          <a-spin v-else :spinning="loading && !snapshot">
+            <router-view />
+          </a-spin>
+        </div>
       </main>
     </div>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import type { Key } from 'ant-design-vue/es/_util/type'
+import type { Component } from 'vue'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { MarkStageKey } from '@/stores/modules/markStage'
-import type { WorkbenchStage } from '@/types/workbench'
+import type { ExamWorkspaceMenuSection } from '@/constants/exam-workspace-menu'
+import ArchiveOutlined from '@ant-design/icons-vue/ArchiveOutlined'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
+import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
+import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import FormOutlined from '@ant-design/icons-vue/FormOutlined'
+import FundOutlined from '@ant-design/icons-vue/FundOutlined'
+import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
+import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
+import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
+import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
+import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
+import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
@@ -94,23 +180,67 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
-import { ContextBar, StageRail, StageWorkbenchShell } from '@/components/workbench'
+import {
+  EXAM_WORKSPACE_MENU_SECTIONS,
+  findExamWorkspaceMenuItem,
+  resolveExamWorkspaceMenuKey,
+} from '@/constants/exam-workspace-menu'
+import {
+  resolveWorkspaceStage,
+  WORKSPACE_STAGE_STATUS_LABEL,
+} from '@/constants/mark-workspace-nav'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
 import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
-import {
-  MARK_STAGE_DEFAULT_ROUTE,
-  resolveWorkspaceNavGroup,
-} from '@/constants/mark-workspace-nav'
+import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
+import { useAppStore } from '@/stores/modules/app'
 import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
+import { navigateToMarkStage } from '@/utils/mark-stage-navigation'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import mittBus from '@/utils/mitt'
 
 defineOptions({ name: 'ExamWorkspaceLayout' })
 
+const menuIconMap: Record<string, Component> = {
+  overview: DashboardOutlined,
+  prep: ContainerOutlined,
+  'paper-template': ProfileOutlined,
+  'answer-sheet': FormOutlined,
+  'paper-master': FileSearchOutlined,
+  'candidate-roster': TeamOutlined,
+  'print-package': ArchiveOutlined,
+  'scan-batches': CloudUploadOutlined,
+  'scan-monitor': DesktopOutlined,
+  'scan-ledger': AuditOutlined,
+  'scan-devices': SettingOutlined,
+  'scan-ocr': ScanOutlined,
+  'marking-org': EditOutlined,
+  'marking-assignment': TeamOutlined,
+  'trial-pool': HighlightOutlined,
+  'trial-progress': LineChartOutlined,
+  'marking-pool': HighlightOutlined,
+  'marking-progress': LineChartOutlined,
+  'marking-arbitration': AuditOutlined,
+  'marking-quality': CheckCircleOutlined,
+  'marking-review': EditOutlined,
+  'score-summary': CheckCircleOutlined,
+  'score-release': FundOutlined,
+  'score-absence': TeamOutlined,
+  'score-appeal': AuditOutlined,
+  'archive-package': ArchiveOutlined,
+  'archive-statistics': BarChartOutlined,
+  'archive-exports': ExportOutlined,
+}
+
 const route = useRoute()
 const router = useRouter()
+const appStore = useAppStore()
+const appTitle = computed(() => appStore.getTitle())
+const sidebarCollapsed = ref(false)
+const mobileNavOpen = ref(false)
+
 const examId = computed(() => String(route.params.examId ?? ''))
+const isLayoutWide = computed(() => route.meta.layoutWide === true)
 
 const {
   examOptions,
@@ -126,6 +256,7 @@ const {
   refreshing,
   orderedStages,
   suggestedStageKey,
+  prepAdvisoryReasons,
   refreshSnapshot,
 } = useMarkWorkbenchSnapshot(() => examId.value)
 
@@ -146,12 +277,7 @@ const activeStageKey = computed<MarkStageKey>(() => {
   return key as MarkStageKey
 })
 
-const phaseNavItems = computed(() => {
-  const group = resolveWorkspaceNavGroup(route.meta.workspacePhase as string | undefined)
-  return group?.items ?? []
-})
-
-const activeMenuKey = computed(() => String(route.name ?? ''))
+const activeMenuKey = computed(() => resolveExamWorkspaceMenuKey(route.name ? String(route.name) : undefined))
 
 const examStatusLabel = computed(() => {
   const status = snapshot.value?.examStatus
@@ -182,6 +308,23 @@ const suggestionBanner = computed(() => {
   return `建议优先处理「${stage.title}」：${stage.statusText || '仍有待完善项'}`
 })
 
+const prepAdvisoryBanner = computed(() => {
+  if (activeStageKey.value !== 'SCAN' || prepAdvisoryReasons.value.length === 0) {
+    return ''
+  }
+  return `准备项仍有待完善：${prepAdvisoryReasons.value.join('；')}`
+})
+
+function sectionMenuTitle(section: ExamWorkspaceMenuSection): string {
+  const stage = resolveWorkspaceStage(orderedStages.value, section.markStageKey)
+  if (!stage) {
+    return section.title
+  }
+  const statusLabel = stage.statusText
+    || strictEnumLabel(WORKSPACE_STAGE_STATUS_LABEL, stage.status, '工作台阶段状态')
+  return `${section.title} · ${statusLabel}`
+}
+
 function goExamList(): void {
   void router.push({ name: 'TeacherExamList' })
 }
@@ -194,28 +337,35 @@ function onExamSwitch(value: SelectValue): void {
   void router.push({
     name: route.name,
     params: { ...route.params, examId: nextExamId },
+    query: route.query,
   })
 }
 
-function onStageSelect(stage: WorkbenchStage): void {
-  const routeName = MARK_STAGE_DEFAULT_ROUTE[stage.key as MarkStageKey]
-  if (!routeName || !examId.value) {
+function onMenuClick({ key }: { key: string }): void {
+  const item = findExamWorkspaceMenuItem(String(key))
+  if (!item || !examId.value) {
     return
   }
+  mobileNavOpen.value = false
   void router.push({
-    name: routeName,
+    name: item.routeName,
     params: { examId: examId.value },
   })
 }
 
-function onNavClick({ key }: { key: Key }): void {
+function goSuggestedStage(): void {
+  const suggested = suggestedStageKey.value
+  if (!suggested || !examId.value) {
+    return
+  }
+  navigateToMarkStage(router, suggested, examId.value)
+}
+
+function goPrepWorkbench(): void {
   if (!examId.value) {
     return
   }
-  void router.push({
-    name: String(key),
-    params: { examId: examId.value },
-  })
+  void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId: examId.value } })
 }
 
 async function handleRefresh(): Promise<void> {
@@ -238,44 +388,240 @@ watch(examId, async (id) => {
 </script>
 
 <style lang="scss" scoped>
-.exam-workspace-layout {
+.exam-detail-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--ant-color-bg-layout);
+
+  &__header {
+    --sidebar-width: 260px;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    padding: 0 16px;
+    background: var(--ant-color-bg-container);
+    border-bottom: 1px solid var(--ant-color-border-secondary);
+    flex-shrink: 0;
+    gap: 16px;
+
+    &--collapsed {
+      --sidebar-width: 64px;
+    }
+  }
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    cursor: pointer;
+    min-width: 0;
+  }
+
+  &__logo-img {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  &__logo-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ant-color-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  &__menu-toggle {
+    display: none;
+  }
+
+  &__backdrop {
+    display: none;
+  }
+
   &__exam-select {
-    width: 280px;
+    width: 320px;
+  }
+
+  &__header-gap {
+    flex: 1;
+  }
+
+  &__body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  &__sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--ant-color-bg-container);
+    border-right: 1px solid var(--ant-color-border-secondary);
+
+    &--collapsed {
+      width: 64px;
+    }
+  }
+
+  &__exam-info {
+    padding: 16px;
+    flex-shrink: 0;
+  }
+
+  &__exam-title {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--ant-color-text);
+    word-break: break-word;
+  }
+
+  &__exam-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__exam-no {
+    font-size: 13px;
+    color: var(--ant-color-text-secondary);
+  }
+
+  &__divider {
+    margin: 0 !important;
+  }
+
+  &__nav {
+    flex: 1;
+    overflow: auto;
+    padding: 8px;
+
+    :deep(.ant-menu-item-group-title) {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ant-color-text-tertiary);
+      padding-left: 12px;
+    }
+
+    :deep(.ant-menu-item) {
+      border-radius: var(--dp-radius-md);
+      font-weight: 500;
+    }
+
+    :deep(.ant-menu-item-selected) {
+      background: var(--ant-color-primary-bg);
+    }
+  }
+
+  &__sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--ant-color-border-secondary);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__collapse-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--dp-radius-md);
+    background: transparent;
+    color: var(--ant-color-text-tertiary);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--ant-color-fill-tertiary);
+      color: var(--ant-color-text);
+    }
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: #f5f7fa;
+  }
+
+  &__content {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+
+    &--wide {
+      padding: 8px;
+
+      :deep(> *) {
+        max-width: min(100%, 1680px);
+        margin: 0 auto;
+      }
+    }
   }
 
   &__banner {
-    margin-bottom: 4px;
+    margin-bottom: 12px;
   }
 
   &__empty {
     padding: 60px 0;
   }
 
-  &__body {
-    display: grid;
-    grid-template-columns: 200px minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-  }
-
-  &__nav {
-    border: 1px solid var(--ant-color-border-secondary);
-    border-radius: var(--dp-radius-md);
-    background: var(--ant-color-bg-container);
-    overflow: hidden;
-  }
-
-  &__content {
-    min-width: 0;
-  }
-
   @media (max-width: 768px) {
-    &__body {
-      grid-template-columns: 1fr;
+    &__logo-title,
+    &__exam-select {
+      display: none;
     }
 
-    &__nav {
-      display: none;
+    &__menu-toggle {
+      display: inline-flex;
+    }
+
+    &__backdrop {
+      display: block;
+      position: fixed;
+      inset: 56px 0 0;
+      z-index: 190;
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    &__sidebar {
+      position: fixed;
+      z-index: 200;
+      top: 56px;
+      left: 0;
+      height: calc(100vh - 56px);
+      width: 260px;
+      transform: translateX(-100%);
+      transition: transform 0.2s ease;
+      box-shadow: var(--dp-shadow-md);
+
+      &--mobile-open {
+        transform: translateX(0);
+      }
+
+      &--collapsed:not(.exam-detail-layout__sidebar--mobile-open) {
+        width: 260px;
+      }
     }
   }
 }

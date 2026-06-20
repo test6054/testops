@@ -32,7 +32,7 @@ import {
   getMarkingProgress,
   isPaperTemplateNotConfiguredError,
 } from '@/apis/mark/exam'
-import { getImageLedgerDetail } from '@/apis/mark/image-ledger'
+import { getImageLedgerDetail, normalizeImageLedgerDetail } from '@/apis/mark/image-ledger'
 import {
   ALLOCATION_UNIT_LABEL,
   ALLOCATION_UNIT_OPTIONS,
@@ -540,7 +540,7 @@ async function loadScanReadiness(): Promise<void> {
       getImageLedgerDetail({ examId: selectedExamId.value }),
       getMarkingProgress(selectedExamId.value),
     ])
-    ledgerDetail.value = ledger
+    ledgerDetail.value = normalizeImageLedgerDetail(ledger)
     markingProgress.value = progress
   } catch (error) {
     showUserError(error, '扫描就绪状态加载失败')

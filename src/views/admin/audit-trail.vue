@@ -296,7 +296,7 @@ import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
-import { readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'AdminAuditTrail' })
@@ -368,6 +368,8 @@ async function loadLogs() {
       pageSize: logPagination.pageSize ?? 20,
     })
     operationLogs.value = readPageList(page, '审计日志加载失败，请稍后重试')
+    logPagination.current = page.pageNum
+    logPagination.pageSize = page.pageSize
     logPagination.total = readPageTotal(page, '审计日志加载失败，请稍后重试')
   } catch (error) {
     logsLoadError.value = captureLoadFailure(error, '审计日志加载失败')
@@ -422,10 +424,15 @@ async function loadIncidents() {
   incidentLoading.value = true
   incidentsLoadError.value = null
   try {
-    incidents.value = await listIncidents({
-      examId: selectedExamId.value,
-      unresolvedOnly: incidentFilter.unresolvedOnly,
-    })
+    incidents.value = await readAllPages(
+      (pageNum) => listIncidents({
+        examId: selectedExamId.value,
+        unresolvedOnly: incidentFilter.unresolvedOnly,
+        pageNum,
+        pageSize: 100,
+      }),
+      '重大事件加载失败，请稍后重试',
+    )
   } catch (error) {
     incidentsLoadError.value = captureLoadFailure(error, '重大事件加载失败')
     showUserError(error, '重大事件加载失败')
@@ -519,6 +526,8 @@ async function loadDiagnosticSamples() {
       pageSize: samplePagination.pageSize ?? 20,
     })
     diagnosticSamples.value = readPageList(page, '异常留痕样本加载失败，请稍后重试')
+    samplePagination.current = page.pageNum
+    samplePagination.pageSize = page.pageSize
     samplePagination.total = readPageTotal(page, '异常留痕样本加载失败，请稍后重试')
   } catch (error) {
     samplesLoadError.value = captureLoadFailure(error, '异常留痕样本加载失败')

@@ -175,6 +175,7 @@ import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherMarkingSpotCheck' })
@@ -191,9 +192,14 @@ async function loadList(): Promise<void> {
   loading.value = true
   listLoadError.value = null
   try {
-    pendingItems.value = await listMyPendingSpotChecks({
-      examId: selectedExamId.value || undefined,
-    })
+    pendingItems.value = await readAllPages(
+      (pageNum) => listMyPendingSpotChecks({
+        examId: selectedExamId.value || undefined,
+        pageNum,
+        pageSize: 100,
+      }),
+      '待处理阅卷抽检加载失败，请稍后重试',
+    )
   } catch (error) {
     listLoadError.value = toUserError(error, '待处理阅卷抽检加载失败')
     showUserError(error, '待处理阅卷抽检加载失败')

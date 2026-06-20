@@ -300,6 +300,17 @@ service.interceptors.response.use(
       }
     }
 
+    // AJ-Captcha 返回 ResponseModel（repCode/repMsg/repData），不是 ResultInfo
+    const requestUrl = response.config?.url || ''
+    const isAjCaptchaResponse =
+      (requestUrl.includes('/captcha/get') || requestUrl.includes('/captcha/check'))
+      && typeof response.data === 'object'
+      && response.data !== null
+      && 'repCode' in response.data
+    if (isAjCaptchaResponse) {
+      return response
+    }
+
     // 检查业务响应码
     if (response.data && response.data.code !== config.successCode) {
       // 检查是否是认证失败的业务错误码

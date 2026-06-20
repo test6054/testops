@@ -217,7 +217,7 @@ export interface ArchivePackageVO {
   includeAnswerBooklet?: boolean
   archiveFileId?: string
   archiveFileName?: string
-  archiveFileSize?: string
+  archiveFileSize?: number
   archiveChecksum?: string
   itemCount?: number
   originalScanCount?: number
@@ -260,7 +260,7 @@ export interface ArchiveItemVO {
   sourceEntityId?: string
   sourceFileId?: string
   relativePath: string
-  fileSize?: string
+  fileSize?: number
   fileChecksum?: string
   studentUserId?: string
   studentNo?: string
@@ -342,10 +342,8 @@ function requireArchiveNonNegativeNumber(value: number | undefined): number {
   return numberValue
 }
 
-function requireArchivePositiveSize(value: string | undefined): void {
-  requireArchiveText(value)
-  const size = Number(value)
-  if (!Number.isFinite(size) || size <= 0) {
+function requireArchivePositiveSize(value: number | undefined): void {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     throw new Error(ARCHIVE_DATA_ERROR)
   }
 }

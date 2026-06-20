@@ -12,6 +12,19 @@ import type { BlobDownloadResponse, ExtendedAxiosRequestConfig, RequestOptions }
 import { config } from './config'
 import service from './service'
 
+/** AJ-Captcha 原始响应（非 ResultInfo 包装） */
+function isAjCaptchaPayload(value: unknown): value is { repCode: string } {
+  return typeof value === 'object' && value !== null && 'repCode' in value
+}
+
+/** 从 request 返回值解包业务数据：ResultInfo.data 或 AJ-Captcha 整包 */
+function unwrapBusinessPayload<T>(payload: unknown): T {
+  if (isAjCaptchaPayload(payload)) {
+    return payload as T
+  }
+  return (payload as ResultInfo<T>).data
+}
+
 /**
  * 内部基础请求函数
  *
@@ -64,7 +77,7 @@ const http = {
             params: config?.params,
             config,
         })
-        return result.data
+        return unwrapBusinessPayload<TResponse>(result)
     },
 
     /**
@@ -82,7 +95,7 @@ const http = {
             data,
             config,
         })
-        return result.data
+        return unwrapBusinessPayload<TResponse>(result)
     },
 
     /**
@@ -132,7 +145,7 @@ const http = {
             },
             config,
         })
-        return result.data
+        return unwrapBusinessPayload<TResponse>(result)
     },
 }
 

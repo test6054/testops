@@ -1,34 +1,32 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <UiTag v-if="detail" :tone="reviewStatusTone(detail.status)" size="sm">
-            {{ reviewStatusLabel(detail.status) }}
-          </UiTag>
-          <UiTag v-if="detail" tone="gray" size="sm">{{ detail.paperDisplay.primaryText }}</UiTag>
-          <UiTag v-if="detail" tone="blue" size="sm">
-            题{{ detail.questionNo }} · 满分{{ detail.fullScore }}
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton v-if="canEnterWorkspace" size="sm" @click="goWorkspace">
-            <template #icon><EditOutlined /></template>
-            进入复核
-          </UiButton>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!hasParams"
-            :loading="loading"
-            @click="loadTask"
-          >
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="task-detail-page">
+    <div class="task-detail-page__toolbar">
+      <div class="task-detail-page__toolbar-main">
+        <UiTag v-if="detail" :tone="reviewStatusTone(detail.status)" size="sm">
+          {{ reviewStatusLabel(detail.status) }}
+        </UiTag>
+        <UiTag v-if="detail" tone="gray" size="sm">{{ detail.paperDisplay.primaryText }}</UiTag>
+        <UiTag v-if="detail" tone="blue" size="sm">
+          题{{ detail.questionNo }} · 满分{{ detail.fullScore }}
+        </UiTag>
+      </div>
+      <div class="task-detail-page__toolbar-actions">
+        <UiButton v-if="canEnterWorkspace" size="sm" @click="goWorkspace">
+          <template #icon><EditOutlined /></template>
+          进入复核
+        </UiButton>
+        <UiButton
+          variant="outline"
+          size="sm"
+          :disabled="!hasParams"
+          :loading="loading"
+          @click="loadTask"
+        >
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
+      </div>
+    </div>
 
     <UiEmpty
       v-if="!hasParams"
@@ -126,7 +124,7 @@
         </a-col>
       </a-row>
     </a-spin>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -153,7 +151,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readAllPages } from '@/utils/page-result'
@@ -262,6 +259,26 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .task-detail-page {
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: var(--dp-radius-md);
+    background: var(--ant-color-bg-container);
+  }
+
+  &__toolbar-main,
+  &__toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
   &__empty {
     padding: 60px 0;
   }

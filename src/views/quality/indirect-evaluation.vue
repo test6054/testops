@@ -68,7 +68,6 @@ import ImportResponseDocumentModal from './components/ImportResponseDocumentModa
 import ImportResponseExcelModal from './components/ImportResponseExcelModal.vue'
 
 const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'
-const RESPONSE_DATA_ERROR = '答卷数据异常，请刷新后重试'
 const SCALE_CONVERSION_RULE_OPTION_PAGE_SIZE = 100
 
 const qualityStore = useQualityStore()
@@ -384,7 +383,13 @@ async function loadForms() {
   try {
     const page = await indirectFormApi.page({ ...formQuery })
     forms.value = readPageList(page, '间接评价问卷加载失败，请稍后重试')
+    formQuery.pageNum = page.pageNum
+    formQuery.pageSize = page.pageSize
     formsTotal.value = readPageTotal(page, '间接评价问卷加载失败，请稍后重试')
+    if (forms.value.length === 0 && formsTotal.value > 0 && formQuery.pageNum > 1) {
+      formQuery.pageNum -= 1
+      await loadForms()
+    }
   } catch (error) {
     listLoadError.value = toUserError(error, '间接评价问卷加载失败')
     showUserError(error, '间接评价问卷加载失败')
@@ -991,16 +996,8 @@ function openImportDocument() {
 
 /* ========== 题项有效样本统计 ========== */
 
-const validCountMap = ref<Map<string, string>>(new Map())
+const validCountMap = ref<Map<string, number>>(new Map())
 const validCountLoading = ref(false)
-
-function countTextToNumber(value: string): number {
-  const count = Number(value)
-  if (!Number.isFinite(count)) {
-    throwUserFacing(RESPONSE_DATA_ERROR)
-  }
-  return count
-}
 
 function validCountText(itemId: string): string {
   const count = validCountMap.value.get(itemId)
@@ -1008,7 +1005,7 @@ function validCountText(itemId: string): string {
     if (validCountLoading.value) return '加载中'
     return '—'
   }
-  return count
+  return String(count)
 }
 
 async function refreshValidCounts() {
@@ -1019,7 +1016,7 @@ async function refreshValidCounts() {
       items.value.map((item) =>
         indirectResponseApi
           .countValidByItem(item.id)
-          .then((count): [string, string] => [item.id, count]),
+          .then((count): [string, number] => [item.id, count]),
       ),
     )
     validCountMap.value = new Map(results)
@@ -1034,7 +1031,7 @@ const signals = computed<SignalMetric[]>(() => {
   const enabledForms = forms.value.filter((f) => f.enabled).length
   const totalItems = items.value.length
   const totalValid = Array.from(validCountMap.value.values()).reduce(
-    (sum, n) => sum + countTextToNumber(n),
+    (sum, n) => sum + n,
     0,
   )
   const expectedSampleSum = forms.value.reduce((sum, f) => sum + (f.expectedSample ?? 0), 0)
@@ -1201,7 +1198,7 @@ onMounted(async () => {
               <template v-else-if="column.key === 'validCount'">
                 <span
                   :class="
-                    countTextToNumber(validCountText(record.id)) > 0
+                    (validCountMap.get(record.id) ?? 0) > 0
                       ? 'ie__count-strong'
                       : 'ie__count-muted'
                   "

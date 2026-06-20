@@ -472,7 +472,13 @@ async function loadImprovementList() {
       keyword: improvementQuery.keyword?.trim() || undefined,
     })
     improvementList.value = readPageList(page, '持续改进任务加载失败，请稍后重试')
+    improvementQuery.pageNum = page.pageNum
+    improvementQuery.pageSize = page.pageSize
     improvementTotal.value = readPageTotal(page, '持续改进任务加载失败，请稍后重试')
+    if (improvementList.value.length === 0 && improvementTotal.value > 0 && improvementQuery.pageNum > 1) {
+      improvementQuery.pageNum -= 1
+      await loadImprovementList()
+    }
   } catch (error) {
     workbenchLoadError.value = toUserError(error, '持续改进任务加载失败')
     showUserError(error, '持续改进任务加载失败')
@@ -831,7 +837,13 @@ async function loadIssueList() {
       keyword: issueQuery.keyword?.trim() || undefined,
     })
     issueList.value = readPageList(page, '审核评估问题加载失败，请稍后重试')
+    issueQuery.pageNum = page.pageNum
+    issueQuery.pageSize = page.pageSize
     issueTotal.value = readPageTotal(page, '审核评估问题加载失败，请稍后重试')
+    if (issueList.value.length === 0 && issueTotal.value > 0 && issueQuery.pageNum > 1) {
+      issueQuery.pageNum -= 1
+      await loadIssueList()
+    }
   } finally {
     issueLoading.value = false
   }
@@ -1089,7 +1101,14 @@ async function loadRectList() {
       keyword: rectQuery.keyword?.trim() || undefined,
     })
     rectList.value = readPageList(page, '整改任务加载失败，请稍后重试')
+    rectQuery.pageNum = page.pageNum
+    rectQuery.pageSize = page.pageSize
     rectTotal.value = readPageTotal(page, '整改任务加载失败，请稍后重试')
+    if (rectList.value.length === 0 && rectTotal.value > 0 && rectQuery.pageNum > 1) {
+      rectQuery.pageNum -= 1
+      await loadRectList()
+      return
+    }
     const issueIds = Array.from(new Set(rectList.value.map((r) => r.auditIssueId).filter(Boolean)))
     for (const id of issueIds) {
       if (rectIssuesCache.value.has(id)) continue
@@ -1500,7 +1519,13 @@ async function loadSupList() {
       keyword: supQuery.keyword?.trim() || undefined,
     })
     supList.value = readPageList(page, '督导复查记录加载失败，请稍后重试')
+    supQuery.pageNum = page.pageNum
+    supQuery.pageSize = page.pageSize
     supTotal.value = readPageTotal(page, '督导复查记录加载失败，请稍后重试')
+    if (supList.value.length === 0 && supTotal.value > 0 && supQuery.pageNum > 1) {
+      supQuery.pageNum -= 1
+      await loadSupList()
+    }
   } finally {
     supLoading.value = false
   }

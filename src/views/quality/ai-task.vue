@@ -378,7 +378,13 @@ async function loadList() {
       reportId: query.reportId?.trim() || undefined,
     })
     list.value = readPageList(page, 'AI 任务加载失败，请稍后重试')
+    query.pageNum = page.pageNum
+    query.pageSize = page.pageSize
     total.value = readPageTotal(page, 'AI 任务加载失败，请稍后重试')
+    if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
+      query.pageNum -= 1
+      await loadList()
+    }
   } catch (error) {
     listLoadError.value = toUserError(error, 'AI 任务加载失败')
     showUserError(error, 'AI 任务加载失败')

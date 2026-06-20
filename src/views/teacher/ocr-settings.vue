@@ -15,7 +15,7 @@ import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
 import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   FINAL_SCORE_STATUS_LABEL,
   getExamTemplate,
@@ -39,6 +39,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
+import mittBus from '@/utils/mitt'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList } from '@/utils/page-result'
@@ -328,6 +329,11 @@ function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {
 
 onMounted(async () => {
   await loadConfig()
+  mittBus.on('scan-workbench:refresh', loadConfig)
+})
+
+onBeforeUnmount(() => {
+  mittBus.off('scan-workbench:refresh', loadConfig)
 })
 </script>
 

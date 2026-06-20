@@ -329,6 +329,8 @@ async function loadSets(): Promise<void> {
       archiveStatus: filterForm.archiveStatus,
     })
     sets.value = readPageList(result, '纸质试卷档案集加载失败，请稍后重试')
+    pagination.pageNum = result.pageNum
+    pagination.pageSize = result.pageSize
     pagination.total = readPageTotal(result, '纸质试卷档案集加载失败，请稍后重试')
   } catch (error) {
     showUserError(error, '纸质试卷档案集列表加载失败')

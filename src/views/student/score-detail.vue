@@ -649,6 +649,8 @@ async function loadWrongBook(): Promise<void> {
       pageSize: wrongBookPagination.pageSize,
     })
     wrongBookRows.value = readPageList(result, '错题本加载失败，请稍后重试')
+    wrongBookPagination.current = result.pageNum
+    wrongBookPagination.pageSize = result.pageSize
     wrongBookTotal.value = readPageTotal(result, '错题本加载失败，请稍后重试')
     wrongBookPagination.total = wrongBookTotal.value
   } catch (error) {

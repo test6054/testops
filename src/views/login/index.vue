@@ -210,6 +210,15 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
+:global(html),
+:global(body),
+:global(#app) {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .seo-content {
   position: absolute;
   left: -9999px;
@@ -230,9 +239,10 @@ onMounted(async () => {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
+  height: auto;
   padding: 24px 36px 18px;
-  overflow: hidden;
+  overflow: visible;
   /* 企业 SaaS 风格：单层柔和背景，去 radial-gradient / glow / 网格底纹 */
   background: var(--login-bg);
 }
@@ -243,7 +253,7 @@ onMounted(async () => {
   display: flex;
   flex: 1;
   width: min(1400px, 100%);
-  min-height: 0;
+  min-height: auto;
   margin: 0 auto;
   align-items: center;
 }
@@ -254,9 +264,9 @@ onMounted(async () => {
   grid-template-rows: auto 1fr;
   gap: 18px;
   flex: 1;
-  min-height: 0;
+  min-height: auto;
   padding: 8px 6px 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .login-brand__top,
@@ -312,7 +322,7 @@ onMounted(async () => {
   justify-content: center;
   align-self: center;
   min-height: 0;
-  padding-top: 0;
+  padding-top: 56px;
 }
 
 .login-brand__content-row {
@@ -373,7 +383,7 @@ onMounted(async () => {
 
 .login-brand__visual {
   width: min(700px, 100%);
-  height: clamp(430px, 54vh, 560px);
+  height: clamp(280px, 54vh, 560px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -513,17 +523,26 @@ onMounted(async () => {
 @media (max-width: 1180px) {
   .login-stage {
     display: block;
+    padding-top: 0;
   }
 
   .login-brand {
     min-height: auto;
   }
 
-  .login-brand__top,
+  .login-brand__top {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 1;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
   .login-brand__layout {
     width: 100%;
     gap: 28px;
-    padding-top: 8px;
+    padding-top: 0;
   }
 
   .login-brand__content-row {
@@ -541,22 +560,23 @@ onMounted(async () => {
 
   .login-brand__visual {
     width: 100%;
-    height: 440px;
+    height: min(440px, 52vw);
     max-width: 720px;
   }
 }
 
 @media (max-width: 768px) {
   .login-page {
-    height: auto;
-    min-height: 100vh;
     padding: 20px 16px 24px;
-    overflow: visible;
   }
 
   .login-stage {
     gap: 18px;
     min-height: auto;
+  }
+
+  .login-brand__top {
+    margin-bottom: 8px;
   }
 
   .login-brand,

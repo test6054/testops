@@ -46,6 +46,8 @@ export const useExportTaskStore = defineStore('export-task', () => {
       try {
         const result = await queryExportJobs(lastFetchParams.value)
         tasks.value = readPageList(result, '导出任务加载失败，请稍后重试')
+        lastFetchParams.value.pageNum = result.pageNum
+        lastFetchParams.value.pageSize = result.pageSize
         pagination.value = { total: readPageTotal(result), pages: result.pages }
       } catch (error) {
         stopPolling()
@@ -72,7 +74,13 @@ export const useExportTaskStore = defineStore('export-task', () => {
       lastFetchParams.value = query
       const result = await queryExportJobs(query)
       tasks.value = readPageList(result, '导出任务加载失败，请稍后重试')
+      lastFetchParams.value.pageNum = result.pageNum
+      lastFetchParams.value.pageSize = result.pageSize
       pagination.value = { total: readPageTotal(result), pages: result.pages }
+      if (tasks.value.length === 0 && pagination.value.total > 0 && lastFetchParams.value.pageNum > 1) {
+        lastFetchParams.value.pageNum -= 1
+        await fetchTasks()
+      }
     } finally {
       loading.value = false
     }

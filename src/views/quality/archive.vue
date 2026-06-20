@@ -182,7 +182,13 @@ async function loadList() {
       keyword: query.keyword?.trim() || undefined,
     })
     list.value = readPageList(page, '质量归档材料加载失败，请稍后重试')
+    query.pageNum = page.pageNum
+    query.pageSize = page.pageSize
     total.value = readPageTotal(page, '质量归档材料加载失败，请稍后重试')
+    if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
+      query.pageNum -= 1
+      await loadList()
+    }
   } catch (error) {
     listLoadError.value = toUserError(error, '质量归档材料加载失败')
     showUserError(error, '质量归档材料加载失败')

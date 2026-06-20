@@ -165,7 +165,13 @@ async function loadList() {
       keyword: query.keyword?.trim() || undefined,
     })
     list.value = readPageList(page, '专业评价口径加载失败，请稍后重试')
+    query.pageNum = page.pageNum
+    query.pageSize = page.pageSize
     total.value = readPageTotal(page, '专业评价口径加载失败，请稍后重试')
+    if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
+      query.pageNum -= 1
+      await loadList()
+    }
   } finally {
     loading.value = false
   }

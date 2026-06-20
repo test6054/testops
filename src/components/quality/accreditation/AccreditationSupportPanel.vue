@@ -162,7 +162,14 @@ async function loadFacultyProfiles() {
       title: facultyQuery.title || undefined,
     })
     facultyProfiles.value = readPageList(page, '教师档案列表加载失败，请刷新后重试')
+    facultyQuery.pageNum = page.pageNum
+    facultyQuery.pageSize = page.pageSize
     facultyTotal.value = readPageTotal(page)
+    if (facultyProfiles.value.length === 0 && facultyTotal.value > 0 && facultyQuery.pageNum > 1) {
+      facultyQuery.pageNum -= 1
+      await loadFacultyProfiles()
+      return
+    }
   } catch (e) {
     showUserError(e)
   } finally {

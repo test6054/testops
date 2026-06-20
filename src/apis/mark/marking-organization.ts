@@ -1,26 +1,12 @@
 import type { AxiosResponse } from 'axios'
-/**
- * 阅卷组织 API - 对接 edu-mark 模块 MarkingOrganizationController。
- *
- * 后端规则：
- * - 路径前缀 /api/mark/organization
- * - 写 / 查询全部为 POST + DTO body；启动/完成正评会话用 POST + @RequestParam(sessionId)
- * - 租户 / 操作人从 UserHold 注入，前端只传业务字段
- * - 后端 Long ID 统一以 string 表达到前端
- *
- * 业务阶段（任课老师 / 阅卷管理员视角）：
- *   1. createOrganization 创建阅卷组织
- *   2. saveQuestionGroup 编排题组（题目模板 + 题组组长 + 阅卷教师）
- *   3. saveAllocationPolicy / saveRecyclePolicy 配置任务分配 / 回收策略
- *   4. createTrialSession + calibrateTrialSession 走试评校准
- *   5. createFormalSession + startFormalSession + completeFormalSession 走正评全流程
- *   6. claimTasks / submitTask / listTasks 教师领取与提交阅卷任务
- *   7. updateOrganizationStatus 管理员推进 / 撤销组织状态
- *   8. getOrganization / getOrganizationById 查询组织全貌（按 examId 或 organizationId）
- */
+import type { PageResult } from '@/types'
 import type { PaperInstanceDisplayVO, QualityDecisionCode } from './exam'
 import http from '@/config/axios'
+import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+
+/** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
+const MARK_ORG_LIST_PAGE_SIZE = 100
 
 // ─── 状态枚举与文案 ─────────────────────────────────────────
 
@@ -403,8 +389,8 @@ export interface MarkingPageAnnotationSubmitItem {
   correlationId: string
 }
 
-/** 阅卷任务查询请求 - 对应后端 MarkingTaskQueryRequest */
-export interface MarkingTaskQueryRequest {
+/** 阅卷任务查询请求 - 对应后端 MarkingTaskQueryRequest（继承 QueryDto） */
+export interface MarkingTaskQueryRequest extends QueryDto {
   examId: string
   groupId?: string
   sessionId?: string
@@ -504,10 +490,10 @@ export interface MarkingTaskSubmittedQuestionScoreVO {
 export interface MarkingTaskVO {
   id: string
   examId: string
-  /** 题组ID */
-  groupId: string
-  /** 题组名称 */
-  groupName: string
+  /** 题组ID；组织级整卷任务无题组时为 null */
+  groupId?: string | null
+  /** 题组名称；组织级整卷任务无题组时为 null */
+  groupName?: string | null
   sessionId: string
   sessionStatus: FormalSessionStatusCode
   sessionStatusMessage: string
@@ -591,8 +577,8 @@ export const FORMAL_SESSION_STATUS_TONE: Record<
   SESSION_CLOSED: 'red',
 }
 
-/** 会话列表查询请求 - 对应后端 SessionListQueryRequest */
-export interface SessionListQueryRequest {
+/** 会话列表查询请求 - 对应后端 SessionListQueryRequest（继承 QueryDto） */
+export interface SessionListQueryRequest extends QueryDto {
   organizationId: string
   /** 题组ID，留空表示返回组织下所有题组的会话 */
   groupId?: string
@@ -877,11 +863,25 @@ export function calibrateTrialSession(request: TrialSessionCalibrateRequest): Pr
 }
 
 /**
- * 查询试评会话列表（按阅卷组织，可选按题组过滤）。
+ * 分页查询试评会话列表。
  * POST /api/mark/organization/trial/list
  */
-export function listTrialSessions(request: SessionListQueryRequest): Promise<TrialSessionVO[]> {
-  return http.post<TrialSessionVO[]>('/api/mark/organization/trial/list', request)
+export function pageTrialSessions(
+  request: SessionListQueryRequest,
+): Promise<PageResult<TrialSessionVO>> {
+  return http.post<PageResult<TrialSessionVO>>('/api/mark/organization/trial/list', request)
+}
+
+/**
+ * 查询试评会话列表（自动分页拉全）。
+ * POST /api/mark/organization/trial/list
+ */
+export async function listTrialSessions(request: SessionListQueryRequest): Promise<TrialSessionVO[]> {
+  const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
+  return readAllPages(
+    (pageNum) => pageTrialSessions({ ...request, pageNum, pageSize }),
+    '试评会话列表加载失败，请稍后重试',
+  )
 }
 
 // ===================== 正评会话 =====================
@@ -915,11 +915,27 @@ export function completeFormalSession(sessionId: string): Promise<boolean> {
 }
 
 /**
- * 查询正评会话列表（按阅卷组织，可选按题组过滤）。
+ * 分页查询正评会话列表。
  * POST /api/mark/organization/formal/list
  */
-export function listFormalSessions(request: SessionListQueryRequest): Promise<FormalSessionVO[]> {
-  return http.post<FormalSessionVO[]>('/api/mark/organization/formal/list', request)
+export function pageFormalSessions(
+  request: SessionListQueryRequest,
+): Promise<PageResult<FormalSessionVO>> {
+  return http.post<PageResult<FormalSessionVO>>('/api/mark/organization/formal/list', request)
+}
+
+/**
+ * 查询正评会话列表（自动分页拉全）。
+ * POST /api/mark/organization/formal/list
+ */
+export async function listFormalSessions(
+  request: SessionListQueryRequest,
+): Promise<FormalSessionVO[]> {
+  const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
+  return readAllPages(
+    (pageNum) => pageFormalSessions({ ...request, pageNum, pageSize }),
+    '正评会话列表加载失败，请稍后重试',
+  )
 }
 
 // ===================== 阅卷任务 =====================
@@ -941,11 +957,27 @@ export function submitMarkingTask(request: MarkingTaskSubmitRequest): Promise<bo
 }
 
 /**
- * 查询阅卷任务列表。
+ * 分页查询阅卷任务列表。
  * POST /api/mark/organization/task/list
  */
-export function listMarkingTasks(request: MarkingTaskQueryRequest): Promise<MarkingTaskVO[]> {
-  return http.post<MarkingTaskVO[]>('/api/mark/organization/task/list', request)
+export function pageMarkingTasks(
+  request: MarkingTaskQueryRequest,
+): Promise<PageResult<MarkingTaskVO>> {
+  return http.post<PageResult<MarkingTaskVO>>('/api/mark/organization/task/list', request)
+}
+
+/**
+ * 查询阅卷任务列表（自动分页拉全）。
+ * POST /api/mark/organization/task/list
+ */
+export async function listMarkingTasks(
+  request: MarkingTaskQueryRequest,
+): Promise<MarkingTaskVO[]> {
+  const pageSize = request.pageSize ?? MARK_ORG_LIST_PAGE_SIZE
+  return readAllPages(
+    (pageNum) => pageMarkingTasks({ ...request, pageNum, pageSize }),
+    '阅卷任务列表加载失败，请稍后重试',
+  )
 }
 
 /** 单任务详情查询请求 - 对应后端 MarkingTaskDetailQueryRequest */

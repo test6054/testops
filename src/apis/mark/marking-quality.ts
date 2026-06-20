@@ -281,7 +281,7 @@ export function reprocessBatch(request: BatchReprocessRequest): Promise<boolean>
 export type MyPendingSpotCheckStatusCode = Extract<SpotCheckStatusCode, 'PENDING' | 'IN_PROGRESS'>
 
 /** 待处理抽检列表查询请求 - 对应 MyPendingSpotCheckQueryRequest */
-export interface MyPendingSpotCheckQueryRequest {
+export interface MyPendingSpotCheckQueryRequest extends QueryDto {
   /** 考试ID（可选，为空时跨考试聚合） */
   examId?: string
 }
@@ -326,11 +326,10 @@ export interface MyPendingSpotCheckItemResponse {
  * POST /api/mark/quality/spotcheck/my-pending
  */
 export function listMyPendingSpotChecks(
-  request: MyPendingSpotCheckQueryRequest = {},
-): Promise<MyPendingSpotCheckItemResponse[]> {
-  return http
-    .post<
-      PageResult<MyPendingSpotCheckItemResponse>
-    >('/api/mark/quality/spotcheck/my-pending', request)
-    .then((page) => page.list)
+  request: MyPendingSpotCheckQueryRequest,
+): Promise<PageResult<MyPendingSpotCheckItemResponse>> {
+  return http.post<PageResult<MyPendingSpotCheckItemResponse>>(
+    '/api/mark/quality/spotcheck/my-pending',
+    request,
+  )
 }

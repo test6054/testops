@@ -203,6 +203,8 @@ async function loadPackageList() {
       pageSize: pagination.pageSize,
     })
     packageList.value = readPageList(res, '印刷包列表加载失败，请稍后重试')
+    pagination.pageNum = res.pageNum
+    pagination.pageSize = res.pageSize
     pagination.total = readPageTotal(res, '印刷包列表加载失败，请稍后重试')
   } catch (e) {
     packageList.value = []

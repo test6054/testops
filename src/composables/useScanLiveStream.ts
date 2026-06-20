@@ -184,6 +184,11 @@ export function useScanLiveStream(
       appendEvents(list)
     }
     catch (err) {
+      // SSE 已就绪后的增量补差失败不应把连接标为 failed，实时流仍可继续
+      if (useCursor && ready.value && isStreaming.value) {
+        error.value = toUserError(err, '扫描事件补差失败')
+        return
+      }
       markFailed(err, '扫描实时事件加载失败')
     }
   }

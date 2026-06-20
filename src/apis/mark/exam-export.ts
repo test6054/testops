@@ -105,7 +105,7 @@ export interface ExportCompleteRequest {
   taskId: string
   fileId: string
   fileName: string
-  fileSize: string
+  fileSize: number
 }
 
 /** 导出任务失败请求 - 对应 ExportFailRequest */
@@ -151,7 +151,7 @@ export interface ExportTaskCompletedVO extends ExportTaskBaseVO {
   taskStatus: 'COMPLETED'
   fileName: string
   fileId: string
-  fileSize: string
+  fileSize: number
   startedTime: string
   completedTime: string
 }

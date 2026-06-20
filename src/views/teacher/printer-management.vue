@@ -370,7 +370,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -392,6 +392,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import mittBus from '@/utils/mitt'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readArrayResponse } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -760,7 +761,12 @@ function handleDelete(record: ExamScannerDeviceVO): void {
 }
 
 onMounted(() => {
-  loadDevices()
+  void loadDevices()
+  mittBus.on('scan-workbench:refresh', loadDevices)
+})
+
+onBeforeUnmount(() => {
+  mittBus.off('scan-workbench:refresh', loadDevices)
 })
 </script>
 

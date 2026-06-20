@@ -281,6 +281,11 @@ export interface ExamCreateRequest {
   /** 批改策略编码 */
   gradingStrategy?: GradingStrategyCode
   remark?: string
+  /**
+   * 平时成绩满分；为空表示本场考试仅计入考试成绩（期末笔试分），
+   * 成绩确认时不采集平时分。有值时表示课程总评=考试分+平时分，确认时需录入平时分。
+   */
+  dailyScoreFull?: number | null
 }
 
 /** 更新考试请求 - 对应 ExamUpdateRequest */
@@ -1684,7 +1689,7 @@ export interface ExamQuestionAiExecutionItemVO {
   requestSummary?: string
   responseSummary?: string
   diagnostic?: string
-  latencyMs: string
+  latencyMs: number
   createTime: string
   createUser: string
 }
@@ -1891,8 +1896,8 @@ export interface ReviewTaskDetailVO {
   questionStem?: string
   /** 标准答案文本 */
   standardAnswer?: string
-  /** 标准答案比对策略编码（EXACT / CASE_INSENSITIVE / IGNORE_WHITESPACE / CHOICE_SET / NUMERIC / REGEX） */
-  comparePolicy?: string
+  /** 客观题比较策略编码 */
+  comparePolicy?: ObjectiveComparePolicyCode
   /** 评分细则/采分点说明 */
   evaluationCriteria?: string
 }

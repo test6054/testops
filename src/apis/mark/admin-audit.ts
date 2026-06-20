@@ -190,7 +190,7 @@ export interface OperationLogVO {
 }
 
 /** 重大事件查询请求 - 对应 IncidentQueryRequest */
-export interface IncidentQueryRequest {
+export interface IncidentQueryRequest extends QueryDto {
   examId: string
   unresolvedOnly?: boolean
 }
@@ -270,8 +270,8 @@ export function listOperationLogs(
  * 查询重大事件列表。
  * POST /api/mark/exams/audit/incidents
  */
-export function listIncidents(request: IncidentQueryRequest): Promise<IncidentRecordVO[]> {
-  return http.post<IncidentRecordVO[]>('/api/mark/exams/audit/incidents', request)
+export function listIncidents(request: IncidentQueryRequest): Promise<PageResult<IncidentRecordVO>> {
+  return http.post<PageResult<IncidentRecordVO>>('/api/mark/exams/audit/incidents', request)
 }
 
 /**

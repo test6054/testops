@@ -63,18 +63,6 @@ export interface QualityCourseSaveRequest {
   enabled?: boolean
 }
 
-/** 按培养方案查询课程列表 */
-export interface QualityCourseListByPlanRequest {
-  trainingPlanId: string
-  schoolYear?: string
-  semester?: string
-}
-
-/** POST /api/quality/courses/list-by-plan */
-export function listQualityCoursesByPlan(request: QualityCourseListByPlanRequest): Promise<QualityCourseVO[]> {
-  return http.post<QualityCourseVO[]>('/api/quality/courses/list-by-plan', request)
-}
-
 export const qualityCourseApi = {
   page: (data: QualityCourseQueryRequest) =>
     http.post<PageResult<QualityCourseVO>>(`${BASE}/page`, data),

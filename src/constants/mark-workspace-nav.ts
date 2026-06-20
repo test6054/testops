@@ -1,4 +1,6 @@
 import type { MarkStageKey } from '@/stores/modules/markStage'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 
 export type MarkWorkspacePhase
   = | 'prep'
@@ -74,7 +76,6 @@ export const MARK_WORKSPACE_NAV_GROUPS: MarkWorkspaceNavGroup[] = [
       { key: 'batches', title: '录入与批次', routeName: 'TeacherExamWorkspaceScanBatches', markStageKey: 'SCAN' },
       { key: 'monitor', title: '扫描监控', routeName: 'TeacherExamWorkspaceScanMonitor', markStageKey: 'SCAN' },
       { key: 'ledger', title: '影像账本', routeName: 'TeacherExamWorkspaceScanLedger', markStageKey: 'SCAN' },
-      { key: 'devices', title: '扫描设备', routeName: 'TeacherExamWorkspaceScanDevices', markStageKey: 'SCAN' },
       { key: 'ocr', title: 'OCR 配置', routeName: 'TeacherExamWorkspaceScanOcr', markStageKey: 'SCAN' },
     ],
   },
@@ -136,4 +137,36 @@ export function resolveWorkspaceNavGroup(phase?: string): MarkWorkspaceNavGroup 
     return undefined
   }
   return MARK_WORKSPACE_NAV_GROUPS.find((group) => group.phase === phase)
+}
+
+/** 阶段状态短标签：侧栏分组标题旁展示 */
+export const WORKSPACE_STAGE_STATUS_LABEL: Record<WorkbenchStageStatus, string> = {
+  pending: '待开始',
+  active: '进行中',
+  completed: '已完成',
+  warning: '待完善',
+  error: '异常',
+  blocked: '阻塞',
+}
+
+export const WORKSPACE_STAGE_STATUS_TONE: Record<WorkbenchStageStatus, BadgeTone> = {
+  pending: 'gray',
+  active: 'blue',
+  completed: 'green',
+  warning: 'orange',
+  error: 'red',
+  blocked: 'red',
+}
+
+export function resolveWorkspaceStage(
+  stages: WorkbenchStage[],
+  markStageKey: MarkStageKey,
+): WorkbenchStage | undefined {
+  return stages.find((item) => item.key === markStageKey)
+}
+
+export function resolveWorkspaceNavGroupByStageKey(
+  markStageKey: MarkStageKey,
+): MarkWorkspaceNavGroup | undefined {
+  return MARK_WORKSPACE_NAV_GROUPS.find((group) => group.markStageKey === markStageKey)
 }

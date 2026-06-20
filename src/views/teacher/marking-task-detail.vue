@@ -1,75 +1,73 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <UiButton variant="outline" size="sm" @click="goBackToTaskPool">
-            <template #icon><LeftOutlined /></template>
-            返回任务池
-          </UiButton>
-          <UiTag v-if="task" :tone="taskStatusTone(task.taskStatus)" size="sm">
-            {{ taskStatusLabel(task.taskStatus) }}
+  <div class="marking-task-detail-page">
+    <div class="marking-task-detail-page__toolbar">
+      <div class="marking-task-detail-page__toolbar-main">
+        <UiButton variant="outline" size="sm" @click="goBackToTaskPool">
+          <template #icon><LeftOutlined /></template>
+          返回任务池
+        </UiButton>
+        <UiTag v-if="task" :tone="taskStatusTone(task.taskStatus)" size="sm">
+          {{ taskStatusLabel(task.taskStatus) }}
+        </UiTag>
+        <UiTag v-if="task" tone="blue" size="sm">第 {{ task.reviewRound }} 轮</UiTag>
+        <template v-if="task">
+          <UiTag tone="purple" size="sm">{{ anonymityModeLabel(task.anonymityMode) }}</UiTag>
+          <UiTag tone="gray" size="sm">{{ allocationUnitLabel(task.taskUnit) }}</UiTag>
+          <UiTag tone="gray" size="sm">{{ task.paperDisplay.primaryText }}</UiTag>
+          <UiTag v-if="task.paperDisplay.secondaryText" tone="blue" size="sm">
+            {{ task.paperDisplay.secondaryText }}
           </UiTag>
-          <UiTag v-if="task" tone="blue" size="sm">第 {{ task.reviewRound }} 轮</UiTag>
-          <template v-if="task">
-            <UiTag tone="purple" size="sm">{{ anonymityModeLabel(task.anonymityMode) }}</UiTag>
-            <UiTag tone="gray" size="sm">{{ allocationUnitLabel(task.taskUnit) }}</UiTag>
-            <UiTag tone="gray" size="sm">{{ task.paperDisplay.primaryText }}</UiTag>
-            <UiTag v-if="task.paperDisplay.secondaryText" tone="blue" size="sm">
-              {{ task.paperDisplay.secondaryText }}
-            </UiTag>
-            <UiTag v-if="isReadOnly" tone="green" size="sm">已定稿 · 只读查看</UiTag>
-          </template>
-          <template v-if="task?.anonymousToken">
-            <UiTag v-if="revealedIdentity" tone="orange" size="sm">
-              {{ revealedIdentity.studentName }}（{{ revealedIdentity.studentNo }}）
-            </UiTag>
-            <UiButton
-              v-if="!revealedIdentity && isExamOwner"
-              variant="outline"
-              size="sm"
-              @click="openRevealDialog"
-            >
-              <template #icon><UnlockOutlined /></template>
-              解匿名
-            </UiButton>
-            <a-tooltip v-else-if="!revealedIdentity && !isExamOwner" title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份">
-              <UiTag tone="purple" size="sm">匿名保护中</UiTag>
-            </a-tooltip>
-          </template>
+          <UiTag v-if="isReadOnly" tone="green" size="sm">已定稿 · 只读查看</UiTag>
         </template>
-        <template #actions>
-          <UiTag v-if="batchTasksLoadError" tone="red" size="sm">上下题导航加载失败</UiTag>
-          <template v-if="batchProgress">
-            <UiButton
-              size="sm"
-              variant="outline"
-              :disabled="!prevTaskId"
-              @click="goToTask(prevTaskId)"
-            >
-              <template #icon><LeftOutlined /></template>
-              {{ navPrevLabel }}
-            </UiButton>
-            <span class="marking-task-detail-page__progress">
-              {{ batchProgress.current }} / {{ batchProgress.total }}
-            </span>
-            <UiButton
-              size="sm"
-              variant="outline"
-              :disabled="!nextTaskId"
-              @click="goToTask(nextTaskId)"
-            >
-              {{ navNextLabel }}
-              <template #icon><RightOutlined /></template>
-            </UiButton>
-          </template>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadTask">
-            <template #icon><ReloadOutlined /></template>
-            刷新
+        <template v-if="task?.anonymousToken">
+          <UiTag v-if="revealedIdentity" tone="orange" size="sm">
+            {{ revealedIdentity.studentName }}（{{ revealedIdentity.studentNo }}）
+          </UiTag>
+          <UiButton
+            v-if="!revealedIdentity && isExamOwner"
+            variant="outline"
+            size="sm"
+            @click="openRevealDialog"
+          >
+            <template #icon><UnlockOutlined /></template>
+            解匿名
+          </UiButton>
+          <a-tooltip v-else-if="!revealedIdentity && !isExamOwner" title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份">
+            <UiTag tone="purple" size="sm">匿名保护中</UiTag>
+          </a-tooltip>
+        </template>
+      </div>
+      <div class="marking-task-detail-page__toolbar-actions">
+        <UiTag v-if="batchTasksLoadError" tone="red" size="sm">上下题导航加载失败</UiTag>
+        <template v-if="batchProgress">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!prevTaskId"
+            @click="goToTask(prevTaskId)"
+          >
+            <template #icon><LeftOutlined /></template>
+            {{ navPrevLabel }}
+          </UiButton>
+          <span class="marking-task-detail-page__progress">
+            {{ batchProgress.current }} / {{ batchProgress.total }}
+          </span>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!nextTaskId"
+            @click="goToTask(nextTaskId)"
+          >
+            {{ navNextLabel }}
+            <template #icon><RightOutlined /></template>
           </UiButton>
         </template>
-      </ContextBar>
-    </template>
+        <UiButton variant="outline" size="sm" :loading="loading" @click="loadTask">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
+      </div>
+    </div>
 
     <UiEmpty
       v-if="!taskId"
@@ -472,7 +470,7 @@
       :task-id="task.id"
       @revealed="handleAnonymousRevealed"
     />
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -533,7 +531,6 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
@@ -1336,6 +1333,26 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .marking-task-detail-page {
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--ant-color-border-secondary);
+    border-radius: var(--dp-radius-md);
+    background: var(--ant-color-bg-container);
+  }
+
+  &__toolbar-main,
+  &__toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
   &__progress {
     font-size: 13px;
     font-weight: 500;

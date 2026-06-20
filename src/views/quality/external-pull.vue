@@ -56,7 +56,7 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell, TaskResultPanel } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
+import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'
 
@@ -553,9 +553,15 @@ async function reloadAll() {
 async function loadSources() {
   sourceLoading.value = true
   try {
-    const page = await externalDataSourceApi.page(sourceQuery)
-    sources.value = readPageList(page, '外部数据源加载失败，请稍后重试')
-    sourceTotal.value = readPageTotal(page, '外部数据源加载失败，请稍后重试')
+    sources.value = await readAllPages(
+      (pageNum) =>
+        externalDataSourceApi.page({
+          pageNum,
+          pageSize: sourceQuery.pageSize,
+        }),
+      '外部数据源加载失败，请稍后重试',
+    )
+    sourceTotal.value = sources.value.length
   } finally {
     sourceLoading.value = false
   }
@@ -571,7 +577,13 @@ async function loadTasks() {
       businessAnchor: taskQuery.businessAnchor?.trim() || undefined,
     })
     tasks.value = readPageList(page, '外部拉取任务加载失败，请稍后重试')
+    taskQuery.pageNum = page.pageNum
+    taskQuery.pageSize = page.pageSize
     taskTotal.value = readPageTotal(page, '外部拉取任务加载失败，请稍后重试')
+    if (tasks.value.length === 0 && taskTotal.value > 0 && taskQuery.pageNum > 1) {
+      taskQuery.pageNum -= 1
+      await loadTasks()
+    }
   } finally {
     taskLoading.value = false
   }

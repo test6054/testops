@@ -279,7 +279,13 @@ async function loadList() {
       achievementStatus: query.achievementStatus || undefined,
     })
     list.value = readPageList(page, '达成度结果加载失败，请稍后重试')
+    query.pageNum = page.pageNum
+    query.pageSize = page.pageSize
     total.value = readPageTotal(page, '达成度结果加载失败，请稍后重试')
+    if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
+      query.pageNum -= 1
+      await loadList()
+    }
   } catch (error) {
     listLoadError.value = toUserError(error, '达成度结果加载失败')
     showUserError(error, '达成度结果加载失败')

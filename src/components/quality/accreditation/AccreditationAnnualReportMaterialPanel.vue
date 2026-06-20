@@ -155,7 +155,14 @@ async function loadMaterials() {
       pageSize: query.pageSize,
     })
     materials.value = readPageList(page, '年度报备材料列表加载失败，请刷新后重试')
+    query.pageNum = page.pageNum
+    query.pageSize = page.pageSize
     total.value = readPageTotal(page)
+    if (materials.value.length === 0 && total.value > 0 && query.pageNum > 1) {
+      query.pageNum -= 1
+      await loadMaterials()
+      return
+    }
   } catch (e) {
     showUserError(e)
   } finally {

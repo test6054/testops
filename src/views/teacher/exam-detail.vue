@@ -1,44 +1,41 @@
 <template>
-  <StageWorkbenchShell>
-    <template #context>
-      <ContextBar>
-        <template #status>
-          <UiTag v-if="detail?.status" :tone="examStatusTone(detail.status)" size="sm">
-            {{ examStatusLabel(detail.status) }}
-          </UiTag>
-          <UiTag v-if="detail?.examNo" tone="gray" size="sm">编号 {{ detail.examNo }}</UiTag>
-          <UiTag v-if="detail" tone="blue" size="sm">
-            {{ detail.candidateCount }} 人 · {{ detail.questionCount }} 题
-          </UiTag>
-        </template>
-        <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadDetail">
-            <template #icon><ReloadOutlined /></template>
-            刷新
-          </UiButton>
-          <UiButton size="sm" :disabled="!examId" @click="goPaperTemplate">
-            <template #icon><FileOutlined /></template>
-            试卷模板
-          </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!examId" @click="goAnswerSheetTemplate">
-            答题卡
-          </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="!examId" @click="goRoster">
-            考生名册
-          </UiButton>
-        </template>
-      </ContextBar>
-    </template>
+  <div class="exam-workspace-overview">
+    <div class="exam-workspace-overview__toolbar">
+      <div class="exam-workspace-overview__status">
+        <UiTag v-if="detail?.status" :tone="examStatusTone(detail.status)" size="sm">
+          {{ examStatusLabel(detail.status) }}
+        </UiTag>
+        <UiTag v-if="detail?.examNo" tone="gray" size="sm">编号 {{ detail.examNo }}</UiTag>
+        <UiTag v-if="detail" tone="blue" size="sm">
+          {{ detail.candidateCount }} 人 · {{ detail.questionCount }} 题
+        </UiTag>
+      </div>
+      <div class="exam-workspace-overview__actions">
+        <UiButton variant="outline" size="sm" :loading="loading" @click="loadDetail">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </UiButton>
+        <UiButton size="sm" :disabled="!examId" @click="goPaperTemplate">
+          <template #icon><FileOutlined /></template>
+          试卷模板
+        </UiButton>
+        <UiButton size="sm" variant="outline" :disabled="!examId" @click="goAnswerSheetTemplate">
+          答题卡
+        </UiButton>
+        <UiButton size="sm" variant="outline" :disabled="!examId" @click="goRoster">
+          考生名册
+        </UiButton>
+      </div>
+    </div>
 
     <a-spin :spinning="loading">
       <UiEmpty
         v-if="!loading && !detail"
         description="暂无数据"
-        class="exam-detail-page__empty"
+        class="exam-workspace-overview__empty"
       />
 
       <a-row v-if="detail" :gutter="16">
-        <!-- 基本信息 -->
         <a-col :xs="24" :lg="16">
           <UiCard class="info-card">
             <template #title>
@@ -60,6 +57,9 @@
               </a-descriptions-item>
               <a-descriptions-item label="批改策略">
                 {{ gradingStrategyLabel(detail.gradingStrategy) }}
+              </a-descriptions-item>
+              <a-descriptions-item label="成绩构成">
+                {{ scoreCompositionLabel(detail) }}
               </a-descriptions-item>
               <a-descriptions-item label="开始时间">
                 {{ formatDateTime(detail.examStartTime) }}
@@ -110,7 +110,6 @@
           </UiCard>
         </a-col>
 
-        <!-- 班级范围 + 快捷入口 -->
         <a-col :xs="24" :lg="8">
           <UiCard class="info-card">
             <template #title>
@@ -155,7 +154,7 @@
         </a-col>
       </a-row>
     </a-spin>
-  </StageWorkbenchShell>
+  </div>
 </template>
 
 <script lang="ts" setup>
@@ -169,7 +168,7 @@ import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import {
   EXAM_STATUS_LABEL,
   EXAM_STATUS_TONE,
@@ -181,21 +180,20 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { formatSemester } from '@/types/enums/semester-enum'
-import { showUserError, toUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
-defineOptions({ name: 'TeacherExamDetail' })
+defineOptions({ name: 'TeacherExamWorkspaceOverview' })
 
-const route = useRoute()
 const router = useRouter()
+const { selectedExamId: examIdRef } = useMarkExamContext()
 
-const examId = computed<string>(() => String(route.params.examId ?? ''))
+const examId = computed<string>(() => examIdRef.value ?? '')
 const detail = ref<ExamDetailVO | null>(null)
 const loading = ref(false)
-const detailLoadError = ref<Error | null>(null)
 
 const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '88px' }
 
@@ -211,6 +209,13 @@ function gradingStrategyLabel(strategy?: GradingStrategyCode): string {
   return strategy ? strictEnumLabel(GRADING_STRATEGY_LABEL, strategy, '批改策略') : '租户默认'
 }
 
+function scoreCompositionLabel(exam: ExamDetailVO): string {
+  if (exam.dailyScoreFull != null) {
+    return `期末考试 + 平时成绩（平时满分 ${exam.dailyScoreFull} 分）`
+  }
+  return '仅计入考试成绩'
+}
+
 function formatAcademicTerm(exam: ExamDetailVO): string {
   return [exam.academicYear, formatSemester(exam.semester)].filter(Boolean).join(' · ')
 }
@@ -221,20 +226,14 @@ async function loadDetail(): Promise<void> {
     return
   }
   loading.value = true
-  detailLoadError.value = null
   try {
     detail.value = await getExamDetail(examId.value)
   } catch (error) {
     detail.value = null
-    detailLoadError.value = toUserError(error, '考试详情加载失败')
     showUserError(error, '考试详情加载失败')
   } finally {
     loading.value = false
   }
-}
-
-function goBack(): void {
-  void router.push({ name: 'TeacherExamList' })
 }
 
 function goPaperTemplate(): void {
@@ -259,7 +258,24 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.exam-detail-page {
+.exam-workspace-overview {
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  &__status,
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
   &__empty {
     padding: 48px 0;
   }
@@ -305,9 +321,5 @@ onMounted(() => {
     border-color: var(--ant-color-primary-border);
     background: var(--dp-blue-50);
   }
-}
-
-.empty-block {
-  padding: 48px 0;
 }
 </style>

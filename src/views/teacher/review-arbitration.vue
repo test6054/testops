@@ -166,7 +166,6 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewTaskItemVO } from '@/apis/mark/exam'
 import type { MarkingTaskVO } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PageResult } from '@/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
@@ -176,6 +175,7 @@ import { useRouter } from 'vue-router'
 import {
   MARKING_TASK_STATUS_LABEL,
   MARKING_TASK_STATUS_TONE,
+  pageMarkingTasks,
 } from '@/apis/mark/marking-organization'
 import UiBadge from '@/components/ui-guide/ui/Badge.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -183,7 +183,6 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
-import http from '@/config/axios'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -251,7 +250,7 @@ async function loadArbitrationMarkingTasks(): Promise<void> {
   markingTasksLoadError.value = null
   const examId = selectedExamId.value
   const tasks = await readAllPages(
-    (pageNum) => http.post<PageResult<MarkingTaskVO>>('/api/mark/organization/task/list', {
+    (pageNum) => pageMarkingTasks({
       examId,
       reviewRound: 3,
       pageNum,

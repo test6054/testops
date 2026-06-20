@@ -49,7 +49,7 @@ export type AbsenceReasonCode = 'ABSENT' | 'LEAVE' | 'WITHDRAW' | 'PAPER_LOST' |
 export const ABSENCE_REASON_LABEL: Record<AbsenceReasonCode, string> = {
   ABSENT: '缺考',
   LEAVE: '请假',
-  WITHDRAW: '退考',
+  WITHDRAW: '退课',
   PAPER_LOST: '试卷遗失',
   OTHER: '其他',
 }

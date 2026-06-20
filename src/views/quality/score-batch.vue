@@ -358,7 +358,13 @@ async function loadBatches() {
       keyword: query.keyword?.trim() || undefined,
     })
     batches.value = readPageList(page, '成绩批次加载失败，请稍后重试')
+    query.pageNum = page.pageNum
+    query.pageSize = page.pageSize
     total.value = readPageTotal(page, '成绩批次加载失败，请稍后重试')
+    if (batches.value.length === 0 && total.value > 0 && query.pageNum > 1) {
+      query.pageNum -= 1
+      await loadBatches()
+    }
   } catch (error) {
     listLoadError.value = toUserError(error, '成绩批次加载失败')
     showUserError(error, '成绩批次加载失败')

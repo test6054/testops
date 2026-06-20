@@ -89,7 +89,7 @@ export interface StudentLearningDiagnosisItemVO {
   questionType: QuestionTypeCode
   masteryLevel: MasteryLevelCode
   scoreRate: string
-  lostQuestionNos?: Array<string | number>
+  lostQuestionNos?: string[]
   causeAnalysis?: string
   suggestion?: string
 }

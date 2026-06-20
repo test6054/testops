@@ -107,8 +107,7 @@ function isActive(path: string): boolean {
     return (
       route.path.startsWith('/teacher/exam-list')
       || route.path.startsWith('/teacher/exam-workspace/')
-      || route.path.startsWith('/teacher/marking-task/')
-      || route.path.startsWith('/teacher/review/task/')
+      || route.path.startsWith('/teacher/exam/')
     )
   }
   return route.path.startsWith(path)

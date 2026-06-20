@@ -465,6 +465,14 @@ export interface ExamBatchGradeCorrectionPlanVO {
   correctionType: GradeCorrectionTypeCode
   affectedQuestionRefs: GradeReviewQuestionRefVO[]
   affectedStudentCount: number
+  /** 创建时填写的更正原因 */
+  reason?: string
+  /** 审批备注或驳回原因 */
+  decisionReason?: string
+  /** 执行说明 */
+  executeReason?: string
+  /** 执行失败原因 */
+  failureReason?: string
   approvalStatus: BatchCorrectionApprovalStatusCode
   approvedBy?: string
   approvedTime?: string
