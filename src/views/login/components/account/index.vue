@@ -77,13 +77,11 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getCaptchaConfig } from '@/apis/auth'
 import AjCaptcha from '@/components/AjCaptcha/index.vue'
-import {
-  UiButton,
-  UiCheckbox,
-  UiFormField,
-  UiInput,
-  UiPasswordInput,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiPasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiFormField from '@/components/ui-guide/ui/UiFormField.vue'
 import { STORAGE_REMEMBERED_USERNAME } from '@/constants/storage-keys'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useTenantStore, useUserStore } from '@/stores'

@@ -32,9 +32,6 @@ import { MARK_ECHARTS_THEME } from '@/config/mark-echarts-theme'
 
 defineOptions({ name: 'MarkChart' })
 
-type MarkChartVariant = 'default' | 'gauge' | 'distribution' | 'compact'
-type MarkChartGaugeSize = 'sm' | 'md' | 'lg'
-
 const props = withDefaults(defineProps<{
   option: EChartsCoreOption
   autoResize?: boolean
@@ -53,12 +50,13 @@ const props = withDefaults(defineProps<{
   variant: 'default',
   gaugeSize: 'md',
 })
-
-const vChartRef = ref<InstanceType<typeof VChart> | null>(null)
-
 const emit = defineEmits<{
   (e: 'chart-click', params: unknown): void
 }>()
+type MarkChartVariant = 'default' | 'gauge' | 'distribution' | 'compact'
+type MarkChartGaugeSize = 'sm' | 'md' | 'lg'
+
+const vChartRef = ref<InstanceType<typeof VChart> | null>(null)
 
 function handleChartClick(params: unknown): void {
   emit('chart-click', params)

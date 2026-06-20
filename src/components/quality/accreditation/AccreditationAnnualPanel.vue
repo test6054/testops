@@ -4,7 +4,10 @@ import type { AnnualEvaluationPlanSaveRequest, AnnualEvaluationPlanVO } from '@/
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { accreditationApi } from '@/apis/quality'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 

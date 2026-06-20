@@ -255,7 +255,9 @@ import {
   listReviewRequests,
   submitBatchCorrectionPlan,
 } from '@/apis/mark/grade-review'
-import { UiDataTable, UiEmpty, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'

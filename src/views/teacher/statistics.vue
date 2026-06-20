@@ -7,114 +7,114 @@
       </UiButton>
     </div>
 
-      <div class="stats-page__linkage">
-        <div class="stats-page__linkage-main">
-          <span class="stats-page__linkage-label">联动范围</span>
-          <a-select
-            :value="activeClassId"
-            class="stats-page__class-select"
-            placeholder="全部班级"
-            allow-clear
-            show-search
-            option-filter-prop="label"
-            :options="classOptions"
-            :loading="rosterLoading"
-            @change="handleClassChange"
+    <div class="stats-page__linkage">
+      <div class="stats-page__linkage-main">
+        <span class="stats-page__linkage-label">联动范围</span>
+        <a-select
+          :value="activeClassId"
+          class="stats-page__class-select"
+          placeholder="全部班级"
+          allow-clear
+          show-search
+          option-filter-prop="label"
+          :options="classOptions"
+          :loading="rosterLoading"
+          @change="handleClassChange"
+        />
+        <UiTag v-if="activeClassName" tone="blue" size="sm">{{ activeClassName }}</UiTag>
+        <UiTag v-if="activeStudentText" tone="purple" size="sm">{{ activeStudentText }}</UiTag>
+      </div>
+      <UiButton
+        variant="ghost"
+        size="sm"
+        :disabled="!hasLinkageContext"
+        @click="clearLinkage"
+      >
+        清空联动
+      </UiButton>
+    </div>
+
+    <div v-if="currentExamId" class="stats-page__export-bar">
+      <span class="stats-page__export-label">考后讲评</span>
+      <UiButton variant="primary" size="sm" @click="exportTeachingLecture">
+        导出讲评讲义
+      </UiButton>
+      <UiButton variant="ghost" size="sm" @click="scrollToTeachingImprovement">
+        定位到教学改进方案
+      </UiButton>
+    </div>
+
+    <div class="stats-page__sections">
+      <section class="stats-page__section">
+        <header class="stats-page__section-header">
+          <div class="stats-page__section-copy">
+            <h3 class="stats-page__section-title">考试统计与质量治理</h3>
+            <p class="stats-page__section-desc">
+              围绕本场考试的成绩分布、题目质量、重判计划与错因结构，支撑考后质量校准。
+            </p>
+          </div>
+          <UiTag tone="blue" size="sm">考试后治理</UiTag>
+        </header>
+        <div class="stats-page__cards">
+          <ScoreDistributionCard
+            :exam-id="currentExamId"
+            :reload-token="scoreDistToken"
+            :class-id="activeClassId"
+            :class-options="classOptions"
+            :roster-loading="rosterLoading"
+            @class-change="handleClassChange"
           />
-          <UiTag v-if="activeClassName" tone="blue" size="sm">{{ activeClassName }}</UiTag>
-          <UiTag v-if="activeStudentText" tone="purple" size="sm">{{ activeStudentText }}</UiTag>
+          <QuestionAnalysisCard
+            :exam-id="currentExamId"
+            :reload-token="qaToken"
+            :class-id="activeClassId"
+            @generated="reloadRejudge"
+          />
+          <RejudgePlanCard :exam-id="currentExamId" :reload-token="rejudgeToken" />
+          <ErrorCauseClusterCard
+            :exam-id="currentExamId"
+            :reload-token="errorCauseToken"
+            :class-id="activeClassId"
+          />
         </div>
-        <UiButton
-          variant="ghost"
-          size="sm"
-          :disabled="!hasLinkageContext"
-          @click="clearLinkage"
-        >
-          清空联动
-        </UiButton>
-      </div>
+      </section>
 
-      <div v-if="currentExamId" class="stats-page__export-bar">
-        <span class="stats-page__export-label">考后讲评</span>
-        <UiButton variant="primary" size="sm" @click="exportTeachingLecture">
-          导出讲评讲义
-        </UiButton>
-        <UiButton variant="ghost" size="sm" @click="scrollToTeachingImprovement">
-          定位到教学改进方案
-        </UiButton>
-      </div>
-
-      <div class="stats-page__sections">
-        <section class="stats-page__section">
-          <header class="stats-page__section-header">
-            <div class="stats-page__section-copy">
-              <h3 class="stats-page__section-title">考试统计与质量治理</h3>
-              <p class="stats-page__section-desc">
-                围绕本场考试的成绩分布、题目质量、重判计划与错因结构，支撑考后质量校准。
-              </p>
-            </div>
-            <UiTag tone="blue" size="sm">考试后治理</UiTag>
-          </header>
-          <div class="stats-page__cards">
-            <ScoreDistributionCard
-              :exam-id="currentExamId"
-              :reload-token="scoreDistToken"
-              :class-id="activeClassId"
-              :class-options="classOptions"
-              :roster-loading="rosterLoading"
-              @class-change="handleClassChange"
-            />
-            <QuestionAnalysisCard
-              :exam-id="currentExamId"
-              :reload-token="qaToken"
-              :class-id="activeClassId"
-              @generated="reloadRejudge"
-            />
-            <RejudgePlanCard :exam-id="currentExamId" :reload-token="rejudgeToken" />
-            <ErrorCauseClusterCard
-              :exam-id="currentExamId"
-              :reload-token="errorCauseToken"
-              :class-id="activeClassId"
-            />
+      <section class="stats-page__section">
+        <header class="stats-page__section-header">
+          <div class="stats-page__section-copy">
+            <h3 class="stats-page__section-title">教学改进与学情洞察</h3>
+            <p class="stats-page__section-desc">
+              围绕班级薄弱点、学生个体画像与教学建议，支持教师把考试结果转化为后续教学动作。
+            </p>
           </div>
-        </section>
-
-        <section class="stats-page__section">
-          <header class="stats-page__section-header">
-            <div class="stats-page__section-copy">
-              <h3 class="stats-page__section-title">教学改进与学情洞察</h3>
-              <p class="stats-page__section-desc">
-                围绕班级薄弱点、学生个体画像与教学建议，支持教师把考试结果转化为后续教学动作。
-              </p>
-            </div>
-            <UiTag tone="purple" size="sm">教学支持</UiTag>
-          </header>
-          <div class="stats-page__cards">
-            <TeachingImprovementCard
-              ref="teachingImprovementRef"
-              :exam-id="currentExamId"
-              :reload-token="improvementToken"
-              :class-id="activeClassId"
-            />
-            <ClassWeaknessCard
-              :exam-id="currentExamId"
-              :reload-token="weaknessToken"
-              :class-id="activeClassId"
-              :class-options="classOptions"
-              :roster-loading="rosterLoading"
-              @class-change="handleClassChange"
-            />
-            <StudentLearningProfileCard
-              :exam-id="currentExamId"
-              :reload-token="profileToken"
-              :class-id-hint="activeClassId"
-              :student-options="studentOptions"
-              :roster-loading="rosterLoading"
-              @student-change="handleStudentChange"
-            />
-          </div>
-        </section>
-      </div>
+          <UiTag tone="purple" size="sm">教学支持</UiTag>
+        </header>
+        <div class="stats-page__cards">
+          <TeachingImprovementCard
+            ref="teachingImprovementRef"
+            :exam-id="currentExamId"
+            :reload-token="improvementToken"
+            :class-id="activeClassId"
+          />
+          <ClassWeaknessCard
+            :exam-id="currentExamId"
+            :reload-token="weaknessToken"
+            :class-id="activeClassId"
+            :class-options="classOptions"
+            :roster-loading="rosterLoading"
+            @class-change="handleClassChange"
+          />
+          <StudentLearningProfileCard
+            :exam-id="currentExamId"
+            :reload-token="profileToken"
+            :class-id-hint="activeClassId"
+            :student-options="studentOptions"
+            :roster-loading="rosterLoading"
+            @student-change="handleStudentChange"
+          />
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -122,7 +122,8 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
-import { UiButton, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
 import ClassWeaknessCard from './statistics/ClassWeaknessCard.vue'

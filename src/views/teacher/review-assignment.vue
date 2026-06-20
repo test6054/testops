@@ -56,15 +56,13 @@ import {
 } from '@/apis/mark/marking-organization'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
 import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
-import {
-  UiAlertStrip,
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { SignalBand } from '@/components/workbench'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'

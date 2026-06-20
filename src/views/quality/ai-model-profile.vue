@@ -28,7 +28,14 @@ import {
   AI_PROVIDER_TYPE_LABEL,
   aiModelProfileApi,
 } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage } from '@/utils/error-handler'

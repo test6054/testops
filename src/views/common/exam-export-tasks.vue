@@ -261,7 +261,7 @@ import type {
   ExportTaskVO,
   ExportTypeCode,
 } from '@/apis/mark/exam-export'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
@@ -280,14 +280,12 @@ import {
   listExportTasks,
 } from '@/apis/mark/exam-export'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
-import {
-  UiButton,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'

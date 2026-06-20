@@ -15,149 +15,149 @@
       </UiButton>
     </div>
 
-      <UiCard class="arbitration-page__list-card">
-        <template #title>
-          <ExclamationCircleOutlined />
-          <span>客观题复核仲裁</span>
-          <UiBadge :tone="reviewTasks.length > 0 ? 'red' : 'green'">
-            {{ reviewTasks.length }}
-          </UiBadge>
-        </template>
-        <UiDataTable
-          pagination-mode="client"
-          :columns="reviewColumns"
-          :data-source="reviewTasks"
-          :loading="loading"
-          :page-size="20"
-          :total="reviewTasks.length"
-          row-key="reviewTaskId"
-          size="middle"
-          flat
-          class="arbitration-table student-detail-table__data-table"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'paperDisplay'">
-              <div class="arbitration-table__paper-cell">
-                <a-typography-text strong :content="reviewTasks[index].paperDisplay.primaryText" />
-                <span
-                  v-if="reviewTasks[index].paperDisplay.secondaryText"
-                  class="arbitration-table__hint"
-                >
-                  {{ reviewTasks[index].paperDisplay.secondaryText }}
-                </span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'questionNo'">
-              <UiTag tone="blue" size="sm">{{ reviewTasks[index].questionNo }}</UiTag>
-            </template>
-            <template v-else-if="column.key === 'fullScore'">
-              {{ reviewTasks[index].fullScore }}
-            </template>
-            <template v-else-if="column.key === 'aiScore'">
-              <template v-if="reviewTasks[index].aiScore != null">
-                <strong>{{ reviewTasks[index].aiScore }}</strong>
-                <UiTag
-                  v-if="getSuggestedRatio(reviewTasks[index]) !== null"
-                  :tone="getSuggestedRatioTone(reviewTasks[index])"
-                  size="sm"
-                  class="ai-score-ratio-tag"
-                >
-                  {{ getSuggestedRatio(reviewTasks[index]) }}%
-                </UiTag>
-              </template>
-              <span v-else class="muted">-</span>
-            </template>
-            <template v-else-if="column.key === 'assignedTeacherUserId'">
-              <span v-if="reviewTasks[index].assignedTeacherUserId">
-                <UserOutlined class="mini-icon" />
-                {{
-                  reviewTasks[index].assignedTeacherUserId === currentUserId
-                    ? '我'
-                    : reviewTasks[index].assignedTeacherUserId
-                }}
-              </span>
-              <span v-else class="muted">未指派</span>
-            </template>
-            <template v-else-if="column.key === 'updateTime'">
-              {{ formatDateTime(reviewTasks[index].updateTime) }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction @click="goReviewDetail(reviewTasks[index])">详情</UiTextAction>
-                <UiTextAction tone="primary" @click="goReviewWorkspace(reviewTasks[index])">进入仲裁处理</UiTextAction>
-              </div>
-            </template>
-          </template>
-        </UiDataTable>
-      </UiCard>
-
-      <UiCard class="arbitration-page__list-card">
-        <template #title>
-          <ExclamationCircleOutlined />
-          <span>整卷双评仲裁</span>
-          <UiBadge :tone="arbitrationTasks.length > 0 ? 'red' : 'green'">
-            {{ arbitrationTasks.length }}
-          </UiBadge>
-        </template>
-        <UiDataTable
-          pagination-mode="client"
-          :columns="markingColumns"
-          :data-source="arbitrationTasks"
-          :loading="loading"
-          :page-size="20"
-          :total="arbitrationTasks.length"
-          row-key="id"
-          size="middle"
-          flat
-          class="arbitration-table student-detail-table__data-table"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'paperDisplay'">
-              <div class="arbitration-table__paper-cell">
-                <a-typography-text strong :content="arbitrationTasks[index].paperDisplay.primaryText" />
-                <span
-                  v-if="arbitrationTasks[index].paperDisplay.secondaryText"
-                  class="arbitration-table__hint"
-                >
-                  {{ arbitrationTasks[index].paperDisplay.secondaryText }}
-                </span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'reviewRound'">
-              <UiTag tone="purple" size="sm">第 {{ arbitrationTasks[index].reviewRound }} 轮</UiTag>
-            </template>
-            <template v-else-if="column.key === 'taskStatus'">
-              <UiTag
-                :tone="MARKING_TASK_STATUS_TONE[arbitrationTasks[index].taskStatus]"
-                size="sm"
+    <UiCard class="arbitration-page__list-card">
+      <template #title>
+        <ExclamationCircleOutlined />
+        <span>客观题复核仲裁</span>
+        <UiBadge :tone="reviewTasks.length > 0 ? 'red' : 'green'">
+          {{ reviewTasks.length }}
+        </UiBadge>
+      </template>
+      <UiDataTable
+        pagination-mode="client"
+        :columns="reviewColumns"
+        :data-source="reviewTasks"
+        :loading="loading"
+        :page-size="20"
+        :total="reviewTasks.length"
+        row-key="reviewTaskId"
+        size="middle"
+        flat
+        class="arbitration-table student-detail-table__data-table"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'paperDisplay'">
+            <div class="arbitration-table__paper-cell">
+              <a-typography-text strong :content="reviewTasks[index].paperDisplay.primaryText" />
+              <span
+                v-if="reviewTasks[index].paperDisplay.secondaryText"
+                class="arbitration-table__hint"
               >
-                {{ MARKING_TASK_STATUS_LABEL[arbitrationTasks[index].taskStatus] }}
+                {{ reviewTasks[index].paperDisplay.secondaryText }}
+              </span>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'questionNo'">
+            <UiTag tone="blue" size="sm">{{ reviewTasks[index].questionNo }}</UiTag>
+          </template>
+          <template v-else-if="column.key === 'fullScore'">
+            {{ reviewTasks[index].fullScore }}
+          </template>
+          <template v-else-if="column.key === 'aiScore'">
+            <template v-if="reviewTasks[index].aiScore != null">
+              <strong>{{ reviewTasks[index].aiScore }}</strong>
+              <UiTag
+                v-if="getSuggestedRatio(reviewTasks[index]) !== null"
+                :tone="getSuggestedRatioTone(reviewTasks[index])"
+                size="sm"
+                class="ai-score-ratio-tag"
+              >
+                {{ getSuggestedRatio(reviewTasks[index]) }}%
               </UiTag>
             </template>
-            <template v-else-if="column.key === 'reviewerUserId'">
-              <span v-if="arbitrationTasks[index].reviewerUserId">
-                <UserOutlined class="mini-icon" />
-                {{
-                  arbitrationTasks[index].reviewerUserId === currentUserId
-                    ? '我'
-                    : arbitrationTasks[index].reviewerName || arbitrationTasks[index].reviewerUserId
-                }}
-              </span>
-              <span v-else class="muted">未指派</span>
-            </template>
-            <template v-else-if="column.key === 'allocatedAt'">
-              {{ formatDateTime(arbitrationTasks[index].allocatedAt) }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction tone="primary" @click="goMarkingWorkspace(arbitrationTasks[index])">
-                  整卷仲裁
-                </UiTextAction>
-              </div>
-            </template>
+            <span v-else class="muted">-</span>
           </template>
-        </UiDataTable>
-      </UiCard>
+          <template v-else-if="column.key === 'assignedTeacherUserId'">
+            <span v-if="reviewTasks[index].assignedTeacherUserId">
+              <UserOutlined class="mini-icon" />
+              {{
+                reviewTasks[index].assignedTeacherUserId === currentUserId
+                  ? '我'
+                  : reviewTasks[index].assignedTeacherUserId
+              }}
+            </span>
+            <span v-else class="muted">未指派</span>
+          </template>
+          <template v-else-if="column.key === 'updateTime'">
+            {{ formatDateTime(reviewTasks[index].updateTime) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="goReviewDetail(reviewTasks[index])">详情</UiTextAction>
+              <UiTextAction tone="primary" @click="goReviewWorkspace(reviewTasks[index])">进入仲裁处理</UiTextAction>
+            </div>
+          </template>
+        </template>
+      </UiDataTable>
+    </UiCard>
+
+    <UiCard class="arbitration-page__list-card">
+      <template #title>
+        <ExclamationCircleOutlined />
+        <span>整卷双评仲裁</span>
+        <UiBadge :tone="arbitrationTasks.length > 0 ? 'red' : 'green'">
+          {{ arbitrationTasks.length }}
+        </UiBadge>
+      </template>
+      <UiDataTable
+        pagination-mode="client"
+        :columns="markingColumns"
+        :data-source="arbitrationTasks"
+        :loading="loading"
+        :page-size="20"
+        :total="arbitrationTasks.length"
+        row-key="id"
+        size="middle"
+        flat
+        class="arbitration-table student-detail-table__data-table"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'paperDisplay'">
+            <div class="arbitration-table__paper-cell">
+              <a-typography-text strong :content="arbitrationTasks[index].paperDisplay.primaryText" />
+              <span
+                v-if="arbitrationTasks[index].paperDisplay.secondaryText"
+                class="arbitration-table__hint"
+              >
+                {{ arbitrationTasks[index].paperDisplay.secondaryText }}
+              </span>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'reviewRound'">
+            <UiTag tone="purple" size="sm">第 {{ arbitrationTasks[index].reviewRound }} 轮</UiTag>
+          </template>
+          <template v-else-if="column.key === 'taskStatus'">
+            <UiTag
+              :tone="MARKING_TASK_STATUS_TONE[arbitrationTasks[index].taskStatus]"
+              size="sm"
+            >
+              {{ MARKING_TASK_STATUS_LABEL[arbitrationTasks[index].taskStatus] }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'reviewerUserId'">
+            <span v-if="arbitrationTasks[index].reviewerUserId">
+              <UserOutlined class="mini-icon" />
+              {{
+                arbitrationTasks[index].reviewerUserId === currentUserId
+                  ? '我'
+                  : arbitrationTasks[index].reviewerName || arbitrationTasks[index].reviewerUserId
+              }}
+            </span>
+            <span v-else class="muted">未指派</span>
+          </template>
+          <template v-else-if="column.key === 'allocatedAt'">
+            {{ formatDateTime(arbitrationTasks[index].allocatedAt) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction tone="primary" @click="goMarkingWorkspace(arbitrationTasks[index])">
+                整卷仲裁
+              </UiTextAction>
+            </div>
+          </template>
+        </template>
+      </UiDataTable>
+    </UiCard>
   </div>
 </template>
 
@@ -177,13 +177,11 @@ import {
   MARKING_TASK_STATUS_LABEL,
   MARKING_TASK_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
-import {
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import http from '@/config/axios'
 import { useMarkTaskStore } from '@/stores/modules/markTask'

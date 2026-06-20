@@ -1,5 +1,5 @@
+import type { BadgeTone, UiBarChartItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import type { UiBarChartItem, BadgeTone } from '@/components/ui-guide/ui/types'
 
 /** quality 工作台图表分组 */
 export interface QualityChartGroup {

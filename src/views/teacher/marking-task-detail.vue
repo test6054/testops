@@ -528,13 +528,11 @@ import {
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
 import RevealAnonymousModal from '@/components/mark/RevealAnonymousModal.vue'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiCard,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import { useMarkTaskStore } from '@/stores/modules/markTask'

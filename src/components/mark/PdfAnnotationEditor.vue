@@ -58,7 +58,7 @@ import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
 import UndoOutlined from '@ant-design/icons-vue/UndoOutlined'
 import message from 'ant-design-vue/es/message'
 import { onMounted, ref, shallowRef, watch } from 'vue'
-import { UiButton } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { showUserError } from '@/utils/error-handler'
 import 'pdfjs-dist/build/pdf.worker.mjs'
 

@@ -20,7 +20,6 @@
 <script lang="ts" setup>
 import type { RouteRecordRaw } from 'vue-router'
 import { computed } from 'vue'
-import { isSidebarMenuRoute } from '@/utils/menu-route'
 import MenuIcon from './MenuIcon.vue'
 
 defineOptions({ name: 'MenuItem' })
@@ -30,6 +29,10 @@ interface Props {
   item: RouteRecordRaw
 }
 
+function isVisibleMenuChild(route: RouteRecordRaw): boolean {
+  return !route.meta?.hideInMenu && !(route.redirect && !route.component && !route.components)
+}
+
 // 如果hideInMenu: false那么代表这个路由项显示在左侧菜单栏中
 // 如果props.item的子项children只有一个hideInMenu: false的子元素, 那么onlyOneChild就表示这个子元素
 
@@ -37,7 +40,7 @@ interface Props {
 const visibleChildren = computed((): RouteRecordRaw[] => {
   const children = props.item.children as RouteRecordRaw[] | undefined
   if (!children) return []
-  return children.filter(isSidebarMenuRoute)
+  return children.filter(isVisibleMenuChild)
 })
 
 // 计算菜单数据

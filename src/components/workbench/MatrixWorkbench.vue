@@ -149,7 +149,7 @@
 import type { MatrixCell, MatrixCol, MatrixRow } from './matrix-types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
-import { UiEmpty } from '@/components/ui-guide/ui'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 
 defineOptions({
   name: 'MatrixWorkbench',

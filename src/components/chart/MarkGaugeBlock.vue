@@ -24,9 +24,6 @@ import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkGaugeBlock' })
 
-type MarkGaugeLayout = 'inline' | 'stacked'
-type MarkGaugeSize = 'sm' | 'md' | 'lg'
-
 withDefaults(defineProps<{
   option: EChartsCoreOption
   ariaLabel: string
@@ -40,4 +37,6 @@ withDefaults(defineProps<{
   gaugeHeight: '160px',
   gaugeWidth: '160px',
 })
+type MarkGaugeLayout = 'inline' | 'stacked'
+type MarkGaugeSize = 'sm' | 'md' | 'lg'
 </script>

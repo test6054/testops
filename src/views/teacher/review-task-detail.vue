@@ -149,12 +149,10 @@ import {
   REVIEW_TASK_STATUS_TONE,
 } from '@/apis/mark/exam'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
-import {
-  UiButton,
-  UiCard,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'

@@ -15,10 +15,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
-import { MarkBarSection } from '@/components/chart'
-import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
+import { computed } from 'vue'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import { buildCategoryBarChartOption } from '@/utils/mark-echarts-options'
 
 defineOptions({ name: 'QualityWorkbenchCharts' })
 

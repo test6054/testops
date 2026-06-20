@@ -83,22 +83,26 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
-import { UiAlertStrip, UiButton, UiEmpty, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageRail, StageWorkbenchShell } from '@/components/workbench'
+import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
+import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
 import {
   MARK_STAGE_DEFAULT_ROUTE,
   resolveWorkspaceNavGroup,
 } from '@/constants/mark-workspace-nav'
-import { provideMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
-import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
-import { useMarkWorkbenchSnapshot } from '@/composables/useMarkWorkbenchSnapshot'
-import type { MarkStageKey } from '@/stores/modules/markStage'
 import { MARK_STAGE_ORDER } from '@/stores/modules/markStage'
 import mittBus from '@/utils/mitt'
 

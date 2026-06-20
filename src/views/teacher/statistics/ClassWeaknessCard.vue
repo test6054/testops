@@ -133,7 +133,10 @@ import {
   generateClassWeaknessAnalysis,
   getLatestClassWeaknessAnalysis,
 } from '@/apis/mark/teaching-analysis'
-import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'

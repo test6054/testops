@@ -6,7 +6,7 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, onMounted } from 'vue'
 import { CONFIRMATION_STATUS_COLOR, CONFIRMATION_STATUS_LABEL } from '@/apis/quality'
 import { ProgramSelector, TrainingPlanSelector } from '@/components/quality/selectors'
-import { UiTag } from '@/components/ui-guide/ui'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

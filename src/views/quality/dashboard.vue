@@ -18,6 +18,7 @@ import type {
 } from '@/apis/quality'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import type {QualityChartGroup} from '@/utils/quality-workbench-charts';
 import { storeToRefs } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -39,13 +40,17 @@ import {
 } from '@/apis/quality'
 import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
-import { UiButton, UiCard, UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
-import { buildStatusChartGroup, type QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
+import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const recentAchievementColumns: ColumnsType = [

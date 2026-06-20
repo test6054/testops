@@ -1,10 +1,11 @@
-import type { EChartsCoreOption } from 'echarts/core'
 import type { GridComponentOption } from 'echarts/components'
+import type { EChartsCoreOption } from 'echarts/core'
 import type { CallbackDataParams } from 'echarts/types/dist/shared'
 import type { BadgeTone, UiBarChartItem, UiDistributionSegment, UiScatterSeries, UiTrendPoint } from '@/components/ui-guide/ui/types'
-import { DP_FONT_FAMILY_SANS } from '@/constants/typography'
-import { SCATTER_ZONE_COLORS } from '@/utils/mark-statistics-chart'
 import { prefersReducedMotion } from '@/utils/mark-chart-accessibility'
+import { SCATTER_ZONE_COLORS } from '@/utils/mark-statistics-chart'
+
+const DP_FONT_FAMILY_SANS = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /** mark-vue ECharts 色板：与 --dp/--ant 主题对齐的十六进制真源 */
 export const MARK_ECHARTS_PALETTE = {
@@ -71,7 +72,8 @@ function baseGrid(extra?: GridComponentOption): GridComponentOption {
     right: 20,
     top: 24,
     bottom: 36,
-    containLabel: true,
+    outerBoundsMode: 'same',
+    outerBoundsContain: 'axisLabel',
     ...(extra ?? {}),
   }
 }
@@ -182,7 +184,7 @@ export interface MarkBarChartConfig {
   xAxisName?: string
   unit?: string
   dataZoom?: boolean
-  markLines?: Array<{ value: number; name: string; color?: string }>
+  markLines?: Array<{ value: number, name: string, color?: string }>
   emptyText?: string
 }
 
@@ -328,7 +330,7 @@ export function buildScatterChartOption(
     tooltip: {
       trigger: 'item',
       formatter: (param: CallbackDataParams) => {
-        const data = param.data as { label?: string; helper?: string; value?: [number, number] }
+        const data = param.data as { label?: string, helper?: string, value?: [number, number] }
         if (!data?.value) return ''
         const label = data.label || param.seriesName || ''
         return `${label}<br/>难度 ${data.value[0].toFixed(2)} · 区分度 ${data.value[1].toFixed(2)}${data.helper ? `<br/>${data.helper}` : ''}`
@@ -556,7 +558,6 @@ export function buildHeatmapChartOption(
       right: 16,
       top: 12,
       bottom: rotateLabels ? 72 : 56,
-      containLabel: false,
     },
     xAxis: {
       type: 'category',

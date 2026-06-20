@@ -18,7 +18,11 @@ import {
   ANNUAL_REPORT_MATERIAL_STATUS_TONE,
 } from '@/apis/quality'
 import { CourseSelector } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'

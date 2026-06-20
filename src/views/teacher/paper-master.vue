@@ -25,363 +25,362 @@
   </div>
 
   <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择考试"
-      class="paper-master-page__empty"
-    />
+    v-if="!selectedExamId"
+    description="请选择考试"
+    class="paper-master-page__empty"
+  />
 
-    <UiEmpty v-else-if="!loading && masterLoadError" description="暂无数据" />
+  <UiEmpty v-else-if="!loading && masterLoadError" description="暂无数据" />
 
-    <a-spin v-else :spinning="loading">
-      <!-- PDF 预览/编辑区 -->
-      <UiCard v-if="form.masterFileId" class="preview-card">
-        <template #title>
-          <EyeOutlined />
-          <span>母版 PDF</span>
-          <a-segmented
-            v-model:value="pdfViewMode"
-            :options="[
-              { label: '预览', value: 'preview' },
-              { label: '在线编辑', value: 'edit' },
-            ]"
-            size="small"
-            style="margin-left: 12px"
-          />
-        </template>
-        <template #extra>
-          <a-button v-if="pdfPreviewUrl" type="link" size="small" @click="openPdfInNewTab">
-            新窗口打开
-          </a-button>
-          <UiTextAction @click="closePdfPreview">关闭预览</UiTextAction>
-        </template>
-        <!-- 预览模式 -->
-        <template v-if="pdfViewMode === 'preview'">
-          <a-spin :spinning="pdfPreviewLoading">
-            <iframe v-if="pdfPreviewUrl" :src="pdfPreviewUrl" class="pdf-iframe" />
-            <div v-else class="pdf-placeholder">正在加载 PDF…</div>
-          </a-spin>
-        </template>
-        <!-- 编辑模式 -->
-        <PdfAnnotationEditor
-          v-else
-          :pdf-file-id="form.masterFileId"
-          @saved="onPdfSaved"
+  <a-spin v-else :spinning="loading">
+    <!-- PDF 预览/编辑区 -->
+    <UiCard v-if="form.masterFileId" class="preview-card">
+      <template #title>
+        <EyeOutlined />
+        <span>母版 PDF</span>
+        <a-segmented
+          v-model:value="pdfViewMode"
+          :options="[
+            { label: '预览', value: 'preview' },
+            { label: '在线编辑', value: 'edit' },
+          ]"
+          size="small"
+          style="margin-left: 12px"
         />
-      </UiCard>
+      </template>
+      <template #extra>
+        <a-button v-if="pdfPreviewUrl" type="link" size="small" @click="openPdfInNewTab">
+          新窗口打开
+        </a-button>
+        <UiTextAction @click="closePdfPreview">关闭预览</UiTextAction>
+      </template>
+      <!-- 预览模式 -->
+      <template v-if="pdfViewMode === 'preview'">
+        <a-spin :spinning="pdfPreviewLoading">
+          <iframe v-if="pdfPreviewUrl" :src="pdfPreviewUrl" class="pdf-iframe" />
+          <div v-else class="pdf-placeholder">正在加载 PDF…</div>
+        </a-spin>
+      </template>
+      <!-- 编辑模式 -->
+      <PdfAnnotationEditor
+        v-else
+        :pdf-file-id="form.masterFileId"
+        @saved="onPdfSaved"
+      />
+    </UiCard>
 
-      <!-- 基本信息 -->
-      <UiCard class="info-card">
-        <template #title>
-          <FileTextOutlined />
-          <span>母版基本信息</span>
-        </template>
-        <a-form layout="inline">
-          <a-form-item label="母版名称" required>
-            <a-input
-              v-model:value="form.masterName"
-              placeholder="例如：2026 春《工程制图》期末母版"
-              :maxlength="100"
-              style="width: 360px"
-            />
-          </a-form-item>
-          <a-form-item label="母版 PDF">
-            <a-upload :before-upload="handleBeforeUpload" :show-upload-list="false" accept=".pdf">
-              <UiButton size="sm" :loading="uploading">
-                <template #icon><UploadOutlined /></template>
-                {{ form.masterFileId ? '重新上传' : '上传 PDF' }}
-              </UiButton>
-            </a-upload>
-            <span v-if="uploadedFileName" class="uploaded-hint">{{ uploadedFileName }}</span>
-            <UiButton
-              v-if="form.masterFileId"
-              size="sm"
-              style="margin-left: 8px"
-              @click="previewPdf"
-            >
-              <template #icon><EyeOutlined /></template>
-              预览
+    <!-- 基本信息 -->
+    <UiCard class="info-card">
+      <template #title>
+        <FileTextOutlined />
+        <span>母版基本信息</span>
+      </template>
+      <a-form layout="inline">
+        <a-form-item label="母版名称" required>
+          <a-input
+            v-model:value="form.masterName"
+            placeholder="例如：2026 春《工程制图》期末母版"
+            :maxlength="100"
+            style="width: 360px"
+          />
+        </a-form-item>
+        <a-form-item label="母版 PDF">
+          <a-upload :before-upload="handleBeforeUpload" :show-upload-list="false" accept=".pdf">
+            <UiButton size="sm" :loading="uploading">
+              <template #icon><UploadOutlined /></template>
+              {{ form.masterFileId ? '重新上传' : '上传 PDF' }}
             </UiButton>
-          </a-form-item>
-          <a-form-item label="防伪水印">
-            <a-input
-              v-model:value="form.watermarkText"
-              placeholder="可选，印刷在每页的水印文字"
-              :maxlength="200"
-              style="width: 280px"
-            />
-          </a-form-item>
-        </a-form>
-      </UiCard>
-
-      <!-- 主观题区域（只读，编辑入口在试卷题目页） -->
-      <UiCard class="area-card">
-        <template #title>
-          <ProfileOutlined />
-          <span>主观题区域（{{ subjectiveQuestions.length }}）</span>
-        </template>
-        <template #extra>
-          <UiButton size="sm" variant="outline" @click="goPaperTemplate">去题目页编辑</UiButton>
-        </template>
-        <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
-          :columns="subjectiveColumns"
-          :data-source="subjectiveQuestions"
-          :show-pagination="false"
-          flat
-          :total="subjectiveQuestions.length"
-          row-key="questionTemplateId"
-          size="small"
-          bordered
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'region'">
-              <span v-if="record.pageNo && record.width && record.height">
-                P{{ record.pageNo }} · {{ record.x }},{{ record.y }} · {{ record.width }}×{{
-                  record.height
-                }}
-              </span>
-              <UiTag v-else tone="orange" size="sm">未配置</UiTag>
-            </template>
-          </template>
-        </UiDataTable>
-      </UiCard>
-
-      <!-- 身份填涂区 -->
-      <UiCard class="area-card">
-        <template #title>
-          <ProfileOutlined />
-          <span>身份填涂区（{{ identityAreas.length }}）</span>
-        </template>
-        <template #extra>
-          <UiButton size="sm" @click="addIdentityArea">
-            <template #icon><PlusOutlined /></template>
-            新增
+          </a-upload>
+          <span v-if="uploadedFileName" class="uploaded-hint">{{ uploadedFileName }}</span>
+          <UiButton
+            v-if="form.masterFileId"
+            size="sm"
+            style="margin-left: 8px"
+            @click="previewPdf"
+          >
+            <template #icon><EyeOutlined /></template>
+            预览
           </UiButton>
-        </template>
-        <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
-          :columns="identityColumns"
-          :data-source="identityAreas"
-          :show-pagination="false"
-          flat
-          :total="identityAreas.length"
-          row-key="rowKey"
-          size="small"
-          bordered
-        >
-          <template #bodyCell="{ column, record, index }">
-            <template v-if="column.key === 'areaType'">
-              {{ formatIdentityType(record.areaType) }}
-            </template>
-            <template v-else-if="column.key === 'action'">
-              <a-space>
-                <UiTextAction @click="openIdentityEdit(index)">编辑</UiTextAction>
-                <UiConfirmPopover
-                  title="确认删除该身份识别区？"
-                  description="删除后需重新配置并保存母版。"
-                  danger
-                  @confirm="removeIdentityArea(index)"
-                >
-                  <UiTextAction tone="danger">删除</UiTextAction>
-                </UiConfirmPopover>
-              </a-space>
-            </template>
-          </template>
-        </UiDataTable>
-      </UiCard>
+        </a-form-item>
+        <a-form-item label="防伪水印">
+          <a-input
+            v-model:value="form.watermarkText"
+            placeholder="可选，印刷在每页的水印文字"
+            :maxlength="200"
+            style="width: 280px"
+          />
+        </a-form-item>
+      </a-form>
+    </UiCard>
 
-      <!-- 客观题填涂区 -->
-      <UiCard class="area-card">
-        <template #title>
-          <ProfileOutlined />
-          <span>客观题填涂区（{{ objectiveAreas.length }}）</span>
-        </template>
-        <template #extra>
-          <UiButton size="sm" @click="addObjectiveArea">
-            <template #icon><PlusOutlined /></template>
-            新增
-          </UiButton>
-        </template>
-        <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
-          :columns="objectiveColumns"
-          :data-source="objectiveAreas"
-          :show-pagination="false"
-          flat
-          :total="objectiveAreas.length"
-          row-key="rowKey"
-          size="small"
-          bordered
-        >
-          <template #bodyCell="{ column, record, index }">
-            <template v-if="column.key === 'questionTemplateId'">
-              {{ resolveQuestionLabel(record.questionTemplateId) }}
-            </template>
-            <template v-else-if="column.key === 'optionsSummary'">
-              <UiTag size="sm" tone="blue">{{ record.options.length }} 项</UiTag>
-            </template>
-            <template v-else-if="column.key === 'action'">
-              <a-space>
-                <UiTextAction @click="openObjectiveEdit(index)">编辑</UiTextAction>
-                <UiConfirmPopover
-                  title="确认删除该客观题填涂区？"
-                  description="删除后需重新配置并保存母版。"
-                  danger
-                  @confirm="removeObjectiveArea(index)"
-                >
-                  <UiTextAction tone="danger">删除</UiTextAction>
-                </UiConfirmPopover>
-              </a-space>
-            </template>
-          </template>
-        </UiDataTable>
-      </UiCard>
-
-      <a-modal
-        v-model:open="identityEditOpen"
-        :title="identityEditIndex === null ? '新增身份填涂区' : '编辑身份填涂区'"
-        :destroy-on-close="true"
-        :mask-closable="false"
-        width="520px"
-        @ok="handleIdentityEditOk"
+    <!-- 主观题区域（只读，编辑入口在试卷题目页） -->
+    <UiCard class="area-card">
+      <template #title>
+        <ProfileOutlined />
+        <span>主观题区域（{{ subjectiveQuestions.length }}）</span>
+      </template>
+      <template #extra>
+        <UiButton size="sm" variant="outline" @click="goPaperTemplate">去题目页编辑</UiButton>
+      </template>
+      <UiDataTable
+        pagination-mode="none"
+        class="student-detail-table__data-table"
+        :columns="subjectiveColumns"
+        :data-source="subjectiveQuestions"
+        :show-pagination="false"
+        flat
+        :total="subjectiveQuestions.length"
+        row-key="questionTemplateId"
+        size="small"
+        bordered
       >
-        <a-form layout="vertical">
-          <a-form-item label="区域类型" required>
-            <a-select v-model:value="identityDraft.areaType" :options="identityAreaTypeOptions" />
-          </a-form-item>
-          <a-form-item label="页号" required>
-            <a-input-number
-              v-model:value="identityDraft.pageNo"
-              :min="1"
-              :max="99"
-              style="width: 100%"
-            />
-          </a-form-item>
-          <a-form-item label="X">
-            <a-input-number v-model:value="identityDraft.x" :min="0" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="Y">
-            <a-input-number v-model:value="identityDraft.y" :min="0" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="宽">
-            <a-input-number v-model:value="identityDraft.width" :min="1" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="高">
-            <a-input-number v-model:value="identityDraft.height" :min="1" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="填涂格数">
-            <a-input-number
-              v-model:value="identityDraft.fillCellCount"
-              :min="0"
-              style="width: 100%"
-            />
-          </a-form-item>
-        </a-form>
-      </a-modal>
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'region'">
+            <span v-if="record.pageNo && record.width && record.height">
+              P{{ record.pageNo }} · {{ record.x }},{{ record.y }} · {{ record.width }}×{{
+                record.height
+              }}
+            </span>
+            <UiTag v-else tone="orange" size="sm">未配置</UiTag>
+          </template>
+        </template>
+      </UiDataTable>
+    </UiCard>
 
-      <a-modal
-        v-model:open="objectiveEditOpen"
-        :title="objectiveEditIndex === null ? '新增客观题填涂区' : '编辑客观题填涂区'"
-        :destroy-on-close="true"
-        :mask-closable="false"
-        width="560px"
-        @ok="handleObjectiveEditOk"
+    <!-- 身份填涂区 -->
+    <UiCard class="area-card">
+      <template #title>
+        <ProfileOutlined />
+        <span>身份填涂区（{{ identityAreas.length }}）</span>
+      </template>
+      <template #extra>
+        <UiButton size="sm" @click="addIdentityArea">
+          <template #icon><PlusOutlined /></template>
+          新增
+        </UiButton>
+      </template>
+      <UiDataTable
+        pagination-mode="none"
+        class="student-detail-table__data-table"
+        :columns="identityColumns"
+        :data-source="identityAreas"
+        :show-pagination="false"
+        flat
+        :total="identityAreas.length"
+        row-key="rowKey"
+        size="small"
+        bordered
       >
-        <a-form layout="vertical">
-          <a-form-item label="题目" required>
-            <a-select
-              v-model:value="objectiveDraft.questionTemplateId"
-              :options="questionOptions"
-              :loading="questionsLoading"
-              show-search
-              option-filter-prop="label"
-            />
-          </a-form-item>
-          <a-form-item label="页号" required>
-            <a-input-number
-              v-model:value="objectiveDraft.pageNo"
-              :min="1"
-              :max="99"
-              style="width: 100%"
-            />
-          </a-form-item>
-          <a-form-item label="X">
-            <a-input-number v-model:value="objectiveDraft.x" :min="0" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="Y">
-            <a-input-number v-model:value="objectiveDraft.y" :min="0" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="框宽">
-            <a-input-number v-model:value="objectiveDraft.boxWidth" :min="1" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="框高">
-            <a-input-number v-model:value="objectiveDraft.boxHeight" :min="1" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="选项">
-            <div
-              v-for="option in objectiveDraft.options"
-              :key="option.sortNo"
-              class="objective-options__item"
-            >
-              <a-input v-model:value="option.optionLabel" :maxlength="8" size="small" />
-              <UiTextAction tone="danger" @click="removeObjectiveOption(objectiveDraft, option.sortNo)">
-                删除
-              </UiTextAction>
-            </div>
-            <a-button size="small" type="link" @click="addObjectiveOption(objectiveDraft)">
-              添加选项
-            </a-button>
-          </a-form-item>
-        </a-form>
-      </a-modal>
-    </a-spin>
+        <template #bodyCell="{ column, record, index }">
+          <template v-if="column.key === 'areaType'">
+            {{ formatIdentityType(record.areaType) }}
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <a-space>
+              <UiTextAction @click="openIdentityEdit(index)">编辑</UiTextAction>
+              <UiConfirmPopover
+                title="确认删除该身份识别区？"
+                description="删除后需重新配置并保存母版。"
+                danger
+                @confirm="removeIdentityArea(index)"
+              >
+                <UiTextAction tone="danger">删除</UiTextAction>
+              </UiConfirmPopover>
+            </a-space>
+          </template>
+        </template>
+      </UiDataTable>
+    </UiCard>
 
-    <!-- 生成标准试卷配置弹窗 -->
+    <!-- 客观题填涂区 -->
+    <UiCard class="area-card">
+      <template #title>
+        <ProfileOutlined />
+        <span>客观题填涂区（{{ objectiveAreas.length }}）</span>
+      </template>
+      <template #extra>
+        <UiButton size="sm" @click="addObjectiveArea">
+          <template #icon><PlusOutlined /></template>
+          新增
+        </UiButton>
+      </template>
+      <UiDataTable
+        pagination-mode="none"
+        class="student-detail-table__data-table"
+        :columns="objectiveColumns"
+        :data-source="objectiveAreas"
+        :show-pagination="false"
+        flat
+        :total="objectiveAreas.length"
+        row-key="rowKey"
+        size="small"
+        bordered
+      >
+        <template #bodyCell="{ column, record, index }">
+          <template v-if="column.key === 'questionTemplateId'">
+            {{ resolveQuestionLabel(record.questionTemplateId) }}
+          </template>
+          <template v-else-if="column.key === 'optionsSummary'">
+            <UiTag size="sm" tone="blue">{{ record.options.length }} 项</UiTag>
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <a-space>
+              <UiTextAction @click="openObjectiveEdit(index)">编辑</UiTextAction>
+              <UiConfirmPopover
+                title="确认删除该客观题填涂区？"
+                description="删除后需重新配置并保存母版。"
+                danger
+                @confirm="removeObjectiveArea(index)"
+              >
+                <UiTextAction tone="danger">删除</UiTextAction>
+              </UiConfirmPopover>
+            </a-space>
+          </template>
+        </template>
+      </UiDataTable>
+    </UiCard>
+
     <a-modal
-      v-model:open="generateModalOpen"
-      title="生成标准试卷 PDF"
-      width="560px"
-      :confirm-loading="generating"
-      ok-text="生成并预览"
-      @ok="handleGenerate"
+      v-model:open="identityEditOpen"
+      :title="identityEditIndex === null ? '新增身份填涂区' : '编辑身份填涂区'"
+      :destroy-on-close="true"
+      :mask-closable="false"
+      width="520px"
+      @ok="handleIdentityEditOk"
     >
       <a-form layout="vertical">
-        <a-form-item label="学校名称" required>
-          <a-input v-model:value="genForm.universityName" placeholder="例如：XX大学" />
+        <a-form-item label="区域类型" required>
+          <a-select v-model:value="identityDraft.areaType" :options="identityAreaTypeOptions" />
         </a-form-item>
-        <a-form-item label="学年">
-          <a-input v-model:value="genForm.academicYear" placeholder="例如：2025-2026" />
-        </a-form-item>
-        <a-form-item label="学期">
-          <a-select
-            v-model:value="genForm.semester" :options="[
-              { label: '秋季学期', value: '1' },
-              { label: '春季学期', value: '2' },
-            ]"
+        <a-form-item label="页号" required>
+          <a-input-number
+            v-model:value="identityDraft.pageNo"
+            :min="1"
+            :max="99"
+            style="width: 100%"
           />
         </a-form-item>
-        <a-form-item label="课程名称" required>
-          <a-input v-model:value="genForm.courseName" placeholder="课程名称" />
+        <a-form-item label="X">
+          <a-input-number v-model:value="identityDraft.x" :min="0" style="width: 100%" />
         </a-form-item>
-        <a-form-item label="考试形式">
-          <a-select
-            v-model:value="genForm.examType" :options="[
-              { label: '闭卷', value: '闭卷' }, { label: '开卷', value: '开卷' },
-            ]"
+        <a-form-item label="Y">
+          <a-input-number v-model:value="identityDraft.y" :min="0" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="宽">
+          <a-input-number v-model:value="identityDraft.width" :min="1" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="高">
+          <a-input-number v-model:value="identityDraft.height" :min="1" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="填涂格数">
+          <a-input-number
+            v-model:value="identityDraft.fillCellCount"
+            :min="0"
+            style="width: 100%"
           />
-        </a-form-item>
-        <a-form-item label="考试时间（分钟）">
-          <a-input-number v-model:value="genForm.durationMin" :min="30" :max="300" />
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <a-modal
+      v-model:open="objectiveEditOpen"
+      :title="objectiveEditIndex === null ? '新增客观题填涂区' : '编辑客观题填涂区'"
+      :destroy-on-close="true"
+      :mask-closable="false"
+      width="560px"
+      @ok="handleObjectiveEditOk"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="题目" required>
+          <a-select
+            v-model:value="objectiveDraft.questionTemplateId"
+            :options="questionOptions"
+            :loading="questionsLoading"
+            show-search
+            option-filter-prop="label"
+          />
+        </a-form-item>
+        <a-form-item label="页号" required>
+          <a-input-number
+            v-model:value="objectiveDraft.pageNo"
+            :min="1"
+            :max="99"
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="X">
+          <a-input-number v-model:value="objectiveDraft.x" :min="0" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="Y">
+          <a-input-number v-model:value="objectiveDraft.y" :min="0" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="框宽">
+          <a-input-number v-model:value="objectiveDraft.boxWidth" :min="1" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="框高">
+          <a-input-number v-model:value="objectiveDraft.boxHeight" :min="1" style="width: 100%" />
+        </a-form-item>
+        <a-form-item label="选项">
+          <div
+            v-for="option in objectiveDraft.options"
+            :key="option.sortNo"
+            class="objective-options__item"
+          >
+            <a-input v-model:value="option.optionLabel" :maxlength="8" size="small" />
+            <UiTextAction tone="danger" @click="removeObjectiveOption(objectiveDraft, option.sortNo)">
+              删除
+            </UiTextAction>
+          </div>
+          <a-button size="small" type="link" @click="addObjectiveOption(objectiveDraft)">
+            添加选项
+          </a-button>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+  </a-spin>
+
+  <!-- 生成标准试卷配置弹窗 -->
+  <a-modal
+    v-model:open="generateModalOpen"
+    title="生成标准试卷 PDF"
+    width="560px"
+    :confirm-loading="generating"
+    ok-text="生成并预览"
+    @ok="handleGenerate"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="学校名称" required>
+        <a-input v-model:value="genForm.universityName" placeholder="例如：XX大学" />
+      </a-form-item>
+      <a-form-item label="学年">
+        <a-input v-model:value="genForm.academicYear" placeholder="例如：2025-2026" />
+      </a-form-item>
+      <a-form-item label="学期">
+        <a-select
+          v-model:value="genForm.semester" :options="[
+            { label: '秋季学期', value: '1' },
+            { label: '春季学期', value: '2' },
+          ]"
+        />
+      </a-form-item>
+      <a-form-item label="课程名称" required>
+        <a-input v-model:value="genForm.courseName" placeholder="课程名称" />
+      </a-form-item>
+      <a-form-item label="考试形式">
+        <a-select
+          v-model:value="genForm.examType" :options="[
+            { label: '闭卷', value: '闭卷' }, { label: '开卷', value: '开卷' },
+          ]"
+        />
+      </a-form-item>
+      <a-form-item label="考试时间（分钟）">
+        <a-input-number v-model:value="genForm.durationMin" :min="30" :max="300" />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamQuestionTemplateVO } from '@/apis/mark/exam'
 import type {
@@ -410,7 +409,13 @@ import {
   savePaperMaster
 } from '@/apis/mark/paper-master'
 import PdfAnnotationEditor from '@/components/mark/PdfAnnotationEditor.vue'
-import { UiButton, UiCard, UiConfirmPopover, UiDataTable, UiEmpty, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 

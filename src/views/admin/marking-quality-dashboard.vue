@@ -415,7 +415,7 @@ import type {
   ReviewerMetricStatusCode,
   ReviewerQualityMetricResponse,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, FilterField, UiBarChartItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import AimOutlined from '@ant-design/icons-vue/AimOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
@@ -446,26 +446,24 @@ import {
   REVIEWER_METRIC_STATUS_LABEL,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
-import { MarkBarSection, MarkTrendSection } from '@/components/chart'
-import {
-  UiAlertStrip,
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiErrorRetryPanel,
-  UiFilterBar,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiErrorRetryPanel from '@/components/ui-guide/ui/UiErrorRetryPanel.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { progressSnapshotsToTrendPoints } from '@/utils/mark-statistics-chart'
-import type { UiBarChartItem } from '@/components/ui-guide/ui/types'
 import { readAllPages } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

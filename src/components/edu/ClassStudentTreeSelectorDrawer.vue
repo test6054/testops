@@ -176,7 +176,8 @@ import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import { listExamStudentTree } from '@/apis/mark/exam'
-import { UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 
 // Props

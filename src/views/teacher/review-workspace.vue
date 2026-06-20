@@ -437,13 +437,11 @@ import {
 } from '@/apis/mark/exam'
 import GradingWorkspaceLayout from '@/components/mark/GradingWorkspaceLayout.vue'
 import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel.vue'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiCard,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { assertUserFacing } from '@/utils/contract-guard'

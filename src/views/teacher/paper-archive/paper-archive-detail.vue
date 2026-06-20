@@ -329,15 +329,13 @@ import {
   updatePaperArchiveItemTags,
   updatePaperArchiveSetTags,
 } from '@/apis/mark/paper-archive'
-import {
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'

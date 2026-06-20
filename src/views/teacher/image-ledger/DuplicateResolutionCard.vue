@@ -48,7 +48,8 @@ import {
   DUPLICATE_RESOLUTION_STATUS_LABEL,
   listPendingDuplicates,
 } from '@/apis/mark/image-ledger'
-import { UiDataTable, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

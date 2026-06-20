@@ -20,7 +20,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
 import schoolsData from '@/assets/data/schools.json'
-import { UiSelect } from '@/components/ui-guide/ui'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 
 export interface SchoolItem {
   id: string

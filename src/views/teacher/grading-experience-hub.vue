@@ -381,7 +381,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AiAnalysisStatusCode,
@@ -415,16 +415,14 @@ import {
   searchSimilar
 } from '@/apis/mark/grading-experience'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
-import {
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiTag,
-  UiTextAction
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'

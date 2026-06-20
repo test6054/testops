@@ -347,22 +347,21 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiDataTable,
-  UiDrawer,
-  UiFilterBar,
-  UiStatPanel,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 
 defineOptions({ name: 'TeacherScorePublish' })
 

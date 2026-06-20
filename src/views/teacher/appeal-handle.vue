@@ -27,7 +27,7 @@
 <script lang="ts" setup>
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { computed, onMounted, ref, watch } from 'vue'
-import { UiButton } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import BatchCorrectionPlansCard from './appeal-handle/BatchCorrectionPlansCard.vue'
 import CorrectionsCard from './appeal-handle/CorrectionsCard.vue'

@@ -20,13 +20,13 @@
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
 import { computed } from 'vue'
-import MarkChart from './MarkChart.vue'
-import { UiEmpty } from '@/components/ui-guide/ui'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import {
   formatTrendAriaLabel,
   MARK_CHART_EMPTY,
   MARK_TREND_MIN_POINTS,
 } from '@/utils/mark-chart-accessibility'
+import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkTrendSection' })
 

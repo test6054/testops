@@ -22,97 +22,96 @@
 
   <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="sheet-page__empty" />
 
-    <UiEmpty v-else-if="!loading && templateLoadError" description="暂无数据" />
+  <UiEmpty v-else-if="!loading && templateLoadError" description="暂无数据" />
 
-    <a-spin v-else :spinning="loading">
-      <UiAlertStrip
-        v-if="!hasQuestions"
-        tone="warning"
-        title="题目结构尚未配置"
-        description="暂无数据"
-        dense
-        class="sheet-page__alert"
-      >
-        <template #actions>
-          <UiButton size="sm" variant="outline" @click="goPaperTemplate">前往试卷模板</UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <UiCard class="info-card">
-        <template #title>
-          <InfoCircleOutlined />
-          <span>模板基本信息</span>
-        </template>
-        <a-form layout="inline">
-          <a-form-item label="模板名称" required>
-            <a-input
-              v-model:value="form.templateName"
-              placeholder="例如：2026 春《工程制图》期末 v1"
-              :maxlength="100"
-              style="width: 360px"
-            />
-          </a-form-item>
-          <a-form-item label="总页数" required>
-            <a-input-number
-              v-model:value="form.totalPages"
-              :min="1"
-              :max="50"
-              style="width: 120px"
-            />
-          </a-form-item>
-          <a-form-item v-if="hasQuestions">
-            <UiTag tone="blue" size="sm"> 题目结构由试卷模板维护：{{ questionCount }} 道 </UiTag>
-          </a-form-item>
-        </a-form>
-      </UiCard>
-
-      <UiCard class="info-card">
-        <template #title>
-          <FileImageOutlined />
-          <span>页面文件配置</span>
-          <UiBadge :tone="pageCountMatched ? 'green' : 'orange'">
-            {{ pages.length }} / {{ totalPagesLabel }}
-          </UiBadge>
-        </template>
-        <template #extra>
-          <UiButton size="sm" variant="outline" @click="addPage">
-            <template #icon><PlusOutlined /></template>
-            新增页面
-          </UiButton>
-        </template>
-
-        <ExamTemplatePageTable ref="pageTableRef" v-model:pages="pages" @remove="removePage" />
-      </UiCard>
-    </a-spin>
-
-    <!-- 生成标准答题卡配置弹窗 -->
-    <a-modal
-      v-model:open="sheetGenerateModalOpen"
-      title="生成标准答题卡 PDF"
-      width="520px"
-      :confirm-loading="sheetGenerating"
-      ok-text="生成并预览"
-      @ok="handleSheetGenerate"
+  <a-spin v-else :spinning="loading">
+    <UiAlertStrip
+      v-if="!hasQuestions"
+      tone="warning"
+      title="题目结构尚未配置"
+      description="暂无数据"
+      dense
+      class="sheet-page__alert"
     >
-      <a-form layout="vertical">
-        <a-form-item label="选择题数量">
-          <a-input-number v-model:value="sheetGenForm.choiceCount" :min="0" :max="200" style="width:100%" />
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="goPaperTemplate">前往试卷模板</UiButton>
+      </template>
+    </UiAlertStrip>
+
+    <UiCard class="info-card">
+      <template #title>
+        <InfoCircleOutlined />
+        <span>模板基本信息</span>
+      </template>
+      <a-form layout="inline">
+        <a-form-item label="模板名称" required>
+          <a-input
+            v-model:value="form.templateName"
+            placeholder="例如：2026 春《工程制图》期末 v1"
+            :maxlength="100"
+            style="width: 360px"
+          />
         </a-form-item>
-        <a-form-item label="判断题数量">
-          <a-input-number v-model:value="sheetGenForm.trueFalseCount" :min="0" :max="100" style="width:100%" />
+        <a-form-item label="总页数" required>
+          <a-input-number
+            v-model:value="form.totalPages"
+            :min="1"
+            :max="50"
+            style="width: 120px"
+          />
         </a-form-item>
-        <a-form-item label="主观题名称（一行一个）">
-          <a-textarea v-model:value="sheetGenForm.subjectNamesText" :rows="4" placeholder="三、简答题&#10;四、计算题&#10;五、论述题" />
-        </a-form-item>
-        <a-form-item label="每题预留行数（逗号分隔）">
-          <a-input v-model:value="sheetGenForm.subjectLinesText" placeholder="5,8,10" />
+        <a-form-item v-if="hasQuestions">
+          <UiTag tone="blue" size="sm"> 题目结构由试卷模板维护：{{ questionCount }} 道 </UiTag>
         </a-form-item>
       </a-form>
-    </a-modal>
+    </UiCard>
+
+    <UiCard class="info-card">
+      <template #title>
+        <FileImageOutlined />
+        <span>页面文件配置</span>
+        <UiBadge :tone="pageCountMatched ? 'green' : 'orange'">
+          {{ pages.length }} / {{ totalPagesLabel }}
+        </UiBadge>
+      </template>
+      <template #extra>
+        <UiButton size="sm" variant="outline" @click="addPage">
+          <template #icon><PlusOutlined /></template>
+          新增页面
+        </UiButton>
+      </template>
+
+      <ExamTemplatePageTable ref="pageTableRef" v-model:pages="pages" @remove="removePage" />
+    </UiCard>
+  </a-spin>
+
+  <!-- 生成标准答题卡配置弹窗 -->
+  <a-modal
+    v-model:open="sheetGenerateModalOpen"
+    title="生成标准答题卡 PDF"
+    width="520px"
+    :confirm-loading="sheetGenerating"
+    ok-text="生成并预览"
+    @ok="handleSheetGenerate"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="选择题数量">
+        <a-input-number v-model:value="sheetGenForm.choiceCount" :min="0" :max="200" style="width:100%" />
+      </a-form-item>
+      <a-form-item label="判断题数量">
+        <a-input-number v-model:value="sheetGenForm.trueFalseCount" :min="0" :max="100" style="width:100%" />
+      </a-form-item>
+      <a-form-item label="主观题名称（一行一个）">
+        <a-textarea v-model:value="sheetGenForm.subjectNamesText" :rows="4" placeholder="三、简答题&#10;四、计算题&#10;五、论述题" />
+      </a-form-item>
+      <a-form-item label="每题预留行数（逗号分隔）">
+        <a-input v-model:value="sheetGenForm.subjectLinesText" placeholder="5,8,10" />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type {
   ExamAnswerSheetTemplateSaveRequest,
   ExamPageTemplateRequest,
@@ -135,14 +134,12 @@ import {
 } from '@/apis/mark/exam'
 import { generateStandardAnswerSheet } from '@/apis/mark/paper-master'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
-import {
-  UiAlertStrip,
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'

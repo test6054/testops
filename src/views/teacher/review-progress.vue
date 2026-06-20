@@ -31,21 +31,19 @@
             </template>
             <div class="overview-card__body">
               <div class="overview-card__ring-block">
-              <MarkGaugeBlock
-                :option="confirmedGaugeOption"
-                :ariaLabel="confirmedGaugeAriaLabel"
-                layout="stacked"
-              >
-                <div class="mark-gauge-block__formula">
-                  <strong>{{ progress.confirmedQuestionGradeCount }}</strong>
-                  <span class="muted">
-                    / {{ progress.totalQuestionGradeCount }} 题次
-                  </span>
-                </div>
-                <p v-if="progress.totalQuestionGradeCount <= 0" class="mark-gauge-block__hint">
-                  暂无应复核题次
-                </p>
-              </MarkGaugeBlock>
+                <MarkGaugeBlock
+                  v-bind="confirmedGaugeBlockProps"
+                >
+                  <div class="mark-gauge-block__formula">
+                    <strong>{{ progress.confirmedQuestionGradeCount }}</strong>
+                    <span class="muted">
+                      / {{ progress.totalQuestionGradeCount }} 题次
+                    </span>
+                  </div>
+                  <p v-if="progress.totalQuestionGradeCount <= 0" class="mark-gauge-block__hint">
+                    暂无应复核题次
+                  </p>
+                </MarkGaugeBlock>
               </div>
               <UiStatPanel
                 :items="overviewStatItems"
@@ -202,37 +200,33 @@ import {
   REVIEW_TASK_STATUS_TONE as STATUS_TONE,
 } from '@/apis/mark/exam'
 import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
-import {
-  MarkBarSection,
-  MarkDistributionSection,
-  MarkGaugeBlock,
-  MarkHeatmapSection,
-} from '@/components/chart'
-import {
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiStatPanel,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import MarkDistributionSection from '@/components/chart/MarkDistributionSection.vue'
+import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'
+import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import {
   buildCategoryBarChartOption,
   buildDistributionBarChartOption,
   buildGaugeChartOption,
   buildHeatmapChartOption,
 } from '@/utils/mark-echarts-options'
-import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { reviewProgressToBarItems, reviewProgressToHeatmapCells } from '@/utils/mark-statistics-chart'
 import { toneToColor } from '@/utils/score-tone'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import {
   toDistributionSegments,
   toShareStatPanelItems,
 } from '@/utils/stat-metric-helpers'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherReviewProgress' })
 
@@ -321,6 +315,12 @@ const confirmedGaugeAriaLabel = computed(() => {
     : undefined
   return formatGaugeAriaLabel('已确认率', confirmedPercent.value, detail)
 })
+
+const confirmedGaugeBlockProps = computed(() => ({
+  option: confirmedGaugeOption.value,
+  ariaLabel: confirmedGaugeAriaLabel.value,
+  layout: 'stacked' as const,
+}))
 
 const { chartOption: statusDistributionOption } = useChartOption(() =>
   buildDistributionBarChartOption(statusDistributionSegments.value, {

@@ -89,7 +89,8 @@ import {
   aiTaskApi,
   indirectResponseApi,
 } from '@/apis/quality'
-import { UiButton, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

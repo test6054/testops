@@ -20,121 +20,119 @@
       </UiButton>
     </div>
 
-      <a-card title="出勤核对摘要" :bordered="false" size="small">
-        <UiEmpty v-if="!reconcileVO" description="暂无数据" />
-        <div v-else class="absence-page__summary">
-          <div class="absence-page__summary-ring">
-            <MarkGaugeBlock
-              :option="attendanceGaugeOption"
-              :ariaLabel="attendanceAriaLabel"
-              layout="stacked"
-            />
-          </div>
-          <UiStatPanel
-            :items="reconcileMetrics"
-            :columns="4"
-            variant="grid"
-            compact
-            class="absence-page__summary-stats"
+    <a-card title="出勤核对摘要" :bordered="false" size="small">
+      <UiEmpty v-if="!reconcileVO" description="暂无数据" />
+      <div v-else class="absence-page__summary">
+        <div class="absence-page__summary-ring">
+          <MarkGaugeBlock
+            v-bind="attendanceGaugeBlockProps"
           />
         </div>
-      </a-card>
-
-      <UiCard v-if="reconcileVO && absentStudents.length" class="info-card">
-        <template #title>
-          <UserDeleteOutlined />
-          <span class="section-title">核对检出的缺考学生</span>
-        </template>
-        <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
-          :columns="absentColumns"
-          :data-source="absentStudents"
-          :show-pagination="false"
-          flat
-          :total="absentStudents.length"
-          row-key="studentUserId"
-          size="middle"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  tone="primary"
-                  @click="openConfirmModal(record.studentUserId, formatStudentSnapshot(record))"
-                >
-                  确认缺考
-                </UiTextAction>
-              </div>
-            </template>
-          </template>
-        </UiDataTable>
-      </UiCard>
-
-      <a-card :bordered="false" class="detail-table-card info-card absence-page__records-card">
-        <template #title>
-          <SolutionOutlined />
-          <span>缺考记录</span>
-        </template>
-        <UiFilterBar
-          v-model="recordFilterForm"
-          :fields="recordFilterFields"
-          show-labels
-          search-text="查询"
-          @search="handleRecordFilterSearch"
-          @reset="handleRecordFilterReset"
+        <UiStatPanel
+          :items="reconcileMetrics"
+          :columns="4"
+          variant="grid"
+          compact
+          class="absence-page__summary-stats"
         />
-        <UiDataTable
-          class="student-detail-table__data-table"
-          :columns="recordColumns"
-          :data-source="records"
-          :loading="recordLoading"
-          v-model:current="recordPagination.pageNum"
-          v-model:page-size="recordPagination.pageSize"
-          flat
-          :total="recordPagination.total"
-          row-key="absenceRecordId"
-          size="middle"
-          @page-change="handleRecordPageChange"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'absenceStatus'">
-              <UiTag :tone="statusTone(records[index].absenceStatus)" size="sm">
-                {{ statusLabel(records[index].absenceStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'absenceReason'">
-              {{ reasonLabel(records[index].absenceReason) }}
-            </template>
-            <template v-else-if="column.key === 'scorePolicy'">
-              {{ scorePolicyLabel(records[index].scorePolicy) }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  v-if="records[index].absenceStatus === 'CONFIRMED'"
-                  @click="openRevokeModal(records[index])"
-                >
-                  撤销
-                </UiTextAction>
-                <UiTextAction
-                  v-else-if="records[index].absenceStatus === 'PENDING'"
-                  tone="primary"
-                  @click="
-                    openConfirmModal(
-                      records[index].studentUserId,
-                      formatStudentSnapshot(records[index]),
-                    )
-                  "
-                >
-                  确认
-                </UiTextAction>
-                <span v-else class="hint-text">-</span>
-              </div>
-            </template>
+      </div>
+    </a-card>
+
+    <UiCard v-if="reconcileVO && absentStudents.length" class="info-card">
+      <template #title>
+        <UserDeleteOutlined />
+        <span class="section-title">核对检出的缺考学生</span>
+      </template>
+      <UiDataTable
+        pagination-mode="none"
+        class="student-detail-table__data-table"
+        :columns="absentColumns"
+        :data-source="absentStudents"
+        :show-pagination="false"
+        flat
+        :total="absentStudents.length"
+        row-key="studentUserId"
+        size="middle"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction
+                tone="primary"
+                @click="openConfirmModal(record.studentUserId, formatStudentSnapshot(record))"
+              >
+                确认缺考
+              </UiTextAction>
+            </div>
           </template>
-        </UiDataTable>
-      </a-card>
+        </template>
+      </UiDataTable>
+    </UiCard>
+
+    <a-card :bordered="false" class="detail-table-card info-card absence-page__records-card">
+      <template #title>
+        <SolutionOutlined />
+        <span>缺考记录</span>
+      </template>
+      <UiFilterBar
+        v-model="recordFilterForm"
+        :fields="recordFilterFields"
+        show-labels
+        search-text="查询"
+        @search="handleRecordFilterSearch"
+        @reset="handleRecordFilterReset"
+      />
+      <UiDataTable
+        class="student-detail-table__data-table"
+        :columns="recordColumns"
+        :data-source="records"
+        :loading="recordLoading"
+        v-model:current="recordPagination.pageNum"
+        v-model:page-size="recordPagination.pageSize"
+        flat
+        :total="recordPagination.total"
+        row-key="absenceRecordId"
+        size="middle"
+        @page-change="handleRecordPageChange"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'absenceStatus'">
+            <UiTag :tone="statusTone(records[index].absenceStatus)" size="sm">
+              {{ statusLabel(records[index].absenceStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'absenceReason'">
+            {{ reasonLabel(records[index].absenceReason) }}
+          </template>
+          <template v-else-if="column.key === 'scorePolicy'">
+            {{ scorePolicyLabel(records[index].scorePolicy) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction
+                v-if="records[index].absenceStatus === 'CONFIRMED'"
+                @click="openRevokeModal(records[index])"
+              >
+                撤销
+              </UiTextAction>
+              <UiTextAction
+                v-else-if="records[index].absenceStatus === 'PENDING'"
+                tone="primary"
+                @click="
+                  openConfirmModal(
+                    records[index].studentUserId,
+                    formatStudentSnapshot(records[index]),
+                  )
+                "
+              >
+                确认
+              </UiTextAction>
+              <span v-else class="hint-text">-</span>
+            </div>
+          </template>
+        </template>
+      </UiDataTable>
+    </a-card>
   </div>
 
   <a-modal
@@ -196,7 +194,6 @@
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   AbsenceReasonCode,
@@ -223,24 +220,22 @@ import {
   reconcileAttendance,
   revokeAbsence,
 } from '@/apis/mark/absence'
-import { MarkGaugeBlock } from '@/components/chart'
-import {
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiStatPanel,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
-import { readPageList, readPageTotal } from '@/utils/page-result'
-import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
+import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
+import { readPageList, readPageTotal } from '@/utils/page-result'
 import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -325,6 +320,12 @@ const attendanceAriaLabel = computed(() => {
   const detail = expected > 0 ? `实到 ${attended} / 应考 ${expected} 人` : '暂无应考人数'
   return formatGaugeAriaLabel('出勤率', attendancePercent.value, detail)
 })
+
+const attendanceGaugeBlockProps = computed(() => ({
+  option: attendanceGaugeOption.value,
+  ariaLabel: attendanceAriaLabel.value,
+  layout: 'stacked' as const,
+}))
 
 const reconcileMetrics = computed(() => [
   {

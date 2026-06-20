@@ -24,8 +24,7 @@
         >
           <div class="scan-batch-page__ring-wrap">
             <MarkGaugeBlock
-              :option="paperBindingGaugeOption"
-              :ariaLabel="paperBindingAriaLabel"
+              v-bind="paperBindingGaugeBlockProps"
             >
               <div class="mark-gauge-block__formula">
                 <strong>{{ progress.gradablePaperCount }}</strong>
@@ -425,7 +424,6 @@ import type { ScanEventStatusCode, ScanLiveEventVO } from '@/apis/mark/scan-live
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import DesktopOutlined from '@ant-design/icons-vue/DesktopOutlined'
 import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import UnorderedListOutlined from '@ant-design/icons-vue/UnorderedListOutlined'
 import message from 'ant-design-vue/es/message'
@@ -444,24 +442,24 @@ import { listScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import { listRecentScanEvents } from '@/apis/mark/scan-live'
 import { discardScanJob, listScanJobs } from '@/apis/mark/scanner-agent-local'
 import { discardScannerKioskBatch } from '@/apis/mark/scanner-kiosk'
-import { MarkGaugeBlock } from '@/components/chart'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiDrawer,
-  UiEmpty,
-  UiStatPanel,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
-import mittBus from '@/utils/mitt'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatDateTime, formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
+import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
+import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
+import mittBus from '@/utils/mitt'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import {
   batchSealBlockedReason,
@@ -469,8 +467,6 @@ import {
   canSealBatch,
 } from '@/utils/scan-batch-seal'
 import { progressTone, toneToColor } from '@/utils/score-tone'
-import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
-import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherScanUploadBatches' })
@@ -514,9 +510,7 @@ const hasOpenTasks = computed(() => {
   const current = progress.value
   return current ? current.openProcessingTaskCount > 0 : false
 })
-
-const scanAttentionCount = computed(() => progress.value?.scanAttentionCount ?? 0)
-
+computed(() => progress.value?.scanAttentionCount ?? 0)
 const liveEvents = ref<ScanLiveEventVO[]>([])
 const recentEventsLoading = ref(false)
 
@@ -632,6 +626,11 @@ const paperBindingAriaLabel = computed(() => {
     : undefined
   return formatGaugeAriaLabel('卷面绑定率', percent, detail)
 })
+
+const paperBindingGaugeBlockProps = computed(() => ({
+  option: paperBindingGaugeOption.value,
+  ariaLabel: paperBindingAriaLabel.value,
+}))
 
 const paperBindingHint = computed<string>(() => {
   const p = paperBindingPercent.value

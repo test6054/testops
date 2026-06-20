@@ -1,6 +1,5 @@
 import type { Ref } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
-import { isSidebarMenuRoute } from '@/utils/menu-route'
 import { cloneDeep, omit } from 'lodash-es'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
@@ -9,6 +8,10 @@ import { adminRoutes, commonRoutes, qualityRoutes, studentRoutes, teacherRoutes 
 import { RoleEnum } from '@/types/enums'
 import { useAuthStore } from './auth'
 import { useUserStore } from './user'
+
+function isSidebarMenuRoute(route: RouteRecordRaw): boolean {
+  return !route.meta?.hideInMenu && !(route.redirect && !route.component && !route.components)
+}
 
 /** 判断路由层级是否大于 2 */
 export const isMultipleRoute = (route: RouteRecordRaw) => {

@@ -385,7 +385,12 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import { UiButton, UiDataTable, UiFilterBar, UiTag, UiTextAction, UiAlertStrip } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readArrayResponse } from '@/utils/page-result'

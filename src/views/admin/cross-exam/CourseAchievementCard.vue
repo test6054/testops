@@ -149,8 +149,7 @@ import type {
   CourseObjectiveAchievementVO,
 } from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
@@ -162,16 +161,20 @@ import {
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
 import { aiAnalysisStatusColor, aiAnalysisStatusLabel } from '@/apis/mark/teaching-analysis'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.vue'
 import AnalysisSemesterSelect from '@/components/mark/AnalysisSemesterSelect.vue'
-import { MarkBarSection, MarkTrendSection } from '@/components/chart'
-import { UiCard, UiEmpty, UiStatPanel, UiTag } from '@/components/ui-guide/ui'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { formatAcademicTermCode } from '@/types/enums/semester-enum'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserProcessFailureMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { buildCategoryBarChartOption, buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import {
   achievementItemsToBarItems,
   examStatSnapshotsToTrendPoints,

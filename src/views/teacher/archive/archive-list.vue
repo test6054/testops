@@ -116,63 +116,63 @@
       </UiDataTable>
     </a-card>
 
-  <a-modal
-    v-model:open="createModalOpen"
-    title="新建电子归档包"
-    :confirm-loading="creating"
-    :ok-button-props="{ disabled: !selectedExamId }"
-    ok-text="创建草稿"
-    cancel-text="取消"
-    @ok="submitCreate"
-  >
-    <a-form layout="vertical" :model="createForm" class="archive-create-form">
-      <a-alert
-        v-if="!selectedExamId"
-        type="warning"
-        show-icon
-        message="请先选择考试再新建电子归档包"
-      />
-      <a-form-item label="当前考试">
-        <a-input
-          :value="selectedExamLabel"
-          disabled
-          placeholder="从考试工作台带入"
+    <a-modal
+      v-model:open="createModalOpen"
+      title="新建电子归档包"
+      :confirm-loading="creating"
+      :ok-button-props="{ disabled: !selectedExamId }"
+      ok-text="创建草稿"
+      cancel-text="取消"
+      @ok="submitCreate"
+    >
+      <a-form layout="vertical" :model="createForm" class="archive-create-form">
+        <a-alert
+          v-if="!selectedExamId"
+          type="warning"
+          show-icon
+          message="请先选择考试再新建电子归档包"
         />
-      </a-form-item>
-      <a-form-item label="电子归档包名称">
-        <a-input
-          v-model:value="createForm.archiveTitle"
-          placeholder="留空使用默认：考试名 + 考后电子归档包"
-          :maxlength="120"
-        />
-      </a-form-item>
-      <a-form-item label="保管年限">
-        <a-space>
-          <a-input-number
-            v-model:value="createForm.retentionYears"
-            :min="1"
-            :max="100"
-            style="width: 120px"
-            :disabled="createForm.permanentRetention"
+        <a-form-item label="当前考试">
+          <a-input
+            :value="selectedExamLabel"
+            disabled
+            placeholder="从考试工作台带入"
           />
-          <a-checkbox v-model:checked="createForm.permanentRetention">永久保管</a-checkbox>
-        </a-space>
-      </a-form-item>
-      <a-form-item label="归档内容">
-        <a-space direction="vertical">
-          <a-checkbox v-model:checked="createForm.includeOriginalScans">
-            扫描影像文件（按学生分目录）
-          </a-checkbox>
-          <a-checkbox v-model:checked="createForm.includeMarkedSlices">
-            批改切片 + 批注 + 评分流水
-          </a-checkbox>
-          <a-checkbox v-model:checked="createForm.includeAnswerBooklet">
-            标准答案册 + 评分细则册
-          </a-checkbox>
-        </a-space>
-      </a-form-item>
-    </a-form>
-  </a-modal>
+        </a-form-item>
+        <a-form-item label="电子归档包名称">
+          <a-input
+            v-model:value="createForm.archiveTitle"
+            placeholder="留空使用默认：考试名 + 考后电子归档包"
+            :maxlength="120"
+          />
+        </a-form-item>
+        <a-form-item label="保管年限">
+          <a-space>
+            <a-input-number
+              v-model:value="createForm.retentionYears"
+              :min="1"
+              :max="100"
+              style="width: 120px"
+              :disabled="createForm.permanentRetention"
+            />
+            <a-checkbox v-model:checked="createForm.permanentRetention">永久保管</a-checkbox>
+          </a-space>
+        </a-form-item>
+        <a-form-item label="归档内容">
+          <a-space direction="vertical">
+            <a-checkbox v-model:checked="createForm.includeOriginalScans">
+              扫描影像文件（按学生分目录）
+            </a-checkbox>
+            <a-checkbox v-model:checked="createForm.includeMarkedSlices">
+              批改切片 + 批注 + 评分流水
+            </a-checkbox>
+            <a-checkbox v-model:checked="createForm.includeAnswerBooklet">
+              标准答案册 + 评分细则册
+            </a-checkbox>
+          </a-space>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -198,15 +198,12 @@ import {
   listArchives,
   packageArchive,
 } from '@/apis/mark/archive'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'

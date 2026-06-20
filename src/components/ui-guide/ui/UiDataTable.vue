@@ -88,14 +88,14 @@ import type {
   UiDataTableEmptyKind,
   UiDataTablePaginationMode,
 } from './data-table'
+import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
+import UiCard from './Card.vue'
 import {
   normalizeDataTableColumns,
   resolveDataTableScrollX,
   sliceDataTablePage,
   UI_DATA_TABLE_EMPTY_PRESETS,
 } from './data-table'
-import { computed, getCurrentInstance, ref, useAttrs, useSlots, watch } from 'vue'
-import UiCard from './Card.vue'
 import UiEmpty from './Empty.vue'
 import UiPagination from './Pagination.vue'
 import { resolvePopupContainer } from './popup-container'

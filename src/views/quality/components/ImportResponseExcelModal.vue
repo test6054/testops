@@ -69,7 +69,8 @@ import type { IndirectResponseImportResult } from '@/apis/quality/indirect-evalu
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { computed, ref } from 'vue'
 import { indirectResponseApi } from '@/apis/quality/indirect-evaluation'
-import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 
 const props = defineProps<{
   open: boolean

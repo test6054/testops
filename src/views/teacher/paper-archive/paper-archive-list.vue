@@ -197,7 +197,11 @@ import {
   PAPER_ARCHIVE_SET_STATUS_OPTIONS,
   PAPER_ARCHIVE_SET_STATUS_TONE,
 } from '@/apis/mark/paper-archive'
-import { UiButton, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContextStore } from '@/stores/modules/markExamContext'

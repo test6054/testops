@@ -9,161 +9,161 @@
     </div>
 
     <UiStatPanel
-        :items="statMetrics"
-        :columns="3"
-        variant="grid"
-        compact
-        class="score-finalize__signals"
-      />
+      :items="statMetrics"
+      :columns="3"
+      variant="grid"
+      compact
+      class="score-finalize__signals"
+    />
 
-      <UiAlertStrip
-        v-if="riskOverviewAlert.visible"
-        :tone="riskOverviewAlert.tone"
-        :title="riskOverviewAlert.title"
-        dense
-        class="score-finalize__risk-alert"
-      >
-        {{ riskOverviewAlert.message }}
-        <template #actions>
-          <UiButton
-            v-if="canBatchConfirmSafe"
-            variant="primary"
-            size="sm"
-            :loading="batchConfirming"
-            @click="handleBatchConfirmSafe"
-          >
-            批量确认无风险成绩
-          </UiButton>
-          <UiButton
-            v-if="blockingRiskReasons.length > 0"
-            variant="outline"
-            size="sm"
-            @click="openRiskReviewDrawer"
-          >
-            集中复核异常成绩
-          </UiButton>
-        </template>
-      </UiAlertStrip>
-
-      <!-- D-3 当前页偏差提示：z-score >= 1.5 的考生需要复核 -->
-      <UiAlertStrip
-        v-if="biasAlert.visible"
-        tone="warning"
-        title="当前页存在显著偏离均值的成绩参考"
-        :description="biasAlert.message"
-        dense
-        class="score-finalize__bias-alert"
-      />
-
-      <a-card :bordered="false" class="detail-table-card score-finalize__table-card">
-        <template #title>
-          <CheckCircleOutlined />
-          <span>考生名单</span>
-        </template>
-
-        <UiFilterBar
-          v-model="scoreFilterForm"
-          :fields="scoreFilterFields"
-          search-text="查询"
-          @search="handleSearch"
-          @reset="handleReset"
-        />
-
-        <UiDataTable
-          v-model:current="pagination.current"
-          v-model:page-size="pagination.pageSize"
-          :columns="columns"
-          :data-source="candidates"
-          :loading="loading"
-          :total="pagination.total"
-          row-key="candidateRosterId"
-          size="middle"
-          flat
-          class="score-finalize__table student-detail-table__data-table"
-          @page-change="handlePageChange"
+    <UiAlertStrip
+      v-if="riskOverviewAlert.visible"
+      :tone="riskOverviewAlert.tone"
+      :title="riskOverviewAlert.title"
+      dense
+      class="score-finalize__risk-alert"
+    >
+      {{ riskOverviewAlert.message }}
+      <template #actions>
+        <UiButton
+          v-if="canBatchConfirmSafe"
+          variant="primary"
+          size="sm"
+          :loading="batchConfirming"
+          @click="handleBatchConfirmSafe"
         >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'paperDisplay'">
-              <div class="score-finalize__identity-cell">
-                <a-typography-text strong :content="candidates[index].paperDisplay.primaryText" />
-                <span
-                  v-if="candidates[index].paperDisplay.secondaryText"
-                  class="score-finalize__hint"
-                >
-                  {{ candidates[index].paperDisplay.secondaryText }}
-                </span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'examScore'">
-              <a-typography-text v-if="candidates[index].examScore != null" strong>
-                {{ candidates[index].examScore }} 分
-              </a-typography-text>
-              <span v-else class="score-finalize__hint">-</span>
-            </template>
-            <template v-else-if="column.key === 'dailyScore'">
-              <a-typography-text v-if="candidates[index].dailyScore != null" strong>
-                {{ candidates[index].dailyScore }} 分
-              </a-typography-text>
-              <span v-else class="score-finalize__hint">-</span>
-            </template>
-            <template v-else-if="column.key === 'finalScore'">
-              <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
-                {{ candidates[index].finalScore }} 分
-              </a-typography-text>
-              <span v-else class="score-finalize__hint">-</span>
-            </template>
-            <template v-else-if="column.key === 'bias'">
-              <div class="score-finalize__bias-cell">
-                <UiTag :tone="biasLevelTone(classifyBias(candidates[index].finalScore))" size="sm">
-                  {{ biasLevelLabel(classifyBias(candidates[index].finalScore)) }}
-                </UiTag>
-                <span
-                  v-if="biasDelta(candidates[index].finalScore)"
-                  class="score-finalize__bias-delta"
-                >
-                  {{ biasDelta(candidates[index].finalScore) }}
-                </span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'finalScoreStatus'">
-              <UiTag :tone="finalScoreStatusTone(candidates[index].finalScoreStatus)" size="sm">
-                {{ finalScoreStatusLabel(candidates[index].finalScoreStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'confirmedTime'">
-              {{ formatDateTime(candidates[index].confirmedTime) }}
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction
-                  :disabled="!candidates[index].paperInstanceId"
-                  @click="openDetailDrawer(candidates[index])"
-                >
-                  明细
-                </UiTextAction>
-                <UiTextAction
-                  :disabled="!canConfirm(candidates[index])"
-                  @click="openConfirmModal(candidates[index])"
-                >
-                  {{ confirmButtonLabel(candidates[index]) }}
-                </UiTextAction>
-                <UiTextAction
-                  :disabled="!canPublish(candidates[index])"
-                  @click="handlePublish(candidates[index])"
-                >
-                  {{ publishButtonLabel(candidates[index]) }}
-                </UiTextAction>
-                <UiTextAction
-                  :disabled="!canWithdraw(candidates[index])"
-                  @click="openWithdrawModal(candidates[index])"
-                >
-                  撤回
-                </UiTextAction>
-              </div>
-            </template>
+          批量确认无风险成绩
+        </UiButton>
+        <UiButton
+          v-if="blockingRiskReasons.length > 0"
+          variant="outline"
+          size="sm"
+          @click="openRiskReviewDrawer"
+        >
+          集中复核异常成绩
+        </UiButton>
+      </template>
+    </UiAlertStrip>
+
+    <!-- D-3 当前页偏差提示：z-score >= 1.5 的考生需要复核 -->
+    <UiAlertStrip
+      v-if="biasAlert.visible"
+      tone="warning"
+      title="当前页存在显著偏离均值的成绩参考"
+      :description="biasAlert.message"
+      dense
+      class="score-finalize__bias-alert"
+    />
+
+    <a-card :bordered="false" class="detail-table-card score-finalize__table-card">
+      <template #title>
+        <CheckCircleOutlined />
+        <span>考生名单</span>
+      </template>
+
+      <UiFilterBar
+        v-model="scoreFilterForm"
+        :fields="scoreFilterFields"
+        search-text="查询"
+        @search="handleSearch"
+        @reset="handleReset"
+      />
+
+      <UiDataTable
+        v-model:current="pagination.current"
+        v-model:page-size="pagination.pageSize"
+        :columns="columns"
+        :data-source="candidates"
+        :loading="loading"
+        :total="pagination.total"
+        row-key="candidateRosterId"
+        size="middle"
+        flat
+        class="score-finalize__table student-detail-table__data-table"
+        @page-change="handlePageChange"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'paperDisplay'">
+            <div class="score-finalize__identity-cell">
+              <a-typography-text strong :content="candidates[index].paperDisplay.primaryText" />
+              <span
+                v-if="candidates[index].paperDisplay.secondaryText"
+                class="score-finalize__hint"
+              >
+                {{ candidates[index].paperDisplay.secondaryText }}
+              </span>
+            </div>
           </template>
-        </UiDataTable>
-      </a-card>
+          <template v-else-if="column.key === 'examScore'">
+            <a-typography-text v-if="candidates[index].examScore != null" strong>
+              {{ candidates[index].examScore }} 分
+            </a-typography-text>
+            <span v-else class="score-finalize__hint">-</span>
+          </template>
+          <template v-else-if="column.key === 'dailyScore'">
+            <a-typography-text v-if="candidates[index].dailyScore != null" strong>
+              {{ candidates[index].dailyScore }} 分
+            </a-typography-text>
+            <span v-else class="score-finalize__hint">-</span>
+          </template>
+          <template v-else-if="column.key === 'finalScore'">
+            <a-typography-text v-if="candidates[index].finalScore != null" strong type="success">
+              {{ candidates[index].finalScore }} 分
+            </a-typography-text>
+            <span v-else class="score-finalize__hint">-</span>
+          </template>
+          <template v-else-if="column.key === 'bias'">
+            <div class="score-finalize__bias-cell">
+              <UiTag :tone="biasLevelTone(classifyBias(candidates[index].finalScore))" size="sm">
+                {{ biasLevelLabel(classifyBias(candidates[index].finalScore)) }}
+              </UiTag>
+              <span
+                v-if="biasDelta(candidates[index].finalScore)"
+                class="score-finalize__bias-delta"
+              >
+                {{ biasDelta(candidates[index].finalScore) }}
+              </span>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'finalScoreStatus'">
+            <UiTag :tone="finalScoreStatusTone(candidates[index].finalScoreStatus)" size="sm">
+              {{ finalScoreStatusLabel(candidates[index].finalScoreStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'confirmedTime'">
+            {{ formatDateTime(candidates[index].confirmedTime) }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction
+                :disabled="!candidates[index].paperInstanceId"
+                @click="openDetailDrawer(candidates[index])"
+              >
+                明细
+              </UiTextAction>
+              <UiTextAction
+                :disabled="!canConfirm(candidates[index])"
+                @click="openConfirmModal(candidates[index])"
+              >
+                {{ confirmButtonLabel(candidates[index]) }}
+              </UiTextAction>
+              <UiTextAction
+                :disabled="!canPublish(candidates[index])"
+                @click="handlePublish(candidates[index])"
+              >
+                {{ publishButtonLabel(candidates[index]) }}
+              </UiTextAction>
+              <UiTextAction
+                :disabled="!canWithdraw(candidates[index])"
+                @click="openWithdrawModal(candidates[index])"
+              >
+                撤回
+              </UiTextAction>
+            </div>
+          </template>
+        </template>
+      </UiDataTable>
+    </a-card>
 
     <!-- 成绩明细 Drawer -->
     <UiDrawer
@@ -495,25 +495,24 @@ import {
   saveFinalScoreRiskReview,
   withdrawFinalScore,
 } from '@/apis/mark/exam'
-import { MarkTrendSection } from '@/components/chart'
-import {
-  UiActivityTimeline,
-  UiAlertStrip,
-  UiButton,
-  UiDataTable,
-  UiDrawer,
-  UiFilterBar,
-  UiStatPanel,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
-import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
-import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
+import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
+import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

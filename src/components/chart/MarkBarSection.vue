@@ -20,9 +20,9 @@
 <script lang="ts" setup>
 import type { EChartsCoreOption } from 'echarts/core'
 import { computed } from 'vue'
-import MarkChart from './MarkChart.vue'
-import { UiEmpty } from '@/components/ui-guide/ui'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import { MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
+import MarkChart from './MarkChart.vue'
 
 defineOptions({ name: 'MarkBarSection' })
 

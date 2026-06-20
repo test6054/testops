@@ -18,7 +18,7 @@
 </template>
 
 <script lang="ts" setup>
-import { UiStatisticChartCard } from '@/components/ui-guide/ui'
+import UiStatisticChartCard from '@/components/ui-guide/ui/UiStatisticChartCard.vue'
 
 defineOptions({ name: 'MarkChartCard' })
 

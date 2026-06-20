@@ -73,7 +73,8 @@ import type { BlobDownloadResponse } from '@/config/axios/types'
 import { InboxOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
-import { UiButton, UiDataTable } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 
 /**

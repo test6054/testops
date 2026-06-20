@@ -108,7 +108,7 @@ import {
   REVIEW_WINDOW_STATUS_LABEL,
   saveReviewWindowPolicy,
 } from '@/apis/mark/grade-review'
-import { UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

@@ -1,8 +1,8 @@
+import { storeToRefs } from 'pinia'
+import { ref, watch } from 'vue'
 import { getWorkbenchStageSnapshot } from '@/apis/mark/exam'
 import { useMarkStageStore } from '@/stores/modules/markStage'
 import { showUserError } from '@/utils/error-handler'
-import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
 
 /**
  * 考试工作台 layout 级快照拉取：写入 markStageStore，供 StageRail 与横幅使用。

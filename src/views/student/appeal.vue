@@ -227,14 +227,12 @@ import {
   submitReviewRequest,
 } from '@/apis/mark/grade-review'
 import { canSubmitReview, getMyScoreDetail, listMyExams } from '@/apis/mark/student-exam'
-import {
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError, toUserError } from '@/utils/error-handler'

@@ -176,13 +176,11 @@ import {
   getExamDetail,
   GRADING_STRATEGY_LABEL,
 } from '@/apis/mark/exam'
-import {
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError, toUserError } from '@/utils/error-handler'

@@ -18,7 +18,11 @@ import {
   ACCREDITATION_CYCLE_STATUS_LABEL,
   accreditationApi,
 } from '@/apis/quality'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import {
   canConclusion,
   canDeleteCycle,

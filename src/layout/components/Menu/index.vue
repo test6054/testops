@@ -77,7 +77,6 @@ import { useDevice } from '@/hooks'
 import { useAppStore, useAuthStore, useRouteStore } from '@/stores'
 import { RoleEnum } from '@/types/enums'
 import { isExternal } from '@/utils/validate'
-import { isSidebarMenuRoute } from '@/utils/menu-route'
 import MenuIcon from './MenuIcon.vue'
 import MenuItem from './MenuItem.vue'
 
@@ -111,6 +110,10 @@ const TEACHER_MARKING_ROLES: RoleEnum[] = [
 const ROLE_LAYOUT_PREFIXES = ['/admin', '/teacher', '/student', '/quality'] as const
 
 const MERGED_TEACHER_QUALITY_PREFIXES = ['/teacher', '/quality'] as const
+
+function isSidebarMenuRoute(route: RouteRecordRaw): boolean {
+  return !route.meta?.hideInMenu && !(route.redirect && !route.component && !route.components)
+}
 
 // 根据当前路径匹配所在的角色容器前缀
 const activeLayoutPrefix = computed(() => {

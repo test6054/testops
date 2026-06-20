@@ -32,14 +32,12 @@ import {
   getMarkingProgress,
   saveMaterialLayout,
 } from '@/apis/mark/exam'
-import {
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiEmpty,
-  UiStatPanel,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'

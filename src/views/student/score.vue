@@ -183,14 +183,12 @@ import {
   STUDENT_REVIEW_WINDOW_STATUS_LABEL,
   STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
-import {
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiStatPanel,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { showUserError } from '@/utils/error-handler'

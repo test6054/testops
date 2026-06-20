@@ -10,141 +10,141 @@
   </div>
 
   <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择考试"
-      class="print-package-page__empty"
-    />
+    v-if="!selectedExamId"
+    description="请选择考试"
+    class="print-package-page__empty"
+  />
 
-    <UiCard v-else class="print-package-page__list-card">
+  <UiCard v-else class="print-package-page__list-card">
+    <UiDataTable
+      v-model:current="pagination.pageNum"
+      v-model:page-size="pagination.pageSize"
+      class="student-detail-table__data-table"
+      :columns="packageColumns"
+      :data-source="packageList"
+      :loading="loading"
+      :total="pagination.total"
+      row-key="printPackageId"
+      size="middle"
+      flat
+      @page-change="handlePackagePageChange"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'packageName'">
+          {{ record.packageName }}
+        </template>
+        <template v-else-if="column.key === 'status'">
+          <UiTag :tone="statusTone(record.status)" size="sm">
+            {{ statusLabel(record.status) }}
+          </UiTag>
+        </template>
+        <template v-else-if="column.key === 'sealRemark'">
+          {{ record.sealRemark || '未填写封装备注' }}
+        </template>
+        <template v-else-if="column.key === 'actions'">
+          <div class="operations-cell" @click.stop>
+            <UiTextAction @click="viewDetail(record)">查看明细</UiTextAction>
+            <UiTextAction
+              v-if="record.packageFileId"
+              tone="primary"
+              @click="previewPackagePdf(record)"
+            >
+              预览
+            </UiTextAction>
+            <UiTextAction v-if="record.packageFileId" @click="downloadPackagePdf(record)">
+              下载 PDF
+            </UiTextAction>
+          </div>
+        </template>
+      </template>
+    </UiDataTable>
+  </UiCard>
+
+  <!-- 一键生成印刷包弹窗 -->
+  <a-modal
+    v-model:open="generateModalVisible"
+    title="一键生成印刷包"
+    :width="560"
+    :confirm-loading="generating"
+    ok-text="开始生成"
+    cancel-text="取消"
+    @ok="handleGenerate"
+  >
+    <a-form layout="vertical" style="margin-top: 8px">
+      <a-form-item label="印刷包编号" required>
+        <a-input
+          v-model:value="generateForm.packageNo"
+          placeholder="例如：PKG-2026-001"
+          :maxlength="50"
+        />
+      </a-form-item>
+      <a-form-item label="印刷包名称" required>
+        <a-input
+          v-model:value="generateForm.packageName"
+          placeholder="例如：期末A卷-第一批次"
+          :maxlength="100"
+        />
+      </a-form-item>
+      <a-form-item label="封装备注">
+        <a-textarea
+          v-model:value="generateForm.sealRemark"
+          :rows="2"
+          :maxlength="500"
+          placeholder="可选"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
+
+  <!-- 印刷包明细弹窗 -->
+  <a-modal
+    v-model:open="detailModalVisible"
+    :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
+    :width="960"
+    :footer="null"
+  >
+    <a-spin :spinning="detailLoading">
       <UiDataTable
-        v-model:current="pagination.pageNum"
-        v-model:page-size="pagination.pageSize"
+        pagination-mode="none"
         class="student-detail-table__data-table"
-        :columns="packageColumns"
-        :data-source="packageList"
-        :loading="loading"
-        :total="pagination.total"
-        row-key="printPackageId"
-        size="middle"
+        :columns="detailColumns"
+        :data-source="detailItems"
+        :show-pagination="false"
         flat
-        @page-change="handlePackagePageChange"
+        :total="detailItems.length"
+        row-key="printPackageItemId"
+        size="small"
+        bordered
+        :scroll="{ y: 400 }"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'packageName'">
-            {{ record.packageName }}
-          </template>
-          <template v-else-if="column.key === 'status'">
-            <UiTag :tone="statusTone(record.status)" size="sm">
-              {{ statusLabel(record.status) }}
+          <template v-if="column.key === 'status'">
+            <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
+              {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
             </UiTag>
-          </template>
-          <template v-else-if="column.key === 'sealRemark'">
-            {{ record.sealRemark || '未填写封装备注' }}
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <div class="operations-cell" @click.stop>
-              <UiTextAction @click="viewDetail(record)">查看明细</UiTextAction>
-              <UiTextAction
-                v-if="record.packageFileId"
-                tone="primary"
-                @click="previewPackagePdf(record)"
-              >
-                预览
-              </UiTextAction>
-              <UiTextAction v-if="record.packageFileId" @click="downloadPackagePdf(record)">
-                下载 PDF
-              </UiTextAction>
-            </div>
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </a-spin>
+  </a-modal>
 
-    <!-- 一键生成印刷包弹窗 -->
-    <a-modal
-      v-model:open="generateModalVisible"
-      title="一键生成印刷包"
-      :width="560"
-      :confirm-loading="generating"
-      ok-text="开始生成"
-      cancel-text="取消"
-      @ok="handleGenerate"
-    >
-      <a-form layout="vertical" style="margin-top: 8px">
-        <a-form-item label="印刷包编号" required>
-          <a-input
-            v-model:value="generateForm.packageNo"
-            placeholder="例如：PKG-2026-001"
-            :maxlength="50"
-          />
-        </a-form-item>
-        <a-form-item label="印刷包名称" required>
-          <a-input
-            v-model:value="generateForm.packageName"
-            placeholder="例如：期末A卷-第一批次"
-            :maxlength="100"
-          />
-        </a-form-item>
-        <a-form-item label="封装备注">
-          <a-textarea
-            v-model:value="generateForm.sealRemark"
-            :rows="2"
-            :maxlength="500"
-            placeholder="可选"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- 印刷包明细弹窗 -->
-    <a-modal
-      v-model:open="detailModalVisible"
-      :title="`印刷包明细 - ${detailPackage?.packageName ?? ''}`"
-      :width="960"
-      :footer="null"
-    >
-      <a-spin :spinning="detailLoading">
-        <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
-          :columns="detailColumns"
-          :data-source="detailItems"
-          :show-pagination="false"
-          flat
-          :total="detailItems.length"
-          row-key="printPackageItemId"
-          size="small"
-          bordered
-          :scroll="{ y: 400 }"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'status'">
-              <UiTag :tone="record.status === 'PRINTED' ? 'green' : 'gray'" size="sm">
-                {{ record.status === 'PRINTED' ? '已印刷' : '待印刷' }}
-              </UiTag>
-            </template>
-          </template>
-        </UiDataTable>
-      </a-spin>
-    </a-modal>
-
-    <!-- PDF 预览 Modal -->
-    <a-modal
-      v-model:open="previewModalOpen"
-      title="印刷包 PDF 预览"
-      width="900px"
-      :footer="null"
-      :destroy-on-close="true"
-    >
-      <a-spin :spinning="previewLoading">
-        <iframe
-          v-if="previewPdfUrl"
-          :src="previewPdfUrl"
-          style="width: 100%; height: 70vh; border: none"
-        />
-        <UiEmpty v-else-if="!previewLoading" description="暂无数据" />
-      </a-spin>
-    </a-modal>
+  <!-- PDF 预览 Modal -->
+  <a-modal
+    v-model:open="previewModalOpen"
+    title="印刷包 PDF 预览"
+    width="900px"
+    :footer="null"
+    :destroy-on-close="true"
+  >
+    <a-spin :spinning="previewLoading">
+      <iframe
+        v-if="previewPdfUrl"
+        :src="previewPdfUrl"
+        style="width: 100%; height: 70vh; border: none"
+      />
+      <UiEmpty v-else-if="!previewLoading" description="暂无数据" />
+    </a-spin>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
@@ -162,14 +162,12 @@ import {
   PRINT_PACKAGE_STATUS_LABEL,
   PRINT_PACKAGE_STATUS_TONE,
 } from '@/apis/mark/paper-master'
-import {
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'

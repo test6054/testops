@@ -296,16 +296,13 @@ import {
   updateExam,
 } from '@/apis/mark/exam'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'

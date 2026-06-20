@@ -1,6 +1,6 @@
 import type { InjectionKey } from 'vue'
-import type { MarkExamSelectorOptions } from '@/composables/useMarkExamSelector'
 import type { ExamSummaryVO } from '@/apis/mark/exam'
+import type { MarkExamSelectorOptions } from '@/composables/useMarkExamSelector'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed, inject, provide, ref, watch } from 'vue'
 import { getExamDetail } from '@/apis/mark/exam'

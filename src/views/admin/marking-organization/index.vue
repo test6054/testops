@@ -288,13 +288,11 @@ import {
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiDrawer,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useUserStore } from '@/stores/modules/user'

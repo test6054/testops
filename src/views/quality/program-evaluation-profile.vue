@@ -27,7 +27,12 @@ import {
   programEvaluationProfileApi,
 } from '@/apis/quality'
 import { ProgramSelector } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'

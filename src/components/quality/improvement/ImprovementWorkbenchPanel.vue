@@ -2,7 +2,8 @@
 /**
  * 改进工作台列表区统一面板：空态 + UiCard 标题栏，承载各 Tab 筛选与表格。
  */
-import { UiCard, UiEmpty } from '@/components/ui-guide/ui'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 
 defineOptions({ name: 'ImprovementWorkbenchPanel' })
 

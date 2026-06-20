@@ -144,9 +144,13 @@ import {
   generateQuestionAnalysis,
   listQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
-import { MarkBarSection, MarkScatterSection } from '@/components/chart'
-import { UiButton, UiCard, UiDataTable, UiTextAction } from '@/components/ui-guide/ui'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'

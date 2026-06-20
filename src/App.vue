@@ -2,12 +2,13 @@
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import theme from 'ant-design-vue/es/theme'
 import { onBeforeUnmount, watch } from 'vue'
-import { DP_FONT_FAMILY_SANS } from '@/constants/typography'
 import { GlobalConfirmDialog } from '@/components/workbench'
 import { useAppStore, useUserStore } from '@/stores'
 import { useNotificationStore } from '@/stores/modules/notification'
 
 defineOptions({ name: 'App' })
+
+const DP_FONT_FAMILY_SANS = '-apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 /**
  * Ant Design Vue 全局主题配置

@@ -288,7 +288,11 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
-import { UiButton, UiCard, UiEmpty, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { NotificationTypeEnum } from '@/types/enums/notification-type'

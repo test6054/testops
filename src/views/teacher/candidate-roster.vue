@@ -2,314 +2,313 @@
   <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
 
   <a-spin v-else :spinning="contextLoading">
-      <UiCard class="info-card">
-        <template #title>
-          <TeamOutlined />
-          <span>班级范围</span>
-          <UiTag v-if="rosterLocked" tone="orange" size="sm">扫描已开始</UiTag>
-          <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
-        </template>
-        <UiAlertStrip
-          v-if="classScopeReadOnly && !rosterLocked"
-          tone="warning"
-          title="当前账号无权维护该考试名册"
-          description="暂无数据"
-          dense
-          class="info-card__alert"
-        />
-        <div v-if="classScopeReadOnly" class="roster-class-tags">
-          <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
-            {{ item.className }}
-          </UiTag>
-          <span v-if="!scopedClassTags.length" class="roster-class-tags__empty">尚未配置班级范围</span>
-        </div>
-        <a-select
-          v-else
-          v-model:value="classIds"
-          mode="multiple"
-          placeholder="选择参考班级（可多选）"
-          :options="classSelectOptions"
-          :loading="classOptionsLoading"
-          show-search
-          option-filter-prop="label"
-          allow-clear
-          class="info-card__class-select"
-        />
-      </UiCard>
+    <UiCard class="info-card">
+      <template #title>
+        <TeamOutlined />
+        <span>班级范围</span>
+        <UiTag v-if="rosterLocked" tone="orange" size="sm">扫描已开始</UiTag>
+        <UiTag v-else-if="classScopeReadOnly" tone="gray" size="sm">只读</UiTag>
+      </template>
+      <UiAlertStrip
+        v-if="classScopeReadOnly && !rosterLocked"
+        tone="warning"
+        title="当前账号无权维护该考试名册"
+        description="暂无数据"
+        dense
+        class="info-card__alert"
+      />
+      <div v-if="classScopeReadOnly" class="roster-class-tags">
+        <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
+          {{ item.className }}
+        </UiTag>
+        <span v-if="!scopedClassTags.length" class="roster-class-tags__empty">尚未配置班级范围</span>
+      </div>
+      <a-select
+        v-else
+        v-model:value="classIds"
+        mode="multiple"
+        placeholder="选择参考班级（可多选）"
+        :options="classSelectOptions"
+        :loading="classOptionsLoading"
+        show-search
+        option-filter-prop="label"
+        allow-clear
+        class="info-card__class-select"
+      />
+    </UiCard>
 
-      <a-card :bordered="false" class="detail-table-card info-card roster-page__table-card">
-        <template #title>
-          <UserOutlined />
-          <span>考生名册</span>
-        </template>
-        <template v-if="!classScopeReadOnly" #extra>
-          <a-space>
-            <UiButton
-              size="sm"
-              variant="outline"
-              :disabled="!classIds.length"
-              @click="openSelectDrawer"
-            >
-              <template #icon><UserAddOutlined /></template>
-              从学生库选择
-            </UiButton>
-            <UiButton size="sm" variant="outline" @click="openImportModal">
-              <template #icon><UploadOutlined /></template>
-              批量导入
-            </UiButton>
-            <UiButton size="sm" @click="openSingleAddModal">
-              <template #icon><PlusOutlined /></template>
-              添加单个
-            </UiButton>
-            <UiButton
-              size="sm"
-              variant="outline"
-              :loading="fullScopeSaving"
-              :disabled="!classIds.length || candidateTotal === 0"
-              @click="confirmSaveFullScope"
-            >
-              全量保存名册
-            </UiButton>
-          </a-space>
-        </template>
-
-        <UiFilterBar
-          v-model="rosterFilterForm"
-          :fields="rosterFilterFields"
-          search-text="查询"
-          @search="handleRosterSearch"
-          @reset="handleRosterReset"
-        />
-
-        <UiDataTable
-          v-model:current="pagination.current"
-          v-model:page-size="pagination.pageSize"
-          :columns="columns"
-          :data-source="tableCandidates"
-          :loading="tableLoading"
-          :total="pagination.total"
-          row-key="rowKey"
-          size="middle"
-          flat
-          class="roster-table student-detail-table__data-table"
-          bordered
-          @page-change="handlePageChange"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'student'">
-              <div class="roster-student">
-                <span class="roster-student__name">{{ (record as CandidateRow).studentName }}</span>
-                <span class="roster-student__no">{{ (record as CandidateRow).studentNo }}</span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'className'">
-              <span class="roster-cell roster-cell--muted">
-                {{ (record as CandidateRow).className }}
-              </span>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiConfirmPopover
-                  v-if="!classScopeReadOnly"
-                  title="确认移除该考生？"
-                  description="移除后需重新加入名册。"
-                  danger
-                  @confirm="removeCandidate((record as CandidateRow).studentUserId)"
-                >
-                  <UiTextAction tone="danger">移除</UiTextAction>
-                </UiConfirmPopover>
-                <span v-else class="muted">—</span>
-              </div>
-            </template>
-          </template>
-        </UiDataTable>
-      </a-card>
-    </a-spin>
-
-    <ClassStudentTreeSelectorDrawer
-      v-model="selectDrawerOpen"
-      title="选择考试考生"
-      :exam-id="selectedExamId ?? undefined"
-      :allowed-class-ids="classIds"
-      :excluded-student-ids="rosterStudentUserIds"
-      @confirm="handleStudentsSelected"
-    />
-    <a-modal
-      v-model:open="showImportModal"
-      title="导入考生名册"
-      ok-text="导入名册"
-      :ok-button-props="{ disabled: !importPreview || importPreview.errorCount > 0 || importPreview.validCount === 0 }"
-      :confirm-loading="importCommitting"
-      :destroy-on-close="true"
-      width="920px"
-      @ok="handleCommitImport"
-      @cancel="resetImportModal"
-    >
-      <div class="roster-import">
-        <div class="roster-import__toolbar">
-          <a-upload
-            accept=".xlsx,.xls,.csv,.tsv,.txt"
-            :show-upload-list="false"
-            :before-upload="handleImportFileSelected"
+    <a-card :bordered="false" class="detail-table-card info-card roster-page__table-card">
+      <template #title>
+        <UserOutlined />
+        <span>考生名册</span>
+      </template>
+      <template v-if="!classScopeReadOnly" #extra>
+        <a-space>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="!classIds.length"
+            @click="openSelectDrawer"
           >
-            <UiButton size="sm" variant="outline">
-              <template #icon><UploadOutlined /></template>
-              选择文件
-            </UiButton>
-          </a-upload>
-          <UiButton size="sm" :loading="importPreviewing" :disabled="!canPreviewImport" @click="handlePreviewImport">
-            重新预览
+            <template #icon><UserAddOutlined /></template>
+            从学生库选择
           </UiButton>
-          <UiTag v-if="importFileName" tone="blue" size="sm">{{ importFileName }}</UiTag>
-          <UiTag v-if="importDataRowCount > 0" tone="gray" size="sm">{{ importDataRowCount }} 行数据</UiTag>
-          <UiTag v-if="importPreview" :tone="importPreview.errorCount > 0 ? 'red' : 'green'" size="sm">
-            {{ importPreview.validCount }} 可导入 / {{ importPreview.errorCount }} 错误
-          </UiTag>
-        </div>
-        <a-alert
-          v-if="importValidationMessage"
-          :message="importValidationMessage"
-          type="warning"
-          show-icon
-          class="roster-import__alert"
-        />
-        <div v-if="importColumnOptions.length" class="roster-import__mapping">
-          <a-form layout="vertical" class="roster-import__mapping-form">
-            <a-form-item label="院系">
-              <a-select
-                v-model:value="importFieldMapping.departmentName"
-                :options="optionalImportColumnOptions"
-                placeholder="可不选择"
-                allow-clear
-              />
-            </a-form-item>
-            <a-form-item label="班级" required>
-              <a-select
-                v-model:value="importFieldMapping.className"
-                :options="importColumnOptions"
-                placeholder="选择班级列"
-              />
-            </a-form-item>
-            <a-form-item label="学号" required>
-              <a-select
-                v-model:value="importFieldMapping.studentNo"
-                :options="importColumnOptions"
-                placeholder="选择学号列"
-              />
-            </a-form-item>
-            <a-form-item label="姓名" required>
-              <a-select
-                v-model:value="importFieldMapping.studentName"
-                :options="importColumnOptions"
-                placeholder="选择姓名列"
-              />
-            </a-form-item>
-          </a-form>
-          <div class="roster-import__preview">
-            <div class="roster-import__preview-title">文件前 5 行</div>
-            <div class="roster-import__preview-grid">
-              <div
-                v-for="option in importColumnOptions"
-                :key="option.value"
-                class="roster-import__preview-head"
-              >
-                {{ option.label }}
-              </div>
-              <template v-for="row in importPreviewSampleRows" :key="row.rowNo">
-                <div
-                  v-for="cell in row.cells"
-                  :key="`${row.rowNo}-${cell.columnIndex}`"
-                  class="roster-import__preview-cell"
-                >
-                  {{ cell.text || '—' }}
-                </div>
-              </template>
+          <UiButton size="sm" variant="outline" @click="openImportModal">
+            <template #icon><UploadOutlined /></template>
+            批量导入
+          </UiButton>
+          <UiButton size="sm" @click="openSingleAddModal">
+            <template #icon><PlusOutlined /></template>
+            添加单个
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="fullScopeSaving"
+            :disabled="!classIds.length || candidateTotal === 0"
+            @click="confirmSaveFullScope"
+          >
+            全量保存名册
+          </UiButton>
+        </a-space>
+      </template>
+
+      <UiFilterBar
+        v-model="rosterFilterForm"
+        :fields="rosterFilterFields"
+        search-text="查询"
+        @search="handleRosterSearch"
+        @reset="handleRosterReset"
+      />
+
+      <UiDataTable
+        v-model:current="pagination.current"
+        v-model:page-size="pagination.pageSize"
+        :columns="columns"
+        :data-source="tableCandidates"
+        :loading="tableLoading"
+        :total="pagination.total"
+        row-key="rowKey"
+        size="middle"
+        flat
+        class="roster-table student-detail-table__data-table"
+        bordered
+        @page-change="handlePageChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'student'">
+            <div class="roster-student">
+              <span class="roster-student__name">{{ (record as CandidateRow).studentName }}</span>
+              <span class="roster-student__no">{{ (record as CandidateRow).studentNo }}</span>
             </div>
+          </template>
+          <template v-else-if="column.key === 'className'">
+            <span class="roster-cell roster-cell--muted">
+              {{ (record as CandidateRow).className }}
+            </span>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiConfirmPopover
+                v-if="!classScopeReadOnly"
+                title="确认移除该考生？"
+                description="移除后需重新加入名册。"
+                danger
+                @confirm="removeCandidate((record as CandidateRow).studentUserId)"
+              >
+                <UiTextAction tone="danger">移除</UiTextAction>
+              </UiConfirmPopover>
+              <span v-else class="muted">—</span>
+            </div>
+          </template>
+        </template>
+      </UiDataTable>
+    </a-card>
+  </a-spin>
+
+  <ClassStudentTreeSelectorDrawer
+    v-model="selectDrawerOpen"
+    title="选择考试考生"
+    :exam-id="selectedExamId ?? undefined"
+    :allowed-class-ids="classIds"
+    :excluded-student-ids="rosterStudentUserIds"
+    @confirm="handleStudentsSelected"
+  />
+  <a-modal
+    v-model:open="showImportModal"
+    title="导入考生名册"
+    ok-text="导入名册"
+    :ok-button-props="{ disabled: !importPreview || importPreview.errorCount > 0 || importPreview.validCount === 0 }"
+    :confirm-loading="importCommitting"
+    :destroy-on-close="true"
+    width="920px"
+    @ok="handleCommitImport"
+    @cancel="resetImportModal"
+  >
+    <div class="roster-import">
+      <div class="roster-import__toolbar">
+        <a-upload
+          accept=".xlsx,.xls,.csv,.tsv,.txt"
+          :show-upload-list="false"
+          :before-upload="handleImportFileSelected"
+        >
+          <UiButton size="sm" variant="outline">
+            <template #icon><UploadOutlined /></template>
+            选择文件
+          </UiButton>
+        </a-upload>
+        <UiButton size="sm" :loading="importPreviewing" :disabled="!canPreviewImport" @click="handlePreviewImport">
+          重新预览
+        </UiButton>
+        <UiTag v-if="importFileName" tone="blue" size="sm">{{ importFileName }}</UiTag>
+        <UiTag v-if="importDataRowCount > 0" tone="gray" size="sm">{{ importDataRowCount }} 行数据</UiTag>
+        <UiTag v-if="importPreview" :tone="importPreview.errorCount > 0 ? 'red' : 'green'" size="sm">
+          {{ importPreview.validCount }} 可导入 / {{ importPreview.errorCount }} 错误
+        </UiTag>
+      </div>
+      <a-alert
+        v-if="importValidationMessage"
+        :message="importValidationMessage"
+        type="warning"
+        show-icon
+        class="roster-import__alert"
+      />
+      <div v-if="importColumnOptions.length" class="roster-import__mapping">
+        <a-form layout="vertical" class="roster-import__mapping-form">
+          <a-form-item label="院系">
+            <a-select
+              v-model:value="importFieldMapping.departmentName"
+              :options="optionalImportColumnOptions"
+              placeholder="可不选择"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item label="班级" required>
+            <a-select
+              v-model:value="importFieldMapping.className"
+              :options="importColumnOptions"
+              placeholder="选择班级列"
+            />
+          </a-form-item>
+          <a-form-item label="学号" required>
+            <a-select
+              v-model:value="importFieldMapping.studentNo"
+              :options="importColumnOptions"
+              placeholder="选择学号列"
+            />
+          </a-form-item>
+          <a-form-item label="姓名" required>
+            <a-select
+              v-model:value="importFieldMapping.studentName"
+              :options="importColumnOptions"
+              placeholder="选择姓名列"
+            />
+          </a-form-item>
+        </a-form>
+        <div class="roster-import__preview">
+          <div class="roster-import__preview-title">文件前 5 行</div>
+          <div class="roster-import__preview-grid">
+            <div
+              v-for="option in importColumnOptions"
+              :key="option.value"
+              class="roster-import__preview-head"
+            >
+              {{ option.label }}
+            </div>
+            <template v-for="row in importPreviewSampleRows" :key="row.rowNo">
+              <div
+                v-for="cell in row.cells"
+                :key="`${row.rowNo}-${cell.columnIndex}`"
+                class="roster-import__preview-cell"
+              >
+                {{ cell.text || '—' }}
+              </div>
+            </template>
           </div>
         </div>
-        <UiDataTable
-          pagination-mode="client"
-          v-if="importPreview"
-          :columns="importColumns"
-          :data-source="importPreviewPagedRows"
-          v-model:current="importPreviewPage"
-          v-model:page-size="importPreviewPageSize"
-          :total="importPreview.rows.length"
-          :show-size-changer="false"
-          row-key="rowNo"
-          size="small"
-          flat
-          class="roster-import__table"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'student'">
-              <div class="roster-student">
-                <span class="roster-student__name">
-                  {{ (record as ExamCandidateImportRowResponse).resolvedStudentName || (record as ExamCandidateImportRowResponse).studentName }}
-                </span>
-                <span class="roster-student__no">
-                  {{ (record as ExamCandidateImportRowResponse).resolvedStudentNo || (record as ExamCandidateImportRowResponse).studentNo }}
-                </span>
-              </div>
-            </template>
-            <template v-else-if="column.key === 'className'">
-              <span>{{ (record as ExamCandidateImportRowResponse).resolvedClassName || (record as ExamCandidateImportRowResponse).className }}</span>
-            </template>
-            <template v-else-if="column.key === 'action'">
-              <UiTag
-                v-if="(record as ExamCandidateImportRowResponse).valid"
-                :tone="(record as ExamCandidateImportRowResponse).importAction === 'CREATE_STUDENT' ? 'orange' : 'blue'"
-                size="sm"
-              >
-                {{ (record as ExamCandidateImportRowResponse).importAction === 'CREATE_STUDENT' ? '将创建学生用户' : '复用学生用户' }}
-              </UiTag>
-              <UiTag v-else tone="red" size="sm">不可导入</UiTag>
-            </template>
-            <template v-else-if="column.key === 'message'">
-              <span :class="{ 'roster-import__error': !(record as ExamCandidateImportRowResponse).valid }">
-                {{ (record as ExamCandidateImportRowResponse).errorMessage || '可导入' }}
-              </span>
-            </template>
-          </template>
-        </UiDataTable>
       </div>
-    </a-modal>
+      <UiDataTable
+        pagination-mode="client"
+        v-if="importPreview"
+        :columns="importColumns"
+        :data-source="importPreviewPagedRows"
+        v-model:current="importPreviewPage"
+        v-model:page-size="importPreviewPageSize"
+        :total="importPreview.rows.length"
+        :show-size-changer="false"
+        row-key="rowNo"
+        size="small"
+        flat
+        class="roster-import__table"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'student'">
+            <div class="roster-student">
+              <span class="roster-student__name">
+                {{ (record as ExamCandidateImportRowResponse).resolvedStudentName || (record as ExamCandidateImportRowResponse).studentName }}
+              </span>
+              <span class="roster-student__no">
+                {{ (record as ExamCandidateImportRowResponse).resolvedStudentNo || (record as ExamCandidateImportRowResponse).studentNo }}
+              </span>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'className'">
+            <span>{{ (record as ExamCandidateImportRowResponse).resolvedClassName || (record as ExamCandidateImportRowResponse).className }}</span>
+          </template>
+          <template v-else-if="column.key === 'action'">
+            <UiTag
+              v-if="(record as ExamCandidateImportRowResponse).valid"
+              :tone="(record as ExamCandidateImportRowResponse).importAction === 'CREATE_STUDENT' ? 'orange' : 'blue'"
+              size="sm"
+            >
+              {{ (record as ExamCandidateImportRowResponse).importAction === 'CREATE_STUDENT' ? '将创建学生用户' : '复用学生用户' }}
+            </UiTag>
+            <UiTag v-else tone="red" size="sm">不可导入</UiTag>
+          </template>
+          <template v-else-if="column.key === 'message'">
+            <span :class="{ 'roster-import__error': !(record as ExamCandidateImportRowResponse).valid }">
+              {{ (record as ExamCandidateImportRowResponse).errorMessage || '可导入' }}
+            </span>
+          </template>
+        </template>
+      </UiDataTable>
+    </div>
+  </a-modal>
 
-    <a-modal
-      v-model:open="singleAddOpen"
-      title="添加考生"
-      ok-text="加入名册"
-      :confirm-loading="singleAddSubmitting"
-      :destroy-on-close="true"
-      width="520px"
-      @ok="handleSingleAddSubmit"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="班级" required>
-          <a-select
-            v-model:value="singleAddClassId"
-            placeholder="请选择班级"
-            :options="classSelectOptions"
-            show-search
-            option-filter-prop="label"
-            style="width: 100%"
-          />
-        </a-form-item>
-        <a-form-item label="学生" required>
-          <StudentSelector
-            v-model:value="singleAddStudentUserId"
-            :class-id="singleAddClassId"
-            :exam-id="selectedExamId"
-            width="100%"
-            @change="handleSingleStudentChange"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+  <a-modal
+    v-model:open="singleAddOpen"
+    title="添加考生"
+    ok-text="加入名册"
+    :confirm-loading="singleAddSubmitting"
+    :destroy-on-close="true"
+    width="520px"
+    @ok="handleSingleAddSubmit"
+  >
+    <a-form layout="vertical">
+      <a-form-item label="班级" required>
+        <a-select
+          v-model:value="singleAddClassId"
+          placeholder="请选择班级"
+          :options="classSelectOptions"
+          show-search
+          option-filter-prop="label"
+          style="width: 100%"
+        />
+      </a-form-item>
+      <a-form-item label="学生" required>
+        <StudentSelector
+          v-model:value="singleAddStudentUserId"
+          :class-id="singleAddClassId"
+          :exam-id="selectedExamId"
+          width="100%"
+          @change="handleSingleStudentChange"
+        />
+      </a-form-item>
+    </a-form>
+  </a-modal>
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { CandidateRow } from './candidate-roster/types'
 import type {
@@ -346,17 +345,15 @@ import {
 } from '@/apis/mark/exam'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import StudentSelector from '@/components/quality/selectors/StudentSelector.vue'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiCard,
-  UiConfirmPopover,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { ErrorType, handleError, showUserError, toUserError } from '@/utils/error-handler'
 import { readAllPages, readPageList, readPageTotal } from '@/utils/page-result'

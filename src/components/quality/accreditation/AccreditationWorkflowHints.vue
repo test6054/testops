@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AccreditationCycleVO } from '@/apis/quality'
 import { computed } from 'vue'
-import { UiButton } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
   canConclusion,
   canRecordApplication,

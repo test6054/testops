@@ -110,7 +110,9 @@ import {
   validateMarkingOrganizationContract,
   validateTrialSessionContract,
 } from '@/apis/mark/marking-organization'
-import { UiButton, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'

@@ -55,7 +55,6 @@ import {
   accreditationStandardApi,
   AGGREGATION_FUNCTION_LABEL,
   CIVIC_DIMENSION_LABEL,
-  CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_LABEL,
   graduationRequirementApi,
   requirementIndicatorApi,
@@ -67,12 +66,18 @@ import {
 import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
 import ProgramEvaluationProfileSelector from '@/components/quality/selectors/ProgramEvaluationProfileSelector.vue'
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, MatrixWorkbench, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
 import { readAllPages } from '@/utils/page-result'
-import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 const ACCREDITATION_STANDARD_OPTION_PAGE_SIZE = 100
 const objectiveColumns: ColumnsType = [

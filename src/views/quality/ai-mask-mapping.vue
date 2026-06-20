@@ -29,7 +29,10 @@ import {
   aiMaskMappingApi,
   aiTaskApi,
 } from '@/apis/quality'
-import { UiCard, UiEmpty, UiFilterBar, UiTag } from '@/components/ui-guide/ui'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { readPageList } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'

@@ -40,7 +40,12 @@ import {
   achievementManualReviewApi,
   MANUAL_REVIEW_DECISION_LABEL,
 } from '@/apis/quality'
-import { UiButton, UiCard, UiDataTable, UiDrawer, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { ContextBar, SignalBand, StageWorkbenchShell } from '@/components/workbench'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 import { promptModal } from './_helpers'

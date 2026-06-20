@@ -1,12 +1,10 @@
 <template>
   <div class="scan-monitor">
-
     <UiEmpty
       v-if="!selectedExamId"
       description="未进入考试工作台"
       class="scan-monitor__empty"
     />
-
     <template v-else>
       <div class="scan-monitor__embedded-toolbar">
         <UiTag
@@ -59,12 +57,7 @@
         />
         <UiCard :show-header="false" compact class="scan-monitor__health-card">
           <MarkGaugeBlock
-            :option="healthGaugeOption"
-            :ariaLabel="healthAriaLabel"
-            layout="stacked"
-            gauge-size="lg"
-            gauge-height="180px"
-            gauge-width="180px"
+            v-bind="healthGaugeBlockProps"
           >
             <ul class="mark-gauge-block__detail-list">
               <li>实时事件 {{ liveEvents.length }} 条</li>
@@ -662,29 +655,27 @@ import {
 } from '@/apis/mark/exam'
 import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import { discardScannedPage } from '@/apis/mark/scanner-kiosk'
-import { MarkGaugeBlock } from '@/components/chart'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiDrawer,
-  UiEmpty,
-  UiFilterBar,
-  UiSectionTabs,
-  UiStatPanel,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import mittBus from '@/utils/mitt'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds, formatTimeOfDay } from '@/utils/format'
-import { readArrayResponse, readPageList, readPageTotal } from '@/utils/page-result'
-import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
+import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
+import mittBus from '@/utils/mitt'
+import { readArrayResponse, readPageList, readPageTotal } from '@/utils/page-result'
 import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -706,7 +697,6 @@ const router = useRouter()
 const {
   selectedExamId,
   selectedExamLabel,
-  init: initExamSelector,
 } = useMarkExamContext()
 
 // ─── 列表筛选 + 数据 ─────────────────────────────
@@ -896,6 +886,15 @@ const healthAriaLabel = computed(() =>
     `实时事件 ${liveEvents.value.length} 条，异常 ${abnormalAttentionTotal.value} 条，重复 ${duplicateAttentionTotal.value} 条`,
   ),
 )
+
+const healthGaugeBlockProps = computed(() => ({
+  option: healthGaugeOption.value,
+  ariaLabel: healthAriaLabel.value,
+  layout: 'stacked' as const,
+  gaugeSize: 'lg' as const,
+  gaugeHeight: '180px',
+  gaugeWidth: '180px',
+}))
 
 const monitorTabs = computed<UiSectionTabItem[]>(() => [
   {
@@ -1532,10 +1531,6 @@ async function ensureCandidatesLoaded(): Promise<boolean> {
   } finally {
     candidatesLoading.value = false
   }
-}
-
-async function retryLoadCandidates(): Promise<void> {
-  await ensureCandidatesLoaded()
 }
 
 function releaseBindIdentitySliceImage(): void {

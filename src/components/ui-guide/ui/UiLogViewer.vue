@@ -265,8 +265,7 @@ onBeforeUnmount(() => {
 .ui-log-viewer__pre {
   display: block;
   padding: 0 14px;
-  font-family:
-    'SFMono-Regular', ui-monospace, 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-family: var(--font-family-code);
   font-size: 12px;
   line-height: 1.8;
 }

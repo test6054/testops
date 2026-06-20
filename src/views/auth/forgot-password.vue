@@ -132,7 +132,10 @@ import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { resetPassword, sendResetCode, verifyResetCode } from '@/apis/auth'
 import AuthLayout from '@/components/AuthLayout/index.vue'
-import { UiButton, UiFormField, UiInput, UiPasswordInput } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiPasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
+import UiFormField from '@/components/ui-guide/ui/UiFormField.vue'
 import { evaluatePasswordStrength, getPasswordStrengthText } from '@/utils/password-policy'
 
 defineOptions({ name: 'AuthForgotPassword' })

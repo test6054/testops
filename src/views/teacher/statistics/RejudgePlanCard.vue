@@ -140,7 +140,11 @@ import {
   REJUDGE_PLAN_STATUS_OPTIONS,
   REJUDGE_TRIGGER_TYPE_LABEL,
 } from '@/apis/mark/question-analysis'
-import { UiCard, UiDataTable, UiFilterBar, UiTag, UiTextAction } from '@/components/ui-guide/ui'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { readPageList, readPageTotal } from '@/utils/page-result'

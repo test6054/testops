@@ -166,13 +166,11 @@ import {
   SPOT_CHECK_STATUS_LABEL,
   SPOT_CHECK_STATUS_TONE,
 } from '@/apis/mark/marking-quality'
-import {
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { showUserError, toUserError } from '@/utils/error-handler'

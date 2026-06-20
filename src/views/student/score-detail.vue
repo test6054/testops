@@ -436,22 +436,20 @@ import {
   OBJECTIVE_RESULT_LABEL,
   OBJECTIVE_RESULT_TONE,
 } from '@/apis/mark/student-exam'
-import { MarkHeatmapSection } from '@/components/chart'
-import {
-  UiAlertStrip,
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { assertUserFacing } from '@/utils/contract-guard'
+import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { buildHeatmapChartOption } from '@/utils/mark-echarts-options'
 import { scoreSheetToHeatmapCells } from '@/utils/mark-statistics-chart'
-import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { readPageList, readPageTotal } from '@/utils/page-result'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 

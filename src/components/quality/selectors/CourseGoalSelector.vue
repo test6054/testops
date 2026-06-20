@@ -8,7 +8,7 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { CourseGoalVO } from '@/apis/quality'
 import { computed, onMounted, ref, watch } from 'vue'
 import { courseGoalApi } from '@/apis/quality'
-import { UiTag } from '@/components/ui-guide/ui'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { requireArrayResult } from './page-contract'
 

@@ -31,15 +31,13 @@ import {
   MARK_OCR_PROVIDER_LABEL,
   recognizeMarkOcr,
 } from '@/apis/mark/ocr'
-import {
-  UiAlertStrip,
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { assertUserFacing } from '@/utils/contract-guard'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -354,194 +352,194 @@ onMounted(async () => {
       </div>
 
       <div class="ocr-grid">
-      <UiCard class="info-card">
+        <UiCard class="info-card">
+          <template #title>
+            <ApiOutlined />
+            <span>当前 OCR 渠道</span>
+          </template>
+          <UiAlertStrip
+            tone="info"
+            title="OCR 渠道由平台超级管理员统一配置，租户侧仅可查看运行状态与执行调试。"
+          />
+          <UiAlertStrip
+            class="state-message"
+            :tone="paperCutCapabilityTone"
+            :title="paperCutCapabilityText"
+          />
+        </UiCard>
+
+        <UiCard class="info-card">
+          <template #title>
+            <ExperimentOutlined />
+            <span>运行状态</span>
+          </template>
+          <a-descriptions :column="1" size="small" bordered>
+            <a-descriptions-item label="已保存渠道">{{ currentProviderLabel }}</a-descriptions-item>
+            <a-descriptions-item label="启用状态">
+              {{ currentConfig?.enabled ? '启用' : '关闭' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="健康状态">
+              <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
+            </a-descriptions-item>
+            <a-descriptions-item label="最近检查">
+              {{ currentConfig?.lastHealthCheckAt || '未检查' }}
+            </a-descriptions-item>
+          </a-descriptions>
+          <UiAlertStrip
+            v-if="currentConfig?.lastHealthMessage"
+            class="state-message"
+            :tone="healthStatus === 'FAILED' ? 'error' : 'success'"
+            :title="ocrHealthMessageText(currentConfig.lastHealthMessage)"
+          />
+        </UiCard>
+      </div>
+
+      <!-- PaddleOCR 实例列表：仅当当前渠道为 PADDLE 时展示，按健康状态排序 -->
+      <UiCard v-if="isPaddleProvider" class="info-card paddle-card">
         <template #title>
-          <ApiOutlined />
-          <span>当前 OCR 渠道</span>
+          <ClusterOutlined />
+          <span>PaddleOCR 服务实例</span>
+          <UiBadge :tone="paddleHealthyCount > 0 ? 'green' : 'gray'">
+            健康 {{ paddleHealthyCount }} / {{ paddleInstances.length }}
+          </UiBadge>
         </template>
-        <UiAlertStrip
-          tone="info"
-          title="OCR 渠道由平台超级管理员统一配置，租户侧仅可查看运行状态与执行调试。"
-        />
+        <template #extra>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :loading="paddleInstancesLoading"
+            @click="loadPaddleInstances"
+          >
+            <template #icon><ReloadOutlined /></template>
+            刷新
+          </UiButton>
+        </template>
+
         <UiAlertStrip
           class="state-message"
-          :tone="paperCutCapabilityTone"
-          :title="paperCutCapabilityText"
+          tone="info"
+          title="承担直接扫描批改的 PaddleOCR 实例必须暴露 /paper-cut；该接口需返回真实题块 ROI，不能仅返回普通 OCR 文本。"
         />
+        <UiDataTable
+          pagination-mode="none"
+          class="student-detail-table__data-table"
+          :columns="paddleInstanceColumns"
+          :data-source="paddleInstances"
+          :loading="paddleInstancesLoading"
+          :show-pagination="false"
+          flat
+          :total="paddleInstances.length"
+          row-key="id"
+          size="middle"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'instanceName'">
+              <span class="paddle-instance__name">{{ record.instanceName }}</span>
+              <UiTag v-if="record.localAutoDeploy" tone="blue" size="sm">本地自动部署</UiTag>
+            </template>
+            <template v-else-if="column.key === 'healthStatus'">
+              <UiTag :tone="paddleInstanceHealthTone(record.healthStatus)" size="sm">
+                {{ paddleInstanceHealthLabel(record.healthStatus) }}
+              </UiTag>
+              <span v-if="record.consecutiveFailures > 0" class="paddle-instance__failed">
+                连续失败 {{ record.consecutiveFailures }} 次
+              </span>
+            </template>
+            <template v-else-if="column.key === 'serviceUrl'">
+              {{ record.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
+            </template>
+            <template v-else-if="column.key === 'lastHealthCheckAt'">
+              {{ record.lastHealthCheckAt || '未探活' }}
+            </template>
+            <template v-else-if="column.key === 'lastHealthMessage'">
+              <span v-if="record.lastHealthMessage">{{ ocrHealthMessageText(record.lastHealthMessage) }}</span>
+              <span v-else class="text-muted">—</span>
+            </template>
+          </template>
+        </UiDataTable>
       </UiCard>
 
       <UiCard class="info-card">
         <template #title>
           <ExperimentOutlined />
-          <span>运行状态</span>
+          <span>同步调试</span>
         </template>
-        <a-descriptions :column="1" size="small" bordered>
-          <a-descriptions-item label="已保存渠道">{{ currentProviderLabel }}</a-descriptions-item>
-          <a-descriptions-item label="启用状态">
-            {{ currentConfig?.enabled ? '启用' : '关闭' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="健康状态">
-            <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="最近检查">
-            {{ currentConfig?.lastHealthCheckAt || '未检查' }}
-          </a-descriptions-item>
-        </a-descriptions>
         <UiAlertStrip
-          v-if="currentConfig?.lastHealthMessage"
-          class="state-message"
-          :tone="healthStatus === 'FAILED' ? 'error' : 'success'"
-          :title="ocrHealthMessageText(currentConfig.lastHealthMessage)"
+          tone="warning"
+          title="同步调试使用当前租户已保存渠道，不支持临时指定供应商。"
         />
-      </UiCard>
-      </div>
-
-      <!-- PaddleOCR 实例列表：仅当当前渠道为 PADDLE 时展示，按健康状态排序 -->
-      <UiCard v-if="isPaddleProvider" class="info-card paddle-card">
-      <template #title>
-        <ClusterOutlined />
-        <span>PaddleOCR 服务实例</span>
-        <UiBadge :tone="paddleHealthyCount > 0 ? 'green' : 'gray'">
-          健康 {{ paddleHealthyCount }} / {{ paddleInstances.length }}
-        </UiBadge>
-      </template>
-      <template #extra>
-        <UiButton
-          variant="outline"
-          size="sm"
-          :loading="paddleInstancesLoading"
-          @click="loadPaddleInstances"
-        >
-          <template #icon><ReloadOutlined /></template>
-          刷新
-        </UiButton>
-      </template>
-
-      <UiAlertStrip
-        class="state-message"
-        tone="info"
-        title="承担直接扫描批改的 PaddleOCR 实例必须暴露 /paper-cut；该接口需返回真实题块 ROI，不能仅返回普通 OCR 文本。"
-      />
-      <UiDataTable
-        pagination-mode="none"
-        class="student-detail-table__data-table"
-        :columns="paddleInstanceColumns"
-        :data-source="paddleInstances"
-        :loading="paddleInstancesLoading"
-        :show-pagination="false"
-        flat
-        :total="paddleInstances.length"
-        row-key="id"
-        size="middle"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'instanceName'">
-            <span class="paddle-instance__name">{{ record.instanceName }}</span>
-            <UiTag v-if="record.localAutoDeploy" tone="blue" size="sm">本地自动部署</UiTag>
-          </template>
-          <template v-else-if="column.key === 'healthStatus'">
-            <UiTag :tone="paddleInstanceHealthTone(record.healthStatus)" size="sm">
-              {{ paddleInstanceHealthLabel(record.healthStatus) }}
-            </UiTag>
-            <span v-if="record.consecutiveFailures > 0" class="paddle-instance__failed">
-              连续失败 {{ record.consecutiveFailures }} 次
-            </span>
-          </template>
-          <template v-else-if="column.key === 'serviceUrl'">
-            {{ record.serviceUrl ? '识别服务地址已配置' : '识别服务地址未配置' }}
-          </template>
-          <template v-else-if="column.key === 'lastHealthCheckAt'">
-            {{ record.lastHealthCheckAt || '未探活' }}
-          </template>
-          <template v-else-if="column.key === 'lastHealthMessage'">
-            <span v-if="record.lastHealthMessage">{{ ocrHealthMessageText(record.lastHealthMessage) }}</span>
-            <span v-else class="text-muted">—</span>
-          </template>
-        </template>
-      </UiDataTable>
-      </UiCard>
-
-      <UiCard class="info-card">
-      <template #title>
-        <ExperimentOutlined />
-        <span>同步调试</span>
-      </template>
-      <UiAlertStrip
-        tone="warning"
-        title="同步调试使用当前租户已保存渠道，不支持临时指定供应商。"
-      />
-      <a-descriptions :column="1" size="small" bordered class="debug-form__exam">
-        <a-descriptions-item label="当前考试">
-          {{ selectedExamLabel || debugForm.examId }}
-        </a-descriptions-item>
-      </a-descriptions>
-      <a-form
-        ref="debugFormRef"
-        :model="debugForm"
-        :rules="debugRules"
-        layout="vertical"
-        class="debug-form"
-      >
-        <a-row :gutter="16">
-          <a-col :xs="24" :md="12">
-            <a-form-item label="答题卡" name="paperInstanceId" required>
-              <a-select
-                v-model:value="debugForm.paperInstanceId"
-                :options="paperCandidateOptions"
-                :loading="paperCandidatesLoading"
-                :disabled="!debugForm.examId"
-                show-search
-                :filter-option="false"
-                allow-clear
-                placeholder="请选择答题卡"
-                @search="handlePaperCandidateSearch"
-                @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
-                @change="handlePaperCandidateChange"
-              />
-              <div v-if="paperCandidatesError" class="debug-form__hint debug-form__hint--error">
-                答题卡列表加载失败，请刷新后重试
-              </div>
-            </a-form-item>
-          </a-col>
-          <a-col :xs="24" :md="12">
-            <a-form-item label="题目" name="questionTemplateId" required>
-              <a-select
-                v-model:value="debugForm.questionTemplateId"
-                :options="questionOptions"
-                :loading="questionsLoading"
-                :disabled="!debugForm.examId"
-                show-search
-                option-filter-prop="label"
-                placeholder="请选择题目"
-              />
-              <div v-if="questionsError" class="debug-form__hint debug-form__hint--error">
-                题目列表加载失败，请刷新后重试
-              </div>
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <UiButton :disabled="!canRecognize" :loading="recognizing" @click="handleRecognize">
-          <template #icon><ExperimentOutlined /></template>
-          执行识别
-        </UiButton>
-      </a-form>
-
-      <template v-if="recognizeResult">
-        <a-divider />
-        <a-descriptions title="识别结果" :column="1" size="small" bordered>
-          <a-descriptions-item label="使用渠道">
-            {{ providerLabel(recognizeResult.providerType) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="识别处理说明">
-            {{ ocrDiagnosticText(recognizeResult.diagnostic) }}
+        <a-descriptions :column="1" size="small" bordered class="debug-form__exam">
+          <a-descriptions-item label="当前考试">
+            {{ selectedExamLabel || debugForm.examId }}
           </a-descriptions-item>
         </a-descriptions>
-        <div class="result-text-block">
-          <div class="result-text-label">识别文本</div>
-          <div class="result-text-content">{{ recognizeResult.recognizedText }}</div>
-        </div>
-      </template>
-      <UiEmpty v-else-if="!recognizing" description="暂无数据" />
+        <a-form
+          ref="debugFormRef"
+          :model="debugForm"
+          :rules="debugRules"
+          layout="vertical"
+          class="debug-form"
+        >
+          <a-row :gutter="16">
+            <a-col :xs="24" :md="12">
+              <a-form-item label="答题卡" name="paperInstanceId" required>
+                <a-select
+                  v-model:value="debugForm.paperInstanceId"
+                  :options="paperCandidateOptions"
+                  :loading="paperCandidatesLoading"
+                  :disabled="!debugForm.examId"
+                  show-search
+                  :filter-option="false"
+                  allow-clear
+                  placeholder="请选择答题卡"
+                  @search="handlePaperCandidateSearch"
+                  @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
+                  @change="handlePaperCandidateChange"
+                />
+                <div v-if="paperCandidatesError" class="debug-form__hint debug-form__hint--error">
+                  答题卡列表加载失败，请刷新后重试
+                </div>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :md="12">
+              <a-form-item label="题目" name="questionTemplateId" required>
+                <a-select
+                  v-model:value="debugForm.questionTemplateId"
+                  :options="questionOptions"
+                  :loading="questionsLoading"
+                  :disabled="!debugForm.examId"
+                  show-search
+                  option-filter-prop="label"
+                  placeholder="请选择题目"
+                />
+                <div v-if="questionsError" class="debug-form__hint debug-form__hint--error">
+                  题目列表加载失败，请刷新后重试
+                </div>
+              </a-form-item>
+            </a-col>
+          </a-row>
+          <UiButton :disabled="!canRecognize" :loading="recognizing" @click="handleRecognize">
+            <template #icon><ExperimentOutlined /></template>
+            执行识别
+          </UiButton>
+        </a-form>
+
+        <template v-if="recognizeResult">
+          <a-divider />
+          <a-descriptions title="识别结果" :column="1" size="small" bordered>
+            <a-descriptions-item label="使用渠道">
+              {{ providerLabel(recognizeResult.providerType) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="识别处理说明">
+              {{ ocrDiagnosticText(recognizeResult.diagnostic) }}
+            </a-descriptions-item>
+          </a-descriptions>
+          <div class="result-text-block">
+            <div class="result-text-label">识别文本</div>
+            <div class="result-text-content">{{ recognizeResult.recognizedText }}</div>
+          </div>
+        </template>
+        <UiEmpty v-else-if="!recognizing" description="暂无数据" />
       </UiCard>
     </template>
   </div>

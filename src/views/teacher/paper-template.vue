@@ -15,214 +15,214 @@
   </div>
 
   <UiEmpty
-      v-if="!selectedExamId"
-      description="请选择需要维护的考试"
-      class="paper-template-page__empty"
-    />
+    v-if="!selectedExamId"
+    description="请选择需要维护的考试"
+    class="paper-template-page__empty"
+  />
 
-    <UiEmpty
-      v-else-if="templateLoadError"
-      description="暂无数据"
-      class="paper-template-page__empty"
-    />
+  <UiEmpty
+    v-else-if="templateLoadError"
+    description="暂无数据"
+    class="paper-template-page__empty"
+  />
 
-    <a-spin v-else :spinning="loading">
-      <UiCard class="info-card">
-        <template #title>
-          <FileTextOutlined />
-          <span>模板基本信息</span>
-        </template>
-        <a-form layout="inline">
-          <a-form-item label="模板名称" required>
-            <a-input
-              v-model:value="form.templateName"
-              placeholder="例如：2026 春《工程制图》期末 v1"
-              :maxlength="100"
-              style="width: 360px"
-            />
-          </a-form-item>
-          <a-form-item label="总页数" required>
-            <a-input-number
-              v-model:value="form.totalPages"
-              :min="1"
-              :max="50"
-              style="width: 120px"
-            />
-          </a-form-item>
-        </a-form>
-      </UiCard>
+  <a-spin v-else :spinning="loading">
+    <UiCard class="info-card">
+      <template #title>
+        <FileTextOutlined />
+        <span>模板基本信息</span>
+      </template>
+      <a-form layout="inline">
+        <a-form-item label="模板名称" required>
+          <a-input
+            v-model:value="form.templateName"
+            placeholder="例如：2026 春《工程制图》期末 v1"
+            :maxlength="100"
+            style="width: 360px"
+          />
+        </a-form-item>
+        <a-form-item label="总页数" required>
+          <a-input-number
+            v-model:value="form.totalPages"
+            :min="1"
+            :max="50"
+            style="width: 120px"
+          />
+        </a-form-item>
+      </a-form>
+    </UiCard>
 
-      <UiCard v-if="isFullPaperLayout" class="info-card">
-        <a-alert
-          type="info"
-          show-icon
-          message="整卷作答模式下，扫描页模板由试卷母版 PDF 自动拆页同步，请前往「试卷母版」维护。"
-        />
-      </UiCard>
+    <UiCard v-if="isFullPaperLayout" class="info-card">
+      <a-alert
+        type="info"
+        show-icon
+        message="整卷作答模式下，扫描页模板由试卷母版 PDF 自动拆页同步，请前往「试卷母版」维护。"
+      />
+    </UiCard>
 
-      <UiCard v-if="!isFullPaperLayout" class="info-card">
-        <template #title>
-          <FileImageOutlined />
-          <span>页面文件配置</span>
-          <UiBadge :tone="pageCountMatched ? 'green' : 'orange'">
-            {{ pages.length }} / {{ totalPagesLabel }}
-          </UiBadge>
-        </template>
-        <template #extra>
-          <UiButton size="sm" variant="outline" @click="addPage">
-            <template #icon>
-              <PlusOutlined />
-            </template>
-            新增页面
-          </UiButton>
-        </template>
-
-        <ExamTemplatePageTable ref="pageTableRef" v-model:pages="pages" @remove="removePage" />
-      </UiCard>
-
-      <UiCard class="info-card">
-        <template #title>
-          <ProfileOutlined />
-          <span class="section-title">题目与标准答案</span>
-        </template>
-        <template #extra>
-          <span class="paper-template__total-score">总分 {{ totalScore }}</span>
-          <UiButton size="sm" @click="addQuestion">
-            <template #icon>
-              <PlusOutlined />
-            </template>
-            新增题目
-          </UiButton>
-        </template>
-
-        <UiDataTable
-          pagination-mode="none"
-          class="student-detail-table__data-table"
-          :columns="questionColumns"
-          :data-source="questions"
-          :show-pagination="false"
-          flat
-          :total="questions.length"
-          row-key="rowKey"
-          size="middle"
-          bordered
-          :scroll="{ x: 1100 }"
-          v-model:expanded-row-keys="expandedQuestionRowKeys"
-          @expand="handleQuestionExpand"
-        >
-          <template #bodyCell="{ column, record, index }">
-            <template v-if="column.key === 'questionNo'">
-              <span class="question-cell__primary">{{ record.questionNo || '—' }}</span>
-            </template>
-            <template v-else-if="column.key === 'questionType'">
-              {{ questionTypeLabel(record.questionType) }}
-            </template>
-            <template v-else-if="column.key === 'fullScore'">
-              {{ formatScore(record.fullScore) }}
-            </template>
-            <template v-else-if="column.key === 'questionStem'">
-              <span v-if="record.questionStem" class="question-cell__stem">{{
-                record.questionStem
-              }}</span>
-              <span v-else class="question-cell__muted">未录入</span>
-            </template>
-            <template v-else-if="column.key === 'region'">
-              {{ formatQuestionRegion(record) }}
-            </template>
-            <template v-else-if="column.key === 'sortNo'">
-              {{ record.sortNo ?? '—' }}
-            </template>
-            <template v-else-if="column.key === 'serverStatus'">
-              <UiTag v-if="record.questionTemplateId" tone="green" size="sm">已存在</UiTag>
-              <UiTag v-else tone="orange" size="sm">未保存</UiTag>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <div class="operations-cell" @click.stop>
-                <UiTextAction @click="openQuestionEdit(index)">编辑</UiTextAction>
-                <UiConfirmPopover
-                  v-if="record.questionTemplateId"
-                  title="确认删除该题目？"
-                  description="删除后需重新配置区域坐标与标准答案。"
-                  danger
-                  @confirm="removeQuestion(index)"
-                >
-                  <UiTextAction tone="danger">删除</UiTextAction>
-                </UiConfirmPopover>
-                <UiTextAction v-else tone="danger" @click="removeQuestion(index)">删除</UiTextAction>
-              </div>
-            </template>
+    <UiCard v-if="!isFullPaperLayout" class="info-card">
+      <template #title>
+        <FileImageOutlined />
+        <span>页面文件配置</span>
+        <UiBadge :tone="pageCountMatched ? 'green' : 'orange'">
+          {{ pages.length }} / {{ totalPagesLabel }}
+        </UiBadge>
+      </template>
+      <template #extra>
+        <UiButton size="sm" variant="outline" @click="addPage">
+          <template #icon>
+            <PlusOutlined />
           </template>
-          <template #expandedRowRender="{ record }">
-            <div class="question-expand">
-              <div class="question-expand__layout">
-                <section class="question-expand__panel">
-                  <header class="question-expand__head">
-                    <span class="question-expand__title">区域坐标</span>
-                  </header>
-                  <div v-if="hasQuestionRegion(record)" class="question-expand__meta">
-                    <UiTag v-if="record.pageNo" tone="gray" size="sm">P{{ record.pageNo }}</UiTag>
-                    <UiTag v-if="record.x != null && record.y != null" tone="gray" size="sm">
-                      {{ record.x }}, {{ record.y }}
-                    </UiTag>
-                    <UiTag
-                      v-if="record.width != null && record.height != null"
-                      tone="gray"
-                      size="sm"
-                    >
-                      {{ record.width }}×{{ record.height }}
-                    </UiTag>
-                  </div>
-                  <span v-else class="question-cell__muted">未配置</span>
-                </section>
-                <section class="question-expand__panel question-expand__panel--answer">
-                  <header class="question-expand__head">
-                    <span class="question-expand__title">标准答案</span>
-                    <UiTextAction
-                      v-if="record.questionTemplateId"
-                      @click="openAnswerModal(record)"
-                    >
-                      编辑
-                    </UiTextAction>
-                  </header>
-                  <a-spin v-if="isAnswerPreviewLoading(record)" size="small" />
-                  <span v-else-if="!record.questionTemplateId" class="question-cell__muted">
-                    保存模板后可配置
-                  </span>
-                  <div
-                    v-else-if="getAnswerPreview(record)?.data"
-                    class="question-expand__answer-body"
-                  >
-                    <UiTag
-                      v-if="getAnswerPreview(record)?.data?.comparePolicy"
-                      tone="blue"
-                      size="sm"
-                    >
-                      {{ formatComparePolicy(getAnswerPreview(record)!.data!.comparePolicy!) }}
-                    </UiTag>
-                    <div
-                      v-if="formatAnswerText(record, getAnswerPreview(record)!.data!)"
-                      class="question-expand__answer-value"
-                    >
-                      {{ formatAnswerText(record, getAnswerPreview(record)!.data!) }}
-                    </div>
-                    <p
-                      v-if="getAnswerPreview(record)?.data?.answerExplain"
-                      class="question-expand__explain"
-                    >
-                      {{ getAnswerPreview(record)!.data!.answerExplain }}
-                    </p>
-                    <p v-if="getAnswerPreview(record)?.data?.aiHint" class="question-expand__hint">
-                      {{ getAnswerPreview(record)!.data!.aiHint }}
-                    </p>
-                  </div>
-                  <span v-else class="question-cell__muted">未配置标准答案</span>
-                </section>
-              </div>
+          新增页面
+        </UiButton>
+      </template>
+
+      <ExamTemplatePageTable ref="pageTableRef" v-model:pages="pages" @remove="removePage" />
+    </UiCard>
+
+    <UiCard class="info-card">
+      <template #title>
+        <ProfileOutlined />
+        <span class="section-title">题目与标准答案</span>
+      </template>
+      <template #extra>
+        <span class="paper-template__total-score">总分 {{ totalScore }}</span>
+        <UiButton size="sm" @click="addQuestion">
+          <template #icon>
+            <PlusOutlined />
+          </template>
+          新增题目
+        </UiButton>
+      </template>
+
+      <UiDataTable
+        pagination-mode="none"
+        class="student-detail-table__data-table"
+        :columns="questionColumns"
+        :data-source="questions"
+        :show-pagination="false"
+        flat
+        :total="questions.length"
+        row-key="rowKey"
+        size="middle"
+        bordered
+        :scroll="{ x: 1100 }"
+        v-model:expanded-row-keys="expandedQuestionRowKeys"
+        @expand="handleQuestionExpand"
+      >
+        <template #bodyCell="{ column, record, index }">
+          <template v-if="column.key === 'questionNo'">
+            <span class="question-cell__primary">{{ record.questionNo || '—' }}</span>
+          </template>
+          <template v-else-if="column.key === 'questionType'">
+            {{ questionTypeLabel(record.questionType) }}
+          </template>
+          <template v-else-if="column.key === 'fullScore'">
+            {{ formatScore(record.fullScore) }}
+          </template>
+          <template v-else-if="column.key === 'questionStem'">
+            <span v-if="record.questionStem" class="question-cell__stem">{{
+              record.questionStem
+            }}</span>
+            <span v-else class="question-cell__muted">未录入</span>
+          </template>
+          <template v-else-if="column.key === 'region'">
+            {{ formatQuestionRegion(record) }}
+          </template>
+          <template v-else-if="column.key === 'sortNo'">
+            {{ record.sortNo ?? '—' }}
+          </template>
+          <template v-else-if="column.key === 'serverStatus'">
+            <UiTag v-if="record.questionTemplateId" tone="green" size="sm">已存在</UiTag>
+            <UiTag v-else tone="orange" size="sm">未保存</UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <div class="operations-cell" @click.stop>
+              <UiTextAction @click="openQuestionEdit(index)">编辑</UiTextAction>
+              <UiConfirmPopover
+                v-if="record.questionTemplateId"
+                title="确认删除该题目？"
+                description="删除后需重新配置区域坐标与标准答案。"
+                danger
+                @confirm="removeQuestion(index)"
+              >
+                <UiTextAction tone="danger">删除</UiTextAction>
+              </UiConfirmPopover>
+              <UiTextAction v-else tone="danger" @click="removeQuestion(index)">删除</UiTextAction>
             </div>
           </template>
-        </UiDataTable>
-      </UiCard>
-    </a-spin>
+        </template>
+        <template #expandedRowRender="{ record }">
+          <div class="question-expand">
+            <div class="question-expand__layout">
+              <section class="question-expand__panel">
+                <header class="question-expand__head">
+                  <span class="question-expand__title">区域坐标</span>
+                </header>
+                <div v-if="hasQuestionRegion(record)" class="question-expand__meta">
+                  <UiTag v-if="record.pageNo" tone="gray" size="sm">P{{ record.pageNo }}</UiTag>
+                  <UiTag v-if="record.x != null && record.y != null" tone="gray" size="sm">
+                    {{ record.x }}, {{ record.y }}
+                  </UiTag>
+                  <UiTag
+                    v-if="record.width != null && record.height != null"
+                    tone="gray"
+                    size="sm"
+                  >
+                    {{ record.width }}×{{ record.height }}
+                  </UiTag>
+                </div>
+                <span v-else class="question-cell__muted">未配置</span>
+              </section>
+              <section class="question-expand__panel question-expand__panel--answer">
+                <header class="question-expand__head">
+                  <span class="question-expand__title">标准答案</span>
+                  <UiTextAction
+                    v-if="record.questionTemplateId"
+                    @click="openAnswerModal(record)"
+                  >
+                    编辑
+                  </UiTextAction>
+                </header>
+                <a-spin v-if="isAnswerPreviewLoading(record)" size="small" />
+                <span v-else-if="!record.questionTemplateId" class="question-cell__muted">
+                  保存模板后可配置
+                </span>
+                <div
+                  v-else-if="getAnswerPreview(record)?.data"
+                  class="question-expand__answer-body"
+                >
+                  <UiTag
+                    v-if="getAnswerPreview(record)?.data?.comparePolicy"
+                    tone="blue"
+                    size="sm"
+                  >
+                    {{ formatComparePolicy(getAnswerPreview(record)!.data!.comparePolicy!) }}
+                  </UiTag>
+                  <div
+                    v-if="formatAnswerText(record, getAnswerPreview(record)!.data!)"
+                    class="question-expand__answer-value"
+                  >
+                    {{ formatAnswerText(record, getAnswerPreview(record)!.data!) }}
+                  </div>
+                  <p
+                    v-if="getAnswerPreview(record)?.data?.answerExplain"
+                    class="question-expand__explain"
+                  >
+                    {{ getAnswerPreview(record)!.data!.answerExplain }}
+                  </p>
+                  <p v-if="getAnswerPreview(record)?.data?.aiHint" class="question-expand__hint">
+                    {{ getAnswerPreview(record)!.data!.aiHint }}
+                  </p>
+                </div>
+                <span v-else class="question-cell__muted">未配置标准答案</span>
+              </section>
+            </div>
+          </div>
+        </template>
+      </UiDataTable>
+    </UiCard>
+  </a-spin>
 
   <a-modal
     v-model:open="answerModalOpen"
@@ -446,7 +446,6 @@
 
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   ExamMaterialLayoutModeCode,
@@ -481,16 +480,14 @@ import { QUESTION_TYPE_LABEL } from '@/apis/mark/grading-experience'
 import { getPaperMaster, isPaperMasterNotConfiguredError } from '@/apis/mark/paper-master'
 import { confirmAnswerEffective } from '@/apis/mark/question-analysis'
 import ExamTemplatePageTable from '@/components/mark/ExamTemplatePageTable.vue'
-import {
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiConfirmPopover,
-  UiDataTable,
-  UiEmpty,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiConfirmPopover from '@/components/ui-guide/ui/UiConfirmPopover.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { hydrateTemplatePageFileNames } from '@/utils/mark-storage-file'

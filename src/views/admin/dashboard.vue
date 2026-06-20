@@ -214,8 +214,7 @@ import type {
   MarkDashboardOverviewVO,
 } from '@/apis/mark/admin-dashboard'
 import type { ExamStatusCode } from '@/apis/mark/exam'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import BarChartOutlined from '@ant-design/icons-vue/BarChartOutlined'
 import CalendarOutlined from '@ant-design/icons-vue/CalendarOutlined'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
@@ -232,15 +231,13 @@ import {
   loadDashboardOverview,
 } from '@/apis/mark/admin-dashboard'
 import { EXAM_STATUS_LABEL, EXAM_STATUS_TONE } from '@/apis/mark/exam'
-import { MarkBarSection } from '@/components/chart'
-import {
-  UiBadge,
-  UiButton,
-  UiCard,
-  UiEmpty,
-  UiStatPanel,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import MarkBarSection from '@/components/chart/MarkBarSection.vue'
+import UiBadge from '@/components/ui-guide/ui/Badge.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError, toUserError } from '@/utils/error-handler'

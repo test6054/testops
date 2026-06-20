@@ -256,7 +256,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
   AuditTargetTypeCode,
@@ -285,15 +285,13 @@ import {
 } from '@/apis/mark/admin-audit'
 import { INCIDENT_LEVEL_LABEL, INCIDENT_LEVEL_TONE } from '@/apis/mark/admin-dashboard'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
-import {
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiEmpty,
-  UiFilterBar,
-  UiTag,
-  UiTextAction,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { ContextBar, StageWorkbenchShell } from '@/components/workbench'
 import { useMarkExamSelector } from '@/composables/useMarkExamSelector'
 import { captureLoadFailure, showUserError } from '@/utils/error-handler'

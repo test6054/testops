@@ -189,14 +189,12 @@ import {
   getCasFirstLoginContext,
 } from '@/apis/sso'
 import AuthLayout from '@/components/AuthLayout/index.vue'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiFormField,
-  UiInput,
-  UiSelect,
-  UiStateBlock,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiFormField from '@/components/ui-guide/ui/UiFormField.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiStateBlock from '@/components/ui-guide/ui/UiStateBlock.vue'
 import { getDefaultRoute } from '@/router/permission'
 import { useAuthStore, useUserStore } from '@/stores'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'

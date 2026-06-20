@@ -7,180 +7,180 @@
       </UiTag>
     </div>
 
-      <UiCard class="claim-card">
-        <template #title>
-          <ThunderboltOutlined />
-          <span>领取任务</span>
-        </template>
+    <UiCard class="claim-card">
+      <template #title>
+        <ThunderboltOutlined />
+        <span>领取任务</span>
+      </template>
 
-        <a-spin :spinning="claimContextLoading">
-          <UiEmpty
-            v-if="!claimContextLoading && (claimContext?.groups.length ?? 0) === 0"
-            description="暂无数据"
-          />
-          <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
-            <a-form-item label="题组" required>
-              <a-select
-                v-model:value="claimForm.groupId"
-                :options="claimGroupOptions"
+      <a-spin :spinning="claimContextLoading">
+        <UiEmpty
+          v-if="!claimContextLoading && (claimContext?.groups.length ?? 0) === 0"
+          description="暂无数据"
+        />
+        <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
+          <a-form-item label="题组" required>
+            <a-select
+              v-model:value="claimForm.groupId"
+              :options="claimGroupOptions"
+              :loading="claimContextLoading"
+              placeholder="选择题组"
+              style="width: 240px"
+              show-search
+              option-filter-prop="label"
+              @change="onClaimGroupChange"
+            />
+          </a-form-item>
+          <a-form-item label="正评会话" required>
+            <a-select
+              v-model:value="claimForm.sessionId"
+              :options="claimSessionOptions"
+              :disabled="!claimForm.groupId"
+              placeholder="选择该题组下的活跃会话"
+              style="width: 280px"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <UiButton :disabled="!canClaim" :loading="claiming" @click="submitClaim">
+                <template #icon><PlusOutlined /></template>
+                批量领取一批
+              </UiButton>
+              <UiButton
+                variant="outline"
+                size="sm"
                 :loading="claimContextLoading"
-                placeholder="选择题组"
-                style="width: 240px"
-                show-search
-                option-filter-prop="label"
-                @change="onClaimGroupChange"
-              />
-            </a-form-item>
-            <a-form-item label="正评会话" required>
-              <a-select
-                v-model:value="claimForm.sessionId"
-                :options="claimSessionOptions"
-                :disabled="!claimForm.groupId"
-                placeholder="选择该题组下的活跃会话"
-                style="width: 280px"
-                allow-clear
-              />
-            </a-form-item>
-            <a-form-item>
-              <a-space>
-                <UiButton :disabled="!canClaim" :loading="claiming" @click="submitClaim">
-                  <template #icon><PlusOutlined /></template>
-                  批量领取一批
-                </UiButton>
-                <UiButton
-                  variant="outline"
-                  size="sm"
-                  :loading="claimContextLoading"
-                  @click="loadClaimContext"
-                >
-                  <template #icon><ReloadOutlined /></template>
-                  刷新可领取题组
-                </UiButton>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </a-spin>
-      </UiCard>
+                @click="loadClaimContext"
+              >
+                <template #icon><ReloadOutlined /></template>
+                刷新可领取题组
+              </UiButton>
+            </a-space>
+          </a-form-item>
+        </a-form>
+      </a-spin>
+    </UiCard>
 
-      <!-- PR-ISSUE-1: 任务完成度统计面板 -->
-      <UiStatPanel
-        v-if="tasks.length > 0"
-        :items="taskStats"
-        :columns="4"
-        variant="strip"
-        compact
-        class="marking-task-pool-page__stats"
+    <!-- PR-ISSUE-1: 任务完成度统计面板 -->
+    <UiStatPanel
+      v-if="tasks.length > 0"
+      :items="taskStats"
+      :columns="4"
+      variant="strip"
+      compact
+      class="marking-task-pool-page__stats"
+    />
+
+    <a-card :bordered="false" class="detail-table-card table-card">
+      <template #title>
+        <TableOutlined />
+        <span class="section-title">任务列表</span>
+      </template>
+
+      <UiFilterBar
+        v-model="filterForm"
+        :fields="taskFilterFields"
+        search-text="查询"
+        @search="loadTasks"
+        @reset="resetFilter"
       />
 
-      <a-card :bordered="false" class="detail-table-card table-card">
-        <template #title>
-          <TableOutlined />
-          <span class="section-title">任务列表</span>
-        </template>
-
-        <UiFilterBar
-          v-model="filterForm"
-          :fields="taskFilterFields"
-          search-text="查询"
-          @search="loadTasks"
-          @reset="resetFilter"
-        />
-
-        <UiDataTable
-          pagination-mode="client"
-          :columns="columns"
-          :data-source="tasks"
-          :loading="loading"
-          :page-size="20"
-          :total="tasks.length"
-          row-key="id"
-          size="middle"
-          flat
-          class="student-detail-table__data-table"
-        >
-          <template #bodyCell="{ column, index }">
-            <template v-if="column.key === 'question'">
-              <a-space direction="vertical" :size="2">
-                <a-typography-text v-if="tasks[index].taskUnit === 'WHOLE_PAPER'" strong>
-                  整卷批阅
-                </a-typography-text>
-                <a-typography-text v-else strong>
-                  第 {{ tasks[index].questionNo }} 题 · {{ tasks[index].questionTypeMessage }}
-                </a-typography-text>
-              </a-space>
-            </template>
-            <template v-else-if="column.key === 'anonymityMode'">
-              <UiTag
-                :tone="tasks[index].anonymityMode === 'ANONYMOUS' ? 'purple' : 'gray'"
-                size="sm"
-              >
-                {{ anonymityModeLabel(tasks[index].anonymityMode) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'paperDisplay'">
-              <a-space direction="vertical" :size="2">
-                <a-typography-text strong>
-                  {{ tasks[index].paperDisplay.primaryText }}
-                </a-typography-text>
-                <span v-if="tasks[index].paperDisplay.secondaryText" class="muted">
-                  {{ tasks[index].paperDisplay.secondaryText }}
-                </span>
-              </a-space>
-            </template>
-            <template v-else-if="column.key === 'groupName'">
-              <span>{{ tasks[index].groupName }}</span>
-            </template>
-            <template v-else-if="column.key === 'reviewerName'">
-              <span>{{ tasks[index].reviewerName }}</span>
-            </template>
-            <template v-else-if="column.key === 'session'">
-              <a-space direction="vertical" :size="2">
-                <UiTag tone="green" size="sm">{{ tasks[index].sessionStatusMessage }}</UiTag>
-                <span class="muted">{{ formatDateTime(tasks[index].sessionStartTime) }}</span>
-              </a-space>
-            </template>
-            <template v-else-if="column.key === 'taskStatus'">
-              <UiTag :tone="taskStatusTone(tasks[index].taskStatus)" size="sm">
-                {{ taskStatusLabel(tasks[index].taskStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'reviewRound'">
-              <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound }} 轮</UiTag>
-            </template>
-            <template v-else-if="column.key === 'allocatedAt'">
-              {{ formatDateTime(tasks[index].allocatedAt) }}
-            </template>
-            <template v-else-if="column.key === 'submittedAt'">
-              {{ formatDateTime(tasks[index].submittedAt) }}
-            </template>
-            <template v-else-if="column.key === 'score'">
-              <span v-if="tasks[index].score !== undefined && tasks[index].score !== null">{{
-                tasks[index].score
-              }}</span>
-              <span v-else class="muted">-</span>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiButton
-                v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus)"
-                size="sm"
-                variant="primary"
-                @click="goDetail(tasks[index])"
-              >
-                进入批阅
-              </UiButton>
-              <UiButton
-                v-else-if="tasks[index].taskStatus === 'FINALIZED'"
-                size="sm"
-                variant="outline"
-                @click="goDetail(tasks[index])"
-              >
-                查看阅卷
-              </UiButton>
-              <span v-else class="muted">已结束</span>
-            </template>
+      <UiDataTable
+        pagination-mode="client"
+        :columns="columns"
+        :data-source="tasks"
+        :loading="loading"
+        :page-size="20"
+        :total="tasks.length"
+        row-key="id"
+        size="middle"
+        flat
+        class="student-detail-table__data-table"
+      >
+        <template #bodyCell="{ column, index }">
+          <template v-if="column.key === 'question'">
+            <a-space direction="vertical" :size="2">
+              <a-typography-text v-if="tasks[index].taskUnit === 'WHOLE_PAPER'" strong>
+                整卷批阅
+              </a-typography-text>
+              <a-typography-text v-else strong>
+                第 {{ tasks[index].questionNo }} 题 · {{ tasks[index].questionTypeMessage }}
+              </a-typography-text>
+            </a-space>
           </template>
-        </UiDataTable>
-      </a-card>
+          <template v-else-if="column.key === 'anonymityMode'">
+            <UiTag
+              :tone="tasks[index].anonymityMode === 'ANONYMOUS' ? 'purple' : 'gray'"
+              size="sm"
+            >
+              {{ anonymityModeLabel(tasks[index].anonymityMode) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'paperDisplay'">
+            <a-space direction="vertical" :size="2">
+              <a-typography-text strong>
+                {{ tasks[index].paperDisplay.primaryText }}
+              </a-typography-text>
+              <span v-if="tasks[index].paperDisplay.secondaryText" class="muted">
+                {{ tasks[index].paperDisplay.secondaryText }}
+              </span>
+            </a-space>
+          </template>
+          <template v-else-if="column.key === 'groupName'">
+            <span>{{ tasks[index].groupName }}</span>
+          </template>
+          <template v-else-if="column.key === 'reviewerName'">
+            <span>{{ tasks[index].reviewerName }}</span>
+          </template>
+          <template v-else-if="column.key === 'session'">
+            <a-space direction="vertical" :size="2">
+              <UiTag tone="green" size="sm">{{ tasks[index].sessionStatusMessage }}</UiTag>
+              <span class="muted">{{ formatDateTime(tasks[index].sessionStartTime) }}</span>
+            </a-space>
+          </template>
+          <template v-else-if="column.key === 'taskStatus'">
+            <UiTag :tone="taskStatusTone(tasks[index].taskStatus)" size="sm">
+              {{ taskStatusLabel(tasks[index].taskStatus) }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'reviewRound'">
+            <UiTag tone="blue" size="sm">第 {{ tasks[index].reviewRound }} 轮</UiTag>
+          </template>
+          <template v-else-if="column.key === 'allocatedAt'">
+            {{ formatDateTime(tasks[index].allocatedAt) }}
+          </template>
+          <template v-else-if="column.key === 'submittedAt'">
+            {{ formatDateTime(tasks[index].submittedAt) }}
+          </template>
+          <template v-else-if="column.key === 'score'">
+            <span v-if="tasks[index].score !== undefined && tasks[index].score !== null">{{
+              tasks[index].score
+            }}</span>
+            <span v-else class="muted">-</span>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiButton
+              v-if="['ALLOCATED', 'IN_PROGRESS'].includes(tasks[index].taskStatus)"
+              size="sm"
+              variant="primary"
+              @click="goDetail(tasks[index])"
+            >
+              进入批阅
+            </UiButton>
+            <UiButton
+              v-else-if="tasks[index].taskStatus === 'FINALIZED'"
+              size="sm"
+              variant="outline"
+              @click="goDetail(tasks[index])"
+            >
+              查看阅卷
+            </UiButton>
+            <span v-else class="muted">已结束</span>
+          </template>
+        </template>
+      </UiDataTable>
+    </a-card>
   </div>
 </template>
 
@@ -210,14 +210,13 @@ import {
   MARKING_TASK_STATUS_OPTIONS,
   MARKING_TASK_STATUS_TONE,
 } from '@/apis/mark/marking-organization'
-import {
-  UiButton,
-  UiCard,
-  UiDataTable,
-  UiFilterBar,
-  UiStatPanel,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useMarkTaskStore } from '@/stores/modules/markTask'

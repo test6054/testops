@@ -21,7 +21,7 @@ export function formatShareHelper(
 }
 
 /** 将带 count / tone 的状态项映射为分布条分段。 */
-export function toDistributionSegments<T extends { code?: string | number; label: string; count: number; tone?: BadgeTone }>(
+export function toDistributionSegments<T extends { code?: string | number, label: string, count: number, tone?: BadgeTone }>(
   items: T[],
 ): UiDistributionSegment[] {
   return items.map((item) => ({
@@ -33,7 +33,7 @@ export function toDistributionSegments<T extends { code?: string | number; label
 }
 
 /** 将带 count / tone 的状态项映射为 UiStatPanel 指标项。 */
-export function toShareStatPanelItems<T extends { code?: string | number; label: string; count: number; tone?: BadgeTone }>(
+export function toShareStatPanelItems<T extends { code?: string | number, label: string, count: number, tone?: BadgeTone }>(
   items: T[],
   total: number,
   emptyLabel = '暂无任务',

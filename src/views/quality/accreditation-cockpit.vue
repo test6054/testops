@@ -10,13 +10,14 @@ import AccreditationEvidencePanel from '@/components/quality/accreditation/Accre
 import AccreditationOnsitePanel from '@/components/quality/accreditation/AccreditationOnsitePanel.vue'
 import AccreditationSupportPanel from '@/components/quality/accreditation/AccreditationSupportPanel.vue'
 import QualityScopeHeader from '@/components/quality/QualityScopeHeader.vue'
-import { ProgramSelector, TrainingPlanSelector } from '@/components/quality/selectors'
-import { UiButton, UiCard, UiEmpty, UiTag } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { ContextBar, SignalBand, StageRail, StageWorkbenchShell } from '@/components/workbench'
 import { useAccreditationWorkbench } from '@/composables/useAccreditationWorkbench'
 
 const {
-  qualityStore,
   cockpit,
   cockpitLoading,
   programId,
@@ -27,8 +28,6 @@ const {
   phaseStages,
   metrics,
   reloadCockpit,
-  handleProgramChange,
-  handleTrainingPlanChange,
   tabForPhase,
   goAiProgramReport,
   goArchive,
@@ -43,7 +42,8 @@ const evidenceCount = ref(0)
 
 const cyclePanelRef = ref<InstanceType<typeof AccreditationCyclePanel>>()
 const annualPanelRef = ref<InstanceType<typeof AccreditationAnnualPanel>>()
-const annualReportMaterialPanelRef = ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
+const annualReportMaterialPanelRef
+  = ref<InstanceType<typeof AccreditationAnnualReportMaterialPanel>>()
 const onsitePanelRef = ref<InstanceType<typeof AccreditationOnsitePanel>>()
 const supportPanelRef = ref<InstanceType<typeof AccreditationSupportPanel>>()
 const evidencePanelRef = ref<InstanceType<typeof AccreditationEvidencePanel>>()
@@ -69,31 +69,31 @@ const ceeaa2024CheckItems = computed(() => {
       key: '4.1-student',
       label: '4.1 学生·思政引领',
       desc: '学生管理制度中应体现思政引领和品德培养措施',
-      passed: !!(c?.activeCycle),
+      passed: !!c?.activeCycle,
     },
     {
       key: '4.2-objective',
       label: '4.2 培养目标·为党育人',
       desc: '培养目标应符合"为党育人、为国育才"总要求',
-      passed: !!(c?.activeCycle),
+      passed: !!c?.activeCycle,
     },
     {
       key: '4.3-graduate',
       label: '4.3 毕业要求·工程报国',
       desc: '毕业要求应包含工程伦理和职业规范（含工程报国意识）',
-      passed: !!(c?.activeCycle),
+      passed: !!c?.activeCycle,
     },
     {
       key: '4.4-curriculum',
       label: '4.4 课程体系·价值导向',
       desc: '课程设置和教学实施应体现正确的价值导向',
-      passed: !!(c?.activeCycle),
+      passed: !!c?.activeCycle,
     },
     {
       key: '4.5-faculty',
       label: '4.5 师资队伍·师德师风',
       desc: '教师应具有良好的师德师风',
-      passed: !!(c?.activeCycle),
+      passed: !!c?.activeCycle,
     },
     {
       key: '4.6-support',
@@ -135,7 +135,6 @@ const signalMetrics = computed(() => {
   if (!base.length) return base
   return [...base, { key: 'evidence', label: '专家材料证据', value: String(evidenceCount.value) }]
 })
-
 
 const annualCourseCoverages = computed(() => cockpit.value?.annualCourseCoverages || [])
 
@@ -277,7 +276,9 @@ onMounted(refreshAll)
             :key="coverage.reportYear"
             class="acc-course-coverage__item"
           >
-            {{ coverage.reportYear }} 年 {{ coverage.coveredCourseCount }}/{{ coverage.requiredCourseCount }}
+            {{ coverage.reportYear }} 年 {{ coverage.coveredCourseCount }}/{{
+              coverage.requiredCourseCount
+            }}
           </span>
         </div>
       </UiCard>

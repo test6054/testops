@@ -116,7 +116,7 @@ export async function ensureScannerStationTeacherJwt(): Promise<string | null> {
   if (isScannerKioskBrowserPage()) {
     return getValidToken()
   }
-  let token = getValidToken()
+  const token = getValidToken()
   if (token) {
     return token
   }

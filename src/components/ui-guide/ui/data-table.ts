@@ -17,8 +17,7 @@
  * ## 数值列
  * 使用 `buildNumericColumn()` 或列 `align: 'right'`，经 `normalizeDataTableColumns` 统一表头/单元格右对齐。
  */
-import type { ColumnType, ColumnsType } from 'ant-design-vue/es/table'
-import type { TableProps } from 'ant-design-vue/es/table'
+import type { ColumnsType, ColumnType, TableProps } from 'ant-design-vue/es/table'
 
 /** 分页模式：server 走后端分页；client 组件内切片；none 不展示分页栏 */
 export type UiDataTablePaginationMode = 'server' | 'client' | 'none'
@@ -49,7 +48,7 @@ export interface UiDataTableEmptyPreset {
 
 /** UiDataTable 内置空态文案预设 */
 export const UI_DATA_TABLE_EMPTY_PRESETS: Record<UiDataTableEmptyKind, UiDataTableEmptyPreset> = {
-  default: {
+  'default': {
     title: '',
     description: '暂无数据',
   },

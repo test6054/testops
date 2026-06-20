@@ -587,14 +587,12 @@ import {
   updateOrganizationStatus,
   validateMarkingOrganizationContract,
 } from '@/apis/mark/marking-organization'
-import {
-  UiAlertStrip,
-  UiButton,
-  UiDataTable,
-  UiDrawer,
-  UiEmpty,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { StageWorkbenchShell } from '@/components/workbench'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError, toUserError } from '@/utils/error-handler'

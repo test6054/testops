@@ -15,7 +15,10 @@ import {
   ONSITE_CHECKLIST_STATUS_LABEL,
 } from '@/apis/quality'
 import { ArchiveSelector } from '@/components/quality/selectors'
-import { UiButton, UiDataTable, UiDrawer, UiEmpty } from '@/components/ui-guide/ui'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'

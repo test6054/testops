@@ -6,9 +6,7 @@
       <div class="ledger-summary__hero">
         <div class="ledger-summary__hero-left">
           <MarkGaugeBlock
-            :option="scanGaugeOption"
-            :ariaLabel="scanGaugeAriaLabel"
-            layout="inline"
+            v-bind="scanGaugeBlockProps"
           >
             <div class="ledger-summary__hero-meta">
               <div class="ledger-summary__hero-status">
@@ -74,20 +72,18 @@ import type { ImageLedgerDetailVO } from '@/apis/mark/image-ledger'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ExclamationCircleOutlined from '@ant-design/icons-vue/ExclamationCircleOutlined'
 import { computed } from 'vue'
-import { MarkGaugeBlock } from '@/components/chart'
 import { hasImageLedgerPageStats, LEDGER_STATUS_COLOR, LEDGER_STATUS_LABEL } from '@/apis/mark/image-ledger'
-import {
-  UiButton,
-  UiEmpty,
-  UiProgressBarNew,
-  UiStatPanel,
-  UiTag,
-} from '@/components/ui-guide/ui'
+import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiProgressBarNew from '@/components/ui-guide/ui/UiProgressBar.vue'
+import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
-import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
 import { formatGaugeAriaLabel } from '@/utils/mark-chart-accessibility'
+import { buildGaugeChartOption } from '@/utils/mark-echarts-options'
 import { toneToColor } from '@/utils/score-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -151,6 +147,12 @@ const scanGaugeAriaLabel = computed(() => {
     : scanProgressLabel.value
   return formatGaugeAriaLabel('扫描进度', scanPercent.value, detail)
 })
+
+const scanGaugeBlockProps = computed(() => ({
+  option: scanGaugeOption.value,
+  ariaLabel: scanGaugeAriaLabel.value,
+  layout: 'inline' as const,
+}))
 
 /** 将影像账本诊断转为扫描交付处置提示，避免展示底层对账细节。 */
 function ledgerDiagnosticText(diagnostic?: string): string {

@@ -13,7 +13,7 @@ import {
   AUDIT_RECTIFICATION_STATUS_LABEL,
   auditRectificationApi,
 } from '@/apis/quality'
-import { UiTag } from '@/components/ui-guide/ui'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { requireAllPages } from './page-contract'
